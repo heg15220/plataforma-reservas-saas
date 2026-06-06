@@ -1,0 +1,1619 @@
+# Plataforma SaaS de gestión y búsqueda de reservas online - Diseño técnico
+
+## 1. Decisiones arquitectónicas
+
+### 1.1 Estilo de arquitectura
+
+Para el MVP se recomienda un **monolito modular** con API REST, base de datos relacional, cola de trabajos y cache. Esta opción reduce complejidad inicial y permite separar módulos por contexto para extraer servicios en fases posteriores si el producto crece.
+
+Contextos principales:
+
+- Identidad y acceso.
+- Locales y catálogo.
+- Búsqueda y descubrimiento.
+- Disponibilidad y calendario.
+- Reservas.
+- Formularios personalizados.
+- Equipo, recursos y servicios.
+- Asistencia, incidencias y penalizaciones.
+- Reseñas.
+- Estadísticas.
+- Suscripciones y pagos.
+- Notificaciones.
+- Administración.
+- Recomendaciones.
+- Internacionalización y localización.
+- Verificación empresarial.
+
+### 1.2 Componentes
+
+- **Frontend público:** aplicación web responsive para búsqueda, ficha de local, calendario y reserva.
+- **Frontend local:** panel privado responsive para negocios.
+- **Frontend admin:** panel interno de plataforma.
+- **Backend API REST:** lógica de negocio, autorización, disponibilidad, reservas, penalizaciones y administración.
+- **Base de datos relacional:** fuente de verdad transaccional.
+- **Cache:** resultados frecuentes, sesiones auxiliares, rate limits y disponibilidad precalculada si procede.
+- **Cola de trabajos:** emails, expiración de bloqueos, estadísticas, recordatorios y callbacks externos.
+- **Proveedor de email:** confirmaciones, avisos, verificación y recordatorios.
+- **RedSys:** pagos externos de suscripciones.
+- **Motor de recomendaciones:** batch posterior basado en interacciones y valoraciones.
+- **Servicio de internacionalización:** resolución de idioma, catálogos `es`/`en`, traducción de emails y textos configurables.
+- **Proveedor de verificación empresarial:** adaptadores remotos para validar identificadores fiscales o registrales de negocios.
+
+### 1.3 Tecnologías recomendadas
+
+La especificación no obliga a un stack concreto, pero la implementación debería usar tecnologías con buen soporte para transacciones, validación y desarrollo SaaS:
+
+- Frontend: React/Next.js, Vue/Nuxt o equivalente.
+- Backend: NestJS, Laravel, Django, Spring Boot o equivalente.
+- Base de datos: PostgreSQL.
+- Cache/locks auxiliares: Redis.
+- Cola: BullMQ, Celery, Sidekiq, Laravel Queue, Hangfire o equivalente.
+- ORM: Prisma, TypeORM, Eloquent, Django ORM, Hibernate o equivalente.
+- Email: proveedor SMTP transaccional o API de email.
+- Mapas/geocoding: proveedor configurable.
+
+## 2. Vista lógica
+
+```text
+Usuario final
+  -> Frontend público
+  -> API REST
+  -> Módulos de búsqueda, disponibilidad, reservas, penalizaciones
+  -> PostgreSQL
+  -> Cola de trabajos
+  -> Email
+
+Local registrado
+  -> Panel privado
+  -> API REST
+  -> Módulos de local, calendario, reservas, equipo, incidencias, estadísticas
+  -> PostgreSQL
+  -> Cola de trabajos
+
+Administrador
+  -> Panel admin
+  -> API REST
+  -> Módulos admin, auditoría, incidencias, planes
+
+Local con suscripción
+  -> Panel privado
+  -> API REST
+  -> RedSys
+  -> Webhook/retorno RedSys
+  -> Suscripciones y pagos
+```
+
+## 3. Módulos backend
+
+### 3.1 Identidad y acceso
+
+Responsabilidades:
+
+- Registro de locales.
+- Tipo de cuenta: normal, local empresarial o administrador.
+- Verificación de email.
+- Estado de verificación empresarial.
+- Login y logout.
+- Recuperación de contraseña.
+- Gestión de roles.
+- Sesiones o tokens.
+- Rate limiting de autenticación.
+
+Roles:
+
+- `anonymous`: usuario final sin sesión.
+- `venue_owner`: propietario o responsable de local.
+- `admin`: administrador de plataforma.
+- `employee_user`: futuro acceso de empleados del local.
+
+Tipos de cuenta:
+
+- `customer`: cuenta normal futura de usuario final.
+- `venue_business`: cuenta empresarial de local.
+- `admin`: cuenta interna.
+
+### 3.2 Locales y catálogo
+
+Responsabilidades:
+
+- CRUD de locales.
+- Perfil público.
+- Categorías.
+- Galería de imágenes.
+- Ubicación y coordenadas.
+- Estado de publicación.
+- Visibilidad de contacto.
+- Validación de descripción de 350 palabras.
+
+### 3.3 Búsqueda y descubrimiento
+
+Responsabilidades:
+
+- Búsqueda por texto.
+- Filtros por categoría, ubicación, radio, disponibilidad, valoración y estado.
+- Ordenación por relevancia, cercanía, valoración, disponibilidad y destacados.
+- Secciones de recomendados, destacados y cercanos.
+- Mensajes para locales no encontrados.
+
+Diseño de búsqueda inicial:
+
+- PostgreSQL full-text search para MVP.
+- Índices por nombre, categoría, ciudad, coordenadas y estado publicado.
+- Extensión geoespacial opcional como PostGIS si se requiere precisión por radio.
+- Motor externo en fase posterior si el volumen lo exige.
+
+### 3.4 Disponibilidad y calendario
+
+Responsabilidades:
+
+- Horarios semanales del local.
+- Franjas manuales y generadas por reglas.
+- Bloqueos puntuales.
+- Cálculo de plazas disponibles.
+- Cálculo de estado de local y franja.
+- Disponibilidad futura.
+- Combinación con empleados, recursos y servicios.
+
+La disponibilidad publicada nunca debe depender solo de cache. La confirmación de reserva debe validar contra la base de datos transaccional.
+
+### 3.5 Reservas
+
+Responsabilidades:
+
+- Crear bloqueo temporal.
+- Confirmar reserva.
+- Expirar reservas en proceso.
+- Cancelar por usuario mediante enlace seguro.
+- Cancelar por local con auditoría.
+- Consultar reservas por local.
+- Cambiar estado de reserva.
+- Asignar empleado o recurso.
+- Generar tokens seguros de gestión.
+
+Estados:
+
+- `hold`: bloqueada temporalmente.
+- `pending_confirmation`: pendiente de confirmación.
+- `confirmed`: confirmada.
+- `cancelled_by_user`: cancelada por usuario.
+- `cancelled_by_venue`: cancelada por local.
+- `expired`: expirada.
+- `attended`: asistida.
+- `no_show`: no asistida.
+- `reported`: reportada.
+
+### 3.6 Formularios personalizados
+
+Responsabilidades:
+
+- Campos configurables por local.
+- Tipos de campo.
+- Obligatoriedad.
+- Orden.
+- Opciones para selectores.
+- Previsualización.
+- Validación de respuestas.
+- Persistencia de respuestas por reserva.
+
+Campos base inmutables:
+
+- Nombre.
+- Email.
+- Número de personas.
+- Fecha.
+- Franja seleccionada.
+
+### 3.7 Equipo, recursos y servicios
+
+Responsabilidades:
+
+- Crear empleados, profesionales, recursos o unidades reservables.
+- Gestionar estado: activo, inactivo, vacaciones, baja temporal, solo interno, archivado.
+- Horario semanal básico por empleado o recurso.
+- Servicios con duración y compatibilidad.
+- Asignación de reserva a empleado o recurso.
+- Cálculo de disponibilidad con personal o recurso.
+- Agenda individual en fases posteriores.
+
+MVP:
+
+- Crear recurso.
+- Activar/inactivar.
+- Definir horario semanal.
+- Asociar a servicio.
+- Asignar reserva.
+- Elegir "cualquier disponible".
+
+### 3.8 Asistencia, incidencias y penalizaciones
+
+Responsabilidades:
+
+- Marcar asistencia.
+- Marcar no asistencia.
+- Mantener estado pendiente.
+- Reportar no asistencia.
+- Calcular penalización.
+- Bloquear emails con restricción activa.
+- Mostrar historial profesional de incidencias.
+- Auditar acciones.
+- Configurar reglas básicas de cancelación y no asistencia por local.
+
+### 3.9 Reseñas
+
+Responsabilidades:
+
+- Crear reseña tras reserva válida.
+- Validar una reseña por reserva.
+- Calcular media y número total.
+- Mostrar reseñas en ficha.
+- Mostrar reseñas en panel.
+
+### 3.10 Estadísticas
+
+Responsabilidades:
+
+- Reservas por día, semana, mes y año.
+- Ocupación por franja.
+- No asistencias.
+- Cancelaciones.
+- Valoración media.
+- Usuarios recurrentes.
+- Gráficos simplificados.
+- Agregaciones periódicas.
+
+MVP:
+
+- Métricas básicas calculadas bajo demanda o con agregación diaria.
+
+### 3.11 Suscripciones y pagos
+
+Responsabilidades:
+
+- Planes.
+- Suscripciones.
+- Estados de cuenta.
+- Historial de pagos.
+- Integración RedSys.
+- Retorno y validación de pago.
+- Facturas.
+
+Estados de suscripción:
+
+- `trial`.
+- `active`.
+- `pending_payment`.
+- `suspended`.
+- `cancelled`.
+
+Estados de pago RedSys:
+
+- `confirmed`.
+- `rejected`.
+- `cancelled_by_user`.
+- `communication_error`.
+- `pending_confirmation`.
+
+### 3.12 Notificaciones
+
+Responsabilidades:
+
+- Email de verificación.
+- Confirmación de reserva.
+- Aviso al local.
+- Cancelaciones.
+- Penalización aplicada.
+- Fin de penalización.
+- Recordatorios futuros.
+- Resumen diario futuro.
+
+Debe usar cola de trabajos con reintentos e idempotencia.
+
+### 3.13 Administración y auditoría
+
+Responsabilidades:
+
+- Gestión de locales y categorías.
+- Revisión de incidencias.
+- Gestión de penalizaciones.
+- Gestión de planes.
+- Auditoría de acciones críticas.
+- Métricas globales.
+
+### 3.14 Internacionalización y localización
+
+Responsabilidades:
+
+- Resolver idioma efectivo por usuario, local, navegador o app.
+- Servir textos de sistema en español e inglés.
+- Traducir emails, notificaciones, errores, estados y textos legales.
+- Formatear fechas, horas, números y moneda por locale.
+- Validar que no existan claves de traducción incompletas.
+- Permitir textos configurables por local en español e inglés cuando sean visibles públicamente.
+
+Regla de resolución:
+
+```text
+if preferred_locale in [es, en] -> preferred_locale
+else if explicit_locale startsWith("es") -> es
+else if Accept-Language/app locale startsWith("es") -> es
+else -> en
+```
+
+Los catálogos base deben vivir en archivos versionados, por ejemplo:
+
+```text
+/locales/es.json
+/locales/en.json
+```
+
+Todo texto de UI, API errors, emails y estados debe referenciar una clave estable, no texto hardcodeado.
+
+### 3.15 Verificación empresarial
+
+Responsabilidades:
+
+- Capturar país fiscal, razón social e identificador fiscal/registral.
+- Normalizar identificadores por país.
+- Validar formato y dígito de control local antes de llamar a APIs remotas cuando existan reglas conocidas.
+- Consultar proveedor oficial, público o autorizado.
+- Para España, intentar AEAT, servicio autorizado equivalente o proveedor privado aprobado cuando no aplique VIES.
+- Solicitar documentos de respaldo cuando la verificación automática no sea concluyente.
+- Guardar resultado mínimo de verificación.
+- Impedir publicación de locales si la verificación no está aprobada.
+- Permitir reintento automático, revalidación manual y revisión administrativa.
+
+Identificador recomendado:
+
+- Campo canónico: `business_tax_identifier`.
+- Para España: NIF/CIF/NIF-IVA según corresponda.
+- Para UE: VAT ID cuando aplique, validable mediante VIES u otro proveedor oficial/autorizado.
+- Para otros países: adaptador de registro fiscal o mercantil equivalente.
+
+Estados:
+
+- `unverified`
+- `pending_remote_check`
+- `verified`
+- `pending_review`
+- `rejected`
+- `expired`
+
+La validación VIES confirma validez de números VAT de empresas registradas para operaciones intracomunitarias. Si el servicio no confirma datos suficientes, no se debe aprobar automáticamente; la cuenta queda pendiente de revisión o se usa otro adaptador nacional.
+
+Documentación de respaldo admitida para revisión manual:
+
+- Alta censal 036/037.
+- Certificado censal.
+- Licencia de actividad o apertura.
+- Documento administrativo equivalente según país o sector.
+
+Estos documentos solo se usan para validación empresarial, no deben mostrarse públicamente y deben tratarse como documentación sensible.
+
+## 4. Modelo de datos
+
+### 4.1 Entidades principales
+
+#### users
+
+Representa cuentas autenticadas de locales y administradores.
+
+- `id`
+- `email`
+- `email_normalized`
+- `password_hash`
+- `role`
+- `account_type`
+- `preferred_locale`
+- `email_verified_at`
+- `status`
+- `created_at`
+- `updated_at`
+
+Índices:
+
+- único por `email_normalized`.
+
+#### business_accounts
+
+Representa la identidad fiscal o registral de una empresa, profesional o entidad que puede gestionar uno o varios locales.
+
+- `id`
+- `owner_user_id`
+- `tax_country`
+- `business_legal_name`
+- `business_tax_identifier`
+- `business_tax_identifier_normalized`
+- `business_address`
+- `business_verification_status`
+- `business_verified_at`
+- `business_verification_provider`
+- `business_verification_reference`
+- `manual_review_status`
+- `manual_reviewed_by_user_id`
+- `manual_reviewed_at`
+- `created_at`
+- `updated_at`
+
+Índices y restricciones:
+
+- único por `tax_country`, `business_tax_identifier_normalized`.
+- índice por `owner_user_id`.
+- índice por `business_verification_status`.
+
+#### business_verification_checks
+
+Registra intentos de validación remota o manual de una cuenta empresarial.
+
+- `id`
+- `business_account_id`
+- `provider`
+- `provider_country`
+- `identifier_checked`
+- `status`
+- `matched_legal_name`
+- `matched_address`
+- `remote_reference`
+- `checked_at`
+- `error_code`
+- `error_message_key`
+- `raw_response_hash`
+- `created_at`
+
+No debe guardar respuestas completas del proveedor salvo necesidad legal definida. Si se necesita evidencia, se guardará hash, referencia y campos mínimos.
+
+#### business_verification_documents
+
+Documentos de respaldo aportados por el local cuando la verificación remota no es concluyente.
+
+- `id`
+- `business_account_id`
+- `document_type`
+- `file_url`
+- `file_hash`
+- `status`
+- `uploaded_by_user_id`
+- `reviewed_by_user_id`
+- `reviewed_at`
+- `review_notes`
+- `created_at`
+- `updated_at`
+
+Tipos iniciales:
+
+- `census_registration_036_037`
+- `census_certificate`
+- `activity_or_opening_license`
+- `equivalent_administrative_document`
+- `other`
+
+Estados:
+
+- `pending_review`
+- `accepted`
+- `rejected`
+- `needs_correction`
+
+Restricciones:
+
+- Acceso solo para propietario autorizado, administradores y procesos internos de verificación.
+- Validación de tipo, tamaño, antivirus y almacenamiento privado.
+- Auditoría en cada revisión.
+
+#### venues
+
+Representa el local o negocio.
+
+- `id`
+- `owner_user_id`
+- `business_account_id`
+- `category_id`
+- `name`
+- `slug`
+- `description`
+- `description_i18n`
+- `default_locale`
+- `contact_email`
+- `phone`
+- `address`
+- `city`
+- `province`
+- `country`
+- `postal_code`
+- `latitude`
+- `longitude`
+- `main_image_url`
+- `status`
+- `manual_availability_status`
+- `show_phone`
+- `show_email`
+- `published_at`
+- `created_at`
+- `updated_at`
+
+Estados recomendados:
+
+- `draft`
+- `pending_verification`
+- `published`
+- `suspended`
+- `archived`
+
+#### venue_images
+
+- `id`
+- `venue_id`
+- `url`
+- `alt_text`
+- `position`
+- `created_at`
+
+#### categories
+
+- `id`
+- `name`
+- `name_i18n`
+- `slug`
+- `description`
+- `description_i18n`
+- `is_active`
+- `created_at`
+- `updated_at`
+
+#### venue_opening_hours
+
+- `id`
+- `venue_id`
+- `weekday`
+- `is_closed`
+- `reservations_enabled`
+- `opens_at`
+- `closes_at`
+- `created_at`
+- `updated_at`
+
+#### time_slots
+
+Plantilla o instancia de franja reservable.
+
+- `id`
+- `venue_id`
+- `service_id`
+- `date`
+- `weekday`
+- `starts_at`
+- `ends_at`
+- `capacity`
+- `status`
+- `created_by_rule`
+- `version`
+- `created_at`
+- `updated_at`
+
+Estados:
+
+- `available`
+- `unavailable`
+- `full`
+- `blocked`
+
+Índices:
+
+- `venue_id`, `date`, `starts_at`.
+- `venue_id`, `status`.
+
+#### availability_blocks
+
+Bloqueos manuales de local, franja, empleado o recurso.
+
+- `id`
+- `venue_id`
+- `employee_resource_id`
+- `scope`
+- `date`
+- `starts_at`
+- `ends_at`
+- `reason`
+- `created_by_user_id`
+- `created_at`
+
+Scopes:
+
+- `venue`
+- `slot`
+- `employee_resource`
+- `service`
+
+#### services
+
+- `id`
+- `venue_id`
+- `name`
+- `name_i18n`
+- `description`
+- `description_i18n`
+- `duration_minutes`
+- `capacity_required`
+- `is_active`
+- `created_at`
+- `updated_at`
+
+#### employee_resources
+
+Empleado, profesional, pista, sala, mesa o unidad reservable.
+
+- `id`
+- `venue_id`
+- `type`
+- `first_name`
+- `last_name`
+- `public_alias`
+- `photo_url`
+- `specialty`
+- `description`
+- `status`
+- `public_visibility`
+- `internal_notes`
+- `created_at`
+- `updated_at`
+
+Tipos:
+
+- `employee`
+- `professional`
+- `room`
+- `court`
+- `table`
+- `equipment`
+- `other`
+
+Estados:
+
+- `active`
+- `inactive`
+- `vacation`
+- `temporary_leave`
+- `internal_only`
+- `archived`
+
+#### employee_resource_hours
+
+- `id`
+- `employee_resource_id`
+- `weekday`
+- `is_available`
+- `starts_at`
+- `ends_at`
+- `created_at`
+- `updated_at`
+
+#### employee_resource_exceptions
+
+Post-MVP para vacaciones, bajas y cambios puntuales.
+
+- `id`
+- `employee_resource_id`
+- `date_from`
+- `date_to`
+- `starts_at`
+- `ends_at`
+- `availability_status`
+- `reason`
+- `created_at`
+
+#### service_employee_resources
+
+- `service_id`
+- `employee_resource_id`
+- `created_at`
+
+#### reservations
+
+- `id`
+- `venue_id`
+- `time_slot_id`
+- `service_id`
+- `employee_resource_id`
+- `customer_name`
+- `customer_email`
+- `customer_email_normalized`
+- `party_size`
+- `date`
+- `starts_at`
+- `ends_at`
+- `status`
+- `hold_expires_at`
+- `secure_token_hash`
+- `secure_token_expires_at`
+- `cancelled_at`
+- `cancelled_by`
+- `cancellation_reason`
+- `attendance_marked_at`
+- `created_at`
+- `updated_at`
+
+Índices:
+
+- `venue_id`, `date`.
+- `customer_email_normalized`.
+- `status`, `hold_expires_at`.
+- `time_slot_id`, `status`.
+
+#### reservation_form_fields
+
+- `id`
+- `venue_id`
+- `label`
+- `label_i18n`
+- `key`
+- `type`
+- `is_required`
+- `options_json`
+- `options_i18n_json`
+- `position`
+- `is_active`
+- `created_at`
+- `updated_at`
+
+Tipos:
+
+- `short_text`
+- `long_text`
+- `number`
+- `select`
+- `checkbox`
+- `date`
+- `phone`
+- `email`
+
+#### reservation_form_responses
+
+- `id`
+- `reservation_id`
+- `field_id`
+- `field_key`
+- `field_label`
+- `value_json`
+- `created_at`
+
+Se guardan `field_key` y `field_label` para conservar histórico aunque el campo cambie.
+
+#### reviews
+
+- `id`
+- `venue_id`
+- `reservation_id`
+- `customer_email_normalized`
+- `rating`
+- `comment`
+- `created_at`
+- `updated_at`
+
+Restricción:
+
+- único por `reservation_id`.
+
+#### no_show_incidents
+
+- `id`
+- `venue_id`
+- `reservation_id`
+- `customer_email_normalized`
+- `incident_type`
+- `reported_by_user_id`
+- `reported_at`
+- `notes`
+- `status`
+- `created_at`
+
+Tipos:
+
+- `no_show`
+- `late_cancellation`
+- `late_arrival`
+- `duplicate_or_abusive_booking`
+- `venue_condition_breach`
+- `manual_incident`
+
+#### penalties
+
+- `id`
+- `customer_email_normalized`
+- `scope`
+- `venue_id`
+- `incident_count_operational`
+- `starts_at`
+- `ends_at`
+- `status`
+- `reason`
+- `created_from_incident_id`
+- `created_at`
+- `updated_at`
+
+Scopes:
+
+- `global`
+- `venue`
+
+MVP recomendado:
+
+- penalización global por email.
+
+#### venue_booking_rules
+
+- `id`
+- `venue_id`
+- `cancellation_allowed`
+- `free_cancellation_until_minutes_before`
+- `no_show_policy_text`
+- `no_show_policy_text_i18n`
+- `late_cancellation_policy_text`
+- `late_cancellation_policy_text_i18n`
+- `auto_mark_attended_after_minutes`
+- `requires_confirmation`
+- `created_at`
+- `updated_at`
+
+#### plans
+
+- `id`
+- `name`
+- `name_i18n`
+- `slug`
+- `price_monthly`
+- `price_yearly`
+- `limits_json`
+- `features_json`
+- `features_i18n_json`
+- `is_active`
+- `created_at`
+- `updated_at`
+
+#### subscriptions
+
+- `id`
+- `venue_id`
+- `plan_id`
+- `status`
+- `billing_period`
+- `current_period_starts_at`
+- `current_period_ends_at`
+- `trial_ends_at`
+- `cancelled_at`
+- `created_at`
+- `updated_at`
+
+#### payments
+
+- `id`
+- `subscription_id`
+- `venue_id`
+- `provider`
+- `provider_order_id`
+- `amount`
+- `currency`
+- `status`
+- `request_payload_hash`
+- `response_payload_json`
+- `paid_at`
+- `created_at`
+- `updated_at`
+
+#### audit_logs
+
+- `id`
+- `actor_user_id`
+- `actor_role`
+- `entity_type`
+- `entity_id`
+- `action`
+- `before_json`
+- `after_json`
+- `ip_address`
+- `user_agent`
+- `created_at`
+
+#### stats_daily_venue
+
+- `id`
+- `venue_id`
+- `date`
+- `reservations_count`
+- `confirmed_count`
+- `cancelled_count`
+- `no_show_count`
+- `attended_count`
+- `occupied_capacity`
+- `available_capacity`
+- `reviews_count`
+- `average_rating`
+- `created_at`
+- `updated_at`
+
+### 4.2 Normalización de email
+
+Regla mínima:
+
+- trim.
+- lowercase.
+- validación RFC razonable.
+
+No se deben aplicar normalizaciones específicas de proveedor como quitar puntos de Gmail salvo decisión legal y técnica explícita.
+
+### 4.3 Datos localizados
+
+Los textos controlados por la plataforma deben residir en catálogos de traducción. Los textos dinámicos guardados en base de datos que sean visibles al usuario deben usar un patrón localizable:
+
+```json
+{
+  "es": "Texto en español",
+  "en": "English text"
+}
+```
+
+Reglas:
+
+- `es` y `en` son obligatorios para textos de plataforma, categorías, planes, estados comerciales y plantillas de email.
+- Los textos creados por locales deben guardar `default_locale` y traducciones `es`/`en` cuando el texto sea público.
+- Si un texto de local no tiene traducción completa, la publicación debe bloquearse o mostrar fallback explícitamente aceptado por el local.
+- Las respuestas libres de usuarios no se traducen automáticamente; se muestran como fueron introducidas.
+
+### 4.4 Normalización de identificador empresarial
+
+El identificador empresarial se normaliza antes de persistir y consultar proveedores:
+
+- `tax_country` en ISO 3166-1 alpha-2.
+- `business_tax_identifier_normalized` sin espacios, guiones ni separadores irrelevantes.
+- Mayúsculas para letras.
+- Validación de formato y dígito de control por país antes de consulta remota cuando sea posible.
+
+La unicidad se aplica por `tax_country + business_tax_identifier_normalized`.
+
+Para España se contemplan NIF/CIF/NIF-IVA según corresponda. Para otros países se debe implementar un adaptador específico que conozca formato y fuente remota.
+
+## 5. Diseño de disponibilidad y concurrencia
+
+### 5.1 Conceptos
+
+Disponibilidad real de una franja:
+
+```text
+capacidad_total
+- plazas_confirmadas
+- plazas_en_hold_no_expirado
+= plazas_disponibles
+```
+
+Si hay servicios, empleados o recursos:
+
+```text
+franja_reservable =
+  local_abierto
+  AND franja_activa
+  AND capacidad_suficiente
+  AND servicio_activo_si_aplica
+  AND empleado_o_recurso_disponible_si_aplica
+  AND sin_bloqueo_manual
+```
+
+### 5.2 Creación de bloqueo temporal
+
+Flujo transaccional recomendado:
+
+1. Recibir `venue_id`, `slot_id`, `service_id`, `party_size` y preferencia de empleado/recurso.
+2. Abrir transacción.
+3. Bloquear la fila de `time_slots` con `SELECT ... FOR UPDATE` o mecanismo equivalente.
+4. Eliminar logicamente o ignorar holds expirados.
+5. Calcular plazas confirmadas y holds vigentes.
+6. Validar capacidad.
+7. Validar horario, bloqueo manual, servicio y empleado/recurso.
+8. Crear reserva con estado `hold` y `hold_expires_at = now + 5 minutes`.
+9. Confirmar transacción.
+10. Devolver `reservation_id`, token de proceso y expiración.
+
+### 5.3 Confirmación
+
+Flujo transaccional recomendado:
+
+1. Recibir `reservation_id`, token de proceso y respuestas.
+2. Abrir transacción.
+3. Bloquear la reserva `hold`.
+4. Validar que no expiró.
+5. Validar penalización activa por email normalizado.
+6. Bloquear `time_slots`.
+7. Recalcular capacidad.
+8. Validar campos obligatorios.
+9. Cambiar reserva a `confirmed`.
+10. Generar token seguro de gestión.
+11. Confirmar transacción.
+12. Encolar emails.
+
+### 5.4 Expiración
+
+Un job programado debe ejecutar periódicamente:
+
+- Buscar reservas `hold` con `hold_expires_at < now`.
+- Cambiar estado a `expired`.
+- Emitir evento interno para actualizar cache o estadísticas si aplica.
+
+### 5.5 Evitar sobreventa
+
+Opciones válidas:
+
+- Bloqueo pesimista de franja en transacción.
+- Bloqueo optimista con campo `version` y retry controlado.
+- Restricciones atómicas o contadores transaccionales.
+
+La implementación debe incluir tests de concurrencia para confirmar que dos reservas simultáneas no superan la capacidad.
+
+## 6. Diseño de penalizaciones
+
+### 6.1 Flujo de reporte
+
+1. Local abre reserva finalizada.
+2. Marca "No asistió".
+3. Pulsa "Reportar no asistencia".
+4. Sistema muestra confirmación de acción auditada.
+5. Sistema registra incidencia.
+6. Sistema calcula número operativo de incidencias del email.
+7. Sistema crea o actualiza penalización activa.
+8. Sistema encola notificación si procede.
+9. Sistema actualiza estadísticas.
+
+### 6.2 Cálculo MVP
+
+```text
+incident_count_operational = numero de no asistencias operativas vigentes
+
+if count == 1 -> 7 dias
+if count == 2 -> 14 dias
+if count == 3 -> 21 dias
+if count >= 4 -> 60 dias
+```
+
+Cuando se completa un bloqueo de 60 días, el contador operativo puede reiniciarse. El histórico legal/auditado no se borra automaticamente; se marca fuera del contador operativo conforme a política de conservación.
+
+### 6.3 Mensaje al usuario
+
+El mensaje debe ser sobrio:
+
+```text
+Este correo electrónico tiene una restricción temporal para realizar reservas hasta el día DD/MM/AAAA debido a incidencias previas de no asistencia.
+```
+
+No deben usarse términos como "denuncia", "castigo", "antecedentes", "delincuente" o "lista negra".
+
+## 7. Diseño de APIs
+
+### 7.1 Público
+
+```http
+GET /api/public/i18n/{locale}
+GET /api/public/categories
+GET /api/public/venues/search
+GET /api/public/venues/{slug}
+GET /api/public/venues/{venueId}/availability
+POST /api/public/reservations/holds
+POST /api/public/reservations/{reservationId}/confirm
+GET /api/public/reservations/manage/{token}
+POST /api/public/reservations/manage/{token}/cancel
+POST /api/public/reservations/{reservationId}/reviews
+GET /api/public/recommendations
+```
+
+### 7.2 Local autenticado
+
+```http
+POST /api/auth/venues/register
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/password/forgot
+POST /api/auth/password/reset
+POST /api/auth/email/verify
+POST /api/auth/venues/business-verification/retry
+
+GET /api/venue/me
+PATCH /api/venue/me/profile
+POST /api/venue/me/images
+DELETE /api/venue/me/images/{imageId}
+
+GET /api/venue/me/opening-hours
+PUT /api/venue/me/opening-hours
+GET /api/venue/me/time-slots
+POST /api/venue/me/time-slots
+PATCH /api/venue/me/time-slots/{slotId}
+POST /api/venue/me/time-slots/generate
+POST /api/venue/me/availability-blocks
+DELETE /api/venue/me/availability-blocks/{blockId}
+
+GET /api/venue/me/services
+POST /api/venue/me/services
+PATCH /api/venue/me/services/{serviceId}
+
+GET /api/venue/me/team
+POST /api/venue/me/team
+PATCH /api/venue/me/team/{resourceId}
+PUT /api/venue/me/team/{resourceId}/hours
+
+GET /api/venue/me/form-fields
+POST /api/venue/me/form-fields
+PATCH /api/venue/me/form-fields/{fieldId}
+DELETE /api/venue/me/form-fields/{fieldId}
+POST /api/venue/me/form-fields/reorder
+
+GET /api/venue/me/reservations
+GET /api/venue/me/reservations/{reservationId}
+POST /api/venue/me/reservations/{reservationId}/attendance
+POST /api/venue/me/reservations/{reservationId}/report-no-show
+POST /api/venue/me/reservations/{reservationId}/cancel
+
+GET /api/venue/me/booking-rules
+PUT /api/venue/me/booking-rules
+GET /api/venue/me/incident-history
+
+GET /api/venue/me/reviews
+GET /api/venue/me/statistics
+
+GET /api/venue/me/subscription
+POST /api/venue/me/subscription/checkout/redsys
+GET /api/venue/me/payments
+```
+
+### 7.3 Administración
+
+```http
+GET /api/admin/venues
+PATCH /api/admin/venues/{venueId}
+GET /api/admin/business-accounts
+GET /api/admin/business-accounts/{businessAccountId}
+POST /api/admin/business-accounts/{businessAccountId}/approve
+POST /api/admin/business-accounts/{businessAccountId}/reject
+POST /api/admin/business-accounts/{businessAccountId}/recheck
+GET /api/admin/categories
+POST /api/admin/categories
+PATCH /api/admin/categories/{categoryId}
+GET /api/admin/incidents
+PATCH /api/admin/incidents/{incidentId}
+GET /api/admin/penalties
+PATCH /api/admin/penalties/{penaltyId}
+GET /api/admin/plans
+POST /api/admin/plans
+PATCH /api/admin/plans/{planId}
+GET /api/admin/metrics
+```
+
+### 7.4 RedSys
+
+```http
+POST /api/payments/redsys/return
+POST /api/payments/redsys/notification
+GET /api/payments/redsys/status/{orderId}
+```
+
+La notificación debe validar firma, idempotencia y correspondencia de importe, moneda, pedido y suscripción.
+
+## 8. Contratos de API relevantes
+
+### 8.1 Crear hold
+
+Request:
+
+```json
+{
+  "venueId": "uuid",
+  "timeSlotId": "uuid",
+  "serviceId": "uuid-or-null",
+  "employeeResourceId": "uuid-or-null",
+  "assignmentPreference": "any_available",
+  "partySize": 2
+}
+```
+
+Response:
+
+```json
+{
+  "reservationId": "uuid",
+  "holdToken": "opaque-token",
+  "expiresAt": "2026-06-06T12:05:00Z",
+  "remainingSeconds": 300
+}
+```
+
+### 8.2 Confirmar reserva
+
+Request:
+
+```json
+{
+  "holdToken": "opaque-token",
+  "customerName": "Maria Lopez",
+  "customerEmail": "maria@example.com",
+  "partySize": 2,
+  "formResponses": [
+    {
+      "fieldId": "uuid",
+      "value": "Sin gluten"
+    }
+  ],
+  "acceptsPrivacyPolicy": true,
+  "acceptsBookingRules": true
+}
+```
+
+Response:
+
+```json
+{
+  "status": "confirmed",
+  "reservationId": "uuid",
+  "manageUrlSentTo": "maria@example.com",
+  "venueName": "Restaurante A Barrola",
+  "date": "2026-06-06",
+  "startsAt": "13:00",
+  "endsAt": "14:00",
+  "partySize": 2
+}
+```
+
+### 8.3 Penalización activa
+
+Error response:
+
+```json
+{
+  "error": "ACTIVE_BOOKING_RESTRICTION",
+  "message": "Este correo electrónico tiene una restricción temporal para realizar reservas hasta el día 20/06/2026 debido a incidencias previas de no asistencia.",
+  "restrictedUntil": "2026-06-20"
+}
+```
+
+### 8.4 Registro de local con verificación empresarial
+
+Request:
+
+```json
+{
+  "account": {
+    "email": "local@example.com",
+    "password": "secure-password",
+    "preferredLocale": "es"
+  },
+  "business": {
+    "taxCountry": "ES",
+    "legalName": "Barrola Restauracion SL",
+    "taxIdentifier": "B12345678",
+    "registeredAddress": "Rua exemplo 1, Santiago de Compostela"
+  },
+  "venue": {
+    "name": "Restaurante A Barrola",
+    "categoryId": "uuid",
+    "address": "Rua exemplo 1, Santiago de Compostela"
+  },
+  "acceptsLegalTerms": true
+}
+```
+
+Response:
+
+```json
+{
+  "accountType": "venue_business",
+  "businessVerificationStatus": "pending_remote_check",
+  "emailVerificationRequired": true,
+  "canPublishVenue": false
+}
+```
+
+### 8.5 Resultado de verificación empresarial
+
+Response:
+
+```json
+{
+  "businessAccountId": "uuid",
+  "status": "verified",
+  "provider": "vies",
+  "checkedAt": "2026-06-06T12:00:00Z",
+  "canPublishVenue": true
+}
+```
+
+## 9. Diseño frontend
+
+### 9.1 Principios
+
+- Interfaz sobria, clara y profesional.
+- Mobile-first para flujos de reserva.
+- Acciones principales visibles.
+- Formularios cortos y validación contextual.
+- Tarjetas en móvil en lugar de tablas.
+- Lenguaje profesional para incidencias.
+- Calendario y disponibilidad fáciles de escanear.
+- Todos los textos visibles deben renderizarse mediante claves i18n en `es` o `en`.
+- El idioma debe resolverse automáticamente por navegador/app y permitir preferencia manual.
+
+### 9.2 Rutas públicas
+
+```text
+/                         Inicio con buscador
+/buscar                   Resultados y filtros
+/locales/{slug}           Ficha pública del local
+/locales/{slug}/reservar  Formulario de reserva
+/reserva/confirmada       Confirmación
+/r/{token}                Consulta/cancelación por enlace seguro
+/locales/registro         Registro de local
+/locales/acceso           Login de local
+```
+
+### 9.3 Rutas del panel local
+
+```text
+/panel
+/panel/perfil
+/panel/horarios
+/panel/franjas
+/panel/calendario
+/panel/reservas
+/panel/reservas/{id}
+/panel/formulario
+/panel/equipo
+/panel/incidencias
+/panel/resenas
+/panel/estadisticas
+/panel/suscripcion
+/panel/configuracion
+```
+
+### 9.4 Rutas admin
+
+```text
+/admin
+/admin/locales
+/admin/categorias
+/admin/incidencias
+/admin/penalizaciones
+/admin/planes
+/admin/metricas
+```
+
+## 10. Pantallas responsive
+
+### 10.1 Usuario final móvil
+
+Pantallas mínimas:
+
+- Inicio con logo, buscador, ubicación actual, categorías y navegación inferior.
+- Resultados en lista vertical de tarjetas.
+- Filtros en panel/modal.
+- Ficha con imagen, valoración, estado, pestañas y botón fijo de reserva.
+- Disponibilidad con calendario compacto y lista de franjas.
+- Formulario de reserva por bloques, resumen y contador de bloqueo.
+- Confirmación con resumen y enlace de gestión por email.
+
+Navegación inferior:
+
+- Inicio.
+- Explorar.
+- Reservas.
+- Favoritos.
+- Perfil.
+
+### 10.2 Local móvil
+
+Pantallas mínimas:
+
+- Acceso para locales.
+- Panel resumen del día.
+- Reservas del día.
+- Detalle de reserva.
+- Marcado de asistencia.
+- Reporte de no asistencia.
+- Estadísticas básicas.
+- Suscripción y RedSys.
+
+Navegación inferior:
+
+- Inicio.
+- Reservas.
+- Calendario.
+- Más.
+
+## 11. Eventos y jobs
+
+### 11.1 Eventos de dominio
+
+- `VenueRegistered`
+- `VenueEmailVerified`
+- `BusinessVerificationRequested`
+- `BusinessVerificationCompleted`
+- `BusinessVerificationFailed`
+- `BusinessVerificationRequiresReview`
+- `VenuePublished`
+- `AvailabilityChanged`
+- `ReservationHoldCreated`
+- `ReservationHoldExpired`
+- `ReservationConfirmed`
+- `ReservationCancelledByUser`
+- `ReservationCancelledByVenue`
+- `AttendanceMarked`
+- `NoShowReported`
+- `PenaltyApplied`
+- `ReviewCreated`
+- `PaymentConfirmed`
+- `PaymentRejected`
+- `LocaleResolved`
+
+### 11.2 Jobs programados
+
+- Expirar holds cada minuto.
+- Reintentar verificaciones empresariales pendientes por indisponibilidad temporal del proveedor.
+- Marcar asistidas por defecto tras periodo configurado.
+- Reintentar emails fallidos.
+- Agregar estadísticas diarias.
+- Enviar recordatorios de reserva en fase posterior.
+- Finalizar penalizaciones y reiniciar contador operativo si aplica.
+- Entrenar recomendaciones en fase posterior.
+
+## 12. Seguridad
+
+### 12.1 Autenticación
+
+- Hash de contraseña robusto.
+- Verificación de email para locales.
+- Verificación empresarial aprobada para publicar locales.
+- Sesiones seguras o tokens firmados.
+- Recuperación de contraseña con tokens de uso único.
+- Rate limiting en login, registro, recuperación y reserva.
+
+### 12.2 Autorización
+
+- Todas las rutas `/api/venue/me/*` deben limitar datos al local autenticado.
+- Admin requiere rol explícito.
+- Enlaces públicos de reserva solo dan acceso a una reserva concreta.
+- Los tokens públicos deben almacenarse hasheados.
+
+### 12.3 Validación
+
+- Validación backend obligatoria para formularios, capacidad, fechas y emails.
+- Validación backend obligatoria de `account_type` y verificación empresarial.
+- Sanitización de HTML o uso de texto plano en descripciones y comentarios.
+- Validación de archivos subidos.
+- Protección CSRF si se usan cookies.
+
+### 12.4 Auditoría
+
+Acciones auditadas:
+
+- Cancelación por local.
+- Reporte de no asistencia.
+- Cambios manuales de penalización.
+- Cambios de reglas de reserva.
+- Cambios de disponibilidad con reservas afectadas.
+- Cambios de plan o pagos.
+- Suspensión de local.
+- Aprobación o rechazo manual de verificación empresarial.
+- Reintentos de verificación fiscal o registral.
+
+## 13. Privacidad y cumplimiento
+
+Datos personales tratados:
+
+- Nombre.
+- Email.
+- Teléfono si se solicita.
+- Historial de reservas.
+- Historial de incidencias.
+- Ubicación aproximada si se autoriza.
+- Datos del personal del local si se configura.
+- Identificador fiscal o registral del local.
+- Razón social y dirección fiscal o registral.
+
+Medidas:
+
+- Política de privacidad y condiciones visibles.
+- Consentimiento antes de confirmar reserva.
+- Minimización de campos personalizados.
+- Conservación limitada de incidencias.
+- Registro de actividad de penalizaciones.
+- Exportación o supresión conforme a normativa aplicable.
+- No almacenamiento de tarjetas, pago externo en RedSys.
+- Almacenamiento mínimo de respuestas de verificación empresarial.
+- Conservación de evidencia de verificación mediante referencia, hash o campos mínimos.
+
+## 14. Recomendaciones post-MVP
+
+### 14.1 Datos de entrada
+
+- Reservas completadas.
+- Valoraciones.
+- Categorías visitadas.
+- Locales reservados.
+- Ubicación habitual aproximada.
+- Frecuencia de uso.
+- Similitud entre usuarios.
+- Similitud entre locales.
+
+### 14.2 Arquitectura
+
+- Generar matriz usuario-local con email anonimizado o pseudonimizado.
+- Entrenar modelo batch de factorización matricial.
+- Guardar recomendaciones en tabla `recommendation_results`.
+- Servir recomendaciones filtradas por disponibilidad, ubicación y estado publicado.
+
+### 14.3 Fall-back
+
+Si no hay datos suficientes:
+
+- Populares cerca de ti.
+- Mejor valorados.
+- Disponibles hoy.
+- Nuevos locales.
+- Locales destacados por plan o criterio editorial.
+
+## 15. Estrategia de tests
+
+### 15.1 Unitarios
+
+- Normalización de email.
+- Resolución de locale `es`/`en`.
+- Cobertura completa de claves de traducción.
+- Normalización de identificador fiscal/registral.
+- Cálculo de penalización.
+- Validación de formulario.
+- Cálculo de estado del local.
+- Cálculo de disponibilidad con capacidad, holds y empleados.
+
+### 15.2 Integración
+
+- Registro y verificación de local.
+- Verificación empresarial aprobada, rechazada y pendiente por proveedor no disponible.
+- Crear horarios y franjas.
+- Crear hold y confirmar reserva.
+- Expirar hold.
+- Cancelar por enlace seguro.
+- Reportar no asistencia y bloquear email.
+- Crear reseña tras reserva.
+- RedSys callback idempotente.
+
+### 15.3 Concurrencia
+
+- Dos usuarios reservando última plaza.
+- Varios holds simultáneos sobre una franja.
+- Confirmación de hold expirado.
+- Cambio de capacidad mientras existen reservas.
+
+### 15.4 End-to-end
+
+- Flujo usuario móvil: buscar, ficha, calendario, reserva, confirmación.
+- Flujo local móvil: login, reservas del día, asistencia, reporte.
+- Flujo local escritorio: configurar perfil, horarios, franjas y formulario.
+- Flujo de idioma: navegador `es-*` muestra español y cualquier otro idioma muestra inglés.
+
+## 16. Riesgos y mitigaciones
+
+| Riesgo | Impacto | Mitigación |
+| --- | --- | --- |
+| Sobreventa de plazas | Alto | Transacciones, locks, tests de concurrencia |
+| Penalizaciones abusivas | Alto | Auditoría, lenguaje profesional, revisión admin |
+| Datos personales mal tratados | Alto | Minimización, consentimiento, conservación limitada |
+| Formularios personalizados inseguros | Medio | Tipos controlados, validación backend |
+| RedSys mal integrado | Alto | Validación de firma, idempotencia, no almacenar tarjetas |
+| Verificación empresarial con proveedor caído | Alto | Estado pendiente, reintentos, revisión manual |
+| Textos hardcodeados sin traducción | Medio | Catálogos versionados, lint/test de claves |
+| Disponibilidad lenta | Medio | Índices, cache, agregaciones |
+| Complejidad de empleados/recursos | Medio | MVP básico y extensión posterior |
+| Recomendaciones pobres al inicio | Bajo | Fall-back por popularidad, cercanía y disponibilidad |
+
+## 17. Decisiones pendientes
+
+- Stack tecnológico definitivo.
+- Proveedor de email.
+- Proveedor de mapas/geocoding.
+- Proveedor o adaptador oficial/autorizado para validar NIF/CIF en España si VIES no cubre el caso.
+- Política exacta de revisión manual cuando una verificación empresarial no pueda confirmarse remotamente.
+- Uso de PostGIS desde MVP o cálculo geográfico simple.
+- Activación real de pagos RedSys en MVP o solo preparación.
+- Alcance exacto del panel admin inicial.
+- Conservación legal de incidencias y penalizaciones.
+- Nombre comercial y sistema visual.
