@@ -135,3 +135,24 @@ Fuente de verdad del avance:
   - Cada agente debe revisar requisitos, diseño, tareas y seguimiento antes de actuar.
 - Siguiente tarea pendiente recomendada:
   - `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`
+
+## Conversación 6 - Documentación técnica obligatoria
+
+- Fecha: 2026-06-06
+- Resumen: se amplió `agents.md` para exigir documentación técnica profunda al finalizar cada tarea y documentación obligatoria de todo el código implementado.
+- Archivos modificados:
+  - `agents.md`
+  - `technical-implementation.md`
+  - `conversation-tracking.md`
+- Requisitos impactados:
+  - Ningún requisito funcional de producto.
+- Tareas impactadas:
+  - Todas las tareas de `tasks.md`, porque ninguna podrá marcarse como completada sin actualizar el documento técnico único.
+- Tareas completadas:
+  - Ninguna tarea de implementación marcada como completada.
+- Decisiones:
+  - El documento técnico único será `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+  - Al cerrar cada tarea se documentará objetivo, requisitos, archivos, arquitectura, datos, APIs, seguridad, i18n, UI, tests, decisiones, riesgos y evidencia.
+  - Todo código implementado deberá quedar documentado con el nivel necesario para entender responsabilidades, contratos, invariantes y efectos secundarios.
+- Siguiente tarea pendiente recomendada:
+  - `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`
