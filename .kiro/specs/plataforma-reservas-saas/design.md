@@ -40,18 +40,49 @@ Contextos principales:
 - **Servicio de internacionalización:** resolución de idioma, catálogos `es`/`en`, traducción de emails y textos configurables.
 - **Proveedor de verificación empresarial:** adaptadores remotos para validar identificadores fiscales o registrales de negocios.
 
-### 1.3 Tecnologías recomendadas
+### 1.3 Stack definitivo seleccionado
 
-La especificación no obliga a un stack concreto, pero la implementación debería usar tecnologías con buen soporte para transacciones, validación y desarrollo SaaS:
+La tarea `0.1` queda resuelta con un stack basado en monolito modular Java/Spring para backend y frontend web moderno separado. La decisión toma OverCut como referencia: su backend Spring Boot/JPA es una base tecnológica viable para reglas transaccionales, pero su implementación concreta debe modernizarse para reservas SaaS. Su frontend React con `react-scripts` no se debe reutilizar como base nueva.
 
-- Frontend: React/Next.js, Vue/Nuxt o equivalente.
-- Backend: NestJS, Laravel, Django, Spring Boot o equivalente.
-- Base de datos: PostgreSQL.
-- Cache/locks auxiliares: Redis.
-- Cola: BullMQ, Celery, Sidekiq, Laravel Queue, Hangfire o equivalente.
-- ORM: Prisma, TypeORM, Eloquent, Django ORM, Hibernate o equivalente.
-- Email: proveedor SMTP transaccional o API de email.
-- Mapas/geocoding: proveedor configurable.
+Stack por capa:
+
+- **Frontend público, panel de local y admin:** Next.js con React, TypeScript y App Router.
+- **UI y componentes:** MUI como sistema principal de componentes, `lucide-react` para iconos, FullCalendar o equivalente para calendarios complejos, y CSS modular o tokens propios para ajustes visuales. No se debe mezclar Bootstrap, MUI y estilos globales sin criterio como ocurre en OverCut.
+- **Estado y datos frontend:** TanStack Query para estado de servidor, Zustand o estado React local para estado de UI, React Hook Form y Zod para formularios y validación cliente.
+- **Internacionalización frontend:** `next-intl` con catálogos `es` y `en`, resolución por preferencia, parámetro seguro, navegador y fallback `en`.
+- **Backend API:** Spring Boot con Java 21, Spring MVC, Spring Security, Bean Validation, Spring Modulith o paquetes por contexto para mantener el monolito modular.
+- **Persistencia y ORM:** PostgreSQL como base de datos principal y Hibernate/JPA mediante Spring Data JPA. Las operaciones críticas de reservas deben usar transacciones explícitas, bloqueo pesimista `SELECT ... FOR UPDATE` o locks JPA equivalentes, e índices diseñados para concurrencia.
+- **Migraciones:** Flyway como fuente versionada de esquema y datos iniciales. No se deben usar `schema.sql` y `data.sql` como mecanismo principal de evolución de producción.
+- **Búsqueda:** PostgreSQL full-text search, índices trigram y PostGIS desde MVP si se activa búsqueda por radio precisa.
+- **Cache y rate limiting:** Redis mediante Spring Data Redis y Spring Cache para cache, rate limits, TTLs auxiliares y coordinación de procesos no críticos.
+- **Cola de trabajos:** RabbitMQ con Spring AMQP para emails, reintentos, trabajos asíncronos y eventos internos que no deben bloquear la transacción de reserva.
+- **Jobs programados:** Quartz con store JDBC o Spring Scheduler con lock distribuido persistente. Para despliegues con más de una instancia, ningún job crítico debe ejecutarse sin coordinación.
+- **Emails:** proveedor transaccional por API o SMTP autenticado, integrado desde backend y siempre encolado. Spring Mail puede ser adaptador, no mecanismo síncrono dentro del flujo de reserva.
+- **Archivos privados y públicos:** almacenamiento S3-compatible, con MinIO en local y proveedor S3/R2/equivalente en producción. No se deben guardar imágenes o documentos sensibles como BLOB principal en base de datos salvo caso justificado.
+- **Pagos:** módulo backend RedSys con validación de firma, idempotencia y auditoría.
+- **Observabilidad:** Spring Boot Actuator, Micrometer, OpenTelemetry, logs estructurados y métricas de reservas, jobs, emails, pagos y errores.
+- **Testing backend:** JUnit 5, Spring Boot Test, MockMvc, Testcontainers para PostgreSQL, Redis y RabbitMQ, y tests de concurrencia sobre la base real.
+- **Testing frontend:** Vitest, React Testing Library y Playwright para flujos críticos responsive e i18n.
+- **Infraestructura local:** Docker Compose para PostgreSQL, Redis, RabbitMQ, MinIO y backend/frontend.
+- **CI:** pipeline con lint, typecheck, tests, migraciones desde cero, build frontend/backend y pruebas críticas.
+
+### 1.4 Evaluación de OverCut como referencia
+
+Elementos aprovechables:
+
+- Java 17+/Spring Boot, Spring MVC, Spring Security y Spring Data JPA son adecuados para un backend transaccional.
+- La separación básica `controllers`, `dtos`, `services` y `entities` muestra un patrón entendible para empezar.
+- React, React Intl, formularios, calendarios y una estructura por módulos frontend son útiles como referencia conceptual.
+- El uso de tests con Spring Boot y MockMvc es una base válida, aunque insuficiente.
+
+Elementos que no deben trasladarse sin cambios:
+
+- H2, `schema.sql` y `data.sql` no son adecuados para un SaaS con migraciones, concurrencia real y datos persistentes.
+- `react-scripts`/Create React App no debe usarse para un proyecto nuevo.
+- `HashRouter`, token en `sessionStorage`, CORS abierto con credenciales y CSRF desactivado no son una base segura para paneles de negocio.
+- Emails síncronos dentro de servicios de usuario no sirven para flujos críticos de reserva; deben encolarse.
+- No hay Redis, cola real, locks distribuidos, migraciones versionadas, Testcontainers ni observabilidad suficiente.
+- La organización por capas globales de OverCut debe evolucionar a paquetes por contexto: identidad, locales, disponibilidad, reservas, penalizaciones, reseñas, pagos y administración.
 
 ## 2. Vista lógica
 
@@ -125,6 +156,8 @@ Responsabilidades:
 - Estado de publicación.
 - Visibilidad de contacto.
 - Validación de descripción de 350 palabras.
+- Pestañas personalizadas de la ficha pública, configurables y ordenables por el local.
+- Contenido público localizado para pestañas como carta, menú, precios, normas, servicios o información específica del negocio.
 
 ### 3.3 Búsqueda y descubrimiento
 
@@ -244,10 +277,14 @@ Responsabilidades:
 Responsabilidades:
 
 - Crear reseña tras reserva válida.
+- Exponer botón público de "Hacer reseña" en la ficha del local.
+- Solicitar email en el flujo público de reseña.
+- Validar elegibilidad por `venue_id`, email normalizado y reserva pasada confirmada/finalizada.
 - Validar una reseña por reserva.
 - Calcular media y número total.
 - Mostrar reseñas en ficha.
 - Mostrar reseñas en panel.
+- Rechazar reseñas sin reserva elegible sin devolver datos de reservas del email.
 
 ### 3.10 Estadísticas
 
@@ -548,6 +585,38 @@ Estados recomendados:
 - `position`
 - `created_at`
 
+#### venue_custom_tabs
+
+Pestañas públicas configurables por cada local para ampliar los detalles de su ficha.
+
+- `id`
+- `venue_id`
+- `title`
+- `title_i18n`
+- `slug`
+- `content_type`
+- `content`
+- `content_i18n`
+- `content_json`
+- `position`
+- `is_active`
+- `created_at`
+- `updated_at`
+
+Tipos iniciales de contenido:
+
+- `rich_text_safe`
+- `structured_menu`
+- `price_list`
+- `plain_text`
+
+Restricciones:
+
+- único por `venue_id`, `slug`.
+- índice por `venue_id`, `position`.
+- `title_i18n` y `content_i18n` deben seguir la política de textos localizados cuando la pestaña esté publicada.
+- El contenido HTML libre no debe almacenarse sin sanitización; para cartas, menús y precios se recomienda `content_json` estructurado o rich text sanitizado.
+
 #### categories
 
 - `id`
@@ -792,6 +861,9 @@ Se guardan `field_key` y `field_label` para conservar histórico aunque el campo
 Restricción:
 
 - único por `reservation_id`.
+- `rating` entre 1 y 5.
+- índice por `venue_id`, `customer_email_normalized`.
+- la reserva asociada debe pertenecer al mismo `venue_id`, estar confirmada y haber finalizado antes de crear la reseña.
 
 #### no_show_incidents
 
@@ -954,7 +1026,7 @@ Los textos controlados por la plataforma deben residir en catálogos de traducci
 Reglas:
 
 - `es` y `en` son obligatorios para textos de plataforma, categorías, planes, estados comerciales y plantillas de email.
-- Los textos creados por locales deben guardar `default_locale` y traducciones `es`/`en` cuando el texto sea público.
+- Los textos creados por locales deben guardar `default_locale` y traducciones `es`/`en` cuando el texto sea público, incluidas las pestañas personalizadas de la ficha.
 - Si un texto de local no tiene traducción completa, la publicación debe bloquearse o mostrar fallback explícitamente aceptado por el local.
 - Las respuestas libres de usuarios no se traducen automáticamente; se muestran como fueron introducidas.
 
@@ -1097,6 +1169,8 @@ POST /api/public/reservations/holds
 POST /api/public/reservations/{reservationId}/confirm
 GET /api/public/reservations/manage/{token}
 POST /api/public/reservations/manage/{token}/cancel
+POST /api/public/venues/{venueId}/reviews/eligibility
+POST /api/public/venues/{venueId}/reviews
 POST /api/public/reservations/{reservationId}/reviews
 GET /api/public/recommendations
 ```
@@ -1116,6 +1190,11 @@ GET /api/venue/me
 PATCH /api/venue/me/profile
 POST /api/venue/me/images
 DELETE /api/venue/me/images/{imageId}
+GET /api/venue/me/custom-tabs
+POST /api/venue/me/custom-tabs
+PATCH /api/venue/me/custom-tabs/{tabId}
+DELETE /api/venue/me/custom-tabs/{tabId}
+POST /api/venue/me/custom-tabs/reorder
 
 GET /api/venue/me/opening-hours
 PUT /api/venue/me/opening-hours
@@ -1319,6 +1398,71 @@ Response:
 }
 ```
 
+### 8.6 Comprobar elegibilidad de reseña desde ficha
+
+Request:
+
+```json
+{
+  "customerEmail": "maria@example.com"
+}
+```
+
+Response elegible:
+
+```json
+{
+  "eligible": true,
+  "canReview": true,
+  "messageKey": null
+}
+```
+
+Response no elegible:
+
+```json
+{
+  "eligible": false,
+  "canReview": false,
+  "error": "REVIEW_NOT_ELIGIBLE",
+  "messageKey": "reviews.notEligibleForVenue"
+}
+```
+
+Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
+
+### 8.7 Crear reseña desde ficha
+
+Request:
+
+```json
+{
+  "customerEmail": "maria@example.com",
+  "rating": 5,
+  "comment": "Muy buena atención y reserva puntual.",
+  "acceptsReviewPolicy": true
+}
+```
+
+Response:
+
+```json
+{
+  "status": "created",
+  "reviewId": "uuid",
+  "venueId": "uuid",
+  "rating": 5,
+  "averageRating": 4.6,
+  "reviewsCount": 42
+}
+```
+
+Errores esperados:
+
+- `REVIEW_NOT_ELIGIBLE`: el email no tiene una reserva confirmada y finalizada en el pasado para ese local.
+- `REVIEW_ALREADY_SUBMITTED`: todas las reservas elegibles de ese email para ese local ya tienen reseña.
+- `VALIDATION_ERROR`: puntuación fuera de rango, email inválido, comentario demasiado largo o política no aceptada.
+
 ## 9. Diseño frontend
 
 ### 9.1 Principios
@@ -1351,6 +1495,7 @@ Response:
 ```text
 /panel
 /panel/perfil
+/panel/pestanas
 /panel/horarios
 /panel/franjas
 /panel/calendario
@@ -1377,6 +1522,27 @@ Response:
 /admin/metricas
 ```
 
+### 9.5 Ficha pública del local
+
+La ficha pública debe renderizar los detalles del local en pestañas escaneables:
+
+- Pestañas base del sistema: información, disponibilidad, reseñas y ubicación.
+- Pestañas personalizadas activas del local, ordenadas por `position` y con título/contenido según locale resuelto.
+- Ejemplos de pestañas personalizadas: carta, menú, precios, normas, servicios, preguntas frecuentes o información de instalación.
+- Botón "Hacer reseña" dentro de los detalles del local, visible junto a la sección de reseñas.
+
+Flujo del botón de reseña:
+
+1. El usuario pulsa "Hacer reseña".
+2. La UI solicita email.
+3. El backend comprueba elegibilidad por local y email normalizado.
+4. Si existe reserva pasada elegible, la UI muestra puntuación de 1 a 5 y comentario opcional.
+5. Si no existe reserva elegible, la UI muestra el mensaje i18n de rechazo sin datos de historial.
+
+### 9.6 Panel de pestañas personalizadas
+
+El panel del local debe permitir crear, editar, ordenar, activar y desactivar pestañas personalizadas. Cada pestaña debe validar título, slug, contenido localizado, formato seguro y estado de publicación antes de aparecer en la ficha pública.
+
 ## 10. Pantallas responsive
 
 ### 10.1 Usuario final móvil
@@ -1386,7 +1552,7 @@ Pantallas mínimas:
 - Inicio con logo, buscador, ubicación actual, categorías y navegación inferior.
 - Resultados en lista vertical de tarjetas.
 - Filtros en panel/modal.
-- Ficha con imagen, valoración, estado, pestañas y botón fijo de reserva.
+- Ficha con imagen, valoración, estado, pestañas personalizadas, botón fijo de reserva y botón de reseña dentro de detalles.
 - Disponibilidad con calendario compacto y lista de franjas.
 - Formulario de reserva por bloques, resumen y contador de bloqueo.
 - Confirmación con resumen y enlace de gestión por email.
@@ -1430,6 +1596,7 @@ Navegación inferior:
 - `BusinessVerificationFailed`
 - `BusinessVerificationRequiresReview`
 - `VenuePublished`
+- `VenueCustomTabsUpdated`
 - `AvailabilityChanged`
 - `ReservationHoldCreated`
 - `ReservationHoldExpired`
@@ -1439,6 +1606,7 @@ Navegación inferior:
 - `AttendanceMarked`
 - `NoShowReported`
 - `PenaltyApplied`
+- `ReviewEligibilityChecked`
 - `ReviewCreated`
 - `PaymentConfirmed`
 - `PaymentRejected`
@@ -1464,7 +1632,7 @@ Navegación inferior:
 - Verificación empresarial aprobada para publicar locales.
 - Sesiones seguras o tokens firmados.
 - Recuperación de contraseña con tokens de uso único.
-- Rate limiting en login, registro, recuperación y reserva.
+- Rate limiting en login, registro, recuperación, reserva, comprobación de elegibilidad de reseñas y creación de reseñas.
 
 ### 12.2 Autorización
 
@@ -1477,7 +1645,8 @@ Navegación inferior:
 
 - Validación backend obligatoria para formularios, capacidad, fechas y emails.
 - Validación backend obligatoria de `account_type` y verificación empresarial.
-- Sanitización de HTML o uso de texto plano en descripciones y comentarios.
+- Validación backend obligatoria de elegibilidad de reseñas por `venue_id`, email normalizado y reserva confirmada/finalizada.
+- Sanitización de HTML o uso de texto plano en descripciones, pestañas personalizadas y comentarios.
 - Validación de archivos subidos.
 - Protección CSRF si se usan cookies.
 
@@ -1490,6 +1659,7 @@ Acciones auditadas:
 - Cambios manuales de penalización.
 - Cambios de reglas de reserva.
 - Cambios de disponibilidad con reservas afectadas.
+- Cambios de pestañas personalizadas públicas del local.
 - Cambios de plan o pagos.
 - Suspensión de local.
 - Aprobación o rechazo manual de verificación empresarial.
@@ -1516,6 +1686,7 @@ Medidas:
 - Minimización de campos personalizados.
 - Conservación limitada de incidencias.
 - Registro de actividad de penalizaciones.
+- La comprobación pública de elegibilidad de reseñas no debe devolver datos de reservas, fechas, importes ni historial asociado al email.
 - Exportación o supresión conforme a normativa aplicable.
 - No almacenamiento de tarjetas, pago externo en RedSys.
 - Almacenamiento mínimo de respuestas de verificación empresarial.
@@ -1561,6 +1732,7 @@ Si no hay datos suficientes:
 - Normalización de identificador fiscal/registral.
 - Cálculo de penalización.
 - Validación de formulario.
+- Validación de pestañas personalizadas, contenido localizado y sanitización.
 - Cálculo de estado del local.
 - Cálculo de disponibilidad con capacidad, holds y empleados.
 
@@ -1573,7 +1745,10 @@ Si no hay datos suficientes:
 - Expirar hold.
 - Cancelar por enlace seguro.
 - Reportar no asistencia y bloquear email.
-- Crear reseña tras reserva.
+- Gestionar pestañas personalizadas del local y mostrarlas en ficha pública.
+- Comprobar elegibilidad de reseña por email y local.
+- Crear reseña tras reserva pasada elegible.
+- Rechazar reseña cuando el email no tenga reserva pasada en ese local o cuando ya no queden reservas elegibles sin reseña.
 - RedSys callback idempotente.
 
 ### 15.3 Concurrencia
@@ -1585,9 +1760,9 @@ Si no hay datos suficientes:
 
 ### 15.4 End-to-end
 
-- Flujo usuario móvil: buscar, ficha, calendario, reserva, confirmación.
+- Flujo usuario móvil: buscar, ficha con pestañas personalizadas, calendario, reserva, confirmación y reseña desde botón con email elegible.
 - Flujo local móvil: login, reservas del día, asistencia, reporte.
-- Flujo local escritorio: configurar perfil, horarios, franjas y formulario.
+- Flujo local escritorio: configurar perfil, pestañas personalizadas, horarios, franjas y formulario.
 - Flujo de idioma: navegador `es-*` muestra español y cualquier otro idioma muestra inglés.
 
 ## 16. Riesgos y mitigaciones
@@ -1598,6 +1773,8 @@ Si no hay datos suficientes:
 | Penalizaciones abusivas | Alto | Auditoría, lenguaje profesional, revisión admin |
 | Datos personales mal tratados | Alto | Minimización, consentimiento, conservación limitada |
 | Formularios personalizados inseguros | Medio | Tipos controlados, validación backend |
+| Enumeración de reservas mediante email en reseñas | Medio | Rate limiting, respuesta sin datos históricos, logs y validación repetida al crear reseña |
+| Contenido inseguro en pestañas personalizadas | Medio | Sanitización, tipos estructurados, validación backend e i18n obligatorio antes de publicar |
 | RedSys mal integrado | Alto | Validación de firma, idempotencia, no almacenar tarjetas |
 | Verificación empresarial con proveedor caído | Alto | Estado pendiente, reintentos, revisión manual |
 | Textos hardcodeados sin traducción | Medio | Catálogos versionados, lint/test de claves |

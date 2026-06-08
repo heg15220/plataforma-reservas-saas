@@ -14,7 +14,7 @@ Cada tarea debe cerrarse con:
 
 ## 2. Fase 0 - Preparación del proyecto
 
-- [ ] 0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.
+- [x] 0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.
 - [ ] 0.2. Crear repositorio, estructura base y convenciones de ramas.
 - [ ] 0.3. Configurar linters, formatter, test runner y scripts de desarrollo.
 - [ ] 0.4. Configurar variables de entorno por entorno: local, staging y producción.
@@ -68,6 +68,10 @@ Cada tarea debe cerrarse con:
 - [ ] 2.11. Crear panel de edición de perfil.
 - [ ] 2.12. Crear tests de permisos para que un local no edite datos de otro.
 - [ ] 2.13. Crear tests de bloqueo de publicación por verificación empresarial pendiente o rechazada.
+- [ ] 2.14. Crear migración de `venue_custom_tabs` con orden, estado activo, contenido seguro y campos localizados.
+- [ ] 2.15. Implementar CRUD de pestañas personalizadas del local para propietario.
+- [ ] 2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local.
+- [ ] 2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.
 
 ## 5. Fase 3 - Búsqueda pública y descubrimiento
 
@@ -211,6 +215,10 @@ Cada tarea debe cerrarse con:
 - [ ] 11.6. Mostrar reseñas en panel del local.
 - [ ] 11.7. Crear UI de valoración de 1 a 5 estrellas.
 - [ ] 11.8. Crear tests de autorización de reseñas.
+- [ ] 11.9. Añadir botón "Hacer reseña" dentro de los detalles de la ficha pública del local.
+- [ ] 11.10. Implementar comprobación de elegibilidad de reseña por email normalizado, local y reserva pasada confirmada/finalizada.
+- [ ] 11.11. Mostrar mensaje i18n cuando el email no tenga reservas pasadas elegibles en ese local o cuando todas sus reservas elegibles ya tengan reseña.
+- [ ] 11.12. Crear tests de elegibilidad por email/local, rechazo sin reserva, rechazo por reseña duplicada y no exposición de datos de reservas.
 
 ## 14. Fase 12 - Estadísticas básicas
 
@@ -271,6 +279,7 @@ Cada tarea debe cerrarse con:
 - [ ] 15.13. Corregir textos que desborden botones, tarjetas o paneles.
 - [ ] 15.14. Ejecutar pruebas visuales en móvil, tablet y escritorio.
 - [ ] 15.15. Ejecutar pruebas visuales con locale español e inglés.
+- [ ] 15.16. Validar ficha móvil con pestañas personalizadas y flujo de reseña por email desde el botón de detalles.
 
 ## 18. Fase 16 - Seguridad, privacidad y endurecimiento
 
@@ -336,10 +345,12 @@ Cada tarea debe cerrarse con:
 - [ ] 19.20. Validar reporte de no asistencia.
 - [ ] 19.21. Validar penalización activa en nueva reserva.
 - [ ] 19.22. Validar cancelación por local con auditoría.
-- [ ] 19.23. Validar reseña tras reserva.
+- [ ] 19.23. Validar reseña tras reserva desde el botón de la ficha con email elegible.
 - [ ] 19.24. Validar estadísticas básicas.
 - [ ] 19.25. Validar navegación móvil de usuario final.
 - [ ] 19.26. Validar navegación móvil de local.
+- [ ] 19.27. Validar rechazo de reseña cuando el email no tenga reserva pasada en ese local.
+- [ ] 19.28. Validar pestañas personalizadas de la ficha pública, incluyendo carta, menú, precios, orden, i18n y responsive.
 
 ## 22. Criterios de salida del MVP
 
@@ -367,6 +378,7 @@ Cada tarea debe cerrarse con:
 - Internacionalización ES/EN con resolución automática de idioma.
 - Verificación empresarial remota del local mediante identificador fiscal/registral.
 - Perfil público de local.
+- Pestañas personalizadas en ficha pública de local.
 - Búsqueda y filtros básicos.
 - Horarios, franjas y capacidad.
 - Calendario de disponibilidad.

@@ -15,7 +15,7 @@ La primera versión debe priorizar un MVP sólido: buscador público, ficha de l
 - Categorías configurables.
 - Búsqueda pública por nombre, palabras clave, ubicación y categoría.
 - Resultados con tarjetas de locales.
-- Ficha pública de local con estado, imágenes, descripción, mapa, reseñas y disponibilidad.
+- Ficha pública de local con estado, imágenes, descripción, mapa, reseñas, disponibilidad, botón para hacer reseña y pestañas personalizadas por el local.
 - Calendario de disponibilidad con franjas actuales y futuras.
 - Gestión de horarios, franjas y capacidad por franja.
 - Reserva online para usuarios finales sin cuenta, identificados por email.
@@ -27,7 +27,7 @@ La primera versión debe priorizar un MVP sólido: buscador público, ficha de l
 - Reporte de no asistencia.
 - Penalización básica por email con escalado 7, 14, 21 y 60 días.
 - Historial profesional de incidencias visible para el local.
-- Reseñas y valoraciones asociadas a reservas confirmadas.
+- Reseñas y valoraciones asociadas a reservas confirmadas, accesibles desde la ficha del local mediante verificación de email con reserva pasada en ese local.
 - Estadísticas básicas del local.
 - Equipo y disponibilidad en versión básica: empleados o recursos, estado activo/inactivo, horarios semanales y asignación de reservas.
 - Pantallas responsive principales para usuario final y local.
@@ -63,13 +63,14 @@ Capacidades:
 - Buscar locales por nombre, palabra clave, categoría y ubicación.
 - Usar filtros de ubicación, radio, categoría, disponibilidad y valoración.
 - Consultar ficha pública de un local.
+- Consultar pestañas personalizadas configuradas por el local, como carta, menú, precios, normas, servicios o información específica del negocio.
 - Ver estado del local: abierto, cerrado, no disponible, completo o próximamente disponible.
 - Consultar calendario y franjas disponibles.
 - Seleccionar servicio, empleado o recurso cuando el local lo permita.
 - Realizar reserva mediante formulario.
 - Recibir confirmación por email.
 - Consultar o cancelar reserva mediante enlace seguro.
-- Valorar y reseñar locales tras una reserva confirmada.
+- Valorar y reseñar locales desde la ficha pública cuando el email introducido tenga al menos una reserva pasada elegible en ese local.
 - Ver mensajes claros cuando su email tenga una restricción temporal activa.
 
 ### 3.2 Local, negocio o entidad registrada
@@ -80,6 +81,7 @@ Capacidades:
 
 - Registrar y verificar una cuenta.
 - Configurar datos públicos del local.
+- Configurar pestañas personalizadas visibles en la ficha pública del local, con contenido localizado y orden definido por el propio local.
 - Gestionar foto principal y galería.
 - Configurar horarios, franjas y capacidad.
 - Activar o desactivar reservas.
@@ -162,8 +164,11 @@ Cada local debe disponer de una ficha pública con su información y disponibili
 
 - WHEN el usuario abre un local, THEN ve nombre, imagen principal, categoría, dirección, ubicación en mapa, descripción, horario, estado, valoración y reseñas.
 - WHEN el local tenga galería, THEN la ficha puede mostrar imágenes adicionales.
+- WHEN el local configure pestañas personalizadas, THEN la ficha debe mostrarlas dentro de los detalles del local respetando orden, título, contenido localizado y estado activo.
+- WHEN el local sea un restaurante u otro negocio con información específica, THEN debe poder publicar una pestaña como "Carta" con carta completa, menú, precios y detalles equivalentes.
 - WHEN la descripción supere 350 palabras, THEN el sistema debe impedir guardarla o solicitar recorte.
 - WHEN existan franjas disponibles, THEN el usuario puede iniciar una reserva desde la ficha.
+- WHEN el usuario quiera escribir una reseña, THEN la ficha debe ofrecer un botón visible para iniciar el flujo de reseña desde los detalles del local.
 - WHEN no existan franjas disponibles, THEN el sistema debe mostrar disponibilidad futura o estado no disponible.
 
 ### RF-005 Estado público del local
@@ -236,6 +241,7 @@ El local debe poder editar los datos visibles de su ficha.
 - WHEN el local edita nombre, descripción, categoría, dirección, ubicación, imagen o datos de contacto, THEN los cambios se guardan en su perfil.
 - WHEN el local desactiva visibilidad de un dato de contacto, THEN ese dato no aparece en la ficha pública.
 - WHEN el local cambia su dirección o coordenadas, THEN las búsquedas por ubicación deben usar los nuevos datos.
+- WHEN el local crea, edita, ordena, activa o desactiva pestañas personalizadas de la ficha, THEN los cambios deben guardarse solo para su local y mostrarse públicamente según estado activo y locale resuelto.
 
 ### RF-010 Gestión de horarios
 
@@ -430,15 +436,18 @@ El local debe poder cancelar una reserva por causa operativa o riesgo elevado, d
 
 **Prioridad:** MVP
 
-Usuarios con reserva confirmada deben poder valorar locales.
+Usuarios con una reserva pasada válida en un local deben poder valorar ese local desde la ficha pública tras introducir su email.
 
 #### Criterios de aceptación
 
-- WHEN una reserva esté confirmada y finalizada, THEN el usuario puede dejar puntuación de 1 a 5 y comentario opcional.
-- WHEN se guarda una reseña, THEN se asocia al local y a la reserva.
+- WHEN el usuario pulsa el botón de hacer reseña dentro de la ficha del local, THEN el sistema debe solicitar un correo electrónico.
+- WHEN el email normalizado introducido tenga al menos una reserva confirmada y finalizada en el pasado para ese local, THEN el sistema puede permitir introducir puntuación de 1 a 5 y comentario opcional.
+- WHEN el email normalizado no tenga ninguna reserva pasada elegible en ese local, THEN el sistema debe impedir la reseña y mostrar un mensaje claro e internacionalizado.
+- WHEN todas las reservas pasadas elegibles del email para ese local ya tengan reseña asociada, THEN el sistema debe impedir crear otra reseña y mostrar un mensaje claro.
+- WHEN se guarda una reseña, THEN se asocia al local, al email normalizado y a una reserva elegible sin reseña previa.
 - WHEN existen reseñas, THEN el sistema calcula valoración media y número total.
 - WHEN el local consulta su panel, THEN puede ver reseñas recibidas.
-- WHEN un usuario sin reserva intenta reseñar, THEN el sistema debe impedirlo.
+- WHEN un usuario sin reserva pasada elegible en ese local intenta reseñar, THEN el sistema debe impedirlo.
 
 ### RF-025 Estadísticas básicas para locales
 
@@ -535,7 +544,7 @@ Todo texto visible para usuarios finales, locales y administradores debe estar i
 - WHEN se genere una notificación o mensaje de sistema, THEN debe existir versión en español e inglés.
 - WHEN se muestre una fecha, hora, número o moneda, THEN debe formatearse según el locale activo.
 - WHEN falte una clave de traducción, THEN el sistema debe registrar el error y usar fallback controlado en inglés, sin mostrar claves técnicas al usuario.
-- WHEN un local configure textos visibles al usuario como descripción, servicios, reglas, campos del formulario o políticas, THEN el sistema debe permitir traducción en español e inglés o aplicar una política explícita de fallback antes de publicar.
+- WHEN un local configure textos visibles al usuario como descripción, servicios, reglas, pestañas personalizadas, campos del formulario o políticas, THEN el sistema debe permitir traducción en español e inglés o aplicar una política explícita de fallback antes de publicar.
 - WHEN se añada una nueva pantalla o flujo, THEN no debe aceptarse texto hardcodeado sin clave de traducción.
 
 ### RF-032 Verificación empresarial de cuentas de local
@@ -725,6 +734,19 @@ Una cuenta de local solo puede publicar locales y recibir reservas públicas si 
 - Verificación empresarial aprobada o revisión administrativa aprobada.
 - Datos mínimos del local completos.
 
+### RB-013 Elegibilidad de reseñas por email y local
+
+Un usuario final solo puede crear una reseña desde la ficha de un local si el email normalizado introducido tiene al menos una reserva confirmada y finalizada en el pasado para ese mismo local.
+
+Reglas:
+
+- La comprobación debe ejecutarse siempre en backend usando `venue_id`, email normalizado y reservas del sistema.
+- Las reservas canceladas, expiradas o en hold no habilitan reseñas.
+- Cada reserva puede tener como máximo una reseña.
+- Si existen varias reservas elegibles sin reseña, el sistema puede asociar la reseña a la reserva elegible más reciente.
+- Si no existe reserva elegible o todas las reservas elegibles ya fueron reseñadas, el sistema debe rechazar la creación con un mensaje público claro e internacionalizado.
+- La respuesta pública de elegibilidad no debe exponer datos de reservas, fechas ni historial del email.
+
 ## 7. Pantallas mínimas del MVP
 
 ### Usuario final
@@ -732,7 +754,7 @@ Una cuenta de local solo puede publicar locales y recibir reservas públicas si 
 - Inicio con buscador.
 - Resultados de búsqueda.
 - Panel de filtros.
-- Ficha del local.
+- Ficha del local con pestañas personalizadas y botón para hacer reseña.
 - Disponibilidad y calendario.
 - Formulario de reserva.
 - Confirmación de reserva.
@@ -747,6 +769,7 @@ Una cuenta de local solo puede publicar locales y recibir reservas públicas si 
 - Acceso para locales.
 - Panel resumen.
 - Perfil del local.
+- Gestión de pestañas personalizadas de la ficha pública.
 - Horarios y franjas.
 - Calendario interno.
 - Reservas del día y detalle.
@@ -771,13 +794,14 @@ El MVP se considera listo cuando:
 - Un local puede registrarse, verificar email, configurar perfil, horarios, franjas y capacidad.
 - Una cuenta de local solo puede publicarse tras verificación empresarial aprobada o revisión administrativa aprobada.
 - Un usuario puede buscar un local, ver su ficha, consultar calendario y reservar sin cuenta.
+- La ficha del local puede mostrar pestañas personalizadas configuradas por el local, como carta, menú, precios o información específica.
 - Dos usuarios no pueden confirmar simultáneamente la última plaza disponible.
 - El usuario recibe email de confirmación con enlace seguro.
 - El local recibe la reserva en su panel.
 - El local puede marcar asistencia, reportar no asistencia y activar penalización.
 - Un email penalizado no puede completar nuevas reservas hasta la fecha indicada.
 - El usuario puede cancelar una reserva mediante enlace seguro dentro de plazo.
-- Existen reseñas asociadas a reservas válidas.
+- Existen reseñas asociadas a reservas válidas y el botón de reseña de la ficha solo permite reseñar cuando el email introducido tiene una reserva pasada elegible en ese local.
 - El local puede ver estadísticas básicas.
 - Las pantallas críticas funcionan correctamente en móvil.
 - Las pantallas, emails, errores y textos legales principales están disponibles en español e inglés con selección automática por idioma.
