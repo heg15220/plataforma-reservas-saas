@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-08
+- Fecha de última actualización: 2026-06-16
 - Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`
 - Siguiente tarea pendiente recomendada: `0.2. Crear repositorio, estructura base y convenciones de ramas.`
-- Observación: el proyecto cuenta con especificación completa y stack definitivo seleccionado, pero todavía no hay implementación de producto.
+- Observación: el proyecto cuenta con especificación completa, stack definitivo seleccionado, convenciones obligatorias de implementación backend/persistencia y requisito transversal de calidad ortográfica/codificación para textos españoles, pero todavía no hay implementación de producto.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -166,6 +166,7 @@ Fuente de verdad del avance:
   - `design.md`
   - `tasks.md`
   - `conversation-tracking.md`
+  - `technical-implementation.md`
 - Requisitos impactados:
   - `RF-004 Ficha pública del local`.
   - `RF-009 Gestión de perfil público`.
@@ -214,3 +215,62 @@ Fuente de verdad del avance:
   - Stack seleccionado: Next.js + React + TypeScript para frontend; Spring Boot + Java 21 para backend; PostgreSQL + Hibernate/JPA + Flyway para persistencia; Redis para cache/rate limiting; RabbitMQ para cola; Quartz o scheduler con lock persistente para jobs; S3-compatible para archivos; Testcontainers, Playwright, Actuator, Micrometer y OpenTelemetry para verificación y operación.
   - OverCut confirma que Spring Boot/JPA es viable, pero su uso de H2, `schema.sql`, `data.sql`, `react-scripts`, `HashRouter`, token en `sessionStorage`, CORS abierto, CSRF desactivado, emails síncronos y ausencia de cola/cache/migraciones no cumple el nivel requerido para el SaaS de reservas.
   - La arquitectura debe organizarse como monolito modular por contextos de negocio, no solo por capas globales.
+
+## Conversación 9 - Convenciones obligatorias de Java, Spring Boot, JPA y REST
+
+- Fecha: 2026-06-16
+- Resumen: se incorporaron a la planificación del proyecto convenciones obligatorias para nombres de tablas, clases Java, atributos, mapeos JPA, DAOs, servicios, controladores, DTOs y conversores REST. Estas reglas deben aplicarse en toda la implementación backend y en las migraciones de base de datos.
+- Archivos modificados:
+  - `requirements.md`
+  - `design.md`
+  - `tasks.md`
+  - `conversation-tracking.md`
+- Requisitos impactados:
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-001 Seguridad`, por separación de capas, DTOs y no exposición directa de entidades.
+  - `RNF-003 Concurrencia y consistencia`, por obligación de DAOs, consultas explícitas y transacciones en servicios.
+  - `RNF-005 Escalabilidad`, por separación de interfaces e implementaciones y monolito modular.
+- Tareas impactadas:
+  - Fase 0: se añadió `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores`.
+  - Fase 1: se ajustó `1.1` para que las primeras tablas de identidad se creen aplicando nombres físicos `UpperCamelCase` y atributos/columnas `lowerCamelCase`.
+  - Todas las tareas futuras que creen entidades, migraciones, DAOs, servicios, controladores, DTOs o conversores.
+- Tareas completadas:
+  - Ninguna tarea de implementación marcada como completada.
+- Siguiente tarea pendiente recomendada:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Decisiones o aclaraciones relevantes:
+  - Las tablas físicas deben usar `UpperCamelCase`, por ejemplo `BusinessAccount` o `VenueCustomTab`.
+  - En PostgreSQL se deberán usar identificadores entrecomillados en migraciones y mapeos JPA cuando sea necesario preservar mayúsculas.
+  - Las clases Java deben usar `UpperCamelCase` y los atributos `lowerCamelCase`.
+  - Las relaciones JPA se mapearán mediante anotaciones en los métodos `get` correspondientes, con setters existentes y consistentes para mantener invariantes.
+  - Cada entidad tendrá DAO propio y las consultas de dominio se declararán con `@Query`.
+  - Servicios y controladores separarán interfaz e implementación; otros módulos deberán depender de las interfaces.
+  - La capa REST usará DTOs y conversores explícitos, sin exponer entidades JPA directamente desde controladores.
+
+## Conversación 10 - Calidad ortográfica y codificación de textos españoles
+
+- Fecha: 2026-06-16
+- Resumen: se añadió un requisito transversal para que todo texto en español del proyecto conserve tildes, eñes, diéresis, signos de apertura, símbolos y caracteres especiales correctamente, sin problemas de codificación ni mojibake.
+- Archivos modificados:
+  - `requirements.md`
+  - `design.md`
+  - `tasks.md`
+  - `conversation-tracking.md`
+- Requisitos impactados:
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+- Tareas impactadas:
+  - Fase 0: se añadió `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles`.
+  - Fase 19: se añadió `19.29. Validar que todo texto español visible conserva tildes, eñes, signos ¿/¡, caracteres especiales y codificación UTF-8 correcta`.
+  - Criterios de salida del MVP: se añadió validación para detectar tildes omitidas, signos de apertura omitidos, caracteres especiales rotos o mojibake.
+  - Todas las tareas futuras que creen UI, emails, errores públicos, estados, seeds, migraciones con texto visible, documentación de usuario o catálogos i18n.
+- Tareas completadas:
+  - Ninguna tarea de implementación marcada como completada.
+- Siguiente tarea pendiente recomendada:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Decisiones o aclaraciones relevantes:
+  - Todo texto español debe guardarse y servirse en UTF-8.
+  - No se aceptan textos visibles con mojibake ni caracteres sustitutos como `Ã`, `Â` o `�`.
+  - Las normalizaciones técnicas sin tildes solo pueden usarse en campos internos no visibles, por ejemplo para búsqueda.
+  - La versión visible al usuario debe conservar ortografía española correcta y caracteres especiales.

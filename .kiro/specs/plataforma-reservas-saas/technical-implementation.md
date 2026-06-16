@@ -100,7 +100,7 @@ El resultado no implementa código de producto, pero sí cierra una decisión ar
   - `1.1 Estilo de arquitectura`.
   - `1.2 Componentes`.
   - `1.3 Stack definitivo seleccionado`.
-  - `1.4 Evaluación de OverCut como referencia`.
+  - `1.5 Evaluación de OverCut como referencia`.
 - Tareas relacionadas:
   - `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache`.
   - `0.2. Crear repositorio, estructura base y convenciones de ramas`.

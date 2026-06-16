@@ -66,7 +66,44 @@ Stack por capa:
 - **Infraestructura local:** Docker Compose para PostgreSQL, Redis, RabbitMQ, MinIO y backend/frontend.
 - **CI:** pipeline con lint, typecheck, tests, migraciones desde cero, build frontend/backend y pruebas críticas.
 
-### 1.4 Evaluación de OverCut como referencia
+### 1.4 Convenciones obligatorias de implementación Java, Spring Boot y base de datos
+
+Estas convenciones deben aplicarse en toda la implementación backend y en todas las migraciones Flyway. Si una librería o convención estándar entra en conflicto con esta sección, prevalece esta sección salvo decisión explícita documentada en `conversation-tracking.md` y `technical-implementation.md`.
+
+#### Nombres de tablas, clases y atributos
+
+- Las tablas físicas de base de datos deben usar nombres en `UpperCamelCase`: empiezan por mayúscula y, si el nombre es compuesto, cada palabra se junta sin guiones ni barras bajas y empieza por mayúscula. Ejemplos: `User`, `BusinessAccount`, `VenueCustomTab`, `ReservationFormResponse`.
+- PostgreSQL convierte a minúscula los identificadores no entrecomillados. Por tanto, las migraciones Flyway y los mapeos JPA deben entrecomillar los nombres que necesiten conservar mayúsculas, por ejemplo `"BusinessAccount"`.
+- Las clases Java de entidades, servicios, controladores, DTOs, conversores, DAOs, jobs y helpers compartidos deben usar `UpperCamelCase`.
+- Los atributos de entidades, DTOs y clases Java deben usar `lowerCamelCase`: empiezan por minúscula y, si el nombre es compuesto, se junta sin guiones ni barras bajas con mayúscula inicial desde la segunda palabra. Ejemplos: `emailNormalized`, `businessTaxIdentifier`, `holdExpiresAt`, `customerEmail`.
+- Las columnas de base de datos asociadas a atributos deben seguir `lowerCamelCase` cuando se definan físicamente como columnas, conservando mayúsculas con identificadores entrecomillados si aplica. Ejemplo: `"businessTaxIdentifierNormalized"`.
+- Los nombres heredados en la especificación que aparezcan en `snake_case` se consideran nombres conceptuales previos; al implementar migraciones, entidades y contratos internos deben traducirse a estas convenciones.
+
+#### Mapeo JPA y relaciones
+
+- Las entidades JPA deben usar acceso por propiedades cuando haya relaciones: las anotaciones de persistencia de relaciones (`@OneToMany`, `@ManyToOne`, `@OneToOne`, `@ManyToMany`, `@JoinColumn`, `@JoinTable`, `@OrderBy` y equivalentes) deben declararse en los métodos `get` correspondientes.
+- Los métodos `set` correspondientes deben existir y mantener la consistencia de la relación cuando haya invariantes bidireccionales, aunque la anotación JPA se coloque en el `get` por el modo de acceso de Hibernate/JPA.
+- Si una entidad combina relaciones con atributos simples, el patrón de acceso debe ser consistente dentro de la entidad para evitar que Hibernate mezcle acceso por campo y por propiedad sin intención.
+- Las relaciones con impacto de negocio, concurrencia, borrado en cascada, orphan removal o carga diferida deben documentar su intención mediante comentarios técnicos cuando no sea evidente y en la entrada de `technical-implementation.md` de la tarea correspondiente.
+
+#### DAOs y consultas
+
+- Debe existir un DAO por cada entidad persistente.
+- El acceso a base de datos desde servicios debe pasar por interfaces DAO o repositorios DAO del módulo correspondiente; los controladores no deben acceder directamente a la persistencia.
+- Las consultas personalizadas deben declararse mediante `@Query`. En operaciones críticas, la consulta debe expresar claramente filtros, locks, joins y ordenación esperada.
+- Las operaciones de reserva, holds, penalizaciones, verificaciones empresariales, pagos y auditoría deben usar transacciones explícitas desde servicios, no desde controladores.
+- Los DAOs deben documentar contrato, parámetros, valores devueltos, errores esperados y expectativas de bloqueo o consistencia cuando aplique.
+
+#### Servicios, controladores, DTOs y conversores
+
+- Cada servicio debe tener una interfaz con las firmas públicas del caso de uso y una clase de implementación separada. Otros módulos deben depender de la interfaz, no de la implementación concreta.
+- Cada controlador debe tener una interfaz con la definición del contrato REST y una clase de implementación separada. La interfaz será la referencia que usen otras fuentes cuando necesiten conocer o documentar métodos expuestos.
+- Los controladores REST no deben exponer entidades JPA directamente. Deben recibir y devolver DTOs específicos del caso de uso.
+- Debe existir un conversor explícito para transformar entidades a DTOs y DTOs a comandos o estructuras internas cuando aplique. Estos conversores deben centralizar formato de fechas, campos localizados, ocultación de datos sensibles y composición de respuestas.
+- Las interfaces de servicios y controladores deben documentar permisos requeridos, invariantes de negocio, errores esperados y efectos secundarios relevantes.
+- Las implementaciones deben contener la lógica completa y verificable, manteniendo las interfaces libres de lógica salvo constantes contractuales justificadas.
+
+### 1.5 Evaluación de OverCut como referencia
 
 Elementos aprovechables:
 
@@ -367,6 +404,8 @@ Responsabilidades:
 - Formatear fechas, horas, números y moneda por locale.
 - Validar que no existan claves de traducción incompletas.
 - Permitir textos configurables por local en español e inglés cuando sean visibles públicamente.
+- Garantizar que todos los textos en español mantienen tildes, eñes, diéresis, signos de apertura, símbolos y caracteres especiales correctos.
+- Detectar problemas de codificación UTF-8 y mojibake en catálogos, plantillas, seeds, migraciones con texto visible, fixtures, documentación de usuario y respuestas públicas.
 
 Regla de resolución:
 
@@ -385,6 +424,18 @@ Los catálogos base deben vivir en archivos versionados, por ejemplo:
 ```
 
 Todo texto de UI, API errors, emails y estados debe referenciar una clave estable, no texto hardcodeado.
+
+Los textos españoles deben almacenarse y servirse siempre en UTF-8. No se deben aceptar textos con caracteres degradados como `Ã`, `Â`, `�` o secuencias equivalentes de mojibake. Las comparaciones técnicas pueden usar versiones normalizadas sin tildes solo en campos auxiliares internos, por ejemplo para búsqueda, pero la versión visible al usuario debe conservar la ortografía correcta.
+
+La revisión de i18n debe cubrir como mínimo:
+
+- Catálogos `es`.
+- Plantillas de email en español.
+- Mensajes de error públicos.
+- Estados visibles de reservas, verificaciones, penalizaciones y pagos.
+- Seeds de categorías, planes y textos visibles.
+- Documentación de usuario o textos legales.
+- Pruebas con `á`, `é`, `í`, `ó`, `ú`, `ü`, `ñ`, `¿`, `¡` y `€`.
 
 ### 3.15 Verificación empresarial
 

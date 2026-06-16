@@ -546,6 +546,8 @@ Todo texto visible para usuarios finales, locales y administradores debe estar i
 - WHEN falte una clave de traducción, THEN el sistema debe registrar el error y usar fallback controlado en inglés, sin mostrar claves técnicas al usuario.
 - WHEN un local configure textos visibles al usuario como descripción, servicios, reglas, pestañas personalizadas, campos del formulario o políticas, THEN el sistema debe permitir traducción en español e inglés o aplicar una política explícita de fallback antes de publicar.
 - WHEN se añada una nueva pantalla o flujo, THEN no debe aceptarse texto hardcodeado sin clave de traducción.
+- WHEN se cree, modifique o publique cualquier texto en español del producto, documentación de usuario, catálogos i18n, emails, errores, estados, seed de datos visibles o contenido administrativo, THEN debe conservar ortografía española correcta, tildes, apertura de signos de interrogación y exclamación, eñes, diéresis, comillas y caracteres especiales propios del idioma.
+- WHEN un texto español se almacene en repositorio, base de datos, plantilla, fixture, migración, email o API, THEN debe codificarse en UTF-8 y no debe aparecer con mojibake ni caracteres sustitutos como `Ã`, `Â`, `�` o equivalentes.
 
 ### RF-032 Verificación empresarial de cuentas de local
 
@@ -659,6 +661,29 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - Si el proveedor está caído, el sistema debe degradar a revisión pendiente y no a aprobación automática.
 - Los resultados deben auditarse sin guardar más datos fiscales de los necesarios.
 - El sistema debe permitir revalidación periódica o manual de una cuenta empresarial.
+
+### RNF-011 Convenciones de implementación backend y persistencia
+
+- Las tablas físicas de base de datos deben nombrarse en `UpperCamelCase`, empezando por mayúscula y juntando palabras compuestas con mayúscula inicial en cada palabra.
+- Las clases Java de Spring Boot deben nombrarse en `UpperCamelCase`.
+- Los atributos de entidades, DTOs y clases Java deben nombrarse en `lowerCamelCase`, empezando por minúscula y juntando palabras compuestas con mayúscula inicial desde la segunda palabra.
+- Las columnas físicas asociadas a atributos deben seguir `lowerCamelCase` cuando se definan explícitamente.
+- En PostgreSQL deben usarse identificadores entrecomillados en migraciones y mapeos cuando sea necesario preservar mayúsculas.
+- Las relaciones JPA deben declararse con anotaciones de Spring/JPA en los métodos `get` correspondientes, manteniendo los métodos `set` correspondientes y la consistencia de relaciones bidireccionales.
+- Debe existir un DAO por cada entidad persistente y el acceso a datos debe realizarse mediante DAOs con consultas declaradas con `@Query` cuando sean consultas propias del dominio.
+- Todos los servicios deben separar interfaz e implementación; otros módulos deben depender de la interfaz.
+- Todos los controladores deben separar interfaz e implementación; la interfaz define el contrato de métodos expuestos.
+- La capa REST debe usar DTOs y conversores explícitos entre entidades, DTOs y estructuras internas, evitando exponer entidades JPA directamente.
+- Estas convenciones deben verificarse en revisión de código y, cuando sea viable, mediante tests, lint o reglas de análisis estático.
+
+### RNF-012 Calidad lingüística, acentos y codificación de textos en español
+
+- Todo texto en español del proyecto debe escribirse con ortografía correcta, incluyendo tildes, eñes, diéresis, signos de apertura `¿` y `¡`, símbolos de moneda, ordinales y cualquier carácter especial necesario.
+- Todos los archivos de código, documentación, migraciones, catálogos i18n, plantillas de email, fixtures y seeds que contengan texto visible en español deben guardarse en UTF-8.
+- No se aceptan textos en español degradados por problemas de codificación, mojibake o sustitución de caracteres.
+- Los catálogos de traducción `es` deben revisarse con una estrategia automatizada y revisión humana antes de cerrar tareas de UI, emails, errores públicos o documentación de usuario.
+- Las pruebas de i18n deben incluir validación de caracteres especiales frecuentes en español: `á`, `é`, `í`, `ó`, `ú`, `ü`, `ñ`, `¿`, `¡`, `€`.
+- Las respuestas públicas de API, emails y pantallas no deben eliminar tildes para simplificar comparaciones, búsquedas o normalizaciones; cualquier normalización técnica debe aplicarse solo a campos internos no visibles.
 
 ## 6. Reglas de negocio clave
 

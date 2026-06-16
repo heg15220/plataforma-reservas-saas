@@ -12,6 +12,8 @@ Cada tarea debe cerrarse con:
 - Revisión de permisos.
 - Validación responsive cuando afecte UI.
 
+Convención transversal: cualquier nombre de tabla escrito en este plan en `snake_case` se conserva como referencia conceptual histórica. La implementación física en migraciones Flyway, entidades JPA y consultas debe traducirlo a `UpperCamelCase` para tablas y `lowerCamelCase` para atributos/columnas, según `design.md` y `RNF-011`.
+
 ## 2. Fase 0 - Preparación del proyecto
 
 - [x] 0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.
@@ -27,10 +29,12 @@ Cada tarea debe cerrarse con:
 - [ ] 0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback `en`.
 - [ ] 0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.
 - [ ] 0.13. Definir patrón para textos localizados en base de datos mediante campos `*_i18n` o JSON `{ es, en }`.
+- [ ] 0.14. Definir y automatizar convenciones backend: tablas `UpperCamelCase`, clases Java `UpperCamelCase`, atributos `lowerCamelCase`, JPA por getters/setters, DAOs con `@Query`, interfaces separadas de servicios/controladores, DTOs REST y conversores.
+- [ ] 0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.
 
 ## 3. Fase 1 - Identidad, roles y base SaaS
 
-- [ ] 1.1. Crear tablas `users`, sesiones/tokens y roles.
+- [ ] 1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos `UpperCamelCase` y atributos/columnas `lowerCamelCase`.
 - [ ] 1.2. Implementar `account_type` con valores `customer`, `venue_business` y `admin`.
 - [ ] 1.3. Crear tablas `business_accounts`, `business_verification_checks` y `business_verification_documents`.
 - [ ] 1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.
@@ -351,6 +355,7 @@ Cada tarea debe cerrarse con:
 - [ ] 19.26. Validar navegación móvil de local.
 - [ ] 19.27. Validar rechazo de reseña cuando el email no tenga reserva pasada en ese local.
 - [ ] 19.28. Validar pestañas personalizadas de la ficha pública, incluyendo carta, menú, precios, orden, i18n y responsive.
+- [ ] 19.29. Validar que todo texto español visible en UI, emails, errores, estados, seeds y documentación de usuario conserva tildes, eñes, signos `¿`/`¡`, caracteres especiales y codificación UTF-8 correcta.
 
 ## 22. Criterios de salida del MVP
 
@@ -359,6 +364,7 @@ Cada tarea debe cerrarse con:
 - [ ] Las pruebas unitarias e integración críticas pasan.
 - [ ] Existen pruebas de concurrencia para reservas.
 - [ ] Existen pruebas de i18n para español, inglés y fallback.
+- [ ] Existen pruebas o validaciones que detectan textos españoles con tildes omitidas, signos de apertura omitidos, caracteres especiales rotos o mojibake.
 - [ ] Existen pruebas de verificación empresarial válida, inválida, pendiente y aprobada por documentación de respaldo.
 - [ ] El flujo principal funciona en móvil y escritorio.
 - [ ] No hay endpoints de local sin autorización.
