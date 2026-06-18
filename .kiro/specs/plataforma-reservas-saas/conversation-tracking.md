@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-16
+- Fecha de última actualización: 2026-06-18
 - Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`
 - Siguiente tarea pendiente recomendada: `0.2. Crear repositorio, estructura base y convenciones de ramas.`
-- Observación: el proyecto cuenta con especificación completa, stack definitivo seleccionado, convenciones obligatorias de implementación backend/persistencia y requisito transversal de calidad ortográfica/codificación para textos españoles, pero todavía no hay implementación de producto.
+- Observación: el proyecto cuenta con especificación completa, stack definitivo seleccionado, nombre comercial `Reserly`, dirección visual basada en los prototipos de escritorio y móvil, convenciones obligatorias de implementación backend/persistencia y requisito transversal de calidad ortográfica/codificación para textos españoles, pero todavía no hay implementación de producto.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -274,3 +274,31 @@ Fuente de verdad del avance:
   - No se aceptan textos visibles con mojibake ni caracteres sustitutos como `Ã`, `Â` o `�`.
   - Las normalizaciones técnicas sin tildes solo pueden usarse en campos internos no visibles, por ejemplo para búsqueda.
   - La versión visible al usuario debe conservar ortografía española correcta y caracteres especiales.
+
+## Conversación 11 - Nombre comercial Reserly y sistema visual
+
+- Fecha: 2026-06-18
+- Resumen: se cerró la decisión pendiente de nombre comercial y sistema visual. El producto pasa a denominarse `Reserly` y se analizaron los prototipos de escritorio y móvil para formalizar la identidad, paleta, tipografía, geometría, componentes, estados, patrones responsive, accesibilidad e internacionalización que deberá aplicar la implementación.
+- Archivos modificados:
+  - `design.md`
+  - `conversation-tracking.md`
+- Requisitos impactados:
+  - `RNF-007 Usabilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - Pantallas mínimas del MVP para usuario final y local registrado.
+- Tareas impactadas:
+  - `0.7. Crear layout base responsive y sistema de componentes`.
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía`.
+  - Todas las tareas posteriores que implementen interfaz pública, panel del local, formularios, calendarios, tablas, emails o recursos de marca.
+- Tareas completadas:
+  - Ninguna. La definición documental no completa `0.8`; faltan tokens, tema MUI, componentes y verificación visual implementados.
+- Siguiente tarea pendiente recomendada:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Decisiones o aclaraciones relevantes:
+  - El nombre comercial definitivo es `Reserly`.
+  - `ReservaYa` queda limitado a los prototipos históricos y debe sustituirse por `Reserly` en la implementación.
+  - La dirección visual usa superficies claras, azul como acción primaria, estados semánticos verde/ámbar/rojo/neutro, tipografía `Inter`, tarjetas de bordes suaves y navegación adaptada a escritorio y móvil.
+  - El panel del local mantiene navegación lateral en escritorio y navegación inferior simplificada en móvil.
+  - Los colores y estados deben implementarse con tokens semánticos, cumplir WCAG 2.2 AA y no depender únicamente del color.
+  - Los prototipos son referencia visual y funcional, no una excepción a los requisitos de accesibilidad, responsive e i18n.

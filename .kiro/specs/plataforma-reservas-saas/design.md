@@ -1835,7 +1835,6 @@ Si no hay datos suficientes:
 
 ## 17. Decisiones pendientes
 
-- Stack tecnológico definitivo.
 - Proveedor de email.
 - Proveedor de mapas/geocoding.
 - Proveedor o adaptador oficial/autorizado para validar NIF/CIF en España si VIES no cubre el caso.
@@ -1844,4 +1843,110 @@ Si no hay datos suficientes:
 - Activación real de pagos RedSys en MVP o solo preparación.
 - Alcance exacto del panel admin inicial.
 - Conservación legal de incidencias y penalizaciones.
-- Nombre comercial y sistema visual.
+
+### 17.1 Decisiones cerradas
+
+#### Nombre comercial y sistema visual
+
+El nombre comercial definitivo del producto es **Reserly**. Cualquier aparición de `ReservaYa` en los prototipos aportados se considera una marca provisional y debe sustituirse por `Reserly` al implementar interfaces, metadatos, emails, textos legales, recursos gráficos y catálogos i18n. Las claves técnicas, nombres de paquetes y dominios internos no deben derivarse del nombre comercial cuando ello dificulte un futuro cambio de marca.
+
+El sistema visual toma como referencia directa los prototipos de escritorio `Prototipos_ReservaYa.png` y móvil `prototipadoMovil_ReservaYa.png`. Los prototipos definen la dirección visual y la jerarquía funcional, pero no sustituyen los requisitos de accesibilidad, responsive, internacionalización ni el sistema de componentes implementado.
+
+##### Identidad de marca
+
+- **Personalidad:** útil, cercana, fiable y profesional. Reserly debe transmitir rapidez para reservar sin parecer informal ni excesivamente promocional.
+- **Logotipo principal:** isotipo compacto dentro de un cuadrado de esquinas redondeadas, acompañado por el wordmark `Reserly`. El símbolo debe relacionarse con reserva, ubicación, calendario o confirmación sin depender de detalles pequeños.
+- **Uso del nombre:** `Reserly` se escribe con mayúscula inicial y sin variaciones como `ReserLy`, `ReserlyApp` o `ReservaYa`.
+- **Área de seguridad:** alrededor del logotipo debe mantenerse, como mínimo, un espacio equivalente a la altura del isotipo.
+- **Versiones mínimas:** principal sobre fondo claro, monocroma clara para fondos oscuros y versión exclusiva del isotipo para favicon, icono de aplicación y navegación compacta.
+- **Legibilidad:** el wordmark no debe mostrarse a un tamaño que impida leerlo; en móvil puede usarse únicamente el isotipo cuando el ancho disponible sea crítico.
+
+##### Paleta funcional
+
+La interfaz observada usa una base blanca y gris muy clara con azul intenso como acción principal. La implementación debe formalizarla mediante tokens semánticos, evitando colores escritos directamente en componentes.
+
+| Token | Valor inicial | Uso |
+| --- | --- | --- |
+| `color.brand.primary` | `#075FE4` | Botones principales, enlaces activos, selección y foco |
+| `color.brand.primaryHover` | `#064FC0` | Hover y pressed de acciones primarias |
+| `color.brand.primarySoft` | `#EAF2FF` | Fondos seleccionados, navegación activa y etiquetas suaves |
+| `color.text.primary` | `#111827` | Títulos y texto principal |
+| `color.text.secondary` | `#5F6B7A` | Metadatos, ayudas y texto secundario |
+| `color.surface.page` | `#F7F9FC` | Fondo general de paneles y páginas |
+| `color.surface.card` | `#FFFFFF` | Tarjetas, formularios, modales y paneles |
+| `color.border.default` | `#DFE5EE` | Bordes de campos, tarjetas y divisores |
+| `color.status.success` | `#0AA968` | Disponible, abierto, confirmado y asistido |
+| `color.status.warning` | `#F59E0B` | Pendiente, riesgo moderado y avisos |
+| `color.status.danger` | `#E53935` | No asistencia, error, restricción y acción destructiva |
+| `color.status.neutral` | `#8A94A3` | Completo, cerrado, cancelado o no disponible |
+
+Los estados no deben comunicarse solo mediante color. Siempre deben incluir texto, icono, patrón o cambio de forma. Las combinaciones de texto y fondo deben cumplir WCAG 2.2 AA: contraste mínimo `4.5:1` para texto normal y `3:1` para texto grande, iconos esenciales y bordes de controles.
+
+##### Tipografía
+
+- Familia principal: `Inter`, con fallback `system-ui`, `-apple-system`, `BlinkMacSystemFont`, `"Segoe UI"` y `sans-serif`.
+- Peso recomendado: `700` para títulos principales, `600` para encabezados y botones, `400` o `500` para cuerpo y metadatos.
+- Escala base orientativa: `32/40` para hero de escritorio, `24/32` para título principal móvil, `20/28` para títulos de página, `16/24` para cuerpo destacado, `14/20` para cuerpo habitual y `12/16` para metadatos.
+- Los tamaños deben expresarse mediante tokens y admitir ampliación del navegador hasta el `200 %` sin pérdida de contenido ni funcionalidad.
+- No se usarán mayúsculas sostenidas en acciones o contenido; las etiquetas de los prototipos que identifican cada pantalla no forman parte de la interfaz final.
+
+##### Geometría, espaciado y elevación
+
+- Unidad base de espaciado: `4 px`; composición habitual en múltiplos de `8 px`.
+- Radios: `8 px` para campos y botones, `12 px` para tarjetas, `16 px` para paneles destacados y modales.
+- Bordes: `1 px` en gris neutro; la separación debe depender primero de espacio y borde, no de sombras intensas.
+- Sombras: suaves y escasas, reservadas para cabeceras flotantes, popovers, modales y tarjetas que necesiten distinguirse del fondo.
+- Altura táctil mínima: `44 px`; los botones principales de móvil deben ocupar el ancho disponible cuando sean la siguiente acción inequívoca.
+- Ancho máximo del contenido de escritorio: aproximadamente `1440 px`, centrado, con márgenes fluidos. Los paneles internos pueden usar una retícula de 12 columnas.
+
+##### Componentes y patrones
+
+- **Botón primario:** fondo azul, texto blanco, peso `600`; una única acción primaria dominante por bloque.
+- **Botón secundario:** fondo blanco, borde neutro y texto azul o primario.
+- **Acción destructiva:** rojo únicamente para acciones irreversibles o de alto impacto, con confirmación cuando corresponda.
+- **Campos:** etiqueta persistente encima del control, ayuda y error próximos al campo; no se usará el placeholder como única etiqueta.
+- **Tarjetas de local:** imagen, nombre, categoría, distancia, valoración, estado y disponibilidad resumida, con jerarquía equivalente a los prototipos.
+- **Tarjetas de métricas:** valor principal, etiqueta, variación y periodo; los gráficos deben ofrecer resumen textual accesible.
+- **Chips de estado:** fondo tonal suave, texto de alto contraste y semántica consistente en toda la aplicación.
+- **Calendario y franjas:** selección azul, disponibilidad verde, completo o cerrado neutro y conflictos/errores rojos. La leyenda debe estar visible.
+- **Stepper de reserva:** pasos `Seleccionar`, `Formulario` y `Confirmación`; en móvil puede compactarse, pero debe conservar el paso actual y el progreso.
+- **Iconografía:** estilo lineal coherente mediante `lucide-react`, con trazo uniforme y etiqueta accesible cuando el significado no sea evidente.
+
+##### Composición de escritorio
+
+El prototipo de escritorio establece dos experiencias:
+
+- **Área pública:** cabecera horizontal ligera; buscador protagonista; categorías como accesos rápidos; bloques de recomendados, destacados y cercanos; ficha del local con galería, información principal, pestañas y disponibilidad; reserva distribuida en resumen, formulario y confirmación.
+- **Panel del local:** navegación lateral oscura y persistente, contenido principal sobre superficie clara, tablas para alta densidad informativa, panel de detalle contextual, calendario, estadísticas y suscripción. El azul identifica la sección activa.
+
+Las tablas solo se usarán cuando aporten comparación real. Deben incluir encabezados claros, navegación por teclado, estados vacíos, carga, error y alternativa en tarjetas para anchos reducidos.
+
+##### Composición móvil
+
+El prototipo móvil define una experiencia de una sola columna y navegación centrada en tareas:
+
+- Cabecera compacta con título, navegación contextual y acciones esenciales.
+- Navegación inferior para las áreas principales. En la experiencia pública: `Inicio`, `Explorar`, `Reservas`, `Favoritos` y `Perfil`. En el panel del local: `Inicio`, `Reservas`, `Calendario` y `Más`.
+- Resultados como lista vertical; filtros en vista completa, drawer o modal; ficha del local con galería horizontal y acción `Reservar` visible.
+- Disponibilidad como calendario compacto seguido de franjas táctiles.
+- Formulario de reserva en bloques verticales, con contador del hold visible y acción principal fija o inmediatamente accesible.
+- Panel del local mediante tarjetas y listas; no se trasladarán tablas de escritorio a móvil.
+
+Los breakpoints iniciales serán los definidos por MUI y podrán ajustarse tras pruebas visuales: móvil `< 600 px`, tablet `600–899 px`, escritorio `900–1199 px` y escritorio amplio `>= 1200 px`.
+
+##### Imágenes y contenido
+
+- Las fotografías de locales tienen un papel protagonista y deben usar recorte consistente con `object-fit: cover`.
+- Relaciones recomendadas: `16:9` para hero/galería y entre `4:3` y `3:2` para tarjetas, según el contexto.
+- Debe existir placeholder neutro con identidad Reserly cuando falte una imagen, sin simular contenido real.
+- Las imágenes necesitan texto alternativo útil cuando aporten información; las decorativas usarán alternativa vacía.
+- Los ejemplos de nombres, emails, importes, fechas y direcciones de los prototipos son datos ficticios y no deben quedar hardcodeados.
+
+##### Accesibilidad, i18n y validación visual
+
+- Todos los estados interactivos deben incluir `default`, `hover`, `focus-visible`, `active`, `disabled`, `loading`, `error` y, cuando aplique, `success`.
+- El foco visible debe ser claro y coherente, preferentemente mediante anillo basado en `color.brand.primary`.
+- La interfaz debe funcionar con teclado, lector de pantalla, zoom al `200 %`, reducción de movimiento y tamaños de texto ampliados.
+- Los componentes deben probarse con textos españoles e ingleses largos; no se fijarán anchos que provoquen truncado de botones, pestañas o estados esenciales.
+- Las fechas, horas, monedas, números y plurales deben renderizarse mediante el locale activo.
+- La tarea `0.8` deberá convertir estas reglas en tokens, tema MUI, catálogo de componentes y pruebas visuales. No se considerará completada únicamente por esta decisión documental.
