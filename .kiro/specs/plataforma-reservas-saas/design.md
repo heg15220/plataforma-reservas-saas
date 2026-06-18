@@ -53,13 +53,13 @@ Stack por capa:
 - **Backend API:** Spring Boot con Java 21, Spring MVC, Spring Security, Bean Validation, Spring Modulith o paquetes por contexto para mantener el monolito modular.
 - **Persistencia y ORM:** PostgreSQL como base de datos principal y Hibernate/JPA mediante Spring Data JPA. Las operaciones críticas de reservas deben usar transacciones explícitas, bloqueo pesimista `SELECT ... FOR UPDATE` o locks JPA equivalentes, e índices diseñados para concurrencia.
 - **Migraciones:** Flyway como fuente versionada de esquema y datos iniciales. No se deben usar `schema.sql` y `data.sql` como mecanismo principal de evolución de producción.
-- **Búsqueda:** PostgreSQL full-text search, índices trigram y PostGIS desde MVP si se activa búsqueda por radio precisa.
+- **Búsqueda:** PostgreSQL full-text search, índices trigram y PostGIS desde MVP para búsqueda por radio, ordenación por cercanía e índices espaciales.
 - **Cache y rate limiting:** Redis mediante Spring Data Redis y Spring Cache para cache, rate limits, TTLs auxiliares y coordinación de procesos no críticos.
 - **Cola de trabajos:** RabbitMQ con Spring AMQP para emails, reintentos, trabajos asíncronos y eventos internos que no deben bloquear la transacción de reserva.
 - **Jobs programados:** Quartz con store JDBC o Spring Scheduler con lock distribuido persistente. Para despliegues con más de una instancia, ningún job crítico debe ejecutarse sin coordinación.
-- **Emails:** proveedor transaccional por API o SMTP autenticado, integrado desde backend y siempre encolado. Spring Mail puede ser adaptador, no mecanismo síncrono dentro del flujo de reserva.
+- **Emails:** Brevo en su plan gratuito como proveedor inicial de email transaccional por API o SMTP autenticado, integrado desde backend y siempre encolado. Spring Mail puede ser adaptador, no mecanismo síncrono dentro del flujo de reserva.
 - **Archivos privados y públicos:** almacenamiento S3-compatible, con MinIO en local y proveedor S3/R2/equivalente en producción. No se deben guardar imágenes o documentos sensibles como BLOB principal en base de datos salvo caso justificado.
-- **Pagos:** módulo backend RedSys con validación de firma, idempotencia y auditoría.
+- **Pagos:** interfaz de proveedor con adaptador simulado en MVP y adaptador RedSys por redirección preparado, desactivado en producción hasta disponer de contrato bancario, credenciales y validación del entorno de pruebas.
 - **Observabilidad:** Spring Boot Actuator, Micrometer, OpenTelemetry, logs estructurados y métricas de reservas, jobs, emails, pagos y errores.
 - **Testing backend:** JUnit 5, Spring Boot Test, MockMvc, Testcontainers para PostgreSQL, Redis y RabbitMQ, y tests de concurrencia sobre la base real.
 - **Testing frontend:** Vitest, React Testing Library y Playwright para flujos críticos responsive e i18n.
@@ -445,7 +445,9 @@ Responsabilidades:
 - Normalizar identificadores por país.
 - Validar formato y dígito de control local antes de llamar a APIs remotas cuando existan reglas conocidas.
 - Consultar proveedor oficial, público o autorizado.
-- Para España, intentar AEAT, servicio autorizado equivalente o proveedor privado aprobado cuando no aplique VIES.
+- Para España, validar gratuitamente formato y dígito de control y priorizar la comprobación censal oficial de la AEAT con certificado electrónico cuando el canal disponible sea integrable y autorizado.
+- No asumir que la consulta web de la AEAT equivale a una API máquina-a-máquina pública. Si no existe un canal automatizable confirmado para la plataforma, derivar a revisión administrativa mediante AEAT y documentos.
+- No usar proveedores comerciales en el MVP cuando la combinación de validación local, VIES, consulta AEAT y revisión documental cubra el caso.
 - Solicitar documentos de respaldo cuando la verificación automática no sea concluyente.
 - Guardar resultado mínimo de verificación.
 - Impedir publicación de locales si la verificación no está aprobada.
@@ -1196,7 +1198,17 @@ if count >= 4 -> 60 dias
 
 Cuando se completa un bloqueo de 60 días, el contador operativo puede reiniciarse. El histórico legal/auditado no se borra automaticamente; se marca fuera del contador operativo conforme a política de conservación.
 
-### 6.3 Mensaje al usuario
+### 6.3 Conservación y bloqueo
+
+- La penalización permanece operativa mientras esté activa.
+- Las incidencias y penalizaciones identificables permanecen disponibles para operación y reclamaciones durante un máximo inicial de 12 meses desde el cierre o finalización.
+- Al superar 12 meses, dejan de participar en el contador operativo, dejan de mostrarse al local y deben anonimizarse o eliminarse de las vistas y tablas operativas.
+- Si existe una finalidad legítima de defensa frente a responsabilidades, la evidencia mínima se mueve a estado bloqueado: no puede consultarse desde paneles ni utilizarse para nuevas penalizaciones.
+- El bloqueo se mantiene durante un máximo inicial de 3 años o durante el plazo legal específico aplicable si fuera diferente. Después se ejecuta borrado irreversible, salvo litigio, requerimiento administrativo u obligación legal vigente.
+- Un job periódico debe aplicar anonimización, bloqueo y borrado, generando métricas y auditoría sin conservar innecesariamente el email en claro.
+- Estos plazos son una política técnica inicial de minimización y requieren validación jurídica antes de producción.
+
+### 6.4 Mensaje al usuario
 
 El mensaje debe ser sobrio:
 
@@ -1835,14 +1847,7 @@ Si no hay datos suficientes:
 
 ## 17. Decisiones pendientes
 
-- Proveedor de email.
-- Proveedor de mapas/geocoding.
-- Proveedor o adaptador oficial/autorizado para validar NIF/CIF en España si VIES no cubre el caso.
-- Política exacta de revisión manual cuando una verificación empresarial no pueda confirmarse remotamente.
-- Uso de PostGIS desde MVP o cálculo geográfico simple.
-- Activación real de pagos RedSys en MVP o solo preparación.
-- Alcance exacto del panel admin inicial.
-- Conservación legal de incidencias y penalizaciones.
+No quedan decisiones abiertas en esta sección para iniciar el MVP. Las cuotas gratuitas, condiciones contractuales y plazos legales deben volver a verificarse al implementar cada integración y antes de producción.
 
 ### 17.1 Decisiones cerradas
 
@@ -1950,3 +1955,117 @@ Los breakpoints iniciales serán los definidos por MUI y podrán ajustarse tras 
 - Los componentes deben probarse con textos españoles e ingleses largos; no se fijarán anchos que provoquen truncado de botones, pestañas o estados esenciales.
 - Las fechas, horas, monedas, números y plurales deben renderizarse mediante el locale activo.
 - La tarea `0.8` deberá convertir estas reglas en tokens, tema MUI, catálogo de componentes y pruebas visuales. No se considerará completada únicamente por esta decisión documental.
+
+### 17.2 Estrategia de coste: gratuito primero
+
+Toda integración externa debe seguir este orden:
+
+1. Solución oficial, gratuita y compatible con el caso de uso.
+2. Software libre o componente autogestionado sin coste de licencia.
+3. Plan gratuito de un proveedor con uso comercial permitido y límites suficientes para el MVP.
+4. Proveedor de pago solo cuando las alternativas anteriores no cubran disponibilidad, legalidad, seguridad, precisión o volumen.
+
+La gratuidad no permite incumplir términos de uso, depender de servicios comunitarios sin garantía para tráfico comercial ni rebajar seguridad, privacidad o fiabilidad. Todos los proveedores deben quedar detrás de interfaces sustituibles y configuración por entorno.
+
+#### Email transaccional
+
+- Proveedor inicial: **Brevo Free**.
+- Motivo: admite email transaccional por API/SMTP y su plan gratuito publicado permite hasta 300 emails diarios sin tarjeta, suficiente para desarrollo y primera validación del MVP.
+- Desarrollo local: Mailpit o equivalente autogestionado; nunca enviar emails reales desde tests automatizados.
+- Arquitectura: `TransactionalEmailProvider` desacoplado, cola RabbitMQ, reintentos con backoff, idempotencia por evento y registro de entrega mínimo.
+- Configuración obligatoria: dominio propio, SPF, DKIM y DMARC antes de producción.
+- Límite: al alcanzar el 80 % de la cuota diaria se genera alerta; no se descartan emails críticos. Si el volumen supera el plan gratuito, se evaluará primero el plan de menor coste que mantenga entregabilidad, siendo AWS SES una alternativa posterior, no el proveedor inicial.
+
+#### Mapas y geocodificación
+
+- Proveedor inicial alojado: **LocationIQ Free**, usando datacenter de la UE cuando esté disponible.
+- Cliente de mapas: **MapLibre GL JS**, sin dependencia del SDK propietario del proveedor.
+- El plan gratuito publicado ofrece geocodificación, routing y mapas con 5.000 solicitudes diarias y 2 solicitudes por segundo, y permite uso comercial limitado con atribución visible.
+- La atribución de LocationIQ y OpenStreetMap debe permanecer visible y cumplir sus licencias; mientras se use el plan gratuito comercial debe incluirse de forma prominente el enlace exigido `Search by LocationIQ.com`.
+- Todas las llamadas pasan por un `GeocodingProvider`; las URLs, tokens y proveedor se configuran por entorno.
+- Las coordenadas normalizadas de un local se almacenan y reutilizan hasta que cambie su dirección. No se geocodifica repetidamente la misma dirección.
+- La ubicación precisa del usuario no se persiste para búsquedas cercanas salvo consentimiento y necesidad explícita.
+- No se usará el Nominatim público de OpenStreetMap como backend de producción: limita el uso intensivo a 1 petición por segundo, prohíbe autocompletado cliente y puede retirar acceso a aplicaciones comerciales. Nominatim autogestionado queda como alternativa futura sin coste de licencia, pero exige infraestructura propia.
+
+#### Verificación NIF/CIF en España
+
+Orden obligatorio:
+
+1. Normalización y validación local gratuita de estructura, longitud y dígito de control para NIF, NIE y NIF de entidad.
+2. VIES gratuito cuando se trate de un NIF-IVA aplicable a operaciones intracomunitarias.
+3. AEAT como fuente oficial para comprobar si el NIF de una entidad consta en el censo. La consulta oficial requiere certificado electrónico.
+4. Revisión administrativa con AEAT y documentos de respaldo cuando no exista un endpoint máquina-a-máquina confirmado, el servicio no responda o el resultado no sea concluyente.
+5. Proveedor comercial solo en una fase posterior, mediante decisión documentada, evaluación de protección de datos y presupuesto aprobado.
+
+La implementación debe separar `BusinessVerificationProvider` de los adaptadores `LocalSpanishTaxIdValidator`, `ViesBusinessVerificationAdapter`, `AeatBusinessVerificationAdapter` y `ManualBusinessVerificationService`.
+
+El adaptador AEAT solo puede activarse si se confirma documentalmente un servicio máquina-a-máquina utilizable por Reserly y se dispone de certificado de empresa o sello. El certificado y su clave privada se almacenan en un gestor de secretos, con rotación, acceso mínimo y nunca en base de datos ni repositorio.
+
+#### Política de revisión manual empresarial
+
+- Formato o dígito de control inválido: rechazo automático antes de cualquier consulta remota.
+- Confirmación oficial y coincidencia suficiente de razón social: `verified`.
+- Indisponibilidad, ausencia de canal automatizable, resultado inconcluso o diferencia de nombre: `pending_review`; nunca aprobación automática.
+- Se solicita alta censal 036/037, certificado de situación censal o documento administrativo equivalente. La licencia de actividad puede complementar, pero no sustituye por sí sola la acreditación censal.
+- El administrador comprueba NIF, razón social, vigencia, integridad del documento y coherencia con la consulta oficial disponible.
+- Resultados posibles: aprobar, rechazar o solicitar corrección. Toda decisión exige motivo estructurado, nota interna opcional, actor y fecha.
+- Las aprobaciones manuales que contradigan un resultado oficial negativo requieren segunda revisión administrativa.
+- Objetivo operativo: resolver en 5 días laborables y permitir hasta 2 solicitudes de corrección antes del rechazo, sin impedir una nueva solicitud legítima posterior.
+- Los documentos se almacenan cifrados y en privado; se registra hash, tipo, fecha y resultado, no una copia completa de respuestas de terceros.
+- Si la AEAT estuvo temporalmente indisponible, se programa reintento durante 30 días sin publicar el local hasta aprobación.
+
+#### PostGIS
+
+- Se activa **PostGIS desde el MVP**.
+- Razón: búsqueda por radio y ordenación por cercanía forman parte del alcance; PostGIS es software libre, evita coste de licencia y permite índices espaciales sin trasladar cálculos ni grandes conjuntos de datos a la aplicación.
+- Los locales almacenan una coordenada `geography(Point, 4326)` con índice GiST.
+- Las consultas por radio usan `ST_DWithin`; la distancia visible y ordenación usan `ST_Distance`.
+- Haversine en Java queda limitado a tests de contraste o fallback diagnóstico, no a consultas de producción.
+
+#### RedSys
+
+- El MVP incluye **preparación técnica sin cobro real en producción**.
+- Se implementa una interfaz de pagos, un simulador determinista y el contrato del adaptador RedSys por redirección con firma, callbacks e idempotencia.
+- El botón de pago real permanece deshabilitado mientras no existan contrato con una entidad adquirente, credenciales de comercio, claves de test y validación completa en el entorno de pruebas.
+- No se utilizará Stripe como sustituto temporal: añadir otro proveedor no valida RedSys y aumenta alcance y coste.
+- La activación de producción será una tarea post-MVP separada y no bloqueará el lanzamiento del plan gratuito.
+
+#### Alcance del panel admin inicial
+
+Incluido:
+
+- Login admin protegido y autorización por rol.
+- Dashboard con métricas operativas mínimas.
+- Listado, detalle, edición controlada, publicación y suspensión de locales.
+- Gestión de categorías.
+- Cola de verificaciones empresariales, consulta de documentos, aprobación, rechazo, corrección y reintento.
+- Revisión de incidencias y penalizaciones, con modificación auditada.
+- Gestión básica de planes y estados de suscripción; sin cobro real en MVP.
+- Consulta de auditoría para acciones críticas.
+
+Excluido del MVP:
+
+- Impersonación de usuarios o locales.
+- Reembolsos y conciliación financiera avanzada.
+- Constructor genérico de permisos o múltiples roles administrativos.
+- Moderación automática avanzada, soporte tipo helpdesk y herramientas de recomendación.
+- Edición directa de reservas o datos sensibles fuera de casos de uso auditados.
+
+#### Conservación de incidencias y penalizaciones
+
+- Uso operativo identificable: máximo inicial de 12 meses desde el cierre de la incidencia o fin de la penalización.
+- Finalizado ese plazo: anonimización o eliminación del historial operativo y exclusión total del contador de penalizaciones.
+- Evidencia mínima bloqueada para responsabilidades: máximo inicial de 3 años, sin acceso ordinario ni reutilización para decisiones de reserva.
+- Finalizado el bloqueo: borrado irreversible, salvo obligación legal específica, investigación, reclamación o litigio abierto.
+- Los plazos son configurables, se ejecutan mediante job auditable y deben validarse con asesoría jurídica antes de producción.
+
+#### Fuentes oficiales y condiciones verificadas
+
+- AEAT, consulta censal por NIF de entidades jurídicas: <https://sede.agenciatributaria.gob.es/Sede/ayuda/consultas-informaticas/presentacion-declaraciones-ayuda-tecnica/modelo-036/comprobacion-estar-censado-consulta-nif-juridicas.html>
+- Comisión Europea, VIES: <https://ec.europa.eu/taxation_customs/vies/>
+- Brevo, precios y plan gratuito: <https://www.brevo.com/pricing/>
+- LocationIQ, precios y condiciones del plan gratuito: <https://locationiq.com/pricing>
+- OpenStreetMap Foundation, política de Nominatim: <https://operations.osmfoundation.org/policies/nominatim/>
+- PostGIS, modelo e índices espaciales: <https://postgis.net/docs/using_postgis_dbmanagement.html>
+- RedSys, documentación para desarrolladores y contratación mediante entidad bancaria: <https://pagosonline.redsys.es/desarrolladores-inicio/>
+- LOPDGDD, artículo 32 sobre bloqueo: <https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673>

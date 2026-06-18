@@ -13,7 +13,7 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-06-18
 - Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`
 - Siguiente tarea pendiente recomendada: `0.2. Crear repositorio, estructura base y convenciones de ramas.`
-- Observación: el proyecto cuenta con especificación completa, stack definitivo seleccionado, nombre comercial `Reserly`, dirección visual basada en los prototipos de escritorio y móvil, convenciones obligatorias de implementación backend/persistencia y requisito transversal de calidad ortográfica/codificación para textos españoles, pero todavía no hay implementación de producto.
+- Observación: el proyecto cuenta con especificación completa, stack definitivo seleccionado, nombre comercial `Reserly`, dirección visual definida y decisiones de proveedores, geolocalización, verificación empresarial, pagos, administración y conservación cerradas bajo una estrategia de coste gratuito primero, pero todavía no hay implementación de producto.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -302,3 +302,38 @@ Fuente de verdad del avance:
   - El panel del local mantiene navegación lateral en escritorio y navegación inferior simplificada en móvil.
   - Los colores y estados deben implementarse con tokens semánticos, cumplir WCAG 2.2 AA y no depender únicamente del color.
   - Los prototipos son referencia visual y funcional, no una excepción a los requisitos de accesibilidad, responsive e i18n.
+
+## Conversación 12 - Cierre de decisiones operativas con estrategia gratuita primero
+
+- Fecha: 2026-06-18
+- Resumen: se cerraron las decisiones pendientes de email, mapas/geocoding, comprobación española de NIF/CIF, revisión manual empresarial, PostGIS, RedSys, panel admin y conservación de incidencias. Se contrastaron condiciones vigentes con fuentes oficiales y se estableció como regla transversal priorizar opciones oficiales, libres o con plan gratuito compatible antes de contratar servicios.
+- Archivos modificados:
+  - `requirements.md`
+  - `design.md`
+  - `tasks.md`
+  - `conversation-tracking.md`
+- Requisitos impactados:
+  - `RF-028 Suscripción y RedSys`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RB-007 Penalización global MVP`.
+- Tareas impactadas:
+  - Fase 1: validación local, VIES, AEAT y revisión documental.
+  - Fase 3: geocodificación y búsqueda por radio.
+  - Fase 8: proveedor de email transaccional.
+  - Fase 10 y 16: conservación, anonimización, bloqueo y borrado.
+  - Fase 13: RedSys preparado con simulador, sin cobro real en producción.
+  - Fase 14: alcance cerrado del panel admin.
+- Tareas completadas:
+  - Ninguna. Son decisiones de especificación; la implementación y verificación siguen pendientes.
+- Siguiente tarea pendiente recomendada:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Decisiones o aclaraciones relevantes:
+  - Brevo Free es el proveedor inicial de email; Mailpit se usa en local.
+  - LocationIQ Free y MapLibre son la combinación inicial para geocodificación y mapas, con atribución y adaptadores sustituibles.
+  - PostGIS se activa desde el MVP.
+  - La verificación española prioriza algoritmo local, VIES y AEAT. Si no existe canal AEAT automatizable confirmado, se usa revisión administrativa oficial y documental, no un proveedor comercial.
+  - RedSys se prepara mediante interfaz, simulador y contratos, pero no se activa en producción hasta disponer de contrato bancario y credenciales.
+  - Las incidencias y penalizaciones identificables se conservan operativamente hasta 12 meses; la evidencia mínima puede bloquearse hasta 3 años, sujeto a validación jurídica previa a producción.

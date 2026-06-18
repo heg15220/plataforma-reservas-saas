@@ -491,14 +491,17 @@ El local debe poder definir servicios reservables básicos para calcular duraci�
 
 ### RF-028 Suscripción y RedSys
 
-**Prioridad:** Preparado MVP, cobro completo opcional
+**Prioridad:** Preparado MVP, cobro real post-MVP salvo disponibilidad previa de contrato y credenciales
 
 La plataforma debe contemplar planes SaaS y pagos externos mediante RedSys.
 
 #### Criterios de aceptación
 
 - WHEN el local consulta suscripción, THEN ve plan actual, estado, fecha de renovación, funcionalidades, historial básico y acciones.
-- WHEN el local inicia pago, THEN se muestra resumen del plan y aviso de pago seguro externo RedSys.
+- WHEN el cobro real no esté activado, THEN la pantalla debe mostrar el plan y estado sin ofrecer una acción de pago que simule una transacción real.
+- WHEN el entorno sea local, test o staging, THEN el adaptador de pagos debe poder usar un simulador determinista para validar estados, idempotencia, firma y callbacks sin dinero real.
+- WHEN exista contrato con entidad adquirente, credenciales RedSys y validación de pruebas, THEN podrá activarse el flujo real mediante configuración, sin cambiar el dominio de suscripciones.
+- WHEN el local inicia un pago real ya habilitado, THEN se muestra resumen del plan y aviso de pago seguro externo RedSys.
 - WHEN se redirige a RedSys, THEN la plataforma no solicita ni almacena datos completos de tarjeta.
 - WHEN RedSys devuelve respuesta, THEN el sistema registra pago confirmado, rechazado, cancelado, error o pendiente.
 - WHEN se registra pago confirmado, THEN la suscripción se actualiza.
@@ -562,7 +565,9 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - WHEN el país fiscal sea España, THEN el identificador esperado debe ser NIF/CIF/NIF-IVA según corresponda al tipo de empresa o profesional.
 - WHEN el identificador pertenezca a un país con reglas conocidas, THEN el sistema debe validar formato y dígito de control localmente antes de llamar a servicios remotos.
 - WHEN el país fiscal pertenezca a la UE y aplique IVA intracomunitario, THEN el sistema debe poder validar el VAT ID mediante VIES u otro proveedor oficial/autorizado equivalente.
-- WHEN el país fiscal sea España y no aplique VIES, THEN el sistema debe intentar validación mediante AEAT, servicio autorizado equivalente o proveedor privado aprobado por la plataforma.
+- WHEN el país fiscal sea España y no aplique VIES, THEN el sistema debe validar formato y dígito de control localmente e intentar comprobación censal mediante la AEAT con certificado electrónico cuando exista un canal técnicamente integrable y autorizado para la plataforma.
+- WHEN la AEAT no ofrezca a la plataforma un canal máquina-a-máquina utilizable, THEN la cuenta debe pasar a `pending_review` y la comprobación oficial debe realizarse administrativamente mediante la consulta censal de la AEAT y documentación de respaldo.
+- WHEN una solución oficial y gratuita cubra el caso, THEN no debe contratarse ni consultarse un proveedor comercial para esa misma verificación.
 - WHEN el país tenga otro registro público o servicio fiscal verificable, THEN debe usarse un adaptador de verificación específico de país.
 - WHEN la API remota confirme que el identificador es válido, THEN `business_verification_status` puede pasar a `verified` si el resto de datos obligatorios es coherente.
 - WHEN la API confirme nombre o dirección asociados, THEN el sistema debe compararlos con la razón social y dirección aportadas aplicando tolerancia configurable.
@@ -595,6 +600,10 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - El sistema debe informar finalidad del tratamiento y política de privacidad.
 - Debe existir consentimiento para condiciones legales y tratamiento de datos.
 - Los datos de incidencias deben tener conservación limitada y reglas claras.
+- Las incidencias identificables deben permanecer visibles para operación durante un máximo inicial de 12 meses desde su cierre. Después deben anonimizarse o eliminarse del historial operativo.
+- Las penalizaciones identificables deben conservarse mientras estén activas y hasta 12 meses después de su finalización para gestionar reclamaciones y detectar errores operativos.
+- Cuando sea necesario conservar evidencia para posibles responsabilidades, los datos suprimidos del uso operativo deben quedar bloqueados, sin acceso ordinario, durante un máximo inicial de 3 años y eliminarse al terminar el plazo aplicable, salvo obligación legal o litigio abierto.
+- Los plazos de conservación deben revisarse jurídicamente antes de producción y documentarse en la política de privacidad y en el registro de actividades de tratamiento.
 - El sistema debe permitir acceso, rectificación y supresión cuando sea legalmente aplicable.
 - La ubicación del usuario solo debe usarse con autorización.
 - La información del personal del local solo debe mostrarse si el local la configura como pública.
@@ -720,6 +729,7 @@ Las penalizaciones se aplican al email normalizado:
 - Tercera no asistencia: 21 días sin reservar.
 - Cuarta o superior: 60 días sin reservar.
 - Tras completar un bloqueo de 60 días, el contador operativo puede reiniciarse.
+- Las incidencias con más de 12 meses no participan en el contador operativo y dejan de mostrarse como historial identificable al local.
 
 ### RB-008 Cancelación de usuario
 

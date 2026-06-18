@@ -234,20 +234,20 @@ Convención transversal: cualquier nombre de tabla escrito en este plan en `snak
 - [ ] 12.6. Crear panel móvil con tarjetas y gráficos simples.
 - [ ] 12.7. Crear tests de agregación.
 
-## 15. Fase 13 - Suscripción y RedSys preparado
+## 15. Fase 13 - Suscripción y RedSys preparado sin cobro real en MVP
 
 - [ ] 13.1. Crear migraciones de `plans`, `subscriptions` y `payments`.
 - [ ] 13.2. Crear planes gratuito, profesional y premium.
 - [ ] 13.3. Implementar estados de suscripción.
 - [ ] 13.4. Crear pantalla de suscripción del local.
-- [ ] 13.5. Mostrar aviso de pago seguro externo RedSys.
-- [ ] 13.6. Implementar creación de orden RedSys.
-- [ ] 13.7. Implementar retorno y notificación RedSys con validación de firma.
-- [ ] 13.8. Implementar idempotencia de pagos.
-- [ ] 13.9. Actualizar estado de suscripción tras pago confirmado.
-- [ ] 13.10. Registrar pago rechazado, cancelado, error o pendiente.
+- [ ] 13.5. Mostrar estado de monetización y aviso de pago seguro externo RedSys solo cuando el cobro real esté habilitado.
+- [ ] 13.6. Implementar interfaz de proveedor de pagos y adaptador simulado para local, test y staging.
+- [ ] 13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación de orden, retorno y notificación.
+- [ ] 13.8. Implementar validación de firma e idempotencia mediante simulador y fixtures oficiales, sin activar producción.
+- [ ] 13.9. Actualizar estado de suscripción tras pago simulado o confirmado por un proveedor habilitado.
+- [ ] 13.10. Registrar pago simulado o real como confirmado, rechazado, cancelado, error o pendiente.
 - [ ] 13.11. Crear historial básico de facturación.
-- [ ] 13.12. Crear tests de callbacks RedSys.
+- [ ] 13.12. Crear tests de callbacks, firma e idempotencia del contrato RedSys.
 
 ## 16. Fase 14 - Administración inicial
 
@@ -411,7 +411,7 @@ Convención transversal: cualquier nombre de tabla escrito en este plan en `snak
 ### P2 - Post-MVP
 
 - Recomendaciones por factorización matricial.
-- Pagos RedSys completos si no se activaron en MVP.
+- Activación completa de RedSys en producción tras contrato con entidad adquirente, credenciales reales y validación del entorno de pruebas.
 - Estadísticas avanzadas.
 - Servicios con duración variable avanzada.
 - Excepciones de empleados por rango de fechas.
