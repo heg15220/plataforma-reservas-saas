@@ -1,6 +1,18 @@
 spring:
   application:
     name: reserly-api
+  cache:
+    type: redis
+    redis:
+      cacheNullValues: false
+      keyPrefix: "reserly::"
+      timeToLive: ${RESERLY_CACHE_DEFAULT_TTL:5m}
+      useKeyPrefix: true
+  data:
+    redis:
+      url: ${RESERLY_REDIS_URL}
+      connectTimeout: ${RESERLY_REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${RESERLY_REDIS_COMMAND_TIMEOUT:2s}
   datasource:
     url: ${RESERLY_DATABASE_URL}
     username: ${RESERLY_DATABASE_USERNAME}
@@ -26,6 +38,20 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+  rabbitmq:
+    addresses: ${RESERLY_RABBITMQ_URL}
+    connectionTimeout: ${RESERLY_RABBITMQ_CONNECTION_TIMEOUT:5s}
+    publisherConfirmType: correlated
+    publisherReturns: true
+    requestedHeartbeat: ${RESERLY_RABBITMQ_REQUESTED_HEARTBEAT:30s}
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        initialInterval: 500ms
+        maxAttempts: 3
+        maxInterval: 5s
+        multiplier: 2
 
 reserly:
   environment: ${RESERLY_ENVIRONMENT}

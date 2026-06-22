@@ -22,24 +22,32 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 
 ## Responsabilidad de las variables
 
-| Variable                        | Consumidor       | Pública | Obligatoria ahora          |
-| ------------------------------- | ---------------- | ------- | -------------------------- |
-| `RESERLY_ENVIRONMENT`           | API              | No      | Sí                         |
-| `RESERLY_PUBLIC_BASE_URL`       | API              | No      | Sí                         |
-| `RESERLY_WEB_BASE_URL`          | API              | No      | Sí                         |
-| `RESERLY_ALLOWED_ORIGINS`       | API              | No      | Sí                         |
-| `RESERLY_SECURE_COOKIES`        | API              | No      | Sí                         |
-| `RESERLY_REAL_PAYMENTS_ENABLED` | API              | No      | Sí; debe ser `false`       |
-| `RESERLY_DATABASE_NAME`         | Docker Compose   | No      | Sí                         |
-| `RESERLY_DATABASE_PORT`         | Docker Compose   | No      | Sí                         |
-| `RESERLY_DATABASE_URL`          | API              | No      | Sí                         |
-| `RESERLY_DATABASE_USERNAME`     | API y Compose    | No      | Sí                         |
-| `RESERLY_DATABASE_PASSWORD`     | API y Compose    | No      | Sí                         |
-| `NEXT_PUBLIC_APP_ENV`           | Web y navegador  | Sí      | Sí                         |
-| `NEXT_PUBLIC_API_BASE_URL`      | Web y navegador  | Sí      | Sí                         |
-| `RESERLY_API_INTERNAL_URL`      | Servidor Next.js | No      | No; fallback a URL pública |
+| Variable                           | Consumidor       | Pública | Obligatoria ahora          |
+| ---------------------------------- | ---------------- | ------- | -------------------------- |
+| `RESERLY_ENVIRONMENT`              | API              | No      | Sí                         |
+| `RESERLY_PUBLIC_BASE_URL`          | API              | No      | Sí                         |
+| `RESERLY_WEB_BASE_URL`             | API              | No      | Sí                         |
+| `RESERLY_ALLOWED_ORIGINS`          | API              | No      | Sí                         |
+| `RESERLY_SECURE_COOKIES`           | API              | No      | Sí                         |
+| `RESERLY_REAL_PAYMENTS_ENABLED`    | API              | No      | Sí; debe ser `false`       |
+| `RESERLY_DATABASE_NAME`            | Docker Compose   | No      | Sí                         |
+| `RESERLY_DATABASE_PORT`            | Docker Compose   | No      | Sí                         |
+| `RESERLY_DATABASE_URL`             | API              | No      | Sí                         |
+| `RESERLY_DATABASE_USERNAME`        | API y Compose    | No      | Sí                         |
+| `RESERLY_DATABASE_PASSWORD`        | API y Compose    | No      | Sí                         |
+| `RESERLY_REDIS_PORT`               | Docker Compose   | No      | Sí                         |
+| `RESERLY_REDIS_PASSWORD`           | Docker Compose   | No      | Sí                         |
+| `RESERLY_REDIS_URL`                | API              | No      | Sí                         |
+| `RESERLY_RABBITMQ_PORT`            | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_MANAGEMENT_PORT` | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_USERNAME`        | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_PASSWORD`        | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_URL`             | API              | No      | Sí                         |
+| `NEXT_PUBLIC_APP_ENV`              | Web y navegador  | Sí      | Sí                         |
+| `NEXT_PUBLIC_API_BASE_URL`         | Web y navegador  | Sí      | Sí                         |
+| `RESERLY_API_INTERNAL_URL`         | Servidor Next.js | No      | No; fallback a URL pública |
 
-Las variables de PostgreSQL ya son consumidas por Spring Boot y Docker Compose. Redis, RabbitMQ y S3 permanecen como contratos reservados hasta `0.6` y las tareas de archivos.
+Las variables de PostgreSQL, Redis y RabbitMQ ya son consumidas por Spring Boot y Docker Compose. S3 permanece como contrato reservado hasta las tareas de archivos.
 
 ## Reglas de seguridad
 
@@ -49,6 +57,8 @@ Las variables de PostgreSQL ya son consumidas por Spring Boot y Docker Compose. 
 - Producción no debe cargar un fichero `.env.production` desde el repositorio o la imagen.
 - Los pagos reales permanecen desactivados hasta completar y aprobar la integración RedSys.
 - Los certificados y claves privadas de AEAT nunca se guardan en estos ficheros.
+- Las URLs de Redis y RabbitMQ contienen credenciales y deben tratarse como secretos.
+- Redis y RabbitMQ deben usar TLS en staging y producción cuando el proveedor no garantice una red privada equivalente.
 
 ## Perfiles Spring
 
@@ -73,3 +83,14 @@ npm run build:web
 `npm run verify` usa valores de test explícitos y no depende de secretos ni de ficheros locales.
 
 `npm run env:check` comprueba que las tres plantillas mantienen las mismas variables, que staging y producción usan HTTPS y cookies seguras, que los pagos reales siguen desactivados y que ninguna clave potencialmente secreta usa el prefijo público de Next.js.
+
+## Caché y mensajería
+
+La API consume:
+
+- `RESERLY_REDIS_URL` mediante Spring Data Redis y Lettuce.
+- `RESERLY_RABBITMQ_URL` mediante Spring AMQP.
+- `RESERLY_CACHE_DEFAULT_TTL`, opcional, con valor predeterminado de cinco minutos.
+- Timeouts opcionales `RESERLY_REDIS_CONNECT_TIMEOUT`, `RESERLY_REDIS_COMMAND_TIMEOUT`, `RESERLY_RABBITMQ_CONNECTION_TIMEOUT` y `RESERLY_RABBITMQ_REQUESTED_HEARTBEAT`.
+
+La URI AMQP local no incluye un path de vhost; el cliente usa `/` por defecto. No debe añadirse `/%2f`, porque Spring Boot 4.1 lo interpreta como el nombre literal `%2f`.

@@ -29,5 +29,54 @@ services:
       start_period: 10s
     stop_grace_period: 30s
 
+  redis:
+    image: redis:8.8.0-alpine@sha256:09160599abd229764c0fb44cb6be640294e1d360a54b19985ab4843dcf2d90f1
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${RESERLY_REDIS_PASSWORD:?RESERLY_REDIS_PASSWORD is required}
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --appendfsync everysec --requirepass "$${REDIS_PASSWORD}"
+    ports:
+      - 127.0.0.1:${RESERLY_REDIS_PORT:-6379}:6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli --no-auth-warning -a "$${REDIS_PASSWORD}" ping | grep PONG
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    stop_grace_period: 15s
+
+  rabbitmq:
+    image: rabbitmq:4.3.2-management-alpine@sha256:a2b8ca223e4b6b91ce6dac5a87e8d4551974a7d8dc8c919d333b757507966ffd
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RESERLY_RABBITMQ_USERNAME:?RESERLY_RABBITMQ_USERNAME is required}
+      RABBITMQ_DEFAULT_PASS: ${RESERLY_RABBITMQ_PASSWORD:?RESERLY_RABBITMQ_PASSWORD is required}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - 127.0.0.1:${RESERLY_RABBITMQ_PORT:-5672}:5672
+      - 127.0.0.1:${RESERLY_RABBITMQ_MANAGEMENT_PORT:-15672}:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmq-diagnostics
+        - -q
+        - ping
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    stop_grace_period: 30s
+
 volumes:
   postgres-data:
+  rabbitmq-data:
+  redis-data:

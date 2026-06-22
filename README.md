@@ -44,13 +44,13 @@ Copy-Item .env.local.example .env.local
 Iniciar API y web en paralelo:
 
 ```bash
-npm run db:up
+npm run infra:up
 npm run dev
 ```
 
 También pueden iniciarse por separado con `npm run dev:api` y `npm run dev:web`.
 
-PostgreSQL/PostGIS se ejecuta localmente con Docker Compose. Redis, RabbitMQ y almacenamiento S3 se incorporarán en las tareas posteriores.
+PostgreSQL/PostGIS, Redis y RabbitMQ se ejecutan localmente con Docker Compose. El almacenamiento S3 se incorporará en una tarea posterior.
 
 La matriz y las políticas de variables están en [`docs/configuration.md`](docs/configuration.md).
 

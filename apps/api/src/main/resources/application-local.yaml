@@ -1,8 +1,13 @@
 spring:
+  data:
+    redis:
+      url: ${RESERLY_REDIS_URL:redis://:reserly-redis-local-only-change-me@localhost:6379}
   datasource:
     url: ${RESERLY_DATABASE_URL:jdbc:postgresql://localhost:5432/reserly?ApplicationName=reserly-api}
     username: ${RESERLY_DATABASE_USERNAME:reserly}
     password: ${RESERLY_DATABASE_PASSWORD:reserly-local-only-change-me}
+  rabbitmq:
+    addresses: ${RESERLY_RABBITMQ_URL:amqp://reserly:reserly-rabbit-local-only-change-me@localhost:5672}
 
 reserly:
   environment: ${RESERLY_ENVIRONMENT:local}

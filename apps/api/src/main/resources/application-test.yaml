@@ -1,4 +1,9 @@
 spring:
+  cache:
+    type: none
+  data:
+    redis:
+      url: redis://localhost:1
   datasource:
     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
     url: jdbc:tc:postgis:17-3.5:///reserly_test
@@ -7,6 +12,9 @@ spring:
     hikari:
       maximumPoolSize: 3
       minimumIdle: 1
+  rabbitmq:
+    addresses: amqp://guest:guest@localhost:1
+    dynamic: false
 
 reserly:
   environment: test

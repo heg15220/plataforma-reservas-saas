@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4` y `0.5`.
-- Siguiente tarea pendiente recomendada: `0.6. Configurar cola de trabajos y cache.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5` y `0.6`.
+- Siguiente tarea pendiente recomendada: `0.7. Crear layout base responsive y sistema de componentes.`
 
 ## Plantilla obligatoria por tarea
 
@@ -1177,3 +1177,303 @@ Incidencia detectada y corregida:
 - Los tamaños definitivos de pool deben ajustarse al proveedor y número de réplicas.
 - No existen todavía entidades, DAOs ni consultas; comienzan en `1.1`.
 - No se han creado índices de dominio ni columnas espaciales; se añadirán con las tablas correspondientes.
+
+## Tarea 0.6 - Configurar cola de trabajos y cache
+
+- Fecha: 2026-06-22
+- Commit o referencia: rama `codex/task-0.6-messaging-cache`, apilada sobre `codex/task-0.5-postgresql-flyway`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Incorporar Redis y RabbitMQ como servicios operativos, reproducibles y verificables, y conectar la API Spring Boot a ambos sin adelantar lógica de negocio. Redis debe proporcionar la base común para cachés, rate limiting y TTL auxiliares. RabbitMQ debe proporcionar un canal fiable para trabajos que no deben bloquear transacciones HTTP, con una topología mínima, confirmación de publicación y tratamiento explícito de mensajes no procesables.
+
+La tarea no implementa todavía emails, expiración de holds, estadísticas ni otros jobs de dominio. Tampoco convierte Redis en almacén transaccional. Su resultado es una infraestructura transversal documentada que los futuros contextos podrán consumir mediante contratos versionados.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-001 Seguridad`: credenciales externas, puertos locales limitados y ausencia de secretos reales versionados.
+  - `RNF-003 Concurrencia y consistencia`: PostgreSQL permanece como fuente de verdad; caché y cola no sustituyen las transacciones.
+  - `RNF-004 Rendimiento`: caché con TTL e invalidación futura por módulo.
+  - `RNF-005 Escalabilidad`: trabajos desacoplados de la petición y topología versionada.
+  - `RNF-006 Disponibilidad operativa`: healthchecks, reintentos acotados, publisher confirms y dead letters.
+- Diseño:
+  - `1.1 Estilo de arquitectura`.
+  - `1.2 Componentes`.
+  - `1.3 Stack definitivo seleccionado`.
+  - `3.12 Notificaciones`.
+  - `5.3 Confirmación`.
+  - `5.4 Expiración`.
+- Tareas relacionadas:
+  - `0.6. Configurar cola de trabajos y cache`.
+  - `1.16. Añadir rate limiting`.
+  - `7.11. Encolar emails de confirmación`.
+  - `7.12. Implementar job de expiración de holds`.
+  - `8.7. Implementar cola de envío con reintentos`.
+  - `8.8. Implementar almacenamiento de errores de envío`.
+  - `10.4. Implementar job para marcar asistida por defecto`.
+  - `12.2. Implementar agregación diaria de estadísticas`.
+
+### Archivos afectados
+
+- Creados:
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/cache/CacheConfiguration.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/cache/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/messaging/MessagingConfiguration.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/messaging/MessagingTopology.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/messaging/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/infrastructure/InfrastructureServicesIntegrationTests.java`
+  - `docs/architecture/cache-and-messaging.md`
+- Modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `package.json`
+  - `scripts/validate-environment-examples.mjs`
+  - `README.md`
+  - `docs/README.md`
+  - `docs/configuration.md`
+  - `infrastructure/compose.yaml`
+  - `infrastructure/README.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/application-local.yaml`
+  - `apps/api/src/main/resources/application-test.yaml`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### Servicios Docker Compose
+
+`infrastructure/compose.yaml` añade Redis y RabbitMQ junto a PostgreSQL:
+
+- Redis `8.8.0-alpine`, fijado por el digest `sha256:09160599abd229764c0fb44cb6be640294e1d360a54b19985ab4843dcf2d90f1`.
+- RabbitMQ `4.3.2-management-alpine`, fijado por el digest `sha256:a2b8ca223e4b6b91ce6dac5a87e8d4551974a7d8dc8c919d333b757507966ffd`.
+- Puertos publicados exclusivamente en `127.0.0.1`.
+- Volúmenes persistentes independientes `redis-data` y `rabbitmq-data`.
+- Healthcheck autenticado de Redis mediante `PING`.
+- Healthcheck de RabbitMQ mediante `rabbitmq-diagnostics -q ping`.
+- Periodos de arranque y apagado adaptados a cada servicio.
+
+Redis se inicia con:
+
+- contraseña obligatoria;
+- AOF habilitado;
+- sincronización AOF cada segundo;
+- persistencia en `/data`.
+
+RabbitMQ se inicia con:
+
+- usuario y contraseña obligatorios distintos del acceso implícito `guest`;
+- vhost `/`;
+- puerto AMQP `5672`;
+- interfaz de gestión `15672`, solo local;
+- persistencia en `/var/lib/rabbitmq`.
+
+Los scripts raíz añadidos son:
+
+- `infra:up`, `infra:down`, `infra:logs`, `infra:status` e `infra:config` para los tres servicios.
+- `services:up`, `services:logs` y `services:status` para Redis y RabbitMQ.
+- Los comandos `db:*` existentes se conservan para trabajar únicamente con PostgreSQL.
+
+#### Integración Redis
+
+Se añadieron `spring-boot-starter-cache` y `spring-boot-starter-data-redis`. Spring Boot crea la conexión Lettuce, `StringRedisTemplate` y `RedisCacheManager`.
+
+La política común es:
+
+- proveedor de caché Redis explícito;
+- TTL predeterminado de cinco minutos mediante `RESERLY_CACHE_DEFAULT_TTL`;
+- prefijo global `reserly::`;
+- prefijo adicional por nombre de caché;
+- valores nulos deshabilitados;
+- timeout de conexión y comando de dos segundos por defecto;
+- URL con credenciales recibida mediante `RESERLY_REDIS_URL`.
+
+`CacheConfiguration` activa la abstracción `@EnableCaching` y documenta la invariante principal: una caché puede acelerar una lectura, pero no autoriza operaciones ni confirma disponibilidad. Cada módulo será propietario de sus nombres, claves, TTL específicos e invalidaciones.
+
+#### Integración RabbitMQ
+
+Se añadió `spring-boot-starter-amqp`. La conexión y la plantilla usan:
+
+- `RESERLY_RABBITMQ_URL`;
+- timeout de conexión de cinco segundos;
+- heartbeat solicitado de treinta segundos;
+- publisher confirms correlacionados;
+- publisher returns;
+- publicación obligatoria para detectar mensajes sin ruta;
+- tres intentos de publicación inmediata;
+- backoff de 500 ms, multiplicador 2 y máximo de cinco segundos.
+
+`MessagingTopology` concentra nombres públicos y versionados:
+
+- `reserly.jobs.v1`.
+- `reserly.jobs.dead-letter.v1`.
+- routing key `jobs.dead-letter`.
+
+`MessagingConfiguration` declara:
+
+- exchange topic durable de trabajos;
+- exchange topic durable de dead letters;
+- cola durable de aparcamiento;
+- binding de dead letters.
+
+No se declara una cola genérica de consumo. Cada contexto funcional debe crear una cola durable propia, con un único contrato compatible, routing key específica y dead lettering hacia la topología compartida. Esta decisión evita que consumidores heterogéneos compitan por mensajes que no pueden procesar.
+
+La cola de aparcamiento no tiene consumidor automático. Los mensajes agotados quedan disponibles para inspección, auditoría operativa y recuperación manual; no entran en un ciclo infinito de reintentos.
+
+#### Configuración por entornos
+
+Las tres plantillas dotenv incorporan:
+
+- puertos;
+- credenciales;
+- URLs de Redis y RabbitMQ;
+- puerto de gestión de RabbitMQ.
+
+Local contiene credenciales de desarrollo no reutilizables. Staging y producción contienen únicamente marcadores para gestor de secretos. El validador de plantillas exige paridad de todas las nuevas claves.
+
+La URI AMQP omite el path. Spring Boot 4.1 utiliza correctamente el vhost `/` por defecto. Durante la verificación se comprobó que `/%2f` se interpretaba como el nombre literal `%2f`, por lo que se eliminó y se documentó la restricción.
+
+### Modelo de datos
+
+No se crearon tablas, migraciones ni entidades.
+
+Redis contiene únicamente datos efímeros o regenerables. RabbitMQ conserva mensajes y metadatos operativos en su volumen, pero no sustituye el registro de estado de negocio en PostgreSQL.
+
+Las futuras operaciones que necesiten garantía atómica entre un cambio PostgreSQL y la publicación de un mensaje deberán implementar un outbox persistente. No se introduce una transacción distribuida entre PostgreSQL y RabbitMQ.
+
+### Contratos y APIs
+
+No se añadieron endpoints REST.
+
+Contratos de infraestructura:
+
+- Caché:
+  - prefijo `reserly::`;
+  - TTL común de cinco minutos;
+  - valores nulos prohibidos.
+- Mensajería:
+  - exchange de trabajos `reserly.jobs.v1`;
+  - exchange y cola de dead letters `reserly.jobs.dead-letter.v1`;
+  - routing key de aparcamiento `jobs.dead-letter`;
+  - entrega al menos una vez, por lo que los consumidores deben ser idempotentes.
+
+Los trabajos de negocio futuros deberán definir:
+
+- identificador estable del evento o job;
+- versión de payload;
+- routing key;
+- cola propietaria;
+- política de reintentos;
+- idempotencia;
+- tratamiento de errores definitivos;
+- datos mínimos almacenados para observabilidad.
+
+### Seguridad, privacidad e i18n
+
+- Redis y RabbitMQ exigen autenticación.
+- Ningún puerto se publica fuera de localhost en Compose.
+- La interfaz de gestión de RabbitMQ no debe exponerse públicamente.
+- Las URLs contienen credenciales y se documentan como secretos.
+- Staging y producción deben usar TLS o una red privada con garantías equivalentes.
+- No se almacenan datos personales en esta tarea.
+- Los futuros payloads deben minimizar datos personales y evitar secretos.
+- Los nombres de exchanges y claves son técnicos, estables y no visibles al usuario.
+- Documentación, comentarios y plantillas se mantienen en UTF-8.
+
+### UI y experiencia de usuario
+
+No se modificó la interfaz.
+
+La infraestructura evita que futuros emails, estadísticas o callbacks ralenticen la confirmación de reservas. La consola de RabbitMQ en `http://localhost:15672` es una herramienta exclusiva para desarrollo y operación local.
+
+### Tests y verificación
+
+`InfrastructureServicesIntegrationTests` usa Testcontainers `2.0.5` con imágenes reales fijadas por digest:
+
+- Redis con contraseña y espera hasta `Ready to accept connections`.
+- RabbitMQ con usuario/contraseña propios y espera hasta `Server startup complete`.
+- PostgreSQL/PostGIS continúa arrancando mediante el driver Testcontainers del perfil `test`.
+
+Pruebas Redis:
+
+- escritura y lectura autenticada mediante `StringRedisTemplate`;
+- TTL explícito de treinta segundos;
+- creación dinámica de una caché Spring;
+- prefijo físico `reserly::infrastructure-smoke::`;
+- TTL común inferior o igual a cinco minutos.
+
+Pruebas RabbitMQ:
+
+- existencia de la cola durable de dead letters;
+- declaración de una cola efímera y binding de prueba;
+- publicación mediante el exchange de trabajos;
+- publisher confirm correlacionado con `ack=true`;
+- recepción del payload;
+- eliminación de la cola temporal.
+
+El contexto de Spring se cierra antes que los contenedores para liberar pools y conexiones sin falsos avisos de reconexión.
+
+Evidencia automatizada:
+
+- `npm run env:check`: tres plantillas válidas y con claves equivalentes.
+- `npm run infra:config`: Compose válido.
+- `npm run verify`: correcto.
+- ESLint y Checkstyle: cero incidencias.
+- Prettier y Spotless: formato correcto.
+- TypeScript: correcto.
+- Vitest: 2 ficheros y 5 tests correctos.
+- JUnit/Spring Boot: 9 tests correctos.
+- Integración real: PostGIS, Redis y RabbitMQ correctos.
+- Build Next.js: correcto.
+- Build Spring Boot: JAR generado.
+- `git diff --check`: sin errores de whitespace.
+
+Evidencia manual automatizada sobre Compose:
+
+1. Redis y RabbitMQ arrancaron con `docker compose up -d --wait`.
+2. Ambos servicios alcanzaron estado `healthy`.
+3. Redis autenticado respondió `PONG`.
+4. `rabbitmq-diagnostics check_running` confirmó el broker completamente iniciado.
+5. `rabbitmqctl list_vhosts` confirmó el vhost `/`.
+6. Los puertos aparecieron ligados exclusivamente a `127.0.0.1`.
+7. Compose se detuvo conservando los volúmenes.
+
+Incidencias detectadas y corregidas:
+
+- La espera inicial basada solo en puerto permitía intentar conectar antes de que RabbitMQ estuviera listo. Se cambió a espera por log de arranque completo.
+- La URI con `/%2f` producía `NOT_ALLOWED - vhost %2f not found`. Se eliminó el path y se verificó el vhost `/`.
+- Testcontainers detenía Redis antes de cerrar el contexto y Lettuce registraba avisos de reconexión. Se añadió `@DirtiesContext(AFTER_CLASS)` para cerrar clientes primero.
+
+### Decisiones técnicas
+
+- Redis 8.8 y RabbitMQ 4.3, versiones oficiales estables disponibles durante la iteración.
+- Imágenes fijadas por tag y digest.
+- Spring Data Redis, Spring Cache y Spring AMQP, alineados con Spring Boot 4.1.
+- Persistencia local de Redis mediante AOF; el contenido sigue considerándose regenerable.
+- Exchange topic en vez de direct para permitir familias de routing keys versionadas.
+- Cola de dead letters central de aparcamiento y colas de consumo por módulo.
+- Publisher confirms y returns desde la base, antes de implementar productores de dominio.
+- Reintentos de publicación cortos; los reintentos funcionales se definirán por job.
+- Testcontainers genérico para Redis y RabbitMQ, sin depender de módulos especiales que no aportan comportamiento necesario.
+- Outbox diferido hasta el primer flujo que necesite garantía PostgreSQL-mensaje.
+
+### Riesgos y deuda técnica
+
+- Redis y RabbitMQ son puntos operativos adicionales y necesitan backups, alta disponibilidad, métricas y alertas antes de producción.
+- Las credenciales locales de ejemplo deben cambiarse si se comparte el entorno.
+- No se ha configurado TLS local; staging y producción deben resolverlo en la plataforma.
+- No existen todavía cachés de dominio ni invalidaciones.
+- No existen colas consumidoras de negocio, listeners, payloads, idempotencia ni registro de entregas.
+- La cola de dead letters requiere un runbook y herramientas de inspección/republicación en la fase de observabilidad.
+- El outbox persistente es obligatorio para notificaciones derivadas de transacciones críticas.
+- El rate limiting todavía no está implementado; Redis solo proporciona su infraestructura.
+- La serialización definitiva de payloads AMQP debe cerrarse al crear el primer contrato de job, preferentemente JSON versionado y validado.

@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-22
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4` y `0.5`.
-- Siguiente tarea pendiente recomendada: `0.6. Configurar cola de trabajos y cache.`
-- Observación: PostgreSQL 17 con PostGIS 3.5 ya está disponible mediante Docker Compose, Flyway controla el esquema, Hibernate solo valida y los tests migran una base efímera desde cero. Continúan pendientes Redis/RabbitMQ, UI base y pipeline CI.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5` y `0.6`.
+- Siguiente tarea pendiente recomendada: `0.7. Crear layout base responsive y sistema de componentes.`
+- Observación: PostgreSQL/PostGIS, Redis y RabbitMQ ya están disponibles mediante Docker Compose y verificados con Testcontainers. La API aplica TTL y prefijos de caché, y dispone de una topología AMQP base con publisher confirms y dead letters. Continúan pendientes la UI base y el pipeline CI.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -545,3 +545,54 @@ Fuente de verdad del avance:
   - Las conexiones Hikari ejecutan `SET TIME ZONE 'UTC'`. Esta medida se añadió porque la primera prueba real detectó que una sesión heredaba `Europe/Madrid` aunque el servidor estuviera en UTC.
   - Los tests backend requieren Docker y usan una base PostGIS efímera.
   - La verificación local sobre un volumen creado desde cero confirmó Flyway `V1`, las tres extensiones, UTF-8 y UTC.
+
+## Conversación 17 - Redis, RabbitMQ y trabajos asíncronos
+
+- Fecha: 2026-06-22
+- Resumen: se configuraron Redis 8.8 y RabbitMQ 4.3 para desarrollo local y para la API Spring Boot. Redis queda disponible para caché, rate limiting y TTL auxiliares; RabbitMQ incorpora una topología compartida versionada, publisher confirms, publisher returns, reintentos de publicación y una cola durable de dead letters. Se añadieron tests de integración con contenedores reales y se verificó también el Compose local.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `package.json`
+  - `scripts/validate-environment-examples.mjs`
+  - `README.md`
+  - `docs/README.md`
+  - `docs/configuration.md`
+  - `docs/architecture/cache-and-messaging.md`
+  - `infrastructure/compose.yaml`
+  - `infrastructure/README.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/application-local.yaml`
+  - `apps/api/src/main/resources/application-test.yaml`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/cache/CacheConfiguration.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/cache/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/messaging/MessagingConfiguration.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/messaging/MessagingTopology.java`
+  - `apps/api/src/main/java/com/reserly/platform/infrastructure/messaging/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/infrastructure/InfrastructureServicesIntegrationTests.java`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-001 Seguridad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-005 Escalabilidad`.
+  - `RNF-006 Disponibilidad operativa`.
+- Tareas impactadas:
+  - `0.6. Configurar cola de trabajos y cache.`
+  - Prepara `1.16`, `3.7`, `7.11`, `7.12`, `8.7`, `8.8`, `10.4`, `12.2` y las futuras tareas que requieran rate limiting, caché o ejecución asíncrona.
+- Tareas completadas:
+  - `0.6. Configurar cola de trabajos y cache.`
+- Siguiente tarea pendiente recomendada:
+  - `0.7. Crear layout base responsive y sistema de componentes.`
+- Decisiones o aclaraciones relevantes:
+  - Redis no es fuente de verdad y no puede decidir capacidad, permisos, penalizaciones ni pagos.
+  - El TTL común de caché es de cinco minutos, los valores nulos están deshabilitados y las claves usan el prefijo `reserly::`.
+  - RabbitMQ usa exchanges topic versionados y una cola de aparcamiento; cada módulo declarará su cola durable y routing key.
+  - Los consumidores deberán ser idempotentes y los flujos que necesiten garantía entre PostgreSQL y RabbitMQ deberán implementar un outbox persistente.
+  - La URI AMQP no debe incluir `/%2f` con Spring Boot 4.1; sin path se usa correctamente el vhost `/`.
+  - Las imágenes oficiales de Redis y RabbitMQ están fijadas por versión y digest, protegidas con credenciales y publicadas solo en localhost.
