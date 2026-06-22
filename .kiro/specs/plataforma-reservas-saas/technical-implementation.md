@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2` y `0.3`.
-- Siguiente tarea pendiente recomendada: `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3` y `0.4`.
+- Siguiente tarea pendiente recomendada: `0.5. Configurar PostgreSQL local y migraciones.`
 
 ## Plantilla obligatoria por tarea
 
@@ -700,3 +700,240 @@ La ejecución JUnit muestra un aviso de Mockito/Byte Buddy sobre la futura restr
 - El aviso futuro de Mockito sobre agentes dinámicos debe resolverse antes de adoptar un JDK que cambie el comportamiento predeterminado.
 - Los overrides de esbuild y PostCSS deben revisarse al actualizar Vite y Next.js.
 - `npm run dev` requiere que los puertos predeterminados de Spring Boot y Next.js estén libres; la configuración por entorno pertenece a `0.4`.
+
+## Tarea 0.4 - Configurar variables de entorno por entorno: local, staging y producción
+
+- Fecha: 2026-06-22
+- Commit o referencia: rama `codex/task-0.4-environment-config`, apilada sobre `codex/task-0.3-quality-tooling`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Definir un contrato explícito, seguro y verificable para configurar Reserly en desarrollo local, staging y producción. La configuración debía fallar temprano ante valores ausentes o políticas inseguras, separar datos públicos del navegador de secretos del servidor y preparar las variables de infraestructura sin adelantar la implementación de PostgreSQL, Redis, RabbitMQ, S3 o proveedores externos.
+
+También se creó un perfil `test` no desplegable para que las pruebas automatizadas sean deterministas y no dependan de ficheros `.env`, credenciales ni servicios externos.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-001 Seguridad`: HTTPS obligatorio en producción y secretos fuera del repositorio.
+  - `RNF-005 Escalabilidad`: proveedores e infraestructura configurables por entorno.
+  - `RNF-006 Disponibilidad operativa`: configuraciones inválidas se rechazan antes de servir tráfico.
+  - `RNF-010 Verificación empresarial remota`: futuros certificados, tokens y URLs quedan fuera del código.
+  - `RNF-012 Calidad lingüística y UTF-8`.
+- Diseño:
+  - `1.2 Componentes`.
+  - `1.3 Stack definitivo seleccionado`.
+  - `12. Seguridad`.
+  - `17.2 Estrategia de coste: gratuito primero`.
+  - Configuración por entorno de email, geocodificación, AEAT, RedSys y almacenamiento.
+- Tareas relacionadas:
+  - `0.4. Configurar variables de entorno por entorno`.
+  - `0.5. Configurar PostgreSQL local y migraciones`.
+  - `0.6. Configurar cola de trabajos y cache`.
+  - `8.1. Configurar proveedor de email transaccional`.
+  - `13.7. Preparar adaptador RedSys`.
+
+### Archivos afectados
+
+- Creados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `scripts/validate-environment-examples.mjs`
+  - `docs/configuration.md`
+  - `apps/web/environment.ts`
+  - `apps/web/environment.test.ts`
+  - `apps/api/src/main/java/com/reserly/platform/configuration/ReserlyEnvironment.java`
+  - `apps/api/src/main/java/com/reserly/platform/configuration/ReserlyProperties.java`
+  - `apps/api/src/main/java/com/reserly/platform/configuration/package-info.java`
+  - `apps/api/src/main/resources/application-local.yaml`
+  - `apps/api/src/main/resources/application-staging.yaml`
+  - `apps/api/src/main/resources/application-production.yaml`
+  - `apps/api/src/main/resources/application-test.yaml`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/ReserlyPropertiesTests.java`
+- Modificados:
+  - `.gitignore`
+  - `README.md`
+  - `package.json`
+  - `package-lock.json`
+  - `docs/configuration.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/java/com/reserly/platform/ReserlyApplication.java`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/test/java/com/reserly/platform/ReserlyApplicationTests.java`
+  - `apps/web/README.md`
+  - `apps/web/next.config.ts`
+  - `apps/web/package.json`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### Plantillas y carga local
+
+Se versionaron tres plantillas:
+
+- `.env.local.example`: valores ejecutables para localhost y placeholders no sensibles para la futura infraestructura.
+- `.env.staging.example`: URLs HTTPS de ejemplo y marcadores que deben sustituirse desde un gestor de secretos.
+- `.env.production.example`: referencia contractual; no debe copiarse dentro de imágenes ni contener valores reales.
+
+`.gitignore` mantiene ignorados `.env` y `.env.*`, permitiendo únicamente `*.example`. De este modo, una copia local como `.env.local` no puede añadirse accidentalmente salvo uso explícito de `git add --force`.
+
+`dotenv-cli` carga `.env.local` en `npm run dev` y `.env.staging` en `npm run dev:staging`. Producción no tiene un script que cargue ficheros: debe recibir variables inyectadas por la plataforma de despliegue.
+
+#### Contrato backend
+
+`application.yaml` define las propiedades comunes:
+
+- `RESERLY_ENVIRONMENT`.
+- `RESERLY_PUBLIC_BASE_URL`.
+- `RESERLY_WEB_BASE_URL`.
+- `RESERLY_ALLOWED_ORIGINS`.
+- `RESERLY_SECURE_COOKIES`.
+- `RESERLY_REAL_PAYMENTS_ENABLED`.
+
+Los perfiles Spring aportan políticas:
+
+- `local`: valores localhost por defecto, HTTP y cookies no seguras permitidos.
+- `staging`: entorno fijo, cookies seguras por defecto y pagos reales desactivados.
+- `production`: entorno fijo, cookies seguras por defecto y pagos reales desactivados.
+- `test`: URLs localhost aisladas y sin dependencias externas.
+
+`ReserlyApplication` activa `@ConfigurationPropertiesScan`. `ReserlyProperties` es un record inmutable validado que enlaza URLs como `URI`, orígenes como lista y grupos anidados de seguridad y features.
+
+Las invariantes con `@AssertTrue` son:
+
+- Las URLs públicas de API y web deben usar HTTPS fuera de `local` y `test`.
+- Las cookies seguras son obligatorias en staging y producción.
+- `realPaymentsEnabled` debe permanecer siempre en `false` hasta completar la integración correspondiente.
+
+La aplicación falla durante el binding de configuración y antes de completar el arranque si se viola una de estas políticas.
+
+#### Contrato frontend
+
+`apps/web/environment.ts` usa Zod `4.4.3` y expone:
+
+- `parseWebEnvironment`, función pura y testeable.
+- `loadWebEnvironment`, lectura del proceso durante `next dev` o `next build`.
+
+Variables:
+
+- `NEXT_PUBLIC_APP_ENV`: `local`, `staging`, `production` o el perfil interno `test`.
+- `NEXT_PUBLIC_API_BASE_URL`: URL pública que puede llegar al navegador.
+- `RESERLY_API_INTERNAL_URL`: URL solo servidor para comunicación interna; si falta, usa la URL pública.
+
+`next.config.ts` invoca la validación al cargarse. Un build no puede avanzar con variables ausentes, URLs inválidas o HTTP público en staging/producción. Solo las dos variables `NEXT_PUBLIC_*` se copian al bundle público.
+
+#### Validación de plantillas
+
+`scripts/validate-environment-examples.mjs` analiza las plantillas sin expandir valores y comprueba:
+
+- Presencia del mismo conjunto de claves obligatorias.
+- Coincidencia entre el entorno de API y web.
+- HTTPS público en staging y producción.
+- Cookies seguras fuera de local.
+- Pagos reales desactivados.
+- Ausencia de nombres que parezcan secretos bajo el prefijo `NEXT_PUBLIC_`.
+
+El comando `npm run env:check` se incorporó al inicio de `npm run verify`.
+
+### Modelo de datos
+
+No se creó ni modificó ningún modelo de datos.
+
+Las plantillas reservan nombres para URL, usuario y contraseña de PostgreSQL, pero Spring no configura todavía un datasource. Esa conexión, PostGIS, Flyway y las primeras migraciones pertenecen a `0.5`.
+
+También se reservan contratos para Redis, RabbitMQ y S3, que no se consumen hasta `0.6` y las tareas de archivos.
+
+### Contratos y APIs
+
+No se añadieron endpoints REST.
+
+Se definieron contratos de configuración que afectarán a futuros enlaces, callbacks, CORS y llamadas servidor-servidor:
+
+- URL pública de la API.
+- URL pública de la web.
+- URL interna de API para Next.js.
+- Lista de orígenes permitidos.
+
+La existencia de `RESERLY_ALLOWED_ORIGINS` no implica que CORS esté habilitado; la política concreta se implementará junto con seguridad y autenticación.
+
+### Seguridad, privacidad e i18n
+
+- Ningún secreto real fue creado, leído o versionado.
+- Las variables públicas están limitadas y documentadas.
+- Las plantillas de staging/producción señalan explícitamente el uso de un gestor de secretos.
+- Certificados AEAT, claves privadas, tokens de LocationIQ, credenciales Brevo y claves RedSys no se incluyen.
+- HTTPS y cookies seguras se validan fuera de local/test.
+- El pago real se bloquea independientemente de la variable proporcionada.
+- `npm audit` devolvió cero vulnerabilidades.
+- Los nuevos mensajes, comentarios y documentos se guardaron en UTF-8.
+
+### UI y experiencia de usuario
+
+No se modificó la UI.
+
+La configuración prepara una URL pública de API estable para futuras peticiones del navegador y una URL interna separada para Server Components. Los errores de configuración se muestran a operadores durante build/arranque y no se convierten en mensajes públicos para usuarios finales.
+
+### Tests y verificación
+
+Pruebas frontend:
+
+- Acepta HTTP local.
+- Aplica fallback de URL interna.
+- Mantiene una URL interna distinta de la pública.
+- Rechaza HTTP público en staging.
+- Rechaza variables obligatorias ausentes.
+
+Pruebas backend:
+
+- El contexto Spring carga con el perfil `test` y enlaza `ReserlyProperties`.
+- Local acepta HTTP y cookies no seguras.
+- Producción rechaza HTTP y cookies no seguras.
+- Staging rechaza la activación prematura de pagos.
+- Jakarta Validation expone las tres violaciones simultáneas de una configuración de producción insegura.
+
+Comandos y resultados:
+
+- `npm run env:check`: tres plantillas válidas.
+- `npm run lint`: ESLint y Checkstyle correctos, cero violaciones.
+- `npm run format:check`: Prettier y Spotless correctos.
+- `npm run typecheck`: TypeScript correcto.
+- `npm run test:web`: 2 ficheros, 5 tests superados.
+- `npm run test:api`: 5 tests superados.
+- `npm run build:web:test`: build Next.js correcto.
+- `npm run build:api`: JAR Spring Boot generado.
+- `npm audit --json`: cero vulnerabilidades.
+- Build de staging con API HTTP: rechazado por Zod antes de compilar.
+- Arranque de producción con API HTTP, cookies inseguras y pagos reales: rechazado por Spring con tres errores de validación.
+- `git diff --check`: sin errores de whitespace.
+
+La primera ejecución monolítica de `npm run verify` excedió el timeout de la herramienta. Todas sus etapas se ejecutaron posteriormente por separado con éxito; no se ocultó ningún fallo funcional.
+
+### Decisiones técnicas
+
+- Variables comunes en la raíz para que API y web compartan un único contrato local.
+- Plantillas por entorno en vez de ficheros con valores reales.
+- Validación en dos capas: Zod para Next.js y Configuration Properties/Jakarta Validation para Spring.
+- Fallo temprano durante build o arranque, no fallback silencioso en staging/producción.
+- `local` ofrece defaults seguros; staging y producción exigen URLs inyectadas.
+- La URL interna de API no usa `NEXT_PUBLIC_`.
+- Se reservan nombres de infraestructura ahora para documentar el contrato, pero no se enlazan hasta sus tareas.
+- `cross-env` proporciona valores de test portables para el build de verificación.
+- El perfil Spring `test` evita depender de variables locales y hace reproducibles los tests.
+
+### Riesgos y deuda técnica
+
+- Los placeholders de PostgreSQL, Redis, RabbitMQ y S3 todavía no se validan semánticamente porque sus adaptadores no existen.
+- La configuración CORS aún no consume `allowedOrigins`.
+- No existe gestor de secretos desplegado; se definió el contrato, no el proveedor operativo.
+- Las URLs de ejemplo usan el dominio reservado `.example` y deben sustituirse durante el despliegue.
+- La rotación de secretos, auditoría de acceso y cifrado en reposo dependen de la plataforma de despliegue futura.
+- El perfil staging local requiere crear manualmente `.env.staging`.
+- La validación de credenciales específicas de Brevo, LocationIQ, AEAT y RedSys se añadirá con cada integración.

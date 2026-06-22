@@ -1,3 +1,13 @@
 spring:
   application:
     name: reserly-api
+
+reserly:
+  environment: ${RESERLY_ENVIRONMENT}
+  apiPublicBaseUrl: ${RESERLY_PUBLIC_BASE_URL}
+  webPublicBaseUrl: ${RESERLY_WEB_BASE_URL}
+  allowedOrigins: ${RESERLY_ALLOWED_ORIGINS}
+  security:
+    secureCookies: ${RESERLY_SECURE_COOKIES}
+  features:
+    realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}

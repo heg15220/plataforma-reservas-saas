@@ -2,6 +2,7 @@ package com.reserly.platform;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * Punto de entrada del monolito modular de Reserly.
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * colaborar con otros contextos.
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class ReserlyApplication {
 
   /**

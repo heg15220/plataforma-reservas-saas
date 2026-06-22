@@ -1,0 +1,6 @@
+reserly:
+  environment: production
+  security:
+    secureCookies: ${RESERLY_SECURE_COOKIES:true}
+  features:
+    realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}

@@ -35,6 +35,12 @@ Instalar las dependencias frontend desde la raíz:
 npm install
 ```
 
+Crear el fichero local a partir de la plantilla:
+
+```powershell
+Copy-Item .env.local.example .env.local
+```
+
 Iniciar API y web en paralelo:
 
 ```bash
@@ -44,6 +50,8 @@ npm run dev
 También pueden iniciarse por separado con `npm run dev:api` y `npm run dev:web`.
 
 La infraestructura persistente todavía no está configurada. El esqueleto no conecta con PostgreSQL, Redis, RabbitMQ ni almacenamiento S3 hasta completar las tareas correspondientes.
+
+La matriz y las políticas de variables están en [`docs/configuration.md`](docs/configuration.md).
 
 ## Calidad y verificación
 

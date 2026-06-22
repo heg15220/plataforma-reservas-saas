@@ -1,0 +1,10 @@
+reserly:
+  environment: test
+  apiPublicBaseUrl: http://localhost:8080
+  webPublicBaseUrl: http://localhost:3000
+  allowedOrigins:
+    - http://localhost:3000
+  security:
+    secureCookies: false
+  features:
+    realPaymentsEnabled: false

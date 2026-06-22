@@ -8,10 +8,12 @@ El paquete raíz es `com.reserly.platform`. Los contextos de negocio se separan 
 
 El esqueleto solo contiene el punto de entrada y la declaración documental de los contextos. Persistencia, seguridad, migraciones, cache, mensajería y observabilidad se añadirán en sus tareas específicas.
 
+La configuración se enlaza mediante `ReserlyProperties` y los perfiles `local`, `staging`, `production` y `test`. Staging y producción fallan si las URLs públicas no usan HTTPS, las cookies seguras están desactivadas o se intenta activar el pago real prematuramente.
+
 ## Ejecución
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 ## Verificación

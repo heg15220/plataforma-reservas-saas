@@ -1,0 +1,6 @@
+reserly:
+  environment: staging
+  security:
+    secureCookies: ${RESERLY_SECURE_COOKIES:true}
+  features:
+    realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}

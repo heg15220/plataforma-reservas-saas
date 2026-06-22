@@ -19,7 +19,7 @@ Convención transversal: cualquier nombre de tabla escrito en este plan en `snak
 - [x] 0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.
 - [x] 0.2. Crear repositorio, estructura base y convenciones de ramas.
 - [x] 0.3. Configurar linters, formatter, test runner y scripts de desarrollo.
-- [ ] 0.4. Configurar variables de entorno por entorno: local, staging y producción.
+- [x] 0.4. Configurar variables de entorno por entorno: local, staging y producción.
 - [ ] 0.5. Configurar PostgreSQL local y migraciones.
 - [ ] 0.6. Configurar cola de trabajos y cache.
 - [ ] 0.7. Crear layout base responsive y sistema de componentes.

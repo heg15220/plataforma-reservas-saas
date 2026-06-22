@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-22
-- Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`, `0.2. Crear repositorio, estructura base y convenciones de ramas.` y `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
-- Siguiente tarea pendiente recomendada: `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
-- Observación: el monorepo ya dispone de una cadena local unificada para desarrollo, lint, formato, comprobación de tipos, tests y builds. La tarea `0.2` está publicada en `origin/main` y la tarea `0.3` se desarrolla en la rama `codex/task-0.3-quality-tooling`. Continúan pendientes las variables por entorno, la infraestructura persistente y el pipeline CI.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3` y `0.4`.
+- Siguiente tarea pendiente recomendada: `0.5. Configurar PostgreSQL local y migraciones.`
+- Observación: el monorepo dispone de herramientas de calidad y de contratos validados para `local`, `staging` y `production`. Las variables públicas y secretas están separadas, las plantillas se validan automáticamente y las configuraciones inseguras fallan antes de arrancar o compilar. Continúan pendientes PostgreSQL/Flyway, Redis/RabbitMQ y el pipeline CI.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -440,3 +440,61 @@ Fuente de verdad del avance:
   - El lockfile se centraliza en la raíz mediante npm workspaces.
   - El árbol final de npm se auditó con cero vulnerabilidades conocidas.
   - `npm run verify` completó ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit y los builds de Next.js y Spring Boot.
+
+## Conversación 15 - Configuración validada por entornos
+
+- Fecha: 2026-06-22
+- Resumen: se implementó la configuración por entornos `local`, `staging` y `production` en una rama apilada sobre la tarea `0.3`. Se añadieron plantillas dotenv sin secretos, perfiles Spring, propiedades Java tipadas y validadas, validación Zod durante el arranque/build de Next.js, scripts de desarrollo local y staging, y una comprobación automática que evita divergencias o exposición accidental de secretos en variables públicas.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `.gitignore`
+  - `README.md`
+  - `package.json`
+  - `package-lock.json`
+  - `scripts/validate-environment-examples.mjs`
+  - `docs/configuration.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/java/com/reserly/platform/ReserlyApplication.java`
+  - `apps/api/src/main/java/com/reserly/platform/configuration/ReserlyEnvironment.java`
+  - `apps/api/src/main/java/com/reserly/platform/configuration/ReserlyProperties.java`
+  - `apps/api/src/main/java/com/reserly/platform/configuration/package-info.java`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/application-local.yaml`
+  - `apps/api/src/main/resources/application-staging.yaml`
+  - `apps/api/src/main/resources/application-production.yaml`
+  - `apps/api/src/main/resources/application-test.yaml`
+  - `apps/api/src/test/java/com/reserly/platform/ReserlyApplicationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/ReserlyPropertiesTests.java`
+  - `apps/web/README.md`
+  - `apps/web/environment.ts`
+  - `apps/web/environment.test.ts`
+  - `apps/web/next.config.ts`
+  - `apps/web/package.json`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-001 Seguridad`.
+  - `RNF-005 Escalabilidad`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-010 Verificación empresarial remota`, preparando secretos externos sin almacenarlos.
+  - `RNF-012 Calidad lingüística y codificación UTF-8`.
+- Tareas impactadas:
+  - `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
+  - Se preparan los contratos de `0.5`, `0.6`, `8.1`, `13.7` y las integraciones externas posteriores.
+- Tareas completadas:
+  - `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
+- Siguiente tarea pendiente recomendada:
+  - `0.5. Configurar PostgreSQL local y migraciones.`
+- Decisiones o aclaraciones relevantes:
+  - Solo `NEXT_PUBLIC_APP_ENV` y `NEXT_PUBLIC_API_BASE_URL` pueden exponerse al navegador.
+  - Los secretos reales se inyectarán desde el entorno de despliegue o un gestor de secretos; no se versionan ficheros `.env` reales.
+  - Staging y producción exigen HTTPS público y cookies seguras.
+  - Los pagos reales no pueden activarse todavía, ni siquiera mediante variable de entorno.
+  - El perfil `test` es interno y usa valores aislados sin servicios externos.
+  - PostgreSQL, Redis, RabbitMQ y S3 aparecen como contratos reservados en las plantillas, pero aún no son consumidos.
+  - `npm run env:check` verifica paridad de claves, HTTPS, cookies seguras, pagos desactivados y ausencia de nombres potencialmente secretos bajo `NEXT_PUBLIC_`.
+  - Las comprobaciones negativas confirmaron que Next.js rechaza HTTP en staging y Spring Boot rechaza producción con HTTP, cookies inseguras o pagos reales.

@@ -1,0 +1,9 @@
+reserly:
+  environment: ${RESERLY_ENVIRONMENT:local}
+  apiPublicBaseUrl: ${RESERLY_PUBLIC_BASE_URL:http://localhost:8080}
+  webPublicBaseUrl: ${RESERLY_WEB_BASE_URL:http://localhost:3000}
+  allowedOrigins: ${RESERLY_ALLOWED_ORIGINS:http://localhost:3000}
+  security:
+    secureCookies: ${RESERLY_SECURE_COOKIES:false}
+  features:
+    realPaymentsEnabled: false
