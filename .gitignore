@@ -1,0 +1,33 @@
+# Sistemas operativos e IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Java y Maven
+apps/api/target/
+*.class
+.mvn/timing.properties
+
+# Node.js y Next.js
+node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/coverage/
+*.tsbuildinfo
+
+# Variables locales y secretos
+.env
+.env.*
+!.env.example
+
+# Logs y archivos temporales
+*.log
+logs/
+tmp/
+.cache/
+
+# Contenedores y volúmenes locales
+.docker/
+volumes/

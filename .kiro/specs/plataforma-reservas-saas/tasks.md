@@ -17,7 +17,7 @@ Convención transversal: cualquier nombre de tabla escrito en este plan en `snak
 ## 2. Fase 0 - Preparación del proyecto
 
 - [x] 0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.
-- [ ] 0.2. Crear repositorio, estructura base y convenciones de ramas.
+- [x] 0.2. Crear repositorio, estructura base y convenciones de ramas.
 - [ ] 0.3. Configurar linters, formatter, test runner y scripts de desarrollo.
 - [ ] 0.4. Configurar variables de entorno por entorno: local, staging y producción.
 - [ ] 0.5. Configurar PostgreSQL local y migraciones.

@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-18
-- Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`
-- Siguiente tarea pendiente recomendada: `0.2. Crear repositorio, estructura base y convenciones de ramas.`
-- Observación: el proyecto cuenta con especificación completa, stack definitivo seleccionado, nombre comercial `Reserly`, dirección visual definida y decisiones de proveedores, geolocalización, verificación empresarial, pagos, administración y conservación cerradas bajo una estrategia de coste gratuito primero, pero todavía no hay implementación de producto.
+- Fecha de última actualización: 2026-06-22
+- Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.` y `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Siguiente tarea pendiente recomendada: `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
+- Observación: el proyecto ya dispone de un monorepo base verificable con frontend Next.js, backend Spring Boot, límites iniciales del monolito modular, documentación de arquitectura y convenciones de ramas. La infraestructura persistente, variables por entorno, herramientas de calidad y CI continúan pendientes en las siguientes tareas de la fase 0.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -337,3 +337,54 @@ Fuente de verdad del avance:
   - La verificación española prioriza algoritmo local, VIES y AEAT. Si no existe canal AEAT automatizable confirmado, se usa revisión administrativa oficial y documental, no un proveedor comercial.
   - RedSys se prepara mediante interfaz, simulador y contratos, pero no se activa en producción hasta disponer de contrato bancario y credenciales.
   - Las incidencias y penalizaciones identificables se conservan operativamente hasta 12 meses; la evidencia mínima puede bloquearse hasta 3 años, sujeto a validación jurídica previa a producción.
+
+## Conversación 13 - Repositorio base, monorepo y convenciones de ramas
+
+- Fecha: 2026-06-22
+- Resumen: se implementó la primera estructura ejecutable del producto sobre el repositorio Git existente. Se creó un monorepo con la API Spring Boot en `apps/api`, la aplicación Next.js en `apps/web`, documentación transversal en `docs` y un espacio reservado para infraestructura. También se formalizaron la estrategia de ramas cortas, Conventional Commits, el flujo de pull requests y los límites entre aplicaciones y contextos backend.
+- Archivos modificados:
+  - `.editorconfig`
+  - `.gitattributes`
+  - `.gitignore`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/java/com/reserly/platform/ReserlyApplication.java`
+  - `apps/api/src/main/java/com/reserly/platform/package-info.java`
+  - Declaraciones `package-info.java` de los contextos backend iniciales.
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/web/README.md`
+  - `apps/web/package.json`
+  - `apps/web/package-lock.json`
+  - `apps/web/next-env.d.ts`
+  - `apps/web/next.config.ts`
+  - `apps/web/tsconfig.json`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `docs/README.md`
+  - `docs/architecture/monorepo.md`
+  - `infrastructure/README.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-005 Escalabilidad`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+- Tareas impactadas:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+  - Se preparó la base para `0.3`, `0.4`, `0.5`, `0.6`, `0.9` y las futuras tareas de implementación por contexto, sin darlas por completadas.
+- Tareas completadas:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Siguiente tarea pendiente recomendada:
+  - `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
+- Decisiones o aclaraciones relevantes:
+  - Se adopta un monorepo con dos unidades desplegables: `apps/web` y `apps/api`.
+  - `main` es la única rama permanente; el trabajo se realiza en ramas cortas `feature/`, `fix/`, `chore/`, `docs/`, `codex/` y, excepcionalmente, `release/`.
+  - Se usará squash merge y Conventional Commits.
+  - La web solo dependerá de contratos HTTP de la API.
+  - Los contextos backend se representan como paquetes bajo `com.reserly.platform` y deberán colaborar mediante interfaces o eventos, sin consultar directamente la persistencia interna de otros contextos.
+  - Se fijaron Spring Boot `4.1.0`, Next.js `16.2.9`, React `19.2.1` y TypeScript `5.9.2` para el esqueleto inicial.
+  - Se forzó PostCSS `8.5.10` mediante `overrides` porque el árbol original de Next.js incorporaba una versión afectada por `GHSA-qx2v-qp2m-jg93`; tras regenerar el lockfile, `npm audit` informó cero vulnerabilidades.

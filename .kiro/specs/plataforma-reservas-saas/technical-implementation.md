@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`.
-- Siguiente tarea pendiente recomendada: `0.2. Crear repositorio, estructura base y convenciones de ramas.`
+- Tareas implementadas documentadas: `0.1` y `0.2`.
+- Siguiente tarea pendiente recomendada: `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
 
 ## Plantilla obligatoria por tarea
 
@@ -281,3 +281,207 @@ Alternativas descartadas:
 - La elección de Quartz frente a scheduler con lock persistente debe cerrarse al implementar jobs; ambos son compatibles con la decisión de stack.
 - El proveedor de email transaccional concreto queda pendiente para la tarea `8.1`, aunque la arquitectura exige que sea encolado e idempotente.
 - El proveedor de mapas/geocoding queda pendiente de decisión específica.
+
+## Tarea 0.2 - Crear repositorio, estructura base y convenciones de ramas
+
+- Fecha: 2026-06-22
+- Commit o referencia: cambios locales sin commit
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Convertir el repositorio de especificación existente en una base de producto ejecutable y comprensible, manteniendo la arquitectura decidida en la tarea `0.1`. La tarea debía establecer unidades desplegables, límites de módulos, convenciones de colaboración y archivos de higiene del repositorio sin adelantar la configuración completa de calidad, entornos, infraestructura o CI que corresponde a tareas posteriores.
+
+El repositorio Git ya estaba inicializado sobre la rama `main` y conectado a `origin`. Por tanto, no se creó un segundo repositorio: se conservó su historial y se añadió la estructura inicial del monorepo.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-005 Escalabilidad`: el backend se prepara como monolito modular con límites que permitan extraer servicios en el futuro.
+  - `RNF-011 Convenciones de implementación backend y persistencia`: se establece el paquete raíz Java, nomenclatura `UpperCamelCase`/`lowerCamelCase` y separación por contextos.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`: los archivos se definen en UTF-8 y se verifican contra mojibake.
+- Diseño:
+  - `1.1 Estilo de arquitectura`.
+  - `1.2 Componentes`.
+  - `1.3 Stack definitivo seleccionado`.
+  - `1.4 Convenciones obligatorias de implementación Java, Spring Boot y base de datos`.
+  - `2. Vista lógica`.
+  - `3. Módulos backend`.
+- Tareas relacionadas:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas`.
+  - `0.3. Configurar linters, formatter, test runner y scripts de desarrollo`.
+  - `0.4. Configurar variables de entorno por entorno`.
+  - `0.5. Configurar PostgreSQL local y migraciones`.
+  - `0.6. Configurar cola de trabajos y cache`.
+  - `0.9. Crear pipeline CI con tests y validación de estilo`.
+
+### Archivos afectados
+
+- Creados:
+  - `.editorconfig`
+  - `.gitattributes`
+  - `.gitignore`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/java/com/reserly/platform/ReserlyApplication.java`
+  - `apps/api/src/main/java/com/reserly/platform/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/venues/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/discovery/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/availability/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/reservations/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/forms/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/resources/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/incidents/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/reviews/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/statistics/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/billing/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/notifications/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/administration/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/localization/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/package-info.java`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/web/README.md`
+  - `apps/web/package.json`
+  - `apps/web/package-lock.json`
+  - `apps/web/next-env.d.ts`
+  - `apps/web/next.config.ts`
+  - `apps/web/tsconfig.json`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `docs/README.md`
+  - `docs/architecture/monorepo.md`
+  - `infrastructure/README.md`
+- Modificados:
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+Se creó un monorepo con cuatro áreas:
+
+- `apps/api`: unidad desplegable Spring Boot para la API y el dominio.
+- `apps/web`: unidad desplegable Next.js para web pública, panel de local y administración.
+- `docs`: documentación transversal y límites de arquitectura.
+- `infrastructure`: ubicación reservada para Docker Compose, manifiestos y configuración operativa futura.
+
+La API usa `com.reserly.platform` como paquete raíz. `ReserlyApplication` limita el escaneo natural de Spring a este árbol y documenta que los contextos hijos deben publicar contratos explícitos. Se añadieron paquetes declarativos para identidad, locales, descubrimiento, disponibilidad, reservas, formularios, recursos, incidencias, reseñas, estadísticas, facturación, notificaciones, administración, localización y verificación empresarial.
+
+Los `package-info.java` no implementan todavía casos de uso. Su responsabilidad es hacer visibles los límites desde el primer commit de código, evitar una organización posterior por capas globales y proporcionar documentación Javadoc al nivel de módulo.
+
+La API se inicializó con:
+
+- Spring Boot `4.1.0`.
+- Java `21`.
+- `spring-boot-starter-web`.
+- `spring-boot-starter-test`.
+- Plugin Maven de Spring Boot.
+- Nombre de aplicación `reserly-api`.
+
+La web se inicializó manualmente siguiendo la estructura App Router:
+
+- Next.js `16.2.9`.
+- React y React DOM `19.2.1`.
+- TypeScript `5.9.2` en modo estricto.
+- Alias `@/*` hacia `src`.
+- Layout raíz, metadata mínima, página de arranque y CSS responsive básico.
+- Lockfile npm versionado para instalaciones reproducibles.
+
+La página inicial es deliberadamente mínima y no se considera implementación del layout, sistema visual o i18n. Es un smoke test de renderizado que será sustituido en las tareas `0.7`, `0.8` y `0.10`.
+
+Se añadieron reglas de repositorio:
+
+- `.editorconfig` fija UTF-8, finales LF, newline final y sangrado coherente.
+- `.gitattributes` normaliza texto a LF, conserva scripts Windows en CRLF y marca binarios.
+- `.gitignore` excluye builds, dependencias, secretos, logs, cachés y volúmenes locales.
+
+`CONTRIBUTING.md` define desarrollo basado en `main`, ramas cortas, squash merge, Conventional Commits y requisitos mínimos de pull request. No se creó una rama `develop` para evitar divergencia prolongada y duplicar estados de integración.
+
+### Modelo de datos
+
+No se añadieron tablas, entidades JPA, migraciones, índices ni restricciones. La tarea solo prepara la ubicación y las convenciones para su futura implementación.
+
+La ausencia de configuración de datasource es intencionada: PostgreSQL, PostGIS y Flyway pertenecen a `0.5`. El backend arranca sin asumir una base embebida ni introducir H2 como sustituto accidental de PostgreSQL.
+
+### Contratos y APIs
+
+No se implementaron endpoints ni DTOs. `spring-boot-starter-web` habilita la base técnica, pero no existe todavía superficie HTTP pública.
+
+El contrato arquitectónico establecido es:
+
+- `apps/web` consume la API exclusivamente mediante HTTP.
+- Los controladores futuros usarán interfaces, implementaciones, DTOs y conversores explícitos.
+- Los contextos backend no accederán a tablas o implementaciones internas de otros contextos.
+- La autoridad de validación y consistencia permanecerá en la API.
+
+### Seguridad, privacidad e i18n
+
+- `.gitignore` bloquea por defecto archivos `.env` y variantes, salvo plantillas `.env.example`.
+- La documentación prohíbe guardar secretos, certificados o credenciales en el repositorio.
+- No se incorporaron tokens, datos personales ni integraciones externas.
+- Todos los archivos creados se guardaron en UTF-8.
+- Se ejecutó una búsqueda de mojibake sobre el repositorio sin detectar `Ã`, `Â` ni `�`.
+- La UI inicial usa texto neutro en inglés porque la infraestructura `next-intl` y los catálogos `es`/`en` pertenecen a `0.10`; no se presenta como texto definitivo de producto.
+- La instalación inicial de Next.js incluía PostCSS `8.4.31`, afectado por `GHSA-qx2v-qp2m-jg93`. Se añadió un override reproducible a PostCSS `8.5.10`, se regeneró `package-lock.json` y el audit posterior quedó sin vulnerabilidades conocidas.
+
+### UI y experiencia de usuario
+
+La UI implementada es únicamente una comprobación de que App Router, TypeScript y el pipeline de estilos funcionan:
+
+- Layout raíz válido con etiquetas `html` y `body`.
+- Metadata mínima de Reserly.
+- Contenedor centrado y responsive.
+- Tipografía de sistema con `Inter` como preferencia futura.
+- Ajuste para pantallas menores de 600 px.
+
+No se considera completado el sistema de componentes, la paleta definitiva, accesibilidad integral, navegación, MUI o i18n. Esas capacidades permanecen pendientes.
+
+### Tests y verificación
+
+Entorno verificado:
+
+- Java `21.0.9`.
+- Maven `3.8.6`.
+- Node.js `22.22.2`.
+
+Comandos ejecutados:
+
+- `mvn -q test` en `apps/api`: completado correctamente tras descargar las dependencias oficiales.
+- `npm install` en `apps/web`: instalación y generación de lockfile correctas.
+- `npm run build` en `apps/web`: compilación de producción, validación TypeScript y prerenderizado de `/` correctos.
+- `npm audit --json`: detectó inicialmente dos entradas moderadas asociadas a PostCSS; después del override a `8.5.10`, `npm install` informó `found 0 vulnerabilities`.
+- Parseo de `apps/web/package.json` y `apps/web/tsconfig.json` con `ConvertFrom-Json`: correcto.
+- Parseo de `apps/api/pom.xml` como XML: correcto.
+- `git diff --check`: sin errores de whitespace.
+- Búsqueda `rg -n "Ã|Â|�"`: sin mojibake detectado.
+
+No se añadieron todavía suites unitarias o de integración porque la configuración completa de test runners y sus convenciones corresponde a `0.3`. Los comandos actuales verifican compilabilidad y estructura.
+
+### Decisiones técnicas
+
+- Monorepo en vez de repositorios separados para mantener cambios de contrato, documentación y aplicaciones coordinados durante el MVP.
+- Dos aplicaciones desplegables en vez de tres frontends: web pública, panel de local y admin compartirán Next.js, tema, accesibilidad e i18n.
+- Monolito modular organizado por contexto en vez de capas globales.
+- Maven para el backend, coherente con la referencia Java evaluada y el entorno disponible.
+- npm y lockfile local para el frontend; la posible adopción de workspaces o scripts raíz se evaluará en `0.3`.
+- `main` como única rama permanente y ramas de vida corta para reducir divergencia.
+- Dependencias fijadas a versiones exactas en el esqueleto para que la verificación sea reproducible.
+- Override puntual de PostCSS en vez de degradar Next.js a una versión antigua sugerida incorrectamente por `npm audit`.
+
+### Riesgos y deuda técnica
+
+- Falta configurar linters, formatters, análisis estático y test runners; corresponde a `0.3`.
+- No existen scripts unificados desde la raíz del monorepo.
+- No hay variables por entorno ni validación de configuración; corresponde a `0.4`.
+- No hay PostgreSQL, Flyway, PostGIS, Redis, RabbitMQ ni MinIO; corresponde a `0.5` y `0.6`.
+- No existe CI ni protección automatizada de `main`; corresponde a `0.9` y a la configuración del repositorio remoto.
+- El override de PostCSS debe retirarse cuando Next.js publique una versión estable que dependa directamente de una versión corregida.
+- La página inicial contiene contenido temporal y no debe evolucionar fuera del sistema i18n.
+- Los paquetes backend son límites documentales iniciales; sus dependencias deberán validarse automáticamente en una tarea posterior, previsiblemente con Spring Modulith o ArchUnit.
