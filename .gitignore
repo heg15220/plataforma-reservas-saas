@@ -15,6 +15,7 @@ node_modules/
 apps/web/.next/
 apps/web/out/
 apps/web/coverage/
+coverage/
 *.tsbuildinfo
 
 # Variables locales y secretos

@@ -1,0 +1,8 @@
+.git/
+.kiro/
+apps/api/
+apps/web/.next/
+apps/web/coverage/
+node_modules/
+target/
+package-lock.json

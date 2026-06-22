@@ -19,7 +19,7 @@ Los nombres deben escribirse en minúsculas, usar guiones y, cuando exista, come
 1. Actualizar `main`.
 2. Crear una rama corta según el tipo de cambio.
 3. Implementar una sola tarea o un conjunto pequeño y coherente.
-4. Ejecutar las verificaciones aplicables.
+4. Ejecutar `npm run verify` desde la raíz.
 5. Actualizar la documentación obligatoria de `.kiro` si se completa o cambia una tarea.
 6. Abrir un pull request hacia `main`.
 7. Integrar mediante squash merge después de superar revisión y CI.
@@ -54,6 +54,16 @@ Cada pull request debe:
 - Mantener el cambio acotado.
 - No marcar una tarea como completada sin implementación, verificación y actualización de `technical-implementation.md`.
 - Requerir al menos una revisión antes de integrarse cuando la plataforma lo permita.
+
+## Comandos de calidad
+
+- `npm run lint`: ejecuta ESLint para Next.js y Checkstyle para Java.
+- `npm run format`: aplica Prettier y Spotless.
+- `npm run format:check`: comprueba el formato sin modificar archivos.
+- `npm run typecheck`: valida TypeScript sin emitir artefactos.
+- `npm run test`: ejecuta Vitest y JUnit.
+- `npm run build`: compila frontend y backend.
+- `npm run verify`: ejecuta todas las comprobaciones anteriores.
 
 ## Límites de módulos
 

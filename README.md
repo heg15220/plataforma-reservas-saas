@@ -29,22 +29,36 @@ Los directorios `docs` e `infrastructure` contienen por ahora únicamente sus co
 
 ## Ejecución del esqueleto
 
-Backend:
+Instalar las dependencias frontend desde la raíz:
 
 ```bash
-cd apps/api
-mvn spring-boot:run
+npm install
 ```
 
-Frontend:
+Iniciar API y web en paralelo:
 
 ```bash
-cd apps/web
-npm install
 npm run dev
 ```
 
+También pueden iniciarse por separado con `npm run dev:api` y `npm run dev:web`.
+
 La infraestructura persistente todavía no está configurada. El esqueleto no conecta con PostgreSQL, Redis, RabbitMQ ni almacenamiento S3 hasta completar las tareas correspondientes.
+
+## Calidad y verificación
+
+Los comandos se ejecutan desde la raíz:
+
+```bash
+npm run lint
+npm run format:check
+npm run typecheck
+npm run test
+npm run build
+npm run verify
+```
+
+`npm run format` aplica Prettier al frontend y la documentación operativa, además de Spotless al código Java. `npm run verify` ejecuta la cadena completa sin modificar archivos.
 
 ## Colaboración
 

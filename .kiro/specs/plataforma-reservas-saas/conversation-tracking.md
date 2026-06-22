@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-22
-- Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.` y `0.2. Crear repositorio, estructura base y convenciones de ramas.`
-- Siguiente tarea pendiente recomendada: `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
-- Observación: el proyecto ya dispone de un monorepo base verificable con frontend Next.js, backend Spring Boot, límites iniciales del monolito modular, documentación de arquitectura y convenciones de ramas. La infraestructura persistente, variables por entorno, herramientas de calidad y CI continúan pendientes en las siguientes tareas de la fase 0.
+- Tareas completadas en `tasks.md`: `0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.`, `0.2. Crear repositorio, estructura base y convenciones de ramas.` y `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
+- Siguiente tarea pendiente recomendada: `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
+- Observación: el monorepo ya dispone de una cadena local unificada para desarrollo, lint, formato, comprobación de tipos, tests y builds. La tarea `0.2` está publicada en `origin/main` y la tarea `0.3` se desarrolla en la rama `codex/task-0.3-quality-tooling`. Continúan pendientes las variables por entorno, la infraestructura persistente y el pipeline CI.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -388,3 +388,55 @@ Fuente de verdad del avance:
   - Los contextos backend se representan como paquetes bajo `com.reserly.platform` y deberán colaborar mediante interfaces o eventos, sin consultar directamente la persistencia interna de otros contextos.
   - Se fijaron Spring Boot `4.1.0`, Next.js `16.2.9`, React `19.2.1` y TypeScript `5.9.2` para el esqueleto inicial.
   - Se forzó PostCSS `8.5.10` mediante `overrides` porque el árbol original de Next.js incorporaba una versión afectada por `GHSA-qx2v-qp2m-jg93`; tras regenerar el lockfile, `npm audit` informó cero vulnerabilidades.
+
+## Conversación 14 - Publicación de la base y herramientas de calidad
+
+- Fecha: 2026-06-22
+- Resumen: se publicó la tarea `0.2` en la rama remota `main` mediante el commit `ae3f4f8`. A continuación se creó la rama `codex/task-0.3-quality-tooling` y se configuró una cadena de calidad completa para frontend y backend: ESLint, Prettier, Checkstyle, Spotless, Vitest, React Testing Library y JUnit, además de scripts raíz para iniciar las aplicaciones y ejecutar lint, formato, tipos, tests, builds y verificación integral.
+- Archivos modificados:
+  - `.gitignore`
+  - `.prettierignore`
+  - `.prettierrc.json`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `package.json`
+  - `package-lock.json`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/config/checkstyle/checkstyle.xml`
+  - `apps/api/src/main/java/com/reserly/platform/ReserlyApplication.java`
+  - `apps/api/src/main/java/com/reserly/platform/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/ReserlyApplicationTests.java`
+  - `apps/web/README.md`
+  - `apps/web/package.json`
+  - `apps/web/eslint.config.mjs`
+  - `apps/web/vitest.config.mts`
+  - `apps/web/vitest.setup.ts`
+  - `apps/web/src/app/page.test.tsx`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/tsconfig.json`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+  - Se eliminó `apps/web/package-lock.json` al trasladar la instalación reproducible al lockfile raíz del workspace.
+- Requisitos impactados:
+  - `RNF-005 Escalabilidad`.
+  - `RNF-007 Usabilidad`, mediante reglas frontend de Core Web Vitals.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+- Tareas impactadas:
+  - `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
+  - Se prepara la ejecución local y futura automatización de `0.9. Crear pipeline CI con tests y validación de estilo`.
+- Tareas completadas:
+  - `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
+- Siguiente tarea pendiente recomendada:
+  - `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
+- Decisiones o aclaraciones relevantes:
+  - El frontend usa ESLint flat config con reglas de Next.js Core Web Vitals, React, hooks y TypeScript, y desactiva conflictos de formato mediante `eslint-config-prettier`.
+  - Prettier formatea frontend y documentación operativa; `.kiro` y Java quedan excluidos para no reescribir la especificación ni competir con Spotless.
+  - El backend usa Spotless con Google Java Format y Checkstyle con reglas estructurales y de nomenclatura.
+  - Vitest `4.1.9` con jsdom y React Testing Library ejecuta pruebas de componentes síncronos; los Server Components asíncronos se reservarán para E2E.
+  - JUnit mantiene una prueba de humo que verifica la creación del contexto Spring Boot sin infraestructura externa.
+  - El lockfile se centraliza en la raíz mediante npm workspaces.
+  - El árbol final de npm se auditó con cero vulnerabilidades conocidas.
+  - `npm run verify` completó ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit y los builds de Next.js y Spring Boot.

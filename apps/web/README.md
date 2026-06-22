@@ -7,12 +7,16 @@ El esqueleto inicial mantiene una única aplicación para compartir navegación,
 ## Ejecución
 
 ```bash
-npm install
-npm run dev
+npm run dev:web
 ```
 
-## Compilación
+El comando anterior se ejecuta desde la raíz del monorepo.
+
+## Verificación
 
 ```bash
-npm run build
+npm run lint --workspace @reserly/web
+npm run typecheck --workspace @reserly/web
+npm run test --workspace @reserly/web
+npm run build --workspace @reserly/web
 ```

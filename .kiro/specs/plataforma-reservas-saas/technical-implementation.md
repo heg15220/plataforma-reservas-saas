@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1` y `0.2`.
-- Siguiente tarea pendiente recomendada: `0.3. Configurar linters, formatter, test runner y scripts de desarrollo.`
+- Tareas implementadas documentadas: `0.1`, `0.2` y `0.3`.
+- Siguiente tarea pendiente recomendada: `0.4. Configurar variables de entorno por entorno: local, staging y producción.`
 
 ## Plantilla obligatoria por tarea
 
@@ -285,7 +285,7 @@ Alternativas descartadas:
 ## Tarea 0.2 - Crear repositorio, estructura base y convenciones de ramas
 
 - Fecha: 2026-06-22
-- Commit o referencia: cambios locales sin commit
+- Commit o referencia: `ae3f4f8 chore(repo): scaffold Reserly monorepo`
 - Estado: completada
 - Responsable: Codex
 
@@ -485,3 +485,218 @@ No se añadieron todavía suites unitarias o de integración porque la configura
 - El override de PostCSS debe retirarse cuando Next.js publique una versión estable que dependa directamente de una versión corregida.
 - La página inicial contiene contenido temporal y no debe evolucionar fuera del sistema i18n.
 - Los paquetes backend son límites documentales iniciales; sus dependencias deberán validarse automáticamente en una tarea posterior, previsiblemente con Spring Modulith o ArchUnit.
+
+## Tarea 0.3 - Configurar linters, formatter, test runner y scripts de desarrollo
+
+- Fecha: 2026-06-22
+- Commit o referencia: rama `codex/task-0.3-quality-tooling`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Establecer una cadena de desarrollo y calidad reproducible para las dos aplicaciones del monorepo. La tarea debía permitir que cualquier contribuidor pudiera iniciar el frontend y el backend, aplicar o comprobar formato, ejecutar análisis estático, validar tipos, lanzar tests y generar artefactos desde la raíz mediante comandos consistentes.
+
+La tarea también debía demostrar que los test runners están realmente operativos. Por ello no se limitó a instalar dependencias: se añadieron pruebas de humo en frontend y backend y se ejecutó una verificación integral que abarca todas las herramientas configuradas.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-005 Escalabilidad`: comandos homogéneos y límites por workspace reducen divergencias entre aplicaciones.
+  - `RNF-007 Usabilidad`: ESLint incorpora las reglas recomendadas de Core Web Vitals de Next.js.
+  - `RNF-011 Convenciones de implementación backend y persistencia`: Checkstyle valida convenciones Java y Spotless impone formato determinista.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`: Prettier y Spotless preservan UTF-8 y finales de archivo coherentes.
+- Diseño:
+  - `1.3 Stack definitivo seleccionado`.
+  - `1.4 Convenciones obligatorias de implementación Java, Spring Boot y base de datos`.
+  - `15. Estrategia de tests`.
+- Tareas relacionadas:
+  - `0.3. Configurar linters, formatter, test runner y scripts de desarrollo`.
+  - `0.9. Crear pipeline CI con tests y validación de estilo`.
+  - `0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI`.
+  - `0.14. Definir y automatizar convenciones backend`.
+  - `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles`.
+
+### Archivos afectados
+
+- Creados:
+  - `.prettierignore`
+  - `.prettierrc.json`
+  - `package.json`
+  - `package-lock.json`
+  - `apps/api/config/checkstyle/checkstyle.xml`
+  - `apps/api/src/test/java/com/reserly/platform/ReserlyApplicationTests.java`
+  - `apps/web/eslint.config.mjs`
+  - `apps/web/vitest.config.mts`
+  - `apps/web/vitest.setup.ts`
+  - `apps/web/src/app/page.test.tsx`
+- Modificados:
+  - `.gitignore`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/java/com/reserly/platform/ReserlyApplication.java`
+  - `apps/api/src/main/java/com/reserly/platform/package-info.java`
+  - `apps/web/README.md`
+  - `apps/web/package.json`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/tsconfig.json`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - `apps/web/package-lock.json`, sustituido por el lockfile raíz del monorepo.
+
+### Implementación técnica
+
+#### Scripts raíz y workspace
+
+Se creó un `package.json` raíz privado que declara `apps/web` como npm workspace. El lockfile se trasladó a la raíz para que las versiones de herramientas transversales y frontend se resuelvan en un único árbol reproducible.
+
+Los scripts disponibles son:
+
+- `npm run dev`: inicia API y web en paralelo con `concurrently`; si uno de los procesos termina, el otro se detiene para no dejar procesos huérfanos.
+- `npm run dev:api`: ejecuta Spring Boot mediante Maven.
+- `npm run dev:web`: ejecuta Next.js mediante el workspace.
+- `npm run lint`: ejecuta ESLint y Checkstyle.
+- `npm run format`: aplica Prettier y Spotless.
+- `npm run format:check`: comprueba ambos formatos sin modificar archivos.
+- `npm run typecheck`: ejecuta TypeScript con `--noEmit`.
+- `npm run test`: ejecuta Vitest y JUnit.
+- `npm run build`: genera el build Next.js y el JAR ejecutable Spring Boot.
+- `npm run verify`: concatena lint, formato, tipos, tests y builds.
+
+Los scripts específicos por aplicación permanecen expuestos para diagnóstico y para que el futuro CI pueda paralelizar pasos.
+
+#### Frontend
+
+ESLint se configuró con el formato plano actual:
+
+- `eslint-config-next/core-web-vitals`.
+- `eslint-config-next/typescript`.
+- `eslint-config-prettier/flat`.
+- Cero warnings permitidos mediante `--max-warnings=0`.
+- Ignorados explícitos para `.next`, cobertura, salida estática y `next-env.d.ts`.
+
+Prettier `3.6.2` usa:
+
+- UTF-8 y finales LF heredados de `.editorconfig`.
+- Ancho de 100 columnas.
+- Punto y coma.
+- Comillas dobles.
+- Comas finales.
+- Sangrado de dos espacios.
+
+`.prettierignore` excluye `.kiro`, Java, artefactos generados y lockfiles. La exclusión de `.kiro` evita una reescritura masiva de la especificación y mantiene su formato controlado. Java se delega exclusivamente a Spotless.
+
+Vitest se configuró con:
+
+- Vitest `4.1.9`.
+- Vite `8.0.16`.
+- Plugin React `6.0.2`.
+- `jsdom` como entorno de navegador.
+- React Testing Library.
+- Matchers de `@testing-library/jest-dom`.
+- Resolución nativa de aliases de `tsconfig` mediante `resolve.tsconfigPaths`.
+
+Se añadió `page.test.tsx`, que renderiza la página inicial y valida el encabezado accesible y el texto visible. Esta prueba demuestra integración real entre Vitest, React, jsdom y Testing Library.
+
+#### Backend
+
+El POM incorpora Spotless Maven Plugin `2.46.1` con Google Java Format `1.24.0`. Spotless:
+
+- Formatea código principal y de test.
+- Elimina imports no usados.
+- Elimina espacios finales.
+- Garantiza newline final.
+- Verifica formato automáticamente en la fase Maven `validate`.
+
+Checkstyle Maven Plugin `3.6.0` usa una configuración propia almacenada en `apps/api/config/checkstyle/checkstyle.xml`. Las reglas controlan:
+
+- UTF-8.
+- Ausencia de tabuladores.
+- Newline final.
+- Longitud máxima de línea de 100 caracteres, con excepciones para package, imports y URLs.
+- Ausencia de imports wildcard e imports no usados.
+- Uso de llaves.
+- Una sentencia por línea.
+- Ausencia de sentencias vacías.
+- Orden y redundancia de modificadores.
+- Convenciones de nombres para tipos, miembros, métodos, parámetros y variables locales.
+
+Checkstyle incluye fuentes de test y falla ante cualquier violación. Se ejecuta automáticamente en `validate`, por lo que `mvn test`, `mvn package` y `mvn verify` incluyen análisis estático y formato.
+
+Se añadió `ReserlyApplicationTests`, una prueba JUnit con `@SpringBootTest` que verifica que el contexto raíz puede inicializarse sin base de datos ni servicios externos.
+
+### Modelo de datos
+
+No se modificó el modelo de datos. No se añadieron migraciones, entidades, índices ni conexiones persistentes.
+
+La prueba de contexto confirma expresamente que el backend todavía es independiente de infraestructura, coherente con que PostgreSQL y Flyway se configuren en `0.5`.
+
+### Contratos y APIs
+
+No se añadieron endpoints ni contratos REST.
+
+La cadena de calidad queda disponible para todos los futuros controladores, DTOs, conversores, servicios y módulos. Los errores de lint, formato, tipos o tests producirán un código de salida distinto de cero y bloquearán la futura integración CI.
+
+### Seguridad, privacidad e i18n
+
+- `npm audit` se ejecutó sobre el árbol final y devolvió cero vulnerabilidades conocidas.
+- Durante la implementación se detectaron vulnerabilidades en versiones iniciales de `concurrently`, `shell-quote`, Vitest y esbuild. Se actualizaron `concurrently` a `9.2.3`, Vitest a `4.1.9`, Vite a `8.0.16` y se fijó esbuild `0.28.1` mediante override.
+- Se mantuvo el override de PostCSS `8.5.10` definido en la tarea anterior.
+- Los tests no contienen secretos, datos personales ni llamadas externas.
+- La configuración usa archivos UTF-8 y preserva textos españoles con tildes.
+- La detección específica de textos hardcodeados y catálogos incompletos no se adelanta; pertenece a `0.12`.
+
+### UI y experiencia de usuario
+
+No se implementaron componentes de producto nuevos. La prueba frontend valida que la página base expone un encabezado accesible mediante rol semántico.
+
+ESLint Core Web Vitals proporciona protección inicial frente a patrones de Next.js que perjudican rendimiento o experiencia, aunque la validación completa responsive y WCAG se realizará en tareas posteriores.
+
+### Tests y verificación
+
+Comandos ejecutados:
+
+- `npm install`: instalación del workspace y creación de `package-lock.json`.
+- `npm run format`: aplicación inicial de Prettier y Spotless.
+- `npm run verify`: verificación completa final.
+- `npm audit --json`: cero vulnerabilidades.
+- `git diff --check`: sin errores de whitespace.
+
+Resultado final de `npm run verify`:
+
+- ESLint: sin errores ni warnings.
+- Checkstyle: cero violaciones.
+- Prettier: todos los archivos incluidos usan el formato configurado.
+- Spotless: 18 archivos Java limpios.
+- TypeScript: comprobación `tsc --noEmit` correcta.
+- Vitest: 1 fichero y 1 test superados.
+- JUnit: 1 test superado, sin fallos, errores ni tests omitidos.
+- Next.js: build de producción correcto y ruta `/` prerenderizada.
+- Spring Boot: JAR ejecutable generado correctamente.
+
+La ejecución JUnit muestra un aviso de Mockito/Byte Buddy sobre la futura restricción de carga dinámica de agentes en el JDK. No afecta al resultado con Java 21 y procede del starter de tests, pero deberá revisarse al actualizar a un JDK que prohíba esta carga por defecto.
+
+### Decisiones técnicas
+
+- npm workspaces se usa para centralizar scripts y lockfile sin introducir una herramienta adicional de monorepo.
+- `concurrently` se usa solo para procesos locales de desarrollo; las verificaciones se mantienen secuenciales para ofrecer errores claros y reproducibles.
+- ESLint y Prettier tienen responsabilidades separadas: ESLint analiza calidad y errores; Prettier formatea.
+- Spotless y Checkstyle siguen la misma separación en Java.
+- Se usa configuración Checkstyle propia en vez de `google_checks.xml` completo para adoptar reglas estructurales útiles sin introducir restricciones documentales no acordadas.
+- Vitest se limita a componentes síncronos. Los Server Components asíncronos se probarán mediante Playwright, siguiendo la limitación documentada por Next.js.
+- Vite 8 resuelve aliases TypeScript de forma nativa; se retiró `vite-tsconfig-paths` después de que la propia herramienta lo marcara como redundante.
+- El script `verify` es el contrato local que reutilizará la tarea `0.9` al crear CI.
+
+### Riesgos y deuda técnica
+
+- Aún no se ha creado el pipeline CI que ejecute `npm run verify`; corresponde a `0.9`.
+- No se han configurado hooks pre-commit para evitar coste y complejidad tempranos. Pueden evaluarse cuando el equipo y la frecuencia de contribuciones lo justifiquen.
+- No existe cobertura mínima obligatoria. Se añadirá cuando haya lógica de negocio real y métricas representativas.
+- Playwright está seleccionado en diseño, pero su configuración E2E se incorporará cuando existan flujos navegables relevantes.
+- El aviso futuro de Mockito sobre agentes dinámicos debe resolverse antes de adoptar un JDK que cambie el comportamiento predeterminado.
+- Los overrides de esbuild y PostCSS deben revisarse al actualizar Vite y Next.js.
+- `npm run dev` requiere que los puertos predeterminados de Spring Boot y Next.js estén libres; la configuración por entorno pertenece a `0.4`.

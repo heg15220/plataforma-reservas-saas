@@ -17,5 +17,11 @@ mvn spring-boot:run
 ## Verificación
 
 ```bash
-mvn test
+mvn verify
+```
+
+`verify` ejecuta Spotless, Checkstyle, compilación y JUnit. Para aplicar el formato Java:
+
+```bash
+mvn spotless:apply
 ```
