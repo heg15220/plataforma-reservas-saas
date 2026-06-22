@@ -1,3 +1,13 @@
+spring:
+  datasource:
+    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+    url: jdbc:tc:postgis:17-3.5:///reserly_test
+    username: test
+    password: test
+    hikari:
+      maximumPoolSize: 3
+      minimumIdle: 1
+
 reserly:
   environment: test
   apiPublicBaseUrl: http://localhost:8080

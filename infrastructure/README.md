@@ -1,7 +1,16 @@
 # Infraestructura
 
-Este directorio contendrá la infraestructura local y de despliegue de Reserly.
+La infraestructura local comienza con PostgreSQL 17 y PostGIS 3.5 en `compose.yaml`. Redis, RabbitMQ y MinIO se incorporarán en sus tareas correspondientes.
 
-La estructura prevista incluye PostgreSQL con PostGIS, Redis, RabbitMQ, MinIO y los servicios de aplicación. No se añaden todavía manifiestos ni Docker Compose porque su configuración corresponde a las tareas `0.4`, `0.5` y `0.6`.
+Desde la raíz, después de crear `.env.local`:
+
+```bash
+npm run db:up
+npm run db:status
+npm run db:logs
+npm run db:down
+```
+
+El puerto se publica únicamente en `127.0.0.1`. Los datos persisten en el volumen `reserly_postgres-data`; `db:down` conserva dicho volumen.
 
 No deben almacenarse credenciales, certificados ni secretos reales en este directorio.

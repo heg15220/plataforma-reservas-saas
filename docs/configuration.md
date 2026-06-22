@@ -30,11 +30,16 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_ALLOWED_ORIGINS`       | API              | No      | Sí                         |
 | `RESERLY_SECURE_COOKIES`        | API              | No      | Sí                         |
 | `RESERLY_REAL_PAYMENTS_ENABLED` | API              | No      | Sí; debe ser `false`       |
+| `RESERLY_DATABASE_NAME`         | Docker Compose   | No      | Sí                         |
+| `RESERLY_DATABASE_PORT`         | Docker Compose   | No      | Sí                         |
+| `RESERLY_DATABASE_URL`          | API              | No      | Sí                         |
+| `RESERLY_DATABASE_USERNAME`     | API y Compose    | No      | Sí                         |
+| `RESERLY_DATABASE_PASSWORD`     | API y Compose    | No      | Sí                         |
 | `NEXT_PUBLIC_APP_ENV`           | Web y navegador  | Sí      | Sí                         |
 | `NEXT_PUBLIC_API_BASE_URL`      | Web y navegador  | Sí      | Sí                         |
 | `RESERLY_API_INTERNAL_URL`      | Servidor Next.js | No      | No; fallback a URL pública |
 
-Las variables de PostgreSQL, Redis, RabbitMQ y S3 aparecen en las plantillas como contrato reservado, pero no se consumen hasta las tareas `0.5` y `0.6`.
+Las variables de PostgreSQL ya son consumidas por Spring Boot y Docker Compose. Redis, RabbitMQ y S3 permanecen como contratos reservados hasta `0.6` y las tareas de archivos.
 
 ## Reglas de seguridad
 

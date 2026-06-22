@@ -1,0 +1,33 @@
+name: reserly
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.5@sha256:5bc4a94e294a98370b91f597d631ac7d757dd3b33cfce7fde9670c9c3fd3cc19
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${RESERLY_DATABASE_NAME:-reserly}
+      POSTGRES_USER: ${RESERLY_DATABASE_USERNAME:-reserly}
+      POSTGRES_PASSWORD: ${RESERLY_DATABASE_PASSWORD:?RESERLY_DATABASE_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8 --auth-host=scram-sha-256
+    command:
+      - postgres
+      - -c
+      - timezone=UTC
+      - -c
+      - password_encryption=scram-sha-256
+    ports:
+      - 127.0.0.1:${RESERLY_DATABASE_PORT:-5432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 30s
+
+volumes:
+  postgres-data:

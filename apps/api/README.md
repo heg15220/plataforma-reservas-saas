@@ -10,6 +10,8 @@ El esqueleto solo contiene el punto de entrada y la declaración documental de l
 
 La configuración se enlaza mediante `ReserlyProperties` y los perfiles `local`, `staging`, `production` y `test`. Staging y producción fallan si las URLs públicas no usan HTTPS, las cookies seguras están desactivadas o se intenta activar el pago real prematuramente.
 
+PostgreSQL es la fuente de verdad. Flyway ejecuta las migraciones antes de que Hibernate valide el esquema; Hibernate nunca crea ni modifica tablas.
+
 ## Ejecución
 
 ```bash
@@ -19,10 +21,10 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 ## Verificación
 
 ```bash
-mvn verify
+mvn test -Dspring.profiles.active=test
 ```
 
-`verify` ejecuta Spotless, Checkstyle, compilación y JUnit. Para aplicar el formato Java:
+Las pruebas de integración requieren un motor Docker disponible y crean una instancia PostGIS efímera. Para aplicar el formato Java:
 
 ```bash
 mvn spotless:apply

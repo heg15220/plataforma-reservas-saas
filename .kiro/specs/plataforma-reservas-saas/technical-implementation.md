@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3` y `0.4`.
-- Siguiente tarea pendiente recomendada: `0.5. Configurar PostgreSQL local y migraciones.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4` y `0.5`.
+- Siguiente tarea pendiente recomendada: `0.6. Configurar cola de trabajos y cache.`
 
 ## Plantilla obligatoria por tarea
 
@@ -937,3 +937,243 @@ La primera ejecución monolítica de `npm run verify` excedió el timeout de la 
 - La rotación de secretos, auditoría de acceso y cifrado en reposo dependen de la plataforma de despliegue futura.
 - El perfil staging local requiere crear manualmente `.env.staging`.
 - La validación de credenciales específicas de Brevo, LocationIQ, AEAT y RedSys se añadirá con cada integración.
+
+## Tarea 0.5 - Configurar PostgreSQL local y migraciones
+
+- Fecha: 2026-06-22
+- Commit o referencia: rama `codex/task-0.5-postgresql-flyway`, apilada sobre `codex/task-0.4-environment-config`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Proporcionar una base PostgreSQL local reproducible y convertir Flyway en la fuente exclusiva de evolución del esquema. La tarea debía integrar PostGIS desde el inicio, conectar Spring Boot mediante un pool controlado, impedir que Hibernate cree o modifique tablas y demostrar que todas las migraciones se aplican sobre una base vacía real.
+
+El alcance no incluye tablas de identidad ni de negocio. Estas se crearán en las fases funcionales correspondientes. La migración inicial se limita a capacidades transversales de PostgreSQL necesarias para geolocalización y búsqueda.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-001 Seguridad`: credenciales fuera del repositorio, autenticación SCRAM y exposición local limitada.
+  - `RNF-003 Concurrencia y consistencia`: PostgreSQL como fuente transaccional.
+  - `RNF-004 Rendimiento`: extensiones PostGIS y trigram preparadas para índices espaciales y búsqueda.
+  - `RNF-005 Escalabilidad`: esquema versionado y entorno reproducible.
+  - `RNF-006 Disponibilidad operativa`: healthcheck y validación de migraciones al arrancar.
+  - `RNF-011 Convenciones backend y persistencia`: Flyway controla nombres físicos y Hibernate solo valida.
+- Diseño:
+  - `1.3 Stack definitivo seleccionado`.
+  - `1.4 Convenciones obligatorias de implementación`.
+  - `4. Modelo de datos`.
+  - `5. Diseño de disponibilidad y concurrencia`.
+  - `17.2 PostGIS`.
+- Tareas relacionadas:
+  - `0.5. Configurar PostgreSQL local y migraciones`.
+  - `1.1. Crear tablas de identidad, sesiones/tokens y roles`.
+  - `2.1. Crear migraciones de locales, categorías e imágenes`.
+  - `3.5. Añadir filtro por radio`.
+  - Todas las tareas futuras que creen o modifiquen persistencia.
+
+### Archivos afectados
+
+- Creados:
+  - `infrastructure/compose.yaml`
+  - `apps/api/src/main/resources/db/migration/V1__enable_postgresql_extensions.sql`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+- Modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `package.json`
+  - `scripts/validate-environment-examples.mjs`
+  - `README.md`
+  - `docs/configuration.md`
+  - `infrastructure/README.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/application-local.yaml`
+  - `apps/api/src/main/resources/application-test.yaml`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### PostgreSQL local
+
+`infrastructure/compose.yaml` define el servicio `postgres` con:
+
+- PostgreSQL 17 y PostGIS 3.5.
+- Imagen fijada por tag y digest `sha256:5bc4a94e294a98370b91f597d631ac7d757dd3b33cfce7fde9670c9c3fd3cc19`.
+- Base, usuario, contraseña y puerto recibidos desde variables `RESERLY_DATABASE_*`.
+- `POSTGRES_INITDB_ARGS` con UTF-8, locale `C.UTF-8` y autenticación host SCRAM-SHA-256.
+- `password_encryption=scram-sha-256`.
+- Zona horaria del servidor en UTC.
+- Puerto publicado únicamente en `127.0.0.1`.
+- Volumen nombrado `postgres-data`.
+- Healthcheck con `pg_isready`.
+- Espera inicial y reintentos suficientes para la creación del clúster.
+- Gracia de 30 segundos al detener el servidor.
+
+Los comandos raíz son:
+
+- `npm run db:up`: arranca PostgreSQL y espera al estado saludable.
+- `npm run db:down`: detiene Compose conservando el volumen.
+- `npm run db:status`: muestra el estado del servicio.
+- `npm run db:logs`: sigue los logs.
+- `npm run db:config`: valida el Compose con la plantilla local sin arrancar contenedores.
+
+#### Persistencia Spring
+
+Se añadieron:
+
+- `spring-boot-starter-data-jpa`.
+- `spring-boot-starter-flyway`.
+- `flyway-database-postgresql`.
+- Driver PostgreSQL en runtime.
+- Testcontainers PostgreSQL `2.0.5` en test.
+
+El datasource común recibe URL, usuario y contraseña desde variables. Hikari usa:
+
+- Timeout de conexión configurable, por defecto 30 segundos.
+- Pool máximo configurable, por defecto 10.
+- Mínimo idle configurable, por defecto 2.
+- Nombre `ReserlyDatabasePool`.
+- `SET TIME ZONE 'UTC'` al crear cada conexión.
+
+La inicialización UTC por conexión es necesaria porque la zona del servidor no garantiza la zona de cada sesión JDBC. La primera ejecución del test devolvió `Europe/Madrid`; se corrigió con `connectionInitSql` y el test posterior confirmó `UTC`.
+
+JPA usa:
+
+- `ddl-auto=validate`.
+- `open-in-view=false`.
+- Zona JDBC UTC.
+
+Hibernate puede detectar divergencias entre entidades y migraciones, pero no puede generar DDL. Flyway es el único propietario del esquema.
+
+#### Flyway
+
+Flyway está habilitado con:
+
+- Ubicación `classpath:db/migration`.
+- Validación de nombres de migración.
+- Validación antes de migrar.
+- `baselineOnMigrate=false`, para no adoptar silenciosamente bases no gestionadas.
+- `cleanDisabled=true`, para impedir limpieza accidental mediante la API.
+
+`V1__enable_postgresql_extensions.sql` activa:
+
+- `postgis`: tipos, funciones e índices espaciales.
+- `pg_trgm`: similitud y futuros índices trigram.
+- `unaccent`: normalización de búsquedas sin degradar el texto visible.
+
+Las sentencias usan `IF NOT EXISTS`. La imagen PostGIS ya trae `postgis` activada en la base inicial; Flyway registra un aviso no destructivo y sigue activando/verificando el resto.
+
+### Modelo de datos
+
+No se crearon tablas de dominio.
+
+Objetos creados:
+
+- Tabla técnica `public.flyway_schema_history`, administrada por Flyway.
+- Extensión `postgis` y sus objetos gestionados.
+- Extensión `pg_trgm`.
+- Extensión `unaccent`.
+
+No hay entidades JPA todavía. Hibernate valida correctamente un esquema sin tablas de negocio.
+
+### Contratos y APIs
+
+No se añadieron endpoints REST.
+
+El contrato de persistencia queda definido por:
+
+- Variables `RESERLY_DATABASE_NAME`, `PORT`, `URL`, `USERNAME` y `PASSWORD`.
+- Migraciones SQL versionadas bajo `db/migration`.
+- Arranque bloqueado si Flyway falla o Hibernate detecta un esquema incompatible.
+
+### Seguridad, privacidad e i18n
+
+- El puerto de PostgreSQL no se expone fuera de localhost.
+- La autenticación de host usa SCRAM-SHA-256.
+- La contraseña local de ejemplo es solo para desarrollo; staging y producción exigen secretos inyectados.
+- La plantilla de producción añade `sslmode=require` a la URL JDBC.
+- No se almacenan datos personales ni seeds.
+- Flyway clean está desactivado.
+- La migración y documentación usan UTF-8.
+- `npm audit` final: cero vulnerabilidades.
+
+### UI y experiencia de usuario
+
+No se modificó la UI.
+
+La mejora afecta a la experiencia de desarrollo: después de copiar `.env.local`, el flujo documentado es `npm run db:up` seguido de `npm run dev`.
+
+### Tests y verificación
+
+`application-test.yaml` usa Testcontainers JDBC:
+
+- Imagen `postgis:17-3.5`.
+- Base efímera `reserly_test`.
+- Pool reducido.
+- La base se crea vacía para cada ejecución JVM y se elimina al finalizar.
+
+`DatabaseMigrationIntegrationTests` comprueba:
+
+- Flyway alcanza exactamente la versión `1`.
+- Las extensiones `postgis`, `pg_trgm` y `unaccent` existen.
+- La codificación del servidor es UTF-8.
+- La zona horaria de la sesión JDBC es UTC.
+
+Evidencia automatizada:
+
+- `npm run verify`: correcto.
+- Frontend: 2 ficheros y 5 tests correctos.
+- Backend: 7 tests correctos.
+- Flyway migró PostgreSQL 17.5 desde esquema vacío a `v1`.
+- Hibernate inicializó la unidad de persistencia tras Flyway.
+- ESLint y Checkstyle: cero incidencias.
+- Prettier y Spotless: formato correcto.
+- Builds Next.js y Spring Boot: correctos.
+- `npm run db:config`: Compose válido.
+- `npm audit --json`: cero vulnerabilidades.
+
+Evidencia manual automatizada sobre Compose:
+
+1. Se arrancó `postgres` con un volumen recién creado mediante `docker compose up -d --wait`.
+2. Se arrancó temporalmente la API con el perfil local.
+3. Se consultó PostgreSQL con `psql`.
+4. `flyway_schema_history` mostró `V1`, descripción `enable postgresql extensions` y `success=true`.
+5. `pg_extension` devolvió `pg_trgm`, `postgis` y `unaccent`.
+6. `SHOW server_encoding` devolvió `UTF8`.
+7. `SHOW timezone` devolvió `UTC`.
+8. Se detuvo la API y Compose, conservando el volumen.
+
+Incidencia detectada y corregida:
+
+- La primera prueba de zona horaria falló porque la sesión JDBC heredó `Europe/Madrid`.
+- Se añadió `SET TIME ZONE 'UTC'` al inicio de cada conexión Hikari.
+- La repetición del test y la ejecución integral fueron correctas.
+
+### Decisiones técnicas
+
+- PostgreSQL 17 y PostGIS 3.5 para alinear desarrollo y tests.
+- Imagen Compose fijada por digest para evitar cambios silenciosos.
+- Testcontainers JDBC en vez de una base embebida; H2 no reproduce extensiones, locks ni semántica PostgreSQL.
+- Flyway antes que Hibernate y `ddl-auto=validate`.
+- Esquema `public` en esta fase; no se introduce un esquema adicional sin requisito.
+- Primera migración solo de extensiones; las tablas se añaden cuando sus tareas definan contratos e invariantes.
+- UTC se fuerza tanto en servidor como en conexiones.
+- El volumen local se conserva con `db:down`; no se proporciona un reset destructivo automático.
+
+### Riesgos y deuda técnica
+
+- Los tests backend requieren Docker disponible.
+- La etiqueta Testcontainers usa `postgis:17-3.5`; Compose está además fijado por digest. Deben revisarse juntos al actualizar.
+- La imagen PostGIS incluye `postgis` previamente, por lo que Flyway registra un aviso al ejecutar `CREATE EXTENSION IF NOT EXISTS`; es esperado.
+- No se han definido backups, restauración, alta disponibilidad ni tuning de producción.
+- Los tamaños definitivos de pool deben ajustarse al proveedor y número de réplicas.
+- No existen todavía entidades, DAOs ni consultas; comienzan en `1.1`.
+- No se han creado índices de dominio ni columnas espaciales; se añadirán con las tablas correspondientes.

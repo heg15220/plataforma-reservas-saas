@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-22
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3` y `0.4`.
-- Siguiente tarea pendiente recomendada: `0.5. Configurar PostgreSQL local y migraciones.`
-- Observación: el monorepo dispone de herramientas de calidad y de contratos validados para `local`, `staging` y `production`. Las variables públicas y secretas están separadas, las plantillas se validan automáticamente y las configuraciones inseguras fallan antes de arrancar o compilar. Continúan pendientes PostgreSQL/Flyway, Redis/RabbitMQ y el pipeline CI.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4` y `0.5`.
+- Siguiente tarea pendiente recomendada: `0.6. Configurar cola de trabajos y cache.`
+- Observación: PostgreSQL 17 con PostGIS 3.5 ya está disponible mediante Docker Compose, Flyway controla el esquema, Hibernate solo valida y los tests migran una base efímera desde cero. Continúan pendientes Redis/RabbitMQ, UI base y pipeline CI.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -498,3 +498,50 @@ Fuente de verdad del avance:
   - PostgreSQL, Redis, RabbitMQ y S3 aparecen como contratos reservados en las plantillas, pero aún no son consumidos.
   - `npm run env:check` verifica paridad de claves, HTTPS, cookies seguras, pagos desactivados y ausencia de nombres potencialmente secretos bajo `NEXT_PUBLIC_`.
   - Las comprobaciones negativas confirmaron que Next.js rechaza HTTP en staging y Spring Boot rechaza producción con HTTP, cookies inseguras o pagos reales.
+
+## Conversación 16 - PostgreSQL, PostGIS y Flyway
+
+- Fecha: 2026-06-22
+- Resumen: se configuró PostgreSQL 17 con PostGIS 3.5 para desarrollo local, se añadió persistencia JPA con Hikari y se estableció Flyway como único propietario del esquema. La migración inicial activa PostGIS, `pg_trgm` y `unaccent`. Se añadieron tests de integración con Testcontainers JDBC que crean una base efímera vacía, ejecutan Flyway y verifican extensiones, UTF-8 y UTC. También se verificó el flujo local real arrancando Compose y la API contra un volumen nuevo.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `package.json`
+  - `scripts/validate-environment-examples.mjs`
+  - `README.md`
+  - `docs/configuration.md`
+  - `infrastructure/compose.yaml`
+  - `infrastructure/README.md`
+  - `apps/api/README.md`
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/application-local.yaml`
+  - `apps/api/src/main/resources/application-test.yaml`
+  - `apps/api/src/main/resources/db/migration/V1__enable_postgresql_extensions.sql`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-001 Seguridad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-005 Escalabilidad`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas:
+  - `0.5. Configurar PostgreSQL local y migraciones.`
+  - Prepara `1.1`, `2.1`, `3.5`, `4.1` y todas las tareas que añadan migraciones.
+- Tareas completadas:
+  - `0.5. Configurar PostgreSQL local y migraciones.`
+- Siguiente tarea pendiente recomendada:
+  - `0.6. Configurar cola de trabajos y cache.`
+- Decisiones o aclaraciones relevantes:
+  - Compose usa `postgis/postgis:17-3.5` fijada por digest y publica el puerto solo en `127.0.0.1`.
+  - La autenticación local usa SCRAM-SHA-256 y un volumen persistente.
+  - Flyway ejecuta migraciones antes de que Hibernate valide; `ddl-auto=validate` impide que Hibernate altere el esquema.
+  - La migración `V1` no crea tablas de negocio: activa `postgis`, `pg_trgm` y `unaccent`.
+  - Las conexiones Hikari ejecutan `SET TIME ZONE 'UTC'`. Esta medida se añadió porque la primera prueba real detectó que una sesión heredaba `Europe/Madrid` aunque el servidor estuviera en UTC.
+  - Los tests backend requieren Docker y usan una base PostGIS efímera.
+  - La verificación local sobre un volumen creado desde cero confirmó Flyway `V1`, las tres extensiones, UTF-8 y UTC.
