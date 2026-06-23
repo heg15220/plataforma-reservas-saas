@@ -104,7 +104,7 @@ class InfrastructureServicesIntegrationTests {
   }
 
   @Test
-  void storesEphemeralValuesAndCacheEntriesWithExpiration() {
+  void storesEphemeralValuesAndCacheEntriesWithExpiration() throws InterruptedException {
     redisTemplate.opsForValue().set("reserly:test:ttl", "available", Duration.ofSeconds(30));
 
     assertThat(redisTemplate.opsForValue().get("reserly:test:ttl")).isEqualTo("available");
@@ -114,7 +114,7 @@ class InfrastructureServicesIntegrationTests {
     assertThat(cache).isNotNull();
     cache.put("venue-1", "cached");
 
-    assertThat(cache.get("venue-1", String.class)).isEqualTo("cached");
+    assertThat(awaitCacheValue(cache, "venue-1")).isEqualTo("cached");
     Set<String> cacheKeys = redisTemplate.keys("reserly::infrastructure-smoke::*");
     assertThat(cacheKeys).hasSize(1);
     assertThat(redisTemplate.getExpire(cacheKeys.iterator().next())).isBetween(1L, 300L);
@@ -141,5 +141,20 @@ class InfrastructureServicesIntegrationTests {
     assertThat(correlationData.getFuture().get(5, TimeUnit.SECONDS).ack()).isTrue();
     assertThat(rabbitTemplate.receiveAndConvert(queueName)).isEqualTo("job-payload");
     assertThat(amqpAdmin.deleteQueue(queueName)).isTrue();
+  }
+
+  private String awaitCacheValue(Cache cache, String key) throws InterruptedException {
+    String value = null;
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+
+    while (value == null && System.nanoTime() < deadline) {
+      value = cache.get(key, String.class);
+
+      if (value == null) {
+        TimeUnit.MILLISECONDS.sleep(50);
+      }
+    }
+
+    return value;
   }
 }

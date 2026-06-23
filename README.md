@@ -60,6 +60,7 @@ Los comandos se ejecutan desde la raíz:
 
 ```bash
 npm run lint
+npm run i18n:check
 npm run format:check
 npm run typecheck
 npm run test

@@ -21,6 +21,7 @@ Las ejecuciones anteriores de la misma rama o pull request se cancelan cuando ap
 - instala dependencias con `npm ci`;
 - valida el contrato del propio workflow;
 - valida las plantillas de entorno;
+- valida catálogos i18n completos y ausencia de texto visible hardcodeado en UI TSX;
 - comprueba Prettier y Spotless;
 - ejecuta ESLint y Checkstyle.
 
@@ -69,7 +70,8 @@ La configuración remota de reglas no se versiona en este repositorio. Debe apli
 
 ```bash
 npm run ci:check
+npm run i18n:check
 npm run verify
 ```
 
-`ci:check` protege las propiedades estructurales esenciales del workflow. Prettier valida además que el YAML pueda analizarse y mantenga el formato acordado.
+`ci:check` protege las propiedades estructurales esenciales del workflow. `i18n:check` protege claves completas `es`/`en` y textos visibles de UI sin hardcodear. Prettier valida además que el YAML pueda analizarse y mantenga el formato acordado.

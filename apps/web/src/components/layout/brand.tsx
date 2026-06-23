@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { CalendarCheck2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface BrandProps {
   compact?: boolean;
@@ -14,11 +15,13 @@ export interface BrandProps {
  * La variante compacta conserva el nombre accesible mediante `aria-label`.
  */
 export function Brand({ compact = false, inverse = false }: BrandProps) {
+  const brand = useTranslations("Brand");
+  const brandName = brand("name");
   const foreground = inverse ? "common.white" : "text.primary";
 
   return (
     <Box
-      aria-label="Reserly"
+      aria-label={brandName}
       sx={{ alignItems: "center", color: foreground, display: "inline-flex", gap: 1 }}
     >
       <Box
@@ -38,7 +41,7 @@ export function Brand({ compact = false, inverse = false }: BrandProps) {
       </Box>
       {!compact && (
         <Typography component="span" sx={{ fontSize: "1.125rem", fontWeight: 700 }}>
-          Reserly
+          {brandName}
         </Typography>
       )}
     </Box>

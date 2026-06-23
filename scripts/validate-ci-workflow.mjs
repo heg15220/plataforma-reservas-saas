@@ -23,6 +23,7 @@ const requiredFragments = [
   "persist-credentials: false",
   "npm ci",
   "npm run format:check",
+  "npm run i18n:check",
   "npm run lint",
   "npm run typecheck",
   "npm run test:web",

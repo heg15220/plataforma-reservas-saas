@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-23
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9` y `0.10`.
-- Siguiente tarea pendiente recomendada: `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
-- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI y base i18n con `next-intl` y catálogos versionados `es`/`en`. Continúan pendientes la resolución dinámica de idioma, la detección de textos hardcodeados y la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11` y `0.12`.
+- Siguiente tarea pendiente recomendada: `0.13. Definir patrón para textos localizados en base de datos mediante campos *_i18n o JSON { es, en }.`
+- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma y validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX. Continúan pendientes el patrón de textos localizados en base de datos, las convenciones backend automatizadas y la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -878,3 +878,39 @@ Fuente de verdad del avance:
   - La rama de trabajo sigue siendo la rama de fase, no una rama por tarea.
   - Cada tarea cerrada debe dejar la rama local alineada con `origin/<rama-de-fase>`.
   - Si el push falla por autenticación, red o permisos, debe tratarse como bloqueo operativo y resolverse antes de empezar la siguiente tarea.
+
+## Conversación 25 - Validación automática i18n y textos hardcodeados
+
+- Fecha: 2026-06-23
+- Resumen: se completó la tarea `0.12` añadiendo `npm run i18n:check`, un validador AST de interfaz que comprueba la paridad de claves entre `apps/web/locales/es.json` y `apps/web/locales/en.json`, detecta texto visible hardcodeado en componentes TSX y verifica claves estáticas usadas con `useTranslations` y `getTranslations`. El check se integró en `npm run verify`, en el workflow de GitHub Actions y en el contrato local `ci:check`.
+- Archivos modificados:
+  - `.github/workflows/ci.yml`
+  - `README.md`
+  - `apps/api/src/test/java/com/reserly/platform/infrastructure/InfrastructureServicesIntegrationTests.java`
+  - `apps/web/src/components/layout/brand.tsx`
+  - `docs/architecture/internationalization.md`
+  - `docs/continuous-integration.md`
+  - `package.json`
+  - `scripts/validate-ci-workflow.mjs`
+  - `scripts/validate-i18n.mjs`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.`
+  - Prepara `0.13`, `0.15`, `1.21`, `3.14`, `8.14`, `10.16`, `16.14` y las validaciones de aceptación i18n de la fase 19.
+- Tareas completadas:
+  - `0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.`
+- Siguiente tarea pendiente recomendada:
+  - `0.13. Definir patrón para textos localizados en base de datos mediante campos *_i18n o JSON { es, en }.`
+- Decisiones o aclaraciones relevantes:
+  - La validación se implementa como script Node/TypeScript AST reutilizable para ejecutarse localmente, en `verify` y en CI sin depender de un plugin ESLint propio todavía.
+  - El alcance del detector de hardcoded UI cubre `.tsx` no test bajo `apps/web/src`; emails, backend, seeds, migraciones y plantillas quedan para validaciones futuras, especialmente `0.15`.
+  - La marca visible `Reserly` en `brand.tsx` pasa a leerse desde `Brand.name`, evitando una excepción manual al contrato i18n.
+  - El test de integración de infraestructura backend se estabilizó con espera acotada al leer la caché Redis para eliminar una condición intermitente observada durante `npm run verify`.
+  - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, `i18n:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot.

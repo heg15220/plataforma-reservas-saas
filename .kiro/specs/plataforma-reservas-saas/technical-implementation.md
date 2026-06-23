@@ -2880,3 +2880,282 @@ Alternativas descartadas:
 - El parser de `Accept-Language` es deliberadamente acotado y cubre el caso necesario para `es`/`en`; si se añaden más idiomas o scripts complejos habrá que ampliar la normalización.
 - `0.12` sigue pendiente para detectar textos hardcodeados.
 - `0.15` sigue pendiente para validar codificación UTF-8 y calidad lingüística de forma más profunda.
+
+## Tarea 0.12 - Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI
+
+### Identificador y fecha
+
+- Tarea: `0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.`
+- Fecha de iteración: 2026-06-23.
+- Rama de trabajo: `phase/0-preparacion-proyecto`.
+
+### Objetivo técnico
+
+El objetivo técnico fue convertir el contrato i18n creado en `0.10` y la resolución dinámica de idioma de `0.11` en una validación automática de calidad. A partir de esta iteración, el repositorio debe fallar localmente y en CI cuando:
+
+- Los catálogos `es` y `en` divergen en estructura o claves.
+- Un componente TSX de UI introduce texto visible literal fuera de los catálogos.
+- Un componente usa una clave estática de `next-intl` que no existe en `apps/web/locales/es.json`.
+- El workflow de GitHub Actions deja de ejecutar la validación i18n como parte del bloque de calidad.
+
+La tarea también cerró una deuda real detectada por el nuevo check: el componente compartido de marca contenía `Reserly` como texto visible y `aria-label` literal. Ese texto pasa a consumirse desde la clave `Brand.name`, manteniendo la marca dentro del mismo contrato de localización que el resto de UI.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos impactados:
+
+- `RF-031 Internacionalización de textos`: todos los textos visibles deben estar internacionalizados en español e inglés.
+- `RNF-009 Internacionalización y localización`: la interfaz debe poder operar con catálogos completos y fallback controlado.
+- `RNF-012 Calidad lingüística, acentos y codificación de textos en español`: el check no sustituye la futura validación ortográfica profunda, pero evita texto español visible fuera de catálogos.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`: el cierre de tarea exige commit trazable y push a GitHub en la rama de fase.
+
+Decisiones de diseño aplicadas:
+
+- Mantener una validación propia en `scripts/validate-i18n.mjs` en vez de crear todavía un plugin ESLint. La razón es que el repositorio ya tiene scripts contractuales (`validate-ci-workflow.mjs`, `validate-environment-examples.mjs`) y esta forma permite ejecutar la regla desde `npm run verify` y CI sin publicar ni configurar un paquete adicional.
+- Validar el catálogo español como referencia de existencia de claves estáticas porque `messages.test.ts` y el nuevo check de paridad garantizan que cualquier clave existente en `es` también exista en `en`.
+- Analizar solo `.tsx` de UI no test bajo `apps/web/src`, porque el objetivo de la tarea se limita a textos hardcodeados en interfaz. Emails, backend, seeds, migraciones, plantillas y documentación visible quedan fuera de alcance y se cubrirán con tareas posteriores, especialmente `0.15`.
+- Permitir claves dinámicas de traducción cuando no puedan resolverse estáticamente. El script valida las llamadas literales; las expresiones dinámicas quedan como responsabilidad del código que las construye y de tests de renderizado de cada componente.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `scripts/validate-i18n.mjs`: validador Node basado en AST de TypeScript para catálogos, texto visible y claves de traducción.
+
+Archivos modificados:
+
+- `package.json`: añade `i18n:check` y lo integra en `verify`.
+- `.github/workflows/ci.yml`: añade el paso `Validate i18n contracts` dentro de `Quality`.
+- `scripts/validate-ci-workflow.mjs`: amplía el contrato mínimo de CI para exigir `npm run i18n:check`.
+- `apps/web/src/components/layout/brand.tsx`: reemplaza texto visible y `aria-label` literales por `Brand.name` vía `useTranslations`.
+- `docs/architecture/internationalization.md`: documenta el nuevo validador, su alcance, los atributos visibles inspeccionados y sus límites.
+- `docs/continuous-integration.md`: documenta la validación i18n dentro del pipeline de calidad y de la verificación local.
+- `README.md`: añade `npm run i18n:check` a los comandos de calidad.
+- `apps/api/src/test/java/com/reserly/platform/infrastructure/InfrastructureServicesIntegrationTests.java`: estabiliza una aserción de caché Redis observada como intermitente durante `verify`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`: marca `0.12` como completada.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`: registra la conversación, evidencia y siguiente tarea.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`: añade esta entrada técnica.
+
+No se eliminaron archivos.
+
+### Arquitectura del validador i18n
+
+`scripts/validate-i18n.mjs` se organiza como una validación determinista de repositorio:
+
+1. Calcula rutas absolutas desde la raíz del monorepo.
+2. Carga `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+3. Aplana ambos catálogos en claves punteadas, por ejemplo `PublicShell.navigation.home`.
+4. Compara ambos conjuntos para detectar claves ausentes en cualquiera de los idiomas.
+5. Recorre recursivamente `apps/web/src` y filtra archivos `.tsx` que no sean tests.
+6. Parse el contenido con `typescript.createSourceFile` usando modo `TSX`.
+7. Recorre el AST para detectar texto visible hardcodeado y llamadas estáticas a traducciones.
+8. Agrega errores con ruta relativa y ubicación aproximada.
+9. Falla con código de salida `1` si existe cualquier infracción, o imprime un mensaje de éxito si el contrato está limpio.
+
+La validación de paridad de catálogos no depende de renderizar React ni de `next-intl`; opera sobre JSON puro. Esto la hace rápida, reproducible y apta para CI.
+
+La validación de UI usa AST en vez de expresiones regulares para diferenciar:
+
+- Texto JSX real (`JsxText`).
+- Expresiones string dentro de JSX (`{"texto"}`).
+- Atributos visibles con valor literal (`aria-label="..."`, `placeholder="..."`, etc.).
+- Templates con texto visible estático cuando aparecen en JSX o atributos inspeccionados.
+- Llamadas de traducción estáticas con namespace literal.
+
+Esta decisión evita falsos positivos frecuentes de un grep simple sobre imports, nombres de componentes, clases CSS, rutas, identificadores, tipos o constantes internas.
+
+### Detección de textos hardcodeados
+
+El script considera visible cualquier literal con letras o números que aparezca en:
+
+- Nodos `JsxText`.
+- Expresiones JSX que contengan strings o templates estáticos.
+- Atributos visibles de componentes y elementos HTML.
+
+Los atributos inspeccionados actualmente son:
+
+- `alt`
+- `aria-label`
+- `helperText`
+- `label`
+- `placeholder`
+- `primary`
+- `secondary`
+- `title`
+- `tooltip`
+
+El listado cubre texto accesible, texto de formularios, títulos, ayudas y textos habituales de componentes Material UI. Se evita inspeccionar atributos técnicos como `className`, `href`, `id`, `data-*`, `sx` o `value`, donde las cadenas no representan necesariamente contenido visible.
+
+Cuando se detecta texto visible literal, el error indica el archivo, línea y columna para que la corrección consista en añadir la clave correspondiente al catálogo y consumirla con `useTranslations` o `getTranslations`.
+
+### Validación de claves de traducción
+
+El script resuelve patrones estáticos de `next-intl`:
+
+- `const t = useTranslations("Namespace"); t("key")`
+- `const t = await getTranslations("Namespace"); t("key")`
+- `useTranslations("Namespace")("key")`
+
+Para evitar colisiones entre funciones distintas que usan el mismo nombre local `t`, el validador mantiene mapas de alias por ámbito de función. Cada función, componente o callback recibe su propio ámbito, heredando únicamente los aliases del ámbito padre cuando procede.
+
+La clave completa se construye concatenando namespace y clave:
+
+- Namespace: `Brand`
+- Key: `name`
+- Clave validada: `Brand.name`
+
+Si la clave completa no existe en el catálogo español aplanado, el script emite un error. Como antes se comprueba la paridad `es`/`en`, una clave válida en `es` queda garantizada en ambos catálogos.
+
+El script no intenta resolver templates dinámicos como `t(`foundations.${foundation.key}.status`)`, porque requeriría análisis de dominio específico. Esta limitación queda aceptada por alcance y debe cubrirse con tests de renderizado donde se introduzcan patrones dinámicos relevantes.
+
+### Integración con scripts y CI
+
+`package.json` añade:
+
+- `i18n:check`: ejecuta `node scripts/validate-i18n.mjs`.
+- `verify`: ejecuta `npm run i18n:check` después de `env:check` y antes de lint, formato, typecheck, tests y builds.
+
+El orden elegido sitúa los errores i18n cerca de otros contratos de repositorio, antes de checks más costosos como builds o Testcontainers.
+
+`.github/workflows/ci.yml` añade en el job `Quality`:
+
+- `Validate i18n contracts`: ejecuta `npm run i18n:check`.
+
+`scripts/validate-ci-workflow.mjs` se actualiza para que `npm run ci:check` falle si el workflow pierde esa ejecución. Esto impide que una edición futura de CI elimine accidentalmente la validación i18n mientras `verify` siga pasando localmente.
+
+### Cambios en componentes de UI
+
+`apps/web/src/components/layout/brand.tsx` importa `useTranslations` y obtiene:
+
+- `const brand = useTranslations("Brand")`
+- `const brandName = brand("name")`
+
+El componente usa `brandName` tanto para el texto visible como para el `aria-label`. Así se cumple el contrato i18n y se evita que la marca sea una excepción hardcodeada en un componente compartido. El cambio no altera la estructura visual del componente ni sus variantes de tamaño, pero sí centraliza la marca en los catálogos.
+
+### Estabilización de test backend
+
+Durante la verificación completa se observó una condición intermitente en `InfrastructureServicesIntegrationTests.storesEphemeralValuesAndCacheEntriesWithExpiration`: tras `cache.put(...)`, la lectura inmediata de Redis podía devolver `null` de forma ocasional dentro del flujo completo de `npm run verify`, aunque el test pasaba aislado.
+
+Para que la validación de `0.12` no quedara bloqueada por una carrera ajena al cambio i18n, el test se estabilizó con una espera acotada:
+
+- El método de prueba permite `InterruptedException`.
+- La aserción de lectura de caché usa `awaitCacheValue(cache, "venue-1")`.
+- `awaitCacheValue` reintenta durante un máximo de dos segundos, con pausas de 50 ms, hasta observar el valor esperado o devolver `null`.
+
+La semántica del test no cambia: sigue verificando que la caché almacena y devuelve el valor antes de validar su expiración. La diferencia es que tolera la latencia eventual de inicialización/comunicación de Redis bajo Testcontainers y Spring Cache.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No se modificó el modelo de datos, no se añadieron migraciones Flyway, no se crearon índices y no se cambiaron restricciones de base de datos.
+
+Los catálogos `apps/web/locales/es.json` y `apps/web/locales/en.json` no se modificaron en esta tarea porque la clave `Brand.name` ya existía desde `0.10`. El cambio se limitó a consumir esa clave desde el componente compartido.
+
+### Endpoints, servicios, jobs y módulos
+
+No se crearon endpoints REST, controladores, servicios de dominio, jobs ni consumidores de cola.
+
+El único módulo nuevo es el script operativo `scripts/validate-i18n.mjs`, invocado desde npm y CI. No forma parte del bundle de producción frontend ni del backend.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- Paridad estructural de catálogos `es`/`en`.
+- Existencia de claves estáticas usadas en UI.
+- Ausencia de texto visible hardcodeado en TSX no test.
+- Presencia del check i18n en el workflow de CI mediante `ci:check`.
+
+Permisos:
+
+- No se añadieron permisos de aplicación.
+- El workflow mantiene el modelo existente de permisos mínimos `contents: read`.
+
+Seguridad y privacidad:
+
+- El script no procesa datos de usuario ni secretos.
+- La validación opera solo sobre archivos versionados del repositorio.
+- Al evitar texto hardcodeado, se reduce el riesgo de mensajes públicos inconsistentes, no traducibles o difíciles de auditar.
+
+Internacionalización:
+
+- La tarea refuerza que todo texto visible nuevo pase por `next-intl`.
+- La marca accesible y visible se centraliza en catálogos.
+- Las futuras pantallas deberán añadir claves a ambos catálogos y consumirlas mediante `useTranslations` o `getTranslations`.
+
+Accesibilidad:
+
+- La inspección de `aria-label` y `alt` impide que textos accesibles queden fuera del sistema i18n.
+- `brand.tsx` conserva `aria-label`, ahora localizado desde `Brand.name`.
+
+### Errores, logs, auditoría y observabilidad
+
+`scripts/validate-i18n.mjs` reporta errores en consola con formato accionable:
+
+- Tipo de error.
+- Ruta relativa del archivo afectado cuando aplica.
+- Línea y columna aproximadas cuando el error proviene de AST.
+- Clave o texto problemático.
+
+No se añadieron logs de aplicación, auditoría persistente ni métricas, porque el cambio es de calidad de repositorio y CI.
+
+### Tests y comandos de verificación
+
+Verificación incremental ejecutada:
+
+- `npm run i18n:check`: correcto.
+- `npm run ci:check`: correcto.
+- `npm run typecheck --workspace @reserly/web`: correcto.
+- `npm run lint --workspace @reserly/web`: correcto.
+- `npm run test --workspace @reserly/web`: correcto, 7 archivos y 22 tests.
+- `npm run build:web:test`: correcto.
+- `npm run format:check:web`: correcto.
+- `npm run test:api`: correcto tras estabilizar la lectura de caché, 9 tests.
+- `npm run build:api`: correcto.
+
+Verificación completa ejecutada:
+
+- `npm run verify`: correcto.
+
+Resultado final resumido de `npm run verify`:
+
+- `ci:check`: contrato CI válido con Quality, Frontend y Backend integration.
+- `env:check`: plantillas `.env.local.example`, `.env.staging.example` y `.env.production.example` válidas.
+- `i18n:check`: catálogos completos y UI sin texto visible hardcodeado.
+- ESLint frontend: correcto.
+- Checkstyle backend: 0 violaciones.
+- Prettier: todos los archivos con estilo correcto.
+- Spotless: correcto.
+- TypeScript: correcto.
+- Vitest: 7 archivos y 22 tests correctos.
+- JUnit/Spring Boot: 9 tests correctos con PostgreSQL/PostGIS, Redis y RabbitMQ mediante Testcontainers.
+- Next.js: build correcto.
+- Spring Boot: JAR generado correctamente.
+
+Incidencias durante la verificación:
+
+- Una ejecución inicial de `npm run verify` dentro del sandbox falló al resolver dependencias Maven por bloqueo de red; no fue un fallo funcional del código.
+- Dos ejecuciones de `npm run verify` con red aprobada fallaron antes de la estabilización del test por una lectura inmediata `null` en Redis dentro de `InfrastructureServicesIntegrationTests`. La estabilización con espera acotada resolvió la intermitencia y la verificación completa posterior pasó.
+- Se mantiene el aviso no bloqueante de Mockito/Byte Buddy sobre carga dinámica de agente en futuras versiones del JDK.
+
+### Riesgos, limitaciones y deuda técnica
+
+- El detector cubre UI TSX, no textos en backend, emails, plantillas, seeds, migraciones, Markdown de usuario ni documentación pública. Ese alcance debe ampliarse en tareas futuras, especialmente `0.15`.
+- Las claves dinámicas de traducción no se validan estáticamente. Cuando se usen, deben acompañarse de tests o helpers tipados que restrinjan los valores posibles.
+- El listado de atributos visibles puede crecer cuando aparezcan nuevos componentes con props textuales específicas.
+- El script no sustituye una validación lingüística profunda de español: no detecta tildes omitidas, signos de apertura omitidos ni mojibake en todos los artefactos. Eso sigue pendiente para `0.15`.
+- La estabilización del test de Redis reduce intermitencia, pero si vuelve a aparecer latencia superior a dos segundos habrá que revisar configuración de cache manager, Testcontainers o inicialización de Redis.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- Existe un check ejecutable localmente con `npm run i18n:check`.
+- El check detecta claves faltantes entre catálogos.
+- El check detecta texto visible hardcodeado en UI TSX.
+- El check valida claves estáticas usadas con `next-intl`.
+- El check está integrado en `npm run verify`.
+- El workflow de GitHub Actions lo ejecuta en `Quality`.
+- `ci:check` protege que el workflow siga incluyendo la validación.
+- La UI compartida de marca ya no contiene texto visible hardcodeado.
+- `npm run verify` pasa completo.
+- `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados antes del commit de cierre.
