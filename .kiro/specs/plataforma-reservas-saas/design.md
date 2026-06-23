@@ -141,9 +141,11 @@ Flujo obligatorio:
 1. La rama de fase se crea desde la versión actualizada de `develop`.
 2. Todas las tareas de esa fase se implementan como commits trazables en la misma rama de fase.
 3. No se crean ramas `task/*`, `codex/task-*` ni equivalentes para cada tarea.
-4. Al completar y verificar la fase, se abre un pull request desde la rama de fase hacia `develop`.
-5. La promoción a producción se realiza desde `develop` hacia `main`, directamente mediante un pull request de release o a través de `release/<version>` cuando se requiera estabilización.
-6. Después de una promoción, cualquier commit de estabilización o hotfix que afecte a `main` debe quedar también incorporado en `develop` para evitar divergencias.
+4. Al terminar cada tarea, tras implementar, verificar, actualizar `tasks.md`, registrar `conversation-tracking.md` y documentar `technical-implementation.md`, se crea un commit trazable y se sube a GitHub con `git push` sobre la rama de fase correspondiente.
+5. Después del push de cada tarea, la rama local debe quedar alineada con `origin/<rama-de-fase>`; si el push falla por autenticación, red o permisos, debe registrarse como bloqueo operativo y resolverse antes de iniciar la siguiente tarea.
+6. Al completar y verificar la fase, se abre un pull request desde la rama de fase hacia `develop`.
+7. La promoción a producción se realiza desde `develop` hacia `main`, directamente mediante un pull request de release o a través de `release/<version>` cuando se requiera estabilización.
+8. Después de una promoción, cualquier commit de estabilización o hotfix que afecte a `main` debe quedar también incorporado en `develop` para evitar divergencias.
 
 Los pull requests deben ejecutar las validaciones del proyecto, conservar Conventional Commits y ofrecer una trazabilidad clara entre fase, tareas cerradas, documentación técnica y evidencia de verificación. Cuando la plataforma lo permita, `main`, `develop` y las ramas de fase deben impedir pushes directos y exigir revisión y CI correcto.
 

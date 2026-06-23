@@ -699,6 +699,7 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - El desarrollo debe seguir GitFlow con dos ramas permanentes: `develop` para integración y `main` para producción.
 - Cada fase numerada de `tasks.md` debe desarrollarse en una única rama de fase creada desde `develop`; no se deben crear ramas independientes para cada tarea de esa fase.
 - Las tareas de una misma fase deben incorporarse mediante commits trazables dentro de su rama de fase.
+- Al terminar cada tarea, el commit o commits de cierre deben subirse al repositorio remoto de GitHub en la rama de fase correspondiente, verificando que la rama local queda alineada con `origin`.
 - Una fase solo puede integrarse en `develop` mediante pull request cuando sus tareas previstas estén implementadas, verificadas y documentadas, o cuando se apruebe explícitamente una integración parcial.
 - `develop` debe representar el estado integrado de la siguiente versión y no debe utilizarse como rama de producción.
 - `main` debe contener únicamente versiones candidatas a producción o desplegadas en producción, promovidas desde `develop` mediante pull request de release.

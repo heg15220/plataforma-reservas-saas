@@ -856,3 +856,25 @@ Fuente de verdad del avance:
   - `Accept-Language` se interpreta respetando calidad `q` y orden; si el idioma preferido no empieza por `es`, el resultado es `en`.
   - No se añadió selector visual de idioma; el cambio manual queda disponible mediante URL hasta que exista UI específica.
   - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot. La primera ejecución sin permisos elevados falló al descargar dependencias de Maven por bloqueo de red del sandbox; la ejecución aprobada con red pasó correctamente.
+
+## Conversación 24 - Push obligatorio a GitHub al cerrar cada tarea
+
+- Fecha: 2026-06-23
+- Resumen: se actualizó la especificación `.kiro` para exigir que, al terminar cada tarea, los cambios se consoliden en un commit trazable y se suban al repositorio remoto de GitHub en la rama de fase correspondiente antes de iniciar la siguiente tarea.
+- Archivos modificados:
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+- Requisitos impactados:
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - Todas las tareas futuras de `tasks.md`, porque el criterio de cierre operativo ahora incluye commit y push a GitHub.
+- Tareas completadas:
+  - Ninguna; es una actualización de proceso y documentación, no el cierre de una tarea funcional del plan.
+- Siguiente tarea pendiente recomendada:
+  - `0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.`
+- Decisiones o aclaraciones relevantes:
+  - La rama de trabajo sigue siendo la rama de fase, no una rama por tarea.
+  - Cada tarea cerrada debe dejar la rama local alineada con `origin/<rama-de-fase>`.
+  - Si el push falla por autenticación, red o permisos, debe tratarse como bloqueo operativo y resolverse antes de empezar la siguiente tarea.

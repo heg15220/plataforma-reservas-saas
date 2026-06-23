@@ -11,10 +11,11 @@ Cada tarea debe cerrarse con:
 - Tests relevantes.
 - Revisión de permisos.
 - Validación responsive cuando afecte UI.
+- Commit trazable y push al repositorio remoto de GitHub en la rama de fase correspondiente.
 
 Convención transversal: cualquier nombre de tabla escrito en este plan en `snake_case` se conserva como referencia conceptual histórica. La implementación física en migraciones Flyway, entidades JPA y consultas debe traducirlo a `UpperCamelCase` para tablas y `lowerCamelCase` para atributos/columnas, según `design.md` y `RNF-011`.
 
-Convención GitFlow transversal: el desarrollo se organiza en una única rama por fase, creada desde `develop` y nombrada `phase/<numero>-<descripcion>`. Todas las tareas de la fase se implementan mediante commits en esa misma rama; no se crean ramas por tarea. Al cerrar la fase, su rama se integra mediante pull request en `develop`. La rama `main` queda reservada para promociones a producción desde `develop`; los hotfix urgentes parten de `main` y deben reintegrarse también en `develop`. Esta política sustituye la estrategia histórica de ramas cortas por tarea documentada durante la tarea `0.2`.
+Convención GitFlow transversal: el desarrollo se organiza en una única rama por fase, creada desde `develop` y nombrada `phase/<numero>-<descripcion>`. Todas las tareas de la fase se implementan mediante commits en esa misma rama; no se crean ramas por tarea. Al cerrar cada tarea, el commit de cierre debe subirse al repositorio remoto de GitHub mediante `git push` sobre la rama de fase, dejando la rama local alineada con `origin`. Al cerrar la fase, su rama se integra mediante pull request en `develop`. La rama `main` queda reservada para promociones a producción desde `develop`; los hotfix urgentes parten de `main` y deben reintegrarse también en `develop`. Esta política sustituye la estrategia histórica de ramas cortas por tarea documentada durante la tarea `0.2`.
 
 ## 2. Fase 0 - Preparación del proyecto
 
