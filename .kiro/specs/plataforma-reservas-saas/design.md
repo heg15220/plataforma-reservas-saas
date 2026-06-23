@@ -121,6 +121,32 @@ Elementos que no deben trasladarse sin cambios:
 - No hay Redis, cola real, locks distribuidos, migraciones versionadas, Testcontainers ni observabilidad suficiente.
 - La organización por capas globales de OverCut debe evolucionar a paquetes por contexto: identidad, locales, disponibilidad, reservas, penalizaciones, reseñas, pagos y administración.
 
+### 1.6 Estrategia GitFlow por fases
+
+El repositorio debe usar un GitFlow adaptado al plan de construcción. La unidad de aislamiento del trabajo es la **fase completa**, no cada tarea individual.
+
+Ramas permanentes:
+
+- `main`: rama estable de producción. Solo recibe promociones de release procedentes de `develop` y correcciones urgentes procedentes de `hotfix/*`.
+- `develop`: rama de integración continua del producto. Reúne las fases terminadas y constituye la base de la siguiente versión.
+
+Ramas temporales:
+
+- `phase/<numero>-<descripcion>`: una única rama por cada fase de `tasks.md`, creada desde `develop`. Ejemplos: `phase/0-preparacion-proyecto`, `phase/1-identidad-base-saas` y `phase/2-locales-perfil-publico`.
+- `release/<version>`: rama opcional creada desde `develop` cuando sea necesario estabilizar una versión antes de promoverla a `main`.
+- `hotfix/<descripcion>`: corrección urgente creada desde `main`, que debe reintegrarse en `main` y `develop`.
+
+Flujo obligatorio:
+
+1. La rama de fase se crea desde la versión actualizada de `develop`.
+2. Todas las tareas de esa fase se implementan como commits trazables en la misma rama de fase.
+3. No se crean ramas `task/*`, `codex/task-*` ni equivalentes para cada tarea.
+4. Al completar y verificar la fase, se abre un pull request desde la rama de fase hacia `develop`.
+5. La promoción a producción se realiza desde `develop` hacia `main`, directamente mediante un pull request de release o a través de `release/<version>` cuando se requiera estabilización.
+6. Después de una promoción, cualquier commit de estabilización o hotfix que afecte a `main` debe quedar también incorporado en `develop` para evitar divergencias.
+
+Los pull requests deben ejecutar las validaciones del proyecto, conservar Conventional Commits y ofrecer una trazabilidad clara entre fase, tareas cerradas, documentación técnica y evidencia de verificación. Cuando la plataforma lo permita, `main`, `develop` y las ramas de fase deben impedir pushes directos y exigir revisión y CI correcto.
+
 ## 2. Vista lógica
 
 ```text

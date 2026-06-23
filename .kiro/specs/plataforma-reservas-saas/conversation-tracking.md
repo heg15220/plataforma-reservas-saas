@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-22
+- Fecha de última actualización: 2026-06-23
 - Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6` y `0.7`.
 - Siguiente tarea pendiente recomendada: `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
-- Observación: la web ya dispone de integración SSR de Material UI, shell público, shell del panel, primitivas responsive y validación visual entre 320 y 1280 píxeles. Continúan pendientes el sistema visual definitivo, el pipeline CI y la infraestructura i18n.
+- Observación: la web ya dispone de integración SSR de Material UI, shell público, shell del panel, primitivas responsive y validación visual entre 320 y 1280 píxeles. Continúan pendientes el sistema visual definitivo, el pipeline CI y la infraestructura i18n. Desde el 2026-06-23 rige GitFlow por fases: una rama por fase, integración en `develop` y promoción a producción mediante `main`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -647,3 +647,32 @@ Fuente de verdad del avance:
   - La ruta `/panel-preview` es una demostración sin datos, se marca `noindex` y no sustituye al dashboard funcional.
   - El documento usa temporalmente `lang="es"` porque los textos visibles actuales están en español; la resolución dinámica se implementará en `0.11`.
   - La validación visual cubrió 320, 390, 768 y 1280 píxeles sin desbordamiento horizontal ni errores de consola.
+
+## Conversación 19 - Adopción de GitFlow por fases
+
+- Fecha: 2026-06-23
+- Resumen: se sustituyó la estrategia anterior de ramas cortas por tarea por un GitFlow adaptado al plan del proyecto. A partir de esta decisión existirá una única rama de desarrollo por cada fase completa, `develop` será la rama permanente de integración y `main` quedará reservada para versiones promovidas a producción.
+- Archivos modificados:
+  - `requirements.md`
+  - `design.md`
+  - `tasks.md`
+  - `conversation-tracking.md`
+  - `technical-implementation.md`
+- Requisitos impactados:
+  - Nuevo `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RNF-005 Escalabilidad`, por la organización y trazabilidad del desarrollo.
+- Tareas impactadas:
+  - `0.2. Crear repositorio, estructura base y convenciones de ramas`, cuya decisión de ramas se corrige documentalmente sin cambiar su estado completado.
+  - Todas las fases y tareas futuras, que deberán desarrollarse en la rama correspondiente a su fase.
+- Tareas completadas:
+  - Ninguna tarea nueva. Este cambio actualiza una convención transversal del proyecto.
+- Siguiente tarea pendiente recomendada:
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+- Decisiones o aclaraciones relevantes:
+  - Ramas permanentes: `develop` para integración y `main` para producción.
+  - Rama temporal principal de trabajo: `phase/<numero>-<descripcion>`, una por fase y creada desde `develop`.
+  - Quedan prohibidas para el trabajo ordinario las ramas independientes por tarea, incluidas las variantes `task/*` y `codex/task-*`.
+  - Las ramas de fase se integran en `develop` mediante pull request tras su verificación y documentación.
+  - Las releases se promueven desde `develop` hacia `main`, opcionalmente mediante `release/<version>`.
+  - Los hotfix parten de `main` y deben volver tanto a `main` como a `develop`.
+  - Esta decisión sustituye expresamente la tomada en la conversación 13, donde `main` se había definido como única rama permanente.

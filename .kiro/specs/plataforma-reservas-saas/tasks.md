@@ -14,6 +14,8 @@ Cada tarea debe cerrarse con:
 
 Convención transversal: cualquier nombre de tabla escrito en este plan en `snake_case` se conserva como referencia conceptual histórica. La implementación física en migraciones Flyway, entidades JPA y consultas debe traducirlo a `UpperCamelCase` para tablas y `lowerCamelCase` para atributos/columnas, según `design.md` y `RNF-011`.
 
+Convención GitFlow transversal: el desarrollo se organiza en una única rama por fase, creada desde `develop` y nombrada `phase/<numero>-<descripcion>`. Todas las tareas de la fase se implementan mediante commits en esa misma rama; no se crean ramas por tarea. Al cerrar la fase, su rama se integra mediante pull request en `develop`. La rama `main` queda reservada para promociones a producción desde `develop`; los hotfix urgentes parten de `main` y deben reintegrarse también en `develop`. Esta política sustituye la estrategia histórica de ramas cortas por tarea documentada durante la tarea `0.2`.
+
 ## 2. Fase 0 - Preparación del proyecto
 
 - [x] 0.1. Seleccionar stack definitivo de frontend, backend, base de datos, ORM, cola y cache.

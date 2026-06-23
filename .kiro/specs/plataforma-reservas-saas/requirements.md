@@ -694,6 +694,17 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - Las pruebas de i18n deben incluir validación de caracteres especiales frecuentes en español: `á`, `é`, `í`, `ó`, `ú`, `ü`, `ñ`, `¿`, `¡`, `€`.
 - Las respuestas públicas de API, emails y pantallas no deben eliminar tildes para simplificar comparaciones, búsquedas o normalizaciones; cualquier normalización técnica debe aplicarse solo a campos internos no visibles.
 
+### RNF-013 Flujo GitFlow y promoción entre ramas
+
+- El desarrollo debe seguir GitFlow con dos ramas permanentes: `develop` para integración y `main` para producción.
+- Cada fase numerada de `tasks.md` debe desarrollarse en una única rama de fase creada desde `develop`; no se deben crear ramas independientes para cada tarea de esa fase.
+- Las tareas de una misma fase deben incorporarse mediante commits trazables dentro de su rama de fase.
+- Una fase solo puede integrarse en `develop` mediante pull request cuando sus tareas previstas estén implementadas, verificadas y documentadas, o cuando se apruebe explícitamente una integración parcial.
+- `develop` debe representar el estado integrado de la siguiente versión y no debe utilizarse como rama de producción.
+- `main` debe contener únicamente versiones candidatas a producción o desplegadas en producción, promovidas desde `develop` mediante pull request de release.
+- Las correcciones urgentes de producción deben partir de `main` en una rama `hotfix/*` y reintegrarse tanto en `main` como en `develop`.
+- Las ramas `main`, `develop` y de fase deben protegerse contra pushes directos cuando la plataforma del repositorio lo permita; la integración debe pasar por revisión y verificaciones automáticas.
+
 ## 6. Reglas de negocio clave
 
 ### RB-001 Identidad del usuario final

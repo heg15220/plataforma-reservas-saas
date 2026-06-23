@@ -9,6 +9,7 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6` y `0.7`.
 - Siguiente tarea pendiente recomendada: `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+- Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
 
@@ -402,7 +403,7 @@ Se añadieron reglas de repositorio:
 - `.gitattributes` normaliza texto a LF, conserva scripts Windows en CRLF y marca binarios.
 - `.gitignore` excluye builds, dependencias, secretos, logs, cachés y volúmenes locales.
 
-`CONTRIBUTING.md` define desarrollo basado en `main`, ramas cortas, squash merge, Conventional Commits y requisitos mínimos de pull request. No se creó una rama `develop` para evitar divergencia prolongada y duplicar estados de integración.
+En la implementación original, `CONTRIBUTING.md` definió desarrollo basado en `main`, ramas cortas, squash merge, Conventional Commits y requisitos mínimos de pull request. No se creó inicialmente una rama `develop`. Esta decisión queda **sustituida desde el 2026-06-23** por el GitFlow por fases definido en `RNF-013` y en `design.md`: `develop` es la rama permanente de integración, `main` queda reservada para producción y cada fase completa usa una única rama `phase/<numero>-<descripcion>`.
 
 ### Modelo de datos
 
@@ -471,7 +472,7 @@ No se añadieron todavía suites unitarias o de integración porque la configura
 - Monolito modular organizado por contexto en vez de capas globales.
 - Maven para el backend, coherente con la referencia Java evaluada y el entorno disponible.
 - npm y lockfile local para el frontend; la posible adopción de workspaces o scripts raíz se evaluará en `0.3`.
-- `main` como única rama permanente y ramas de vida corta para reducir divergencia.
+- Decisión histórica sustituida: inicialmente se adoptó `main` como única rama permanente y ramas de vida corta. Desde el 2026-06-23 se adopta GitFlow por fases con `develop`, `main` y una rama por fase.
 - Dependencias fijadas a versiones exactas en el esqueleto para que la verificación sea reproducible.
 - Override puntual de PostCSS en vez de degradar Next.js a una versión antigua sugerida incorrectamente por `npm audit`.
 
@@ -482,6 +483,21 @@ No se añadieron todavía suites unitarias o de integración porque la configura
 - No hay variables por entorno ni validación de configuración; corresponde a `0.4`.
 - No hay PostgreSQL, Flyway, PostGIS, Redis, RabbitMQ ni MinIO; corresponde a `0.5` y `0.6`.
 - No existe CI ni protección automatizada de `main`; corresponde a `0.9` y a la configuración del repositorio remoto.
+
+### Corrección transversal posterior: GitFlow por fases
+
+- Fecha de la corrección: 2026-06-23.
+- Motivo: alinear el historial Git con las fases de `tasks.md` y disponer de una rama estable de integración separada de producción.
+- Nueva convención:
+  - `develop` es la rama permanente de integración.
+  - `main` contiene únicamente versiones promovidas a producción.
+  - Cada fase usa una única rama `phase/<numero>-<descripcion>` creada desde `develop`.
+  - Las tareas individuales se registran como commits dentro de la rama de fase y no generan ramas propias.
+  - Las ramas de fase se fusionan en `develop` mediante pull request.
+  - Las releases se promueven desde `develop` a `main`, con `release/<version>` opcional.
+  - Los hotfix parten de `main` y se reintegran en `main` y `develop`.
+- Impacto histórico: las ramas `codex/task-*` creadas antes de esta decisión permanecen como evidencia del trabajo ya realizado, pero no constituyen el patrón aplicable a las siguientes tareas.
+- Trabajo operativo pendiente: crear o actualizar `develop`, consolidar en ella el trabajo vigente de la fase 0 y continuar las tareas `0.8` a `0.15` en una única rama de fase 0. La protección remota y las reglas de CI se completarán junto con la tarea `0.9`.
 - El override de PostCSS debe retirarse cuando Next.js publique una versión estable que dependa directamente de una versión corregida.
 - La página inicial contiene contenido temporal y no debe evolucionar fuera del sistema i18n.
 - Los paquetes backend son límites documentales iniciales; sus dependencias deberán validarse automáticamente en una tarea posterior, previsiblemente con Spring Modulith o ArchUnit.
