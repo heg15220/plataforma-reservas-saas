@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-La infraestructura i18n de Reserly usa `next-intl` con catálogos versionados para separar los textos visibles de la estructura de componentes. La tarea `0.10` crea la base técnica; la resolución dinámica por preferencia, parámetro seguro, navegador/app y fallback queda para `0.11`.
+La infraestructura i18n de Reserly usa `next-intl` con catálogos versionados para separar los textos visibles de la estructura de componentes. La resolución de idioma ya sigue el contrato de producto: preferencia guardada, parámetro explícito seguro, idioma de app/navegador y fallback `en`.
 
 ## Estructura
 
@@ -10,26 +10,49 @@ La infraestructura i18n de Reserly usa `next-intl` con catálogos versionados pa
 apps/web/locales/
   es.json
   en.json
+apps/web/proxy.ts
 apps/web/src/i18n/
   config.ts
+  locale-resolution.ts
+  locale-resolution.test.ts
   request.ts
   messages.test.ts
 ```
 
 - `locales/es.json`: catálogo español con tildes, eñes, signos y caracteres UTF-8 correctos.
 - `locales/en.json`: catálogo inglés con las mismas claves.
-- `config.ts`: locales soportados, locale estático actual y fallback operativo.
-- `request.ts`: configuración request-scoped de `next-intl`.
+- `config.ts`: locales soportados, fallback, cookie de preferencia y nombres de cabeceras internas.
+- `locale-resolution.ts`: resolución pura y testeable de preferencia, parámetros, cabeceras y fallback.
+- `request.ts`: configuración request-scoped de `next-intl`, lectura de cookies/cabeceras y carga cerrada de catálogos.
+- `proxy.ts`: normaliza `?locale=`/`?lang=`, persiste la preferencia en cookie y reenvía el valor seguro a la request actual.
 - `messages.test.ts`: prueba de paridad de claves y caracteres críticos.
+- `locale-resolution.test.ts`: prueba de prioridad, sanitización y `Accept-Language`.
 
 ## Contratos
 
 - Locales soportados inicialmente: `es` y `en`.
-- Locale estático temporal: `es`, para conservar la interfaz actual hasta `0.11`.
-- Fallback declarado: `en`.
-- Los componentes actuales obtienen texto mediante `useTranslations`.
+- Fallback visible: `en`.
+- Cookie de preferencia: `reserly-locale`, con valores persistidos exactos `es` o `en`.
+- Parámetros públicos admitidos: `locale` y `lang`.
+- Cabecera interna de parámetro explícito: `x-reserly-locale-param`.
+- Cabecera opcional de idioma de app: `x-reserly-app-locale`.
+- Cualquier variante segura que empiece por `es`, como `es-ES`, `es-MX` o `es-AR`, resuelve a `es`.
+- Cualquier otra variante segura resuelve a `en`.
+- Valores inseguros, demasiado largos o con caracteres no permitidos se ignoran antes de tocar cookies o catálogos.
 - El layout raíz obtiene `locale` y `messages` desde `next-intl/server` y los inyecta en `NextIntlClientProvider`.
 - `next.config.ts` usa el plugin oficial de `next-intl` apuntando a `./src/i18n/request.ts`.
+
+## Orden de resolución
+
+```text
+1. Preferencia guardada en cookie `reserly-locale` si es `es` o `en`.
+2. Parámetro seguro `?locale=` o `?lang=`, normalizado por `proxy.ts`.
+3. Cabecera de app `x-reserly-app-locale` si existe.
+4. Cabecera `Accept-Language` del navegador, respetando `q` y orden.
+5. Fallback `en`.
+```
+
+Cuando un parámetro público seguro aparece en la URL, `proxy.ts` lo normaliza y lo guarda como cookie. También actualiza la cookie de la request actual para que el render en curso use la nueva preferencia sin esperar a la siguiente navegación.
 
 ## Reglas de uso
 
@@ -41,7 +64,7 @@ apps/web/src/i18n/
 
 ## Límites actuales
 
-- No hay selector de idioma ni lectura de cabeceras todavía.
+- No hay selector visual de idioma todavía; el cambio manual puede hacerse con `?locale=es`, `?locale=en`, `?lang=es` o `?lang=en`.
 - No se ha implementado la ruta pública `GET /api/public/i18n/{locale}`.
 - La detección automática de textos hardcodeados corresponde a `0.12`.
 - La validación profunda de mojibake y calidad ortográfica corresponde a `0.15`.

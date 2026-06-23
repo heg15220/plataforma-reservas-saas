@@ -12,11 +12,11 @@ La infraestructura responsive incluye:
 - `AppProviders`: integración SSR de MUI y Emotion para Next.js 16.
 - `visualTokens` y `baseTheme`: fuente semántica de colores, tipografía, espaciado y estados.
 - `StatusChip`: estados accesibles con texto, color e icono.
-- `next-intl`, `src/i18n/request.ts` y `locales/es.json`/`locales/en.json`: catálogos versionados y proveedor i18n.
+- `next-intl`, `proxy.ts`, `src/i18n/request.ts`, `src/i18n/locale-resolution.ts` y `locales/es.json`/`locales/en.json`: catálogos versionados, resolución de idioma y proveedor i18n.
 
 Las rutas internas `/panel-preview` y `/design-system` permiten revisar el shell privado y el catálogo visual sin datos; ambas están marcadas como `noindex`.
 
-La iconografía usa `lucide-react`. La infraestructura i18n ya inyecta `lang` y mensajes desde `next-intl`; la resolución dinámica de idioma se implementará en `0.11`.
+La iconografía usa `lucide-react`. La infraestructura i18n inyecta `lang` y mensajes desde `next-intl`; el idioma efectivo se resuelve por cookie `reserly-locale`, parámetro seguro `locale`/`lang`, cabecera de app, `Accept-Language` y fallback `en`.
 
 Las variables se validan durante el arranque y el build mediante `environment.ts`. Solo `NEXT_PUBLIC_APP_ENV` y `NEXT_PUBLIC_API_BASE_URL` pueden exponerse al navegador.
 

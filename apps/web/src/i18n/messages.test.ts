@@ -17,7 +17,7 @@ function flattenKeys(value: unknown, prefix = ""): string[] {
 describe("catálogos i18n", () => {
   it("declara los locales soportados y el fallback operativo", () => {
     expect(supportedLocales).toEqual(["es", "en"]);
-    expect(defaultLocale).toBe("es");
+    expect(defaultLocale).toBe("en");
     expect(fallbackLocale).toBe("en");
     expect(isSupportedLocale("es")).toBe(true);
     expect(isSupportedLocale("en")).toBe(true);

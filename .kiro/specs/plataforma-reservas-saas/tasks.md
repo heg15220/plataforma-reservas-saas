@@ -28,7 +28,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 0.8. Definir paleta, tipografía, estados visuales e iconografía.
 - [x] 0.9. Crear pipeline CI con tests y validación de estilo.
 - [x] 0.10. Crear infraestructura i18n con catálogos `es` y `en`.
-- [ ] 0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback `en`.
+- [x] 0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback `en`.
 - [ ] 0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.
 - [ ] 0.13. Definir patrón para textos localizados en base de datos mediante campos `*_i18n` o JSON `{ es, en }`.
 - [ ] 0.14. Definir y automatizar convenciones backend: tablas `UpperCamelCase`, clases Java `UpperCamelCase`, atributos `lowerCamelCase`, JPA por getters/setters, DAOs con `@Query`, interfaces separadas de servicios/controladores, DTOs REST y conversores.

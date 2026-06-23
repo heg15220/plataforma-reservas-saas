@@ -1,12 +1,14 @@
+import { cookies, headers } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 
 import {
-  defaultLocale,
-  fallbackLocale,
-  isSupportedLocale,
+  appLocaleHeaderName,
+  explicitLocaleHeaderName,
+  localeCookieName,
   type Messages,
   type SupportedLocale,
 } from "./config";
+import { resolveEffectiveLocale } from "./locale-resolution";
 
 const localeLoaders = {
   en: () => import("../../locales/en.json"),
@@ -20,12 +22,19 @@ export async function loadMessages(locale: SupportedLocale): Promise<Messages> {
 /**
  * Configuración request-scoped de next-intl.
  *
- * La tarea 0.10 crea la infraestructura y usa un locale estático para conservar
- * la interfaz actual. La resolución por preferencia, parámetro seguro,
- * navegador/app y fallback queda aislada para la tarea 0.11.
+ * Resuelve el idioma efectivo con la prioridad de producto: preferencia
+ * guardada, parámetro seguro normalizado por Proxy, idioma de app/navegador y
+ * fallback `en`. La carga de mensajes sigue usando un mapa cerrado por locale.
  */
 export default getRequestConfig(async () => {
-  const locale = isSupportedLocale(defaultLocale) ? defaultLocale : fallbackLocale;
+  const requestHeaders = await headers();
+  const requestCookies = await cookies();
+  const { locale } = resolveEffectiveLocale({
+    savedPreference: requestCookies.get(localeCookieName)?.value,
+    explicitLocale: requestHeaders.get(explicitLocaleHeaderName),
+    appLocale: requestHeaders.get(appLocaleHeaderName),
+    acceptLanguage: requestHeaders.get("accept-language"),
+  });
 
   return {
     locale,

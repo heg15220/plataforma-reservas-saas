@@ -820,3 +820,39 @@ Fuente de verdad del avance:
   - `messages.test.ts` valida que ambos catálogos tienen las mismas claves y que el catálogo español conserva caracteres críticos como `É`, `á`, `ó`, `ñ` y `Más`.
   - La detección automática de textos hardcodeados queda para `0.12`; la validación profunda de mojibake y calidad lingüística queda para `0.15`.
   - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot.
+
+## Conversación 23 - Resolución dinámica de idioma
+
+- Fecha: 2026-06-23
+- Resumen: se completó la tarea `0.11` implementando la resolución dinámica de idioma del frontend. La web deja de usar locale estático y calcula el idioma efectivo mediante cookie de preferencia `reserly-locale`, parámetro público seguro `locale`/`lang`, cabecera de app `x-reserly-app-locale`, cabecera `Accept-Language` y fallback `en`. Se añadió un `proxy.ts` de Next.js para normalizar parámetros y persistir la preferencia, un módulo puro de resolución con tests unitarios, y documentación operativa actualizada.
+- Archivos modificados:
+  - `apps/web/proxy.ts`
+  - `apps/web/README.md`
+  - `apps/web/src/i18n/config.ts`
+  - `apps/web/src/i18n/locale-resolution.ts`
+  - `apps/web/src/i18n/locale-resolution.test.ts`
+  - `apps/web/src/i18n/messages.test.ts`
+  - `apps/web/src/i18n/request.ts`
+  - `docs/architecture/internationalization.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RB-011 Resolución de idioma`.
+- Tareas impactadas:
+  - `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
+  - Prepara `0.12`, `0.15`, `19.6`, `19.7` y `19.8`.
+- Tareas completadas:
+  - `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
+- Siguiente tarea pendiente recomendada:
+  - `0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.`
+- Decisiones o aclaraciones relevantes:
+  - `defaultLocale` pasa a `en` para que el fallback operativo coincida con el contrato de producto.
+  - Las preferencias persistidas solo aceptan valores exactos `es` o `en`.
+  - Los parámetros públicos `locale` y `lang` aceptan únicamente tags acotados, con longitud máxima y caracteres permitidos; variantes `es-*` resuelven a `es` y el resto a `en`.
+  - `Accept-Language` se interpreta respetando calidad `q` y orden; si el idioma preferido no empieza por `es`, el resultado es `en`.
+  - No se añadió selector visual de idioma; el cambio manual queda disponible mediante URL hasta que exista UI específica.
+  - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot. La primera ejecución sin permisos elevados falló al descargar dependencias de Maven por bloqueo de red del sandbox; la ejecución aprobada con red pasó correctamente.

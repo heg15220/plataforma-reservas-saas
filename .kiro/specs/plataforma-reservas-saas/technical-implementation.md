@@ -2677,3 +2677,206 @@ Alternativas descartadas:
 - Los tests usan el catálogo español por defecto; cuando exista resolución dinámica habrá que añadir cobertura de inglés y fallback.
 - No hay endpoint backend de catálogos ni MessageSource backend todavía.
 - La carga de mensajes está en archivos JSON únicos; si los catálogos crecen mucho, convendrá dividir por dominio o lazy-load por segmento.
+
+## Tarea 0.11 - Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback `en`
+
+### Fecha de la iteración
+
+2026-06-23.
+
+### Objetivo técnico
+
+Sustituir el locale estático introducido en `0.10` por una resolución request-scoped real para el frontend Next.js. La resolución debe cumplir el orden definido por producto: preferencia guardada, parámetro explícito seguro, idioma de app o navegador, y fallback `en`. También debe impedir que entradas externas construyan rutas de catálogo, cookies o cabeceras arbitrarias.
+
+### Requisitos y diseño relacionados
+
+- `RF-031 Internacionalización de textos`: la interfaz debe mostrarse en español cuando el idioma resuelto empieza por `es` y en inglés para cualquier otro idioma.
+- `RNF-009 Internacionalización y localización`: locales iniciales `es` y `en`, orden de resolución obligatorio, variantes `es-*` a español y cualquier otro idioma a inglés.
+- `RNF-012 Calidad lingüística, acentos y codificación de textos en español`: documentación, comentarios y tests nuevos mantienen español correcto y UTF-8.
+- `RB-011 Resolución de idioma`: la preferencia explícita del usuario o local prevalece, después navegador/app y fallback inglés.
+- `design.md` sección `3.14 Internacionalización y localización`: mantiene la regla `preferred_locale`, `explicit_locale`, `Accept-Language/app locale`, `en`.
+- `design.md` sección `15.1 Unitarios`: exige cobertura unitaria de resolución de locale `es`/`en`.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/web/proxy.ts`
+- `apps/web/src/i18n/locale-resolution.ts`
+- `apps/web/src/i18n/locale-resolution.test.ts`
+
+Archivos modificados:
+
+- `apps/web/src/i18n/config.ts`
+- `apps/web/src/i18n/request.ts`
+- `apps/web/src/i18n/messages.test.ts`
+- `apps/web/README.md`
+- `docs/architecture/internationalization.md`
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+
+Archivos eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada
+
+La resolución se separó en dos capas:
+
+1. `apps/web/src/i18n/locale-resolution.ts` contiene funciones puras y testeables. No importa APIs de Next.js ni lee estado global. Esto permite validar reglas de negocio sin depender del runtime de App Router.
+2. `apps/web/src/i18n/request.ts` adapta la request real de Next.js a esas funciones puras. Lee `cookies()` y `headers()` desde `next/headers`, obtiene el locale efectivo y carga mensajes mediante el mapa cerrado `localeLoaders`.
+
+Se añadió `apps/web/proxy.ts` porque Next.js 16 usa la convención `proxy.ts` para lógica previa a la request. El proxy captura parámetros públicos `locale` y `lang`, los resuelve a un valor soportado y los persiste como cookie. Además actualiza la cookie de la request actual para que un cambio manual sea visible en el mismo render. El matcher excluye assets internos de Next.js, imágenes optimizadas, favicon, robots, sitemap y rutas con extensión de archivo.
+
+La decisión de mantener `request.ts` como único punto de carga de mensajes evita duplicar el contrato de `next-intl` y conserva la protección de `0.10`: los catálogos solo se importan desde un mapa cerrado `es`/`en`, nunca a partir de una cadena externa.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No se crearon tablas, migraciones, índices, restricciones ni entidades persistentes.
+
+La única persistencia añadida es una cookie HTTP de preferencia de idioma:
+
+- Nombre: `reserly-locale`.
+- Valores posibles persistidos: `es` o `en`.
+- Duración: `localeCookieMaxAgeSeconds = 60 * 60 * 24 * 365`.
+- Ruta: `/`.
+- `sameSite`: `lax`.
+- `secure`: `true` solo cuando la request usa `https:`.
+
+La cookie no contiene datos personales ni identificadores de usuario. Cuando existan cuentas de usuario o local, sus preferencias persistidas en base de datos podrán alimentar el mismo campo `savedPreference` sin cambiar el contrato de resolución.
+
+### Contratos, módulos y flujo de ejecución
+
+`apps/web/src/i18n/config.ts` define ahora:
+
+- `supportedLocales = ["es", "en"]`.
+- `defaultLocale = "en"`.
+- `fallbackLocale = "en"`.
+- `localeCookieName = "reserly-locale"`.
+- `localeCookieMaxAgeSeconds`.
+- `explicitLocaleHeaderName = "x-reserly-locale-param"`.
+- `appLocaleHeaderName = "x-reserly-app-locale"`.
+
+`apps/web/src/i18n/locale-resolution.ts` expone:
+
+- `resolveSavedLocale(value)`: acepta solo preferencias exactas `es` o `en`.
+- `readSafeLocaleTag(value)`: valida tags acotados con longitud máxima de 32 caracteres y patrón permitido.
+- `resolveLocaleTag(value)`: resuelve tags seguros; `es-*` devuelve `es` y cualquier otro tag seguro devuelve `en`.
+- `resolveAcceptLanguageLocale(value)`: parsea `Accept-Language`, respeta `q` y orden, ignora rangos inválidos y aplica la regla `es`/`en`.
+- `resolveEffectiveLocale(input)`: aplica el orden completo y devuelve `{ locale, source }`.
+
+Flujo de request:
+
+1. El navegador solicita una ruta, opcionalmente con `?locale=es-MX`, `?locale=en`, `?lang=es` o equivalente seguro.
+2. `proxy.ts` lee el parámetro, lo normaliza con `resolveLocaleTag` y, si es válido, escribe `reserly-locale=es|en`.
+3. El proxy añade `x-reserly-locale-param` y actualiza el header `cookie` de la request en curso.
+4. `request.ts` lee `reserly-locale`, `x-reserly-locale-param`, `x-reserly-app-locale` y `Accept-Language`.
+5. `resolveEffectiveLocale` calcula el locale efectivo.
+6. `loadMessages(locale)` carga `locales/es.json` o `locales/en.json` desde el mapa cerrado.
+7. `getRequestConfig` devuelve `{ locale, messages }` a `next-intl`.
+8. `layout.tsx` sigue obteniendo `getLocale()` y `getMessages()` e inyectándolos en `NextIntlClientProvider`.
+
+No se crearon endpoints REST, jobs, servicios backend ni componentes visuales nuevos.
+
+### Validaciones, permisos, seguridad y privacidad
+
+La validación de parámetros se diseñó como lista positiva:
+
+- Se rechazan valores vacíos.
+- Se rechazan valores de más de 32 caracteres.
+- Se rechazan caracteres fuera del patrón de tags acotados.
+- Se rechazan entradas como `es<script>`, rutas relativas, segmentos con `/`, valores con espacios no válidos o tags demasiado largos.
+- Solo se persisten `es` o `en`; nunca se guarda la cadena pública original.
+
+La preferencia guardada se trata como dato interno y solo acepta `es`/`en`. Esto evita que una cookie manipulada como `es-MX`, `fr`, `../../en` o similar sea considerada preferencia válida.
+
+No se añadieron permisos ni autenticación porque esta tarea solo afecta a requests anónimas del frontend. La cookie no contiene PII, tokens ni datos de sesión. `sameSite=lax` reduce exposición en navegaciones cross-site normales, y `secure` se activa automáticamente en HTTPS.
+
+La carga de catálogos continúa protegida por un mapa cerrado de imports. La entrada externa solo puede producir el tipo `SupportedLocale`, por lo que no puede construir rutas dinámicas ni forzar lectura de archivos arbitrarios.
+
+### Internacionalización, accesibilidad y UI
+
+La UI existente no cambia visualmente, pero ahora el atributo `lang`, los mensajes de `NextIntlClientProvider`, `useTranslations` y `getTranslations` dependen del locale resuelto. Las rutas `/`, `/design-system` y `/panel-preview` siguen consumiendo los catálogos creados en `0.10`.
+
+No se añadió selector visual de idioma en esta tarea. El cambio manual temporal se puede probar con:
+
+- `?locale=es`
+- `?locale=es-MX`
+- `?locale=en`
+- `?lang=es`
+- `?lang=en`
+
+Las futuras pantallas deberán seguir usando claves i18n, y `0.12` añadirá validación automática contra textos hardcodeados.
+
+### Errores, logs, auditoría y observabilidad
+
+No se añadieron logs ni auditoría persistente. La resolución de idioma no genera errores visibles: las entradas inválidas se ignoran y el flujo continúa hacia la siguiente fuente de idioma o fallback `en`.
+
+La función `resolveEffectiveLocale` devuelve también `source`, lo que permite añadir observabilidad futura sin cambiar la lógica de resolución. En esta iteración `source` solo se usa en tests para verificar prioridad.
+
+### Tests añadidos o modificados
+
+Se añadió `apps/web/src/i18n/locale-resolution.test.ts` con cobertura de:
+
+- Preferencias guardadas exactas.
+- Normalización de variantes `es-*` a `es`.
+- Resolución de cualquier idioma no español a `en`.
+- Rechazo de parámetros inseguros.
+- Prioridad entre preferencia guardada, parámetro, app, navegador y fallback.
+- Interpretación de `Accept-Language` por calidad `q` y orden.
+
+Se actualizó `apps/web/src/i18n/messages.test.ts` para reflejar que `defaultLocale` y `fallbackLocale` son `en`.
+
+### Verificación ejecutada
+
+Verificación incremental:
+
+- `npm run typecheck --workspace @reserly/web`: correcto.
+- `npm run test --workspace @reserly/web`: correcto, 7 archivos y 22 tests.
+- `npm run lint --workspace @reserly/web`: correcto.
+- `npm run build:web:test`: correcto, Next.js 16.2.9 compiló `/`, `/_not-found`, `/design-system` y `/panel-preview` como rutas dinámicas.
+
+Verificación final:
+
+- Primera ejecución de `npm run verify`: falló en `mvn -f apps/api/pom.xml checkstyle:check` porque el sandbox bloqueó la descarga del parent POM desde Maven Central (`Permission denied: connect`). No fue un fallo funcional del código.
+- Segunda ejecución de `npm run verify` con red aprobada: correcta.
+
+Resultado final resumido:
+
+- `ci:check`: contrato CI válido.
+- `env:check`: plantillas de entorno válidas.
+- ESLint frontend: correcto.
+- Checkstyle backend: 0 violaciones.
+- Prettier: todos los archivos con estilo correcto.
+- Spotless: correcto.
+- TypeScript: correcto.
+- Vitest: 7 archivos y 22 tests correctos.
+- JUnit/Spring Boot: 9 tests correctos con PostgreSQL/PostGIS, Redis y RabbitMQ mediante Testcontainers.
+- Next.js: build correcto.
+- Spring Boot: JAR generado correctamente.
+- Observación no bloqueante: se mantiene el aviso estándar de Mockito/Byte Buddy sobre carga dinámica de agente en futuras versiones del JDK.
+
+### Decisiones técnicas
+
+- Usar `proxy.ts` en lugar de rutas localizadas porque la especificación no pide prefijos `/es` o `/en` y la app actual ya funciona con una única estructura de rutas.
+- Persistir solo `es` o `en`, no variantes regionales, para que la preferencia guardada sea estable y coincida con los catálogos reales disponibles.
+- Considerar cualquier tag seguro no español como `en`, incluido `fr-FR`, porque el requisito define inglés para cualquier idioma no `es-*`.
+- Leer `x-reserly-app-locale` como cabecera opcional para futuras integraciones app o contenedores móviles sin acoplar la resolución a una UI todavía inexistente.
+- Mantener `loadMessages` en `request.ts` para no duplicar la carga de catálogos y para conservar typing de `Messages`.
+
+Alternativas descartadas:
+
+- Implementar selector de idioma visible: descartado por alcance; la tarea pedía resolución, no UI de preferencias.
+- Guardar la preferencia en `localStorage`: descartado porque `next-intl` necesita resolver idioma en servidor antes de renderizar.
+- Aceptar cualquier string de locale y normalizarlo con `Intl.Locale`: descartado porque esta tarea requiere parámetro seguro y solo hay dos catálogos.
+- Crear rutas `/es` y `/en`: descartado porque cambiaría estructura de navegación, enlaces y posible SEO sin estar pedido en la fase 0.
+
+### Riesgos, limitaciones y deuda técnica
+
+- No hay selector visual ni acción dedicada de cambio de idioma.
+- La preferencia de cuenta de usuario o local aún no existe porque identidad se implementará en Fase 1.
+- No hay integración backend de `MessageSource`, errores públicos ni emails localizados; las tareas futuras deberán reutilizar el locale resuelto donde corresponda.
+- El parser de `Accept-Language` es deliberadamente acotado y cubre el caso necesario para `es`/`en`; si se añaden más idiomas o scripts complejos habrá que ampliar la normalización.
+- `0.12` sigue pendiente para detectar textos hardcodeados.
+- `0.15` sigue pendiente para validar codificación UTF-8 y calidad lingüística de forma más profunda.
