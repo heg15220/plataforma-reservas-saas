@@ -22,7 +22,7 @@ Convención transversal: cualquier nombre de tabla escrito en este plan en `snak
 - [x] 0.4. Configurar variables de entorno por entorno: local, staging y producción.
 - [x] 0.5. Configurar PostgreSQL local y migraciones.
 - [x] 0.6. Configurar cola de trabajos y cache.
-- [ ] 0.7. Crear layout base responsive y sistema de componentes.
+- [x] 0.7. Crear layout base responsive y sistema de componentes.
 - [ ] 0.8. Definir paleta, tipografía, estados visuales e iconografía.
 - [ ] 0.9. Crear pipeline CI con tests y validación de estilo.
 - [ ] 0.10. Crear infraestructura i18n con catálogos `es` y `en`.

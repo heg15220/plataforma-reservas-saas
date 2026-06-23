@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { AppProviders } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Reserly",
-  description: "Online booking platform",
+  title: {
+    default: "Reserly",
+    template: "%s | Reserly",
+  },
+  description: "Plataforma responsive para descubrir y gestionar reservas.",
 };
 
 /**
@@ -15,8 +19,10 @@ export const metadata: Metadata = {
  */
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="es">
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

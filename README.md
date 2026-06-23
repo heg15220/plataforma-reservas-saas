@@ -1,6 +1,6 @@
 # Reserly
 
-Reserly es una plataforma SaaS para descubrir locales, consultar disponibilidad y gestionar reservas online. El producto se construye como un monorepo con un frontend Next.js y un backend Spring Boot organizado como monolito modular.
+Reserly es una plataforma SaaS para descubrir locales, consultar disponibilidad y gestionar reservas online. El producto se construye como un monorepo con un frontend Next.js y Material UI, y un backend Spring Boot organizado como monolito modular.
 
 ## Estado
 

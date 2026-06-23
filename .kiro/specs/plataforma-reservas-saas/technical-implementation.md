@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5` y `0.6`.
-- Siguiente tarea pendiente recomendada: `0.7. Crear layout base responsive y sistema de componentes.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6` y `0.7`.
+- Siguiente tarea pendiente recomendada: `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
 
 ## Plantilla obligatoria por tarea
 
@@ -1477,3 +1477,320 @@ Incidencias detectadas y corregidas:
 - El outbox persistente es obligatorio para notificaciones derivadas de transacciones críticas.
 - El rate limiting todavía no está implementado; Redis solo proporciona su infraestructura.
 - La serialización definitiva de payloads AMQP debe cerrarse al crear el primer contrato de job, preferentemente JSON versionado y validado.
+
+## Tarea 0.7 - Crear layout base responsive y sistema de componentes
+
+- Fecha: 2026-06-23
+- Commit o referencia: rama `codex/task-0.7-responsive-layout`, apilada sobre `codex/task-0.6-messaging-cache`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Crear una infraestructura frontend reusable que permita construir la web pública y el panel privado sin duplicar navegación, gutters, anchos máximos, sidebars, navegación móvil ni reglas de accesibilidad. La base debía funcionar desde `320 px`, integrarse correctamente con el streaming SSR de Next.js 16 y ofrecer componentes de composición suficientemente estables para las pantallas funcionales posteriores.
+
+El alcance no incluye todavía el sistema visual definitivo, los iconos, el buscador real, autenticación, datos del panel ni resolución dinámica de idioma. La tarea `0.8` ampliará el tema y el catálogo visual; las tareas funcionales sustituirán el contenido de demostración.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-007 Usabilidad`: responsive desde el inicio, tarjetas en móvil, acción principal visible y controles táctiles.
+  - `RNF-009 Internacionalización y localización`: punto único para el idioma del documento y layouts compatibles con textos largos.
+  - `RNF-012 Calidad lingüística y UTF-8`: textos españoles correctos y sin degradación.
+  - Pantallas mínimas de usuario final y local registrado.
+- Diseño:
+  - `1.3 Stack definitivo seleccionado`.
+  - `9. Diseño de interfaz`.
+  - `10. Pantallas responsive`.
+  - `17.1 Nombre comercial y sistema visual`.
+  - `Composición de escritorio`.
+  - `Composición móvil`.
+- Tareas relacionadas:
+  - `0.7. Crear layout base responsive y sistema de componentes`.
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía`.
+  - `0.10. Crear infraestructura i18n`.
+  - Fases `2`, `3`, `4`, `6`, `7`, `9`, `10`, `12`, `13`, `14` y `15` en sus tareas de UI.
+
+### Archivos afectados
+
+- Creados:
+  - `apps/web/src/app/providers.tsx`
+  - `apps/web/src/app/panel-preview/page.tsx`
+  - `apps/web/src/components/navigation-link.tsx`
+  - `apps/web/src/components/layout/brand.tsx`
+  - `apps/web/src/components/layout/index.ts`
+  - `apps/web/src/components/layout/layout-system.test.tsx`
+  - `apps/web/src/components/layout/page-container.tsx`
+  - `apps/web/src/components/layout/page-heading.tsx`
+  - `apps/web/src/components/layout/public-shell.tsx`
+  - `apps/web/src/components/layout/responsive-grid.tsx`
+  - `apps/web/src/components/layout/surface.tsx`
+  - `apps/web/src/components/layout/venue-shell.tsx`
+  - `apps/web/src/theme/base-theme.ts`
+  - `docs/architecture/frontend-layout.md`
+- Modificados:
+  - `apps/web/package.json`
+  - `package-lock.json`
+  - `apps/web/README.md`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/page.test.tsx`
+  - `docs/README.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### Dependencias e integración SSR
+
+Se fijaron:
+
+- `@mui/material` `9.1.2`.
+- `@mui/material-nextjs` `9.1.1`.
+- `@emotion/react` `11.14.0`.
+- `@emotion/styled` `11.14.1`.
+- `@emotion/cache` `11.14.0`.
+
+`AppProviders` es un Client Component que registra:
+
+- `AppRouterCacheProvider` desde `@mui/material-nextjs/v16-appRouter`.
+- `ThemeProvider`.
+- `CssBaseline`.
+
+El proveedor de cache recoge los estilos generados por MUI durante el streaming de React y evita insertarlos dentro de `body`. La opción `enableCssLayer` encapsula MUI en una capa CSS y permite que estilos globales o futuros CSS Modules tengan precedencia controlada.
+
+`NavigationLink` encapsula `next/link` en un límite cliente. Esta adaptación sigue la restricción documentada para Next.js 16 cuando un componente de MUI recibe Next Link mediante la prop `component`.
+
+#### Tema base provisional
+
+`base-theme.ts` activa variables CSS de MUI y define solo lo imprescindible para el layout:
+
+- stack tipográfico con `Inter` y fallbacks del sistema;
+- radio estructural base de `8 px`;
+- botones sin ripple ni elevación;
+- altura mínima de botón de `44 px`;
+- texto de botones sin mayúsculas automáticas.
+
+No se define todavía la paleta semántica completa, escalas de espaciado, estados ni iconografía. Estos elementos pertenecen expresamente a `0.8`.
+
+#### Shell público
+
+`PublicShell` proporciona:
+
+- fondo y altura mínima de viewport dinámico;
+- enlace de salto a `#main-content`;
+- `AppBar` sticky y sin elevación;
+- marca Reserly;
+- navegación pública horizontal desde `md`;
+- acceso para locales;
+- landmark `main`;
+- navegación inferior fija por debajo de `md`;
+- cinco destinos: Inicio, Explorar, Reservas, Favoritos y Perfil;
+- padding inferior para que el contenido pueda desplazarse por encima de la barra fija;
+- `aria-current="page"` mediante la prop `currentPath`.
+
+La navegación de escritorio mantiene las acciones de mayor relevancia y la navegación móvil usa cinco columnas iguales. Cada destino tiene una altura mínima de `64 px`.
+
+#### Shell del panel
+
+`VenueShell` proporciona:
+
+- enlace de salto a `#venue-main-content`;
+- sidebar fijo de `256 px` desde `md`;
+- marca inversa sobre fondo oscuro;
+- nombre del local;
+- navegación lateral;
+- desplazamiento del contenido equivalente al sidebar;
+- ancho máximo de contenido de `1120 px`;
+- cabecera móvil compacta;
+- navegación inferior móvil con Inicio, Reservas, Calendario y Más;
+- ruta activa mediante `aria-current`.
+
+El panel evita tablas o navegación lateral en móvil. Los contenidos deben componerse mediante tarjetas y listas dentro del mismo shell.
+
+#### Primitivas de composición
+
+`PageContainer`:
+
+- centra el contenido;
+- usa ancho máximo de `1440 px`;
+- admite modo compacto de `1120 px`;
+- aplica gutters de `16`, `24` y `32 px` según viewport.
+
+`PageHeading`:
+
+- agrupa eyebrow, título, resumen y acciones;
+- usa título responsive;
+- apila contenido en móvil;
+- alinea texto y acción en escritorio;
+- permite que la acción ocupe todo el ancho móvil.
+
+`ResponsiveGrid`:
+
+- usa CSS Grid;
+- configura `repeat(auto-fit, minmax(...))`;
+- acepta ancho mínimo de columna;
+- evita crear una variante por cada número de tarjetas o breakpoint.
+
+`Surface`:
+
+- usa `Paper` sin elevación;
+- añade borde, radio y padding responsive;
+- permite elegir `section`, `article` o `aside`;
+- mantiene `min-width: 0` para prevenir desbordes en grids.
+
+`Brand`:
+
+- ofrece marca normal, compacta e inversa;
+- incluye un isotipo tipográfico provisional;
+- no sustituye el logotipo final de `0.8`.
+
+#### Vistas de demostración
+
+La raíz usa `PublicShell` y muestra tres superficies que documentan la base creada. No implementa todavía `RF-001` ni el buscador.
+
+`/panel-preview` usa `VenueShell`, tarjetas de resumen sin datos y un estado vacío. La ruta:
+
+- no consulta API;
+- no simula datos reales;
+- usa guiones como valores ausentes;
+- está marcada `noindex, nofollow`;
+- enlaza de vuelta a la web pública.
+
+#### Estilos globales
+
+`globals.css` elimina el antiguo layout centrado y añade:
+
+- ancho mínimo de documento de `320 px`;
+- enlaces sin estilo visual impuesto;
+- skip link visible al foco;
+- anillo global `focus-visible`;
+- reducción de animaciones y transiciones con `prefers-reduced-motion`.
+
+El documento usa temporalmente `lang="es"` porque todo el contenido visible de esta iteración está en español. La resolución dinámica de idioma de `0.11` sustituirá este valor.
+
+### Modelo de datos
+
+No se crearon ni modificaron tablas, migraciones, entidades o persistencia frontend.
+
+Las tarjetas de preview no contienen datos personales ni fixtures de negocio. Los valores ausentes se representan mediante `—`.
+
+### Contratos y APIs
+
+No se añadieron endpoints ni llamadas HTTP.
+
+Contratos públicos de componentes:
+
+- `PublicShell.children` y `currentPath`.
+- `VenueShell.children`, `currentPath` y `venueName`.
+- `PageContainer.children` y `compact`.
+- `PageHeading.title`, `eyebrow`, `summary` y `actions`.
+- `ResponsiveGrid.children` y `minColumnWidth`.
+- `Surface.children`, `component` y `padded`.
+- `Brand.compact` e `inverse`.
+
+Las rutas incluidas en las navegaciones representan contratos futuros. Hasta que sus tareas funcionales se implementen, solo `/` y `/panel-preview` tienen contenido.
+
+### Seguridad, privacidad e i18n
+
+- No se añadió HTML inseguro ni contenido de terceros.
+- No se transmiten datos.
+- No se usan imágenes remotas ni tracking.
+- `/panel-preview` no se indexa.
+- Los landmarks y navegaciones tienen nombres accesibles distintos.
+- Las rutas activas usan `aria-current`.
+- El texto español se guarda en UTF-8 con tildes y caracteres correctos.
+- Los textos están todavía hardcodeados porque los catálogos y reglas de i18n pertenecen a `0.10`–`0.12`; se documenta como deuda inmediata.
+- `lang="es"` evita una declaración de idioma incorrecta mientras el contenido de demostración sea español.
+
+### UI y experiencia de usuario
+
+Breakpoints aplicados:
+
+- `xs`: móvil.
+- `sm`: tablet estrecha.
+- `md = 900 px`: transición a cabecera pública completa y sidebar del panel.
+- `lg`: gutters amplios y contenido centrado.
+
+Comportamiento verificado:
+
+- `320 px`: una columna, cabecera compacta, acción principal de ancho completo y navegación inferior.
+- `390 px`: tarjetas verticales y contenido legible.
+- `768 px`: grid de dos columnas y navegación móvil.
+- `1280 px`: tres columnas, navegación pública horizontal y sidebar del panel.
+
+Las acciones principales miden al menos `44 px`. Las barras inferiores tienen `64 px` de alto. El contenido puede desplazarse completamente por encima de la navegación fija.
+
+### Tests y verificación
+
+Tests unitarios con Vitest y React Testing Library:
+
+- la página raíz expone heading, navegaciones pública de escritorio/móvil, enlace al panel y tres artículos;
+- `PublicShell` marca la ruta activa en ambas navegaciones;
+- `VenueShell` expone navegación lateral y móvil;
+- la ruta activa del panel aparece dos veces con `aria-current`;
+- `PageHeading` produce un `h1`;
+- `Surface` permite elegir landmark `article`.
+
+Resultados:
+
+- Vitest: 3 ficheros, 8 tests correctos.
+- TypeScript: sin errores.
+- ESLint: sin warnings.
+- Prettier: formato correcto.
+- Build Next.js: rutas estáticas `/` y `/panel-preview`.
+- Tests backend: 9 correctos.
+- Build Spring Boot: correcto.
+- `npm audit`: cero vulnerabilidades.
+- `git diff --check`: sin errores.
+
+Verificación visual mediante navegador real sobre el build de producción:
+
+- escritorio `1280 × 720`;
+- tablet `768 × 900`;
+- móvil `390 × 844`;
+- ancho mínimo `320 × 720`;
+- página pública y panel;
+- navegación inferior visible por debajo de `md`;
+- navegación pública horizontal y sidebar visibles desde `md`;
+- ausencia de desbordamiento horizontal;
+- contenido final accesible tras scroll;
+- botón primario verificado con fondo `rgb(25, 118, 210)` y texto `rgb(255, 255, 255)`;
+- cero errores y warnings en consola.
+
+Incidencias de verificación:
+
+- El primer test del panel asumía un orden concreto de enlaces entre sidebar y barra inferior. Se corrigió para validar `aria-current` sin depender del orden del DOM.
+- El reset global `a { color: inherit }` tenía más prioridad que los estilos de MUI al usar CSS layers y oscurecía el texto de botones primarios renderizados como enlace. Se restringió el reset a `.unstyled-link`, usado únicamente por enlaces de marca.
+- El primer `npm run verify` del día falló porque Docker Desktop estaba detenido; todas las etapas frontend habían pasado. Se inició Docker Desktop y la repetición integral fue correcta con PostGIS, Redis y RabbitMQ.
+- El servidor `next dev` en background quedó bloqueado por el aislamiento de procesos de Windows. La validación visual se realizó sobre `next start` después del build de producción, con variables de test explícitas.
+
+### Decisiones técnicas
+
+- Material UI como sistema principal, según `design.md`.
+- Integración oficial específica de Next.js 16.
+- CSS layers activadas para convivencia futura con CSS Modules.
+- Shells separados para experiencia pública y panel de local.
+- Breakpoint `md` como frontera principal entre navegación móvil y escritorio.
+- Sidebar de panel fijo de `256 px`.
+- Navegación inferior fija en vez de drawer para destinos primarios.
+- Primitivas pequeñas y composables en vez de plantillas monolíticas.
+- Grid fluido con `auto-fit` en vez de columnas codificadas por pantalla.
+- Marca y tema provisionales para no adelantar `0.8`.
+- Preview estructural sin datos y fuera de indexación.
+
+### Riesgos y deuda técnica
+
+- Los textos deben migrarse a catálogos `es` y `en` en `0.10`.
+- `currentPath` se pasa manualmente; deberá conectarse a la URL cuando existan rutas reales.
+- Las rutas futuras de navegación todavía devuelven 404.
+- El logotipo es provisional.
+- Faltan iconos, paleta semántica y estados completos.
+- Falta verificar zoom al `200 %`, lector de pantalla y textos largos ingleses durante `0.8`, `0.10` y fase `15`.
+- No existe todavía Storybook o catálogo equivalente.
+- La página raíz es una demostración de infraestructura y será sustituida por `3.8`.
+- `/panel-preview` deberá eliminarse o restringirse cuando exista el panel real.

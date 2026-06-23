@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-22
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5` y `0.6`.
-- Siguiente tarea pendiente recomendada: `0.7. Crear layout base responsive y sistema de componentes.`
-- Observación: PostgreSQL/PostGIS, Redis y RabbitMQ ya están disponibles mediante Docker Compose y verificados con Testcontainers. La API aplica TTL y prefijos de caché, y dispone de una topología AMQP base con publisher confirms y dead letters. Continúan pendientes la UI base y el pipeline CI.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6` y `0.7`.
+- Siguiente tarea pendiente recomendada: `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+- Observación: la web ya dispone de integración SSR de Material UI, shell público, shell del panel, primitivas responsive y validación visual entre 320 y 1280 píxeles. Continúan pendientes el sistema visual definitivo, el pipeline CI y la infraestructura i18n.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -596,3 +596,54 @@ Fuente de verdad del avance:
   - Los consumidores deberán ser idempotentes y los flujos que necesiten garantía entre PostgreSQL y RabbitMQ deberán implementar un outbox persistente.
   - La URI AMQP no debe incluir `/%2f` con Spring Boot 4.1; sin path se usa correctamente el vhost `/`.
   - Las imágenes oficiales de Redis y RabbitMQ están fijadas por versión y digest, protegidas con credenciales y publicadas solo en localhost.
+
+## Conversación 18 - Layout responsive y componentes base
+
+- Fecha: 2026-06-23
+- Resumen: se integró Material UI con el App Router de Next.js 16 y se creó la base responsive reutilizable de Reserly. La experiencia pública dispone de cabecera de escritorio y navegación inferior móvil; el panel del local dispone de sidebar fijo en escritorio, cabecera compacta y navegación inferior móvil. Se añadieron primitivas de contenedor, encabezado, superficie y grid, una página de preview del panel, tests semánticos y validación visual en móvil, tablet y escritorio.
+- Archivos modificados:
+  - `apps/web/package.json`
+  - `package-lock.json`
+  - `apps/web/README.md`
+  - `apps/web/src/app/globals.css`
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/providers.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/page.test.tsx`
+  - `apps/web/src/app/panel-preview/page.tsx`
+  - `apps/web/src/components/navigation-link.tsx`
+  - `apps/web/src/components/layout/brand.tsx`
+  - `apps/web/src/components/layout/index.ts`
+  - `apps/web/src/components/layout/layout-system.test.tsx`
+  - `apps/web/src/components/layout/page-container.tsx`
+  - `apps/web/src/components/layout/page-heading.tsx`
+  - `apps/web/src/components/layout/public-shell.tsx`
+  - `apps/web/src/components/layout/responsive-grid.tsx`
+  - `apps/web/src/components/layout/surface.tsx`
+  - `apps/web/src/components/layout/venue-shell.tsx`
+  - `apps/web/src/theme/base-theme.ts`
+  - `docs/README.md`
+  - `docs/architecture/frontend-layout.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-007 Usabilidad`.
+  - `RNF-009 Internacionalización y localización`, preparando un punto único para el idioma del documento.
+  - `RNF-012 Calidad lingüística y codificación UTF-8`.
+  - Pantallas mínimas de usuario final y local registrado.
+- Tareas impactadas:
+  - `0.7. Crear layout base responsive y sistema de componentes.`
+  - Prepara `0.8`, `0.10`, todas las pantallas públicas, el panel del local y las validaciones responsive de la fase 15.
+- Tareas completadas:
+  - `0.7. Crear layout base responsive y sistema de componentes.`
+- Siguiente tarea pendiente recomendada:
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+- Decisiones o aclaraciones relevantes:
+  - Se usan Material UI `9.1.2`, `@mui/material-nextjs` `9.1.1` y Emotion `11.14.x`.
+  - `AppRouterCacheProvider` usa el adaptador específico `v16-appRouter` y capas CSS.
+  - El breakpoint `md` de MUI, `900 px`, separa navegación móvil y escritorio.
+  - El tema actual es deliberadamente estructural y provisional; `0.8` debe formalizar tokens, estados e iconografía.
+  - La ruta `/panel-preview` es una demostración sin datos, se marca `noindex` y no sustituye al dashboard funcional.
+  - El documento usa temporalmente `lang="es"` porque los textos visibles actuales están en español; la resolución dinámica se implementará en `0.11`.
+  - La validación visual cubrió 320, 390, 768 y 1280 píxeles sin desbordamiento horizontal ni errores de consola.

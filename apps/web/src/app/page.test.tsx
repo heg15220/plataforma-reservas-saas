@@ -4,10 +4,20 @@ import { describe, expect, it } from "vitest";
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("muestra la identidad inicial de Reserly", () => {
+  it("muestra el layout público y sus regiones principales", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Reserly" })).toBeVisible();
-    expect(screen.getByText("Booking made simple.")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Reserly ya tiene una base adaptable" }),
+    ).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Navegación pública principal" })).toBeVisible();
+    expect(
+      screen.getByRole("navigation", { name: "Navegación pública móvil" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver panel responsive" })).toHaveAttribute(
+      "href",
+      "/panel-preview",
+    );
+    expect(screen.getAllByRole("article")).toHaveLength(3);
   });
 });
