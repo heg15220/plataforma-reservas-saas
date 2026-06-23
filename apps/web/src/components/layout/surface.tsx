@@ -1,6 +1,8 @@
 import Paper from "@mui/material/Paper";
 import type { ReactNode } from "react";
 
+import { visualTokens } from "@/theme/visual-tokens";
+
 export interface SurfaceProps {
   children: ReactNode;
   component?: "article" | "aside" | "section";
@@ -18,9 +20,9 @@ export function Surface({ children, component = "section", padded = true }: Surf
       sx={{
         border: 1,
         borderColor: "divider",
-        borderRadius: 2,
+        borderRadius: `${visualTokens.radius.card}px`,
         minWidth: 0,
-        p: padded ? { xs: 2, md: 3 } : 0,
+        p: padded ? { xs: 4, md: 6 } : 0,
       }}
     >
       {children}

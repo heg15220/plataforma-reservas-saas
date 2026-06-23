@@ -14,7 +14,7 @@ export function ResponsiveGrid({ children, minColumnWidth = 240 }: ResponsiveGri
     <Box
       sx={{
         display: "grid",
-        gap: { xs: 2, md: 3 },
+        gap: { xs: 4, md: 6 },
         gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${minColumnWidth}px), 1fr))`,
       }}
     >

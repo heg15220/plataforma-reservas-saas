@@ -1,6 +1,7 @@
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { LayoutDashboard, Palette, PanelsTopLeft, type LucideIcon } from "lucide-react";
 
 import {
   PageContainer,
@@ -10,21 +11,33 @@ import {
   Surface,
 } from "@/components/layout";
 import { NavigationLink } from "@/components/navigation-link";
+import { StatusChip } from "@/components/visual";
 
 const foundations = [
   {
-    title: "Web pública",
     description: "Cabecera ligera, contenido fluido y navegación inferior en móvil.",
+    icon: PanelsTopLeft,
+    status: "Responsive",
+    title: "Web pública",
   },
   {
-    title: "Panel del local",
     description: "Sidebar persistente en escritorio y accesos esenciales en móvil.",
+    icon: LayoutDashboard,
+    status: "Adaptable",
+    title: "Panel del local",
   },
   {
-    title: "Contenido reutilizable",
-    description: "Contenedores, superficies, encabezados y grids con contratos comunes.",
+    description: "Tokens, estados, iconos y componentes con contratos comunes.",
+    icon: Palette,
+    status: "Consistente",
+    title: "Sistema visual",
   },
-] as const;
+] satisfies ReadonlyArray<{
+  description: string;
+  icon: LucideIcon;
+  status: string;
+  title: string;
+}>;
 
 /**
  * Vista de arranque del sistema de layout. No sustituye a la pantalla funcional
@@ -37,30 +50,44 @@ export default function HomePage() {
         <Stack spacing={{ xs: 4, md: 6 }}>
           <PageHeading
             actions={
-              <Button
-                component={NavigationLink}
-                fullWidth
-                href="/panel-preview"
-                variant="contained"
-              >
-                Ver panel responsive
-              </Button>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Button component={NavigationLink} href="/design-system" variant="outlined">
+                  Ver sistema visual
+                </Button>
+                <Button component={NavigationLink} href="/panel-preview" variant="contained">
+                  Ver panel responsive
+                </Button>
+              </Stack>
             }
-            eyebrow="BASE DE INTERFAZ"
-            summary="Una estructura común para construir las experiencias públicas y privadas sin duplicar navegación ni reglas responsive."
-            title="Reserly ya tiene una base adaptable"
+            eyebrow="BASE DE PRODUCTO"
+            summary="Una estructura común y un lenguaje visual accesible para construir experiencias públicas y privadas coherentes."
+            title="Reserly ya tiene una base visual"
           />
           <ResponsiveGrid>
-            {foundations.map((foundation) => (
-              <Surface component="article" key={foundation.title}>
-                <Typography component="h2" sx={{ fontSize: "1.125rem", fontWeight: 700 }}>
-                  {foundation.title}
-                </Typography>
-                <Typography sx={{ color: "text.secondary", mt: 1 }}>
-                  {foundation.description}
-                </Typography>
-              </Surface>
-            ))}
+            {foundations.map((foundation) => {
+              const Icon = foundation.icon;
+              return (
+                <Surface component="article" key={foundation.title}>
+                  <Stack
+                    direction="row"
+                    sx={{
+                      alignItems: "center",
+                      color: "primary.main",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Icon aria-hidden="true" size={22} strokeWidth={1.9} />
+                    <StatusChip label={foundation.status} tone="info" />
+                  </Stack>
+                  <Typography component="h2" variant="h2" sx={{ mt: 5 }}>
+                    {foundation.title}
+                  </Typography>
+                  <Typography sx={{ color: "text.secondary", mt: 2 }}>
+                    {foundation.description}
+                  </Typography>
+                </Surface>
+              );
+            })}
           </ResponsiveGrid>
         </Stack>
       </PageContainer>

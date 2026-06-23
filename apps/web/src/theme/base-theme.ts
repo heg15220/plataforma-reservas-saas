@@ -2,22 +2,103 @@
 
 import { createTheme } from "@mui/material/styles";
 
+import { visualTokens } from "./visual-tokens";
+
 /**
- * Tema estructural provisional de la fase 0.
+ * Tema visual global de Reserly.
  *
- * La tarea 0.8 ampliará este contrato con tokens semánticos, estados, tipografía
- * completa e iconografía. Aquí solo se fijan decisiones necesarias para que los
- * shells y componentes base sean coherentes y accesibles.
+ * Traduce los tokens semánticos a contratos de Material UI y centraliza los
+ * estados interactivos compartidos. Los componentes de producto deben preferir
+ * alias como `primary.main`, `background.default` o `text.secondary`.
  */
 export const baseTheme = createTheme({
   cssVariables: true,
+  spacing: 4,
+  palette: {
+    mode: "light",
+    primary: {
+      main: visualTokens.color.brand.primary,
+      dark: visualTokens.color.brand.primaryHover,
+      light: visualTokens.color.brand.primarySoft,
+      contrastText: visualTokens.color.text.inverse,
+    },
+    success: {
+      main: visualTokens.color.status.success,
+      dark: visualTokens.color.status.successText,
+      light: visualTokens.color.status.successSoft,
+    },
+    warning: {
+      main: visualTokens.color.status.warning,
+      dark: visualTokens.color.status.warningText,
+      light: visualTokens.color.status.warningSoft,
+    },
+    error: {
+      main: visualTokens.color.status.danger,
+      dark: visualTokens.color.status.dangerText,
+      light: visualTokens.color.status.dangerSoft,
+    },
+    text: {
+      primary: visualTokens.color.text.primary,
+      secondary: visualTokens.color.text.secondary,
+    },
+    background: {
+      default: visualTokens.color.surface.page,
+      paper: visualTokens.color.surface.card,
+    },
+    divider: visualTokens.color.border.default,
+  },
   typography: {
-    fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontFamily: visualTokens.typography.family,
+    h1: {
+      fontSize: "clamp(1.5rem, 1.25rem + 1.2vw, 2rem)",
+      fontWeight: visualTokens.typography.weight.bold,
+      letterSpacing: "-0.025em",
+      lineHeight: 1.25,
+    },
+    h2: {
+      fontSize: "1.25rem",
+      fontWeight: visualTokens.typography.weight.semibold,
+      letterSpacing: "-0.015em",
+      lineHeight: 1.4,
+    },
+    h3: {
+      fontSize: "1rem",
+      fontWeight: visualTokens.typography.weight.semibold,
+      lineHeight: 1.5,
+    },
+    body1: {
+      fontSize: "0.875rem",
+      lineHeight: 1.5,
+    },
+    body2: {
+      fontSize: "0.75rem",
+      lineHeight: 1.5,
+    },
+    button: {
+      fontSize: "0.875rem",
+      fontWeight: visualTokens.typography.weight.semibold,
+      lineHeight: 1.25,
+      textTransform: "none",
+    },
+    overline: {
+      fontSize: "0.75rem",
+      fontWeight: visualTokens.typography.weight.bold,
+      letterSpacing: "0.08em",
+      lineHeight: 1.5,
+    },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: visualTokens.radius.control,
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          backgroundColor: visualTokens.color.surface.page,
+          color: visualTokens.color.text.primary,
+        },
+      },
+    },
     MuiButtonBase: {
       defaultProps: {
         disableRipple: true,
@@ -29,8 +110,69 @@ export const baseTheme = createTheme({
       },
       styleOverrides: {
         root: {
+          borderRadius: visualTokens.radius.control,
+          fontWeight: visualTokens.typography.weight.semibold,
           minHeight: 44,
           textTransform: "none",
+          transition: "background-color 120ms ease, border-color 120ms ease, color 120ms ease",
+          "&:focus-visible": {
+            outline: `3px solid ${visualTokens.color.brand.primary}`,
+            outlineOffset: 3,
+          },
+        },
+        contained: {
+          "&.MuiButton-containedPrimary:hover": {
+            backgroundColor: visualTokens.color.brand.primaryHover,
+          },
+        },
+        outlined: {
+          borderColor: visualTokens.color.border.strong,
+          "&:hover": {
+            backgroundColor: visualTokens.color.brand.primarySoft,
+            borderColor: visualTokens.color.brand.primary,
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: visualTokens.radius.round,
+          fontWeight: visualTokens.typography.weight.semibold,
+          minHeight: 28,
+        },
+        icon: {
+          marginLeft: 8,
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: visualTokens.radius.control,
+          minHeight: 44,
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: visualTokens.color.border.strong,
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderWidth: 2,
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        rounded: {
+          borderRadius: visualTokens.radius.card,
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          backgroundColor: visualTokens.color.surface.inverse,
+          borderRadius: visualTokens.radius.control,
+          fontSize: "0.75rem",
         },
       },
     },

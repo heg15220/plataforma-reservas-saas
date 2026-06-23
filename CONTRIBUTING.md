@@ -2,30 +2,37 @@
 
 ## Estrategia de ramas
 
-El repositorio utiliza desarrollo basado en `main` con ramas de vida corta. No existe una rama permanente `develop`.
+El repositorio aplica GitFlow adaptado al plan por fases de `.kiro`.
 
-- `main`: rama protegida y siempre integrable. Todo cambio funcional debe entrar mediante pull request.
-- `feature/<tarea>-<descripcion>`: funcionalidad nueva, por ejemplo `feature/1.4-registro-local`.
-- `fix/<tarea>-<descripcion>`: corrección de un defecto.
-- `chore/<tarea>-<descripcion>`: mantenimiento, dependencias o infraestructura.
-- `docs/<tarea>-<descripcion>`: documentación sin cambio de comportamiento.
-- `codex/<tarea>-<descripcion>`: trabajo realizado por agentes Codex.
-- `release/<version>`: estabilización excepcional de una versión; no se mantiene de forma permanente.
+- `main`: rama protegida de producción. Solo recibe releases desde `develop` y correcciones `hotfix/*`.
+- `develop`: rama protegida de integración para la siguiente versión.
+- `phase/<numero>-<descripcion>`: una única rama por fase de `tasks.md`, creada desde `develop`.
+- `release/<version>`: estabilización opcional antes de promover una versión a `main`.
+- `hotfix/<descripcion>`: corrección urgente creada desde `main` y reintegrada en `main` y `develop`.
 
-Los nombres deben escribirse en minúsculas, usar guiones y, cuando exista, comenzar por el identificador de `tasks.md`.
+No se crean ramas por cada tarea. Las tareas de una fase se registran mediante commits trazables dentro de su rama `phase/*`.
+
+Los nombres deben escribirse en minúsculas y usar guiones. Ejemplos:
+
+```text
+phase/0-preparacion-proyecto
+phase/1-identidad-base-saas
+release/0.1.0
+hotfix/corregir-expiracion-sesion
+```
 
 ## Flujo de trabajo
 
-1. Actualizar `main`.
-2. Crear una rama corta según el tipo de cambio.
-3. Implementar una sola tarea o un conjunto pequeño y coherente.
+1. Actualizar `develop`.
+2. Crear o cambiar a la rama única de la fase correspondiente.
+3. Implementar cada tarea como un commit coherente dentro de esa rama.
 4. Ejecutar `npm run verify` desde la raíz.
-5. Actualizar la documentación obligatoria de `.kiro` si se completa o cambia una tarea.
-6. Abrir un pull request hacia `main`.
-7. Integrar mediante squash merge después de superar revisión y CI.
-8. Eliminar la rama integrada.
+5. Actualizar la documentación obligatoria de `.kiro` al completar o cambiar una tarea.
+6. Al cerrar la fase, abrir un pull request desde `phase/*` hacia `develop`.
+7. Integrar después de superar revisión y CI.
+8. Promover una versión desde `develop` hacia `main`, opcionalmente mediante `release/*`.
 
-No se deben hacer pushes forzados sobre `main`, reescribir su historial ni incluir secretos, credenciales o archivos `.env`.
+No se deben hacer pushes directos o forzados sobre `main` o `develop`, reescribir su historial ni incluir secretos, credenciales o archivos `.env`.
 
 ## Commits
 
@@ -40,20 +47,20 @@ Tipos habituales: `feat`, `fix`, `docs`, `test`, `refactor`, `build`, `ci` y `ch
 Ejemplos:
 
 ```text
-feat(api): add venue registration contract
-docs(spec): document task 0.2 repository structure
+feat(web): add semantic status components
+docs(spec): document task 0.8 visual system
 ```
 
 ## Pull requests
 
 Cada pull request debe:
 
-- Enlazar la tarea de `tasks.md`.
+- Identificar la fase y las tareas de `tasks.md` incluidas.
 - Explicar el comportamiento y las decisiones relevantes.
 - Enumerar las verificaciones ejecutadas.
-- Mantener el cambio acotado.
 - No marcar una tarea como completada sin implementación, verificación y actualización de `technical-implementation.md`.
 - Requerir al menos una revisión antes de integrarse cuando la plataforma lo permita.
+- Tener CI correcto y no introducir secretos ni artefactos generados.
 
 ## Comandos de calidad
 

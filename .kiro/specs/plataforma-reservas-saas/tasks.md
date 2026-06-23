@@ -25,7 +25,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 0.5. Configurar PostgreSQL local y migraciones.
 - [x] 0.6. Configurar cola de trabajos y cache.
 - [x] 0.7. Crear layout base responsive y sistema de componentes.
-- [ ] 0.8. Definir paleta, tipografía, estados visuales e iconografía.
+- [x] 0.8. Definir paleta, tipografía, estados visuales e iconografía.
 - [ ] 0.9. Crear pipeline CI con tests y validación de estilo.
 - [ ] 0.10. Crear infraestructura i18n con catálogos `es` y `en`.
 - [ ] 0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback `en`.

@@ -5,11 +5,12 @@ import type { Metadata } from "next";
 
 import { PageHeading, ResponsiveGrid, Surface, VenueShell } from "@/components/layout";
 import { NavigationLink } from "@/components/navigation-link";
+import { StatusChip } from "@/components/visual";
 
 const summaryCards = [
-  { label: "Reservas de hoy", value: "—" },
-  { label: "Próxima franja", value: "—" },
-  { label: "Ocupación", value: "—" },
+  { label: "Reservas de hoy", status: "Sin datos", tone: "neutral", value: "—" },
+  { label: "Próxima franja", status: "Pendiente", tone: "warning", value: "—" },
+  { label: "Ocupación", status: "Disponible", tone: "success", value: "—" },
 ] as const;
 
 export const metadata: Metadata = {
@@ -40,12 +41,15 @@ export default function PanelPreviewPage() {
         <ResponsiveGrid minColumnWidth={220}>
           {summaryCards.map((card) => (
             <Surface component="article" key={card.label}>
-              <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>
-                {card.label}
-              </Typography>
+              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
+                <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>
+                  {card.label}
+                </Typography>
+                <StatusChip label={card.status} tone={card.tone} />
+              </Stack>
               <Typography
                 aria-label={`${card.label}: sin datos`}
-                sx={{ fontSize: "2rem", fontWeight: 750, mt: 1 }}
+                sx={{ fontSize: "2rem", fontWeight: 700, mt: 2 }}
               >
                 {card.value}
               </Typography>
@@ -53,10 +57,10 @@ export default function PanelPreviewPage() {
           ))}
         </ResponsiveGrid>
         <Surface>
-          <Typography component="h2" sx={{ fontSize: "1.125rem", fontWeight: 700 }}>
+          <Typography component="h2" variant="h2">
             Estado vacío
           </Typography>
-          <Typography sx={{ color: "text.secondary", mt: 1 }}>
+          <Typography sx={{ color: "text.secondary", mt: 2 }}>
             Este bloque demuestra cómo reservar espacio para estados de carga, vacío y error sin
             cambiar la estructura principal de la página.
           </Typography>

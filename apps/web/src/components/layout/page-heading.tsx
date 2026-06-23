@@ -20,34 +20,23 @@ export function PageHeading({ actions, eyebrow, summary, title }: PageHeadingPro
         alignItems: { md: "flex-end" },
         display: "flex",
         flexDirection: { xs: "column", md: "row" },
-        gap: 2,
+        gap: 4,
         justifyContent: "space-between",
       }}
     >
       <Box sx={{ maxWidth: 760 }}>
         {eyebrow && (
-          <Typography
-            component="p"
-            sx={{ color: "primary.main", fontSize: "0.75rem", fontWeight: 700, mb: 1 }}
-          >
+          <Typography component="p" variant="overline" sx={{ color: "primary.main", mb: 2 }}>
             {eyebrow}
           </Typography>
         )}
-        <Typography
-          component="h1"
-          sx={{
-            fontSize: { xs: "1.75rem", md: "2.25rem" },
-            fontWeight: 750,
-            letterSpacing: "-0.035em",
-            lineHeight: 1.15,
-          }}
-        >
+        <Typography component="h1" variant="h1">
           {title}
         </Typography>
         {summary && (
           <Typography
             component="p"
-            sx={{ color: "text.secondary", fontSize: { xs: "0.95rem", md: "1rem" }, mt: 1.5 }}
+            sx={{ color: "text.secondary", fontSize: { xs: "0.875rem", md: "1rem" }, mt: 3 }}
           >
             {summary}
           </Typography>

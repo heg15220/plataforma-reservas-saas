@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-23
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6` y `0.7`.
-- Siguiente tarea pendiente recomendada: `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
-- Observación: la web ya dispone de integración SSR de Material UI, shell público, shell del panel, primitivas responsive y validación visual entre 320 y 1280 píxeles. Continúan pendientes el sistema visual definitivo, el pipeline CI y la infraestructura i18n. Desde el 2026-06-23 rige GitFlow por fases: una rama por fase, integración en `develop` y promoción a producción mediante `main`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7` y `0.8`.
+- Siguiente tarea pendiente recomendada: `0.9. Crear pipeline CI con tests y validación de estilo.`
+- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide y catálogo vivo en `/design-system`. Continúan pendientes el pipeline CI y la infraestructura i18n. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -676,3 +676,57 @@ Fuente de verdad del avance:
   - Las releases se promueven desde `develop` hacia `main`, opcionalmente mediante `release/<version>`.
   - Los hotfix parten de `main` y deben volver tanto a `main` como a `develop`.
   - Esta decisión sustituye expresamente la tomada en la conversación 13, donde `main` se había definido como única rama permanente.
+
+## Conversación 20 - Sistema visual e implantación operativa de GitFlow
+
+- Fecha: 2026-06-23
+- Resumen: se implantó operativamente el GitFlow acordado creando y publicando `develop` y la rama única `phase/0-preparacion-proyecto`. En esa rama se completó la tarea `0.8` mediante tokens visuales semánticos, tema Material UI, estados accesibles, iconografía Lucide, un isotipo vectorial de Reserly y el catálogo vivo `/design-system`. La interfaz se validó en navegador real para móvil, tablet, escritorio y un viewport equivalente a zoom del 200 %.
+- Archivos modificados:
+  - `CONTRIBUTING.md`
+  - `apps/web/package.json`
+  - `package-lock.json`
+  - `apps/web/README.md`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/page.test.tsx`
+  - `apps/web/src/app/panel-preview/page.tsx`
+  - `apps/web/src/app/design-system/page.tsx`
+  - `apps/web/src/app/design-system/page.test.tsx`
+  - `apps/web/src/components/layout/brand.tsx`
+  - `apps/web/src/components/layout/page-container.tsx`
+  - `apps/web/src/components/layout/page-heading.tsx`
+  - `apps/web/src/components/layout/public-shell.tsx`
+  - `apps/web/src/components/layout/responsive-grid.tsx`
+  - `apps/web/src/components/layout/surface.tsx`
+  - `apps/web/src/components/layout/venue-shell.tsx`
+  - `apps/web/src/components/visual/index.ts`
+  - `apps/web/src/components/visual/status-chip.tsx`
+  - `apps/web/src/components/visual/status-chip.test.tsx`
+  - `apps/web/src/theme/base-theme.ts`
+  - `apps/web/src/theme/visual-tokens.ts`
+  - `docs/README.md`
+  - `docs/architecture/frontend-layout.md`
+  - `docs/architecture/visual-system.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-007 Usabilidad`.
+  - `RNF-009 Internacionalización y localización`, al mantener contratos compatibles con textos localizados.
+  - `RNF-012 Calidad lingüística y codificación UTF-8`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+  - Prepara todas las tareas posteriores de UI y la futura automatización de CI de `0.9`.
+- Tareas completadas:
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+- Siguiente tarea pendiente recomendada:
+  - `0.9. Crear pipeline CI con tests y validación de estilo.`
+- Decisiones o aclaraciones relevantes:
+  - `develop` se creó usando como punto inicial el estado integrado y verificado de las tareas `0.1` a `0.7`.
+  - `phase/0-preparacion-proyecto` se creó desde `develop` y contendrá todas las tareas restantes de la Fase 0; no se crearán nuevas ramas por tarea.
+  - `visual-tokens.ts` es la fuente de verdad para colores, radios, sombras y tipografía propios.
+  - El tema MUI usa una escala base de `4 px`, controles de al menos `44 px` y overrides compartidos.
+  - `StatusChip` comunica estado mediante texto, icono y color.
+  - La iconografía se fija en `lucide-react 1.21.0`.
+  - Los contrastes medidos de los chips visibles están entre `5.17:1` y `6.98:1`.
+  - `/design-system` y `/panel-preview` son rutas internas `noindex`; no sustituyen pantallas funcionales.

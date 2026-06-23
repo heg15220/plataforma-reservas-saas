@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Toolbar from "@mui/material/Toolbar";
+import { CalendarDays, Heart, House, Search, UserRound, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { NavigationLink } from "@/components/navigation-link";
@@ -11,12 +12,12 @@ import { Brand } from "./brand";
 import { PageContainer } from "./page-container";
 
 const publicNavigation = [
-  { href: "/", label: "Inicio" },
-  { href: "/explorar", label: "Explorar" },
-  { href: "/reservas", label: "Reservas" },
-  { href: "/favoritos", label: "Favoritos" },
-  { href: "/perfil", label: "Perfil" },
-] as const;
+  { href: "/", icon: House, label: "Inicio" },
+  { href: "/explorar", icon: Search, label: "Explorar" },
+  { href: "/reservas", icon: CalendarDays, label: "Reservas" },
+  { href: "/favoritos", icon: Heart, label: "Favoritos" },
+  { href: "/perfil", icon: UserRound, label: "Perfil" },
+] satisfies ReadonlyArray<{ href: string; icon: LucideIcon; label: string }>;
 
 export interface PublicShellProps {
   children: ReactNode;
@@ -31,7 +32,7 @@ export interface PublicShellProps {
  */
 export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
   return (
-    <Box sx={{ bgcolor: "background.default", minHeight: "100dvh", pb: { xs: 9, md: 0 } }}>
+    <Box sx={{ bgcolor: "background.default", minHeight: "100dvh", pb: { xs: 18, md: 0 } }}>
       <Box className="skip-link" component="a" href="#main-content">
         Saltar al contenido
       </Box>
@@ -42,32 +43,36 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
         sx={{ borderBottom: 1, borderColor: "divider" }}
       >
         <PageContainer>
-          <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 64, md: 72 } }}>
+          <Toolbar disableGutters sx={{ gap: 4, minHeight: { xs: 64, md: 72 } }}>
             <NavigationLink aria-label="Ir al inicio de Reserly" className="unstyled-link" href="/">
               <Brand />
             </NavigationLink>
             <Box
               component="nav"
               aria-label="Navegación pública principal"
-              sx={{ display: { xs: "none", md: "flex" }, gap: 0.5, ml: "auto" }}
+              sx={{ display: { xs: "none", md: "flex" }, gap: 1, ml: "auto" }}
             >
-              {publicNavigation.slice(0, 3).map((item) => (
-                <Button
-                  aria-current={currentPath === item.href ? "page" : undefined}
-                  color={currentPath === item.href ? "primary" : "inherit"}
-                  component={NavigationLink}
-                  href={item.href}
-                  key={item.href}
-                >
-                  {item.label}
-                </Button>
-              ))}
+              {publicNavigation.slice(0, 3).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    aria-current={currentPath === item.href ? "page" : undefined}
+                    color={currentPath === item.href ? "primary" : "inherit"}
+                    component={NavigationLink}
+                    href={item.href}
+                    key={item.href}
+                    startIcon={<Icon aria-hidden="true" size={17} strokeWidth={1.9} />}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
             </Box>
             <Button
               component={NavigationLink}
               href="/acceso-local"
               size="small"
-              sx={{ ml: { xs: "auto", md: 1 } }}
+              sx={{ ml: { xs: "auto", md: 2 } }}
               variant="outlined"
             >
               Acceso local
@@ -76,7 +81,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
         </PageContainer>
       </AppBar>
 
-      <Box component="main" id="main-content" sx={{ py: { xs: 3, md: 5 } }}>
+      <Box component="main" id="main-content" sx={{ py: { xs: 6, md: 10 } }}>
         {children}
       </Box>
 
@@ -95,25 +100,31 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
           zIndex: "appBar",
         }}
       >
-        {publicNavigation.map((item) => (
-          <Button
-            aria-current={currentPath === item.href ? "page" : undefined}
-            color={currentPath === item.href ? "primary" : "inherit"}
-            component={NavigationLink}
-            href={item.href}
-            key={item.href}
-            size="small"
-            sx={{
-              borderRadius: 0,
-              fontSize: "0.6875rem",
-              minHeight: 64,
-              minWidth: 0,
-              px: 0.5,
-            }}
-          >
-            {item.label}
-          </Button>
-        ))}
+        {publicNavigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Button
+              aria-current={currentPath === item.href ? "page" : undefined}
+              color={currentPath === item.href ? "primary" : "inherit"}
+              component={NavigationLink}
+              href={item.href}
+              key={item.href}
+              size="small"
+              sx={{
+                borderRadius: 0,
+                flexDirection: "column",
+                fontSize: "0.6875rem",
+                gap: 0.75,
+                minHeight: 64,
+                minWidth: 0,
+                px: 0.5,
+              }}
+            >
+              <Icon aria-hidden="true" size={19} strokeWidth={1.9} />
+              {item.label}
+            </Button>
+          );
+        })}
       </Paper>
     </Box>
   );

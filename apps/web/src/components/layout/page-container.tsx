@@ -16,7 +16,7 @@ export function PageContainer({ children, compact = false }: PageContainerProps)
       maxWidth={false}
       sx={{
         maxWidth: compact ? 1120 : 1440,
-        px: { xs: 2, sm: 3, lg: 4 },
+        px: { xs: 4, sm: 6, lg: 8 },
         width: "100%",
       }}
     >

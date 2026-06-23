@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6` y `0.7`.
-- Siguiente tarea pendiente recomendada: `0.8. Definir paleta, tipografía, estados visuales e iconografía.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7` y `0.8`.
+- Siguiente tarea pendiente recomendada: `0.9. Crear pipeline CI con tests y validación de estilo.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -1810,3 +1810,412 @@ Incidencias de verificación:
 - No existe todavía Storybook o catálogo equivalente.
 - La página raíz es una demostración de infraestructura y será sustituida por `3.8`.
 - `/panel-preview` deberá eliminarse o restringirse cuando exista el panel real.
+
+## Tarea 0.8 - Definir paleta, tipografía, estados visuales e iconografía
+
+- Fecha: 2026-06-23
+- Commit o referencia: rama `phase/0-preparacion-proyecto`, creada desde `develop`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Convertir la dirección visual documentada de Reserly en contratos ejecutables y reutilizables para todo el frontend. La tarea debía eliminar el carácter provisional del tema de `0.7`, centralizar los valores visuales, completar estados interactivos, integrar una familia coherente de iconos y proporcionar una superficie donde revisar el sistema sin depender todavía de pantallas funcionales o datos de negocio.
+
+El cierre incluye también la aplicación operativa de la política GitFlow aprobada antes de iniciar la tarea. El historial previo estaba apilado en ramas `codex/task-*`; se creó `develop` en el estado integrado y verificado de `0.1` a `0.7`, y desde ella se creó `phase/0-preparacion-proyecto`. Las tareas `0.8` a `0.15` continuarán en esta misma rama de fase.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-007 Usabilidad`: responsive desde el inicio, controles táctiles, acciones visibles y estados claros.
+  - `RNF-009 Internacionalización y localización`: componentes compatibles con textos localizados y sin semántica incrustada en iconos.
+  - `RNF-012 Calidad lingüística y UTF-8`: textos españoles correctos en UI, tests y documentación.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`: `develop`, rama única por fase y `main` reservada para producción.
+- Diseño:
+  - `1.3 Stack definitivo seleccionado`.
+  - `1.6 Estrategia GitFlow por fases`.
+  - `9. Diseño de interfaz`.
+  - `10. Pantallas responsive`.
+  - `17.1 Nombre comercial y sistema visual`.
+  - Apartados de identidad de marca, paleta funcional, tipografía, geometría, componentes, iconografía y accesibilidad.
+- Tareas relacionadas:
+  - `0.7. Crear layout base responsive y sistema de componentes`.
+  - `0.8. Definir paleta, tipografía, estados visuales e iconografía`.
+  - `0.9. Crear pipeline CI con tests y validación de estilo`.
+  - `0.10` a `0.12`, que sustituirán textos literales por catálogos y validaciones i18n.
+  - Todas las tareas posteriores con UI pública, panel de local o administración.
+
+### Archivos afectados
+
+- Creados:
+  - `apps/web/src/theme/visual-tokens.ts`
+  - `apps/web/src/components/visual/status-chip.tsx`
+  - `apps/web/src/components/visual/status-chip.test.tsx`
+  - `apps/web/src/components/visual/index.ts`
+  - `apps/web/src/app/design-system/page.tsx`
+  - `apps/web/src/app/design-system/page.test.tsx`
+  - `docs/architecture/visual-system.md`
+- Modificados:
+  - `CONTRIBUTING.md`
+  - `apps/web/package.json`
+  - `package-lock.json`
+  - `apps/web/README.md`
+  - `apps/web/src/theme/base-theme.ts`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/page.test.tsx`
+  - `apps/web/src/app/panel-preview/page.tsx`
+  - `apps/web/src/components/layout/brand.tsx`
+  - `apps/web/src/components/layout/page-container.tsx`
+  - `apps/web/src/components/layout/page-heading.tsx`
+  - `apps/web/src/components/layout/public-shell.tsx`
+  - `apps/web/src/components/layout/responsive-grid.tsx`
+  - `apps/web/src/components/layout/surface.tsx`
+  - `apps/web/src/components/layout/venue-shell.tsx`
+  - `docs/README.md`
+  - `docs/architecture/frontend-layout.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### Implantación de GitFlow
+
+Antes de modificar código se actualizaron las referencias remotas y se comprobó que no existían `develop` ni una rama de fase. Se realizaron estas operaciones:
+
+1. Se creó `develop` apuntando al commit integrado `0afdc0c`, que contiene las tareas verificadas `0.1` a `0.7` y la definición documental de GitFlow.
+2. Se publicó `develop` en `origin`.
+3. Se creó `phase/0-preparacion-proyecto` desde `develop`.
+4. Se publicó la rama de fase y se configuró su upstream.
+5. Se reescribió `CONTRIBUTING.md` para que la guía operativa ya no contradiga `RNF-013`.
+
+`main` permanece en el último estado promovido históricamente y no recibió trabajo de desarrollo. La Fase 0 no se integrará de nuevo en `develop` hasta que se complete o se apruebe expresamente una integración parcial.
+
+#### Tokens semánticos
+
+`visual-tokens.ts` concentra:
+
+- marca:
+  - `primary = #075FE4`;
+  - `primaryHover = #064FC0`;
+  - `primarySoft = #EAF2FF`;
+- texto principal, secundario e inverso;
+- superficies de página, tarjeta, elevada e inversa;
+- bordes normal y reforzado;
+- estados:
+  - éxito;
+  - advertencia;
+  - peligro;
+  - neutral;
+  - información;
+- tonos de texto y fondos suaves específicos de cada estado;
+- radios de control, tarjeta, panel y forma redonda;
+- sombras de tarjeta y elemento flotante;
+- familia tipográfica y pesos permitidos.
+
+Los tonos de texto de estado son deliberadamente más oscuros que los colores base. Los colores base sirven para indicadores y superficies intensas; los tonos oscuros permiten mostrar texto sobre fondos suaves con contraste suficiente.
+
+#### Tema Material UI
+
+`base-theme.ts` dejó de ser provisional y ahora traduce los tokens al sistema MUI:
+
+- variables CSS de MUI activas;
+- escala de espaciado base de `4 px`;
+- paleta de marca, éxito, advertencia y error;
+- fondos, texto y divisores;
+- variantes tipográficas:
+  - `h1` fluido entre `24 px` y `32 px`;
+  - `h2` de `20 px`;
+  - `h3` de `16 px`;
+  - cuerpo habitual de `14/21 px`;
+  - metadatos de `12/18 px`;
+  - botones y overline;
+- radio base de `8 px`;
+- `CssBaseline` con fondo y color del producto;
+- botones:
+  - altura mínima de `44 px`;
+  - peso `600`;
+  - sin mayúsculas automáticas;
+  - foco visible de tres píxeles;
+  - hover principal y outlined centralizados;
+- chips con forma redonda y peso semibold;
+- campos outlined con altura mínima, hover y foco reforzado;
+- superficies redondeadas a `12 px`;
+- tooltips sobre superficie inversa.
+
+El cambio de escala de MUI de `8 px` a `4 px` obligó a revisar los valores `spacing`, `padding` y `gap` existentes. Los componentes de layout duplicaron los índices donde era necesario para conservar medidas visuales equivalentes en píxeles.
+
+#### Estados visuales
+
+`StatusChip` introduce un contrato de estado reutilizable:
+
+```text
+tone = success | warning | danger | neutral | info
+label = texto localizado por el consumidor
+```
+
+Cada tono selecciona:
+
+- icono Lucide;
+- fondo tonal;
+- texto de alto contraste.
+
+El significado no depende únicamente del color:
+
+- `success`: `CheckCircle2`;
+- `warning`: `Clock3`;
+- `danger`: `CircleAlert`;
+- `neutral`: `CircleMinus`;
+- `info`: `Info`.
+
+Los iconos se marcan decorativos mediante `aria-hidden="true"` porque la etiqueta ya contiene el significado completo. El componente no incorpora literales ni claves propias; puede recibir traducciones `es` o `en` en las tareas de i18n.
+
+#### Iconografía e identidad
+
+Se añadió `lucide-react 1.21.0` como dependencia exacta. La versión se consultó en el registro oficial de npm y se instaló desde el workspace raíz.
+
+La iconografía usa un trazo habitual de `1.9` y reserva `2.2` para el isotipo. Se integró en:
+
+- marca Reserly;
+- navegación pública de escritorio;
+- navegación pública móvil;
+- sidebar del panel;
+- navegación móvil del panel;
+- tarjetas de fundamentos;
+- estados;
+- catálogo visual.
+
+`Brand` sustituye la letra provisional por `CalendarCheck2`, un símbolo vectorial relacionado con calendario y confirmación. Conserva:
+
+- variante normal;
+- variante inversa;
+- variante compacta;
+- nombre accesible `Reserly`;
+- icono oculto a tecnologías de asistencia cuando el wordmark o `aria-label` ya ofrecen el nombre.
+
+#### Navegación y layout
+
+Las entradas de navegación pasaron de pares `href/label` a contratos `href/label/icon`. Los botones de escritorio muestran icono inicial; los botones móviles apilan icono y etiqueta.
+
+Se mantuvieron:
+
+- `aria-current="page"`;
+- landmarks diferenciados;
+- altura mínima de `64 px` en barras inferiores;
+- controles de al menos `44 px`;
+- sidebar de `256 px`;
+- breakpoint `md = 900 px`.
+
+`PageHeading` consume ahora las variantes `overline` y `h1` del tema. `Surface` usa el radio semántico de tarjeta. `PageContainer` y `ResponsiveGrid` adaptaron sus índices de espaciado a la nueva base de `4 px`.
+
+#### Catálogo vivo
+
+`/design-system` es una ruta estática interna marcada `noindex, nofollow`. Incluye:
+
+- paleta con nombres, muestras y valores;
+- jerarquía tipográfica;
+- botones primary, outlined y disabled;
+- campo con etiqueta persistente, placeholder y ayuda;
+- cinco estados mediante `StatusChip`;
+- ejemplo de error con `role="alert"`;
+- selección de iconos Lucide;
+- enlace de retorno.
+
+El catálogo no usa datos reales, APIs ni fixtures de negocio. Su función es permitir revisión visual dentro del mismo tema, SSR y layout que utilizarán las pantallas del producto.
+
+La página raíz enlaza al catálogo y utiliza iconos y estados de información. `/panel-preview` demuestra estados neutral, warning y success en tarjetas de resumen.
+
+### Modelo de datos
+
+No se crearon ni modificaron:
+
+- tablas;
+- migraciones Flyway;
+- entidades JPA;
+- índices;
+- restricciones;
+- datos persistentes.
+
+Todos los datos visibles del catálogo son ejemplos estructurales sin información personal. Los valores del panel continúan representados mediante guion largo y etiquetas explícitas de ausencia de datos.
+
+### Contratos y APIs
+
+No se añadieron endpoints ni llamadas HTTP.
+
+Nuevos contratos frontend:
+
+- `visualTokens`: objeto readonly de fundamentos visuales.
+- `StatusTone`: unión cerrada de cinco tonos.
+- `StatusChipProps`:
+  - `label: string`;
+  - `tone: StatusTone`.
+- ruta estática `/design-system`.
+
+Los contratos existentes de layouts no cambian externamente. Las listas de navegación continúan siendo internas a cada shell.
+
+### Seguridad, privacidad e i18n
+
+- No se introdujo HTML sin sanitizar.
+- No existen llamadas externas desde la interfaz.
+- No se almacenan ni transmiten datos.
+- `/design-system` y `/panel-preview` están fuera de indexación.
+- `lucide-react` se fijó a versión exacta.
+- `npm audit` informó cero vulnerabilidades en 600 dependencias totales.
+- Los iconos decorativos se ocultan mediante `aria-hidden`.
+- Los estados conservan texto explícito y no dependen solo del color.
+- Los controles iconográficos futuros deberán usar `aria-label`; esta regla quedó documentada.
+- Los textos de esta tarea permanecen en español correcto y UTF-8.
+- Los literales visibles se migrarán a catálogos en `0.10`; los componentes visuales aceptan texto externo y no impiden esa migración.
+- No se descargó Inter desde un proveedor remoto. Se declara como primera familia con fallback del sistema, evitando dependencia de red durante build y dejando una futura fuente autocontenida como mejora posible.
+
+### UI y experiencia de usuario
+
+La identidad visual implementada mantiene:
+
+- superficies claras;
+- azul intenso para acción primaria;
+- sidebar oscuro para el panel;
+- tipografía compacta y profesional;
+- tarjetas con borde y radio suave;
+- sombras limitadas;
+- iconografía lineal;
+- navegación inferior centrada en tareas.
+
+Estados interactivos centralizados:
+
+- default;
+- hover;
+- focus-visible;
+- disabled;
+- error y estados semánticos mediante componentes.
+
+Los estados loading, active complejos y success de formularios se aplicarán en los componentes funcionales que los necesiten, reutilizando estos tokens.
+
+Contraste medido en navegador:
+
+- neutral: `6.98:1`;
+- warning: `6.22:1`;
+- success: `5.17:1`.
+
+El botón principal se verificó con:
+
+- fondo `rgb(7, 95, 228)`;
+- texto `rgb(255, 255, 255)`;
+- altura mínima `44 px`.
+
+### Tests y verificación
+
+Tests añadidos:
+
+- `status-chip.test.tsx`:
+  - ejecuta los cinco tonos;
+  - comprueba la etiqueta visible;
+  - comprueba que el icono es decorativo.
+- `design-system/page.test.tsx`:
+  - comprueba encabezado principal;
+  - comprueba secciones de paleta, tipografía, estados e iconografía;
+  - comprueba el ejemplo `role="alert"`;
+  - comprueba un estado visible.
+- `page.test.tsx`:
+  - actualiza el título;
+  - verifica el enlace a `/design-system`;
+  - conserva la validación de `/panel-preview`.
+
+Resultado automatizado final de `npm run verify`:
+
+- validación de plantillas de entorno: correcta;
+- ESLint: cero warnings;
+- Checkstyle: cero violaciones;
+- Prettier: correcto;
+- Spotless: correcto;
+- TypeScript: sin errores;
+- Vitest: 5 ficheros y 14 tests correctos;
+- JUnit/Spring Boot: 9 tests correctos;
+- Testcontainers:
+  - PostgreSQL/PostGIS correcto;
+  - Redis correcto;
+  - RabbitMQ correcto;
+- build Next.js:
+  - `/`;
+  - `/_not-found`;
+  - `/design-system`;
+  - `/panel-preview`;
+- build Spring Boot: JAR correcto;
+- `npm audit`: cero vulnerabilidades;
+- `git diff --check`: sin errores.
+
+Verificación visual mediante navegador integrado sobre build de producción:
+
+- `/design-system` en `1280 × 720`:
+  - cabecera de escritorio;
+  - paleta en seis columnas;
+  - tipografía y controles en dos columnas;
+  - sin desbordamiento;
+- `/design-system` en `320 × 720`:
+  - una columna;
+  - navegación inferior visible;
+  - acciones apiladas;
+  - ningún elemento fuera del viewport;
+- tablet `768 × 900`:
+  - navegación móvil;
+  - secciones interiores en dos columnas cuando existe espacio;
+- viewport de `640 px`, equivalente aproximado al espacio CSS disponible con zoom del `200 %` sobre escritorio:
+  - cero elementos desbordados;
+- `/panel-preview` en `1280 × 720`:
+  - sidebar visible;
+  - tres tarjetas de estado;
+  - estado activo correcto;
+- `/panel-preview` en `390 × 844`:
+  - sidebar oculto;
+  - navegación inferior visible;
+  - cero elementos fuera del viewport;
+- consola del navegador:
+  - cero errores;
+  - cero warnings.
+
+Incidencias detectadas durante la iteración:
+
+- El primer parche amplio no encontró varias líneas debido a la representación degradada de caracteres históricos en la salida de PowerShell. No aplicó cambios parciales; los archivos afectados se sustituyeron mediante parches UTF-8 controlados.
+- Material UI 9 no admite `containedPrimary` como clave directa de `styleOverrides`; se cambió a `contained` con selector `.MuiButton-containedPrimary`.
+- El tipo de `Stack` en MUI 9 no aceptó `gap`, `flexWrap` o `alignItems` como props directas en algunos casos; estas propiedades se movieron a `sx` o se usó `Box`.
+- La primera ejecución de `npm run format` dentro del sandbox no pudo resolver Maven Central. La verificación integral se ejecutó con acceso aprobado y completó correctamente.
+- PowerShell no pudo usar `Start-Process` porque el entorno heredado contenía claves duplicadas `Path/PATH`. El servidor visual se inició de forma aislada mediante `Win32_Process`, se validó y se detuvieron todos sus procesos auxiliares al finalizar.
+
+### Decisiones técnicas
+
+- Fuente única de tokens independiente de componentes.
+- Tema MUI como traductor de tokens, no como lugar donde inventar valores dispersos.
+- Escala base real de `4 px`, coherente con el diseño.
+- Fondos tonales y textos oscuros de estado para contraste AA.
+- `StatusChip` como primera primitiva visual semántica.
+- Lucide como biblioteca única de iconos.
+- Iconos decorativos ocultos cuando existe texto equivalente.
+- Isotipo vectorial generado mediante composición de icono, sin recurso raster ni descarga externa.
+- Catálogo vivo dentro de la aplicación en vez de incorporar Storybook en esta tarea.
+- Ruta de catálogo `noindex` para evitar exposición como contenido público de producto.
+- Inter declarada con fallbacks del sistema, sin red durante build.
+- GitFlow migrado conservando el historial previo y sin reescribir ramas antiguas.
+
+Alternativas descartadas:
+
+- Colores escritos directamente en cada componente: descartados por inconsistencia y dificultad de mantenimiento.
+- Usar el color principal de estado como texto sobre fondo suave: descartado cuando no garantizaba contraste suficiente.
+- Iconos emoji o de varias bibliotecas: descartados por inconsistencia visual y semántica.
+- Storybook en `0.8`: descartado para no duplicar runtime, configuración y CI antes de `0.9`; el catálogo interno cubre la revisión actual.
+- Descargar Inter desde Google Fonts durante build: descartado por dependencia de red, privacidad y reproducibilidad.
+- Reescribir o borrar ramas históricas por tarea: descartado para preservar trazabilidad.
+
+### Riesgos y deuda técnica
+
+- Los textos visibles continúan hardcodeados hasta `0.10`–`0.12`.
+- Inter depende de que exista en el sistema; una futura fuente autocontenida mejoraría consistencia tipográfica.
+- El isotipo actual es funcional y coherente, pero una identidad de marca profesional puede requerir revisión de diseño y archivos SVG propios.
+- El catálogo no sustituye pruebas de regresión visual automatizadas; pueden añadirse en `0.9` o fase `15`.
+- Todavía no hay modo oscuro; no forma parte del alcance actual.
+- Los estados loading, skeleton, active complejo y feedback de formularios se implementarán cuando existan componentes funcionales.
+- Falta validación manual con lector de pantalla real.
+- El viewport de `640 px` aproxima el espacio disponible al zoom del `200 %`; la fase `15` deberá repetir la validación en una matriz completa de navegadores.
+- Las ramas remotas históricas `codex/task-*` permanecen publicadas. Podrán archivarse o eliminarse después de confirmar que ningún trabajo externo depende de ellas.
+- Las protecciones de `main`, `develop` y `phase/*` requieren configuración en GitHub y CI; corresponden a `0.9`.

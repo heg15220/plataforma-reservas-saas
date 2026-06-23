@@ -66,7 +66,7 @@ Proporciona borde, radio y padding consistentes para `section`, `article` o `asi
 
 ### `Brand`
 
-Es una representación tipográfica provisional. El logotipo y las variantes definitivas pertenecen a `0.8`.
+Combina el wordmark Reserly con un isotipo vectorial de calendario y confirmación. Dispone de variantes compacta e inversa.
 
 ## Accesibilidad
 
@@ -79,15 +79,8 @@ Es una representación tipográfica provisional. El logotipo y las variantes def
 - El ancho mínimo verificado es `320 px`.
 - El documento usa temporalmente `lang="es"` porque el contenido visible actual está en español. La resolución i18n dinámica lo sustituirá en `0.11`.
 
-## Límites de esta tarea
+## Sistema visual
 
-El tema de `0.7` solo contiene tipografía base, radio estructural y defaults de botones necesarios para componer el layout. `0.8` debe:
-
-- formalizar la paleta semántica;
-- definir escalas tipográficas y de espaciado;
-- completar estados interactivos;
-- integrar `lucide-react`;
-- sustituir valores visuales provisionales;
-- crear el catálogo visual de componentes.
+La tarea `0.8` amplía esta infraestructura con tokens semánticos, tema MUI, estados accesibles, iconografía Lucide y el catálogo `/design-system`. La definición completa se encuentra en `visual-system.md`.
 
 La página inicial y `/panel-preview` son demostraciones estructurales. No sustituyen el buscador público, el dashboard ni los datos reales de sus tareas funcionales.
