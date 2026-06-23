@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9` y `0.10`.
-- Siguiente tarea pendiente recomendada: `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12` y `0.13`.
+- Siguiente tarea pendiente recomendada: `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -3159,3 +3159,254 @@ La tarea se considera completada porque:
 - La UI compartida de marca ya no contiene texto visible hardcodeado.
 - `npm run verify` pasa completo.
 - `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados antes del commit de cierre.
+
+## Tarea 0.13 - Definir patrón para textos localizados en base de datos mediante campos `*_i18n` o JSON `{ es, en }`
+
+### Identificador y fecha
+
+- Tarea: `0.13. Definir patrón para textos localizados en base de datos mediante campos *_i18n o JSON { es, en }.`
+- Fecha de iteración: 2026-06-23.
+- Rama de trabajo: `phase/0-preparacion-proyecto`.
+
+### Objetivo técnico
+
+El objetivo técnico fue fijar una única forma de modelar textos visibles persistidos en PostgreSQL que no pertenecen a catálogos estáticos. Hasta esta tarea, la especificación exigía textos configurables en español e inglés, pero no existía un contrato backend ni una forma física suficientemente precisa para futuras columnas de locales, categorías, planes, formularios, pestañas personalizadas, reglas o políticas.
+
+La iteración convierte la convención conceptual `*_i18n` en un patrón compatible con `RNF-011`: columnas físicas `lowerCamelCase`, tipo PostgreSQL `jsonb`, documento con idioma origen y valores por locale soportado, validación de publicación y fallback visible controlado.
+
+### Requisitos y diseño relacionados
+
+Requisitos impactados:
+
+- `RF-031 Internacionalización de textos`.
+- `RNF-009 Internacionalización y localización`.
+- `RNF-011 Convenciones de implementación backend y persistencia`.
+- `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`.
+
+Diseño impactado:
+
+- `3.14 Internacionalización y localización`.
+- `4.3 Datos localizados`.
+- Convenciones de nombres físicos `UpperCamelCase` para tablas y `lowerCamelCase` para columnas.
+
+Tareas preparadas:
+
+- `2.3` traducciones de categorías.
+- `2.5` campos localizados de descripción, servicios, reglas y textos públicos.
+- `2.14` y `2.15` pestañas personalizadas.
+- `6.11` y `6.12` labels/opciones de formularios y bloqueo de publicación incompleta.
+- `8.2` a `8.6` plantillas de email.
+- `10.16` incidencias y penalizaciones.
+- `13.2` planes.
+- `14.10` gestión de planes con textos ES/EN.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/java/com/reserly/platform/localization/SupportedLocale.java`
+- `apps/api/src/main/java/com/reserly/platform/localization/LocalizedText.java`
+- `apps/api/src/test/java/com/reserly/platform/localization/LocalizedTextTests.java`
+- `docs/architecture/localized-data.md`
+
+Archivos modificados:
+
+- `.kiro/specs/plataforma-reservas-saas/design.md`
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- `apps/api/README.md`
+- `apps/api/src/main/java/com/reserly/platform/localization/package-info.java`
+- `docs/README.md`
+- `docs/architecture/internationalization.md`
+
+No se eliminaron archivos.
+
+### Implementación técnica
+
+Se añadió el enum `SupportedLocale` en el backend con los locales soportados por contrato:
+
+- `ES`, persistido como `es`.
+- `EN`, persistido como `en`.
+
+El enum incluye `fromLanguageTag(String)` para resolver únicamente etiquetas exactas persistidas. No aplica reglas de navegador ni variantes regionales porque ese trabajo pertenece a la resolución de idioma de request. Esta separación evita mezclar el contrato de datos persistidos con la entrada flexible de cabeceras o parámetros.
+
+Se añadió el record `LocalizedText`, responsable de representar textos configurables persistidos:
+
+- `sourceLocale`: idioma en el que se creó o editó originalmente el contenido.
+- `values`: mapa de `SupportedLocale` a texto visible.
+
+El constructor compacto valida:
+
+- `sourceLocale` obligatorio.
+- `values` normalizado e inmutable.
+- texto no vacío para el idioma origen.
+
+El value object expone:
+
+- `fromLanguageTagValues(String, Map<String, String>)`: crea el objeto desde claves persistidas `es`/`en` e ignora idiomas no soportados.
+- `resolve(SupportedLocale)`: resuelve texto visible con fallback `requestedLocale -> en -> sourceLocale`.
+- `hasRequiredTranslations(Set<SupportedLocale>)`: comprueba si un flujo de publicación tiene todos los idiomas exigidos.
+- `missingTranslations(Set<SupportedLocale>)`: devuelve idiomas obligatorios pendientes.
+- `toLanguageTagValues()`: devuelve un mapa serializable con claves `es` y/o `en`.
+
+La clase no traduce automáticamente, no llama a servicios externos y no decide si un local acepta fallback. Solo centraliza el contrato técnico para que los servicios de dominio lo apliquen de forma consistente.
+
+### Patrón de persistencia
+
+La convención conceptual de la tarea sigue siendo `*_i18n`, pero las migraciones y entidades deben respetar `RNF-011`. Por tanto:
+
+- `description_i18n` conceptual se implementa como columna física `"descriptionI18n"`.
+- `rules_i18n` conceptual se implementa como `"rulesI18n"`.
+- `title_i18n` conceptual se implementa como `"titleI18n"`.
+- `options_i18n` conceptual se implementa como `"optionsI18n"`.
+
+El tipo recomendado para textos configurables es `jsonb` con esta forma:
+
+```json
+{
+  "sourceLocale": "es",
+  "values": {
+    "es": "Carta de temporada",
+    "en": "Seasonal menu"
+  }
+}
+```
+
+`sourceLocale` permite auditar el idioma origen, distinguir traducciones incompletas y aplicar fallback final sin inventar un idioma por entidad. `values` permite mantener todos los textos visibles del mismo concepto como un documento atómico.
+
+### Restricciones SQL y migraciones futuras
+
+No se creó ninguna migración en esta tarea porque aún no existen tablas de dominio que usen campos localizados. Sí se documentó la plantilla que deberán adaptar las próximas migraciones:
+
+```sql
+"descriptionI18n" jsonb NOT NULL,
+CONSTRAINT "Venue_descriptionI18n_is_object"
+  CHECK (jsonb_typeof("descriptionI18n") = 'object'),
+CONSTRAINT "Venue_descriptionI18n_has_source_locale"
+  CHECK ("descriptionI18n"->>'sourceLocale' IN ('es', 'en')),
+CONSTRAINT "Venue_descriptionI18n_has_values"
+  CHECK (jsonb_typeof("descriptionI18n"->'values') = 'object')
+```
+
+Las traducciones `values.es` y `values.en` no siempre deben imponerse con `CHECK` global, porque algunas entidades podrán existir en borrador. La regla de publicación se aplica en servicios de dominio mediante `LocalizedText.hasRequiredTranslations(...)`. Cuando una tabla solo permita contenido publicado, la migración podrá añadir checks más estrictos para exigir ambos idiomas no vacíos.
+
+### Contratos y APIs
+
+No se crearon endpoints REST.
+
+Se definió el contrato para futuros DTOs:
+
+- Las respuestas públicas deben devolver texto ya resuelto para el locale efectivo.
+- Los paneles de edición deben poder recibir y enviar el documento localizable completo para editar `es`, `en` y `sourceLocale`.
+- Los errores de publicación incompleta deben indicar el campo y los locales faltantes.
+- Los controladores no deben exponer entidades JPA directamente; los conversores deberán transformar `LocalizedText` a DTOs públicos o de edición según el caso.
+
+### Seguridad, privacidad e i18n
+
+Seguridad:
+
+- `LocalizedText` no procesa secretos ni datos sensibles por sí mismo.
+- La validación evita publicar JSON crudo, claves técnicas o texto vacío por error de modelado.
+
+Privacidad:
+
+- El patrón aplica a textos visibles configurables. No debe usarse para respuestas libres privadas o documentación sensible sin revisar minimización y permisos.
+
+Internacionalización:
+
+- Los locales persistidos son exclusivamente `es` y `en`.
+- Las variantes regionales se resuelven antes al locale base.
+- El fallback visible es controlado y documentado.
+- El idioma origen queda preservado.
+
+Calidad lingüística:
+
+- El patrón no sustituye la validación profunda de español de `0.15`.
+- Los textos visibles siguen obligados a conservar UTF-8, tildes, eñes y signos de apertura.
+
+### UI y experiencia de usuario
+
+No se implementó UI nueva.
+
+La decisión afecta a futuras pantallas de edición:
+
+- Los formularios deberán mostrar campos por idioma.
+- Los estados de publicación deberán indicar traducciones pendientes.
+- Las pantallas públicas consumirán texto ya resuelto.
+- Las pantallas de edición podrán trabajar con el documento completo.
+
+### Tests añadidos o modificados
+
+Se añadió `LocalizedTextTests` con cobertura de:
+
+- prioridad del locale solicitado sobre fallback;
+- fallback a `en` y después a `sourceLocale`;
+- detección de traducciones obligatorias ausentes antes de publicar;
+- conversión desde claves persistidas `es`/`en`;
+- rechazo de idioma origen nulo, idioma origen sin texto e idioma origen no soportado.
+
+No se modificaron tests frontend.
+
+### Verificación ejecutada
+
+Comandos ejecutados durante la iteración:
+
+- `npx prettier --write apps/api/README.md docs/README.md docs/architecture/internationalization.md docs/architecture/localized-data.md .kiro/specs/plataforma-reservas-saas/design.md`: correcto.
+- `mvn -f apps/api/pom.xml spotless:apply`: la primera ejecución sin permisos elevados falló al resolver Maven Central por bloqueo de red del sandbox; la ejecución con red aprobada pasó y formateó `LocalizedText.java` y `LocalizedTextTests.java`.
+- `npm run test:api`: compiló código, ejecutó Spotless y Checkstyle correctamente, pero falló al iniciar tests de integración porque Docker Desktop no estaba levantado y Testcontainers no encontró `dockerDesktopLinuxEngine`.
+- `mvn -f apps/api/pom.xml -Dtest=LocalizedTextTests test`: correcto, 5 tests pasados.
+
+Verificación final de cierre:
+
+- `npm run verify`: correcto con Docker Desktop iniciado para habilitar Testcontainers.
+
+Resultado final resumido:
+
+- `ci:check`: contrato CI válido.
+- `env:check`: plantillas de entorno válidas.
+- `i18n:check`: catálogos completos y UI sin texto visible hardcodeado.
+- ESLint frontend: correcto.
+- Checkstyle backend: 0 violaciones.
+- Prettier y Spotless: correctos.
+- TypeScript: correcto.
+- Vitest: 7 archivos y 22 tests correctos.
+- JUnit/Spring Boot: 14 tests correctos, incluyendo 5 tests de `LocalizedText` y pruebas con PostgreSQL/PostGIS, Redis y RabbitMQ mediante Testcontainers.
+- Next.js: build correcto.
+- Spring Boot: JAR generado correctamente.
+- Observación no bloqueante: se mantiene el aviso estándar de Mockito/Byte Buddy sobre carga dinámica de agente en futuras versiones del JDK.
+
+### Decisiones técnicas
+
+- Usar JSONB en vez de columnas separadas `descriptionEs`/`descriptionEn` para textos configurables porque permite conservar idioma origen, traducciones y metadatos de publicación como un bloque coherente.
+- Mantener `*_i18n` como convención conceptual y usar `lowerCamelCase` físico para cumplir `RNF-011`.
+- Añadir `sourceLocale` aunque la tarea mencione JSON `{ es, en }`, porque `RNF-009` exige almacenar idioma origen en textos configurados por locales.
+- Aplicar traducciones completas en publicación desde servicios, no siempre desde `CHECK`, para permitir borradores incompletos.
+- Resolver fallback en backend para respuestas públicas y no delegarlo al frontend, evitando diferencias entre clientes.
+
+Alternativas descartadas:
+
+- Columnas por idioma para todos los casos: descartado porque fuerza migraciones por metadatos y fragmenta textos configurables.
+- Tabla genérica de traducciones por entidad/campo: descartada para MVP por complejidad de joins, permisos y consistencia.
+- Traducir automáticamente el contenido: descartado por calidad, coste, revisión humana y trazabilidad.
+- Guardar solo `{ "es": "...", "en": "..." }` sin `sourceLocale`: descartado porque no cumple el requisito de idioma origen.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Aún no hay entidades JPA reales con columnas JSONB localizadas.
+- Aún no hay conversor JPA o `@JdbcTypeCode(SqlTypes.JSON)` aplicado a una entidad concreta.
+- Aún no hay validación automatizada de migraciones para detectar columnas localizadas mal nombradas o sin checks; podrá añadirse en `0.14` o al crear las primeras tablas con textos localizados.
+- La calidad ortográfica y mojibake siguen pendientes para `0.15`.
+- Los flujos de edición deberán decidir por caso cuándo permitir borradores incompletos y cuándo bloquear publicación.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- El patrón de persistencia JSONB queda documentado en `design.md` y `docs/architecture/localized-data.md`.
+- Existe un value object backend reutilizable para textos localizados.
+- Existen tests unitarios del contrato.
+- La documentación de i18n ya referencia el patrón de base de datos.
+- `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados.
+- Los cambios se verificarán con `npm run verify`, commit trazable y push a GitHub antes de iniciar la siguiente tarea.

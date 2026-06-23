@@ -1099,17 +1099,41 @@ Los textos controlados por la plataforma deben residir en catálogos de traducci
 
 ```json
 {
-  "es": "Texto en español",
-  "en": "English text"
+  "sourceLocale": "es",
+  "values": {
+    "es": "Texto en español",
+    "en": "English text"
+  }
 }
 ```
 
 Reglas:
 
-- `es` y `en` son obligatorios para textos de plataforma, categorías, planes, estados comerciales y plantillas de email.
-- Los textos creados por locales deben guardar `default_locale` y traducciones `es`/`en` cuando el texto sea público, incluidas las pestañas personalizadas de la ficha.
-- Si un texto de local no tiene traducción completa, la publicación debe bloquearse o mostrar fallback explícitamente aceptado por el local.
+- La convención conceptual `*_i18n` se traduce físicamente a `lowerCamelCase` por `RNF-011`, por ejemplo `"descriptionI18n"`, `"rulesI18n"`, `"titleI18n"` u `"optionsI18n"`.
+- El tipo PostgreSQL recomendado para textos configurables por locales, administración o datos semilla visibles es `jsonb`.
+- `sourceLocale` es obligatorio y solo puede ser `es` o `en`.
+- `values` es obligatorio y debe ser un objeto JSON con claves de locale soportado.
+- El valor del idioma origen debe existir y no estar vacío.
+- `values.es` y `values.en` son obligatorios para publicar textos de plataforma, categorías, planes, estados comerciales, campos configurables, pestañas públicas y cualquier texto visible que no tenga una política de fallback documentada.
+- Si un texto de local no tiene traducción completa, la publicación debe bloquearse o mostrar fallback explícitamente aceptado por el local antes de publicar.
+- El fallback visible se resuelve en este orden: locale solicitado, `en`, `sourceLocale`.
 - Las respuestas libres de usuarios no se traducen automáticamente; se muestran como fueron introducidas.
+- Los DTOs públicos deben devolver texto ya resuelto para el locale efectivo. Los DTOs de edición pueden exponer el documento localizable completo para que el panel permita editar ambos idiomas.
+- Los campos derivados para búsqueda, por ejemplo normalizaciones sin tildes o vectores `tsvector`, son internos y no sustituyen el texto visible.
+
+Restricciones SQL recomendadas para nuevas migraciones:
+
+```sql
+"descriptionI18n" jsonb NOT NULL,
+CONSTRAINT "Venue_descriptionI18n_is_object"
+  CHECK (jsonb_typeof("descriptionI18n") = 'object'),
+CONSTRAINT "Venue_descriptionI18n_has_source_locale"
+  CHECK ("descriptionI18n"->>'sourceLocale' IN ('es', 'en')),
+CONSTRAINT "Venue_descriptionI18n_has_values"
+  CHECK (jsonb_typeof("descriptionI18n"->'values') = 'object')
+```
+
+Las entidades Java deben usar el contrato `LocalizedText` del paquete `localization` para centralizar validación, conversión desde claves `es`/`en`, detección de traducciones obligatorias y resolución con fallback controlado. Las migraciones futuras pueden mapear JSONB con `@JdbcTypeCode(SqlTypes.JSON)` o con un conversor explícito, pero no deben inventar estructuras incompatibles por entidad.
 
 ### 4.4 Normalización de identificador empresarial
 

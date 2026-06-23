@@ -16,6 +16,8 @@ Redis se integra mediante Spring Data Redis y Spring Cache con TTL de cinco minu
 
 RabbitMQ se integra mediante Spring AMQP. La topología base declara los exchanges `reserly.jobs.v1` y `reserly.jobs.dead-letter.v1`, además de una cola durable de aparcamiento. Cada contexto de negocio deberá declarar su propia cola y routing key.
 
+Los textos configurables que se persistan en base de datos deben usar el contrato `LocalizedText` del paquete `localization` y columnas JSONB `lowerCamelCase` como `"descriptionI18n"`. El patrón completo está documentado en `docs/architecture/localized-data.md`.
+
 ## Ejecución
 
 ```bash

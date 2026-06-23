@@ -7,6 +7,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `cache-and-messaging.md`: contratos de Redis, RabbitMQ, reintentos e idempotencia.
   - `frontend-layout.md`: shells responsive, primitivas de composición y accesibilidad.
   - `internationalization.md`: catálogos `es`/`en`, `next-intl` y reglas de uso frontend.
+  - `localized-data.md`: patrón JSONB para textos configurables localizados en base de datos.
   - `visual-system.md`: tokens, tema MUI, estados, iconografía y catálogo visual.
 - `configuration.md`: variables, perfiles y reglas de seguridad por entorno.
 - `continuous-integration.md`: eventos, checks, seguridad y protección de ramas del pipeline CI.

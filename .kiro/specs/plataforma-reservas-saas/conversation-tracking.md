@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-23
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11` y `0.12`.
-- Siguiente tarea pendiente recomendada: `0.13. Definir patrón para textos localizados en base de datos mediante campos *_i18n o JSON { es, en }.`
-- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma y validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX. Continúan pendientes el patrón de textos localizados en base de datos, las convenciones backend automatizadas y la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12` y `0.13`.
+- Siguiente tarea pendiente recomendada: `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
+- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma, validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX, y patrón backend/documental para textos localizados persistidos en JSONB. Continúan pendientes las convenciones backend automatizadas y la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -914,3 +914,41 @@ Fuente de verdad del avance:
   - La marca visible `Reserly` en `brand.tsx` pasa a leerse desde `Brand.name`, evitando una excepción manual al contrato i18n.
   - El test de integración de infraestructura backend se estabilizó con espera acotada al leer la caché Redis para eliminar una condición intermitente observada durante `npm run verify`.
   - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, `i18n:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot.
+
+## Conversación 26 - Patrón de textos localizados persistidos
+
+- Fecha: 2026-06-23
+- Resumen: se completó la tarea `0.13` definiendo el patrón de datos localizados en base de datos para textos configurables y visibles fuera de catálogos estáticos. El patrón usa columnas conceptuales `*_i18n` traducidas físicamente a `lowerCamelCase`, JSONB con `sourceLocale` y `values.es`/`values.en`, reglas de publicación, fallback controlado y el value object backend `LocalizedText`.
+- Archivos modificados:
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+  - `apps/api/README.md`
+  - `apps/api/src/main/java/com/reserly/platform/localization/LocalizedText.java`
+  - `apps/api/src/main/java/com/reserly/platform/localization/SupportedLocale.java`
+  - `apps/api/src/main/java/com/reserly/platform/localization/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/localization/LocalizedTextTests.java`
+  - `docs/README.md`
+  - `docs/architecture/internationalization.md`
+  - `docs/architecture/localized-data.md`
+- Requisitos impactados:
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `0.13. Definir patrón para textos localizados en base de datos mediante campos *_i18n o JSON { es, en }.`
+  - Prepara `2.3`, `2.5`, `2.14`, `2.15`, `3.14`, `6.11`, `6.12`, `8.2` a `8.6`, `10.16`, `13.2`, `14.10` y las validaciones i18n de aceptación.
+- Tareas completadas:
+  - `0.13. Definir patrón para textos localizados en base de datos mediante campos *_i18n o JSON { es, en }.`
+- Siguiente tarea pendiente recomendada:
+  - `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
+- Decisiones o aclaraciones relevantes:
+  - El JSONB canónico guarda `sourceLocale` y `values` para cumplir el requisito de almacenar idioma origen y traducciones `es`/`en`.
+  - La convención `*_i18n` queda como nombre conceptual; las columnas físicas deben usar `lowerCamelCase`, por ejemplo `"descriptionI18n"`.
+  - La publicación de contenido público debe exigir traducciones completas `es` y `en`, salvo fallback explícito documentado.
+  - El fallback visible se resuelve como locale solicitado, `en` y después `sourceLocale`.
+  - `LocalizedText` no traduce automáticamente; valida y resuelve contenido ya aportado.
+  - Evidencia de verificación final: se ejecutó `LocalizedTextTests` correctamente; la verificación completa del repositorio se ejecutó tras iniciar Docker Desktop para habilitar Testcontainers.

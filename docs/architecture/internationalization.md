@@ -65,7 +65,7 @@ Cuando un parámetro público seguro aparece en la URL, `proxy.ts` lo normaliza 
 - `npm run i18n:check` debe pasar antes de cerrar una tarea que toque UI o catálogos.
 - Los textos JSX directos y atributos visibles como `aria-label`, `alt`, `title`, `placeholder`, `label` o `helperText` deben provenir de `useTranslations`, `getTranslations` o props ya localizadas.
 - Las fechas, horas, números y moneda deberán formatearse con el locale efectivo cuando aparezcan flujos funcionales.
-- Los textos configurables guardados en base de datos se definirán en `0.13`; no se resuelven con estos catálogos estáticos.
+- Los textos configurables guardados en base de datos siguen el patrón de `localized-data.md`; no se resuelven con estos catálogos estáticos.
 
 ## Límites actuales
 
