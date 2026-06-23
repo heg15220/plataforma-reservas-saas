@@ -25,6 +25,7 @@
     "services:up": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml up -d --wait redis rabbitmq",
     "services:logs": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml logs -f redis rabbitmq",
     "services:status": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml ps redis rabbitmq",
+    "ci:check": "node scripts/validate-ci-workflow.mjs",
     "env:check": "node scripts/validate-environment-examples.mjs",
     "lint": "npm run lint:web && npm run lint:api",
     "lint:api": "mvn -f apps/api/pom.xml checkstyle:check",
@@ -44,7 +45,7 @@
     "build:web": "npm run build --workspace @reserly/web",
     "build:web:local": "dotenv -e .env.local -- npm run build:web",
     "build:web:test": "cross-env NEXT_PUBLIC_APP_ENV=test NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 RESERLY_API_INTERNAL_URL=http://localhost:8080 npm run build:web",
-    "verify": "npm run env:check && npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build:web:test && npm run build:api"
+    "verify": "npm run ci:check && npm run env:check && npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build:web:test && npm run build:api"
   },
   "devDependencies": {
     "concurrently": "9.2.3",

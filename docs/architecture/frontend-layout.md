@@ -77,7 +77,7 @@ Combina el wordmark Reserly con un isotipo vectorial de calendario y confirmaci�
 - `focus-visible` aplica un anillo perceptible.
 - `prefers-reduced-motion` reduce animaciones y transiciones.
 - El ancho mínimo verificado es `320 px`.
-- El documento usa temporalmente `lang="es"` porque el contenido visible actual está en español. La resolución i18n dinámica lo sustituirá en `0.11`.
+- El documento ya recibe `lang` desde `next-intl`. En `0.10` el locale efectivo es estático para conservar la interfaz actual; la resolución dinámica por preferencia, parámetro seguro, navegador/app y fallback se implementará en `0.11`.
 
 ## Sistema visual
 

@@ -29,7 +29,7 @@ hotfix/corregir-expiracion-sesion
 4. Ejecutar `npm run verify` desde la raíz.
 5. Actualizar la documentación obligatoria de `.kiro` al completar o cambiar una tarea.
 6. Al cerrar la fase, abrir un pull request desde `phase/*` hacia `develop`.
-7. Integrar después de superar revisión y CI.
+7. Integrar después de superar revisión y los checks `Quality`, `Frontend` y `Backend integration`.
 8. Promover una versión desde `develop` hacia `main`, opcionalmente mediante `release/*`.
 
 No se deben hacer pushes directos o forzados sobre `main` o `develop`, reescribir su historial ni incluir secretos, credenciales o archivos `.env`.
@@ -61,6 +61,8 @@ Cada pull request debe:
 - No marcar una tarea como completada sin implementación, verificación y actualización de `technical-implementation.md`.
 - Requerir al menos una revisión antes de integrarse cuando la plataforma lo permita.
 - Tener CI correcto y no introducir secretos ni artefactos generados.
+
+La definición y operación de estos checks se documenta en `docs/continuous-integration.md`.
 
 ## Comandos de calidad
 

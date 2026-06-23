@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7` y `0.8`.
-- Siguiente tarea pendiente recomendada: `0.9. Crear pipeline CI con tests y validación de estilo.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9` y `0.10`.
+- Siguiente tarea pendiente recomendada: `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -2219,3 +2219,461 @@ Alternativas descartadas:
 - El viewport de `640 px` aproxima el espacio disponible al zoom del `200 %`; la fase `15` deberá repetir la validación en una matriz completa de navegadores.
 - Las ramas remotas históricas `codex/task-*` permanecen publicadas. Podrán archivarse o eliminarse después de confirmar que ningún trabajo externo depende de ellas.
 - Las protecciones de `main`, `develop` y `phase/*` requieren configuración en GitHub y CI; corresponden a `0.9`.
+
+## Tarea 0.9 - Crear pipeline CI con tests y validación de estilo
+
+- Fecha: 2026-06-23
+- Commit o referencia: rama `phase/0-preparacion-proyecto`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Automatizar en GitHub Actions la cadena de calidad del monorepo de Reserly. La tarea debía convertir los comandos locales ya establecidos en una barrera de integración reproducible para ramas de fase, releases, hotfixes y pull requests hacia ramas permanentes. El pipeline debía validar formato, lint, tipos, tests, migraciones, servicios de infraestructura con Testcontainers y builds de frontend/backend sin desplegar, publicar artefactos ni usar secretos.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-005 Escalabilidad`: integración automatizada y separada por responsabilidades.
+  - `RNF-006 Disponibilidad operativa`: build y tests obligatorios antes de integrar cambios.
+  - `RNF-011 Convenciones backend y persistencia`: Checkstyle, Spotless y tests de migración protegen reglas Java/JPA/Flyway.
+  - `RNF-012 Calidad lingüística y codificación UTF-8`: Prettier y validaciones documentales forman parte de la cadena.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`: eventos alineados con `develop`, `main`, `phase/**`, `release/**` y `hotfix/**`.
+- Diseño:
+  - `1.3 Stack definitivo seleccionado`, especialmente CI con lint, typecheck, tests, migraciones desde cero y build.
+  - `1.6 Estrategia GitFlow por fases`.
+  - `17.1 Nombre comercial y sistema visual`, porque los checks frontend protegen los componentes y tokens ya implantados.
+- Tareas relacionadas:
+  - `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8` y `0.9`.
+
+### Archivos afectados
+
+- Creados:
+  - `.github/workflows/ci.yml`
+  - `scripts/validate-ci-workflow.mjs`
+  - `docs/continuous-integration.md`
+- Modificados:
+  - `package.json`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `docs/README.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### Workflow principal
+
+Se creó `.github/workflows/ci.yml` con tres eventos:
+
+- `pull_request` hacia `develop` y `main`.
+- `push` hacia `develop`, `main`, `phase/**`, `release/**` y `hotfix/**`.
+- `workflow_dispatch` para ejecución manual.
+
+El workflow declara `permissions: contents: read`, suficiente para clonar el repositorio, y cada job usa `actions/checkout` con `persist-credentials: false` para evitar que el token de GitHub quede disponible en pasos posteriores. La concurrencia se agrupa por workflow y pull request o referencia Git mediante `ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`, con `cancel-in-progress: true`, de modo que una revisión nueva cancela ejecuciones obsoletas.
+
+#### Job `Quality`
+
+`Quality` se ejecuta en `ubuntu-24.04`, con timeout de 15 minutos. Instala Node.js 22 y Java 21, activa cachés npm/Maven y ejecuta:
+
+- `npm ci`, instalación reproducible desde `package-lock.json`.
+- `npm run ci:check`, validación del contrato mínimo del workflow.
+- `npm run env:check`, validación de plantillas de entorno.
+- `npm run format:check`, Prettier para frontend/documentación y Spotless para Java.
+- `npm run lint`, ESLint para Next.js y Checkstyle para Java.
+
+Este job falla rápido ante problemas de configuración, estilo o formato, sin esperar a tests más pesados.
+
+#### Job `Frontend`
+
+`Frontend` se ejecuta en `ubuntu-24.04`, con timeout de 15 minutos. Instala Node.js 22 y ejecuta:
+
+- `npm run typecheck`, TypeScript sin emisión.
+- `npm run test:web`, Vitest con React Testing Library.
+- `npm run build:web:test`, build Next.js con variables aisladas de test.
+
+El build frontend no carga `.env.local`, staging ni producción. Usa `NEXT_PUBLIC_APP_ENV=test`, `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080` y `RESERLY_API_INTERNAL_URL=http://localhost:8080`, lo justo para validar compilación sin secretos.
+
+#### Job `Backend integration`
+
+`Backend integration` se ejecuta en `ubuntu-24.04`, con timeout de 30 minutos. Instala Java 21 con caché Maven y ejecuta:
+
+- `mvn --batch-mode --no-transfer-progress --file apps/api/pom.xml test -Dspring.profiles.active=test`.
+- `mvn --batch-mode --no-transfer-progress --file apps/api/pom.xml package -DskipTests`.
+
+Los tests backend activan las validaciones Maven y usan Testcontainers sobre el Docker del runner para PostgreSQL/PostGIS, Redis y RabbitMQ. Esto comprueba que Flyway puede arrancar desde una base efímera vacía y que la infraestructura de `0.5` y `0.6` sigue siendo funcional. El empaquetado final genera el JAR sin repetir tests, pero conserva las validaciones de `validate`.
+
+#### Validación local del contrato CI
+
+Se añadió `scripts/validate-ci-workflow.mjs` y el script raíz `npm run ci:check`. El validador lee `.github/workflows/ci.yml` como UTF-8 y comprueba fragmentos obligatorios:
+
+- eventos y ramas GitFlow;
+- permisos mínimos;
+- concurrencia;
+- jobs `Quality`, `Frontend` y `Backend integration`;
+- runner `ubuntu-24.04`;
+- acciones oficiales de checkout, Node y Java;
+- Node 22 y Java 21;
+- `persist-credentials: false`;
+- comandos críticos de npm y Maven.
+
+También rechaza `pull_request_target`, `workflow_run`, `contents: write` y `persist-credentials: true`. Esta validación no pretende ser un parser YAML completo: protege invariantes operativas y de seguridad que no deben desaparecer por accidente. Por eso `npm run verify` ejecuta ahora `npm run ci:check` al inicio.
+
+#### Documentación operativa
+
+Se creó `docs/continuous-integration.md` con objetivo, eventos, checks, seguridad, branch protection recomendada y validación local. `README.md`, `CONTRIBUTING.md` y `docs/README.md` enlazan el documento. La guía de contribución identifica explícitamente los checks `Quality`, `Frontend` y `Backend integration` como condición para integrar la rama de fase hacia `develop`.
+
+### Modelo de datos
+
+No se crearon ni modificaron tablas, migraciones, índices, restricciones, entidades JPA ni datos iniciales.
+
+La tarea sí protege el modelo de datos futuro: el job backend ejecuta tests de migración contra PostgreSQL/PostGIS efímero, por lo que una migración Flyway incompatible debería fallar antes de llegar a `develop`.
+
+### Contratos y APIs
+
+No se añadieron endpoints REST ni contratos HTTP.
+
+Contratos operativos añadidos:
+
+- Workflow `.github/workflows/ci.yml`.
+- Script `npm run ci:check`.
+- Checks remotos esperados:
+  - `Quality`;
+  - `Frontend`;
+  - `Backend integration`.
+
+Estos nombres quedan documentados para configurarlos como checks obligatorios en branch protection.
+
+### Seguridad, privacidad e i18n
+
+- Permisos de GitHub Actions limitados a `contents: read`.
+- Sin secretos, entornos reales, despliegues ni publicación de artefactos.
+- Sin `pull_request_target` ni `workflow_run`.
+- `actions/checkout` no persiste credenciales.
+- Jobs con timeouts.
+- `npm ci` respeta el lockfile.
+- Maven se ejecuta en modo batch y con logs menos ruidosos.
+- El build frontend usa entorno `test`.
+- El pipeline no procesa datos personales ni documentos sensibles.
+- La infraestructura i18n sigue pendiente de `0.10`, pero Prettier y las validaciones del repo ya protegerán futuros catálogos y documentación.
+
+### UI y experiencia de usuario
+
+No se modificaron pantallas ni componentes visuales. El impacto es indirecto:
+
+- TypeScript, ESLint y Vitest protegen los contratos de componentes.
+- El build de Next.js valida las rutas estáticas actuales.
+- La verificación visual automatizada no se añadió en esta tarea porque no había cambios de UI; podrá incorporarse cuando existan flujos estables o durante fase `15`.
+
+### Tests y verificación
+
+Comandos ejecutados durante la iteración:
+
+- `npm run ci:check`: correcto. Validó el contrato CI con `Quality`, `Frontend` y `Backend integration`.
+- `npm run env:check`: correcto. Validó `.env.local.example`, `.env.staging.example` y `.env.production.example`.
+- `npm run format:check`: primer intento bloqueado por sandbox al resolver Maven Central; repetido con permiso de red y completado correctamente.
+- `npm run verify`: correcto. Ejecutó `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot.
+
+La cadena final cubre:
+
+- contrato CI;
+- plantillas de entorno;
+- ESLint;
+- Checkstyle;
+- Prettier;
+- Spotless;
+- TypeScript;
+- Vitest;
+- JUnit;
+- Testcontainers para PostgreSQL/PostGIS, Redis y RabbitMQ;
+- build Next.js con entorno de test;
+- build Spring Boot.
+
+Resultado resumido:
+
+- Vitest: 5 ficheros y 14 tests correctos.
+- JUnit/Spring Boot: 9 tests correctos, incluyendo PostgreSQL/PostGIS, Redis y RabbitMQ mediante Testcontainers.
+- Next.js: build correcto de `/`, `/_not-found`, `/design-system` y `/panel-preview`.
+- Spring Boot: JAR generado correctamente.
+- Observación no bloqueante: la ejecución de tests muestra el aviso estándar de Mockito sobre auto-adjunción dinámica del agente Byte Buddy en futuras versiones del JDK; no falla la build y queda como punto de revisión futura si el JDK cambia su política por defecto.
+
+### Decisiones técnicas
+
+- Separar CI en tres jobs para diagnóstico y branch protection granular.
+- Mantener `npm run verify` como cadena local canónica e incorporar `ci:check`.
+- Ejecutar Testcontainers en CI desde el inicio.
+- Usar variables de test para el build frontend.
+- Aplicar permisos mínimos desde la primera versión del workflow.
+- Documentar branch protection aunque la configuración viva en GitHub.
+- Validar invariantes críticos con un script pequeño y auditable sin añadir una dependencia YAML nueva.
+
+Alternativas descartadas:
+
+- Un único job `verify`: mezcla fallos de formato, frontend y backend.
+- Ejecutar solo `npm run verify` en CI: desaprovecha la separación por stack.
+- Omitir Testcontainers: dejaría sin protección real las tareas `0.5` y `0.6`.
+- Usar `pull_request_target`: riesgo innecesario.
+- Conceder `contents: write`: no hay publicación ni modificación remota.
+
+### Riesgos y deuda técnica
+
+- Las acciones están fijadas por major version oficial, no por SHA inmutable. Puede revisarse pinning por SHA si se endurece la supply chain.
+- La protección efectiva de ramas depende de configurar reglas en GitHub.
+- `validate-ci-workflow.mjs` usa fragmentos de texto; si el workflow crece, convendrá migrar a validación YAML estructurada.
+- No hay despliegue, publicación de artefactos ni matriz multi-OS; no son necesarios para `0.9`.
+- No hay caché específica de Docker/Testcontainers; podrá optimizarse si el backend crece.
+- No hay pruebas E2E Playwright en CI todavía; deben incorporarse cuando existan flujos funcionales estables.
+- La infraestructura i18n y detección de textos hardcodeados siguen pendientes de `0.10`, `0.11` y `0.12`.
+
+## Tarea 0.10 - Crear infraestructura i18n con catálogos `es` y `en`
+
+- Fecha: 2026-06-23
+- Commit o referencia: rama `phase/0-preparacion-proyecto`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Crear la base de internacionalización del frontend de Reserly con catálogos versionados en español e inglés, integrada con el App Router de Next.js 16 y compatible con Material UI SSR. La tarea debía permitir que las pantallas y shells ya existentes dejaran de depender de literales visibles en componentes y pasaran a consumir claves estables.
+
+El alcance se limita deliberadamente a infraestructura y catálogos. La resolución dinámica del idioma por preferencia guardada, parámetro seguro, navegador/app y fallback pertenece a `0.11`; la detección automática de textos hardcodeados pertenece a `0.12`; la validación profunda de mojibake y calidad lingüística pertenece a `0.15`.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RB-011 Resolución de idioma`, preparada pero no implementada dinámicamente en esta tarea.
+- Diseño:
+  - `1.3 Stack definitivo seleccionado`: `next-intl` con catálogos `es` y `en`.
+  - `3.14 Internacionalización y localización`: catálogos versionados, claves estables y UTF-8.
+  - `9.1 Principios de UI`: textos visibles mediante claves i18n.
+  - `17.1 Nombre comercial y sistema visual`: sustitución de textos visibles por claves manteniendo Reserly como marca.
+- Tareas relacionadas:
+  - `0.10. Crear infraestructura i18n con catálogos es y en`.
+  - `0.11. Implementar resolución de idioma`.
+  - `0.12. Añadir test o lint de claves faltantes y textos hardcodeados`.
+  - `0.15. Validación UTF-8 y calidad de textos españoles`.
+
+### Archivos afectados
+
+- Creados:
+  - `apps/web/locales/es.json`
+  - `apps/web/locales/en.json`
+  - `apps/web/src/i18n/config.ts`
+  - `apps/web/src/i18n/request.ts`
+  - `apps/web/src/i18n/messages.test.ts`
+  - `apps/web/src/test-utils/render-with-intl.tsx`
+  - `apps/web/src/global.d.ts`
+  - `docs/architecture/internationalization.md`
+- Modificados:
+  - `apps/web/package.json`
+  - `package-lock.json`
+  - `apps/web/next.config.ts`
+  - `apps/web/README.md`
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/providers.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/page.test.tsx`
+  - `apps/web/src/app/design-system/page.tsx`
+  - `apps/web/src/app/design-system/page.test.tsx`
+  - `apps/web/src/app/panel-preview/page.tsx`
+  - `apps/web/src/components/layout/public-shell.tsx`
+  - `apps/web/src/components/layout/venue-shell.tsx`
+  - `apps/web/src/components/layout/layout-system.test.tsx`
+  - `docs/README.md`
+  - `docs/architecture/frontend-layout.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+#### Dependencia y plugin
+
+Se instaló `next-intl 4.13.0` como dependencia exacta del workspace `@reserly/web`. La instalación actualizó `package-lock.json` y `npm audit` informó cero vulnerabilidades conocidas.
+
+`apps/web/next.config.ts` envuelve la configuración existente con el plugin oficial:
+
+```ts
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+export default withNextIntl(nextConfig);
+```
+
+La configuración previa de entorno (`loadWebEnvironment`) se mantiene intacta. El plugin solo enlaza la configuración request-scoped de i18n con Next.js.
+
+#### Catálogos
+
+Se crearon `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+
+Los catálogos están organizados por namespaces:
+
+- `Brand`
+- `Common`
+- `DesignSystem`
+- `HomePage`
+- `Layout`
+- `Metadata`
+- `Navigation`
+- `PanelPreview`
+
+El catálogo español conserva tildes, eñes y caracteres especiales reales en UTF-8. Ejemplos cubiertos por tests: `Éxito`, `Más`, `Ubicación` y `Próxima franja`.
+
+#### Configuración i18n
+
+`apps/web/src/i18n/config.ts` define:
+
+- `supportedLocales = ["es", "en"]`.
+- `SupportedLocale`.
+- `Messages`, derivado del catálogo inglés.
+- `defaultLocale = "es"`.
+- `fallbackLocale = "en"`.
+- `isSupportedLocale`.
+
+La decisión de `defaultLocale = "es"` es temporal y conserva la experiencia existente, que ya estaba en español. `fallbackLocale = "en"` queda declarado para `0.11`, donde se implementará la resolución real.
+
+`apps/web/src/i18n/request.ts` implementa `getRequestConfig` de `next-intl/server`. Carga los mensajes mediante un mapa cerrado de loaders por locale, evitando construir rutas arbitrarias a partir de entrada externa. En `0.10` devuelve el locale estático; en `0.11` ese punto se ampliará con preferencia guardada, parámetro seguro, navegador/app y fallback.
+
+#### Provider y layout
+
+`apps/web/src/app/layout.tsx` ahora obtiene `locale` con `getLocale`, obtiene `messages` con `getMessages`, usa `lang={locale}`, genera metadata con `getTranslations("Metadata")` y pasa `locale` y `messages` a `AppProviders`.
+
+`apps/web/src/app/providers.tsx` envuelve MUI con `NextIntlClientProvider`, manteniendo `AppRouterCacheProvider`, `ThemeProvider` y `CssBaseline`. La estructura final conserva compatibilidad con SSR de MUI y añade disponibilidad de mensajes a componentes cliente y pruebas.
+
+#### Tipado
+
+`apps/web/src/global.d.ts` augmenta el módulo `next-intl` con:
+
+- `Locale: "es" | "en"`.
+- `Messages: typeof en.json`.
+
+Esto habilita autocompletado y validación de namespaces/claves en componentes. Los helpers internos usan `SupportedLocale` y `Messages` para no depender de strings genéricos.
+
+#### Migración de UI existente
+
+Se migraron a catálogos:
+
+- navegación pública;
+- navegación móvil pública;
+- navegación de panel;
+- navegación móvil de panel;
+- enlaces de salto al contenido;
+- accesos de cabecera;
+- metadata raíz;
+- metadata de `/design-system`;
+- metadata de `/panel-preview`;
+- hero y tarjetas de `/`;
+- catálogo visual `/design-system`;
+- preview de panel `/panel-preview`;
+- estados visibles actuales.
+
+Los componentes `PublicShell` y `VenueShell` usan `useTranslations` para construir sus etiquetas. Las páginas existentes usan `useTranslations` y `generateMetadata` usa `getTranslations`.
+
+#### Tests
+
+Se añadió `apps/web/src/test-utils/render-with-intl.tsx`, que envuelve React Testing Library con `NextIntlClientProvider` y el catálogo español.
+
+Se añadió `apps/web/src/i18n/messages.test.ts` para validar locales soportados y fallback declarado, comparar paridad completa de claves entre `es.json` y `en.json`, y comprobar caracteres españoles críticos en el catálogo base.
+
+Los tests de home, design system y layout usan ahora `renderWithIntl`.
+
+### Modelo de datos
+
+No se crearon tablas, migraciones, índices, restricciones ni entidades persistentes.
+
+Los textos localizados en base de datos no forman parte de esta tarea. El patrón para `*_i18n` o JSON `{ es, en }` se definirá en `0.13`, y las futuras migraciones deberán seguir las convenciones `UpperCamelCase`/`lowerCamelCase` ya documentadas.
+
+### Contratos y APIs
+
+No se crearon endpoints REST.
+
+Contratos frontend añadidos:
+
+- `supportedLocales`: lista cerrada `es`/`en`.
+- `SupportedLocale`: unión de locales soportados.
+- `Messages`: tipo derivado del catálogo base.
+- `loadMessages(locale)`: carga controlada de mensajes por locale.
+- `NextIntlClientProvider`: proveedor global de mensajes.
+- Namespaces de catálogo: `Brand`, `Common`, `DesignSystem`, `HomePage`, `Layout`, `Metadata`, `Navigation` y `PanelPreview`.
+
+El endpoint conceptual `GET /api/public/i18n/{locale}` sigue pendiente para fases posteriores si se decide servir catálogos desde backend. En esta tarea los catálogos son archivos versionados del frontend.
+
+### Seguridad, privacidad e i18n
+
+- No se introdujeron secretos ni llamadas externas en runtime.
+- La carga de catálogos usa un mapa cerrado, no import dinámico desde entrada de usuario.
+- No se procesan datos personales.
+- Los mensajes están versionados en Git.
+- El catálogo español contiene caracteres UTF-8 reales.
+- La UI actual evita depender de color únicamente y mantiene labels accesibles localizados.
+- El locale efectivo estático se documenta como límite de `0.10`; no se presenta como resolución completa.
+- `fallbackLocale = "en"` queda preparado, pero la política de fallback visible se implementará en `0.11` y `0.12`.
+
+### UI y experiencia de usuario
+
+Las pantallas actuales mantienen el mismo contenido en español:
+
+- `/`: base visual de producto.
+- `/design-system`: catálogo visual.
+- `/panel-preview`: preview estructural del panel.
+
+Los shells mantienen landmarks, `aria-current`, navegación inferior móvil, accesos de salto, etiquetas accesibles y responsive existente.
+
+No se añadieron nuevas pantallas ni cambios visuales intencionados. La diferencia técnica es que el texto visible se resuelve desde catálogo.
+
+### Tests y verificación
+
+Verificación incremental ejecutada durante la implementación:
+
+- `npm install next-intl --workspace @reserly/web --save-exact`: correcto con permiso de red; `npm audit` indicó cero vulnerabilidades.
+- `npm run typecheck --workspace @reserly/web`: correcto tras ajustar tipos de mensajes.
+- `npm run test --workspace @reserly/web`: correcto, 6 ficheros y 17 tests.
+- `npm run build:web:test`: correcto, Next.js compiló `/`, `/_not-found`, `/design-system` y `/panel-preview`.
+- `npm run lint:web`: correcto tras ajustar la augmentación de `next-intl`.
+- `npm run format:web`: aplicado para normalizar dos archivos TSX.
+
+Verificación final de cierre:
+
+- `npm run verify`: correcto. Ejecutó `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers, build Next.js y build Spring Boot.
+
+Resultado resumido:
+
+- Vitest: 6 ficheros y 17 tests correctos.
+- JUnit/Spring Boot: 9 tests correctos con PostgreSQL/PostGIS, Redis y RabbitMQ mediante Testcontainers.
+- Next.js: build correcto de `/`, `/_not-found`, `/design-system` y `/panel-preview`.
+- Spring Boot: JAR generado correctamente.
+- Observación no bloqueante: se mantiene el aviso estándar de Mockito sobre auto-adjunción dinámica del agente Byte Buddy en futuras versiones del JDK; no falla la build.
+
+### Decisiones técnicas
+
+- Usar `next-intl` porque estaba seleccionado en `design.md` y su documentación oficial para App Router encaja con Next.js 16.
+- Ubicar catálogos en `apps/web/locales` para que sean archivos versionados claros y próximos al workspace frontend.
+- Mantener locale estático `es` en `0.10` para no adelantar la resolución de `0.11`.
+- Declarar `fallbackLocale = "en"` desde ahora para que el contrato quede preparado.
+- Usar `useTranslations` en shells y páginas para que los componentes actuales consuman claves reales.
+- Usar `getTranslations` en metadata para evitar títulos hardcodeados en rutas existentes.
+- Añadir tests de paridad de claves ya en `0.10`, aunque el lint de textos hardcodeados completo sea `0.12`.
+- Augmentar `next-intl` con `AppConfig` en vez de mantener tipos globales propios.
+
+Alternativas descartadas:
+
+- Crear una solución i18n propia: descartada porque `next-intl` ya estaba elegido y ofrece soporte App Router.
+- Implementar selector y cookies en esta tarea: descartado porque corresponde a `0.11`.
+- Servir catálogos desde backend ahora: descartado porque no hay todavía endpoints públicos ni módulo de errores/emails.
+- Traducir automáticamente contenido de locales: descartado; los textos configurables se tratan en `0.13` y fases de producto.
+
+### Riesgos y deuda técnica
+
+- La resolución dinámica real todavía no existe.
+- No hay selector de idioma ni persistencia de preferencia.
+- La detección automática de textos hardcodeados queda pendiente de `0.12`.
+- La validación profunda de mojibake y calidad lingüística queda pendiente de `0.15`.
+- Los tests usan el catálogo español por defecto; cuando exista resolución dinámica habrá que añadir cobertura de inglés y fallback.
+- No hay endpoint backend de catálogos ni MessageSource backend todavía.
+- La carga de mensajes está en archivos JSON únicos; si los catálogos crecen mucho, convendrá dividir por dominio o lazy-load por segmento.

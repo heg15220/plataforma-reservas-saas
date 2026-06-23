@@ -5,6 +5,7 @@ import Paper from "@mui/material/Paper";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { CalendarDays, Grid2X2, Menu, NotebookTabs, type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { NavigationLink } from "@/components/navigation-link";
@@ -14,11 +15,15 @@ import { Brand } from "./brand";
 import { PageContainer } from "./page-container";
 
 const venueNavigation = [
-  { href: "/panel", icon: Grid2X2, label: "Inicio" },
-  { href: "/panel/reservas", icon: NotebookTabs, label: "Reservas" },
-  { href: "/panel/calendario", icon: CalendarDays, label: "Calendario" },
-  { href: "/panel/mas", icon: Menu, label: "Más" },
-] satisfies ReadonlyArray<{ href: string; icon: LucideIcon; label: string }>;
+  { href: "/panel", icon: Grid2X2, labelKey: "home" },
+  { href: "/panel/reservas", icon: NotebookTabs, labelKey: "reservations" },
+  { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
+  { href: "/panel/mas", icon: Menu, labelKey: "more" },
+] satisfies ReadonlyArray<{
+  href: string;
+  icon: LucideIcon;
+  labelKey: "home" | "reservations" | "calendar" | "more";
+}>;
 
 export interface VenueShellProps {
   children: ReactNode;
@@ -29,15 +34,16 @@ export interface VenueShellProps {
 /**
  * Layout del panel del local con sidebar de escritorio y navegación móvil.
  */
-export function VenueShell({
-  children,
-  currentPath = "/panel",
-  venueName = "Mi local",
-}: VenueShellProps) {
+export function VenueShell({ children, currentPath = "/panel", venueName }: VenueShellProps) {
+  const layout = useTranslations("Layout.venue");
+  const navigation = useTranslations("Navigation.venue");
+  const brand = useTranslations("Brand");
+  const resolvedVenueName = venueName ?? layout("defaultVenueName");
+
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100dvh", pb: { xs: 18, md: 0 } }}>
       <Box className="skip-link" component="a" href="#venue-main-content">
-        Saltar al contenido
+        {layout("skipContent")}
       </Box>
       <Box
         component="aside"
@@ -54,21 +60,20 @@ export function VenueShell({
           width: 256,
         }}
       >
-        <NavigationLink
-          aria-label="Ir al resumen del panel"
-          className="unstyled-link"
-          href="/panel"
-        >
+        <NavigationLink aria-label={brand("panelHomeAria")} className="unstyled-link" href="/panel">
           <Brand inverse />
         </NavigationLink>
-        <Typography sx={{ color: "grey.400", fontSize: "0.75rem", mt: 8 }}>{venueName}</Typography>
+        <Typography sx={{ color: "grey.400", fontSize: "0.75rem", mt: 8 }}>
+          {resolvedVenueName}
+        </Typography>
         <Box
           component="nav"
-          aria-label="Navegación del panel"
+          aria-label={layout("navigation")}
           sx={{ display: "grid", gap: 1.5, mt: 4 }}
         >
           {venueNavigation.map((item) => {
             const Icon = item.icon;
+            const label = navigation(item.labelKey);
             return (
               <Button
                 aria-current={currentPath === item.href ? "page" : undefined}
@@ -85,7 +90,7 @@ export function VenueShell({
                   },
                 }}
               >
-                {item.label}
+                {label}
               </Button>
             );
           })}
@@ -101,7 +106,7 @@ export function VenueShell({
         <Toolbar sx={{ minHeight: 64 }}>
           <Brand />
           <Typography sx={{ color: "text.secondary", fontSize: "0.75rem", ml: "auto" }}>
-            {venueName}
+            {resolvedVenueName}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -116,7 +121,7 @@ export function VenueShell({
 
       <Paper
         component="nav"
-        aria-label="Navegación móvil del panel"
+        aria-label={layout("mobileNavigation")}
         elevation={8}
         square
         sx={{
@@ -131,6 +136,7 @@ export function VenueShell({
       >
         {venueNavigation.map((item) => {
           const Icon = item.icon;
+          const label = navigation(item.labelKey);
           return (
             <Button
               aria-current={currentPath === item.href ? "page" : undefined}
@@ -150,7 +156,7 @@ export function VenueShell({
               }}
             >
               <Icon aria-hidden="true" size={19} strokeWidth={1.9} />
-              {item.label}
+              {label}
             </Button>
           );
         })}

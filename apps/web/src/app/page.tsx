@@ -2,6 +2,7 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { LayoutDashboard, Palette, PanelsTopLeft, type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   PageContainer,
@@ -15,28 +16,20 @@ import { StatusChip } from "@/components/visual";
 
 const foundations = [
   {
-    description: "Cabecera ligera, contenido fluido y navegación inferior en móvil.",
     icon: PanelsTopLeft,
-    status: "Responsive",
-    title: "Web pública",
+    key: "publicWeb",
   },
   {
-    description: "Sidebar persistente en escritorio y accesos esenciales en móvil.",
     icon: LayoutDashboard,
-    status: "Adaptable",
-    title: "Panel del local",
+    key: "venuePanel",
   },
   {
-    description: "Tokens, estados, iconos y componentes con contratos comunes.",
     icon: Palette,
-    status: "Consistente",
-    title: "Sistema visual",
+    key: "visualSystem",
   },
 ] satisfies ReadonlyArray<{
-  description: string;
   icon: LucideIcon;
-  status: string;
-  title: string;
+  key: "publicWeb" | "venuePanel" | "visualSystem";
 }>;
 
 /**
@@ -44,6 +37,8 @@ const foundations = [
  * de inicio, que se implementará junto al buscador y sus datos.
  */
 export default function HomePage() {
+  const t = useTranslations("HomePage");
+
   return (
     <PublicShell>
       <PageContainer>
@@ -52,22 +47,22 @@ export default function HomePage() {
             actions={
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <Button component={NavigationLink} href="/design-system" variant="outlined">
-                  Ver sistema visual
+                  {t("actions.designSystem")}
                 </Button>
                 <Button component={NavigationLink} href="/panel-preview" variant="contained">
-                  Ver panel responsive
+                  {t("actions.panelPreview")}
                 </Button>
               </Stack>
             }
-            eyebrow="BASE DE PRODUCTO"
-            summary="Una estructura común y un lenguaje visual accesible para construir experiencias públicas y privadas coherentes."
-            title="Reserly ya tiene una base visual"
+            eyebrow={t("hero.eyebrow")}
+            summary={t("hero.summary")}
+            title={t("hero.title")}
           />
           <ResponsiveGrid>
             {foundations.map((foundation) => {
               const Icon = foundation.icon;
               return (
-                <Surface component="article" key={foundation.title}>
+                <Surface component="article" key={foundation.key}>
                   <Stack
                     direction="row"
                     sx={{
@@ -77,13 +72,13 @@ export default function HomePage() {
                     }}
                   >
                     <Icon aria-hidden="true" size={22} strokeWidth={1.9} />
-                    <StatusChip label={foundation.status} tone="info" />
+                    <StatusChip label={t(`foundations.${foundation.key}.status`)} tone="info" />
                   </Stack>
                   <Typography component="h2" variant="h2" sx={{ mt: 5 }}>
-                    {foundation.title}
+                    {t(`foundations.${foundation.key}.title`)}
                   </Typography>
                   <Typography sx={{ color: "text.secondary", mt: 2 }}>
-                    {foundation.description}
+                    {t(`foundations.${foundation.key}.description`)}
                   </Typography>
                 </Surface>
               );

@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
+import { renderWithIntl } from "@/test-utils/render-with-intl";
 
 import { PageHeading, PublicShell, Surface, VenueShell } from ".";
 
 describe("sistema de layout", () => {
   it("marca la ruta activa en la navegación pública", () => {
-    render(
+    renderWithIntl(
       <PublicShell currentPath="/explorar">
         <p>Contenido público</p>
       </PublicShell>,
@@ -19,7 +21,7 @@ describe("sistema de layout", () => {
   });
 
   it("ofrece navegación de escritorio y móvil en el panel", () => {
-    render(
+    renderWithIntl(
       <VenueShell currentPath="/panel/reservas" venueName="Local de prueba">
         <PageHeading title="Reservas" />
       </VenueShell>,
@@ -38,7 +40,7 @@ describe("sistema de layout", () => {
   });
 
   it("permite elegir el landmark de una superficie", () => {
-    render(
+    renderWithIntl(
       <Surface component="article">
         <h2>Tarjeta accesible</h2>
       </Surface>,

@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
+import { renderWithIntl } from "@/test-utils/render-with-intl";
 
 import HomePage from "./page";
 
 describe("HomePage", () => {
   it("muestra el layout público y sus regiones principales", () => {
-    render(<HomePage />);
+    renderWithIntl(<HomePage />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Reserly ya tiene una base visual" }),

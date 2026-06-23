@@ -4,6 +4,7 @@ import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Toolbar from "@mui/material/Toolbar";
 import { CalendarDays, Heart, House, Search, UserRound, type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { NavigationLink } from "@/components/navigation-link";
@@ -12,12 +13,16 @@ import { Brand } from "./brand";
 import { PageContainer } from "./page-container";
 
 const publicNavigation = [
-  { href: "/", icon: House, label: "Inicio" },
-  { href: "/explorar", icon: Search, label: "Explorar" },
-  { href: "/reservas", icon: CalendarDays, label: "Reservas" },
-  { href: "/favoritos", icon: Heart, label: "Favoritos" },
-  { href: "/perfil", icon: UserRound, label: "Perfil" },
-] satisfies ReadonlyArray<{ href: string; icon: LucideIcon; label: string }>;
+  { href: "/", icon: House, labelKey: "home" },
+  { href: "/explorar", icon: Search, labelKey: "explore" },
+  { href: "/reservas", icon: CalendarDays, labelKey: "reservations" },
+  { href: "/favoritos", icon: Heart, labelKey: "favorites" },
+  { href: "/perfil", icon: UserRound, labelKey: "profile" },
+] satisfies ReadonlyArray<{
+  href: string;
+  icon: LucideIcon;
+  labelKey: "home" | "explore" | "reservations" | "favorites" | "profile";
+}>;
 
 export interface PublicShellProps {
   children: ReactNode;
@@ -31,10 +36,14 @@ export interface PublicShellProps {
  * esenciales en cabecera y ofrece navegación inferior táctil.
  */
 export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
+  const layout = useTranslations("Layout.public");
+  const navigation = useTranslations("Navigation.public");
+  const brand = useTranslations("Brand");
+
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100dvh", pb: { xs: 18, md: 0 } }}>
       <Box className="skip-link" component="a" href="#main-content">
-        Saltar al contenido
+        {layout("skipContent")}
       </Box>
       <AppBar
         color="inherit"
@@ -44,16 +53,17 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
       >
         <PageContainer>
           <Toolbar disableGutters sx={{ gap: 4, minHeight: { xs: 64, md: 72 } }}>
-            <NavigationLink aria-label="Ir al inicio de Reserly" className="unstyled-link" href="/">
+            <NavigationLink aria-label={brand("homeAria")} className="unstyled-link" href="/">
               <Brand />
             </NavigationLink>
             <Box
               component="nav"
-              aria-label="Navegación pública principal"
+              aria-label={layout("primaryNavigation")}
               sx={{ display: { xs: "none", md: "flex" }, gap: 1, ml: "auto" }}
             >
               {publicNavigation.slice(0, 3).map((item) => {
                 const Icon = item.icon;
+                const label = navigation(item.labelKey);
                 return (
                   <Button
                     aria-current={currentPath === item.href ? "page" : undefined}
@@ -63,7 +73,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
                     key={item.href}
                     startIcon={<Icon aria-hidden="true" size={17} strokeWidth={1.9} />}
                   >
-                    {item.label}
+                    {label}
                   </Button>
                 );
               })}
@@ -75,7 +85,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
               sx={{ ml: { xs: "auto", md: 2 } }}
               variant="outlined"
             >
-              Acceso local
+              {layout("localAccess")}
             </Button>
           </Toolbar>
         </PageContainer>
@@ -87,7 +97,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
 
       <Paper
         component="nav"
-        aria-label="Navegación pública móvil"
+        aria-label={layout("mobileNavigation")}
         elevation={8}
         square
         sx={{
@@ -102,6 +112,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
       >
         {publicNavigation.map((item) => {
           const Icon = item.icon;
+          const label = navigation(item.labelKey);
           return (
             <Button
               aria-current={currentPath === item.href ? "page" : undefined}
@@ -121,7 +132,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
               }}
             >
               <Icon aria-hidden="true" size={19} strokeWidth={1.9} />
-              {item.label}
+              {label}
             </Button>
           );
         })}

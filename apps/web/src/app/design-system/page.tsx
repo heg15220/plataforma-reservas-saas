@@ -13,6 +13,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { Metadata } from "next";
+import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import {
   PageContainer,
@@ -26,30 +28,34 @@ import { StatusChip } from "@/components/visual";
 import { visualTokens } from "@/theme/visual-tokens";
 
 const palette = [
-  { color: visualTokens.color.brand.primary, label: "Acción principal" },
-  { color: visualTokens.color.brand.primarySoft, label: "Selección suave" },
-  { color: visualTokens.color.status.success, label: "Éxito" },
-  { color: visualTokens.color.status.warning, label: "Advertencia" },
-  { color: visualTokens.color.status.danger, label: "Peligro" },
-  { color: visualTokens.color.status.neutral, label: "Neutral" },
+  { color: visualTokens.color.brand.primary, labelKey: "primary" },
+  { color: visualTokens.color.brand.primarySoft, labelKey: "primarySoft" },
+  { color: visualTokens.color.status.success, labelKey: "success" },
+  { color: visualTokens.color.status.warning, labelKey: "warning" },
+  { color: visualTokens.color.status.danger, labelKey: "danger" },
+  { color: visualTokens.color.status.neutral, labelKey: "neutral" },
 ] as const;
 
 const interfaceIcons = [
-  { icon: Search, label: "Buscar" },
-  { icon: MapPin, label: "Ubicación" },
-  { icon: CalendarCheck2, label: "Reserva" },
-  { icon: Heart, label: "Favorito" },
-  { icon: ShieldCheck, label: "Verificación" },
-  { icon: Clock3, label: "Horario" },
+  { icon: Search, labelKey: "search" },
+  { icon: MapPin, labelKey: "location" },
+  { icon: CalendarCheck2, labelKey: "booking" },
+  { icon: Heart, labelKey: "favorite" },
+  { icon: ShieldCheck, labelKey: "verification" },
+  { icon: Clock3, labelKey: "schedule" },
 ] as const;
 
-export const metadata: Metadata = {
-  title: "Sistema visual",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("DesignSystem.metadata");
+
+  return {
+    title: t("title"),
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
+}
 
 /**
  * Catálogo vivo de los fundamentos visuales compartidos por Reserly.
@@ -58,6 +64,8 @@ export const metadata: Metadata = {
  * tipografía, controles, estados e iconografía en un entorno real de la app.
  */
 export default function DesignSystemPage() {
+  const t = useTranslations("DesignSystem");
+
   return (
     <PublicShell currentPath="">
       <PageContainer>
@@ -65,75 +73,76 @@ export default function DesignSystemPage() {
           <PageHeading
             actions={
               <Button component={NavigationLink} href="/" variant="outlined">
-                Volver al inicio
+                {t("actions.backHome")}
               </Button>
             }
-            eyebrow="SISTEMA VISUAL"
-            summary="Fundamentos accesibles y reutilizables para mantener coherencia entre la web pública, el panel del local y la administración."
-            title="Lenguaje visual de Reserly"
+            eyebrow={t("hero.eyebrow")}
+            summary={t("hero.summary")}
+            title={t("hero.title")}
           />
 
           <Surface>
             <Typography component="h2" variant="h2">
-              Paleta semántica
+              {t("headings.palette")}
             </Typography>
             <Typography sx={{ color: "text.secondary", mt: 2 }}>
-              Los colores expresan función. Los estados nunca dependen únicamente del color.
+              {t("palette.semanticDescription")}
             </Typography>
             <ResponsiveGrid minColumnWidth={150}>
-              {palette.map((token) => (
-                <Box key={token.label} sx={{ mt: 4 }}>
-                  <Box
-                    aria-label={`${token.label}: ${token.color}`}
-                    sx={{
-                      bgcolor: token.color,
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: 2,
-                      height: 72,
-                    }}
-                  />
-                  <Typography sx={{ fontWeight: 600, mt: 2 }}>{token.label}</Typography>
-                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    {token.color}
-                  </Typography>
-                </Box>
-              ))}
+              {palette.map((token) => {
+                const label = t(`palette.${token.labelKey}`);
+                return (
+                  <Box key={token.labelKey} sx={{ mt: 4 }}>
+                    <Box
+                      aria-label={`${label}: ${token.color}`}
+                      sx={{
+                        bgcolor: token.color,
+                        border: 1,
+                        borderColor: "divider",
+                        borderRadius: 2,
+                        height: 72,
+                      }}
+                    />
+                    <Typography sx={{ fontWeight: 600, mt: 2 }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      {token.color}
+                    </Typography>
+                  </Box>
+                );
+              })}
             </ResponsiveGrid>
           </Surface>
 
           <ResponsiveGrid minColumnWidth={280}>
             <Surface>
               <Typography component="h2" variant="h2">
-                Tipografía
+                {t("headings.typography")}
               </Typography>
               <Stack spacing={4} sx={{ mt: 4 }}>
-                <Typography variant="h1">Título principal</Typography>
-                <Typography variant="h2">Título de sección</Typography>
-                <Typography variant="h3">Título de componente</Typography>
-                <Typography>
-                  Texto de lectura para explicar disponibilidad, reservas y siguientes acciones.
-                </Typography>
+                <Typography variant="h1">{t("typography.mainTitle")}</Typography>
+                <Typography variant="h2">{t("typography.sectionTitle")}</Typography>
+                <Typography variant="h3">{t("typography.componentTitle")}</Typography>
+                <Typography>{t("typography.body")}</Typography>
                 <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                  Metadatos y ayuda secundaria.
+                  {t("typography.metadata")}
                 </Typography>
               </Stack>
             </Surface>
 
             <Surface>
               <Typography component="h2" variant="h2">
-                Acciones y campos
+                {t("headings.actions")}
               </Typography>
               <Stack spacing={4} sx={{ mt: 4 }}>
-                <Button variant="contained">Acción principal</Button>
-                <Button variant="outlined">Acción secundaria</Button>
+                <Button variant="contained">{t("controls.primary")}</Button>
+                <Button variant="outlined">{t("controls.secondary")}</Button>
                 <Button disabled variant="contained">
-                  Acción deshabilitada
+                  {t("controls.disabled")}
                 </Button>
                 <TextField
-                  helperText="La etiqueta permanece visible durante la escritura."
-                  label="Buscar un local"
-                  placeholder="Nombre, servicio o categoría"
+                  helperText={t("controls.fieldHelper")}
+                  label={t("controls.fieldLabel")}
+                  placeholder={t("controls.fieldPlaceholder")}
                 />
               </Stack>
             </Surface>
@@ -141,14 +150,14 @@ export default function DesignSystemPage() {
 
           <Surface>
             <Typography component="h2" variant="h2">
-              Estados
+              {t("headings.states")}
             </Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mt: 4 }}>
-              <StatusChip label="Disponible" tone="success" />
-              <StatusChip label="Pendiente" tone="warning" />
-              <StatusChip label="Restringida" tone="danger" />
-              <StatusChip label="Cerrado" tone="neutral" />
-              <StatusChip label="Información" tone="info" />
+              <StatusChip label={t("states.available")} tone="success" />
+              <StatusChip label={t("states.pending")} tone="warning" />
+              <StatusChip label={t("states.restricted")} tone="danger" />
+              <StatusChip label={t("states.closed")} tone="neutral" />
+              <StatusChip label={t("states.info")} tone="info" />
             </Box>
             <Box
               role="alert"
@@ -164,25 +173,21 @@ export default function DesignSystemPage() {
               }}
             >
               <CircleAlert aria-hidden="true" size={20} />
-              <Typography>
-                Ejemplo de error con icono, texto explícito y contraste independiente del color.
-              </Typography>
+              <Typography>{t("alerts.errorExample")}</Typography>
             </Box>
           </Surface>
 
           <Surface>
             <Typography component="h2" variant="h2">
-              Iconografía
+              {t("headings.icons")}
             </Typography>
-            <Typography sx={{ color: "text.secondary", mt: 2 }}>
-              Lucide aporta iconos lineales de trazo coherente. Los iconos sin texto reciben nombre
-              accesible; los decorativos se ocultan a tecnologías de asistencia.
-            </Typography>
+            <Typography sx={{ color: "text.secondary", mt: 2 }}>{t("iconsDescription")}</Typography>
             <ResponsiveGrid minColumnWidth={120}>
               {interfaceIcons.map((item) => {
                 const Icon = item.icon;
+                const label = t(`icons.${item.labelKey}`);
                 return (
-                  <Stack key={item.label} spacing={2} sx={{ alignItems: "center", mt: 5 }}>
+                  <Stack key={item.labelKey} spacing={2} sx={{ alignItems: "center", mt: 5 }}>
                     <Box
                       sx={{
                         alignItems: "center",
@@ -197,7 +202,7 @@ export default function DesignSystemPage() {
                     >
                       <Icon aria-hidden="true" size={22} strokeWidth={1.9} />
                     </Box>
-                    <Typography sx={{ fontWeight: 600 }}>{item.label}</Typography>
+                    <Typography sx={{ fontWeight: 600 }}>{label}</Typography>
                   </Stack>
                 );
               })}

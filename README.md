@@ -72,3 +72,4 @@ npm run verify
 ## Colaboración
 
 Las convenciones de ramas, commits y revisión se encuentran en [`CONTRIBUTING.md`](CONTRIBUTING.md).
+El pipeline y los checks obligatorios se documentan en [`docs/continuous-integration.md`](docs/continuous-integration.md).

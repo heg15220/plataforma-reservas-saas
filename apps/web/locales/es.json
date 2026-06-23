@@ -1,0 +1,169 @@
+{
+  "Brand": {
+    "homeAria": "Ir al inicio de Reserly",
+    "panelHomeAria": "Ir al resumen del panel",
+    "name": "Reserly"
+  },
+  "Common": {
+    "noData": "Sin datos"
+  },
+  "DesignSystem": {
+    "actions": {
+      "backHome": "Volver al inicio"
+    },
+    "alerts": {
+      "errorExample": "Ejemplo de error con icono, texto explícito y contraste independiente del color."
+    },
+    "controls": {
+      "disabled": "Acción deshabilitada",
+      "fieldHelper": "La etiqueta permanece visible durante la escritura.",
+      "fieldLabel": "Buscar un local",
+      "fieldPlaceholder": "Nombre, servicio o categoría",
+      "primary": "Acción principal",
+      "secondary": "Acción secundaria"
+    },
+    "headings": {
+      "actions": "Acciones y campos",
+      "icons": "Iconografía",
+      "palette": "Paleta semántica",
+      "states": "Estados",
+      "typography": "Tipografía"
+    },
+    "hero": {
+      "eyebrow": "SISTEMA VISUAL",
+      "summary": "Fundamentos accesibles y reutilizables para mantener coherencia entre la web pública, el panel del local y la administración.",
+      "title": "Lenguaje visual de Reserly"
+    },
+    "icons": {
+      "booking": "Reserva",
+      "favorite": "Favorito",
+      "location": "Ubicación",
+      "schedule": "Horario",
+      "search": "Buscar",
+      "verification": "Verificación"
+    },
+    "metadata": {
+      "title": "Sistema visual"
+    },
+    "palette": {
+      "danger": "Peligro",
+      "primary": "Acción principal",
+      "primarySoft": "Selección suave",
+      "semanticDescription": "Los colores expresan función. Los estados nunca dependen únicamente del color.",
+      "success": "Éxito",
+      "warning": "Advertencia",
+      "neutral": "Neutral"
+    },
+    "states": {
+      "available": "Disponible",
+      "closed": "Cerrado",
+      "info": "Información",
+      "pending": "Pendiente",
+      "restricted": "Restringida"
+    },
+    "typography": {
+      "body": "Texto de lectura para explicar disponibilidad, reservas y siguientes acciones.",
+      "componentTitle": "Título de componente",
+      "mainTitle": "Título principal",
+      "metadata": "Metadatos y ayuda secundaria.",
+      "sectionTitle": "Título de sección"
+    },
+    "iconsDescription": "Lucide aporta iconos lineales de trazo coherente. Los iconos sin texto reciben nombre accesible; los decorativos se ocultan a tecnologías de asistencia."
+  },
+  "HomePage": {
+    "actions": {
+      "designSystem": "Ver sistema visual",
+      "panelPreview": "Ver panel responsive"
+    },
+    "foundations": {
+      "publicWeb": {
+        "description": "Cabecera ligera, contenido fluido y navegación inferior en móvil.",
+        "status": "Responsive",
+        "title": "Web pública"
+      },
+      "venuePanel": {
+        "description": "Sidebar persistente en escritorio y accesos esenciales en móvil.",
+        "status": "Adaptable",
+        "title": "Panel del local"
+      },
+      "visualSystem": {
+        "description": "Tokens, estados, iconos y componentes con contratos comunes.",
+        "status": "Consistente",
+        "title": "Sistema visual"
+      }
+    },
+    "hero": {
+      "eyebrow": "BASE DE PRODUCTO",
+      "summary": "Una estructura común y un lenguaje visual accesible para construir experiencias públicas y privadas coherentes.",
+      "title": "Reserly ya tiene una base visual"
+    }
+  },
+  "Layout": {
+    "public": {
+      "localAccess": "Acceso local",
+      "mobileNavigation": "Navegación pública móvil",
+      "primaryNavigation": "Navegación pública principal",
+      "skipContent": "Saltar al contenido"
+    },
+    "venue": {
+      "defaultVenueName": "Mi local",
+      "mobileNavigation": "Navegación móvil del panel",
+      "navigation": "Navegación del panel",
+      "skipContent": "Saltar al contenido"
+    }
+  },
+  "Metadata": {
+    "description": "Plataforma responsive para descubrir y gestionar reservas.",
+    "title": "Reserly"
+  },
+  "Navigation": {
+    "public": {
+      "explore": "Explorar",
+      "favorites": "Favoritos",
+      "home": "Inicio",
+      "profile": "Perfil",
+      "reservations": "Reservas"
+    },
+    "venue": {
+      "calendar": "Calendario",
+      "home": "Inicio",
+      "more": "Más",
+      "reservations": "Reservas"
+    }
+  },
+  "PanelPreview": {
+    "actions": {
+      "backPublic": "Volver a la web pública"
+    },
+    "cards": {
+      "nextSlot": {
+        "label": "Próxima franja",
+        "status": "Pendiente",
+        "valueLabel": "Próxima franja: sin datos"
+      },
+      "occupancy": {
+        "label": "Ocupación",
+        "status": "Disponible",
+        "valueLabel": "Ocupación: sin datos"
+      },
+      "todayBookings": {
+        "label": "Reservas de hoy",
+        "status": "Sin datos",
+        "valueLabel": "Reservas de hoy: sin datos"
+      }
+    },
+    "empty": {
+      "body": "Este bloque demuestra cómo reservar espacio para estados de carga, vacío y error sin cambiar la estructura principal de la página.",
+      "title": "Estado vacío"
+    },
+    "hero": {
+      "eyebrow": "PANEL DEL LOCAL",
+      "summary": "Los datos reales aparecerán cuando se implementen identidad, locales y reservas.",
+      "title": "Resumen"
+    },
+    "metadata": {
+      "title": "Preview del panel"
+    },
+    "venueName": "Vista de demostración"
+  }
+}

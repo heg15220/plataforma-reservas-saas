@@ -1,0 +1,169 @@
+{
+  "Brand": {
+    "homeAria": "Go to the Reserly home page",
+    "panelHomeAria": "Go to the panel overview",
+    "name": "Reserly"
+  },
+  "Common": {
+    "noData": "No data"
+  },
+  "DesignSystem": {
+    "actions": {
+      "backHome": "Back to home"
+    },
+    "alerts": {
+      "errorExample": "Example error with an icon, explicit text and contrast that does not rely on color alone."
+    },
+    "controls": {
+      "disabled": "Disabled action",
+      "fieldHelper": "The label remains visible while typing.",
+      "fieldLabel": "Search for a venue",
+      "fieldPlaceholder": "Name, service or category",
+      "primary": "Primary action",
+      "secondary": "Secondary action"
+    },
+    "headings": {
+      "actions": "Actions and fields",
+      "icons": "Iconography",
+      "palette": "Semantic palette",
+      "states": "States",
+      "typography": "Typography"
+    },
+    "hero": {
+      "eyebrow": "VISUAL SYSTEM",
+      "summary": "Accessible, reusable foundations to keep the public website, venue panel and administration experience consistent.",
+      "title": "Reserly visual language"
+    },
+    "icons": {
+      "booking": "Booking",
+      "favorite": "Favorite",
+      "location": "Location",
+      "schedule": "Schedule",
+      "search": "Search",
+      "verification": "Verification"
+    },
+    "metadata": {
+      "title": "Visual system"
+    },
+    "palette": {
+      "danger": "Danger",
+      "primary": "Primary action",
+      "primarySoft": "Soft selection",
+      "semanticDescription": "Colors express function. States never rely on color alone.",
+      "success": "Success",
+      "warning": "Warning",
+      "neutral": "Neutral"
+    },
+    "states": {
+      "available": "Available",
+      "closed": "Closed",
+      "info": "Information",
+      "pending": "Pending",
+      "restricted": "Restricted"
+    },
+    "typography": {
+      "body": "Reading text for explaining availability, bookings and next actions.",
+      "componentTitle": "Component title",
+      "mainTitle": "Main title",
+      "metadata": "Metadata and secondary help.",
+      "sectionTitle": "Section title"
+    },
+    "iconsDescription": "Lucide provides linear icons with a consistent stroke. Icons without text receive an accessible name; decorative icons are hidden from assistive technologies."
+  },
+  "HomePage": {
+    "actions": {
+      "designSystem": "View visual system",
+      "panelPreview": "View responsive panel"
+    },
+    "foundations": {
+      "publicWeb": {
+        "description": "Light header, fluid content and bottom navigation on mobile.",
+        "status": "Responsive",
+        "title": "Public website"
+      },
+      "venuePanel": {
+        "description": "Persistent desktop sidebar and essential mobile shortcuts.",
+        "status": "Adaptable",
+        "title": "Venue panel"
+      },
+      "visualSystem": {
+        "description": "Tokens, states, icons and components with shared contracts.",
+        "status": "Consistent",
+        "title": "Visual system"
+      }
+    },
+    "hero": {
+      "eyebrow": "PRODUCT BASE",
+      "summary": "A shared structure and accessible visual language for building coherent public and private experiences.",
+      "title": "Reserly now has a visual base"
+    }
+  },
+  "Layout": {
+    "public": {
+      "localAccess": "Venue access",
+      "mobileNavigation": "Public mobile navigation",
+      "primaryNavigation": "Primary public navigation",
+      "skipContent": "Skip to content"
+    },
+    "venue": {
+      "defaultVenueName": "My venue",
+      "mobileNavigation": "Panel mobile navigation",
+      "navigation": "Panel navigation",
+      "skipContent": "Skip to content"
+    }
+  },
+  "Metadata": {
+    "description": "Responsive platform for discovering and managing bookings.",
+    "title": "Reserly"
+  },
+  "Navigation": {
+    "public": {
+      "explore": "Explore",
+      "favorites": "Favorites",
+      "home": "Home",
+      "profile": "Profile",
+      "reservations": "Bookings"
+    },
+    "venue": {
+      "calendar": "Calendar",
+      "home": "Home",
+      "more": "More",
+      "reservations": "Bookings"
+    }
+  },
+  "PanelPreview": {
+    "actions": {
+      "backPublic": "Back to public website"
+    },
+    "cards": {
+      "nextSlot": {
+        "label": "Next slot",
+        "status": "Pending",
+        "valueLabel": "Next slot: no data"
+      },
+      "occupancy": {
+        "label": "Occupancy",
+        "status": "Available",
+        "valueLabel": "Occupancy: no data"
+      },
+      "todayBookings": {
+        "label": "Today's bookings",
+        "status": "No data",
+        "valueLabel": "Today's bookings: no data"
+      }
+    },
+    "empty": {
+      "body": "This block shows how to reserve space for loading, empty and error states without changing the main page structure.",
+      "title": "Empty state"
+    },
+    "hero": {
+      "eyebrow": "VENUE PANEL",
+      "summary": "Real data will appear when identity, venues and bookings are implemented.",
+      "title": "Overview"
+    },
+    "metadata": {
+      "title": "Panel preview"
+    },
+    "venueName": "Demo view"
+  }
+}

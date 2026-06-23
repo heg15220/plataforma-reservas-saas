@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-23
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7` y `0.8`.
-- Siguiente tarea pendiente recomendada: `0.9. Crear pipeline CI con tests y validación de estilo.`
-- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide y catálogo vivo en `/design-system`. Continúan pendientes el pipeline CI y la infraestructura i18n. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9` y `0.10`.
+- Siguiente tarea pendiente recomendada: `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
+- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI y base i18n con `next-intl` y catálogos versionados `es`/`en`. Continúan pendientes la resolución dinámica de idioma, la detección de textos hardcodeados y la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -730,3 +730,93 @@ Fuente de verdad del avance:
   - La iconografía se fija en `lucide-react 1.21.0`.
   - Los contrastes medidos de los chips visibles están entre `5.17:1` y `6.98:1`.
   - `/design-system` y `/panel-preview` son rutas internas `noindex`; no sustituyen pantallas funcionales.
+
+## Conversación 21 - Pipeline CI con calidad, frontend y backend
+
+- Fecha: 2026-06-23
+- Resumen: se completó la tarea `0.9` creando el workflow de GitHub Actions para integración continua. El pipeline se ejecuta en pull requests hacia `develop` y `main`, en pushes a ramas GitFlow (`develop`, `main`, `phase/**`, `release/**`, `hotfix/**`) y manualmente. Se separaron los checks en `Quality`, `Frontend` y `Backend integration`, se añadió un script local `ci:check` para proteger el contrato mínimo del workflow y se documentaron las reglas de seguridad, caché, branch protection y validación local.
+- Archivos modificados:
+  - `.github/workflows/ci.yml`
+  - `scripts/validate-ci-workflow.mjs`
+  - `docs/continuous-integration.md`
+  - `package.json`
+  - `README.md`
+  - `CONTRIBUTING.md`
+  - `docs/README.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-005 Escalabilidad`, por automatizar una integración reproducible del monorepo.
+  - `RNF-006 Disponibilidad operativa`, por impedir integraciones sin build y tests.
+  - `RNF-011 Convenciones backend y persistencia`, por ejecutar Checkstyle, Spotless y tests de migraciones.
+  - `RNF-012 Calidad lingüística y codificación UTF-8`, por mantener Prettier y validaciones documentales dentro de la cadena.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`, por alinear eventos y checks con `develop`, `main` y ramas de fase.
+- Tareas impactadas:
+  - `0.9. Crear pipeline CI con tests y validación de estilo.`
+  - Prepara la protección operativa de las tareas `0.10` a `0.15` y de las fases posteriores.
+- Tareas completadas:
+  - `0.9. Crear pipeline CI con tests y validación de estilo.`
+- Siguiente tarea pendiente recomendada:
+  - `0.10. Crear infraestructura i18n con catálogos es y en.`
+- Decisiones o aclaraciones relevantes:
+  - El workflow usa permisos mínimos `contents: read` y `persist-credentials: false`.
+  - No se usan `pull_request_target`, `workflow_run`, secretos ni entornos reales de staging/producción.
+  - `Quality` concentra formato, lint y contratos de configuración; `Frontend` concentra TypeScript, Vitest y build Next.js; `Backend integration` concentra JUnit, Flyway, Testcontainers y build Spring Boot.
+  - `npm run verify` incluye ahora `npm run ci:check` para detectar cambios peligrosos o incompletos en el workflow antes de abrir PR.
+  - La protección de ramas debe configurarse en GitHub con los checks `Quality`, `Frontend` y `Backend integration` como obligatorios cuando el repositorio remoto lo permita.
+  - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot.
+
+## Conversación 22 - Infraestructura i18n con catálogos ES/EN
+
+- Fecha: 2026-06-23
+- Resumen: se completó la tarea `0.10` creando la infraestructura i18n frontend con `next-intl`, catálogos versionados `es` y `en`, configuración request-scoped, proveedor en el layout raíz, tipos de mensajes/locales, documentación operativa y tests de paridad de claves. Las páginas actuales `/`, `/design-system` y `/panel-preview`, junto con los shells público y de panel, consumen ya textos desde catálogos. La resolución dinámica por preferencia, parámetro seguro, navegador/app y fallback queda preparada para `0.11`.
+- Archivos modificados:
+  - `apps/web/package.json`
+  - `package-lock.json`
+  - `apps/web/next.config.ts`
+  - `apps/web/README.md`
+  - `apps/web/locales/es.json`
+  - `apps/web/locales/en.json`
+  - `apps/web/src/global.d.ts`
+  - `apps/web/src/i18n/config.ts`
+  - `apps/web/src/i18n/request.ts`
+  - `apps/web/src/i18n/messages.test.ts`
+  - `apps/web/src/test-utils/render-with-intl.tsx`
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/providers.tsx`
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/page.test.tsx`
+  - `apps/web/src/app/design-system/page.tsx`
+  - `apps/web/src/app/design-system/page.test.tsx`
+  - `apps/web/src/app/panel-preview/page.tsx`
+  - `apps/web/src/components/layout/public-shell.tsx`
+  - `apps/web/src/components/layout/venue-shell.tsx`
+  - `apps/web/src/components/layout/layout-system.test.tsx`
+  - `docs/README.md`
+  - `docs/architecture/frontend-layout.md`
+  - `docs/architecture/internationalization.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`, por continuar el trabajo dentro de `phase/0-preparacion-proyecto`.
+- Tareas impactadas:
+  - `0.10. Crear infraestructura i18n con catálogos es y en.`
+  - Prepara `0.11`, `0.12`, `0.15`, `1.21`, `3.14`, `8.14`, `10.16` y las futuras pantallas con textos localizados.
+- Tareas completadas:
+  - `0.10. Crear infraestructura i18n con catálogos es y en.`
+- Siguiente tarea pendiente recomendada:
+  - `0.11. Implementar resolución de idioma: preferencia guardada, parámetro seguro, navegador/app y fallback en.`
+- Decisiones o aclaraciones relevantes:
+  - Se usa `next-intl 4.13.0`, instalado con versión exacta y cero vulnerabilidades conocidas en `npm audit`.
+  - Los catálogos viven en `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `src/i18n/request.ts` usa locale estático `es` temporalmente para no mezclar el alcance de `0.10` con la resolución dinámica de `0.11`.
+  - El fallback operativo declarado es `en`.
+  - `src/global.d.ts` augmenta `next-intl` con locales y mensajes tipados.
+  - `messages.test.ts` valida que ambos catálogos tienen las mismas claves y que el catálogo español conserva caracteres críticos como `É`, `á`, `ó`, `ñ` y `Más`.
+  - La detección automática de textos hardcodeados queda para `0.12`; la validación profunda de mojibake y calidad lingüística queda para `0.15`.
+  - Evidencia de verificación final: `npm run verify` completó correctamente `ci:check`, `env:check`, ESLint, Checkstyle, Prettier, Spotless, TypeScript, Vitest, JUnit con Testcontainers y los builds de Next.js y Spring Boot.

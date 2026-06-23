@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
+import { renderWithIntl } from "@/test-utils/render-with-intl";
 
 import DesignSystemPage from "./page";
 
 describe("DesignSystemPage", () => {
   it("expone el catálogo de fundamentos visuales", () => {
-    render(<DesignSystemPage />);
+    renderWithIntl(<DesignSystemPage />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Lenguaje visual de Reserly" }),
