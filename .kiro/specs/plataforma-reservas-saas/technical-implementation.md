@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12` y `0.13`.
-- Siguiente tarea pendiente recomendada: `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13` y `0.14`.
+- Siguiente tarea pendiente recomendada: `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -3410,3 +3410,208 @@ La tarea se considera completada porque:
 - La documentación de i18n ya referencia el patrón de base de datos.
 - `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados.
 - Los cambios se verificarán con `npm run verify`, commit trazable y push a GitHub antes de iniciar la siguiente tarea.
+
+## Tarea 0.14 - Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores
+
+- Fecha: 2026-06-24
+- Commit o referencia: cambios preparados para commit y push en `phase/0-preparacion-proyecto`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea establece un contrato ejecutable para evitar que las futuras fases creen backend con estilos incompatibles entre sí. Hasta esta iteración las convenciones estaban descritas en requisitos y diseño, pero dependían de revisión manual. La implementación añade una comprobación local y de CI que falla cuando una migración, entidad JPA, DAO, servicio, controlador, DTO o conversor no respeta las reglas del proyecto.
+
+El objetivo técnico es convertir `RNF-011` en una barrera automatizada antes de que entren las primeras tablas funcionales de identidad, reservas, disponibilidad, pagos o reseñas. La validación protege nombres físicos de PostgreSQL, contratos Java y estructura de capas para que el modelo pueda crecer sin normalizar después decenas de archivos.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RNF-001 Rendimiento y escalabilidad`, porque las convenciones de persistencia previsibles simplifican índices, consultas y diagnóstico.
+  - `RNF-003 Seguridad`, porque las capas explícitas facilitan revisar contratos, permisos y validaciones.
+- Diseño:
+  - Convención de tablas físicas `UpperCamelCase` con identificadores PostgreSQL entrecomillados.
+  - Convención de columnas y atributos persistidos `lowerCamelCase`.
+  - Uso de JPA por getters/setters para entidades.
+  - DAOs explícitos con `@Query`.
+  - Separación de interfaces e implementaciones para servicios y controladores.
+  - DTOs REST y conversores separados del dominio y de la persistencia.
+- Tareas relacionadas:
+  - Cierra `0.14`.
+  - Prepara todas las tareas de fases 1 en adelante que creen migraciones, entidades, DAOs, servicios, controladores, DTOs o conversores.
+
+### Archivos afectados
+
+- Creados:
+  - `docs/architecture/backend-conventions.md`.
+  - `scripts/validate-backend-conventions.mjs`.
+- Modificados:
+  - `.github/workflows/ci.yml`.
+  - `README.md`.
+  - `apps/api/README.md`.
+  - `docs/README.md`.
+  - `docs/continuous-integration.md`.
+  - `package.json`.
+  - `scripts/validate-ci-workflow.mjs`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+Se creó `scripts/validate-backend-conventions.mjs` como validador estático sin dependencias externas. El script recorre:
+
+- `apps/api/src/main/java`, excluyendo `target`.
+- `apps/api/src/main/resources/db/migration`.
+
+El script acumula errores y finaliza con código distinto de cero si encuentra incumplimientos. Si todo es válido, imprime `Convenciones backend válidas: Java, JPA, DAOs, capas REST y migraciones.`
+
+Validaciones Java implementadas:
+
+- Cada archivo Java debe tener un tipo primario `class`, `interface`, `enum` o `record`.
+- El nombre del archivo debe coincidir con el nombre del tipo primario.
+- El tipo primario debe estar en `UpperCamelCase`.
+- Las clases anotadas con `@Service` deben terminar en `ServiceImpl`.
+- Cada `ServiceImpl` debe tener una interfaz hermana con el mismo nombre sin `Impl`.
+- Las clases anotadas con `@RestController` deben terminar en `ControllerImpl`.
+- Cada `ControllerImpl` debe tener una interfaz hermana con el mismo nombre sin `Impl`.
+- Los tipos en paquetes `dto` o `dtos` deben terminar en `Request`, `Response`, `Command` o `Dto`.
+- Los tipos en paquetes `converter` o `converters` deben terminar en `Converter`.
+
+Validaciones JPA implementadas:
+
+- Solo se aplican a tipos con `@Entity`.
+- Las entidades deben terminar en `Entity`.
+- Cada entidad debe declarar `@Table(name = "\"UpperCamelCase\"")`.
+- Los nombres en `@Column(name = "...")` deben ser identificadores quoted `lowerCamelCase`.
+- Los nombres en `@JoinColumn(name = "...")` deben ser identificadores quoted `lowerCamelCase`.
+- Las relaciones `@ManyToMany`, `@ManyToOne`, `@OneToMany` y `@OneToOne` deben declararse sobre un getter `get*`.
+- El validador permite anotaciones intermedias entre la anotación de relación y el getter, por ejemplo `@JoinColumn`.
+- Cada getter de relación debe tener setter correspondiente para mantener el patrón JPA por getters/setters.
+
+Validaciones DAO implementadas:
+
+- Los tipos terminados en `Dao` deben estar anotados con `@Repository` o extender/usar `Repository` o `JpaRepository`.
+- Las declaraciones de métodos propios de DAO deben tener `@Query` en las líneas inmediatamente anteriores.
+- Se excluyen métodos `default` y `static` para no confundir helpers de interfaz con contratos de consulta.
+
+Validaciones Flyway implementadas:
+
+- `CREATE TABLE` debe usar tabla quoted `UpperCamelCase`.
+- `ALTER TABLE` debe usar tabla quoted `UpperCamelCase`.
+- Las columnas declaradas dentro de bloques `CREATE TABLE (...)` deben usar identificadores quoted `lowerCamelCase`.
+- El parser omite líneas de constraints de tabla para no tratarlas como columnas.
+
+La automatización se conectó al monorepo mediante:
+
+- `package.json`: nuevo script `backend:conventions:check`.
+- `package.json`: `verify` ejecuta ahora `backend:conventions:check` después de `i18n:check` y antes del lint general.
+- `.github/workflows/ci.yml`: nuevo paso `Validate backend conventions`.
+- `scripts/validate-ci-workflow.mjs`: el contrato del workflow exige la presencia de `npm run backend:conventions:check`.
+
+La documentación operativa se añadió en:
+
+- `docs/architecture/backend-conventions.md`, con reglas, ejemplos y alcance del validador.
+- `docs/continuous-integration.md`, describiendo el nuevo paso de calidad.
+- `README.md` y `apps/api/README.md`, indicando el comando local de verificación.
+- `docs/README.md`, enlazando la guía de arquitectura.
+
+### Modelo de datos
+
+No se crearon tablas, columnas, índices ni migraciones funcionales. La tarea afecta al modelo de datos como contrato preventivo:
+
+- Las migraciones futuras deben nombrar tablas con `UpperCamelCase` físico entrecomillado.
+- Las columnas futuras deben usar `lowerCamelCase` físico entrecomillado.
+- Las columnas de relación con `@JoinColumn` quedan cubiertas por la misma regla.
+- Las entidades futuras deben reflejar explícitamente el nombre físico de tabla con `@Table`.
+- El contrato evita depender del naming strategy implícito de Hibernate para nombres críticos.
+
+### Contratos y APIs
+
+No se añadieron endpoints REST ni payloads de negocio. Sí se fijó el contrato estructural que deberán seguir endpoints y servicios futuros:
+
+- Cada controlador REST concreto debe ser `*ControllerImpl`.
+- Cada controlador REST concreto debe implementar una interfaz `*Controller`.
+- Los payloads REST deben vivir en paquetes `dto` o `dtos` y terminar en `Request`, `Response`, `Command` o `Dto`.
+- La conversión entre DTOs, comandos, dominio y persistencia debe concentrarse en tipos `*Converter`.
+
+Este contrato facilita documentar errores, permisos e invariantes en interfaces y evitar que la lógica REST se acople directamente a entidades JPA.
+
+### Seguridad, privacidad e i18n
+
+La tarea no introduce tratamiento nuevo de datos personales ni cambios de autenticación. Sus impactos indirectos son:
+
+- Seguridad: las interfaces separadas para servicios/controladores hacen más fácil revisar permisos e invariantes antes de implementar endpoints.
+- Privacidad: el desacoplamiento DTO/entidad reduce el riesgo de exponer entidades persistidas completas en respuestas REST.
+- i18n: el validador respeta el patrón de columnas físicas `lowerCamelCase`, incluyendo columnas localizadas conceptuales `*_i18n` traducidas físicamente a nombres como `"descriptionI18n"`.
+- Auditoría: los DAOs con `@Query` hacen explícitas las consultas sensibles, lo que ayuda a revisar filtros por tenant, usuario, estado y visibilidad.
+
+### UI y experiencia de usuario
+
+No se modificó UI. La tarea impacta únicamente en documentación, scripts de calidad y pipeline.
+
+### Tests y verificación
+
+Comandos ejecutados durante la iteración:
+
+- `npm run backend:conventions:check`: correcto. Confirmó que el backend actual, sus migraciones existentes y los paquetes Java cumplen el nuevo contrato.
+- `npm run ci:check`: correcto. Confirmó que el workflow de GitHub Actions contiene el nuevo paso obligatorio.
+- `npx prettier --write scripts/validate-backend-conventions.mjs`: correcto, sin cambios pendientes.
+
+Verificación final de cierre:
+
+- `npm run backend:conventions:check`: correcto.
+- `npm run ci:check`: correcto.
+- `npm run format:check:web`: correcto.
+- `git diff --check`: correcto.
+- `npm run verify`: correcto.
+
+Resultado esperado de `npm run verify` con esta tarea:
+
+- `ci:check` valida el contrato Quality, Frontend y Backend integration.
+- `env:check` valida plantillas de entorno.
+- `i18n:check` valida catálogos y textos visibles UI.
+- `backend:conventions:check` valida convenciones backend.
+- ESLint, Prettier, TypeScript, Vitest, Checkstyle, Spotless, JUnit/Testcontainers y builds siguen siendo la barrera completa del repositorio.
+
+### Decisiones técnicas
+
+- Usar un script Node estático en vez de un plugin Checkstyle o ArchUnit porque la tarea necesitaba cubrir Java y SQL/Flyway en un único comando rápido, sin dependencias nuevas.
+- Integrar el check en `verify` y CI para que no sea una recomendación documental sino un criterio de aceptación.
+- Exigir nombres físicos quoted en JPA y migraciones para que PostgreSQL preserve `UpperCamelCase` y `lowerCamelCase`.
+- Validar relaciones sobre getters porque el proyecto decidió JPA por getters/setters, y esto evita mezclar acceso por campo y acceso por propiedad.
+- Permitir anotaciones intermedias como `@JoinColumn` entre relación y getter, porque es el patrón normal en entidades JPA reales.
+- Exigir `@Query` en DAOs para que las consultas propias sean explícitas y revisables.
+- Aceptar paquetes `dto`/`dtos` y `converter`/`converters` para evitar que una diferencia menor de nomenclatura de paquete rompa la intención de la regla.
+
+Alternativas descartadas:
+
+- Confiar solo en documentación: descartado porque las convenciones se incumplen con facilidad al crear muchas entidades.
+- Añadir ArchUnit ya mismo: descartado por coste y dependencia adicional en una tarea de preparación; puede evaluarse más adelante para reglas semánticas entre módulos.
+- Parsear Java/SQL con parsers completos: descartado por complejidad frente al estado actual del código. El validador estático cubre los patrones acordados y es suficiente para gate inicial.
+
+### Riesgos, limitaciones y deuda técnica
+
+- El validador no es un parser Java completo; usa expresiones regulares orientadas al estilo del repositorio.
+- El parser de migraciones cubre `CREATE TABLE` y `ALTER TABLE`, pero no pretende validar todas las formas posibles de DDL PostgreSQL.
+- No se validan todavía ciclos de dependencias entre módulos ni reglas de arquitectura profundas entre paquetes.
+- No se comprueba todavía que cada DTO tenga conversor asociado uno a uno.
+- No se validan permisos de endpoints porque aún no existen controladores de negocio.
+- Cuando crezcan las fases funcionales, puede añadirse ArchUnit o tests de arquitectura Spring para reforzar dependencias permitidas entre capas.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- Existe un validador ejecutable para las convenciones backend solicitadas.
+- El validador cubre Java, JPA, DAOs, servicios, controladores, DTOs, conversores y migraciones Flyway.
+- El comando está integrado en `npm run verify`.
+- El workflow de GitHub Actions ejecuta el check.
+- El contrato local `ci:check` exige que el workflow mantenga el check.
+- La documentación de arquitectura y CI describe el patrón.
+- `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados.
+- Los cambios se verifican con la batería local antes de commit y push a GitHub.

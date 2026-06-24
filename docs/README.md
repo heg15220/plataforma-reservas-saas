@@ -4,6 +4,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
 
 - `architecture/`: límites del monorepo y decisiones arquitectónicas operativas.
   - `monorepo.md`: estructura y dependencias permitidas.
+  - `backend-conventions.md`: reglas automatizadas de migraciones, JPA, DAOs, servicios, controladores, DTOs y conversores.
   - `cache-and-messaging.md`: contratos de Redis, RabbitMQ, reintentos e idempotencia.
   - `frontend-layout.md`: shells responsive, primitivas de composición y accesibilidad.
   - `internationalization.md`: catálogos `es`/`en`, `next-intl` y reglas de uso frontend.

@@ -18,6 +18,8 @@ RabbitMQ se integra mediante Spring AMQP. La topología base declara los exchang
 
 Los textos configurables que se persistan en base de datos deben usar el contrato `LocalizedText` del paquete `localization` y columnas JSONB `lowerCamelCase` como `"descriptionI18n"`. El patrón completo está documentado en `docs/architecture/localized-data.md`.
 
+Las convenciones de entidades, migraciones, DAOs, servicios, controladores, DTOs y conversores se validan con `npm run backend:conventions:check` desde la raíz. La guía completa está en `docs/architecture/backend-conventions.md`.
+
 ## Ejecución
 
 ```bash

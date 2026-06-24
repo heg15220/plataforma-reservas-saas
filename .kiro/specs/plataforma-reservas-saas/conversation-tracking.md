@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-23
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12` y `0.13`.
-- Siguiente tarea pendiente recomendada: `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
-- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma, validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX, y patrón backend/documental para textos localizados persistidos en JSONB. Continúan pendientes las convenciones backend automatizadas y la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
+- Fecha de última actualización: 2026-06-24
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13` y `0.14`.
+- Siguiente tarea pendiente recomendada: `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
+- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma, validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX, patrón backend/documental para textos localizados persistidos en JSONB y validación automatizada de convenciones backend Java/JPA/DAO/REST/DTO/Flyway. Continúa pendiente la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -952,3 +952,41 @@ Fuente de verdad del avance:
   - El fallback visible se resuelve como locale solicitado, `en` y después `sourceLocale`.
   - `LocalizedText` no traduce automáticamente; valida y resuelve contenido ya aportado.
   - Evidencia de verificación final: se ejecutó `LocalizedTextTests` correctamente; la verificación completa del repositorio se ejecutó tras iniciar Docker Desktop para habilitar Testcontainers.
+
+## Conversación 27 - Convenciones backend automatizadas
+
+- Fecha: 2026-06-24
+- Resumen: se completó la tarea `0.14` incorporando una validación automática de convenciones backend mediante `npm run backend:conventions:check`. El nuevo validador revisa clases Java `UpperCamelCase`, entidades JPA con tablas `UpperCamelCase`, columnas y atributos persistidos `lowerCamelCase`, relaciones JPA declaradas en getters con setter correspondiente, DAOs con consultas propias anotadas con `@Query`, separación de interfaces e implementaciones para servicios/controladores, DTOs REST con sufijos explícitos, conversores y migraciones Flyway con identificadores físicos entrecomillados. El check se integró en `npm run verify`, en GitHub Actions y en el contrato `ci:check`.
+- Archivos modificados:
+  - `.github/workflows/ci.yml`
+  - `README.md`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/continuous-integration.md`
+  - `docs/architecture/backend-conventions.md`
+  - `package.json`
+  - `scripts/validate-ci-workflow.mjs`
+  - `scripts/validate-backend-conventions.mjs`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RNF-001 Rendimiento y escalabilidad`, por reforzar convenciones de persistencia previsibles para futuras consultas.
+  - `RNF-003 Seguridad`, por mantener contratos backend explícitos y revisables.
+- Tareas impactadas:
+  - `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
+  - Prepara `1.1`, `1.2`, `1.3`, `1.4`, `1.6`, `2.3`, `2.5`, `3.1`, `3.2`, `6.1`, `8.1`, `10.1`, `13.1`, `14.1` y cualquier tarea futura que cree entidades, migraciones, DAOs, servicios, controladores, DTOs o conversores.
+- Tareas completadas:
+  - `0.14. Definir y automatizar convenciones backend: tablas UpperCamelCase, clases Java UpperCamelCase, atributos lowerCamelCase, JPA por getters/setters, DAOs con @Query, interfaces separadas de servicios/controladores, DTOs REST y conversores.`
+- Siguiente tarea pendiente recomendada:
+  - `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
+- Decisiones o aclaraciones relevantes:
+  - La validación se implementa como script Node estático para ejecutarse de forma rápida en local y CI sin introducir dependencias nuevas.
+  - Las entidades JPA deben usar `Entity` como sufijo y declarar `@Table(name = "\"UpperCamelCase\"")`.
+  - Las relaciones JPA se validan sobre getters, permitiendo anotaciones intermedias como `@JoinColumn` antes del método `get*`.
+  - Las columnas `@Column` y `@JoinColumn` deben declararse con nombres físicos quoted `lowerCamelCase`.
+  - Los servicios y controladores concretos deben terminar en `ServiceImpl` y `ControllerImpl`, con interfaz hermana `Service` o `Controller`.
+  - Los DAOs propios deben expresar consultas mediante `@Query` para evitar métodos derivados opacos en lógica sensible.
+  - Evidencia de verificación final: `npm run backend:conventions:check`, `npm run ci:check`, `npm run format:check:web`, `git diff --check` y `npm run verify` se ejecutaron correctamente antes de commit y push.
