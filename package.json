@@ -29,6 +29,7 @@
     "backend:conventions:check": "node scripts/validate-backend-conventions.mjs",
     "env:check": "node scripts/validate-environment-examples.mjs",
     "i18n:check": "node scripts/validate-i18n.mjs",
+    "spanish:text:check": "node scripts/validate-spanish-text.mjs",
     "lint": "npm run lint:web && npm run lint:api",
     "lint:api": "mvn -f apps/api/pom.xml checkstyle:check",
     "lint:web": "npm run lint --workspace @reserly/web",
@@ -47,7 +48,7 @@
     "build:web": "npm run build --workspace @reserly/web",
     "build:web:local": "dotenv -e .env.local -- npm run build:web",
     "build:web:test": "cross-env NEXT_PUBLIC_APP_ENV=test NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 RESERLY_API_INTERNAL_URL=http://localhost:8080 npm run build:web",
-    "verify": "npm run ci:check && npm run env:check && npm run i18n:check && npm run backend:conventions:check && npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build:web:test && npm run build:api"
+    "verify": "npm run ci:check && npm run env:check && npm run i18n:check && npm run spanish:text:check && npm run backend:conventions:check && npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build:web:test && npm run build:api"
   },
   "devDependencies": {
     "concurrently": "9.2.3",

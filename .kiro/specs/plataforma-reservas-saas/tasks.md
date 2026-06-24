@@ -33,7 +33,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 0.12. Añadir test o lint que detecte claves de traducción faltantes y textos hardcodeados en UI.
 - [x] 0.13. Definir patrón para textos localizados en base de datos mediante campos `*_i18n` o JSON `{ es, en }`.
 - [x] 0.14. Definir y automatizar convenciones backend: tablas `UpperCamelCase`, clases Java `UpperCamelCase`, atributos `lowerCamelCase`, JPA por getters/setters, DAOs con `@Query`, interfaces separadas de servicios/controladores, DTOs REST y conversores.
-- [ ] 0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.
+- [x] 0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.
 
 ## 3. Fase 1 - Identidad, roles y base SaaS
 

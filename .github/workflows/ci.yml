@@ -62,6 +62,9 @@ jobs:
       - name: Validate i18n contracts
         run: npm run i18n:check
 
+      - name: Validate Spanish text quality
+        run: npm run spanish:text:check
+
       - name: Validate backend conventions
         run: npm run backend:conventions:check
 

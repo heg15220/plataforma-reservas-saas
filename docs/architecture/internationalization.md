@@ -30,6 +30,7 @@ scripts/
 - `messages.test.ts`: prueba de paridad de claves y caracteres críticos.
 - `locale-resolution.test.ts`: prueba de prioridad, sanitización y `Accept-Language`.
 - `scripts/validate-i18n.mjs`: validación CI de catálogos completos y ausencia de texto visible hardcodeado en TSX.
+- `scripts/validate-spanish-text.mjs`: validación CI de UTF-8, mojibake, tildes frecuentes y signos de apertura en textos españoles.
 
 ## Contratos
 
@@ -63,6 +64,7 @@ Cuando un parámetro público seguro aparece en la URL, `proxy.ts` lo normaliza 
 - Los textos visibles de navegación, botones, estados, ayudas, títulos y errores deben salir del catálogo.
 - Las claves deben existir en ambos catálogos antes de integrar.
 - `npm run i18n:check` debe pasar antes de cerrar una tarea que toque UI o catálogos.
+- `npm run spanish:text:check` debe pasar antes de cerrar una tarea que toque textos españoles en catálogos, documentación, plantillas, seeds o migraciones con texto visible.
 - Los textos JSX directos y atributos visibles como `aria-label`, `alt`, `title`, `placeholder`, `label` o `helperText` deben provenir de `useTranslations`, `getTranslations` o props ya localizadas.
 - Las fechas, horas, números y moneda deberán formatearse con el locale efectivo cuando aparezcan flujos funcionales.
 - Los textos configurables guardados en base de datos siguen el patrón de `localized-data.md`; no se resuelven con estos catálogos estáticos.
@@ -72,4 +74,4 @@ Cuando un parámetro público seguro aparece en la URL, `proxy.ts` lo normaliza 
 - No hay selector visual de idioma todavía; el cambio manual puede hacerse con `?locale=es`, `?locale=en`, `?lang=es` o `?lang=en`.
 - No se ha implementado la ruta pública `GET /api/public/i18n/{locale}`.
 - `i18n:check` valida texto visible en archivos `.tsx`; no analiza todavía emails, templates backend, seeds, migraciones o textos dinámicos de base de datos.
-- La validación profunda de mojibake y calidad ortográfica corresponde a `0.15`.
+- `spanish:text:check` no es un corrector ortográfico completo; cubre UTF-8, mojibake, signos de apertura y una lista conservadora de tildes frecuentes. La revisión humana sigue siendo obligatoria para textos finales.

@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-24
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13` y `0.14`.
-- Siguiente tarea pendiente recomendada: `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
-- Observación: la web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma, validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX, patrón backend/documental para textos localizados persistidos en JSONB y validación automatizada de convenciones backend Java/JPA/DAO/REST/DTO/Flyway. Continúa pendiente la validación profunda de codificación/calidad lingüística. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14` y `0.15`.
+- Siguiente tarea pendiente recomendada: `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
+- Observación: la Fase 0 queda completada en `tasks.md`. La web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma, validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX, patrón backend/documental para textos localizados persistidos en JSONB, validación automatizada de convenciones backend Java/JPA/DAO/REST/DTO/Flyway y validación de UTF-8/mojibake/calidad mínima de textos españoles. La siguiente fase recomendada es identidad, roles y base SaaS. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -990,3 +990,40 @@ Fuente de verdad del avance:
   - Los servicios y controladores concretos deben terminar en `ServiceImpl` y `ControllerImpl`, con interfaz hermana `Service` o `Controller`.
   - Los DAOs propios deben expresar consultas mediante `@Query` para evitar métodos derivados opacos en lógica sensible.
   - Evidencia de verificación final: `npm run backend:conventions:check`, `npm run ci:check`, `npm run format:check:web`, `git diff --check` y `npm run verify` se ejecutaron correctamente antes de commit y push.
+
+## Conversación 28 - Validación UTF-8 y calidad de textos españoles
+
+- Fecha: 2026-06-24
+- Resumen: se completó la tarea `0.15` añadiendo `npm run spanish:text:check`, un validador de codificación UTF-8 estricta, mojibake, signos de apertura y tildes frecuentes en textos españoles versionados. El check cubre catálogos, documentación, `.kiro`, plantillas de entorno, recursos backend y futuras rutas de plantillas, seeds o fixtures. Se corrigió el mojibake real detectado en `.env.local.example` y el nuevo check quedó integrado en `npm run verify`, en GitHub Actions y en el contrato `ci:check`.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.github/workflows/ci.yml`
+  - `README.md`
+  - `docs/README.md`
+  - `docs/continuous-integration.md`
+  - `docs/architecture/internationalization.md`
+  - `docs/architecture/spanish-text-quality.md`
+  - `package.json`
+  - `scripts/validate-ci-workflow.mjs`
+  - `scripts/validate-spanish-text.mjs`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
+  - Prepara `1.21`, `2.3`, `3.14`, `8.2` a `8.6`, `10.16`, `14.10`, `16.14`, `19.8` y `19.29`.
+- Tareas completadas:
+  - `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
+- Siguiente tarea pendiente recomendada:
+  - `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
+- Decisiones o aclaraciones relevantes:
+  - La validación se implementa como script Node sin dependencias nuevas para ejecutarse rápido en local y CI.
+  - El script usa `TextDecoder` con `fatal: true` para detectar bytes no UTF-8.
+  - La detección de mojibake ignora ejemplos documentales dentro de código inline Markdown para permitir explicar secuencias inválidas sin romper el check.
+  - La revisión de tildes es conservadora y cubre palabras frecuentes del proyecto; no sustituye revisión humana de textos finales.
+  - La Fase 0 queda completada en `tasks.md`; la siguiente tarea recomendada inicia la Fase 1.
+  - Evidencia de verificación final: `npm run spanish:text:check`, `npm run ci:check`, `npm run format:check:web`, `git diff --check` y `npm run verify` se ejecutaron correctamente antes de commit y push.

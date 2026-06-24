@@ -22,6 +22,7 @@ Las ejecuciones anteriores de la misma rama o pull request se cancelan cuando ap
 - valida el contrato del propio workflow;
 - valida las plantillas de entorno;
 - valida catálogos i18n completos y ausencia de texto visible hardcodeado en UI TSX;
+- valida codificación UTF-8, mojibake, tildes frecuentes y signos de apertura en textos españoles;
 - valida convenciones backend de migraciones, JPA, DAOs, servicios, controladores, DTOs y conversores;
 - comprueba Prettier y Spotless;
 - ejecuta ESLint y Checkstyle.
@@ -72,8 +73,9 @@ La configuración remota de reglas no se versiona en este repositorio. Debe apli
 ```bash
 npm run ci:check
 npm run i18n:check
+npm run spanish:text:check
 npm run backend:conventions:check
 npm run verify
 ```
 
-`ci:check` protege las propiedades estructurales esenciales del workflow. `i18n:check` protege claves completas `es`/`en` y textos visibles de UI sin hardcodear. `backend:conventions:check` protege las reglas de implementación backend antes de que aparezcan más entidades y endpoints. Prettier valida además que el YAML pueda analizarse y mantenga el formato acordado.
+`ci:check` protege las propiedades estructurales esenciales del workflow. `i18n:check` protege claves completas `es`/`en` y textos visibles de UI sin hardcodear. `spanish:text:check` protege UTF-8, mojibake, tildes frecuentes y signos de apertura en textos españoles versionados. `backend:conventions:check` protege las reglas de implementación backend antes de que aparezcan más entidades y endpoints. Prettier valida además que el YAML pueda analizarse y mantenga el formato acordado.

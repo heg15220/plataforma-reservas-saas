@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13` y `0.14`.
-- Siguiente tarea pendiente recomendada: `0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14` y `0.15`.
+- Siguiente tarea pendiente recomendada: `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -3615,3 +3615,234 @@ La tarea se considera completada porque:
 - La documentación de arquitectura y CI describe el patrón.
 - `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados.
 - Los cambios se verifican con la batería local antes de commit y push a GitHub.
+
+## Tarea 0.15 - Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación
+
+- Fecha: 2026-06-24
+- Commit o referencia: cambios preparados para commit y push en `phase/0-preparacion-proyecto`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea convierte `RNF-012` en una verificación automática de repositorio. Hasta esta iteración la calidad lingüística de los textos españoles dependía de pruebas puntuales y revisión manual. El nuevo contrato bloquea archivos que no sean UTF-8 válido, textos con mojibake, preguntas o exclamaciones españolas sin signo de apertura y un conjunto conservador de palabras frecuentes sin tilde o sin `ñ`.
+
+El objetivo no es reemplazar una revisión editorial completa, sino evitar regresiones mecánicas habituales: archivos guardados con codificación incorrecta, secuencias degradadas como `asÃ­ncronos`, pérdida de tildes en catálogos o documentación y omisión de `¿`/`¡` en textos visibles.
+
+### Requisitos y diseño relacionados
+
+- Requisitos:
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-012 Calidad lingüística, acentos y codificación de textos en español`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Diseño:
+  - Módulo `3.14 Internacionalización y localización`.
+  - Reglas de codificación UTF-8 para catálogos, plantillas, seeds, migraciones, fixtures, documentación y respuestas públicas.
+  - Complemento del check `i18n:check`, que valida claves y ausencia de texto visible hardcodeado en UI TSX.
+- Tareas relacionadas:
+  - Cierra `0.15`.
+  - Prepara `1.21`, `2.3`, `3.14`, `8.2` a `8.6`, `10.16`, `14.10`, `16.14`, `19.8` y `19.29`.
+
+### Archivos afectados
+
+- Creados:
+  - `docs/architecture/spanish-text-quality.md`.
+  - `scripts/validate-spanish-text.mjs`.
+- Modificados:
+  - `.env.local.example`.
+  - `.github/workflows/ci.yml`.
+  - `README.md`.
+  - `docs/README.md`.
+  - `docs/continuous-integration.md`.
+  - `docs/architecture/internationalization.md`.
+  - `package.json`.
+  - `scripts/validate-ci-workflow.mjs`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+Se creó `scripts/validate-spanish-text.mjs` como script Node sin dependencias nuevas. La decisión mantiene el patrón usado por `validate-i18n.mjs`, `validate-ci-workflow.mjs` y `validate-backend-conventions.mjs`: validadores rápidos, versionados y ejecutables tanto localmente como en CI.
+
+El script recorre archivos de texto del repositorio excluyendo directorios generados o pesados:
+
+- `.git`;
+- `.next`;
+- `coverage`;
+- `dist`;
+- `node_modules`;
+- `out`;
+- `target`.
+
+También omite `package-lock.json` para evitar coste y ruido sobre contenido generado.
+
+Extensiones y patrones de archivo tratados como texto:
+
+- `.css`;
+- `.env`;
+- `.example`;
+- `.java`;
+- `.json`;
+- `.md`;
+- `.mjs`;
+- `.properties`;
+- `.sql`;
+- `.ts`;
+- `.tsx`;
+- `.txt`;
+- `.yaml`;
+- `.yml`.
+
+Validación UTF-8:
+
+- Cada archivo se lee como `Buffer`.
+- Se decodifica con `TextDecoder("utf-8", { fatal: true })`.
+- Si el decodificador rechaza los bytes, el script registra un error por archivo y no continúa con reglas lingüísticas sobre ese contenido.
+
+Validación de mojibake:
+
+- Se aplican patrones sobre cada línea ya decodificada.
+- Se detectan caracteres típicos de mojibake UTF-8/Windows-1252 o Latin-1, incluyendo secuencias iniciadas por `\u00c3`, `\u00c2`, `\u00e2`, `\u00ef\u00bf\u00bd` y el carácter de sustitución `\ufffd`.
+- Antes de aplicar la regla se eliminan fragmentos Markdown en código inline, por ejemplo `` `\u00c3` ``, para permitir documentar ejemplos de mojibake sin que el documento falle.
+
+Validación lingüística:
+
+- Solo se aplica a rutas con texto español visible o documental:
+  - `.kiro/specs/**/*.md`;
+  - `apps/api/src/main/resources/**/*.{properties,sql,yaml,yml}`;
+  - `apps/web/locales/es.json`;
+  - `docs/**/*.md`;
+  - `README.md`;
+  - `CONTRIBUTING.md`;
+  - `.env.*.example`;
+  - futuras carpetas `email`, `emails`, `mail`, `template`, `templates`, `seed`, `seeds`, `fixture` o `fixtures`.
+- Se omiten bloques Markdown fenced para no analizar ejemplos de código.
+- Se normaliza texto visible eliminando inline code, enlaces, URLs y puntuación técnica.
+- Una línea se considera candidata si contiene caracteres españoles (`á`, `é`, `í`, `ó`, `ú`, `ü`, `ñ`, `¿`, `¡`), marcadores frecuentes del proyecto o palabras funcionales españolas.
+- Si una línea candidata contiene `?` y no contiene `¿`, se reporta error.
+- Si una línea candidata contiene `!` y no contiene `¡`, se reporta error.
+- Se revisa una lista conservadora de palabras frecuentes sin tilde o sin `ñ`, por ejemplo `configuracion`, `validacion`, `catalogo`, `espanol`, `ingles`, `publico`, `movil`, `busqueda`, `verificacion` y `asincrono`.
+
+Corrección aplicada durante la tarea:
+
+- `.env.local.example` contenía mojibake real en el comentario `trabajos asÃ­ncronos`.
+- Se corrigió a `trabajos asíncronos`.
+- La primera ejecución del validador confirmó que `apps/web/locales/es.json` estaba correctamente guardado en UTF-8; la apariencia degradada observada en ciertas salidas de PowerShell era un problema de renderizado de consola, no de bytes del archivo.
+
+Integración en comandos:
+
+- `package.json`: se añadió `spanish:text:check`.
+- `package.json`: `verify` ejecuta ahora `spanish:text:check` después de `i18n:check` y antes de `backend:conventions:check`.
+- `.github/workflows/ci.yml`: el job `Quality` ejecuta `Validate Spanish text quality`.
+- `scripts/validate-ci-workflow.mjs`: el contrato de CI exige `npm run spanish:text:check`.
+
+Documentación operativa:
+
+- `docs/architecture/spanish-text-quality.md` explica alcance, reglas, ejemplos, corrección de fallos y límites.
+- `docs/architecture/internationalization.md` referencia el nuevo script como complemento de `i18n:check`.
+- `docs/continuous-integration.md` documenta el nuevo paso de Quality.
+- `README.md` incluye el comando en la lista de calidad local.
+- `docs/README.md` enlaza la nueva guía.
+
+### Modelo de datos
+
+No se crearon tablas, columnas, índices ni migraciones. El impacto sobre datos es preventivo:
+
+- Las futuras migraciones con texto visible en español serán escaneadas.
+- Los futuros seeds o fixtures con contenido español deberán estar en UTF-8 y sin mojibake.
+- Las futuras plantillas de email en español quedarán cubiertas si se ubican bajo rutas incluidas o se amplían los patrones del script.
+- Los textos visibles persistidos seguirán usando el patrón de `LocalizedText` y JSONB definido en `0.13`, pero su calidad de origen queda reforzada en repositorio.
+
+### Contratos y APIs
+
+No se añadieron endpoints ni contratos REST. Sí se añadió un contrato de calidad ejecutable:
+
+```bash
+npm run spanish:text:check
+```
+
+Contrato de salida:
+
+- Código `0` cuando todos los archivos escaneados son UTF-8 válido y no presentan problemas detectados.
+- Código distinto de `0` cuando se detecta codificación inválida, mojibake, signo de apertura ausente o palabra española frecuente sin tilde.
+- Los errores incluyen ruta y línea cuando aplica.
+
+### Seguridad, privacidad e i18n
+
+Seguridad:
+
+- No se manipulan secretos ni se leen archivos fuera del repositorio.
+- El script no ejecuta contenido de archivos; solo lee bytes y texto.
+
+Privacidad:
+
+- No se procesan datos personales reales. La validación aplica sobre archivos versionados.
+
+i18n:
+
+- El check complementa `i18n:check`.
+- `i18n:check` mantiene paridad de claves `es`/`en` y evita texto TSX hardcodeado.
+- `spanish:text:check` asegura que el español versionado conserva codificación y calidad mínima.
+- La validación ayuda a cumplir `19.29`, que exige conservar tildes, eñes, signos `¿`/`¡`, caracteres especiales y UTF-8 correcto.
+
+### UI y experiencia de usuario
+
+No se modificó UI. El impacto es indirecto: reduce la probabilidad de que una pantalla, email, estado público o documento de usuario muestre texto español roto o sin signos obligatorios cuando se implementen las fases funcionales.
+
+### Tests y verificación
+
+Comandos ejecutados durante la iteración:
+
+- `rg "Ã|Â|â‚|â€|ï¿½|�" ...`: detectó mojibake real en `.env.local.example`.
+- `node` con lectura de codepoints: confirmó que `apps/web/locales/es.json` estaba correctamente codificado y que `.env.local.example` contenía bytes mojibake reales.
+- `node scripts/validate-spanish-text.mjs`: primera pasada usada para ajustar falsos positivos documentales.
+- `npm run spanish:text:check`: correcto tras corregir `.env.local.example` y afinar el script.
+- `npm run ci:check`: correcto tras integrar el nuevo paso en CI.
+- `npx prettier --write ...`: correcto para archivos soportados por Prettier. `.env.local.example` se excluyó porque Prettier no infiere parser para ese tipo de archivo.
+
+Verificación final de cierre:
+
+- `npm run spanish:text:check`: correcto.
+- `npm run ci:check`: correcto.
+- `npm run format:check:web`: correcto.
+- `git diff --check`: correcto.
+- `npm run verify`: correcto.
+
+### Decisiones técnicas
+
+- Usar `TextDecoder` con `fatal: true` en vez de confiar solo en `readFile(..., "utf8")`, porque Node reemplaza bytes inválidos de forma permisiva si no se exige decodificación estricta.
+- Mantener una lista conservadora de palabras sin tilde para evitar falsos positivos masivos y permitir ampliar la cobertura con el uso real del producto.
+- Ignorar código inline Markdown en la detección de mojibake, porque la especificación ya documenta ejemplos de secuencias rotas y esos ejemplos no deben bloquear el repositorio.
+- Ejecutar el check antes de convenciones backend en `verify`, justo después de i18n, porque ambas validaciones forman el bloque de calidad textual y localización.
+- No añadir una dependencia de corrector ortográfico todavía. El repositorio no necesita peso adicional para cumplir la tarea y un diccionario general podría introducir ruido con términos técnicos, nombres propios y claves.
+
+Alternativas descartadas:
+
+- Validar únicamente `apps/web/locales/es.json`: descartado porque la tarea exige cubrir documentación, plantillas, seeds y migraciones con texto visible.
+- Hacer fallar cualquier línea con palabras sin tilde posibles: descartado por alto riesgo de falsos positivos en identificadores, términos técnicos y texto inglés.
+- Corregir automáticamente textos: descartado porque podría alterar ejemplos, código o nombres propios sin revisión humana.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La validación no sustituye una revisión humana de ortografía, tono, claridad y lenguaje legal.
+- No detecta todas las tildes ausentes posibles.
+- No valida coherencia de traducción entre español e inglés; eso sigue dependiendo de revisión y de futuras pruebas de aceptación.
+- Las futuras carpetas de plantillas o seeds deben quedar bajo rutas incluidas por el script; si se crean en ubicaciones nuevas, habrá que ampliar `spanishQualityPathPatterns`.
+- Los textos almacenados en base de datos en entornos vivos deberán validarse en flujos de importación o administración, no solo en repositorio.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- Existe un validador automático para UTF-8, mojibake, signos de apertura y tildes frecuentes.
+- El validador cubre catálogos, documentación, `.kiro`, plantillas de entorno, recursos backend y rutas futuras de plantillas/seeds/fixtures.
+- Se corrigió el mojibake real encontrado en `.env.local.example`.
+- El comando está integrado en `npm run verify`.
+- GitHub Actions ejecuta el nuevo check en el job `Quality`.
+- `ci:check` exige que el workflow conserve el check.
+- La documentación operativa explica reglas, alcance y límites.
+- `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados.
+- La Fase 0 queda marcada como completada y la siguiente tarea recomendada pasa a `1.1`.
