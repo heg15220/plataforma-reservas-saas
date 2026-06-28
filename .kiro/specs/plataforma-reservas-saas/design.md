@@ -478,6 +478,11 @@ Responsabilidades:
 - No usar proveedores comerciales en el MVP cuando la combinación de validación local, VIES, consulta AEAT y revisión documental cubra el caso.
 - Solicitar documentos de respaldo cuando la verificación automática no sea concluyente.
 - Guardar resultado mínimo de verificación.
+- Resolver adaptadores por país y proveedor mediante un registro validado, con prioridad explícita
+  para favorecer fuentes oficiales y gratuitas.
+- Ejecutar cada operación con `request_id` idempotente, timeouts de conexión/lectura, watchdog
+  total y reintentos limitados solo para errores transitorios.
+- Persistir número de intentos y duración total sin guardar cuerpos ni mensajes remotos.
 - Impedir publicación de locales si la verificación no está aprobada.
 - Permitir reintento automático, revalidación manual y revisión administrativa.
 
@@ -646,6 +651,7 @@ Registra intentos de validación remota o manual de una cuenta empresarial. Se m
 
 - `id`
 - `business_account_id`
+- `request_id`
 - `provider`
 - `provider_country`
 - `identifier_checked`
@@ -657,6 +663,8 @@ Registra intentos de validación remota o manual de una cuenta empresarial. Se m
 - `error_code`
 - `error_message_key`
 - `raw_response_hash`
+- `attempt_count`
+- `duration_ms`
 - `created_at`
 
 No debe guardar respuestas completas del proveedor salvo necesidad legal definida. Si se necesita evidencia, se guardará hash, referencia y campos mínimos.
@@ -666,6 +674,9 @@ No debe guardar respuestas completas del proveedor salvo necesidad legal definid
 - índice por cuenta y fecha descendente;
 - índice por estado y fecha;
 - referencia remota única por proveedor cuando exista;
+- `request_id` único para no repetir una operación lógica ya auditada;
+- intentos entre cero y cinco, donde cero representa ausencia de adaptador;
+- duración no negativa en milisegundos;
 - hash de respuesta limitado a SHA-256 hexadecimal;
 - los errores exigen código y clave i18n controlada;
 - la cuenta no puede eliminarse mientras existan comprobaciones auditables.

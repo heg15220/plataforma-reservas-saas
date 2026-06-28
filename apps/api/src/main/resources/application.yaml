@@ -62,3 +62,11 @@ reserly:
     secureCookies: ${RESERLY_SECURE_COOKIES}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
+  business-verification:
+    remote:
+      connectTimeout: ${RESERLY_BUSINESS_VERIFICATION_CONNECT_TIMEOUT:2s}
+      readTimeout: ${RESERLY_BUSINESS_VERIFICATION_READ_TIMEOUT:5s}
+      maxAttempts: ${RESERLY_BUSINESS_VERIFICATION_MAX_ATTEMPTS:3}
+      initialBackoff: ${RESERLY_BUSINESS_VERIFICATION_INITIAL_BACKOFF:250ms}
+      maxBackoff: ${RESERLY_BUSINESS_VERIFICATION_MAX_BACKOFF:2s}
+      backoffMultiplier: ${RESERLY_BUSINESS_VERIFICATION_BACKOFF_MULTIPLIER:2.0}

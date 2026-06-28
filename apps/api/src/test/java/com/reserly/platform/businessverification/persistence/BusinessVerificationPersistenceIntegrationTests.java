@@ -177,6 +177,27 @@ class BusinessVerificationPersistenceIntegrationTests {
   }
 
   @Test
+  void enforcesOneAuditRecordPerRemoteRequest() {
+    UUID ownerId = insertUser("owner@example.com", "venue_business");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
+    UUID requestId = UUID.randomUUID();
+    insertCheck(accountId, requestId, "vies", "verified", VALID_RESPONSE_HASH, "REFERENCE-1", null);
+
+    assertThatThrownBy(
+            () ->
+                insertCheck(
+                    accountId,
+                    requestId,
+                    "vies",
+                    "verified",
+                    VALID_RESPONSE_HASH,
+                    "REFERENCE-2",
+                    null))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("uqBusinessVerificationChecksRequestId");
+  }
+
+  @Test
   void requiresReviewerAndTimestampForFinalDocumentState() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
     UUID reviewerId = insertUser("admin@example.com", "admin");
@@ -292,6 +313,18 @@ class BusinessVerificationPersistenceIntegrationTests {
       String responseHash,
       String remoteReference,
       String errorCode) {
+    return insertCheck(
+        accountId, UUID.randomUUID(), provider, status, responseHash, remoteReference, errorCode);
+  }
+
+  private UUID insertCheck(
+      UUID accountId,
+      UUID requestId,
+      String provider,
+      String status,
+      String responseHash,
+      String remoteReference,
+      String errorCode) {
     Instant checkedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     String errorMessageKey = errorCode == null ? null : "businessVerification.remoteError";
 
@@ -299,6 +332,7 @@ class BusinessVerificationPersistenceIntegrationTests {
         """
         INSERT INTO "BusinessVerificationChecks" (
           "businessAccountId",
+          "requestId",
           "provider",
           "providerCountry",
           "identifierChecked",
@@ -309,11 +343,12 @@ class BusinessVerificationPersistenceIntegrationTests {
           "errorMessageKey",
           "rawResponseHash"
         )
-        VALUES (?, ?, 'ES', 'B12345674', ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, 'ES', 'B12345674', ?, ?, ?, ?, ?, ?)
         RETURNING "id"
         """,
         UUID.class,
         accountId,
+        requestId,
         provider,
         status,
         remoteReference,

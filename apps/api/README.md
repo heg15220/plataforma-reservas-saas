@@ -36,6 +36,12 @@ carácter de control para NIF, NIE y NIF de entidades, incluido el prefijo NIF-I
 sin estrategia se normalizan sin declararse validados. El contrato se documenta en
 `docs/architecture/business-tax-identifiers.md`.
 
+El contexto `businessverification.remote` define el puerto de adaptadores por país/proveedor y un
+gateway con selección determinista, timeouts, watchdog, reintentos acotados e idempotencia estable.
+`businessverification.service` carga la identidad desde PostgreSQL y guarda evidencia mínima sin
+mantener una transacción abierta durante la red ni cambiar todavía el estado de la cuenta. La
+arquitectura se documenta en `docs/architecture/remote-business-verification.md`.
+
 ## Ejecución
 
 ```bash

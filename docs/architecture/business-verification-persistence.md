@@ -2,7 +2,7 @@
 
 ## Alcance
 
-La migración `V4__create_business_verification_tables.sql` crea la base persistente para identidades empresariales, intentos de comprobación y documentos de respaldo. No implementa todavía registro, normalización por país, adaptadores remotos, transiciones de estado, carga de ficheros ni revisión administrativa.
+La migración `V4__create_business_verification_tables.sql` crea la base persistente para identidades empresariales, intentos de comprobación y documentos de respaldo. V5 añade identidad idempotente y telemetría mínima a las ejecuciones remotas. Las transiciones del estado empresarial, carga de ficheros y revisión administrativa siguen perteneciendo a tareas posteriores.
 
 El modelo aplica minimización desde el esquema: conserva datos fiscales necesarios, resultados estructurados y hashes de evidencia, pero no respuestas remotas completas ni binarios documentales.
 
@@ -22,7 +22,7 @@ Datos principales:
 - resumen de revisión manual;
 - timestamps UTC.
 
-La combinación `"taxCountry"` y `"businessTaxIdentifierNormalized"` es única. La normalización efectiva y el dígito de control se implementarán en `1.5`; la restricción ya impide duplicados una vez obtenido el valor canónico.
+La combinación `"taxCountry"` y `"businessTaxIdentifierNormalized"` es única. La normalización y el dígito de control se aplican mediante el módulo documentado en `business-tax-identifiers.md`.
 
 El estado inicial es `unverified`. El catálogo físico prepara `unverified`, `pending_remote_check`, `verified`, `pending_review`, `rejected` y `expired`; el enum y las transiciones autorizadas pertenecen a `1.8`.
 
@@ -33,6 +33,7 @@ Un estado `verified` exige `"businessVerifiedAt"`. Una decisión manual final ex
 Registra evidencia mínima de cada intento:
 
 - cuenta empresarial;
+- `requestId` UUID único de la operación lógica;
 - proveedor y país;
 - identificador comprobado;
 - resultado técnico;
@@ -40,11 +41,16 @@ Registra evidencia mínima de cada intento:
 - referencia remota;
 - fecha;
 - código de error y clave i18n controlada;
-- hash SHA-256 opcional de la respuesta.
+- hash SHA-256 opcional de la respuesta;
+- número de invocaciones remotas;
+- duración total del gateway en milisegundos.
 
 No existe columna para cuerpo JSON, payload o respuesta remota completa. Los estados técnicos son `pending`, `verified`, `invalid`, `inconclusive` y `error`. Un error exige código y clave de mensaje; los demás resultados no pueden conservar metadatos de error.
 
-La combinación proveedor/referencia remota es única cuando existe. Esto prepara idempotencia y evita duplicar un mismo resultado externo.
+`requestId` es único y evita volver a invocar al proveedor cuando la misma operación ya tiene
+evidencia. La combinación proveedor/referencia remota también es única cuando existe. Los intentos
+se limitan a cinco; un valor cero representa un error anterior a la red, como ausencia de adaptador.
+La duración nunca puede ser negativa.
 
 ## `"BusinessVerificationDocuments"`
 
@@ -97,7 +103,9 @@ El paquete `com.reserly.platform.businessverification.persistence` contiene:
 - `BusinessVerificationCheckEntity` y `BusinessVerificationCheckDao`;
 - `BusinessVerificationDocumentEntity` y `BusinessVerificationDocumentDao`.
 
-Las relaciones se declaran sobre getters y usan carga lazy. Los DAOs no incorporan aún consultas de dominio. Las futuras consultas propias deberán usar `@Query`, acotar por propietario/cuenta y hacer explícitos estados, orden y locks.
+Las relaciones se declaran sobre getters y usan carga lazy. `BusinessVerificationCheckDao` consulta
+por `requestId` y por proveedor/referencia para resolver idempotencia y carreras. Las consultas
+propias continúan usando `@Query`.
 
 ## Verificación
 
@@ -111,8 +119,9 @@ Las relaciones se declaran sobre getters y usan carga lazy. Los DAOs no incorpor
 - ausencia de columnas de respuesta remota completa;
 - hash de respuesta válido;
 - metadatos controlados de error;
+- unicidad por request remoto;
 - coherencia de revisión documental;
 - rechazo de URLs públicas;
 - restricción de borrado cuando existe evidencia.
 
-`DatabaseMigrationIntegrationTests` exige Flyway V4 y el arranque valida los tres mapeos nuevos mediante Hibernate.
+`DatabaseMigrationIntegrationTests` exige Flyway V5 y el arranque valida los mapeos mediante Hibernate.

@@ -7,6 +7,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `backend-conventions.md`: reglas automatizadas de migraciones, JPA, DAOs, servicios, controladores, DTOs y conversores.
   - `business-verification-persistence.md`: identidades fiscales, comprobaciones mínimas y documentos privados.
   - `business-tax-identifiers.md`: normalización canónica, estrategias nacionales y validación local española.
+  - `remote-business-verification.md`: contratos de adaptadores, selección, timeouts, reintentos, idempotencia y auditoría remota.
   - `cache-and-messaging.md`: contratos de Redis, RabbitMQ, reintentos e idempotencia.
   - `frontend-layout.md`: shells responsive, primitivas de composición y accesibilidad.
   - `identity-persistence.md`: modelo físico de cuentas, roles, sesiones y tokens de un solo uso.

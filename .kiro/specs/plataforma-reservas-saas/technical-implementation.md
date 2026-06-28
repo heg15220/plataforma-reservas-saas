@@ -5527,3 +5527,584 @@ La tarea se considera completada porque:
 - `npm run verify` es correcto con tests y builds completos;
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
+
+## Tarea 1.6 - Adaptador de verificación empresarial remoto por país y proveedor
+
+- Fecha: 2026-06-28
+- Commit o referencia: cambios preparados en `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea crea una frontera remota ejecutable y extensible para comprobar identidades empresariales
+sin acoplar el dominio a VIES, AEAT ni un proveedor comercial. El incremento debía resolver:
+
+- contrato común para adaptadores por país y proveedor;
+- selección determinista y preferencia explícita;
+- prioridad operativa para fuentes oficiales y gratuitas;
+- timeouts de conexión y lectura;
+- watchdog total independiente del cliente concreto;
+- reintentos limitados solo para fallos transitorios;
+- backoff exponencial configurable;
+- idempotencia estable entre reintentos y ejecuciones repetidas;
+- carga de datos fiscales desde PostgreSQL;
+- auditoría mínima de resultado, error, intentos y duración;
+- ausencia de transacciones de base de datos durante la red;
+- separación estricta entre resultado técnico y estado publicable.
+
+El objetivo no incluye todavía implementar un cliente VIES/AEAT, comparar nombres con política
+España/UE ni transicionar `BusinessAccounts`. Esas responsabilidades corresponden a `1.7` y `1.8`.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007 Registro de local`.
+- `RF-032 Verificación empresarial de cuentas de local`.
+- `RNF-001 Seguridad`.
+- `RNF-002 Privacidad y protección de datos`.
+- `RNF-008 Observabilidad`.
+- `RNF-010 Verificación empresarial remota`.
+- `RNF-011 Convenciones de implementación backend y persistencia`.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- `RB-012 Publicación de cuentas de local`.
+- Diseño `1.2 Componentes`.
+- Diseño `3.15 Verificación empresarial`.
+- Diseño `4.1 business_accounts`.
+- Diseño `4.1 business_verification_checks`.
+- Diseño `8.4 Registro de local con verificación empresarial`.
+- Diseño `8.5 Resultado de verificación empresarial`.
+- Arquitectura `business-tax-identifiers.md`.
+- Arquitectura `business-verification-persistence.md`.
+
+La tarea concreta el requisito de `RNF-010` para adaptadores, timeouts, reintentos, trazabilidad e
+idempotencia. La degradación final del estado agregado a revisión pendiente se deja deliberadamente
+para la máquina de estados de `1.8`.
+
+### Archivos creados, modificados o eliminados
+
+Creados:
+
+- `apps/api/src/main/resources/db/migration/V5__add_remote_verification_execution_metadata.sql`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationAdapter.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationAdapterRegistry.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationException.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayService.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationResult.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationAttemptContext.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationCallExecutor.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationErrorCode.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationExecution.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationExecutionException.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationInvocation.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationProperties.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationSleeper.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationStatus.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/ThreadRemoteVerificationSleeper.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/VirtualThreadRemoteVerificationCallExecutor.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/NoRemoteVerificationAdapterException.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/remote/package-info.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessAccountNotFoundException.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationCommand.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationOutcome.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationService.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteVerificationRequestConflictException.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/service/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/remote/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/service/package-info.java`.
+- `docs/architecture/remote-business-verification.md`.
+
+Modificados:
+
+- `.env.local.example`.
+- `.env.staging.example`.
+- `.env.production.example`.
+- `apps/api/src/main/resources/application.yaml`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckDao.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- `apps/api/README.md`.
+- `docs/README.md`.
+- `docs/configuration.md`.
+- `docs/architecture/business-verification-persistence.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada
+
+Se separan dos capas:
+
+```text
+businessverification.service
+  -> BusinessAccountDao
+  -> RemoteBusinessVerificationGatewayService
+     -> RemoteBusinessVerificationAdapterRegistry
+     -> RemoteBusinessVerificationAdapter
+  -> BusinessVerificationCheckDao
+```
+
+`businessverification.remote` contiene puertos, value objects y mecánica de red independiente del
+caso de uso. `businessverification.service` carga la fuente de verdad y persiste evidencia.
+
+Esta separación evita:
+
+- pasar entidades JPA a adaptadores;
+- permitir que el llamante sustituya país, identificador o razón social;
+- mantener una transacción abierta mientras un proveedor responde;
+- mezclar reintentos de transporte con la máquina de estados;
+- acoplar VIES/AEAT a registro, persistencia o controladores.
+
+No se expone endpoint nuevo. El servicio es interno y quedará disponible para registro, jobs de
+revalidación y acciones administrativas futuras.
+
+### Contrato de adaptador
+
+`RemoteBusinessVerificationAdapter` exige:
+
+- `providerCode()`: código técnico estable en minúsculas;
+- `supportedCountries()`: países alpha-2 en mayúsculas;
+- `priority()`: entero no negativo, menor significa preferido;
+- `verify(request, context)`: comprobación remota sin efectos en entidades locales.
+
+`RemoteBusinessVerificationAdapterRegistry` valida al arrancar:
+
+- patrón de proveedor `[a-z0-9][a-z0-9._-]{1,63}`;
+- lista de países no vacía;
+- países con exactamente dos letras mayúsculas;
+- prioridad no negativa;
+- ausencia de códigos de proveedor duplicados.
+
+La selección automática filtra por país y ordena por prioridad y código. El desempate por código
+garantiza comportamiento reproducible. Si se informa proveedor preferido, debe existir y soportar el
+país; no se aplica fallback silencioso.
+
+Esta política permite asignar prioridad menor a servicios oficiales o gratuitos y mantener
+alternativas comerciales sin consultarlas cuando no proceda.
+
+### Requests, resultados e invariantes
+
+`RemoteBusinessVerificationCommand` solo admite:
+
+- `requestId`;
+- `businessAccountId`;
+- proveedor preferido opcional.
+
+`RemoteBusinessVerificationServiceImpl` carga desde PostgreSQL:
+
+- país fiscal;
+- identificador canónico;
+- razón social;
+- dirección.
+
+Con ello construye `RemoteBusinessVerificationRequest`. El identificador interno de cuenta está
+disponible para correlación local, pero el contrato documenta que no debe enviarse al proveedor.
+
+`RemoteBusinessVerificationResult` contiene exclusivamente:
+
+- `VERIFIED`, `INVALID` o `INCONCLUSIVE`;
+- coincidencia opcional de razón social;
+- coincidencia opcional de dirección;
+- referencia remota opcional de máximo 255 caracteres;
+- instante de comprobación;
+- hash SHA-256 opcional.
+
+No existen campos de cuerpo, mensaje remoto, URL o credencial. El constructor valida longitud y
+formato de hash.
+
+`RemoteBusinessVerificationOutcome` devuelve al futuro orquestador:
+
+- ID del check;
+- request;
+- proveedor;
+- estado técnico persistido;
+- instante;
+- intentos;
+- duración.
+
+No contiene identificador fiscal ni evidencia remota detallada.
+
+### Timeouts y aislamiento de llamadas
+
+`RemoteVerificationProperties` configura:
+
+- conexión: 2 segundos;
+- lectura: 5 segundos;
+- máximo: 3 intentos;
+- backoff inicial: 250 milisegundos;
+- backoff máximo: 2 segundos;
+- multiplicador: 2.
+
+Bean Validation impone:
+
+- timeouts estrictamente positivos;
+- entre 1 y 5 intentos;
+- backoffs no negativos y ordenados;
+- multiplicador entre 1 y 4.
+
+Cada intento recibe `RemoteVerificationAttemptContext` con ambos timeouts. El adaptador concreto debe
+aplicarlos en su cliente de red.
+
+`VirtualThreadRemoteVerificationCallExecutor` añade una segunda barrera: ejecuta la invocación en un
+hilo virtual y aplica un watchdog de `connectTimeout + readTimeout`. Al vencer:
+
+1. cancela el future con interrupción;
+2. clasifica el intento como `PROVIDER_TIMEOUT`;
+3. permite reintento según política;
+4. cierra el executor en el apagado mediante `@PreDestroy`.
+
+Los hilos virtuales aíslan clientes bloqueantes sin consumir el pool web tradicional. El watchdog no
+sustituye los timeouts del cliente; protege frente a adaptadores defectuosos o llamadas que no
+finalizan.
+
+### Política de errores y reintentos
+
+`RemoteVerificationErrorCode` define:
+
+- `NO_ADAPTER_CONFIGURED`;
+- `PROVIDER_TIMEOUT`;
+- `PROVIDER_UNAVAILABLE`;
+- `PROVIDER_RATE_LIMITED`;
+- `PROVIDER_AUTHENTICATION_ERROR`;
+- `PROVIDER_PROTOCOL_ERROR`;
+- `INVALID_PROVIDER_RESPONSE`.
+
+Cada código fija:
+
+- si es reintentable;
+- clave i18n persistible.
+
+Solo timeout, indisponibilidad y rate limit permiten reintento. No se reintentan:
+
+- credenciales incorrectas;
+- protocolo incompatible;
+- respuesta inválida;
+- ausencia de adaptador.
+
+`RemoteBusinessVerificationException` solo recibe un enum. No admite mensaje remoto ni payload. El
+gateway convierte el fallo final en `RemoteVerificationExecutionException` con proveedor, request,
+intentos y duración, sin datos fiscales.
+
+El backoff se calcula tras cada error transitorio:
+
+1. espera actual;
+2. multiplicación;
+3. redondeo a milisegundos;
+4. limitación por máximo.
+
+Una interrupción restaura el flag del hilo y termina como indisponibilidad sin continuar reintentos.
+
+### Idempotencia y concurrencia
+
+El `requestId` UUID identifica una operación lógica. El gateway deriva:
+
+```text
+SHA-256(providerCode + ":" + requestId)
+```
+
+La clave:
+
+- es opaca;
+- tiene 64 caracteres hexadecimales;
+- permanece estable en todos los reintentos;
+- cambia si cambia el proveedor;
+- puede propagarse a un header/campo cuando el tercero lo soporte.
+
+Antes de invocar el gateway, el servicio consulta el check por `requestId`. Si existe, devuelve la
+misma evidencia sin red.
+
+Si el mismo request aparece para otra cuenta, lanza
+`RemoteVerificationRequestConflictException`. La excepción no contiene IDs ni datos fiscales.
+
+Tras la llamada, los índices de request y referencia remota cubren carreras. Si `saveAndFlush`
+detecta una colisión:
+
+1. busca por request;
+2. si no existe y hay referencia, busca por proveedor/referencia;
+3. valida que la evidencia pertenezca a la cuenta esperada;
+4. reutiliza el resultado o propaga la violación inesperada.
+
+Los proveedores de verificación son lecturas, por lo que una carrera no cambia estado remoto. La
+clave estable permite deduplicación adicional cuando el tercero la admita.
+
+### Modelo de datos y migración V5
+
+V5 modifica `"BusinessVerificationChecks"`:
+
+- `"requestId"` UUID;
+- `"attemptCount"` `smallint`, default 1;
+- `"durationMs"` entero, default 0.
+
+Flujo de migración:
+
+1. añade `requestId` nullable para compatibilidad;
+2. añade telemetría con defaults;
+3. rellena filas históricas con su propio `"id"`;
+4. cambia `requestId` a obligatorio;
+5. limita intentos entre 0 y 5;
+6. exige duración no negativa;
+7. crea índice único `"uqBusinessVerificationChecksRequestId"`.
+
+Asignar el ID histórico evita inventar correlaciones y garantiza unicidad. El valor cero de intentos
+representa un fallo anterior a la red, por ejemplo ausencia de adaptador.
+
+La entidad añade getters/setters documentados para los tres campos. El DAO incorpora consultas
+`@Query` por request y por proveedor/referencia.
+
+El índice previo `"uqBusinessVerificationChecksRemoteReference"` se conserva. Ambos protegen
+dimensiones distintas:
+
+- request: operación local;
+- referencia: resultado estable externo.
+
+### Persistencia y flujo de ejecución
+
+`RemoteBusinessVerificationServiceImpl.verify`:
+
+1. consulta evidencia por request;
+2. valida pertenencia si existe;
+3. carga la cuenta empresarial;
+4. construye el request desde datos persistidos;
+5. invoca el gateway fuera de una transacción larga;
+6. convierte éxito o fallo final a entidad de check;
+7. ejecuta `saveAndFlush`;
+8. resuelve carreras por índices;
+9. devuelve outcome mínimo.
+
+En éxito se persiste:
+
+- resultado;
+- coincidencias opcionales;
+- referencia;
+- hash opcional;
+- proveedor/país/identificador;
+- instante;
+- request;
+- intentos y duración.
+
+En error se persiste:
+
+- estado `error`;
+- código enum;
+- clave i18n;
+- proveedor o marcador `unavailable`;
+- request, instante, intentos y duración.
+
+La cuenta no cambia de estado. `BusinessAccounts.businessVerificationStatus` permanece como estaba.
+
+### Configuración por entornos
+
+Se añaden a local, staging y producción:
+
+- `RESERLY_BUSINESS_VERIFICATION_CONNECT_TIMEOUT`;
+- `RESERLY_BUSINESS_VERIFICATION_READ_TIMEOUT`;
+- `RESERLY_BUSINESS_VERIFICATION_MAX_ATTEMPTS`;
+- `RESERLY_BUSINESS_VERIFICATION_INITIAL_BACKOFF`;
+- `RESERLY_BUSINESS_VERIFICATION_MAX_BACKOFF`;
+- `RESERLY_BUSINESS_VERIFICATION_BACKOFF_MULTIPLIER`.
+
+Las plantillas contienen valores no secretos idénticos. `application.yaml` proporciona defaults.
+
+No se añaden:
+
+- URLs de proveedor;
+- certificados;
+- claves privadas;
+- tokens;
+- credenciales.
+
+Esos valores solo aparecerán con el cliente concreto y deberán inyectarse desde secretos.
+
+### Seguridad, privacidad y permisos
+
+Seguridad:
+
+- datos fiscales cargados server-side;
+- proveedor explícito validado;
+- descriptor de adaptador validado al arranque;
+- timeouts en dos niveles;
+- reintentos acotados;
+- límite máximo coherente con el esquema;
+- interrupción respetada;
+- request único;
+- pertenencia de request comprobada;
+- sin fallback silencioso.
+
+Privacidad:
+
+- sin respuestas completas;
+- sin mensajes remotos;
+- sin identificadores en excepciones;
+- sin logs añadidos con payload;
+- sin credenciales en configuración versionada;
+- hash opcional en vez de cuerpo;
+- outcome sin datos fiscales.
+
+Permisos:
+
+- no existe endpoint público nuevo;
+- el servicio es interno;
+- no concede capacidad de publicación;
+- no modifica roles;
+- no aprueba automáticamente una empresa.
+
+Internacionalización:
+
+- errores persistidos mediante claves estables;
+- no se crean textos visibles;
+- los catálogos UI se incorporarán en `1.21`;
+- todos los comentarios y documentos pasan UTF-8/español.
+
+### Observabilidad y auditoría
+
+La evidencia persistida permite medir posteriormente:
+
+- proveedor;
+- país;
+- estado técnico;
+- número de intentos;
+- duración;
+- código de error;
+- fecha;
+- request correlacionable.
+
+No se añaden logs ni métricas con identificador fiscal. `requestId` puede utilizarse como correlación
+interna sin exponer el valor empresarial.
+
+El gateway mide tiempo monotónico con `System.nanoTime` y satura a `Integer.MAX_VALUE` para respetar
+la columna. La fecha de un resultado pertenece al adaptador; la fecha de error se genera en backend.
+
+### Tests añadidos o modificados
+
+`RemoteBusinessVerificationGatewayTests` contiene seis pruebas:
+
+- selección automática por prioridad;
+- proveedor explícito;
+- reintentos de indisponibilidad;
+- misma clave idempotente entre intentos;
+- secuencia de intentos y backoff exponencial;
+- ausencia de retry en autenticación;
+- error controlado sin adaptador;
+- rechazo de códigos duplicados;
+- watchdog real con timeout.
+
+Varias afirmaciones se agrupan en un mismo método, por lo que seis ejecuciones cubren más de seis
+invariantes.
+
+`RemoteBusinessVerificationServiceIntegrationTests` contiene tres pruebas sobre PostgreSQL:
+
+- indisponibilidad transitoria, segundo intento correcto y evidencia;
+- repetición del mismo request sin nueva invocación;
+- ausencia de adaptador persistida como error controlado;
+- intento cero cuando no hubo red;
+- rechazo de request reutilizado para otra cuenta.
+
+`BusinessVerificationPersistenceIntegrationTests` añade:
+
+- unicidad física por `requestId`;
+- fixtures compatibles con V5.
+
+`DatabaseMigrationIntegrationTests` exige Flyway V5.
+
+### Comandos y evidencia de verificación
+
+Ejecutados:
+
+- `mvn -f apps/api/pom.xml spotless:apply`.
+- `mvn -f apps/api/pom.xml -Dtest=RemoteBusinessVerificationGatewayTests test`.
+- Resultado: 6 tests unitarios, 0 fallos y 0 errores.
+- Primera suite dirigida de migración/persistencia/servicio: V5 e implementación correctas; dos
+  aserciones fallaron por comparar subtipos numéricos JDBC distintos con el mismo valor.
+- Se corrigió la comparación mediante `Number.intValue`.
+- Suite dirigida: 20 tests, 0 fallos y 0 errores.
+- El validador de convenciones detectó el sufijo inicial `GatewayImpl`.
+- Se renombró a interfaz `RemoteBusinessVerificationGatewayService` e implementación
+  `RemoteBusinessVerificationGatewayServiceImpl`.
+- `npm run backend:conventions:check`: correcto.
+- `npm run env:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- La primera prueba de conflicto reutilizó una identidad fiscal duplicada y PostgreSQL la bloqueó
+  antes del caso objetivo; se aisló el fixture con otro país.
+- Suite final de gateway/servicio: 9 tests, 0 fallos y 0 errores.
+- `git diff --check`: correcto antes del cierre documental.
+- `npm run verify`: correcto en 668 segundos.
+- Suite completa: 22 tests frontend y 75 backend, 0 fallos y 0 errores.
+- Flyway aplicó V1-V5 sobre PostgreSQL 17/PostGIS.
+- Redis 8 y RabbitMQ 4 se verificaron con Testcontainers.
+- Next.js y Spring Boot compilaron correctamente.
+- El JAR backend y el build web de prueba se generaron.
+
+### Riesgos, limitaciones y deuda técnica
+
+- No existe adaptador real todavía; corresponde a `1.7`.
+- La prioridad expresa orden, pero la política concreta España/UE debe documentarse al añadir VIES y
+  AEAT.
+- Un proveedor sin soporte de idempotency key puede recibir dos lecturas concurrentes antes de que
+  gane el índice local; la operación remota es de consulta, no mutación.
+- El watchdog cancela con interrupción, pero un cliente que ignore la interrupción puede terminar
+  después; el adaptador debe aplicar además timeouts nativos.
+- No se interpreta `Retry-After`; un adaptador futuro deberá convertirlo a una política segura sin
+  permitir esperas no acotadas.
+- No hay circuit breaker; se evaluará con telemetría real y no bloquea el contrato MVP.
+- No hay métrica Micrometer específica todavía.
+- No existe job de revalidación.
+- No existe endpoint administrativo de reintento.
+- No se compara razón social ni dirección; corresponde a `1.7`.
+- No se actualiza la cuenta ni se solicita documento; corresponde a `1.8` y `1.9`.
+- No se publican claves i18n visibles; corresponde a `1.21`.
+- La recuperación de una carrera depende de una nueva consulta tras rollback del método repository;
+  se mantiene el servicio sin transacción envolvente para que esa frontera sea válida.
+- La advertencia Mockito/Byte Buddy sigue siendo deuda del entorno de pruebas.
+
+### Decisiones técnicas
+
+- Puerto de adaptador independiente de protocolo.
+- Registro Spring validado al arranque.
+- Selección por país, prioridad y código.
+- Preferencia explícita sin fallback.
+- Proveedor oficial/gratuito representable con prioridad menor.
+- Datos fiscales cargados desde PostgreSQL.
+- Timeouts configurables y validados.
+- Watchdog sobre hilos virtuales.
+- Máximo de cinco intentos alineado con SQL.
+- Backoff abstraído para pruebas.
+- Taxonomía cerrada de errores.
+- Retry solo para errores transitorios.
+- SHA-256 opaco como clave idempotente externa.
+- UUID único como request local.
+- Request histórico igual al ID de fila durante backfill.
+- Sin transacción larga alrededor de red.
+- Resultado técnico separado de estado empresarial.
+- Errores persistidos con código y clave, no mensaje.
+- Sin endpoint ni proveedor concreto en esta tarea.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- existe un contrato de adaptador por país/proveedor;
+- la selección es determinista y validada;
+- timeouts y watchdog están implementados;
+- reintentos y backoff están acotados;
+- la idempotencia se mantiene en gateway y PostgreSQL;
+- se rechaza reutilizar requests entre cuentas;
+- los datos fiscales proceden de la fuente de verdad;
+- la evidencia se minimiza y audita;
+- V5 migra datos históricos de forma compatible;
+- no se mantiene una transacción durante la red;
+- no se confunde resultado remoto con aprobación;
+- código, diseño, configuración, documentación, tracking y documento técnico están actualizados;
+- las pruebas dirigidas pasan;
+- `npm run verify` pasa con 22 tests frontend y 75 backend;
+- el diff final se revisa;
+- el commit y push dejan la rama de Fase 1 alineada con remoto.

@@ -24,6 +24,7 @@ public class BusinessVerificationCheckEntity {
 
   private UUID id;
   private BusinessAccountEntity businessAccount;
+  private UUID requestId;
   private String provider;
   private String providerCountry;
   private String identifierChecked;
@@ -35,6 +36,8 @@ public class BusinessVerificationCheckEntity {
   private String errorCode;
   private String errorMessageKey;
   private String rawResponseHash;
+  private short attemptCount;
+  private int durationMs;
   private Instant createdAt;
 
   /** Identificador opaco del intento. */
@@ -58,6 +61,16 @@ public class BusinessVerificationCheckEntity {
 
   public void setBusinessAccount(BusinessAccountEntity businessAccount) {
     this.businessAccount = businessAccount;
+  }
+
+  /** Identidad idempotente de la operación lógica, compartida por todos sus reintentos de red. */
+  @Column(name = "\"requestId\"", nullable = false)
+  public UUID getRequestId() {
+    return requestId;
+  }
+
+  public void setRequestId(UUID requestId) {
+    this.requestId = requestId;
   }
 
   /** Adaptador o proveedor utilizado, por ejemplo VIES, AEAT o revisión manual. */
@@ -168,6 +181,26 @@ public class BusinessVerificationCheckEntity {
 
   public void setRawResponseHash(String rawResponseHash) {
     this.rawResponseHash = rawResponseHash;
+  }
+
+  /** Número total de invocaciones efectuadas al adaptador; puede ser cero si no había proveedor. */
+  @Column(name = "\"attemptCount\"", nullable = false)
+  public short getAttemptCount() {
+    return attemptCount;
+  }
+
+  public void setAttemptCount(short attemptCount) {
+    this.attemptCount = attemptCount;
+  }
+
+  /** Duración acumulada del gateway remoto en milisegundos, sin incluir persistencia. */
+  @Column(name = "\"durationMs\"", nullable = false)
+  public int getDurationMs() {
+    return durationMs;
+  }
+
+  public void setDurationMs(int durationMs) {
+    this.durationMs = durationMs;
   }
 
   /** Instante UTC de persistencia del registro. */

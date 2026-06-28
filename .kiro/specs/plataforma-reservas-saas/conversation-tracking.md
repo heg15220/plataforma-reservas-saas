@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4` y `1.5`.
-- Siguiente tarea pendiente recomendada: `1.6. Implementar adaptador de verificación empresarial remoto por país/proveedor.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. El registro obtiene una identidad fiscal canónica antes de consultar unicidad; España valida localmente NIF, NIE, NIF especiales y NIF de entidad, mientras que otros países se normalizan sin declarar garantías fiscales que aún no existen.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5` y `1.6`.
+- Siguiente tarea pendiente recomendada: `1.7. Implementar validación inicial para España/UE usando NIF/CIF/NIF-IVA/VAT ID según corresponda.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Existe una frontera remota por adaptadores con selección por país/proveedor, timeouts, watchdog, reintentos controlados, idempotencia y auditoría mínima. Los clientes concretos VIES/AEAT y la política España/UE comienzan en `1.7`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1286,3 +1286,86 @@ Fuente de verdad del avance:
   - Los errores no contienen el identificador aportado y el endpoint conserva el contrato genérico `400 REGISTRATION_INVALID`.
   - Se corrigieron fixtures y ejemplos previos que usaban `B12345678`, cuyo control es inválido, por `B12345674`.
   - Evidencia de cierre: 22 pruebas unitarias específicas y 6 de integración de registro correctas; `npm run verify` correcto con 22 tests frontend y 65 backend, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
+
+## Conversación 34 - Infraestructura de adaptadores remotos por país y proveedor
+
+- Fecha: 2026-06-28
+- Resumen: se completó `1.6` implementando el puerto de adaptadores remotos, un registro validado con selección determinista por país/proveedor, un gateway con timeouts entregados al adaptador, watchdog total sobre hilos virtuales, backoff exponencial y reintentos solo para errores transitorios. El caso de uso interno carga los datos fiscales desde PostgreSQL, evita mantener transacciones abiertas durante la red y persiste evidencia mínima. Flyway V5 añade `requestId`, número de intentos y duración; repetir el mismo request reutiliza el check y usarlo para otra cuenta se rechaza. No se conecta aún a VIES/AEAT ni se cambia el estado empresarial.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/db/migration/V5__add_remote_verification_execution_metadata.sql`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationAdapter.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationAdapterRegistry.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationRequest.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationResult.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationAttemptContext.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationCallExecutor.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationErrorCode.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationExecution.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationExecutionException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationInvocation.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationProperties.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationSleeper.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteVerificationStatus.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/ThreadRemoteVerificationSleeper.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/VirtualThreadRemoteVerificationCallExecutor.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/NoRemoteVerificationAdapterException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessAccountNotFoundException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationCommand.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationOutcome.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteVerificationRequestConflictException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/configuration.md`
+  - `docs/architecture/business-verification-persistence.md`
+  - `docs/architecture/remote-business-verification.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.6. Implementar adaptador de verificación empresarial remoto por país/proveedor.`
+  - Prepara `1.7`, `1.8`, `1.9`, `1.11`, `1.22`, `2.9` y `14.6` a `14.8`.
+- Tareas completadas:
+  - `1.6. Implementar adaptador de verificación empresarial remoto por país/proveedor.`
+- Siguiente tarea pendiente recomendada:
+  - `1.7. Implementar validación inicial para España/UE usando NIF/CIF/NIF-IVA/VAT ID según corresponda.`
+- Decisiones o aclaraciones relevantes:
+  - La tarea implementa la infraestructura ejecutable y el contrato de adaptadores; VIES, AEAT y la selección España/UE concreta permanecen en `1.7`.
+  - Los adaptadores declaran código, países y prioridad. La selección automática favorece la prioridad menor y una preferencia explícita nunca cae silenciosamente a otro proveedor.
+  - Cada intento recibe timeouts de conexión y lectura; un watchdog adicional limita el total a la suma de ambos.
+  - Solo timeout, indisponibilidad y rate limit se reintentan. Autenticación, protocolo, respuesta inválida y ausencia de adaptador terminan inmediatamente.
+  - La clave idempotente es SHA-256 de proveedor y `requestId`, estable entre reintentos y opaca para el tercero.
+  - V5 hace `requestId` único, limita intentos a cinco y exige duración no negativa. Filas históricas reciben su propio ID como request.
+  - El servicio carga país, identificador, razón social y dirección desde PostgreSQL; el comando no permite sustituir datos fiscales.
+  - No se mantiene una transacción abierta durante la red y no se actualiza aún `businessVerificationStatus`.
+  - No se guardan cuerpos, mensajes remotos, URLs, credenciales ni excepciones; solo códigos y claves i18n controladas.
+  - Evidencia de cierre: pruebas dirigidas con gateway, migración, persistencia y servicio correctas; `npm run verify` correcto con 22 tests frontend y 75 backend, Flyway V5, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
