@@ -2,7 +2,7 @@
 
 ## Alcance
 
-La migración `V4__create_business_verification_tables.sql` crea la base persistente para identidades empresariales, intentos de comprobación y documentos de respaldo. V5 añade identidad idempotente y telemetría mínima a las ejecuciones remotas. Las transiciones del estado empresarial, carga de ficheros y revisión administrativa siguen perteneciendo a tareas posteriores.
+La migración `V4__create_business_verification_tables.sql` crea la base persistente para identidades empresariales, intentos de comprobación y documentos de respaldo. V5 añade identidad idempotente y telemetría mínima a las ejecuciones remotas. V6 incorpora correlación de la operación activa y caducidad de aprobaciones. La carga de ficheros y revisión administrativa siguen perteneciendo a tareas posteriores.
 
 El modelo aplica minimización desde el esquema: conserva datos fiscales necesarios, resultados estructurados y hashes de evidencia, pero no respuestas remotas completas ni binarios documentales.
 
@@ -24,9 +24,22 @@ Datos principales:
 
 La combinación `"taxCountry"` y `"businessTaxIdentifierNormalized"` es única. La normalización y el dígito de control se aplican mediante el módulo documentado en `business-tax-identifiers.md`.
 
-El estado inicial es `unverified`. El catálogo físico prepara `unverified`, `pending_remote_check`, `verified`, `pending_review`, `rejected` y `expired`; el enum y las transiciones autorizadas pertenecen a `1.8`.
+El estado inicial es `unverified`. `BusinessVerificationStatus` implementa el catálogo cerrado `unverified`, `pending_remote_check`, `verified`, `pending_review`, `rejected` y `expired`.
 
-Un estado `verified` exige `"businessVerifiedAt"`. Una decisión manual final exige revisor y fecha. Los revisores y propietarios no pueden eliminarse mientras una referencia empresarial auditada dependa de ellos.
+V6 añade:
+
+- `"activeVerificationRequestId"`: UUID obligatorio solo durante `pending_remote_check`;
+- `"businessVerificationExpiresAt"`: fin de vigencia de una aprobación;
+- restricción que exige inicio y fin de vigencia para `verified`;
+- restricción que impide estado remoto pendiente sin request propietario;
+- índice parcial por caducidad para cuentas verificadas.
+
+Un estado `verified` exige una ventana positiva entre `"businessVerifiedAt"` y
+`"businessVerificationExpiresAt"`. Las filas verificadas anteriores a V6 reciben una vigencia de
+365 días desde su aprobación. `expired` conserva esa ventana como evidencia histórica, pero deja de
+ser una aprobación vigente.
+
+Una decisión manual final exige revisor y fecha. Los revisores y propietarios no pueden eliminarse mientras una referencia empresarial auditada dependa de ellos.
 
 ## `"BusinessVerificationChecks"`
 
@@ -124,4 +137,4 @@ propias continúan usando `@Query`.
 - rechazo de URLs públicas;
 - restricción de borrado cuando existe evidencia.
 
-`DatabaseMigrationIntegrationTests` exige Flyway V5 y el arranque valida los mapeos mediante Hibernate.
+`DatabaseMigrationIntegrationTests` exige Flyway V6 y el arranque valida los mapeos mediante Hibernate.

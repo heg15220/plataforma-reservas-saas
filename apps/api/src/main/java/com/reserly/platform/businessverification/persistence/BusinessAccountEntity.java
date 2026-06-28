@@ -33,7 +33,9 @@ public class BusinessAccountEntity {
   private String businessTaxIdentifierNormalized;
   private String businessAddress;
   private String businessVerificationStatus;
+  private UUID activeVerificationRequestId;
   private Instant businessVerifiedAt;
+  private Instant businessVerificationExpiresAt;
   private String businessVerificationProvider;
   private String businessVerificationReference;
   private String manualReviewStatus;
@@ -115,7 +117,7 @@ public class BusinessAccountEntity {
     this.businessAddress = businessAddress;
   }
 
-  /** Estado resumido de verificación; sus transiciones se implementan en la tarea 1.8. */
+  /** Estado resumido de verificación, modificado solo por la máquina transaccional. */
   @Column(name = "\"businessVerificationStatus\"", nullable = false, length = 32)
   public String getBusinessVerificationStatus() {
     return businessVerificationStatus;
@@ -123,6 +125,16 @@ public class BusinessAccountEntity {
 
   public void setBusinessVerificationStatus(String businessVerificationStatus) {
     this.businessVerificationStatus = businessVerificationStatus;
+  }
+
+  /** Request que posee una transición remota activa; nulo fuera del estado pendiente remoto. */
+  @Column(name = "\"activeVerificationRequestId\"")
+  public UUID getActiveVerificationRequestId() {
+    return activeVerificationRequestId;
+  }
+
+  public void setActiveVerificationRequestId(UUID activeVerificationRequestId) {
+    this.activeVerificationRequestId = activeVerificationRequestId;
   }
 
   /** Instante de la aprobación vigente, obligatorio cuando el estado es verificado. */
@@ -133,6 +145,16 @@ public class BusinessAccountEntity {
 
   public void setBusinessVerifiedAt(Instant businessVerifiedAt) {
     this.businessVerifiedAt = businessVerifiedAt;
+  }
+
+  /** Fin de vigencia de la última aprobación automática. */
+  @Column(name = "\"businessVerificationExpiresAt\"")
+  public Instant getBusinessVerificationExpiresAt() {
+    return businessVerificationExpiresAt;
+  }
+
+  public void setBusinessVerificationExpiresAt(Instant businessVerificationExpiresAt) {
+    this.businessVerificationExpiresAt = businessVerificationExpiresAt;
   }
 
   /** Proveedor que originó el resumen de verificación vigente. */

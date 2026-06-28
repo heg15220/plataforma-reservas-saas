@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5`, `1.6` y `1.7`.
-- Siguiente tarea pendiente recomendada: `1.8. Implementar estados pending_remote_check, verified, pending_review, rejected y expired.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. VIES ya valida NIF-IVA/VAT ID de la UE con un cliente SOAP endurecido; los NIF españoles nacionales quedan inconclusos y sin red para revisión censal AEAT. La traducción de estos resultados técnicos a estados empresariales corresponde a `1.8`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5`, `1.6`, `1.7` y `1.8`.
+- Siguiente tarea pendiente recomendada: `1.9. Implementar solicitud de documento de respaldo cuando la verificación remota no sea concluyente.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. La máquina de estados ya correlaciona la operación activa, aplica evidencia VIES/AEAT, evita solapamientos y caduca aprobaciones. Las cuentas `pending_review` todavía no generan una solicitud documental; ese flujo comienza en `1.9`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1440,3 +1440,67 @@ Fuente de verdad del avance:
   - No se envía una cabecera de idempotencia inventada: VIES no la documenta y la protección local por `requestId` permanece activa.
   - `1.7` no actualiza `businessVerificationStatus`; esa política se implementará en `1.8`.
   - Evidencia de cierre: pruebas focalizadas correctas y `npm run verify` correcto con 22 tests frontend y 88 backend, Flyway V1–V5, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
+
+## Conversación 36 - Máquina de estados de verificación empresarial
+
+- Fecha: 2026-06-28
+- Resumen: se completó `1.8` implementando una máquina de estados transaccional para la identidad empresarial. Cada comprobación reserva la cuenta con `pending_remote_check` y un `requestId` activo, ejecuta la red fuera de transacción y aplica únicamente evidencia correlacionada. Una confirmación oficial coherente produce `verified`; invalidez produce `rejected`; inconclusión, error o discrepancia producen `pending_review`. V6 añade caducidad persistida y un índice para convertir aprobaciones vencidas en `expired`.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/resources/db/migration/V6__add_business_verification_state_metadata.sql`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStatus.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStateProperties.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStateSnapshot.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStateService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStateServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationInProgressException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStateConflictException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationOutcome.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceImpl.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/configuration.md`
+  - `docs/architecture/business-verification-persistence.md`
+  - `docs/architecture/remote-business-verification.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.8. Implementar estados pending_remote_check, verified, pending_review, rejected y expired.`
+  - Prepara `1.9`, `1.11`, `1.21`, `1.22`, `2.9` y `14.6` a `14.8`.
+- Tareas completadas:
+  - `1.8. Implementar estados pending_remote_check, verified, pending_review, rejected y expired.`
+- Siguiente tarea pendiente recomendada:
+  - `1.9. Implementar solicitud de documento de respaldo cuando la verificación remota no sea concluyente.`
+- Decisiones o aclaraciones relevantes:
+  - `BusinessVerificationStatus` es el catálogo de dominio; los valores persistidos permanecen en minúsculas.
+  - `activeVerificationRequestId` es obligatorio únicamente en `pending_remote_check`. Cuenta, request activo, request del check y estado deben coincidir para cerrar la operación.
+  - Un lock pesimista serializa cada transición. `REQUIRES_NEW` limita la transacción al inicio o al cierre; VIES nunca se ejecuta con una transacción o lock abiertos.
+  - Una segunda comprobación mientras existe otra activa falla de forma controlada y sin exponer IDs.
+  - Para verificar se exige `matchedLegalName = true`; si existe dirección aportada también se exige `matchedAddress = true`. Ausencia o discrepancia deriva a revisión.
+  - `invalid` se traduce a `rejected`; `inconclusive` y `error` se traducen a `pending_review`.
+  - La vigencia automática predeterminada es 365 días y se valida entre 1 y 730 días.
+  - V6 migra aprobaciones históricas a 365 días desde `businessVerifiedAt`, exige una ventana positiva y crea un índice parcial de caducidad.
+  - `expireDueVerifications` realiza un update en bloque sin cargar identificadores fiscales. La futura planificación periódica queda como integración operativa posterior.
+  - Los tests de estado confirman commits reales y limpian por IDs creados para no contaminar otras clases.
+  - Evidencia de cierre: pruebas focalizadas conjuntas correctas con 28 tests; `npm run verify` correcto con 22 tests frontend y 93 backend, Flyway V1–V6, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
+  - Tras la suite integral se añadió una regresión para limpiar actor y fecha de una decisión manual anterior al revalidar; las 9 pruebas focalizadas del servicio pasaron. No se repitió `npm run verify` porque la ejecución adicional no fue autorizada.

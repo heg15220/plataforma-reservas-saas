@@ -11,10 +11,14 @@ import com.reserly.platform.businessverification.remote.RemoteVerificationAttemp
 import com.reserly.platform.businessverification.remote.RemoteVerificationErrorCode;
 import com.reserly.platform.businessverification.remote.RemoteVerificationStatus;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +28,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Verifica ejecución, reintento, auditoría e idempotencia sobre PostgreSQL real.
@@ -37,7 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
       "reserly.business-verification.remote.max-backoff=0ms"
     })
 @ActiveProfiles("test")
-@Transactional
 @Import(RemoteBusinessVerificationServiceIntegrationTests.AdapterConfiguration.class)
 class RemoteBusinessVerificationServiceIntegrationTests {
 
@@ -49,9 +51,42 @@ class RemoteBusinessVerificationServiceIntegrationTests {
 
   @Autowired private DeterministicRemoteAdapter adapter;
 
+  @Autowired private BusinessVerificationStateService verificationStateService;
+
+  private final List<UUID> createdAccountIds = new ArrayList<>();
+  private final List<UUID> createdOwnerIds = new ArrayList<>();
+
   @BeforeEach
   void resetAdapter() {
     adapter.reset();
+  }
+
+  @AfterEach
+  void removeCommittedFixtures() {
+    for (UUID accountId : createdAccountIds) {
+      jdbcTemplate.update(
+          """
+          DELETE FROM "BusinessVerificationChecks"
+          WHERE "businessAccountId" = ?
+          """,
+          accountId);
+      jdbcTemplate.update(
+          """
+          DELETE FROM "BusinessAccounts"
+          WHERE "id" = ?
+          """,
+          accountId);
+    }
+    for (UUID ownerId : createdOwnerIds) {
+      jdbcTemplate.update(
+          """
+          DELETE FROM "Users"
+          WHERE "id" = ?
+          """,
+          ownerId);
+    }
+    createdAccountIds.clear();
+    createdOwnerIds.clear();
   }
 
   @Test
@@ -70,6 +105,9 @@ class RemoteBusinessVerificationServiceIntegrationTests {
     assertThat(first.technicalStatus()).isEqualTo("verified");
     assertThat(first.providerCode()).isEqualTo("official-test");
     assertThat(first.attemptCount()).isEqualTo((short) 2);
+    assertThat(first.businessVerificationStatus()).isEqualTo("verified");
+    assertThat(first.businessVerificationExpiresAt())
+        .isEqualTo(Instant.parse("2027-06-28T12:00:00Z"));
     assertThat(repeated.verificationCheckId()).isEqualTo(first.verificationCheckId());
     assertThat(adapter.invocations).hasValue(2);
 
@@ -96,13 +134,13 @@ class RemoteBusinessVerificationServiceIntegrationTests {
         .containsEntry("requestId", requestId)
         .containsEntry("provider", "official-test")
         .containsEntry("providerCountry", "ZZ")
-        .containsEntry("identifierChecked", "TEST123")
         .containsEntry("status", "verified")
-        .containsEntry("remoteReference", "TEST-REMOTE-REFERENCE")
+        .containsEntry("remoteReference", "TEST-" + requestId)
         .containsEntry("errorCode", null)
         .containsEntry("errorMessageKey", null);
     assertThat(((Number) evidence.get("attemptCount")).intValue()).isEqualTo(2);
     assertThat((Integer) evidence.get("durationMs")).isGreaterThanOrEqualTo(0);
+    assertThat((String) evidence.get("identifierChecked")).startsWith("TEST");
   }
 
   @Test
@@ -117,6 +155,7 @@ class RemoteBusinessVerificationServiceIntegrationTests {
     assertThat(outcome.technicalStatus()).isEqualTo("error");
     assertThat(outcome.providerCode()).isEqualTo("unavailable");
     assertThat(outcome.attemptCount()).isZero();
+    assertThat(outcome.businessVerificationStatus()).isEqualTo("pending_review");
     assertThat(adapter.invocations).hasValue(0);
 
     Map<String, Object> evidence =
@@ -162,29 +201,122 @@ class RemoteBusinessVerificationServiceIntegrationTests {
     assertThat(outcome.providerCode()).isEqualTo("aeat-census-manual");
     assertThat(outcome.technicalStatus()).isEqualTo("inconclusive");
     assertThat(outcome.attemptCount()).isEqualTo((short) 1);
+    assertThat(outcome.businessVerificationStatus()).isEqualTo("pending_review");
     assertThat(adapter.invocations).hasValue(0);
   }
 
+  @Test
+  void rejectsOfficiallyInvalidIdentifier() {
+    UUID accountId = insertBusinessAccount("ZZ");
+    adapter.resultStatus = RemoteVerificationStatus.INVALID;
+
+    RemoteBusinessVerificationOutcome outcome =
+        verificationService.verify(
+            new RemoteBusinessVerificationCommand(UUID.randomUUID(), accountId, null));
+
+    assertThat(outcome.technicalStatus()).isEqualTo("invalid");
+    assertThat(outcome.businessVerificationStatus()).isEqualTo("rejected");
+    assertThat(outcome.businessVerificationExpiresAt()).isNull();
+  }
+
+  @Test
+  void sendsVerifiedNameMismatchToManualReview() {
+    UUID accountId = insertBusinessAccount("ZZ");
+    adapter.matchedLegalName = false;
+
+    RemoteBusinessVerificationOutcome outcome =
+        verificationService.verify(
+            new RemoteBusinessVerificationCommand(UUID.randomUUID(), accountId, null));
+
+    assertThat(outcome.technicalStatus()).isEqualTo("verified");
+    assertThat(outcome.businessVerificationStatus()).isEqualTo("pending_review");
+  }
+
+  @Test
+  void expiresDueVerifiedAccounts() {
+    UUID accountId = insertBusinessAccount("ZZ");
+    verificationService.verify(
+        new RemoteBusinessVerificationCommand(UUID.randomUUID(), accountId, null));
+
+    int expired =
+        verificationStateService.expireDueVerifications(Instant.parse("2027-06-29T00:00:00Z"));
+
+    assertThat(expired).isGreaterThanOrEqualTo(1);
+    assertThat(verificationStateService.current(accountId).status())
+        .isEqualTo(BusinessVerificationStatus.EXPIRED);
+  }
+
+  @Test
+  void exposesPendingRemoteStateAndPreventsOverlappingChecks() {
+    UUID accountId = insertBusinessAccount("ZZ");
+    UUID requestId = UUID.randomUUID();
+
+    BusinessVerificationStateSnapshot pending =
+        verificationStateService.beginRemoteCheck(accountId, requestId);
+
+    assertThat(pending.status()).isEqualTo(BusinessVerificationStatus.PENDING_REMOTE_CHECK);
+    assertThatThrownBy(
+            () -> verificationStateService.beginRemoteCheck(accountId, UUID.randomUUID()))
+        .isInstanceOf(BusinessVerificationInProgressException.class)
+        .hasMessageNotContaining(accountId.toString());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT "activeVerificationRequestId"
+                FROM "BusinessAccounts"
+                WHERE "id" = ?
+                """,
+                UUID.class,
+                accountId))
+        .isEqualTo(requestId);
+  }
+
+  @Test
+  void revalidationClearsPreviousManualDecisionEvidence() {
+    UUID accountId = insertBusinessAccount("ZZ");
+    UUID reviewerId = insertTrackedUser("admin");
+    jdbcTemplate.update(
+        """
+        UPDATE "BusinessAccounts"
+        SET "manualReviewStatus" = 'approved',
+            "manualReviewedByUserId" = ?,
+            "manualReviewedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ?
+        """,
+        reviewerId,
+        accountId);
+
+    verificationStateService.beginRemoteCheck(accountId, UUID.randomUUID());
+
+    Map<String, Object> review =
+        jdbcTemplate.queryForMap(
+            """
+            SELECT
+              "manualReviewStatus",
+              "manualReviewedByUserId",
+              "manualReviewedAt"
+            FROM "BusinessAccounts"
+            WHERE "id" = ?
+            """,
+            accountId);
+    assertThat(review)
+        .containsEntry("manualReviewStatus", null)
+        .containsEntry("manualReviewedByUserId", null)
+        .containsEntry("manualReviewedAt", null);
+  }
+
   private UUID insertBusinessAccount(String country) {
-    return insertBusinessAccount(country, "TEST-123", "TEST123");
+    String uniqueIdentifier =
+        "TEST" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
+    return insertBusinessAccount(country, uniqueIdentifier, uniqueIdentifier);
   }
 
   private UUID insertBusinessAccount(
       String country, String submittedIdentifier, String normalizedIdentifier) {
-    String email = UUID.randomUUID() + "@example.com";
-    UUID ownerId =
+    UUID ownerId = insertTrackedUser("venue_business");
+    UUID accountId =
         jdbcTemplate.queryForObject(
             """
-            INSERT INTO "Users" ("email", "emailNormalized", "passwordHash", "accountType")
-            VALUES (?, ?, ?, 'venue_business')
-            RETURNING "id"
-            """,
-            UUID.class,
-            email,
-            email,
-            PASSWORD_HASH);
-    return jdbcTemplate.queryForObject(
-        """
         INSERT INTO "BusinessAccounts" (
           "ownerUserId",
           "taxCountry",
@@ -195,11 +327,31 @@ class RemoteBusinessVerificationServiceIntegrationTests {
         VALUES (?, ?, 'Empresa de prueba SL', ?, ?)
         RETURNING "id"
         """,
-        UUID.class,
-        ownerId,
-        country,
-        submittedIdentifier,
-        normalizedIdentifier);
+            UUID.class,
+            ownerId,
+            country,
+            submittedIdentifier,
+            normalizedIdentifier);
+    createdAccountIds.add(accountId);
+    return accountId;
+  }
+
+  private UUID insertTrackedUser(String accountType) {
+    String email = UUID.randomUUID() + "@example.com";
+    UUID userId =
+        jdbcTemplate.queryForObject(
+            """
+            INSERT INTO "Users" ("email", "emailNormalized", "passwordHash", "accountType")
+            VALUES (?, ?, ?, ?)
+            RETURNING "id"
+            """,
+            UUID.class,
+            email,
+            email,
+            PASSWORD_HASH,
+            accountType);
+    createdOwnerIds.add(userId);
+    return userId;
   }
 
   @TestConfiguration
@@ -215,10 +367,14 @@ class RemoteBusinessVerificationServiceIntegrationTests {
 
     private final AtomicInteger invocations = new AtomicInteger();
     private final AtomicInteger failuresBeforeSuccess = new AtomicInteger();
+    private RemoteVerificationStatus resultStatus = RemoteVerificationStatus.VERIFIED;
+    private Boolean matchedLegalName = true;
 
     void reset() {
       invocations.set(0);
       failuresBeforeSuccess.set(0);
+      resultStatus = RemoteVerificationStatus.VERIFIED;
+      matchedLegalName = true;
     }
 
     @Override
@@ -246,10 +402,10 @@ class RemoteBusinessVerificationServiceIntegrationTests {
             RemoteVerificationErrorCode.PROVIDER_UNAVAILABLE);
       }
       return new RemoteBusinessVerificationResult(
-          RemoteVerificationStatus.VERIFIED,
-          true,
+          resultStatus,
+          matchedLegalName,
           null,
-          "TEST-REMOTE-REFERENCE",
+          "TEST-" + request.requestId(),
           Instant.parse("2026-06-28T12:00:00Z"),
           "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
     }

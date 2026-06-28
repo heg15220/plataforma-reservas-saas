@@ -4408,6 +4408,279 @@ La tarea se considera completada porque:
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Tarea 1.8 - Máquina de estados de verificación empresarial
+
+- Fecha: 2026-06-28
+- Rama: `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea convierte la evidencia técnica producida por `1.6` y `1.7` en un resumen empresarial
+consistente y resistente a concurrencia. Implementa `pending_remote_check`, `verified`,
+`pending_review`, `rejected` y `expired` sin confundir disponibilidad del proveedor con aprobación.
+
+La red permanece fuera de cualquier transacción. El inicio y el cierre se ejecutan como transacciones
+cortas independientes, serializadas por cuenta, y la evidencia solo puede aplicarse a la operación
+que la originó.
+
+### Requisitos y diseño relacionados
+
+- `RF-007`: mantiene el estado inicial seguro `unverified`.
+- `RF-032`: aplica confirmación, invalidez, inconclusión, errores y coherencia de identidad.
+- `RNF-001`: evita carreras y respuestas tardías mediante correlación y locks.
+- `RNF-002`: la caducidad en bloque no carga ni registra identificadores.
+- `RNF-008`: conserva proveedor, referencia, instante y evidencia histórica.
+- `RNF-010`: permite revalidación manual/periódica y degradación segura.
+- `RNF-011`: migración UpperCamelCase/lowerCamelCase, DAO con `@Query` y servicio separado.
+- `RNF-013`: implementación en la rama única de Fase 1.
+- `RB-012`: solo `verified` vigente podrá habilitar publicación en tareas posteriores.
+- Diseño `3.15 Verificación empresarial` y política de revisión manual.
+
+### Archivos creados
+
+- `V6__add_business_verification_state_metadata.sql`.
+- `BusinessVerificationStatus.java`.
+- `BusinessVerificationStateProperties.java`.
+- `BusinessVerificationStateSnapshot.java`.
+- `BusinessVerificationStateService.java`.
+- `BusinessVerificationStateServiceImpl.java`.
+- `BusinessVerificationInProgressException.java`.
+- `BusinessVerificationStateConflictException.java`.
+
+### Archivos modificados
+
+- `BusinessAccountEntity` y `BusinessAccountDao`.
+- Caso de uso, contrato y outcome de verificación remota.
+- Configuración Spring y plantillas de entorno.
+- Tests de persistencia, migración, registro y flujo remoto.
+- README de API y documentos de persistencia, integración remota y configuración.
+- Diseño, tareas, tracking y este documento técnico.
+
+No se eliminó ningún archivo.
+
+### Modelo de estados
+
+El enum `BusinessVerificationStatus` define:
+
+- `UNVERIFIED`: identidad registrada sin comprobación remota.
+- `PENDING_REMOTE_CHECK`: operación remota activa y correlacionada.
+- `VERIFIED`: fuente oficial válida e identidad coherente dentro de vigencia.
+- `PENDING_REVIEW`: automatización insuficiente o discrepante.
+- `REJECTED`: identificador oficialmente inválido.
+- `EXPIRED`: aprobación anterior cuya vigencia terminó.
+
+Transiciones automáticas:
+
+```text
+unverified | verified | pending_review | rejected | expired
+  -> pending_remote_check
+  -> verified | pending_review | rejected
+
+verified vencido -> expired
+```
+
+No se expone un setter de estado arbitrario como caso de uso. `BusinessVerificationStateService`
+ofrece inicio, cierre correlacionado, lectura de resumen y caducidad.
+
+### Migración V6
+
+Columnas añadidas a `"BusinessAccounts"`:
+
+- `"activeVerificationRequestId"` UUID opcional.
+- `"businessVerificationExpiresAt"` timestamp con zona horaria opcional.
+
+Backfill:
+
+- Las filas históricas en `verified` reciben vencimiento
+  `"businessVerifiedAt" + INTERVAL '365 days'`.
+
+Restricciones:
+
+- `ckBusinessAccountsVerifiedEvidence`: `verified` exige inicio y fin de vigencia.
+- `ckBusinessAccountsActiveVerification`: `pending_remote_check` exige request activo; cualquier
+  otro estado exige que sea nulo.
+- `ckBusinessAccountsVerificationExpiry`: toda caducidad exige fecha de aprobación anterior.
+
+Índice:
+
+- `"ixBusinessAccountsVerificationExpiry"` parcial por fecha, solo para estado `verified`.
+
+No se modifica ni elimina evidencia V4/V5. `expired` conserva el instante, vencimiento, proveedor y
+referencia de la última aprobación como resumen histórico.
+
+### Concurrencia y transacciones
+
+`findByIdForStateUpdate` usa `PESSIMISTIC_WRITE`. Tanto `beginRemoteCheck` como
+`completeRemoteCheck` usan `Propagation.REQUIRES_NEW`.
+
+Inicio:
+
+1. Bloquea la cuenta.
+2. Rechaza si ya está `pending_remote_check`.
+3. Asigna el nuevo `requestId`.
+4. Limpia aprobación, proveedor, referencia y revisión anteriores.
+5. Persiste `pending_remote_check`.
+6. Libera transacción y lock antes de la red.
+
+Cierre:
+
+1. Bloquea la cuenta.
+2. Carga el check auditado.
+3. Exige coincidencia de cuenta, request activo, request del check y estado pendiente.
+4. Aplica la política.
+5. Borra el request activo.
+6. Persiste y libera el lock.
+
+Una respuesta tardía o perteneciente a otra cuenta produce
+`BusinessVerificationStateConflictException`. Una operación solapada produce
+`BusinessVerificationInProgressException`. Ninguna excepción incluye IDs fiscales o de cuenta.
+
+### Política de resultado
+
+`verified` técnico solo produce aprobación cuando:
+
+- `matchedLegalName` es `true`;
+- si la cuenta aportó dirección, `matchedAddress` también es `true`.
+
+Nombre ausente, nombre discrepante, dirección aportada sin coincidencia, `inconclusive` o `error`
+producen `pending_review`. La cuenta recibe `manualReviewStatus = pending_review`, preparando `1.9`.
+
+`invalid` produce `rejected`. No se interpreta indisponibilidad como invalidez ni como aprobación.
+
+Al verificar:
+
+- `businessVerifiedAt = checkedAt`;
+- `businessVerificationExpiresAt = checkedAt + validityPeriod`;
+- se copian proveedor y referencia remota mínima;
+- se limpia cualquier revisión manual anterior.
+
+### Caducidad
+
+`BusinessVerificationStateProperties` enlaza
+`RESERLY_BUSINESS_VERIFICATION_VALIDITY_PERIOD`, con valor predeterminado `365d`. El arranque exige
+entre 1 y 730 días.
+
+`expireDueVerifications(now)` ejecuta un update JPQL en bloque:
+
+- solo afecta `verified`;
+- exige `businessVerificationExpiresAt <= now`;
+- cambia a `expired`;
+- actualiza `updatedAt`;
+- no carga entidades ni datos fiscales.
+
+El caso de uso es ejecutable e idempotente. La planificación periódica concreta se añadirá cuando se
+implemente el job operativo de revalidación; no se introduce un scheduler prematuro en esta tarea.
+
+### Contratos y efectos
+
+`RemoteBusinessVerificationOutcome` añade:
+
+- `businessVerificationStatus`;
+- `businessVerificationExpiresAt`.
+
+El outcome diferencia expresamente resultado técnico y estado empresarial. Repetir un `requestId`
+ya auditado devuelve la misma evidencia y el resumen vigente, sin repetir la red.
+
+No se añade endpoint público. Los casos de uso quedan disponibles para alta, acciones
+administrativas y jobs futuros.
+
+### Seguridad, privacidad, errores y observabilidad
+
+- Locks y correlación impiden lost updates y aplicación cruzada de evidencia.
+- Las transacciones no abarcan red, sleeps ni backoff.
+- Los errores remotos se auditan antes de derivar a `pending_review`.
+- La caducidad masiva opera solo con estado y timestamps.
+- No se añaden logs con identificadores, payloads o respuestas remotas.
+- No se guardan nuevos datos personales.
+- Las restricciones SQL protegen invariantes incluso fuera de JPA.
+- El proveedor y referencia se conservan como evidencia mínima del estado final.
+
+### Tests
+
+`RemoteBusinessVerificationServiceIntegrationTests` valida sobre PostgreSQL real:
+
+- `pending_remote_check` y correlación del request;
+- rechazo de una operación solapada;
+- verificación coherente y vigencia de 365 días;
+- idempotencia del request;
+- reintento remoto;
+- error sin adaptador a `pending_review`;
+- NIF español nacional a `pending_review`;
+- identificador oficial inválido a `rejected`;
+- nombre discrepante a `pending_review`;
+- caducidad a `expired`;
+- limpieza explícita de fixtures confirmados.
+
+`BusinessVerificationPersistenceIntegrationTests` valida:
+
+- `verified` sin ventana completa se rechaza;
+- `pending_remote_check` sin request activo se rechaza;
+- se mantienen las invariantes de unicidad, privacidad y revisión existentes.
+
+`DatabaseMigrationIntegrationTests` exige Flyway V6. La suite conjunta con
+`VenueRegistrationIntegrationTests` confirma que los commits reales de los tests de estado no
+contaminan el registro.
+
+### Evidencia de verificación
+
+Pruebas focalizadas iniciales:
+
+- estado y migración: 9 pruebas correctas;
+- persistencia, estado, migración y registro: 28 pruebas correctas.
+
+La primera ejecución integral detectó fixtures confirmados sin limpieza, no un fallo de dominio. Se
+añadió cleanup por IDs creados y se repitió la combinación afectada antes de la suite final.
+
+`npm run verify` final:
+
+- CI, entorno, i18n, español y convenciones: correctos.
+- ESLint, Checkstyle, Prettier y Spotless: correctos.
+- TypeScript: correcto.
+- Frontend: 22 pruebas correctas.
+- Backend: 93 pruebas correctas, 0 fallos, 0 errores.
+- Flyway: V1–V6 aplicadas y validadas en PostgreSQL 17/PostGIS.
+- Redis y RabbitMQ: integración correcta.
+- Next.js y JAR Spring Boot: builds correctos.
+
+Después de esa suite se corrigió la limpieza de `manualReviewedByUser` y `manualReviewedAt` al
+iniciar una revalidación y se añadió su prueba de regresión. Las 9 pruebas focalizadas de
+`RemoteBusinessVerificationServiceIntegrationTests` pasaron sobre V1–V6. Se solicitó repetir la
+suite integral sobre ese ajuste final, pero la ejecución no fue autorizada; esta limitación queda
+registrada explícitamente.
+
+### Riesgos, limitaciones y deuda técnica
+
+- El método de caducidad existe, pero falta conectarlo a una planificación periódica.
+- Un proceso terminado después de guardar `pending_remote_check` y antes de auditar el check podría
+  dejar una operación huérfana; un futuro reconciliador deberá detectar antigüedad y pasarla a
+  revisión.
+- La revisión manual y su decisión final pertenecen a `1.9`, `1.10` y tareas administrativas.
+- Los umbrales de matching requieren calibración con datos reales anonimizados.
+- Una revalidación limpia temporalmente la aprobación anterior y bloquea publicación; es la opción
+  conservadora hasta definir una política de gracia.
+- No se añade evento de dominio ni métrica Micrometer específica todavía.
+- `expired` conserva evidencia resumida; la retención definitiva debe validarse legalmente antes de
+  producción.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- existe un catálogo de estados de dominio;
+- cada comprobación pasa por `pending_remote_check`;
+- la evidencia está correlacionada y serializada;
+- la red queda fuera de transacciones;
+- confirmación, invalidez, inconclusión y discrepancias se traducen de forma segura;
+- la vigencia es persistida, configurable y validada;
+- las aprobaciones vencidas pueden pasar a `expired` en bloque;
+- V6 protege invariantes y migra filas históricas;
+- código y decisiones tienen documentación suficiente;
+- diseño, configuración, tracking y tareas están actualizados;
+- las pruebas focalizadas y `npm run verify` pasan;
+- la siguiente tarea recomendada es `1.9`.
+
 ## Tarea 1.7 - Validación inicial para España y la UE mediante NIF, NIF-IVA y VAT ID
 
 - Fecha: 2026-06-28

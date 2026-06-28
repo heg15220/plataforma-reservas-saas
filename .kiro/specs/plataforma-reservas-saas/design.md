@@ -502,6 +502,24 @@ Estados:
 - `rejected`
 - `expired`
 
+Transiciones automáticas implementadas en `1.8`:
+
+- `unverified`, `verified`, `pending_review`, `rejected` o `expired` pueden iniciar una nueva
+  comprobación y pasan a `pending_remote_check`.
+- Solo el `requestId` que posee la operación activa puede aplicar su evidencia.
+- Confirmación oficial con razón social coincidente y dirección coincidente cuando fue aportada:
+  `verified`.
+- Identificador oficialmente inválido: `rejected`.
+- Indisponibilidad, error, resultado inconcluso, nombre ausente o discrepancia de nombre/dirección:
+  `pending_review`.
+- Una aprobación cuya vigencia configurable termina pasa de `verified` a `expired`.
+- No se permiten dos comprobaciones remotas simultáneas sobre la misma cuenta.
+
+V6 materializa `active_verification_request_id` y `business_verification_expires_at`. La
+implementación física usa `"activeVerificationRequestId"` y `"businessVerificationExpiresAt"`.
+Las transiciones de inicio y fin usan transacciones nuevas, cortas y serializadas; la red se ejecuta
+sin mantener locks ni transacciones de PostgreSQL.
+
 La validación VIES confirma validez de números VAT de empresas registradas para operaciones intracomunitarias. Si el servicio no confirma datos suficientes, no se debe aprobar automáticamente; la cuenta queda pendiente de revisión o se usa otro adaptador nacional.
 
 Implementación inicial de `1.7`:
@@ -638,6 +656,8 @@ Representa la identidad fiscal o registral de una empresa, profesional o entidad
 - `business_address`
 - `business_verification_status`
 - `business_verified_at`
+- `business_verification_expires_at`
+- `active_verification_request_id`
 - `business_verification_provider`
 - `business_verification_reference`
 - `manual_review_status`
@@ -651,8 +671,10 @@ Representa la identidad fiscal o registral de una empresa, profesional o entidad
 - único por `tax_country`, `business_tax_identifier_normalized`.
 - índice por `owner_user_id`.
 - índice por `business_verification_status`.
+- índice parcial por `business_verification_expires_at` para aprobaciones vigentes.
 - país fiscal limitado a dos letras ISO en mayúsculas.
-- estado `verified` exige fecha de verificación.
+- estado `verified` exige inicio y fin positivo de vigencia.
+- estado `pending_remote_check` exige el `request_id` activo y los demás estados lo prohíben.
 - una decisión manual final exige actor y fecha.
 - el borrado del propietario o revisor queda restringido mientras exista evidencia dependiente.
 

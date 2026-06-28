@@ -120,7 +120,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   }
 
   @Test
-  void rejectsVerifiedStateWithoutVerificationTimestamp() {
+  void rejectsVerifiedStateWithoutCompleteValidityWindow() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
 
     assertThatThrownBy(
@@ -139,7 +139,30 @@ class BusinessVerificationPersistenceIntegrationTests {
                     """,
                     ownerId))
         .isInstanceOf(DataIntegrityViolationException.class)
-        .hasMessageContaining("ckBusinessAccountsVerifiedAt");
+        .hasMessageContaining("ckBusinessAccountsVerifiedEvidence");
+  }
+
+  @Test
+  void requiresCorrelationIdWhileRemoteCheckIsPending() {
+    UUID ownerId = insertUser("owner@example.com", "venue_business");
+
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    INSERT INTO "BusinessAccounts" (
+                      "ownerUserId",
+                      "taxCountry",
+                      "businessLegalName",
+                      "businessTaxIdentifier",
+                      "businessTaxIdentifierNormalized",
+                      "businessVerificationStatus"
+                    )
+                    VALUES (?, 'ES', 'Empresa SL', 'B12345674', 'B12345674', 'pending_remote_check')
+                    """,
+                    ownerId))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("ckBusinessAccountsActiveVerification");
   }
 
   @Test

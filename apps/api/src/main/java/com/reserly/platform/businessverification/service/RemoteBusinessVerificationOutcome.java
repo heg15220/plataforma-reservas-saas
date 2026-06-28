@@ -14,6 +14,8 @@ import java.util.UUID;
  * @param checkedAt instante del resultado
  * @param attemptCount invocaciones remotas efectuadas
  * @param durationMs duración total del gateway
+ * @param businessVerificationStatus estado empresarial tras aplicar la evidencia
+ * @param businessVerificationExpiresAt caducidad de la aprobación, si existe
  */
 public record RemoteBusinessVerificationOutcome(
     UUID verificationCheckId,
@@ -22,7 +24,9 @@ public record RemoteBusinessVerificationOutcome(
     String technicalStatus,
     Instant checkedAt,
     short attemptCount,
-    int durationMs) {
+    int durationMs,
+    String businessVerificationStatus,
+    Instant businessVerificationExpiresAt) {
 
   public RemoteBusinessVerificationOutcome {
     Objects.requireNonNull(verificationCheckId);
@@ -30,5 +34,6 @@ public record RemoteBusinessVerificationOutcome(
     Objects.requireNonNull(providerCode);
     Objects.requireNonNull(technicalStatus);
     Objects.requireNonNull(checkedAt);
+    Objects.requireNonNull(businessVerificationStatus);
   }
 }

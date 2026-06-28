@@ -49,6 +49,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_BUSINESS_VERIFICATION_INITIAL_BACKOFF`         | API              | No      | Sí; espera inicial         |
 | `RESERLY_BUSINESS_VERIFICATION_MAX_BACKOFF`             | API              | No      | Sí; tope de espera         |
 | `RESERLY_BUSINESS_VERIFICATION_BACKOFF_MULTIPLIER`      | API              | No      | Sí; entre 1 y 4            |
+| `RESERLY_BUSINESS_VERIFICATION_VALIDITY_PERIOD`         | API              | No      | Sí; entre 1 y 730 días     |
 | `RESERLY_BUSINESS_VERIFICATION_NAME_MATCH_THRESHOLD`    | API              | No      | Sí; entre 0,5 y 1          |
 | `RESERLY_BUSINESS_VERIFICATION_ADDRESS_MATCH_THRESHOLD` | API              | No      | Sí; entre 0,5 y 1          |
 | `RESERLY_VIES_ENDPOINT`                                 | API              | No      | Sí; URL HTTPS oficial      |
@@ -120,6 +121,11 @@ Los valores son límites operativos, no credenciales. VIES aplica los timeouts e
 el gateway añade un watchdog total de conexión más lectura. El endpoint VIES debe usar HTTPS; el
 límite de respuesta predeterminado es 65.536 bytes. Los umbrales predeterminados de coincidencia son
 0,85 para razón social y 0,75 para dirección.
+
+`RESERLY_BUSINESS_VERIFICATION_VALIDITY_PERIOD` determina cuánto dura una aprobación automática
+desde el instante oficial comprobado. El valor predeterminado es `365d` y el arranque solo admite
+duraciones entre 1 y 730 días. Cambiarlo afecta nuevas verificaciones; V6 migra aprobaciones
+anteriores con 365 días.
 
 VIES no requiere credenciales y solo recibe país y número VAT. No existe una variable de
 certificado AEAT porque la plataforma no tiene confirmado un canal máquina-a-máquina autorizado:

@@ -63,6 +63,8 @@ reserly:
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   business-verification:
+    state:
+      validityPeriod: ${RESERLY_BUSINESS_VERIFICATION_VALIDITY_PERIOD:365d}
     matching:
       legalNameThreshold: ${RESERLY_BUSINESS_VERIFICATION_NAME_MATCH_THRESHOLD:0.85}
       addressThreshold: ${RESERLY_BUSINESS_VERIFICATION_ADDRESS_MATCH_THRESHOLD:0.75}

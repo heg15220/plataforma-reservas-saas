@@ -3,8 +3,8 @@ package com.reserly.platform.businessverification.service;
 /**
  * Caso de uso interno que ejecuta y audita una comprobación empresarial remota.
  *
- * <p>No cambia el estado agregado de la cuenta. La tarea 1.8 consumirá el resultado técnico para
- * aplicar transiciones autorizadas.
+ * <p>Inicia la transición remota, ejecuta la red sin transacción abierta y aplica la evidencia
+ * auditada mediante la máquina de estados.
  */
 public interface RemoteBusinessVerificationService {
 

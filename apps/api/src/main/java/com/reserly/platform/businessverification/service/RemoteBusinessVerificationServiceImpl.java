@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>La unicidad de {@code requestId} y de referencia remota resuelve repeticiones y carreras. Los
  * proveedores reciben además la misma clave idempotente en todos los reintentos de una operación.
+ * La máquina de estados abre transacciones cortas antes y después de la red.
  */
 @Service
 public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVerificationService {
@@ -30,16 +31,19 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
   private final BusinessVerificationCheckDao verificationCheckDao;
   private final RemoteBusinessVerificationGatewayService verificationGateway;
   private final EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy;
+  private final BusinessVerificationStateService verificationStateService;
 
   public RemoteBusinessVerificationServiceImpl(
       BusinessAccountDao businessAccountDao,
       BusinessVerificationCheckDao verificationCheckDao,
       RemoteBusinessVerificationGatewayService verificationGateway,
-      EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy) {
+      EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy,
+      BusinessVerificationStateService verificationStateService) {
     this.businessAccountDao = businessAccountDao;
     this.verificationCheckDao = verificationCheckDao;
     this.verificationGateway = verificationGateway;
     this.europeanVatIdentifierPolicy = europeanVatIdentifierPolicy;
+    this.verificationStateService = verificationStateService;
   }
 
   @Override
@@ -54,6 +58,7 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
         businessAccountDao
             .findById(command.businessAccountId())
             .orElseThrow(BusinessAccountNotFoundException::new);
+    verificationStateService.beginRemoteCheck(businessAccount.getId(), command.requestId());
     RemoteBusinessVerificationRequest request =
         new RemoteBusinessVerificationRequest(
             command.requestId(),
@@ -74,7 +79,12 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
     }
 
     try {
-      return toOutcome(verificationCheckDao.saveAndFlush(verificationCheck));
+      BusinessVerificationCheckEntity persisted =
+          verificationCheckDao.saveAndFlush(verificationCheck);
+      BusinessVerificationStateSnapshot state =
+          verificationStateService.completeRemoteCheck(
+              businessAccount.getId(), command.requestId(), persisted.getId());
+      return toOutcome(persisted, state);
     } catch (DataIntegrityViolationException exception) {
       return resolveConcurrentEvidence(verificationCheck, exception);
     }
@@ -141,20 +151,32 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
     Optional<BusinessVerificationCheckEntity> byRequest =
         verificationCheckDao.findByRequestId(attempted.getRequestId());
     if (byRequest.isPresent()) {
-      return existingOutcome(attempted.getBusinessAccount().getId(), byRequest.orElseThrow());
+      BusinessVerificationCheckEntity existing = byRequest.orElseThrow();
+      BusinessVerificationStateSnapshot state =
+          verificationStateService.completeRemoteCheck(
+              attempted.getBusinessAccount().getId(), attempted.getRequestId(), existing.getId());
+      return toOutcome(existing, state);
     }
     if (attempted.getRemoteReference() != null) {
       Optional<BusinessVerificationCheckEntity> byReference =
           verificationCheckDao.findByProviderAndRemoteReference(
               attempted.getProvider(), attempted.getRemoteReference());
       if (byReference.isPresent()) {
-        return existingOutcome(attempted.getBusinessAccount().getId(), byReference.orElseThrow());
+        BusinessVerificationCheckEntity existing = byReference.orElseThrow();
+        if (!existing.getBusinessAccount().getId().equals(attempted.getBusinessAccount().getId())) {
+          throw new RemoteVerificationRequestConflictException();
+        }
+        BusinessVerificationStateSnapshot state =
+            verificationStateService.completeRemoteCheck(
+                attempted.getBusinessAccount().getId(), attempted.getRequestId(), existing.getId());
+        return toOutcome(existing, state);
       }
     }
     throw exception;
   }
 
-  private RemoteBusinessVerificationOutcome toOutcome(BusinessVerificationCheckEntity check) {
+  private RemoteBusinessVerificationOutcome toOutcome(
+      BusinessVerificationCheckEntity check, BusinessVerificationStateSnapshot state) {
     return new RemoteBusinessVerificationOutcome(
         check.getId(),
         check.getRequestId(),
@@ -162,7 +184,9 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
         check.getStatus(),
         check.getCheckedAt(),
         check.getAttemptCount(),
-        check.getDurationMs());
+        check.getDurationMs(),
+        state.status().persistedValue(),
+        state.expiresAt());
   }
 
   private RemoteBusinessVerificationOutcome existingOutcome(
@@ -170,6 +194,6 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
     if (!existing.getBusinessAccount().getId().equals(expectedAccountId)) {
       throw new RemoteVerificationRequestConflictException();
     }
-    return toOutcome(existing);
+    return toOutcome(existing, verificationStateService.current(expectedAccountId));
   }
 }

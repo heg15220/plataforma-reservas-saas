@@ -6,8 +6,8 @@ La tarea `1.6` crea la infraestructura ejecutable para consultar registros fisca
 sin acoplar el dominio a un proveedor. La tarea `1.7` añade el primer adaptador real, VIES, y la
 política segura para NIF españoles que no sean NIF-IVA.
 
-Esta capa todavía no cambia `businessVerificationStatus`: traducir un resultado técnico a
-`pending_remote_check`, `verified`, `pending_review`, `rejected` o `expired` pertenece a `1.8`.
+La tarea `1.8` añade la máquina transaccional que traduce cada evidencia técnica a
+`pending_remote_check`, `verified`, `pending_review`, `rejected` o `expired`.
 
 ## Capas y contratos
 
@@ -130,7 +130,42 @@ No se guarda excepción, URL, credencial, cuerpo ni mensaje remoto. Los identifi
 incluyen en excepciones de aplicación.
 
 Los resultados válidos guardan únicamente estado técnico, coincidencias, referencia y hash opcional.
-Esta evidencia no autoriza publicación ni actualiza todavía el resumen de la cuenta.
+La máquina de estados consume esta evidencia; solo `verified` constituye aprobación vigente y la
+autorización de publicación seguirá comprobándose explícitamente en `1.11` y `2.9`.
+
+## Máquina de estados
+
+```text
+estado estable
+  -> beginRemoteCheck (transacción corta + lock)
+  -> pending_remote_check
+  -> red y persistencia del check sin transacción larga
+  -> completeRemoteCheck (transacción corta + lock)
+  -> verified | pending_review | rejected
+```
+
+V6 guarda `activeVerificationRequestId`. La evidencia solo puede cerrar la operación si coinciden
+cuenta, request activo, request del check y estado pendiente. Esto impide que una respuesta tardía o
+de otra cuenta sobrescriba el resumen vigente. Una segunda operación sobre una cuenta pendiente se
+rechaza de forma controlada.
+
+Política automática:
+
+- `verified` técnico, razón social coincidente y dirección coincidente cuando se aportó:
+  `verified`;
+- `invalid` técnico: `rejected`;
+- `inconclusive`, `error`, nombre discrepante o dirección aportada sin coincidencia:
+  `pending_review`;
+- ausencia de nombre oficial: `pending_review`, nunca aprobación implícita.
+
+Al iniciar una revalidación se limpian resumen y aprobación anteriores. Al verificar se guardan
+proveedor, referencia mínima, instante y caducidad. La vigencia predeterminada es 365 días,
+configurable entre 1 y 730 días. Un update SQL cambia a `expired` las aprobaciones vencidas sin
+cargar datos fiscales en memoria. La planificación periódica del job se conectará en una tarea
+operativa posterior; el caso de uso de caducidad ya es ejecutable.
+
+Los métodos de estado usan `REQUIRES_NEW` para que los locks pesimistas vivan solo durante cada
+transición y nunca durante la llamada al proveedor.
 
 ## Política España y UE
 

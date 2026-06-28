@@ -48,6 +48,12 @@ forma inconclusa y sin red para su posterior revisión censal AEAT. VIES solo re
 las respuestas XML tienen tamaño limitado y no se persisten, y las coincidencias de razón social y
 dirección se calculan en memoria.
 
+`BusinessVerificationStateService` aplica la evidencia con transacciones breves y lock pesimista
+por cuenta. Un request activo correlaciona inicio y resultado para impedir respuestas tardías. Solo
+una confirmación oficial con razón social y, si se aportó, dirección coherentes produce `verified`;
+inconclusión, error o discrepancia produce `pending_review`, e invalidez oficial produce `rejected`.
+Las aprobaciones caducan de forma configurable, 365 días por defecto.
+
 ## Ejecución
 
 ```bash
