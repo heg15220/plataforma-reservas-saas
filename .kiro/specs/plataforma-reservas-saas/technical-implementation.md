@@ -4407,3 +4407,414 @@ La tarea se considera completada porque:
 - `npm run verify` es correcto con tests y builds completos;
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
+
+## Tarea 1.3 - Crear tablas business_accounts, business_verification_checks y business_verification_documents
+
+- Fecha: 2026-06-28
+- Commit o referencia: cambios preparados en `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea crea el soporte persistente de la verificación empresarial: identidad fiscal, historial mínimo de comprobaciones y metadatos de documentos privados. El incremento debe permitir que las siguientes tareas implementen registro, normalización, adaptadores remotos, estados, carga documental y revisión administrativa sin rediseñar el esquema ni almacenar evidencia excesiva.
+
+Los objetivos centrales son:
+
+- unicidad fiscal por país e identificador normalizado;
+- estado inicial que no permita publicación;
+- trazabilidad mínima de cada comprobación;
+- ausencia de respuestas remotas completas;
+- documentos fuera de PostgreSQL y bajo almacenamiento privado;
+- actor y fecha obligatorios en decisiones finales;
+- borrado explícito para no dejar objetos o auditoría huérfanos;
+- mapeos JPA y DAOs conformes con `RNF-011`.
+
+### Requisitos y diseño relacionados
+
+- `RF-007 Registro de local`.
+- `RF-032 Verificación empresarial de cuentas de local`.
+- `RNF-001 Seguridad`.
+- `RNF-002 Privacidad y protección de datos`.
+- `RNF-006 Disponibilidad operativa`.
+- `RNF-008 Observabilidad`.
+- `RNF-010 Verificación empresarial remota`.
+- `RNF-011 Convenciones de implementación backend y persistencia`.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- `RB-012 Publicación de cuentas de local`.
+- Diseño `3.15 Verificación empresarial`.
+- Diseño `4.1 business_accounts`.
+- Diseño `4.1 business_verification_checks`.
+- Diseño `4.1 business_verification_documents`.
+- Diseño `8.4 Registro de local con verificación empresarial`.
+- Diseño `8.5 Resultado de verificación empresarial`.
+- Diseño `17.2 Política de revisión manual empresarial`.
+
+La tarea cierra `1.3` y prepara `1.4` a `1.11`, `1.19`, `1.22`, `2.9`, `14.6` a `14.8` y `14.14`.
+
+### Archivos creados, modificados o eliminados
+
+Creados:
+
+- `apps/api/src/main/resources/db/migration/V4__create_business_verification_tables.sql`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationDocumentEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationDocumentDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`.
+- `docs/architecture/business-verification-persistence.md`.
+
+Modificados:
+
+- `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- `apps/api/README.md`.
+- `docs/README.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada
+
+La persistencia se ubica en `com.reserly.platform.businessverification.persistence`, separada de `identity.persistence`. La relación con usuarios se limita a referencias JPA hacia `UserEntity` para propietario, cargador y revisores.
+
+Se crean tres agregados persistentes con responsabilidades diferenciadas:
+
+- `BusinessAccountEntity`: estado actual de la identidad fiscal y resumen de verificación.
+- `BusinessVerificationCheckEntity`: historial append-oriented de intentos remotos o manuales.
+- `BusinessVerificationDocumentEntity`: metadatos y revisión de evidencia documental privada.
+
+No se crean servicios, endpoints ni adaptadores en esta tarea. Las entidades no deben cruzar la frontera REST. Los módulos consumidores futuros deberán depender de servicios con interfaces separadas y DTOs explícitos.
+
+El modelo evita relaciones bidireccionales y colecciones JPA en esta fase. Cada hijo referencia a su cuenta empresarial mediante `ManyToOne(fetch = LAZY)`. Esto reduce carga accidental de historiales o documentos sensibles y evita grafos grandes durante operaciones básicas.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+#### `"BusinessAccounts"`
+
+Columnas:
+
+- `"id"` UUID generado.
+- `"ownerUserId"` obligatorio.
+- `"taxCountry"` `varchar(2)`.
+- `"businessLegalName"` `varchar(255)`.
+- `"businessTaxIdentifier"` `varchar(64)`.
+- `"businessTaxIdentifierNormalized"` `varchar(64)`.
+- `"businessAddress"` opcional, máximo 500.
+- `"businessVerificationStatus"` con default `unverified`.
+- `"businessVerifiedAt"` opcional.
+- `"businessVerificationProvider"` opcional.
+- `"businessVerificationReference"` opcional.
+- `"manualReviewStatus"` opcional.
+- `"manualReviewedByUserId"` opcional.
+- `"manualReviewedAt"` opcional.
+- `"createdAt"` y `"updatedAt"` UTC.
+
+Restricciones:
+
+- país fiscal con dos letras ASCII mayúsculas;
+- catálogo físico de verificación: `unverified`, `pending_remote_check`, `verified`, `pending_review`, `rejected`, `expired`;
+- un estado `verified` exige `"businessVerifiedAt"`;
+- revisión manual opcional o `pending_review` sin actor/fecha;
+- decisión manual `approved`, `rejected` o `needs_correction` con actor y fecha;
+- propietario y revisor referencian `"Users"` con borrado restringido.
+
+Índices:
+
+- `"uqBusinessAccountsTaxIdentifier"` único por país e identificador normalizado;
+- `"ixBusinessAccountsOwnerUserId"` para resolver identidades del titular;
+- `"ixBusinessAccountsVerificationStatus"` por estado y actualización para colas/revalidación.
+
+La unicidad se crea ahora, aunque las reglas de normalización y dígito de control pertenecen a `1.5`. Los futuros servicios deberán calcular el valor canónico antes de insertar.
+
+#### `"BusinessVerificationChecks"`
+
+Columnas:
+
+- cuenta empresarial;
+- proveedor y país;
+- identificador comprobado;
+- estado técnico;
+- coincidencias opcionales de nombre y dirección;
+- referencia remota;
+- fecha de comprobación;
+- código de error;
+- clave i18n de error;
+- hash SHA-256 opcional de respuesta;
+- fecha de persistencia.
+
+Estados técnicos:
+
+- `pending`;
+- `verified`;
+- `invalid`;
+- `inconclusive`;
+- `error`.
+
+Estos estados describen un intento, no el ciclo de vida completo de la cuenta. El estado agregado y sus transiciones se implementan en `1.8`.
+
+Restricciones:
+
+- país del proveedor en mayúsculas;
+- hash de respuesta hexadecimal de 64 caracteres;
+- `error` exige código y clave i18n;
+- resultados no erróneos no pueden almacenar metadatos de error;
+- borrado de cuenta empresarial restringido si existe historial.
+
+Índices:
+
+- cuenta y fecha descendente para historial;
+- estado y fecha para reintentos/operación;
+- proveedor y referencia remota únicos cuando hay referencia, preparando idempotencia.
+
+No existe columna de respuesta JSON, cuerpo remoto o payload. Solo se guarda evidencia mínima.
+
+#### `"BusinessVerificationDocuments"`
+
+Columnas:
+
+- cuenta empresarial;
+- tipo documental;
+- localizador privado;
+- hash SHA-256;
+- estado;
+- usuario que carga;
+- revisor;
+- fecha de revisión;
+- nota interna;
+- timestamps UTC.
+
+Tipos:
+
+- `census_registration_036_037`;
+- `census_certificate`;
+- `activity_or_opening_license`;
+- `equivalent_administrative_document`;
+- `other`.
+
+Estados:
+
+- `pending_review`;
+- `accepted`;
+- `rejected`;
+- `needs_correction`.
+
+Restricciones:
+
+- hash hexadecimal de 64 caracteres;
+- rechazo de localizadores persistentes que empiecen por `http://` o `https://`;
+- pendiente sin revisor ni fecha;
+- estado final con revisor y fecha;
+- uploader y reviewer referenciados con borrado restringido;
+- cuenta empresarial con borrado restringido;
+- hash único por cuenta para evitar duplicar el mismo binario.
+
+Índices:
+
+- cuenta, estado y creación;
+- cola parcial de documentos pendientes o con corrección solicitada.
+
+El campo conserva el nombre histórico `"fileUrl"`, pero semánticamente es un object key o localizador privado. La descarga futura debe generar una URL temporal después de autorizar la petición.
+
+### Entidades y DAOs
+
+Se añadieron:
+
+- `BusinessAccountEntity` y `BusinessAccountDao`;
+- `BusinessVerificationCheckEntity` y `BusinessVerificationCheckDao`;
+- `BusinessVerificationDocumentEntity` y `BusinessVerificationDocumentDao`.
+
+Las tres entidades:
+
+- usan IDs con `GenerationType.UUID`;
+- declaran nombres físicos explícitos;
+- usan acceso por propiedades;
+- sitúan relaciones JPA en getters;
+- documentan sensibilidad, invariantes y alcance.
+
+Los DAOs solo heredan operaciones básicas. Las búsquedas futuras por propietario, identificador, estado o cola de revisión deberán usar `@Query`, aplicar filtros de pertenencia y declarar locks cuando una transición lo requiera.
+
+### Flujos de ejecución relevantes
+
+Creación futura de cuenta empresarial:
+
+1. El registro crea un usuario `venue_business`.
+2. Normaliza país e identificador.
+3. Inserta `"BusinessAccounts"` en `unverified`.
+4. La unicidad impide duplicados fiscales.
+5. Un servicio posterior transiciona a `pending_remote_check`.
+
+Comprobación remota futura:
+
+1. El adaptador valida localmente y llama al proveedor autorizado.
+2. El servicio normaliza el resultado.
+3. Persiste un check con referencia, coincidencias y hash opcional.
+4. Nunca persiste el cuerpo remoto completo.
+5. Actualiza el resumen de cuenta dentro de una transacción.
+
+Documento futuro:
+
+1. Se autoriza al propietario.
+2. Se valida tipo, tamaño y antivirus.
+3. Se almacena el binario en un bucket privado.
+4. Se persiste object key y hash con estado `pending_review`.
+5. El admin revisa mediante un caso de uso auditado.
+6. La decisión final exige actor y fecha.
+
+Supresión futura:
+
+1. Se localizan checks y documentos.
+2. Se aplican plazos legales y bloqueo si corresponde.
+3. Se eliminan objetos privados.
+4. Se eliminan o anonimizan evidencias según política.
+5. Solo entonces se elimina la cuenta empresarial y, si procede, el usuario.
+
+Las claves foráneas `RESTRICT` evitan que una operación parcial deje objetos o auditoría huérfanos.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- países ISO en mayúsculas;
+- unicidad fiscal;
+- catálogos físicos cerrados;
+- coherencia de timestamps y revisores;
+- hashes SHA-256;
+- localizador no público;
+- metadatos de error coherentes.
+
+Permisos:
+
+- no se implementan endpoints;
+- las entidades son internas;
+- el documento solo será accesible por propietario autorizado, admin o proceso interno;
+- las consultas futuras deben filtrar por cuenta y propiedad;
+- el revisor debe tener rol administrativo, validación que se añadirá en servicio.
+
+Seguridad:
+
+- no se persisten respuestas completas;
+- no se persisten binarios;
+- no se persisten URLs públicas;
+- la integridad documental y remota se representa mediante hashes;
+- las decisiones finales preservan actor y fecha;
+- el borrado requiere coordinación explícita.
+
+Privacidad:
+
+- se almacenan únicamente datos fiscales necesarios;
+- las coincidencias se representan como booleanos, no como copias de datos remotos;
+- errores remotos se convierten a código y clave controlada;
+- notas internas tienen longitud limitada;
+- no se añaden datos de red ni trazas de cliente.
+
+Internacionalización:
+
+- `"errorMessageKey"` guarda una clave, no texto visible;
+- códigos, tipos y estados son identificadores técnicos no traducibles;
+- futuras pantallas y errores usarán catálogos ES/EN;
+- las notas internas no son contenido público.
+
+### Errores, logs, auditoría y observabilidad
+
+No se añaden logs de aplicación en una tarea de esquema. La observabilidad persistente queda preparada mediante:
+
+- historial de checks ordenable;
+- proveedor, país, fecha y referencia;
+- códigos de error normalizados;
+- estado y actualización de cuenta;
+- cola documental indexada;
+- actor y fecha de revisión.
+
+Los nombres explícitos de constraints facilitan convertir errores SQL a errores de dominio:
+
+- `"uqBusinessAccountsTaxIdentifier"`;
+- `"ckBusinessVerificationChecksRawHash"`;
+- `"ckBusinessVerificationChecksError"`;
+- `"ckBusinessVerificationDocumentsPrivateLocator"`;
+- `"ckBusinessVerificationDocumentsReviewEvidence"`.
+
+No deben registrarse identificadores fiscales, hashes, localizadores privados ni notas completas en logs estructurados salvo una política de redacción específica.
+
+### Tests añadidos o modificados
+
+`BusinessVerificationPersistenceIntegrationTests` contiene diez pruebas:
+
+- descubre los tres DAOs y tablas físicas;
+- valida el estado inicial `unverified`;
+- valida unicidad por país/identificador normalizado;
+- rechaza país fiscal en minúsculas;
+- rechaza `verified` sin timestamp;
+- demuestra ausencia de columnas de respuesta remota completa;
+- rechaza hash remoto malformado;
+- exige código y clave ante error;
+- exige actor y fecha en decisión documental;
+- rechaza URL pública persistente;
+- impide borrar una cuenta con evidencia.
+
+La clase declara diez métodos de test; la comprobación de privacidad y hash se realiza dentro del mismo caso, por lo que cubre once afirmaciones funcionales.
+
+`DatabaseMigrationIntegrationTests` pasa a exigir Flyway V4. El arranque de Spring/Hibernate valida las tres entidades nuevas contra PostgreSQL real.
+
+### Comandos y evidencia de verificación
+
+Ejecutados:
+
+- Primera ejecución de `npm run backend:conventions:check`: detectó líneas internas de checks SQL que empezaban por `AND`/`OR` y que el parser estático interpretaba como columnas.
+- Se reformatearon esos checks sin cambiar semántica.
+- `npm run backend:conventions:check`: correcto.
+- `mvn -f apps/api/pom.xml spotless:apply`: correcto.
+- Suite dirigida `DatabaseMigrationIntegrationTests,BusinessVerificationPersistenceIntegrationTests`: correcta.
+- Resultado dirigido: 12 tests, 0 fallos y 0 errores.
+- Flyway aplicó V1 a V4 sobre PostgreSQL 17 y Hibernate validó ocho repositorios/todas las entidades.
+- `npm run verify`: correcto en 457 segundos.
+- Resultado completo: 22 tests frontend y 36 tests backend, 0 fallos y 0 errores.
+- Flyway V4, PostgreSQL 17, Redis, RabbitMQ, build Next.js y build Spring Boot: correctos.
+- `git diff --check`: se ejecuta tras el cierre documental.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Las transiciones del ciclo empresarial aún no están modeladas como enums/servicios; corresponden a `1.8`.
+- Los estados técnicos de checks preparan persistencia, pero el adaptador y política de mapeo se implementan en `1.6`/`1.7`.
+- La normalización real por país y el dígito de control quedan para `1.5`.
+- El esquema no puede imponer que `ownerUserId` tenga `accountType = venue_business`; lo hará el servicio transaccional de registro.
+- El esquema no puede imponer que revisores tengan rol admin; lo hará autorización.
+- No existe integración con almacenamiento, antivirus, límites de tamaño ni URLs firmadas; corresponde a `1.10`.
+- No existe job de revalidación o limpieza.
+- La retención legal concreta debe revisarse antes de producción.
+- `"fileUrl"` conserva un nombre histórico menos preciso; su semántica de object key privado queda fijada documentalmente y mediante rechazo de URLs HTTP.
+- Los checks multilinea complejos se expresan en una sola línea por una limitación conocida del validador SQL estático.
+
+### Decisiones técnicas
+
+- Tablas físicas plurales para traducir literalmente los nombres conceptuales históricos.
+- UUIDs en todas las entidades.
+- `RESTRICT` en borrados con evidencia para forzar limpieza coordinada.
+- Hash SHA-256 hexadecimal para respuesta y archivo.
+- Sin JSON remoto completo.
+- Sin binarios en PostgreSQL.
+- Sin URLs públicas persistentes.
+- Referencia remota única por proveedor cuando existe.
+- Índices parciales para la cola documental.
+- Estados almacenados como strings restringidos por SQL; el dominio y las transiciones se cerrarán en tareas específicas.
+- Sin relaciones bidireccionales ni cascadas JPA implícitas.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- Flyway aplique V4 sobre base vacía;
+- Hibernate valide las tres entidades;
+- existan tres DAOs;
+- unicidad, privacidad, hashes, revisión y borrado estén probados;
+- diseño, documentación operativa, tracking y documento técnico estén actualizados;
+- `npm run verify` es correcto con tests y builds completos;
+- el diff se revisa antes del commit;
+- el commit y push dejan la rama de Fase 1 alineada con remoto.

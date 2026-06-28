@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1` y `1.2`.
-- Siguiente tarea pendiente recomendada: `1.3. Crear tablas business_accounts, business_verification_checks y business_verification_documents.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Flyway alcanza V3 y `"Users"` incorpora `"accountType"` no nulo, limitado a `customer`, `venue_business` o `admin`, con `customer` como default seguro. Java aplica el enum `AccountType` y un conversor JPA estricto; tipo de cuenta y rol permanecen separados.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2` y `1.3`.
+- Siguiente tarea pendiente recomendada: `1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Flyway alcanza V4 y existen `"BusinessAccounts"`, `"BusinessVerificationChecks"` y `"BusinessVerificationDocuments"` con entidades/DAOs, unicidad fiscal, evidencia remota mínima, localizadores privados, revisión coherente y borrado explícito.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1121,3 +1121,51 @@ Fuente de verdad del avance:
   - Tipo de cuenta y rol son independientes: el tipo activa invariantes y verificaciones; los roles autorizan acciones.
   - Los valores técnicos son canónicos y no se traducen; las etiquetas visibles futuras sí usarán i18n.
   - Evidencia de cierre: suite dirigida con 14 tests correcta; `npm run verify` correcto con 22 tests frontend y 26 tests backend, Flyway V3 sobre PostgreSQL 17, integración Redis/RabbitMQ y ambos builds.
+
+## Conversación 31 - Persistencia de verificación empresarial y documentos privados
+
+- Fecha: 2026-06-28
+- Resumen: se completó `1.3` creando Flyway V4 con `"BusinessAccounts"`, `"BusinessVerificationChecks"` y `"BusinessVerificationDocuments"`. El esquema aplica unicidad fiscal por país, estados iniciales seguros, evidencia remota mínima, hashes SHA-256, referencias idempotentes, localizadores documentales privados, actor/fecha en decisiones y borrado restringido. Se añadieron tres entidades JPA, tres DAOs, diez pruebas empresariales de integración y documentación profunda.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V4__create_business_verification_tables.sql`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationDocumentEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationCheckDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationDocumentDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/architecture/business-verification-persistence.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.3. Crear tablas business_accounts, business_verification_checks y business_verification_documents.`
+  - Prepara `1.4` a `1.11`, `1.19`, `1.22`, `2.9`, `14.6` a `14.8` y `14.14`.
+- Tareas completadas:
+  - `1.3. Crear tablas business_accounts, business_verification_checks y business_verification_documents.`
+- Siguiente tarea pendiente recomendada:
+  - `1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.`
+- Decisiones o aclaraciones relevantes:
+  - El estado inicial empresarial es `unverified`; la máquina de estados se implementará en `1.8`.
+  - La unicidad se aplica sobre país e identificador normalizado; la normalización real queda para `1.5`.
+  - Los checks no guardan respuestas remotas completas, solo resultado, referencia y hash opcional.
+  - `"fileUrl"` conserva el nombre histórico pero es un object key privado; PostgreSQL rechaza URLs HTTP persistentes.
+  - PostgreSQL no almacena binarios documentales.
+  - Propietarios, revisores y cuentas con evidencias no pueden eliminarse mediante una operación parcial.
+  - Evidencia de cierre: suite dirigida con 12 tests correcta; `npm run verify` correcto con 22 tests frontend y 36 tests backend, Flyway V4 sobre PostgreSQL 17, Redis/RabbitMQ y ambos builds.

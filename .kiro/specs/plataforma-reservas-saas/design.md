@@ -611,7 +611,7 @@ Tokens de un solo uso para verificación de email y recuperación de contraseña
 
 #### business_accounts
 
-Representa la identidad fiscal o registral de una empresa, profesional o entidad que puede gestionar uno o varios locales.
+Representa la identidad fiscal o registral de una empresa, profesional o entidad que puede gestionar uno o varios locales. Se materializa como `"BusinessAccounts"`.
 
 - `id`
 - `owner_user_id`
@@ -635,10 +635,14 @@ Representa la identidad fiscal o registral de una empresa, profesional o entidad
 - único por `tax_country`, `business_tax_identifier_normalized`.
 - índice por `owner_user_id`.
 - índice por `business_verification_status`.
+- país fiscal limitado a dos letras ISO en mayúsculas.
+- estado `verified` exige fecha de verificación.
+- una decisión manual final exige actor y fecha.
+- el borrado del propietario o revisor queda restringido mientras exista evidencia dependiente.
 
 #### business_verification_checks
 
-Registra intentos de validación remota o manual de una cuenta empresarial.
+Registra intentos de validación remota o manual de una cuenta empresarial. Se materializa como `"BusinessVerificationChecks"`.
 
 - `id`
 - `business_account_id`
@@ -657,9 +661,18 @@ Registra intentos de validación remota o manual de una cuenta empresarial.
 
 No debe guardar respuestas completas del proveedor salvo necesidad legal definida. Si se necesita evidencia, se guardará hash, referencia y campos mínimos.
 
+Índices y restricciones:
+
+- índice por cuenta y fecha descendente;
+- índice por estado y fecha;
+- referencia remota única por proveedor cuando exista;
+- hash de respuesta limitado a SHA-256 hexadecimal;
+- los errores exigen código y clave i18n controlada;
+- la cuenta no puede eliminarse mientras existan comprobaciones auditables.
+
 #### business_verification_documents
 
-Documentos de respaldo aportados por el local cuando la verificación remota no es concluyente.
+Documentos de respaldo aportados por el local cuando la verificación remota no es concluyente. Se materializa como `"BusinessVerificationDocuments"`.
 
 - `id`
 - `business_account_id`
@@ -694,6 +707,10 @@ Restricciones:
 - Acceso solo para propietario autorizado, administradores y procesos internos de verificación.
 - Validación de tipo, tamaño, antivirus y almacenamiento privado.
 - Auditoría en cada revisión.
+- `file_url` se implementa como localizador interno privado; no admite URL pública persistente.
+- hash SHA-256 obligatorio y único por cuenta para evitar duplicados.
+- estados finales con revisor y fecha obligatorios.
+- borrado restringido hasta retirar coordinadamente el objeto privado.
 
 #### venues
 
