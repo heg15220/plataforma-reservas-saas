@@ -1,6 +1,8 @@
 package com.reserly.platform.identity.persistence;
 
+import com.reserly.platform.identity.AccountType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,6 +26,7 @@ public class UserEntity {
   private String email;
   private String emailNormalized;
   private String passwordHash;
+  private AccountType accountType;
   private String preferredLocale;
   private Instant emailVerifiedAt;
   private String status;
@@ -70,6 +73,21 @@ public class UserEntity {
 
   public void setPasswordHash(String passwordHash) {
     this.passwordHash = passwordHash;
+  }
+
+  /**
+   * Naturaleza de la cuenta. No sustituye los roles ni concede permisos por sí misma.
+   *
+   * <p>El registro empresarial debe establecer {@link AccountType#VENUE_BUSINESS} explícitamente.
+   */
+  @Convert(converter = AccountTypeConverter.class)
+  @Column(name = "\"accountType\"", nullable = false, length = 32)
+  public AccountType getAccountType() {
+    return accountType;
+  }
+
+  public void setAccountType(AccountType accountType) {
+    this.accountType = accountType;
   }
 
   /** Locale persistido de la cuenta, limitado por base de datos a {@code es} o {@code en}. */

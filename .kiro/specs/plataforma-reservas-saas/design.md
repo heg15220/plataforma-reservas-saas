@@ -520,7 +520,7 @@ Representa cuentas autenticadas de locales y administradores. En la implementaci
 - `email`
 - `email_normalized`
 - `password_hash`
-- `account_type`, incorporado en la tarea `1.2`
+- `account_type`
 - `preferred_locale`
 - `email_verified_at`
 - `status`
@@ -531,8 +531,11 @@ Representa cuentas autenticadas de locales y administradores. En la implementaci
 
 - único por `email_normalized`;
 - email normalizado en minúsculas;
+- tipo de cuenta limitado a `customer`, `venue_business` o `admin`, con `customer` como default seguro;
 - locale limitado a `es` o `en`;
 - estado limitado a pendiente de verificación, activo, suspendido o deshabilitado.
+
+El tipo de cuenta clasifica su naturaleza y activa invariantes de negocio, pero no concede permisos por sí solo. El registro empresarial debe establecer `venue_business` explícitamente y la autorización se resuelve mediante roles.
 
 #### roles
 

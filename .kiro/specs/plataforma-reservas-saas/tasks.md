@@ -38,7 +38,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 ## 3. Fase 1 - Identidad, roles y base SaaS
 
 - [x] 1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos `UpperCamelCase` y atributos/columnas `lowerCamelCase`.
-- [ ] 1.2. Implementar `account_type` con valores `customer`, `venue_business` y `admin`.
+- [x] 1.2. Implementar `account_type` con valores `customer`, `venue_business` y `admin`.
 - [ ] 1.3. Crear tablas `business_accounts`, `business_verification_checks` y `business_verification_documents`.
 - [ ] 1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.
 - [ ] 1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.

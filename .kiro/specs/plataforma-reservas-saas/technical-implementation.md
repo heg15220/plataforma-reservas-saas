@@ -4145,3 +4145,265 @@ La tarea se considera completada porque:
 - `npm run verify` finalizó correctamente con validadores, 22 tests frontend, 19 tests backend y ambos builds;
 - el diff se revisa antes del commit de cierre;
 - el commit y push dejan `phase/1-identidad-roles-base-saas` alineada con remoto.
+
+## Tarea 1.2 - Implementar account_type con valores customer, venue_business y admin
+
+- Fecha: 2026-06-28
+- Commit o referencia: cambios preparados en `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea incorpora un tipo de cuenta explícito y cerrado en las capas de base de datos, dominio y persistencia JPA. Su objetivo es diferenciar una cuenta normal futura, una cuenta empresarial de local y una cuenta interna de administración sin confundir esa clasificación con los roles de autorización.
+
+La implementación debe garantizar que:
+
+- PostgreSQL solo acepte `customer`, `venue_business` o `admin`;
+- una cuenta sin tipo indicado quede en el estado menos privilegiado `customer`;
+- Java use un enum tipado en vez de strings libres;
+- la traducción JPA conserve los valores canónicos en minúsculas;
+- un valor desconocido falle de forma visible;
+- los flujos empresariales futuros tengan que seleccionar `venue_business` explícitamente.
+
+### Requisitos y diseño relacionados
+
+- `RF-007 Registro de local`.
+- `RF-032 Verificación empresarial de cuentas de local`.
+- `RNF-001 Seguridad`.
+- `RNF-010 Verificación empresarial remota`.
+- `RNF-011 Convenciones de implementación backend y persistencia`.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- `RB-012 Publicación de cuentas de local`.
+- Diseño `3.1 Identidad y acceso`.
+- Diseño `4.1 users`.
+- Diseño `8.4 Registro de local con verificación empresarial`.
+- Diseño `12.3 Validación`.
+
+La tarea cierra `1.2` y prepara `1.3`, `1.4`, `1.11`, `1.17`, `2.9`, `14.1` y las pruebas de permisos de la Fase 1.
+
+### Archivos creados, modificados o eliminados
+
+Creados:
+
+- `apps/api/src/main/resources/db/migration/V3__add_account_type_to_users.sql`.
+- `apps/api/src/main/java/com/reserly/platform/identity/AccountType.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/AccountTypeConverter.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/AccountTypeTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/persistence/AccountTypeConverterTests.java`.
+
+Modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserEntity.java`.
+- `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/persistence/IdentityPersistenceIntegrationTests.java`.
+- `apps/api/README.md`.
+- `docs/architecture/identity-persistence.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada y decisiones
+
+`AccountType` se sitúa en el contexto `com.reserly.platform.identity` porque es un concepto de dominio de identidad, no un detalle de PostgreSQL. Expone tres constantes Java:
+
+- `CUSTOMER`;
+- `VENUE_BUSINESS`;
+- `ADMIN`.
+
+Cada constante conserva un valor persistido explícito. No se usa `EnumType.STRING` porque produciría nombres Java en mayúsculas y acoplaría la base de datos al nombre de la constante. `AccountTypeConverter` implementa `AttributeConverter<AccountType, String>` y mantiene el contrato SQL/API en minúsculas.
+
+La conversión inversa es estricta. `AccountType.fromPersistedValue` acepta únicamente valores canónicos exactos; no normaliza mayúsculas, alias ni variantes. Esta decisión permite detectar una divergencia de catálogo entre aplicación y base de datos en vez de interpretarla de forma ambigua.
+
+Tipo de cuenta y rol se mantienen separados:
+
+- `accountType` describe la naturaleza de la cuenta y las verificaciones que requiere;
+- los registros de `"UserRoles"` conceden capacidades de autorización;
+- una cuenta `venue_business` no obtiene acceso de propietario sin su rol;
+- una cuenta con rol tampoco debe saltarse las validaciones derivadas de su tipo.
+
+### Modelo de datos, migración, índices y restricciones
+
+La migración `V3__add_account_type_to_users.sql` altera `"Users"`:
+
+```sql
+ALTER TABLE "Users"
+  ADD COLUMN "accountType" varchar(32) NOT NULL DEFAULT 'customer',
+  ADD CONSTRAINT "ckUsersAccountType"
+    CHECK ("accountType" IN ('customer', 'venue_business', 'admin'));
+```
+
+Características:
+
+- nombre físico `"accountType"` en `lowerCamelCase`;
+- longitud máxima de 32 caracteres, suficiente para `venue_business`;
+- no admite `null`;
+- default PostgreSQL `customer`;
+- check cerrado con los tres valores de producto;
+- sin índice adicional, porque el campo tiene cardinalidad muy baja y todavía no existe una consulta de dominio que lo justifique.
+
+El default `customer` es una medida de seguridad fail-closed. Si un flujo futuro omite el tipo, la cuenta no se clasifica accidentalmente como negocio o administración. El registro de local de `1.4` deberá establecer `venue_business` explícitamente. La creación de cuentas `admin` deberá estar reservada a provisionamiento interno auditado.
+
+La migración es compatible con cualquier fila creada entre V2 y V3: PostgreSQL rellena `customer` durante el `ALTER TABLE`, evitando cuentas con tipo nulo. No se eliminó el default porque también protege inserciones SQL o procesos internos que todavía no indiquen el campo.
+
+### Entidad, conversor y contrato Java
+
+`UserEntity` incorpora:
+
+- atributo `AccountType accountType`;
+- getter documentado con la separación tipo/rol;
+- `@Convert(converter = AccountTypeConverter.class)`;
+- `@Column(name = "\"accountType\"", nullable = false, length = 32)`;
+- setter correspondiente para acceso JPA por propiedades.
+
+`AccountType.persistedValue()` devuelve el valor canónico. `AccountType.fromPersistedValue(String)` recorre el catálogo y lanza `IllegalArgumentException("Unsupported account type")` ante cualquier valor desconocido, incluido `null` cuando se llama directamente.
+
+`AccountTypeConverter` conserva `null` en ambas direcciones porque ese es el contrato esperado por JPA durante determinadas fases del ciclo de vida. La columna `NOT NULL` y los futuros servicios impiden que una cuenta válida se persista sin tipo.
+
+### Flujos de ejecución relevantes
+
+Migración:
+
+1. Flyway aplica V1 y V2.
+2. V3 añade `"accountType"` con default `customer`.
+3. Cualquier fila previa recibe `customer`.
+4. Se activa `"ckUsersAccountType"`.
+5. Hibernate valida que `UserEntity.accountType` se corresponde con `varchar(32)` no nulo.
+
+Carga JPA:
+
+1. Hibernate lee el string de `"accountType"`.
+2. `AccountTypeConverter.convertToEntityAttribute` delega en el parser estricto.
+3. El dominio recibe una constante `AccountType`.
+4. Un catálogo incompatible interrumpe la carga con error, haciendo visible la divergencia.
+
+Persistencia JPA:
+
+1. El servicio asigna un `AccountType`.
+2. El conversor obtiene el valor canónico.
+3. Hibernate escribe `customer`, `venue_business` o `admin`.
+4. PostgreSQL aplica adicionalmente el check.
+
+Registro empresarial futuro:
+
+1. El caso de uso recibe una solicitud de local.
+2. Ignora cualquier intento del cliente de elegir privilegios arbitrarios.
+3. Construye la cuenta con `AccountType.VENUE_BUSINESS`.
+4. Asigna el rol `venue_owner` mediante el servicio de autorización.
+5. Mantiene bloqueada la publicación hasta completar email y verificación empresarial.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- enum Java cerrado;
+- conversor JPA estricto;
+- columna no nula;
+- check PostgreSQL;
+- default seguro.
+
+Permisos:
+
+- la tarea no implementa middleware ni concede roles;
+- `accountType` no debe usarse como sustituto de autorización;
+- `admin` no se acepta desde registros públicos;
+- `venue_business` será decidido por el caso de uso de alta de local, no por un campo arbitrario del cliente.
+
+Seguridad:
+
+- el default `customer` evita elevación accidental;
+- valores no canónicos se rechazan;
+- la separación rol/tipo permite exigir simultáneamente clasificación, rol y verificaciones;
+- el contrato prepara `RB-012`, que exige `venue_business` para publicar.
+
+Privacidad:
+
+- no se añaden datos personales;
+- el campo contiene solo una clasificación operativa;
+- no se exponen todavía endpoints ni respuestas.
+
+Internacionalización:
+
+- los valores son identificadores técnicos estables y no textos visibles;
+- futuras interfaces deben traducir sus etiquetas mediante catálogos ES/EN;
+- los valores canónicos no deben traducirse en base de datos o API.
+
+### Errores, logs, auditoría y observabilidad
+
+No se añaden logs ni endpoints. Los errores se detectan en tres niveles:
+
+- `IllegalArgumentException` al convertir un valor Java desconocido;
+- error de integridad `"ckUsersAccountType"` ante SQL inválido;
+- fallo de validación de Hibernate si migración y entidad divergen.
+
+La creación o cambio de una cuenta `admin` deberá auditarse cuando existan servicios administrativos. Esta tarea no incorpora mutaciones de negocio ni un endpoint de cambio de tipo, evitando abrir una superficie de escalado de privilegios prematura.
+
+### Tests añadidos o modificados
+
+`AccountTypeTests`:
+
+- valida los tres valores persistidos;
+- valida la resolución de los tres valores;
+- rechaza alias, mayúsculas y `null`.
+
+`AccountTypeConverterTests`:
+
+- valida conversión Java a SQL;
+- valida conversión SQL a Java;
+- valida manejo de `null` para JPA;
+- rechaza valores de base de datos desconocidos.
+
+`IdentityPersistenceIntegrationTests`:
+
+- comprueba que una inserción sin tipo recibe `customer`;
+- carga mediante `UserDao` los tres tipos y verifica el enum resultante;
+- modifica una entidad a `VENUE_BUSINESS`, hace `saveAndFlush` y comprueba el string SQL;
+- rechaza `external_business_partner` por `"ckUsersAccountType"`.
+
+`DatabaseMigrationIntegrationTests`:
+
+- actualiza la versión Flyway esperada de `2` a `3`;
+- el arranque del contexto mantiene la validación completa de Hibernate.
+
+### Comandos y evidencia de verificación
+
+Ejecutados durante la implementación:
+
+- `npm run backend:conventions:check`: correcto.
+- `mvn -f apps/api/pom.xml spotless:apply`: correcto.
+- Suite dirigida con `AccountTypeTests`, `AccountTypeConverterTests`, `DatabaseMigrationIntegrationTests` e `IdentityPersistenceIntegrationTests`: correcta.
+- Resultado dirigido: 14 tests, 0 fallos y 0 errores.
+- Flyway aplicó tres migraciones y alcanzó la versión `3` sobre PostgreSQL 17 efímero.
+- Hibernate validó correctamente `UserEntity.accountType` y el conversor.
+- `npm run verify`: correcto en 325,5 segundos.
+- Resultado completo: 22 tests frontend y 26 tests backend, 0 fallos y 0 errores.
+- Flyway V3, PostgreSQL 17, Redis, RabbitMQ, build Next.js y build Spring Boot: correctos.
+- `git diff --check`: se ejecuta tras el cierre documental.
+
+### Riesgos, limitaciones y deuda técnica
+
+- No existe todavía un servicio de creación de cuentas que imponga el tipo según el caso de uso.
+- No existe todavía una regla automática que obligue a que `venue_business` tenga rol `venue_owner`; se implementará con registro/autorización.
+- No existe todavía provisionamiento auditado de cuentas `admin`.
+- No se permite cambiar tipos mediante API. Si se incorpora en el futuro, deberá ser un caso de uso administrativo auditado y restringido.
+- El default `customer` es intencionalmente seguro, pero los tests de registro deberán demostrar que un local nunca depende de ese default.
+- No se añadió índice por tipo debido a su baja cardinalidad. Se evaluará con consultas y planes reales.
+- El mensaje interno de excepción no expone el valor rechazado para evitar que logs futuros propaguen datos inesperados; los errores públicos deberán traducirse a códigos controlados.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- V3 se aplique sobre una base vacía y Flyway alcance versión `3`;
+- PostgreSQL acepte solo los tres valores acordados;
+- Java y JPA usen el catálogo tipado y canónico;
+- las pruebas unitarias e integración pasen;
+- diseño, documentación operativa, seguimiento y documento técnico estén actualizados;
+- `npm run verify` es correcto con tests y builds completos;
+- el diff se revisa antes del commit;
+- el commit y push dejan la rama de Fase 1 alineada con remoto.

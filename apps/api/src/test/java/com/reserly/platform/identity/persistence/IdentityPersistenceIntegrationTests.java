@@ -3,6 +3,7 @@ package com.reserly.platform.identity.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.reserly.platform.identity.AccountType;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -84,6 +85,48 @@ class IdentityPersistenceIntegrationTests {
     assertThatThrownBy(() -> insertUser("OWNER@example.com", "owner@example.com"))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("uqUsersEmailNormalized");
+  }
+
+  @Test
+  void defaultsToCustomerAndConvertsEverySupportedAccountType() {
+    UUID customerId = insertUser("customer@example.com", "customer@example.com");
+    UUID venueId =
+        insertUser(
+            "venue@example.com", "venue@example.com", AccountType.VENUE_BUSINESS.persistedValue());
+    UUID adminId =
+        insertUser("admin@example.com", "admin@example.com", AccountType.ADMIN.persistedValue());
+
+    assertThat(userDao.findById(customerId).orElseThrow().getAccountType())
+        .isEqualTo(AccountType.CUSTOMER);
+    assertThat(userDao.findById(venueId).orElseThrow().getAccountType())
+        .isEqualTo(AccountType.VENUE_BUSINESS);
+    assertThat(userDao.findById(adminId).orElseThrow().getAccountType())
+        .isEqualTo(AccountType.ADMIN);
+
+    UserEntity customer = userDao.findById(customerId).orElseThrow();
+    customer.setAccountType(AccountType.VENUE_BUSINESS);
+    userDao.saveAndFlush(customer);
+
+    String persistedValue =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT "accountType"
+            FROM "Users"
+            WHERE "id" = ?
+            """,
+            String.class,
+            customerId);
+    assertThat(persistedValue).isEqualTo("venue_business");
+  }
+
+  @Test
+  void rejectsAccountTypesOutsideTheClosedCatalog() {
+    assertThatThrownBy(
+            () ->
+                insertUser(
+                    "unknown@example.com", "unknown@example.com", "external_business_partner"))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("ckUsersAccountType");
   }
 
   @Test
@@ -172,6 +215,20 @@ class IdentityPersistenceIntegrationTests {
         email,
         normalizedEmail,
         PASSWORD_HASH);
+  }
+
+  private UUID insertUser(String email, String normalizedEmail, String accountType) {
+    return jdbcTemplate.queryForObject(
+        """
+        INSERT INTO "Users" ("email", "emailNormalized", "passwordHash", "accountType")
+        VALUES (?, ?, ?, ?)
+        RETURNING "id"
+        """,
+        UUID.class,
+        email,
+        normalizedEmail,
+        PASSWORD_HASH,
+        accountType);
   }
 
   private int countRowsForUser(String quotedTableName, UUID userId) {

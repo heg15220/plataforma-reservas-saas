@@ -4,7 +4,7 @@
 
 La migración `V2__create_identity_role_session_and_token_tables.sql` establece el núcleo de identidad autenticada. No implementa todavía registro, login, hashing, emisión de credenciales ni autorización HTTP; esos casos de uso pertenecen a tareas posteriores de la Fase 1.
 
-El cliente final del MVP permanece anónimo según `RB-001`. La tabla `"Users"` contiene únicamente cuentas que pueden autenticarse, inicialmente propietarios de locales y administradores. La columna `"accountType"` se incorporará en la tarea `1.2`.
+El cliente final del MVP permanece anónimo según `RB-001`. La tabla `"Users"` contiene únicamente cuentas que pueden autenticarse, inicialmente propietarios de locales y administradores.
 
 ## Modelo
 
@@ -14,9 +14,12 @@ Almacena email visible, email canónico, hash de contraseña, locale, verificaci
 
 - `"emailNormalized"` debe estar en minúsculas y es único.
 - `"passwordHash"` nunca admite contraseñas en claro; el algoritmo y su política se implementarán en `1.12`.
+- `"accountType"` admite `customer`, `venue_business` o `admin`; su default seguro es `customer`.
 - `"preferredLocale"` admite `es` o `en`.
 - `"status"` admite `pending_email_verification`, `active`, `suspended` o `disabled`.
 - Todos los instantes son `timestamp with time zone` y se tratan como UTC en Java.
+
+`accountType` clasifica la naturaleza de la cuenta, pero no concede permisos. El registro de local debe escribir `venue_business` explícitamente y completar verificación empresarial; la autorización efectiva depende de los roles de `"UserRoles"`. Las cuentas `admin` deben provisionarse mediante un flujo interno controlado.
 
 ### `"Roles"` y `"UserRoles"`
 
@@ -63,6 +66,8 @@ El esquema exige hash SHA-256 hexadecimal, expiración posterior a emisión y es
 
 Cada tabla tiene una entidad JPA y un DAO en `com.reserly.platform.identity.persistence`. Los IDs usan `GenerationType.UUID`; las relaciones se mapean sobre getters y las tablas/columnas usan nombres físicos explícitos.
 
+`AccountType` modela el catálogo en Java y `AccountTypeConverter` lo traduce de forma estricta a los valores SQL en minúsculas. Un valor desconocido produce error en vez de degradarse silenciosamente.
+
 Las entidades son internas y no deben devolverse desde controladores. Las consultas sensibles futuras deberán usar `@Query` y expresar todos sus filtros de vigencia, pertenencia, propósito y estado.
 
 ## Verificación
@@ -72,7 +77,8 @@ Las entidades son internas y no deben devolverse desde controladores. Las consul
 - descubrimiento de los cinco DAOs;
 - tablas físicas y catálogo de roles;
 - unicidad de email normalizado;
+- default `customer`, conversión de los tres tipos y rechazo de valores desconocidos;
 - rechazo de secretos sin hash;
 - cascada de asignaciones, sesiones y tokens al eliminar una cuenta.
 
-`DatabaseMigrationIntegrationTests` verifica además que Flyway alcanza la versión `2` y Hibernate valida los mapeos contra el esquema real.
+`DatabaseMigrationIntegrationTests` verifica además que Flyway alcanza la versión `3` y Hibernate valida los mapeos contra el esquema real.

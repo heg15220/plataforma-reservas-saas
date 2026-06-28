@@ -20,7 +20,7 @@ Los textos configurables que se persistan en base de datos deben usar el contrat
 
 Las convenciones de entidades, migraciones, DAOs, servicios, controladores, DTOs y conversores se validan con `npm run backend:conventions:check` desde la raíz. La guía completa está en `docs/architecture/backend-conventions.md`.
 
-El contexto `identity.persistence` contiene la base de cuentas autenticadas, roles asignables, sesiones revocables y tokens de un solo uso. Los secretos de sesión, verificación y recuperación solo se persisten como hashes SHA-256. El modelo y sus invariantes están documentados en `docs/architecture/identity-persistence.md`.
+El contexto `identity.persistence` contiene la base de cuentas autenticadas, roles asignables, sesiones revocables y tokens de un solo uso. `AccountType` diferencia cuentas `customer`, `venue_business` y `admin` sin sustituir la autorización por roles. Los secretos de sesión, verificación y recuperación solo se persisten como hashes SHA-256. El modelo y sus invariantes están documentados en `docs/architecture/identity-persistence.md`.
 
 ## Ejecución
 
