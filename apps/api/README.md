@@ -42,6 +42,12 @@ gateway con selección determinista, timeouts, watchdog, reintentos acotados e i
 mantener una transacción abierta durante la red ni cambiar todavía el estado de la cuenta. La
 arquitectura se documenta en `docs/architecture/remote-business-verification.md`.
 
+La política inicial España/UE consulta VIES por SOAP cuando el identificador es VAT ID. Para España
+solo se usa VIES si el valor aportado incluía el prefijo `ES`; los NIF nacionales se resuelven de
+forma inconclusa y sin red para su posterior revisión censal AEAT. VIES solo recibe país y número,
+las respuestas XML tienen tamaño limitado y no se persisten, y las coincidencias de razón social y
+dirección se calculan en memoria.
+
 ## Ejecución
 
 ```bash

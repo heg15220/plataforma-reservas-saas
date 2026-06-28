@@ -23,6 +23,15 @@ public interface RemoteBusinessVerificationAdapter {
   int priority();
 
   /**
+   * Evalúa compatibilidad semántica además del país.
+   *
+   * <p>Un adaptador puede distinguir, por ejemplo, NIF nacional y NIF-IVA del mismo país.
+   */
+  default boolean supports(RemoteBusinessVerificationRequest request) {
+    return supportedCountries().contains(request.taxCountry());
+  }
+
+  /**
    * Ejecuta una comprobación remota sin modificar entidades ni estados locales.
    *
    * @throws RemoteBusinessVerificationException fallo remoto normalizado

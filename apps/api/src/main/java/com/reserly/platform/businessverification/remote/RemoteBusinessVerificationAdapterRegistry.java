@@ -33,18 +33,19 @@ public class RemoteBusinessVerificationAdapterRegistry {
   }
 
   /** Resuelve un proveedor compatible o falla sin efectuar red. */
-  public RemoteBusinessVerificationAdapter resolve(String country, String preferredProvider) {
+  public RemoteBusinessVerificationAdapter resolve(
+      RemoteBusinessVerificationRequest request, String preferredProvider) {
     if (preferredProvider != null && !preferredProvider.isBlank()) {
       String normalizedProvider = preferredProvider.strip().toLowerCase(Locale.ROOT);
       RemoteBusinessVerificationAdapter adapter = adaptersByCode.get(normalizedProvider);
-      if (adapter == null || !adapter.supportedCountries().contains(country)) {
+      if (adapter == null || !adapter.supports(request)) {
         throw new NoRemoteVerificationAdapterException();
       }
       return adapter;
     }
 
     return adaptersByCode.values().stream()
-        .filter(adapter -> adapter.supportedCountries().contains(country))
+        .filter(adapter -> adapter.supports(request))
         .min(
             Comparator.comparingInt(RemoteBusinessVerificationAdapter::priority)
                 .thenComparing(RemoteBusinessVerificationAdapter::providerCode))

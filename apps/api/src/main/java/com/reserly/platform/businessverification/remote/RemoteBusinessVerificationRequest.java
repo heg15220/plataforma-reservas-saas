@@ -12,6 +12,7 @@ import java.util.UUID;
  * @param taxIdentifier identificador fiscal canónico
  * @param legalName razón social aportada para contrastes que el proveedor soporte
  * @param address dirección opcional para contraste
+ * @param euVatIdentifier indica que la política europea debe tratar el valor como VAT ID
  */
 public record RemoteBusinessVerificationRequest(
     UUID requestId,
@@ -19,7 +20,8 @@ public record RemoteBusinessVerificationRequest(
     String taxCountry,
     String taxIdentifier,
     String legalName,
-    String address) {
+    String address,
+    boolean euVatIdentifier) {
 
   public RemoteBusinessVerificationRequest {
     Objects.requireNonNull(requestId);

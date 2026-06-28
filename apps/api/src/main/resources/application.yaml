@@ -63,6 +63,9 @@ reserly:
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   business-verification:
+    matching:
+      legalNameThreshold: ${RESERLY_BUSINESS_VERIFICATION_NAME_MATCH_THRESHOLD:0.85}
+      addressThreshold: ${RESERLY_BUSINESS_VERIFICATION_ADDRESS_MATCH_THRESHOLD:0.75}
     remote:
       connectTimeout: ${RESERLY_BUSINESS_VERIFICATION_CONNECT_TIMEOUT:2s}
       readTimeout: ${RESERLY_BUSINESS_VERIFICATION_READ_TIMEOUT:5s}
@@ -70,3 +73,6 @@ reserly:
       initialBackoff: ${RESERLY_BUSINESS_VERIFICATION_INITIAL_BACKOFF:250ms}
       maxBackoff: ${RESERLY_BUSINESS_VERIFICATION_MAX_BACKOFF:2s}
       backoffMultiplier: ${RESERLY_BUSINESS_VERIFICATION_BACKOFF_MULTIPLIER:2.0}
+    vies:
+      endpoint: ${RESERLY_VIES_ENDPOINT:https://ec.europa.eu/taxation_customs/vies/services/checkVatService}
+      maxResponseBytes: ${RESERLY_VIES_MAX_RESPONSE_BYTES:65536}

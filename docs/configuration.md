@@ -22,36 +22,40 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 
 ## Responsabilidad de las variables
 
-| Variable                                           | Consumidor       | Pública | Obligatoria ahora          |
-| -------------------------------------------------- | ---------------- | ------- | -------------------------- |
-| `RESERLY_ENVIRONMENT`                              | API              | No      | Sí                         |
-| `RESERLY_PUBLIC_BASE_URL`                          | API              | No      | Sí                         |
-| `RESERLY_WEB_BASE_URL`                             | API              | No      | Sí                         |
-| `RESERLY_ALLOWED_ORIGINS`                          | API              | No      | Sí                         |
-| `RESERLY_SECURE_COOKIES`                           | API              | No      | Sí                         |
-| `RESERLY_REAL_PAYMENTS_ENABLED`                    | API              | No      | Sí; debe ser `false`       |
-| `RESERLY_DATABASE_NAME`                            | Docker Compose   | No      | Sí                         |
-| `RESERLY_DATABASE_PORT`                            | Docker Compose   | No      | Sí                         |
-| `RESERLY_DATABASE_URL`                             | API              | No      | Sí                         |
-| `RESERLY_DATABASE_USERNAME`                        | API y Compose    | No      | Sí                         |
-| `RESERLY_DATABASE_PASSWORD`                        | API y Compose    | No      | Sí                         |
-| `RESERLY_REDIS_PORT`                               | Docker Compose   | No      | Sí                         |
-| `RESERLY_REDIS_PASSWORD`                           | Docker Compose   | No      | Sí                         |
-| `RESERLY_REDIS_URL`                                | API              | No      | Sí                         |
-| `RESERLY_RABBITMQ_PORT`                            | Docker Compose   | No      | Sí                         |
-| `RESERLY_RABBITMQ_MANAGEMENT_PORT`                 | Docker Compose   | No      | Sí                         |
-| `RESERLY_RABBITMQ_USERNAME`                        | Docker Compose   | No      | Sí                         |
-| `RESERLY_RABBITMQ_PASSWORD`                        | Docker Compose   | No      | Sí                         |
-| `RESERLY_RABBITMQ_URL`                             | API              | No      | Sí                         |
-| `RESERLY_BUSINESS_VERIFICATION_CONNECT_TIMEOUT`    | API              | No      | Sí; límite de conexión     |
-| `RESERLY_BUSINESS_VERIFICATION_READ_TIMEOUT`       | API              | No      | Sí; límite de lectura      |
-| `RESERLY_BUSINESS_VERIFICATION_MAX_ATTEMPTS`       | API              | No      | Sí; entre 1 y 5            |
-| `RESERLY_BUSINESS_VERIFICATION_INITIAL_BACKOFF`    | API              | No      | Sí; espera inicial         |
-| `RESERLY_BUSINESS_VERIFICATION_MAX_BACKOFF`        | API              | No      | Sí; tope de espera         |
-| `RESERLY_BUSINESS_VERIFICATION_BACKOFF_MULTIPLIER` | API              | No      | Sí; entre 1 y 4            |
-| `NEXT_PUBLIC_APP_ENV`                              | Web y navegador  | Sí      | Sí                         |
-| `NEXT_PUBLIC_API_BASE_URL`                         | Web y navegador  | Sí      | Sí                         |
-| `RESERLY_API_INTERNAL_URL`                         | Servidor Next.js | No      | No; fallback a URL pública |
+| Variable                                                | Consumidor       | Pública | Obligatoria ahora          |
+| ------------------------------------------------------- | ---------------- | ------- | -------------------------- |
+| `RESERLY_ENVIRONMENT`                                   | API              | No      | Sí                         |
+| `RESERLY_PUBLIC_BASE_URL`                               | API              | No      | Sí                         |
+| `RESERLY_WEB_BASE_URL`                                  | API              | No      | Sí                         |
+| `RESERLY_ALLOWED_ORIGINS`                               | API              | No      | Sí                         |
+| `RESERLY_SECURE_COOKIES`                                | API              | No      | Sí                         |
+| `RESERLY_REAL_PAYMENTS_ENABLED`                         | API              | No      | Sí; debe ser `false`       |
+| `RESERLY_DATABASE_NAME`                                 | Docker Compose   | No      | Sí                         |
+| `RESERLY_DATABASE_PORT`                                 | Docker Compose   | No      | Sí                         |
+| `RESERLY_DATABASE_URL`                                  | API              | No      | Sí                         |
+| `RESERLY_DATABASE_USERNAME`                             | API y Compose    | No      | Sí                         |
+| `RESERLY_DATABASE_PASSWORD`                             | API y Compose    | No      | Sí                         |
+| `RESERLY_REDIS_PORT`                                    | Docker Compose   | No      | Sí                         |
+| `RESERLY_REDIS_PASSWORD`                                | Docker Compose   | No      | Sí                         |
+| `RESERLY_REDIS_URL`                                     | API              | No      | Sí                         |
+| `RESERLY_RABBITMQ_PORT`                                 | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_MANAGEMENT_PORT`                      | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_USERNAME`                             | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_PASSWORD`                             | Docker Compose   | No      | Sí                         |
+| `RESERLY_RABBITMQ_URL`                                  | API              | No      | Sí                         |
+| `RESERLY_BUSINESS_VERIFICATION_CONNECT_TIMEOUT`         | API              | No      | Sí; límite de conexión     |
+| `RESERLY_BUSINESS_VERIFICATION_READ_TIMEOUT`            | API              | No      | Sí; límite de lectura      |
+| `RESERLY_BUSINESS_VERIFICATION_MAX_ATTEMPTS`            | API              | No      | Sí; entre 1 y 5            |
+| `RESERLY_BUSINESS_VERIFICATION_INITIAL_BACKOFF`         | API              | No      | Sí; espera inicial         |
+| `RESERLY_BUSINESS_VERIFICATION_MAX_BACKOFF`             | API              | No      | Sí; tope de espera         |
+| `RESERLY_BUSINESS_VERIFICATION_BACKOFF_MULTIPLIER`      | API              | No      | Sí; entre 1 y 4            |
+| `RESERLY_BUSINESS_VERIFICATION_NAME_MATCH_THRESHOLD`    | API              | No      | Sí; entre 0,5 y 1          |
+| `RESERLY_BUSINESS_VERIFICATION_ADDRESS_MATCH_THRESHOLD` | API              | No      | Sí; entre 0,5 y 1          |
+| `RESERLY_VIES_ENDPOINT`                                 | API              | No      | Sí; URL HTTPS oficial      |
+| `RESERLY_VIES_MAX_RESPONSE_BYTES`                       | API              | No      | Sí; entre 1 KiB y 1 MiB    |
+| `NEXT_PUBLIC_APP_ENV`                                   | Web y navegador  | Sí      | Sí                         |
+| `NEXT_PUBLIC_API_BASE_URL`                              | Web y navegador  | Sí      | Sí                         |
+| `RESERLY_API_INTERNAL_URL`                              | Servidor Next.js | No      | No; fallback a URL pública |
 
 Las variables de PostgreSQL, Redis y RabbitMQ ya son consumidas por Spring Boot y Docker Compose. S3 permanece como contrato reservado hasta las tareas de archivos.
 
@@ -112,7 +116,13 @@ El gateway configura por entorno:
 - backoff máximo de 2 segundos;
 - multiplicador 2.
 
-Los valores son límites operativos, no credenciales. Cada adaptador concreto deberá aplicar los
-timeouts en su cliente y el gateway añade un watchdog total de conexión más lectura. URLs,
-certificados y secretos de VIES, AEAT u otros proveedores se incorporarán solo con el adaptador de
-la tarea correspondiente y nunca usarán variables `NEXT_PUBLIC_*`.
+Los valores son límites operativos, no credenciales. VIES aplica los timeouts en su cliente HTTPS y
+el gateway añade un watchdog total de conexión más lectura. El endpoint VIES debe usar HTTPS; el
+límite de respuesta predeterminado es 65.536 bytes. Los umbrales predeterminados de coincidencia son
+0,85 para razón social y 0,75 para dirección.
+
+VIES no requiere credenciales y solo recibe país y número VAT. No existe una variable de
+certificado AEAT porque la plataforma no tiene confirmado un canal máquina-a-máquina autorizado:
+los NIF españoles nacionales se derivan a revisión administrativa sin hacer red. Si en el futuro se
+autoriza dicho canal, certificado y clave se inyectarán desde un gestor de secretos y nunca mediante
+variables `NEXT_PUBLIC_*`.

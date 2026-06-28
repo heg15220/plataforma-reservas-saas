@@ -504,6 +504,17 @@ Estados:
 
 La validación VIES confirma validez de números VAT de empresas registradas para operaciones intracomunitarias. Si el servicio no confirma datos suficientes, no se debe aprobar automáticamente; la cuenta queda pendiente de revisión o se usa otro adaptador nacional.
 
+Implementación inicial de `1.7`:
+
+- `ViesBusinessVerificationAdapter` consume el contrato SOAP oficial por HTTPS y envía únicamente país y número VAT.
+- En España solo se selecciona VIES si el identificador aportado conserva evidencia explícita del prefijo `ES`; un NIF nacional sin prefijo no implica alta en ROI.
+- Un NIF español nacional se resuelve mediante `aeat-census-manual` como resultado técnico inconcluso, sin automatizar ni extraer datos de la sede electrónica.
+- En otros territorios VIES soportados, el identificador inicial se trata como VAT ID hasta disponer de un adaptador nacional específico.
+- Grecia se traduce de `GR` a `EL` únicamente en el límite del protocolo VIES.
+- Nombre y dirección devueltos se comparan en memoria mediante normalización Unicode y similitud configurable; solo se persisten booleanos opcionales y el hash SHA-256 del XML.
+- El XML se limita en tamaño, se analiza sin DTD ni entidades externas y nunca se persiste.
+- Un resultado VIES válido es evidencia técnica; la política de estados y aprobación se aplica en `1.8`.
+
 Documentación de respaldo admitida para revisión manual:
 
 - Alta censal 036/037.
@@ -2167,7 +2178,11 @@ Orden obligatorio:
 4. Revisión administrativa con AEAT y documentos de respaldo cuando no exista un endpoint máquina-a-máquina confirmado, el servicio no responda o el resultado no sea concluyente.
 5. Proveedor comercial solo en una fase posterior, mediante decisión documentada, evaluación de protección de datos y presupuesto aprobado.
 
-La implementación debe separar `BusinessVerificationProvider` de los adaptadores `LocalSpanishTaxIdValidator`, `ViesBusinessVerificationAdapter`, `AeatBusinessVerificationAdapter` y `ManualBusinessVerificationService`.
+La implementación separa la validación local, el puerto `RemoteBusinessVerificationAdapter`, el
+adaptador `ViesBusinessVerificationAdapter` y la degradación segura
+`AeatCensusManualReviewAdapter`. Un futuro cliente AEAT real sustituirá esta última pieza solo si se
+confirma un canal máquina-a-máquina autorizado; la decisión administrativa final seguirá separada
+del proveedor remoto.
 
 El adaptador AEAT solo puede activarse si se confirma documentalmente un servicio máquina-a-máquina utilizable por Reserly y se dispone de certificado de empresa o sello. El certificado y su clave privada se almacenan en un gestor de secretos, con rotación, acceso mínimo y nunca en base de datos ni repositorio.
 
@@ -2231,8 +2246,8 @@ Excluido del MVP:
 
 #### Fuentes oficiales y condiciones verificadas
 
-- AEAT, consulta censal por NIF de entidades jurídicas: <https://sede.agenciatributaria.gob.es/Sede/ayuda/consultas-informaticas/presentacion-declaraciones-ayuda-tecnica/modelo-036/comprobacion-estar-censado-consulta-nif-juridicas.html>
-- Comisión Europea, VIES: <https://ec.europa.eu/taxation_customs/vies/>
+- AEAT, comprobación de NIF de terceros a efectos censales: <https://sede.agenciatributaria.gob.es/Sede/ayuda/consultas-informaticas/presentacion-declaraciones-ayuda-tecnica/modelo-030/comprobacion-nif-terceros-efectos-censales.html>
+- Comisión Europea, números de identificación a efectos de IVA y acceso a VIES: <https://taxation-customs.ec.europa.eu/taxation/vat/vat-directive/vat-identification-numbers_en>
 - Brevo, precios y plan gratuito: <https://www.brevo.com/pricing/>
 - LocationIQ, precios y condiciones del plan gratuito: <https://locationiq.com/pricing>
 - OpenStreetMap Foundation, política de Nominatim: <https://operations.osmfoundation.org/policies/nominatim/>

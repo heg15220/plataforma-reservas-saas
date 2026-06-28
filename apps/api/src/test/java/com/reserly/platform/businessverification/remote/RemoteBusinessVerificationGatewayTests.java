@@ -148,7 +148,7 @@ class RemoteBusinessVerificationGatewayTests {
 
   private RemoteBusinessVerificationRequest request(String country) {
     return new RemoteBusinessVerificationRequest(
-        REQUEST_ID, ACCOUNT_ID, country, "B12345674", "Empresa de prueba SL", null);
+        REQUEST_ID, ACCOUNT_ID, country, "B12345674", "Empresa de prueba SL", null, true);
   }
 
   private static RemoteBusinessVerificationResult validResult() {

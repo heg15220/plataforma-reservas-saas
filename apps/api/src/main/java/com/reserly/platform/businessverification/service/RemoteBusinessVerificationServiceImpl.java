@@ -29,14 +29,17 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
   private final BusinessAccountDao businessAccountDao;
   private final BusinessVerificationCheckDao verificationCheckDao;
   private final RemoteBusinessVerificationGatewayService verificationGateway;
+  private final EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy;
 
   public RemoteBusinessVerificationServiceImpl(
       BusinessAccountDao businessAccountDao,
       BusinessVerificationCheckDao verificationCheckDao,
-      RemoteBusinessVerificationGatewayService verificationGateway) {
+      RemoteBusinessVerificationGatewayService verificationGateway,
+      EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy) {
     this.businessAccountDao = businessAccountDao;
     this.verificationCheckDao = verificationCheckDao;
     this.verificationGateway = verificationGateway;
+    this.europeanVatIdentifierPolicy = europeanVatIdentifierPolicy;
   }
 
   @Override
@@ -58,7 +61,8 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
             businessAccount.getTaxCountry(),
             businessAccount.getBusinessTaxIdentifierNormalized(),
             businessAccount.getBusinessLegalName(),
-            businessAccount.getBusinessAddress());
+            businessAccount.getBusinessAddress(),
+            europeanVatIdentifierPolicy.isEuVatIdentifier(businessAccount));
 
     BusinessVerificationCheckEntity verificationCheck;
     try {

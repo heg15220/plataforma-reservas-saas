@@ -4408,6 +4408,352 @@ La tarea se considera completada porque:
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Tarea 1.7 - Validación inicial para España y la UE mediante NIF, NIF-IVA y VAT ID
+
+- Fecha: 2026-06-28
+- Rama: `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea conecta la infraestructura remota de `1.6` con una fuente oficial real para validar
+identificadores IVA de la Unión Europea y define una degradación segura para empresas españolas que
+solo aportan un NIF nacional.
+
+El objetivo no es aprobar una cuenta ni decidir su estado final. Esta iteración obtiene y conserva
+evidencia técnica mínima; `1.8` será responsable de convertirla en `pending_remote_check`,
+`verified`, `pending_review`, `rejected` o `expired`.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007`: el alta empresarial conserva país, razón social e identificador aportado.
+- `RF-032`: España usa NIF/NIF-IVA y la UE usa VAT ID cuando aplica; VIES es la fuente oficial
+  inicial.
+- `RNF-001`: transporte HTTPS, XML endurecido, límites de entrada y ausencia de secretos.
+- `RNF-002`: minimización de datos enviados y persistidos.
+- `RNF-008`: resultado y fallos se integran con la evidencia estructurada de `1.6`.
+- `RNF-010`: timeouts, reintentos, clasificación de fallos, idempotencia y fuentes oficiales.
+- `RNF-011`: interfaces, servicios, propiedades y documentación siguen las convenciones backend.
+- `RNF-013`: cierre en la rama GitFlow de Fase 1.
+- `RB-012`: un resultado técnico no concede publicación.
+- Diseño `3.15 Verificación empresarial`.
+- Diseño `Verificación NIF/CIF en España`.
+
+### Archivos creados
+
+- `businessverification/matching/BusinessIdentityMatchingProperties.java`.
+- `businessverification/matching/BusinessIdentityMatchingService.java`.
+- `businessverification/matching/BusinessIdentityMatchingServiceImpl.java`.
+- `businessverification/matching/package-info.java`.
+- `businessverification/remote/aeat/AeatCensusManualReviewAdapter.java`.
+- `businessverification/remote/aeat/package-info.java`.
+- `businessverification/remote/vies/ViesBusinessVerificationAdapter.java`.
+- `businessverification/remote/vies/ViesProperties.java`.
+- `businessverification/remote/vies/package-info.java`.
+- `businessverification/service/EuropeanVatIdentifierPolicy.java`.
+- Tests unitarios y de contrato para matching, política europea, VIES y AEAT manual.
+
+### Archivos modificados
+
+- Contrato, registro, gateway y request de `businessverification.remote`.
+- `RemoteBusinessVerificationServiceImpl`.
+- `application.yaml` y las tres plantillas de entorno.
+- Tests del gateway y del servicio integrado con PostgreSQL.
+- README de API, índice documental, configuración y arquitectura remota.
+- Diseño, tareas, seguimiento y este documento técnico de `.kiro`.
+
+No se eliminó ningún archivo.
+
+### Arquitectura aplicada
+
+El flujo queda dividido en cuatro decisiones:
+
+1. La validación local de `1.5` normaliza y comprueba formato y control cuando existe estrategia.
+2. `EuropeanVatIdentifierPolicy` clasifica la identidad persistida como VAT europeo o identificador
+   nacional.
+3. `RemoteBusinessVerificationAdapterRegistry` usa `supports(request)` para seleccionar un
+   adaptador compatible no solo con el país, sino también con la semántica del identificador.
+4. El adaptador produce un resultado técnico que el servicio persiste usando el contrato de `1.6`.
+
+Se añadió `euVatIdentifier` a `RemoteBusinessVerificationRequest`. El valor no procede del llamante:
+se calcula después de cargar `BusinessAccountEntity` desde PostgreSQL. Esto evita que una llamada
+interna fuerce VIES o la ruta nacional con datos distintos de la fuente de verdad.
+
+El método por defecto `supports` conserva compatibilidad para adaptadores basados únicamente en
+país. VIES y AEAT manual lo especializan. La selección explícita de proveedor también respeta esta
+compatibilidad semántica y no permite saltarse la política.
+
+### Política España y territorios VIES
+
+Territorios iniciales: los 27 países de la UE soportados por VIES y `XI` para Irlanda del Norte.
+
+Para España:
+
+- El valor original aportado se compacta con NFKC, mayúsculas y caracteres alfanuméricos.
+- Solo la presencia explícita del prefijo `ES` clasifica el identificador como NIF-IVA.
+- El canónico nacional ya no contiene `ES`, por decisión de `1.5`; por ello se consulta
+  deliberadamente el valor original para no perder la intención.
+- Un NIF sin prefijo no se interpreta como inscripción en ROI.
+- La ruta nacional devuelve evidencia inconclusa sin efectuar red.
+
+Para el resto de territorios soportados, el identificador empresarial se trata inicialmente como VAT
+ID. Es una política MVP revisable cuando se incorporen adaptadores fiscales nacionales. En el límite
+SOAP, `GR` se traduce a `EL`, mientras el dominio conserva ISO `GR`.
+
+### Contrato VIES
+
+`ViesBusinessVerificationAdapter` implementa el servicio SOAP `checkVat`:
+
+- Endpoint predeterminado:
+  `https://ec.europa.eu/taxation_customs/vies/services/checkVatService`.
+- Método HTTP `POST`.
+- `Content-Type: text/xml; charset=UTF-8`.
+- SOAPAction vacío, conforme al contrato consumido.
+- Payload limitado a `countryCode` y `vatNumber`.
+- Número VAT restringido a 2–14 caracteres alfanuméricos después de retirar el prefijo.
+
+No se envían:
+
+- razón social;
+- dirección;
+- UUID interno de cuenta;
+- `requestId`;
+- credenciales;
+- clave idempotente propietaria.
+
+VIES no documenta una cabecera de idempotencia para esta operación de lectura. Inventarla añadiría
+metadatos sin garantía contractual; la idempotencia local de `1.6` sigue evitando duplicación
+persistente por `requestId`.
+
+### Cliente HTTP, timeouts y errores
+
+Cada intento crea un `HttpClient` con:
+
+- timeout de conexión recibido del gateway;
+- timeout total de request igual a conexión más lectura;
+- redirecciones deshabilitadas;
+- HTTPS obligatorio por validación de `ViesProperties`.
+
+El gateway conserva su watchdog externo y los reintentos acotados. El adaptador traduce:
+
+- `HttpTimeoutException` y fault `TIMEOUT` a `PROVIDER_TIMEOUT`;
+- I/O, HTTP 5xx sin fault, `MS_UNAVAILABLE` y `SERVICE_UNAVAILABLE` a
+  `PROVIDER_UNAVAILABLE`;
+- HTTP 429 y límites de concurrencia VIES a `PROVIDER_RATE_LIMITED`;
+- HTTP no exitoso no transitorio o `INVALID_INPUT` a `PROVIDER_PROTOCOL_ERROR`;
+- XML inválido, fault desconocido o datos incoherentes a `INVALID_PROVIDER_RESPONSE`.
+
+Solo timeout, indisponibilidad y rate limit se reintentan según la política ya implementada.
+Una interrupción restaura el flag del hilo.
+
+### Seguridad del XML y validación de respuesta
+
+El cuerpo se lee desde `InputStream` con un máximo configurable, 65.536 bytes por defecto. Si existe
+un byte adicional se rechaza antes de parsear.
+
+El parser:
+
+- conoce namespaces;
+- prohíbe `DOCTYPE`;
+- deshabilita entidades generales y de parámetro externas;
+- bloquea DTD y schemas externos;
+- usa un error handler que no vuelca contenido remoto a stderr.
+
+Después del parseo se exige:
+
+- `countryCode`;
+- `vatNumber`;
+- `valid` con valor literal `true` o `false`;
+- correspondencia exacta entre país/número solicitado y devuelto.
+
+Esto evita aceptar una respuesta válida perteneciente a otra consulta. Los campos de nombre y
+dirección son opcionales.
+
+### Comparación de identidad
+
+`BusinessIdentityMatchingServiceImpl` compara datos devueltos solo cuando VIES marca el VAT como
+válido:
+
+- normaliza con NFKD;
+- convierte a mayúsculas con locale neutro;
+- elimina diacríticos;
+- convierte puntuación y separadores en espacios simples;
+- calcula distancia Levenshtein normalizada;
+- usa umbral 0,85 para razón social y 0,75 para dirección.
+
+Los umbrales son configurables y validados en el intervalo 0,5–1. Los valores ausentes, en blanco o
+`---` producen `null`. Una ausencia no se convierte en coincidencia ni discrepancia.
+
+La comparación es evidencia auxiliar y deliberadamente conservadora: no expande abreviaturas
+societarias ni inventa equivalencias semánticas.
+
+### Persistencia, privacidad y auditoría
+
+No se añade migración: el esquema V5 ya puede conservar la evidencia necesaria.
+
+Por cada respuesta VIES se persiste únicamente:
+
+- proveedor `vies`;
+- país e identificador canónicos ya existentes;
+- estado técnico `verified`, `invalid` o error controlado;
+- coincidencia opcional de razón social;
+- coincidencia opcional de dirección;
+- instante;
+- número de intentos y duración;
+- SHA-256 del XML.
+
+No se persisten XML, nombre remoto, dirección remota, mensajes del proveedor ni URL. La referencia
+remota queda vacía porque `checkVat` no entrega un identificador estable necesario para el dominio.
+El hash permite correlacionar evidencia sin conservar el contenido.
+
+La ruta española nacional usa proveedor `aeat-census-manual`, estado `inconclusive`, coincidencias y
+hash nulos. Aunque atraviesa el contrato de intento, no abre conexión ni procesa datos externos.
+
+### AEAT y revisión administrativa
+
+La documentación oficial consultada describe comprobaciones censales autenticadas para usuarios,
+incluidas modalidades individual, múltiple o por fichero, pero no confirma para Reserly un endpoint
+máquina-a-máquina público y autorizado.
+
+Por ello `AeatCensusManualReviewAdapter` es una degradación explícita, no un cliente ficticio:
+
+- soporta solo España;
+- rechaza solicitudes clasificadas como NIF-IVA;
+- no usa HTTP;
+- no necesita certificado;
+- no automatiza ni raspa la sede electrónica;
+- devuelve `INCONCLUSIVE`.
+
+`1.8` deberá mapear este resultado a `pending_review`. `1.9` y las tareas administrativas incorporarán
+documentos y decisión humana. Un cliente AEAT futuro requerirá confirmación contractual, certificado
+en gestor de secretos, rotación, timeouts, auditoría e idempotencia propia.
+
+### Configuración
+
+Variables añadidas:
+
+- `RESERLY_BUSINESS_VERIFICATION_NAME_MATCH_THRESHOLD=0.85`.
+- `RESERLY_BUSINESS_VERIFICATION_ADDRESS_MATCH_THRESHOLD=0.75`.
+- `RESERLY_VIES_ENDPOINT=https://ec.europa.eu/taxation_customs/vies/services/checkVatService`.
+- `RESERLY_VIES_MAX_RESPONSE_BYTES=65536`.
+
+Las tres plantillas mantienen paridad. Ninguna variable es pública para navegador ni contiene
+secretos. El endpoint debe ser HTTPS y el límite se valida entre 1 KiB y 1 MiB.
+
+### Tests añadidos y modificados
+
+`BusinessIdentityMatchingServiceTests` cubre:
+
+- razón social con diacríticos y puntuación;
+- diferencia real de nombre;
+- umbral de dirección;
+- valores ausentes.
+
+`EuropeanVatIdentifierPolicyTests` cubre:
+
+- NIF español nacional frente a NIF-IVA con `ES`;
+- territorios UE;
+- Grecia;
+- país no soportado.
+
+`AeatCensusManualReviewAdapterTests` demuestra:
+
+- compatibilidad exclusiva con NIF español nacional;
+- estado inconcluso;
+- ausencia de evidencia remota.
+
+`ViesBusinessVerificationAdapterTests` usa un servidor HTTP local determinista y fixtures SOAP para
+probar:
+
+- minimización exacta del request;
+- respuesta válida y matching;
+- respuesta VAT inválida;
+- fault transitorio `MS_UNAVAILABLE`;
+- límite de tamaño;
+- rechazo XXE/DOCTYPE;
+- traducción `GR` a `EL`;
+- retirada del prefijo VAT.
+
+`RemoteBusinessVerificationServiceIntegrationTests` inserta una cuenta española realista en
+PostgreSQL y demuestra que `B-12345674` se enruta a `aeat-census-manual`, se persiste inconcluso y no
+invoca el adaptador de red de test.
+
+### Comandos y evidencia de verificación
+
+Pruebas focalizadas:
+
+```text
+mvn -f apps/api/pom.xml -Dtest=RemoteBusinessVerificationServiceIntegrationTests,ViesBusinessVerificationAdapterTests,BusinessIdentityMatchingServiceTests,AeatCensusManualReviewAdapterTests,EuropeanVatIdentifierPolicyTests test
+```
+
+Resultado: 16 pruebas, 0 fallos, 0 errores.
+
+Checks independientes:
+
+- `npm run backend:conventions:check`: correcto.
+- `npm run env:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- `git diff --check`: correcto antes del cierre documental.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado:
+
+- CI, entorno, i18n, español y convenciones: correctos.
+- ESLint, Checkstyle, Prettier y Spotless: correctos.
+- TypeScript: correcto.
+- Frontend: 22 pruebas correctas.
+- Backend: 88 pruebas correctas, 0 fallos, 0 errores.
+- Flyway: 5 migraciones validadas y aplicadas en PostgreSQL 17/PostGIS.
+- Integraciones Redis y RabbitMQ: correctas.
+- Build Next.js: correcto.
+- JAR Spring Boot: correcto.
+
+La verificación automática no depende de una respuesta VIES viva: los contratos se prueban contra
+fixtures locales controlados. Durante la investigación el WSDL público estuvo temporalmente
+indisponible; esa circunstancia refuerza la necesidad de errores transitorios, reintentos y tests
+deterministas, pero no se usa como sustituto de una futura prueba de humo operativa.
+
+### Riesgos, limitaciones y deuda técnica
+
+- VIES confirma situación a efectos de IVA, no identidad mercantil completa ni derecho a publicar.
+- Un VAT válido puede omitir nombre o dirección; nunca debe aprobarse automáticamente sin la
+  política de `1.8`.
+- La clasificación de países UE no españoles como VAT ID es una simplificación inicial hasta
+  incorporar fuentes nacionales.
+- Los umbrales de matching necesitarán calibración con datos reales anonimizados y revisión de
+  falsos positivos/negativos.
+- No hay circuit breaker ni métrica específica por fault VIES; la infraestructura actual conserva
+  duración, intentos y código de error.
+- La URL VIES es configurable para operación, pero `ViesProperties` exige HTTPS; los tests unitarios
+  instancian propiedades directamente con servidor local.
+- Falta una prueba de humo VIES opt-in y no bloqueante para staging.
+- La integración AEAT automática queda bloqueada hasta confirmar canal autorizado y gestión segura
+  de certificado.
+- La máquina de estados, reintentos programados, caducidad y revisión humana pertenecen a `1.8` y
+  tareas posteriores.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- existe un cliente VIES real y desacoplado;
+- España distingue NIF nacional de NIF-IVA sin inferir ROI;
+- los NIF nacionales degradan de forma segura a revisión AEAT sin scraping;
+- la petición remota minimiza datos;
+- timeouts, faults y reintentos se integran con `1.6`;
+- XML, tamaño y coherencia de respuesta están endurecidos;
+- las coincidencias se calculan en memoria y se persiste evidencia mínima;
+- código y contratos tienen documentación técnica;
+- diseño, configuración, tracking y tareas están actualizados;
+- las pruebas focalizadas y `npm run verify` pasan;
+- la siguiente tarea recomendada es `1.8`.
+
 ## Tarea 1.5 - Normalización, unicidad, formato y dígito de control de identificador empresarial
 
 - Fecha: 2026-06-28

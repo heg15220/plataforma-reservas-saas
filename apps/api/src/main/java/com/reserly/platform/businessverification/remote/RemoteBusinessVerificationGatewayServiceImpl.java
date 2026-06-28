@@ -37,7 +37,7 @@ public class RemoteBusinessVerificationGatewayServiceImpl
     long startedAt = System.nanoTime();
     RemoteBusinessVerificationAdapter adapter;
     try {
-      adapter = adapterRegistry.resolve(request.taxCountry(), preferredProvider);
+      adapter = adapterRegistry.resolve(request, preferredProvider);
     } catch (NoRemoteVerificationAdapterException exception) {
       throw failure(
           request,

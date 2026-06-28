@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5` y `1.6`.
-- Siguiente tarea pendiente recomendada: `1.7. Implementar validación inicial para España/UE usando NIF/CIF/NIF-IVA/VAT ID según corresponda.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Existe una frontera remota por adaptadores con selección por país/proveedor, timeouts, watchdog, reintentos controlados, idempotencia y auditoría mínima. Los clientes concretos VIES/AEAT y la política España/UE comienzan en `1.7`.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5`, `1.6` y `1.7`.
+- Siguiente tarea pendiente recomendada: `1.8. Implementar estados pending_remote_check, verified, pending_review, rejected y expired.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. VIES ya valida NIF-IVA/VAT ID de la UE con un cliente SOAP endurecido; los NIF españoles nacionales quedan inconclusos y sin red para revisión censal AEAT. La traducción de estos resultados técnicos a estados empresariales corresponde a `1.8`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1369,3 +1369,74 @@ Fuente de verdad del avance:
   - No se mantiene una transacción abierta durante la red y no se actualiza aún `businessVerificationStatus`.
   - No se guardan cuerpos, mensajes remotos, URLs, credenciales ni excepciones; solo códigos y claves i18n controladas.
   - Evidencia de cierre: pruebas dirigidas con gateway, migración, persistencia y servicio correctas; `npm run verify` correcto con 22 tests frontend y 75 backend, Flyway V5, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
+
+## Conversación 35 - Validación inicial de empresas de España y la UE
+
+- Fecha: 2026-06-28
+- Resumen: se completó `1.7` con un adaptador SOAP real para VIES, selección semántica entre NIF español nacional y NIF-IVA, comparación tolerante de razón social y dirección y una degradación segura para la comprobación censal AEAT. VIES recibe solo país y número VAT; su XML se limita, analiza de forma segura y reduce a evidencia mínima. Un NIF español sin prefijo `ES` no se presupone inscrito en ROI y produce resultado inconcluso sin automatizar la sede electrónica. La tarea no cambia todavía el estado empresarial.
+- Archivos modificados:
+  - `.env.local.example`
+  - `.env.staging.example`
+  - `.env.production.example`
+  - `apps/api/src/main/resources/application.yaml`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/matching/BusinessIdentityMatchingProperties.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/matching/BusinessIdentityMatchingService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/matching/BusinessIdentityMatchingServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/matching/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationAdapter.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationAdapterRegistry.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationRequest.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/aeat/AeatCensusManualReviewAdapter.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/aeat/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/vies/ViesBusinessVerificationAdapter.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/vies/ViesProperties.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/remote/vies/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/EuropeanVatIdentifierPolicy.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceImpl.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/matching/BusinessIdentityMatchingServiceTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/matching/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/RemoteBusinessVerificationGatewayTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/aeat/AeatCensusManualReviewAdapterTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/aeat/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/vies/ViesBusinessVerificationAdapterTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/remote/vies/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/EuropeanVatIdentifierPolicyTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/configuration.md`
+  - `docs/architecture/remote-business-verification.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.7. Implementar validación inicial para España/UE usando NIF/CIF/NIF-IVA/VAT ID según corresponda.`
+  - Prepara `1.8`, `1.9`, `1.11`, `1.22`, `2.9` y `14.6` a `14.8`.
+- Tareas completadas:
+  - `1.7. Implementar validación inicial para España/UE usando NIF/CIF/NIF-IVA/VAT ID según corresponda.`
+- Siguiente tarea pendiente recomendada:
+  - `1.8. Implementar estados pending_remote_check, verified, pending_review, rejected y expired.`
+- Decisiones o aclaraciones relevantes:
+  - En España, solo un identificador aportado con prefijo explícito `ES` se enruta a VIES; la canonicalización local elimina el prefijo, por lo que la política consulta también el valor original persistido.
+  - Un NIF español nacional ya validado localmente se enruta a `aeat-census-manual`, que no realiza red y devuelve `INCONCLUSIVE`. No se raspa ni automatiza la sede electrónica.
+  - Los demás territorios VIES soportados se tratan inicialmente como VAT ID mientras no exista un adaptador registral nacional específico. Grecia se traduce de `GR` a `EL` en el límite SOAP.
+  - VIES recibe exclusivamente código de país y número VAT. Razón social, dirección e ID interno no salen de Reserly.
+  - El parser XML rechaza DTD y entidades externas, limita el cuerpo y valida país, número y booleano devueltos.
+  - La respuesta remota no se persiste. Solo se guardan resultado técnico, coincidencias opcionales y hash SHA-256.
+  - Las comparaciones toleran diacríticos y puntuación mediante similitud Levenshtein configurable; dato ausente produce `null`, no una coincidencia.
+  - Los faults transitorios VIES se integran con los reintentos de `1.6`; protocolos o respuestas inválidas no se reintentan.
+  - No se envía una cabecera de idempotencia inventada: VIES no la documenta y la protección local por `requestId` permanece activa.
+  - `1.7` no actualiza `businessVerificationStatus`; esa política se implementará en `1.8`.
+  - Evidencia de cierre: pruebas focalizadas correctas y `npm run verify` correcto con 22 tests frontend y 88 backend, Flyway V1–V5, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.

@@ -151,7 +151,26 @@ class RemoteBusinessVerificationServiceIntegrationTests {
     assertThat(adapter.invocations).hasValue(1);
   }
 
+  @Test
+  void routesSpanishNationalNifToAeatManualReviewWithoutNetwork() {
+    UUID accountId = insertBusinessAccount("ES", "B-12345674", "B12345674");
+
+    RemoteBusinessVerificationOutcome outcome =
+        verificationService.verify(
+            new RemoteBusinessVerificationCommand(UUID.randomUUID(), accountId, null));
+
+    assertThat(outcome.providerCode()).isEqualTo("aeat-census-manual");
+    assertThat(outcome.technicalStatus()).isEqualTo("inconclusive");
+    assertThat(outcome.attemptCount()).isEqualTo((short) 1);
+    assertThat(adapter.invocations).hasValue(0);
+  }
+
   private UUID insertBusinessAccount(String country) {
+    return insertBusinessAccount(country, "TEST-123", "TEST123");
+  }
+
+  private UUID insertBusinessAccount(
+      String country, String submittedIdentifier, String normalizedIdentifier) {
     String email = UUID.randomUUID() + "@example.com";
     UUID ownerId =
         jdbcTemplate.queryForObject(
@@ -173,12 +192,14 @@ class RemoteBusinessVerificationServiceIntegrationTests {
           "businessTaxIdentifier",
           "businessTaxIdentifierNormalized"
         )
-        VALUES (?, ?, 'Empresa de prueba SL', 'TEST-123', 'TEST123')
+        VALUES (?, ?, 'Empresa de prueba SL', ?, ?)
         RETURNING "id"
         """,
         UUID.class,
         ownerId,
-        country);
+        country,
+        submittedIdentifier,
+        normalizedIdentifier);
   }
 
   @TestConfiguration
