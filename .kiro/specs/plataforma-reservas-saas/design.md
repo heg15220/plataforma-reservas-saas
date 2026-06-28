@@ -514,23 +514,97 @@ Estos documentos solo se usan para validación empresarial, no deben mostrarse p
 
 #### users
 
-Representa cuentas autenticadas de locales y administradores.
+Representa cuentas autenticadas de locales y administradores. En la implementación física se materializa como `"Users"`; el usuario final anónimo del MVP no se persiste en esta tabla.
 
 - `id`
 - `email`
 - `email_normalized`
 - `password_hash`
-- `role`
-- `account_type`
+- `account_type`, incorporado en la tarea `1.2`
 - `preferred_locale`
 - `email_verified_at`
 - `status`
 - `created_at`
 - `updated_at`
 
-Índices:
+Índices y restricciones:
 
-- único por `email_normalized`.
+- único por `email_normalized`;
+- email normalizado en minúsculas;
+- locale limitado a `es` o `en`;
+- estado limitado a pendiente de verificación, activo, suspendido o deshabilitado.
+
+#### roles
+
+Catálogo cerrado de roles asignables. La implementación física `"Roles"` contiene `venue_owner`, `admin` y `employee_user`; `anonymous` representa ausencia de autenticación y no se persiste.
+
+- `id`
+- `code`
+- `description`
+- `created_at`
+
+Índices y restricciones:
+
+- único por `code`;
+- códigos limitados al catálogo soportado.
+
+#### user_roles
+
+Relación muchos a muchos entre cuentas y roles, materializada como `"UserRoles"`.
+
+- `id`
+- `user_id`
+- `role_id`
+- `assigned_by_user_id`, opcional para bootstrap o procesos de sistema
+- `assigned_at`
+
+Índices y restricciones:
+
+- único por `user_id` y `role_id`;
+- borrado en cascada al suprimir la cuenta;
+- borrado de roles restringido mientras existan asignaciones;
+- actor de asignación conservado cuando la concesión sea administrativa.
+
+#### auth_sessions
+
+Sesiones autenticadas revocables, materializadas como `"AuthSessions"`. Solo se almacena el hash SHA-256 hexadecimal del secreto.
+
+- `id`
+- `user_id`
+- `token_hash`
+- `created_at`
+- `last_seen_at`
+- `expires_at`
+- `revoked_at`
+
+Índices y restricciones:
+
+- hash único y con formato hexadecimal de 64 caracteres;
+- expiración posterior a creación;
+- índices parciales por cuenta y expiración para sesiones no revocadas;
+- borrado en cascada al suprimir la cuenta.
+
+#### auth_tokens
+
+Tokens de un solo uso para verificación de email y recuperación de contraseña, materializados como `"AuthTokens"`. El secreto original nunca se persiste.
+
+- `id`
+- `user_id`
+- `purpose`
+- `token_hash`
+- `created_at`
+- `expires_at`
+- `consumed_at`
+- `revoked_at`
+
+Índices y restricciones:
+
+- propósito limitado a `email_verification` o `password_reset`;
+- hash único y con formato hexadecimal de 64 caracteres;
+- expiración posterior a creación;
+- consumo y revocación como estados finales mutuamente excluyentes;
+- índices parciales para tokens activos por usuario, propósito y expiración;
+- borrado en cascada al suprimir la cuenta.
 
 #### business_accounts
 

@@ -26,7 +26,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
 
     List<String> extensions =
         jdbcTemplate.queryForList(

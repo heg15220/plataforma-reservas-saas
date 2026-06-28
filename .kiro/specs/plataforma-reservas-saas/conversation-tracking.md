@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-24
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14` y `0.15`.
-- Siguiente tarea pendiente recomendada: `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
-- Observación: la Fase 0 queda completada en `tasks.md`. La web ya dispone de integración SSR de Material UI, shells responsive, tokens semánticos, tema visual, estados accesibles, iconografía Lucide, catálogo vivo en `/design-system`, pipeline CI, base i18n con `next-intl`, resolución dinámica de idioma, validación automática de paridad de catálogos y textos visibles hardcodeados en UI TSX, patrón backend/documental para textos localizados persistidos en JSONB, validación automatizada de convenciones backend Java/JPA/DAO/REST/DTO/Flyway y validación de UTF-8/mojibake/calidad mínima de textos españoles. La siguiente fase recomendada es identidad, roles y base SaaS. GitFlow está operativo con `develop` y la rama única `phase/0-preparacion-proyecto`.
+- Fecha de última actualización: 2026-06-28
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15` y `1.1`.
+- Siguiente tarea pendiente recomendada: `1.2. Implementar account_type con valores customer, venue_business y admin.`
+- Observación: la Fase 0 se integró en `develop` y la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Flyway dispone ya de las tablas físicas `"Users"`, `"Roles"`, `"UserRoles"`, `"AuthSessions"` y `"AuthTokens"`; Hibernate valida sus cinco entidades y existen DAOs por entidad. Las sesiones y tokens guardan solo hashes, los roles base están sembrados y las restricciones críticas se verifican sobre PostgreSQL real.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1027,3 +1027,55 @@ Fuente de verdad del avance:
   - La revisión de tildes es conservadora y cubre palabras frecuentes del proyecto; no sustituye revisión humana de textos finales.
   - La Fase 0 queda completada en `tasks.md`; la siguiente tarea recomendada inicia la Fase 1.
   - Evidencia de verificación final: `npm run spanish:text:check`, `npm run ci:check`, `npm run format:check:web`, `git diff --check` y `npm run verify` se ejecutaron correctamente antes de commit y push.
+
+## Conversación 29 - Persistencia base de identidad, roles, sesiones y tokens
+
+- Fecha: 2026-06-28
+- Resumen: se completó la tarea `1.1` creando mediante Flyway las tablas físicas `"Users"`, `"Roles"`, `"UserRoles"`, `"AuthSessions"` y `"AuthTokens"`, con columnas `lowerCamelCase`, UUIDs, claves foráneas, checks, índices únicos y parciales, cascadas y catálogo inicial de roles. Se añadieron cinco entidades JPA, cinco DAOs, pruebas de integración sobre PostgreSQL 17 y documentación operativa profunda. Los secretos de sesión, verificación y recuperación se almacenan únicamente como hashes SHA-256 hexadecimales. `accountType` queda expresamente reservado para `1.2`.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V2__create_identity_role_session_and_token_tables.sql`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/RoleEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserRoleEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthSessionEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthTokenEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/RoleDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserRoleDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthSessionDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthTokenDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/identity/persistence/IdentityPersistenceIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/architecture/identity-persistence.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-001 Identidad del usuario final`.
+- Tareas impactadas:
+  - `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
+  - Prepara `1.2`, `1.12`, `1.13`, `1.14`, `1.15` y `1.17`.
+- Tareas completadas:
+  - `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
+- Siguiente tarea pendiente recomendada:
+  - `1.2. Implementar account_type con valores customer, venue_business y admin.`
+- Decisiones o aclaraciones relevantes:
+  - `anonymous` no se persiste porque representa ausencia de autenticación y el usuario final del MVP no necesita cuenta.
+  - Los roles asignables iniciales son `venue_owner`, `admin` y `employee_user`.
+  - Rol y tipo de cuenta son conceptos separados; `"accountType"` se implementará en `1.2`.
+  - Sesiones y tokens solo almacenan hashes SHA-256 hexadecimales, nunca secretos en claro.
+  - No se recopilan IP ni user agent de sesión sin una necesidad funcional y legal definida.
+  - Los índices parciales cubren exclusivamente credenciales activas.
+  - Flyway alcanza la versión `2` y Hibernate valida las cinco entidades.
+  - Evidencia de cierre: `npm run verify` correcto; 22 tests frontend y 19 tests backend sin fallos, migración sobre PostgreSQL 17, integración con Redis/RabbitMQ y builds de Next.js/Spring Boot correctos.

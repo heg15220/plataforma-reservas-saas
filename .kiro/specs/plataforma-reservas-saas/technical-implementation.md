@@ -3846,3 +3846,302 @@ La tarea se considera completada porque:
 - La documentación operativa explica reglas, alcance y límites.
 - `tasks.md`, `conversation-tracking.md` y este documento técnico quedan actualizados.
 - La Fase 0 queda marcada como completada y la siguiente tarea recomendada pasa a `1.1`.
+
+## Tarea 1.1 - Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase
+
+- Fecha: 2026-06-28
+- Commit o referencia: cambios preparados en `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea establece el primer modelo funcional de la Fase 1: una fuente de verdad PostgreSQL para cuentas autenticadas, roles asignables, sesiones revocables y tokens de un solo uso. El diseño debía ser suficientemente estricto para soportar registro, login, verificación de email, recuperación de contraseña y autorización posteriores, sin adelantar la implementación de esos casos de uso ni la columna `accountType` reservada a la tarea `1.2`.
+
+El incremento también materializa por primera vez las convenciones automatizadas de `RNF-011`: tablas físicas `UpperCamelCase`, columnas `lowerCamelCase`, entidades JPA con acceso por getters, relaciones en getters, DAOs por entidad y validación de esquema gestionado exclusivamente por Flyway.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007 Registro de local`, porque prepara cuenta, verificación de email y rol propietario.
+- `RF-008 Acceso y panel privado del local`, porque prepara sesiones revocables.
+- `RNF-001 Seguridad`, especialmente hashing, roles, expiración y revocación de tokens.
+- `RNF-002 Privacidad y protección de datos`, por minimización de datos de sesión.
+- `RNF-006 Disponibilidad operativa`, por persistencia transaccional y migraciones repetibles.
+- `RNF-011 Convenciones de implementación backend y persistencia`.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- `RB-001 Identidad del usuario final`, que mantiene al cliente final del MVP sin cuenta.
+- Diseño `3.1 Identidad y acceso`.
+- Diseño `4.1 Entidades principales`.
+- Diseño `12.1 Autenticación` y `12.2 Autorización`.
+
+La tarea cierra `1.1` y prepara directamente `1.2`, `1.12`, `1.13`, `1.14`, `1.15` y `1.17`.
+
+### Archivos creados, modificados o eliminados
+
+Creados:
+
+- `apps/api/src/main/resources/db/migration/V2__create_identity_role_session_and_token_tables.sql`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/RoleEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserRoleEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthSessionEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthTokenEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/RoleDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserRoleDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthSessionDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/AuthTokenDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/persistence/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/persistence/IdentityPersistenceIntegrationTests.java`.
+- `docs/architecture/identity-persistence.md`.
+
+Modificados:
+
+- `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- `apps/api/README.md`.
+- `docs/README.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada
+
+La persistencia vive en `com.reserly.platform.identity.persistence`, dentro del contexto de identidad del monolito modular. Todas las entidades son internas y no constituyen contratos REST. Los módulos consumidores deberán depender de servicios futuros y nunca devolver entidades JPA a controladores.
+
+Flyway conserva la propiedad exclusiva del esquema:
+
+- `V1` activa capacidades PostgreSQL.
+- `V2` crea las cinco tablas de identidad y sus seeds.
+- Hibernate usa `ddlAuto: validate`; por tanto, el arranque falla ante cualquier divergencia entre migración y entidades.
+
+Se eligió una tabla de unión explícita `"UserRoles"` en vez de una columna `role` en `"Users"` por tres razones:
+
+- admite más de un rol sin cambiar el esquema;
+- conserva fecha y actor de asignación;
+- desacopla identidad de autenticación y autorización.
+
+No se implementó un constructor genérico de permisos. El catálogo sigue siendo cerrado y coherente con el alcance MVP.
+
+### Modelo de datos, índices y restricciones
+
+#### `"Users"`
+
+Columnas:
+
+- `"id"` UUID con `gen_random_uuid()`.
+- `"email"` `varchar(320)` para comunicación y presentación.
+- `"emailNormalized"` `varchar(320)` para unicidad y lookup.
+- `"passwordHash"` `varchar(255)` para hashes adaptativos futuros.
+- `"preferredLocale"` `varchar(2)`, por defecto `en`.
+- `"emailVerifiedAt"` opcional.
+- `"status"` con valor inicial `pending_email_verification`.
+- `"createdAt"` y `"updatedAt"` como `timestamp with time zone`.
+
+Restricciones:
+
+- clave primaria por `"id"`;
+- índice único `"uqUsersEmailNormalized"`;
+- email normalizado obligatorio en minúsculas;
+- locale limitado a `es` o `en`;
+- estado limitado a `pending_email_verification`, `active`, `suspended` o `disabled`.
+
+`"accountType"` no se incluyó deliberadamente: sus valores y contrato pertenecen a `1.2`.
+
+#### `"Roles"`
+
+Contiene UUID, código, descripción interna y fecha de creación. El índice `"uqRolesCode"` garantiza código único y el check limita el catálogo a:
+
+- `venue_owner`;
+- `admin`;
+- `employee_user`.
+
+La migración inserta esos tres roles con UUIDs estables. `anonymous` no se persiste porque representa una solicitud sin cuenta autenticada.
+
+#### `"UserRoles"`
+
+Contiene cuenta, rol, actor opcional y fecha de asignación.
+
+- La combinación cuenta/rol es única.
+- La cuenta se elimina en cascada junto con sus asignaciones.
+- Un rol asignado no puede eliminarse.
+- Si se elimina el actor administrativo, `"assignedByUserId"` pasa a `null` sin perder la asignación.
+- El índice por `"roleId"` soporta consultas administrativas inversas.
+
+#### `"AuthSessions"`
+
+Contiene cuenta, hash de secreto, creación, última actividad, expiración y revocación.
+
+- `"tokenHash"` es `varchar(64)`, único y restringido a SHA-256 hexadecimal en minúsculas.
+- La expiración debe ser posterior a creación.
+- La revocación no puede ser anterior a creación.
+- Los índices parciales `"ixAuthSessionsUserActive"` y `"ixAuthSessionsExpiresAt"` solo incluyen sesiones no revocadas.
+- Las sesiones se eliminan al suprimir la cuenta.
+
+Inicialmente se usó `char(64)`. Hibernate detectó correctamente que PostgreSQL lo exponía como `bpchar` mientras el mapeo Java esperaba `varchar`. Se cambió a `varchar(64)` manteniendo longitud y formato exactos mediante regex, lo que evita acoplar JPA a un tipo específico de PostgreSQL.
+
+#### `"AuthTokens"`
+
+Contiene cuenta, propósito, hash, emisión, expiración, consumo y revocación.
+
+- Los propósitos permitidos son `email_verification` y `password_reset`.
+- El hash tiene las mismas garantías que el de sesión.
+- La expiración debe ser posterior a emisión.
+- Consumo y revocación no pueden preceder a creación.
+- Consumo y revocación son estados finales mutuamente excluyentes.
+- Los índices parciales por cuenta/propósito y expiración solo incluyen tokens sin consumir ni revocar.
+- Los tokens se eliminan al suprimir la cuenta.
+
+### Entidades y DAOs
+
+Se crearon cinco entidades:
+
+- `UserEntity`;
+- `RoleEntity`;
+- `UserRoleEntity`;
+- `AuthSessionEntity`;
+- `AuthTokenEntity`.
+
+Todas declaran tabla y columnas físicas de forma explícita. Los identificadores usan `GenerationType.UUID`, de modo que JPA puede persistir entidades nuevas sin IDs manuales y PostgreSQL conserva además su default para inserciones SQL. Las relaciones `ManyToOne` de asignaciones, sesiones y tokens se sitúan en getters con setters correspondientes, como exige el acceso JPA por propiedades.
+
+Se creó un DAO Spring Data JPA por entidad. En esta tarea no existen consultas de dominio propias; por eso los DAOs solo heredan operaciones básicas. La documentación de `UserDao`, `AuthSessionDao` y `AuthTokenDao` deja explícito que búsquedas futuras por email o credencial deberán usar `@Query` y expresar vigencia, propósito, revocación y consumo.
+
+### Flujos de ejecución relevantes
+
+Arranque de aplicación:
+
+1. Spring configura el datasource PostgreSQL.
+2. Flyway valida nombres y checksums.
+3. Flyway aplica `V1` y después `V2` si el esquema está vacío.
+4. `V2` crea tablas, claves, checks, índices y roles base.
+5. Hibernate descubre las cinco entidades.
+6. `ddlAuto: validate` compara tipos, nulabilidad y relaciones con PostgreSQL.
+7. La aplicación solo termina de arrancar si migración y mapeos son compatibles.
+
+Futuro lookup de sesión:
+
+1. El cliente presenta un secreto de alta entropía.
+2. El backend calcula SHA-256 fuera de la entidad.
+3. El DAO busca por hash y exige no revocación y expiración futura.
+4. La comparación y autorización se resuelven sin persistir ni registrar el secreto.
+
+Futuro consumo de token:
+
+1. El backend calcula el hash del token recibido.
+2. Una operación transaccional busca hash, propósito y cuenta.
+3. Exige `consumedAt = null`, `revokedAt = null` y expiración futura.
+4. Marca `consumedAt` una sola vez.
+5. La transacción evita reutilización concurrente; la consulta con lock se implementará en las tareas de verificación o recuperación.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Seguridad:
+
+- No se almacenan contraseñas, sesiones ni tokens en claro.
+- Los hashes de credenciales son únicos.
+- Las restricciones críticas existen en base de datos además de la futura validación de servicio.
+- Expiración y revocación son datos explícitos, no inferencias de caché.
+- Los roles están desacoplados de los tipos de cuenta.
+
+Privacidad:
+
+- No se guardan IP, geolocalización ni user agent en sesiones.
+- Las credenciales dependientes desaparecen al suprimir una cuenta.
+- El email visible se separa del email técnico normalizado.
+- Las entidades no deben exponerse en REST.
+
+Permisos:
+
+- La tarea prepara roles pero no implementa aún middleware ni decisiones de acceso.
+- `venue_owner` y `admin` serán roles asignables.
+- `employee_user` queda reservado sin habilitar acceso funcional.
+- `anonymous` sigue siendo ausencia de sesión.
+
+Internacionalización:
+
+- La preferencia persistida se limita a `es` o `en`.
+- El valor por defecto es `en`, coherente con el fallback operativo.
+- Las descripciones de roles son internas y no sustituyen textos de catálogo visibles.
+
+### Errores, logs, auditoría y observabilidad
+
+No se añadieron endpoints ni mensajes públicos. Los errores de integridad se expresan mediante nombres explícitos de constraints e índices, facilitando diagnóstico y futura traducción a errores de dominio:
+
+- `"uqUsersEmailNormalized"`;
+- `"uqUserRolesUserRole"`;
+- `"ckAuthSessionsTokenHash"`;
+- `"ckAuthTokensFinalState"`;
+- resto de checks con prefijos `ck`, claves foráneas `fk` e índices `ix`/`uq`.
+
+La asignación de rol conserva `"assignedByUserId"` y `"assignedAt"` como base de auditoría. La auditoría visible y los logs de acciones críticas se implementarán en tareas posteriores; no se registran secretos ni hashes en esta iteración.
+
+### Tests añadidos o modificados
+
+`DatabaseMigrationIntegrationTests` ahora exige que Flyway alcance la versión `2`. El arranque completo del contexto demuestra además que Hibernate valida todas las entidades contra PostgreSQL real.
+
+`IdentityPersistenceIntegrationTests` añade cinco comprobaciones:
+
+- los cinco DAOs se descubren y los tres roles base existen;
+- las cinco tablas físicas conservan `UpperCamelCase`;
+- no se puede duplicar un email normalizado;
+- una sesión rechaza un secreto que no sea hash SHA-256 hexadecimal;
+- al eliminar una cuenta desaparecen asignaciones, sesiones y tokens dependientes.
+
+Los tests usan PostGIS 17 efímero mediante Testcontainers y transacciones con rollback para aislar casos.
+
+### Comandos y evidencia de verificación
+
+Ejecutados durante la iteración:
+
+- `npm run backend:conventions:check`: correcto.
+- `mvn -f apps/api/pom.xml spotless:apply`: correcto.
+- Primera ejecución de tests: bloqueada porque Docker Desktop estaba apagado.
+- Segunda ejecución con Docker activo: Flyway aplicó `V2`, pero Hibernate detectó `char(64)` frente a `varchar(64)`.
+- Tercera ejecución: los tests descubrieron que el driver JDBC no infiere `java.time.Instant` en `JdbcTemplate`; se corrigió el fixture usando `Timestamp.from`.
+- Cuarta ejecución dirigida: correcta, 7 tests ejecutados, 0 fallos y 0 errores.
+- Primera ejecución agregada de `npm run verify`: alcanzó el límite operativo de seis minutos sin registrar un fallo funcional. Sus etapas se ejecutaron después por bloques para aislar la duración.
+- `npm run lint`, `npm run format:check` y `npm run test`: correctos; 22 tests frontend y 19 tests backend sin fallos.
+- `npm run build:web:test` y `npm run build:api`: correctos.
+- Ejecución final agregada de `npm run verify`: correcta en 203,6 segundos.
+- Tras la revisión final se añadió `GenerationType.UUID` a las cinco entidades y se repitió `npm run verify`: correcto; 22 tests frontend, 19 tests backend, migración real y ambos builds sin fallos.
+- `git diff --check`: se ejecuta tras el cierre documental.
+
+### Riesgos, limitaciones y deuda técnica
+
+- `passwordHash` solo define almacenamiento; el algoritmo robusto, coste, sal y política se implementan en `1.12`.
+- El email se restringe a minúsculas, pero la normalización canónica completa y sus edge cases se implementarán con registro.
+- La columna `accountType` queda deliberadamente pendiente de `1.2`.
+- No existe todavía servicio de emisión, rotación, lookup, consumo o revocación de credenciales.
+- No existe todavía bloqueo pesimista o actualización atómica para consumir tokens; deberá añadirse con verificación de email y recuperación.
+- No existe todavía política de duración ni limpieza de sesiones/tokens; deberá definirse junto a autenticación y jobs.
+- `employee_user` está sembrado para compatibilidad futura, pero no habilita acceso.
+- Las descripciones internas de roles no están localizadas porque no son contenido público.
+- Los avisos informativos de Spring Data al explorar DAOs JPA como posibles repositorios Redis son benignos; Spring entra en modo estricto y registra correctamente cero repositorios Redis para esas interfaces.
+
+### Decisiones técnicas
+
+- Usar UUIDs para todas las identidades persistentes y UUIDs estables para seeds de roles.
+- Separar rol de tipo de cuenta: rol autoriza; `accountType` clasificará la cuenta en `1.2`.
+- Modelar asignaciones con entidad propia para soportar auditoría y evolución.
+- Persistir hashes de tokens con SHA-256 hexadecimal, no secretos reversibles.
+- Usar índices parciales para conjuntos activos, reduciendo el coste futuro de lookup y expiración.
+- Aplicar cascada solo desde cuenta hacia credenciales/asignaciones; restringir borrado de roles.
+- Mantener estados como strings restringidos por checks en esta primera iteración, sin introducir todavía servicios o enums de dominio que pertenezcan a tareas posteriores.
+- No recopilar metadatos de dispositivo o red sin una necesidad funcional y legal definida.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- `V2` migre una base vacía hasta la versión `2`;
+- Hibernate valide las cinco entidades;
+- existan DAOs para todas las entidades;
+- las invariantes de unicidad, hash y cascada estén probadas;
+- la documentación operativa, de diseño, seguimiento y técnica esté actualizada;
+- `npm run verify` finalizó correctamente con validadores, 22 tests frontend, 19 tests backend y ambos builds;
+- el diff se revisa antes del commit de cierre;
+- el commit y push dejan `phase/1-identidad-roles-base-saas` alineada con remoto.
