@@ -2,6 +2,9 @@ package com.reserly.platform.identity.service;
 
 import com.reserly.platform.businessverification.persistence.BusinessAccountDao;
 import com.reserly.platform.businessverification.persistence.BusinessAccountEntity;
+import com.reserly.platform.businessverification.validation.BusinessTaxIdentifierValidationException;
+import com.reserly.platform.businessverification.validation.BusinessTaxIdentifierValidationService;
+import com.reserly.platform.businessverification.validation.NormalizedBusinessTaxIdentifier;
 import com.reserly.platform.identity.AccountType;
 import com.reserly.platform.identity.dto.VenueRegistrationCommand;
 import com.reserly.platform.identity.dto.VenueRegistrationResponse;
@@ -21,8 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Implementación atómica del alta empresarial.
  *
- * <p>La normalización fiscal aplicada aquí es provisional y conservadora: trim y mayúsculas. La
- * tarea 1.5 incorporará reglas por país, eliminación segura de separadores y dígitos de control.
+ * <p>La identidad fiscal se normaliza y valida mediante estrategias nacionales antes de consultar
+ * unicidad o escribir datos. Superar esa comprobación local no equivale a una verificación
+ * empresarial remota.
  */
 @Service
 public class VenueRegistrationServiceImpl implements VenueRegistrationService {
@@ -37,18 +41,21 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
   private final UserRoleDao userRoleDao;
   private final BusinessAccountDao businessAccountDao;
   private final PasswordHashingService passwordHashingService;
+  private final BusinessTaxIdentifierValidationService taxIdentifierValidationService;
 
   public VenueRegistrationServiceImpl(
       UserDao userDao,
       RoleDao roleDao,
       UserRoleDao userRoleDao,
       BusinessAccountDao businessAccountDao,
-      PasswordHashingService passwordHashingService) {
+      PasswordHashingService passwordHashingService,
+      BusinessTaxIdentifierValidationService taxIdentifierValidationService) {
     this.userDao = userDao;
     this.roleDao = roleDao;
     this.userRoleDao = userRoleDao;
     this.businessAccountDao = businessAccountDao;
     this.passwordHashingService = passwordHashingService;
+    this.taxIdentifierValidationService = taxIdentifierValidationService;
   }
 
   @Override
@@ -57,12 +64,18 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
     validatePasswordBytes(command.rawPassword());
 
     String normalizedEmail = normalizeEmail(command.email());
-    String taxCountry = command.taxCountry().strip().toUpperCase(Locale.ROOT);
-    String normalizedTaxIdentifier =
-        command.businessTaxIdentifier().strip().toUpperCase(Locale.ROOT);
+    NormalizedBusinessTaxIdentifier taxIdentifier;
+    try {
+      taxIdentifier =
+          taxIdentifierValidationService.normalizeAndValidate(
+              command.taxCountry(), command.businessTaxIdentifier());
+    } catch (BusinessTaxIdentifierValidationException exception) {
+      throw new RegistrationValidationException();
+    }
 
     if (userDao.existsByEmailNormalized(normalizedEmail)
-        || businessAccountDao.existsByTaxIdentity(taxCountry, normalizedTaxIdentifier)) {
+        || businessAccountDao.existsByTaxIdentity(
+            taxIdentifier.taxCountry(), taxIdentifier.value())) {
       throw new RegistrationConflictException();
     }
 
@@ -72,7 +85,7 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
       userDao.saveAndFlush(user);
 
       BusinessAccountEntity businessAccount =
-          createBusinessAccount(command, user, taxCountry, normalizedTaxIdentifier, now);
+          createBusinessAccount(command, user, taxIdentifier, now);
       businessAccountDao.saveAndFlush(businessAccount);
 
       RoleEntity venueOwnerRole =
@@ -115,15 +128,14 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
   private BusinessAccountEntity createBusinessAccount(
       VenueRegistrationCommand command,
       UserEntity user,
-      String taxCountry,
-      String normalizedTaxIdentifier,
+      NormalizedBusinessTaxIdentifier taxIdentifier,
       Instant now) {
     BusinessAccountEntity businessAccount = new BusinessAccountEntity();
     businessAccount.setOwnerUser(user);
-    businessAccount.setTaxCountry(taxCountry);
+    businessAccount.setTaxCountry(taxIdentifier.taxCountry());
     businessAccount.setBusinessLegalName(command.businessLegalName().strip());
     businessAccount.setBusinessTaxIdentifier(command.businessTaxIdentifier().strip());
-    businessAccount.setBusinessTaxIdentifierNormalized(normalizedTaxIdentifier);
+    businessAccount.setBusinessTaxIdentifierNormalized(taxIdentifier.value());
     businessAccount.setBusinessAddress(normalizeOptional(command.businessAddress()));
     businessAccount.setBusinessVerificationStatus(INITIAL_BUSINESS_STATUS);
     businessAccount.setCreatedAt(now);

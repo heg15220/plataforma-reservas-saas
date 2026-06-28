@@ -70,7 +70,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   @Test
   void createsBusinessAccountWithSafeInitialState() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
-    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345678", "B12345678");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
 
     String status =
         jdbcTemplate.queryForObject(
@@ -90,9 +90,9 @@ class BusinessVerificationPersistenceIntegrationTests {
   void enforcesUniqueNormalizedIdentifierPerCountry() {
     UUID firstOwnerId = insertUser("first@example.com", "venue_business");
     UUID secondOwnerId = insertUser("second@example.com", "venue_business");
-    insertBusinessAccount(firstOwnerId, "ES", "B-12345678", "B12345678");
+    insertBusinessAccount(firstOwnerId, "ES", "B-12345674", "B12345674");
 
-    assertThatThrownBy(() -> insertBusinessAccount(secondOwnerId, "ES", "B 12345678", "B12345678"))
+    assertThatThrownBy(() -> insertBusinessAccount(secondOwnerId, "ES", "B 12345674", "B12345674"))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("uqBusinessAccountsTaxIdentifier");
   }
@@ -112,7 +112,7 @@ class BusinessVerificationPersistenceIntegrationTests {
                       "businessTaxIdentifier",
                       "businessTaxIdentifierNormalized"
                     )
-                    VALUES (?, 'es', 'Empresa SL', 'B12345678', 'B12345678')
+                    VALUES (?, 'es', 'Empresa SL', 'B12345674', 'B12345674')
                     """,
                     ownerId))
         .isInstanceOf(DataIntegrityViolationException.class)
@@ -135,7 +135,7 @@ class BusinessVerificationPersistenceIntegrationTests {
                       "businessTaxIdentifierNormalized",
                       "businessVerificationStatus"
                     )
-                    VALUES (?, 'ES', 'Empresa SL', 'B12345678', 'B12345678', 'verified')
+                    VALUES (?, 'ES', 'Empresa SL', 'B12345674', 'B12345674', 'verified')
                     """,
                     ownerId))
         .isInstanceOf(DataIntegrityViolationException.class)
@@ -145,7 +145,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   @Test
   void storesOnlyMinimalRemoteEvidenceAndRejectsMalformedHash() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
-    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345678", "B12345678");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
 
     List<String> forbiddenColumns =
         jdbcTemplate.queryForList(
@@ -168,7 +168,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   @Test
   void requiresControlledErrorMetadataForFailedRemoteCheck() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
-    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345678", "B12345678");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
 
     assertThatThrownBy(
             () -> insertCheck(accountId, "vies", "error", VALID_RESPONSE_HASH, null, null))
@@ -180,7 +180,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   void requiresReviewerAndTimestampForFinalDocumentState() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
     UUID reviewerId = insertUser("admin@example.com", "admin");
-    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345678", "B12345678");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
 
     assertThatThrownBy(
             () ->
@@ -209,7 +209,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   @Test
   void rejectsPersistentPublicUrlForSensitiveDocument() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
-    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345678", "B12345678");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
 
     assertThatThrownBy(
             () ->
@@ -235,7 +235,7 @@ class BusinessVerificationPersistenceIntegrationTests {
   @Test
   void preventsDeletingAccountWhileAuditEvidenceExists() {
     UUID ownerId = insertUser("owner@example.com", "venue_business");
-    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345678", "B12345678");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
     insertCheck(accountId, "vies", "verified", VALID_RESPONSE_HASH, "VIES-REFERENCE-1", null);
 
     assertThatThrownBy(
@@ -309,7 +309,7 @@ class BusinessVerificationPersistenceIntegrationTests {
           "errorMessageKey",
           "rawResponseHash"
         )
-        VALUES (?, ?, 'ES', 'B12345678', ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, 'ES', 'B12345674', ?, ?, ?, ?, ?, ?)
         RETURNING "id"
         """,
         UUID.class,

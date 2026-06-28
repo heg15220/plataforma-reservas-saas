@@ -30,6 +30,12 @@ persiste únicamente como BCrypt, el cliente no controla privilegios y el alta n
 perfil público del local. El contrato y sus límites están documentados en
 `docs/architecture/venue-registration.md`.
 
+El contexto `businessverification.validation` convierte identificadores fiscales a una clave
+canónica y aplica estrategias locales por país antes de consultar unicidad. España incluye formato y
+carácter de control para NIF, NIE y NIF de entidades, incluido el prefijo NIF-IVA `ES`. Los países
+sin estrategia se normalizan sin declararse validados. El contrato se documenta en
+`docs/architecture/business-tax-identifiers.md`.
+
 ## Ejecución
 
 ```bash

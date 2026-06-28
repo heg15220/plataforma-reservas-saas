@@ -4408,6 +4408,385 @@ La tarea se considera completada porque:
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Tarea 1.5 - Normalización, unicidad, formato y dígito de control de identificador empresarial
+
+- Fecha: 2026-06-28
+- Commit o referencia: cambios preparados en `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea sustituye la normalización provisional del registro empresarial por una frontera de dominio
+reutilizable que produce una identidad fiscal canónica y aplica reglas locales cuando el país dispone
+de una estrategia conocida. El incremento persigue cuatro garantías:
+
+- que representaciones visuales equivalentes compartan la misma clave de unicidad;
+- que los identificadores españoles con formato o control incorrecto no lleguen a persistencia;
+- que añadir un país nuevo no obligue a modificar el caso de uso de registro;
+- que la ausencia de una regla nacional no se confunda con una validación fiscal satisfactoria.
+
+La implementación separa deliberadamente validación matemática local, comprobación remota,
+transiciones de estado y autorización de publicación. Superar `1.5` no verifica una empresa.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007 Registro de local`.
+- `RF-032 Verificación empresarial de cuentas de local`.
+- `RNF-001 Seguridad`.
+- `RNF-002 Privacidad y protección de datos`.
+- `RNF-010 Verificación empresarial remota`.
+- `RNF-011 Convenciones de implementación backend y persistencia`.
+- `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- `RB-012 Publicación de cuentas de local`.
+- Diseño `3.15 Verificación empresarial`.
+- Diseño `4.1 business_accounts`.
+- Diseño `8.4 Registro de local con verificación empresarial`.
+- Documentación arquitectónica `business-verification-persistence.md`.
+- Documentación arquitectónica `venue-registration.md`.
+
+La composición española de entidades se contrastó con la Orden EHA/451/2008 consolidada, la guía
+censal de la AEAT y la documentación oficial ROI/VIES. Las fuentes quedan enlazadas en
+`docs/architecture/business-tax-identifiers.md`.
+
+### Archivos creados, modificados o eliminados
+
+Creados:
+
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierScheme.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationException.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/NormalizedBusinessTaxIdentifier.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/CountryBusinessTaxIdentifierValidator.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationService.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/SpanishBusinessTaxIdentifierValidator.java`.
+- `apps/api/src/main/java/com/reserly/platform/businessverification/validation/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/validation/package-info.java`.
+- `docs/architecture/business-tax-identifiers.md`.
+
+Modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/identity/service/VenueRegistrationService.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/VenueRegistrationServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/controller/VenueRegistrationIntegrationTests.java`.
+- `apps/api/README.md`.
+- `docs/README.md`.
+- `docs/architecture/venue-registration.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada y razones
+
+Se crea el paquete `businessverification.validation`, separado tanto de persistencia como del
+contexto `identity`. La dependencia apunta desde el caso de uso de registro hacia una interfaz de
+dominio:
+
+`VenueRegistrationServiceImpl -> BusinessTaxIdentifierValidationService -> CountryBusinessTaxIdentifierValidator`
+
+`BusinessTaxIdentifierValidationServiceImpl` recibe por inyección todas las estrategias nacionales y
+construye un registro inmutable por código ISO. Si dos componentes declaran el mismo país, el
+arranque falla. Esta decisión evita que el orden de beans seleccione silenciosamente una regla y
+hace observable una configuración incoherente.
+
+La estrategia nacional no conoce HTTP, JPA, DAOs ni estado empresarial. Recibe un identificador ya
+compactado y devuelve un value object con garantías explícitas. Tampoco puede efectuar red: así los
+algoritmos son deterministas, rápidos y probables sin infraestructura.
+
+`NormalizedBusinessTaxIdentifier` transporta:
+
+- `taxCountry`;
+- `value`;
+- `scheme`;
+- `formatValidated`;
+- `controlCharacterValidated`.
+
+Los dos booleanos evitan que un consumidor futuro interprete el fallback genérico como validación
+local. El enum de esquema diferencia `SPAIN_DNI_NIF`, `SPAIN_NIE`,
+`SPAIN_SPECIAL_PERSON_NIF`, `SPAIN_ENTITY_NIF` y `GENERIC`.
+
+### Normalización común
+
+El servicio común ejecuta:
+
+1. validación defensiva de no nulos;
+2. `strip` del país y mayúsculas con `Locale.ROOT`;
+3. validación sintáctica del país como dos letras ASCII;
+4. normalización Unicode NFKC del identificador;
+5. `strip` y mayúsculas con locale neutro;
+6. recorrido carácter a carácter;
+7. conservación exclusiva de letras `A-Z` y dígitos `0-9`;
+8. eliminación controlada de whitespace Unicode, separadores de espacio, guion, punto y barra;
+9. rechazo de puntuación restante, guion bajo, letras acentuadas y alfabetos no ASCII;
+10. longitud canónica entre 2 y 64.
+
+NFKC reduce variantes Unicode compatibles, por ejemplo dígitos de ancho completo, antes de aplicar
+la política ASCII. No se translitera ni se descarta puntuación arbitraria porque eso podría fusionar
+identidades diferentes o admitir homógrafos.
+
+### Estrategia española
+
+La estrategia acepta opcionalmente un prefijo `ES` solo cuando el resultado tiene la longitud de un
+NIF-IVA español completo. El prefijo se elimina porque `taxCountry=ES` ya forma parte de la clave
+persistente. El valor canónico nacional conserva nueve caracteres.
+
+Casos implementados:
+
+#### DNI/NIF de persona física
+
+- formato: ocho dígitos y una letra;
+- cálculo: valor numérico módulo 23;
+- tabla: `TRWAGMYFPDXBNJZSQVHLCKE`;
+- la letra aportada debe coincidir exactamente.
+
+#### NIE
+
+- formato: `X`, `Y` o `Z`, siete dígitos y letra;
+- transformación del prefijo a `0`, `1` o `2`;
+- cálculo posterior mediante la misma tabla módulo 23.
+
+#### NIF especiales de persona
+
+- formato: `K`, `L` o `M`, siete dígitos y letra;
+- control sobre los siete dígitos mediante la tabla módulo 23;
+- se preservan para profesionales que dispongan de una identificación histórica de este tipo.
+
+#### NIF de personas jurídicas y entidades
+
+- formato: clave de entidad, siete dígitos y control;
+- claves admitidas: `A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`, `J`, `N`, `P`, `Q`, `R`, `S`, `U`,
+  `V` y `W`;
+- se suman directamente las posiciones pares de la parte numérica;
+- se duplican las impares y se suman las cifras del resultado;
+- control: `(10 - total % 10) % 10`;
+- tabla alfabética: `JABCDEFGHI`;
+- `A`, `B`, `E` y `H` exigen dígito;
+- `N`, `P`, `Q`, `R`, `S` y `W` exigen letra;
+- las claves restantes admiten la forma numérica o alfabética calculada.
+
+La comprobación es una precondición matemática. No demuestra que la AEAT haya asignado el valor, que
+continúe activo o que corresponda a la razón social recibida.
+
+### Países sin estrategia específica
+
+Cuando no existe validator nacional, se devuelve el valor compactado con:
+
+- `scheme = GENERIC`;
+- `formatValidated = false`;
+- `controlCharacterValidated = false`.
+
+La cuenta puede registrarse en `unverified`. Bloquear todos los países no implementados contradiría
+el alcance internacional del producto, mientras que devolver garantías falsas debilitaría el flujo
+de verificación. Las tareas `1.6` y `1.7` consumirán estas señales para seleccionar adaptador remoto
+o revisión.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No se crea una migración nueva. V4 ya proporciona:
+
+- `"taxCountry"` obligatorio y en mayúsculas;
+- `"businessTaxIdentifier"` para conservar la entrada legible;
+- `"businessTaxIdentifierNormalized"` obligatorio;
+- índice único `"uqBusinessAccountsTaxIdentifier"` sobre país y forma canónica.
+
+El registro persiste el identificador aportado con `strip`, pero usa exclusivamente el resultado del
+servicio para país y columna normalizada. Así se separan presentación y clave.
+
+No se duplica el checksum en una función o constraint SQL. Los algoritmos nacionales cambian,
+requieren versionado y deben tener una sola fuente de verdad en dominio. PostgreSQL continúa siendo
+la autoridad concurrente para unicidad; la aplicación es autoridad para canonicalización antes de
+escribir.
+
+El proyecto aún no ha promocionado la Fase 1 a producción. Si en el futuro existieran datos creados
+con la normalización provisional, deberá ejecutarse una migración operativa de backfill y detección
+de colisiones antes de desplegar este cambio sobre ese entorno.
+
+### Endpoint, contrato y flujo de ejecución
+
+No se crea un endpoint nuevo. Cambia internamente `POST /api/auth/venues/register`:
+
+1. valida límite de bytes de contraseña;
+2. normaliza email;
+3. llama a `normalizeAndValidate`;
+4. traduce un rechazo fiscal a `RegistrationValidationException`;
+5. consulta email y clave fiscal canónica;
+6. crea usuario, cuenta y rol en la transacción existente;
+7. persiste la forma canónica;
+8. mantiene estado `unverified` y `canPublishVenue=false`.
+
+Ejemplo:
+
+- entrada: país `es`, identificador `ES/B-12345674`;
+- clave persistida: país `ES`, identificador `B12345674`;
+- una segunda entrada `b.1234567-4` produce `409 REGISTRATION_CONFLICT`.
+
+Un control inválido como `B12345678` produce `400 REGISTRATION_INVALID` y ninguna escritura.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- país ISO alpha-2 sintáctico;
+- caracteres y longitud canónicos;
+- formato español por familia;
+- letra de DNI/NIE/NIF especial;
+- control numérico o alfabético de entidad;
+- unicidad por forma canónica.
+
+Permisos:
+
+- el endpoint sigue siendo público por pertenecer al alta;
+- no se añaden capacidades autenticadas ni privilegios;
+- tipo, rol y estados siguen fijados en backend;
+- ninguna validación local habilita publicación.
+
+Seguridad:
+
+- se rechazan caracteres ambiguos en lugar de eliminarlos silenciosamente;
+- locale neutro evita transformaciones dependientes del host;
+- NFKC se aplica antes del filtro ASCII;
+- las estrategias duplicadas provocan fallo de arranque;
+- el índice único cubre carreras después del precheck.
+
+Privacidad:
+
+- la excepción fiscal no incluye el identificador;
+- no se añaden logs con país o valor fiscal;
+- no se llama a terceros;
+- no se persiste nueva evidencia;
+- la respuesta pública continúa siendo genérica.
+
+Internacionalización:
+
+- enum, esquema y claves son datos técnicos no visibles;
+- no se introducen mensajes de UI;
+- `REGISTRATION_INVALID` mantiene el contrato pendiente de catálogos en `1.21`;
+- documentación y comentarios españoles pasan el validador UTF-8.
+
+### Errores, logs, auditoría y observabilidad
+
+`BusinessTaxIdentifierValidationException` representa cualquier fallo de país, canonicalización,
+formato o control. No incorpora el input ni una causa con datos sensibles. El caso de uso la captura
+y la traduce al error de registro existente.
+
+No se añade logging por intento para evitar exposición fiscal y ruido en una ruta pública. Tampoco
+se añade auditoría persistente: solo las comprobaciones remotas o decisiones administrativas deben
+crear `BusinessVerificationChecks`.
+
+La tarea no incorpora métricas específicas. Cuando se implemente rate limiting y observabilidad del
+registro, podrá añadirse un contador por código técnico de rechazo y país, nunca etiquetado por
+identificador.
+
+### Tests añadidos o modificados
+
+`BusinessTaxIdentifierValidationServiceTests` aporta 22 ejecuciones:
+
+- siete representaciones españolas válidas;
+- DNI con separadores;
+- NIE;
+- NIF especial;
+- entidad con control numérico;
+- entidad con control alfabético;
+- entidad que admite ambas representaciones;
+- prefijo NIF-IVA `ES`;
+- siete casos españoles inválidos;
+- fallback alemán normalizado sin garantías falsas;
+- siete inputs genéricos inseguros o fuera de longitud.
+
+`VenueRegistrationIntegrationTests` pasa de cinco a seis casos y verifica:
+
+- persistencia de entrada legible y clave canónica;
+- eliminación de prefijo `ES` y separadores;
+- conflicto entre representaciones equivalentes;
+- rechazo HTTP del control español inválido;
+- rollback sin usuario ni cuenta parcial;
+- conservación del comportamiento de contraseña, rol y estados.
+
+`BusinessVerificationPersistenceIntegrationTests` actualiza fixtures desde `B12345678`, cuyo control
+era inválido, a `B12345674`. Las pruebas de persistencia no invocan el servicio, pero usar ejemplos
+semánticamente válidos evita documentación ejecutable engañosa.
+
+### Comandos usados y evidencia de verificación
+
+Ejecutados:
+
+- `mvn -f apps/api/pom.xml spotless:apply`.
+- `mvn -f apps/api/pom.xml -Dtest=BusinessTaxIdentifierValidationServiceTests test`.
+- Resultado unitario dirigido: 22 tests, 0 fallos y 0 errores.
+- Primera ejecución dirigida con integración: la unidad pasó y Testcontainers no arrancó porque
+  Docker Desktop estaba detenido; no hubo fallo funcional.
+- Se inició Docker Desktop y `docker info` confirmó servidor 28.4.0.
+- `mvn -f apps/api/pom.xml '-Dtest=VenueRegistrationIntegrationTests,BusinessTaxIdentifierValidationServiceTests' test`.
+- Resultado dirigido completo: 28 tests, 0 fallos y 0 errores; PostgreSQL 17.5 y Flyway V1-V4.
+- `npm run backend:conventions:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- `mvn -f apps/api/pom.xml spotless:check checkstyle:check`: correcto.
+- `git diff --check`: correcto antes del cierre documental.
+- `npm run verify`: correcto en 549 segundos.
+- Suite completa: 22 tests frontend y 65 backend, 0 fallos y 0 errores.
+- Flyway V1-V4, PostgreSQL 17/PostGIS, Redis 8, RabbitMQ 4, Next.js y Spring Boot: correctos.
+- Build frontend de producción de prueba y JAR backend: correctos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Solo España tiene estrategia nacional; los demás países usan fallback sin validación fiscal.
+- El país se comprueba sintácticamente como alpha-2, no contra un catálogo ISO completo.
+- La validación local no confirma alta censal, titularidad, nombre, dirección ni ROI/VIES.
+- Los adaptadores remotos y su selección pertenecen a `1.6` y `1.7`.
+- La máquina de estados y los reintentos pertenecen a `1.8`.
+- La publicación continúa bloqueada; la política central se implementará en `1.11`.
+- No se persiste el esquema detectado ni la versión del algoritmo. Puede añadirse a la evidencia de
+  check remoto si auditoría futura lo requiere.
+- No existe backfill para datos creados con la normalización provisional; no hay datos de producción
+  porque la fase no se ha promocionado.
+- Los códigos `K/L/M` son casos históricos y deberán mantenerse cubiertos al integrar una librería o
+  fuente oficial más amplia.
+- La advertencia de Mockito por auto-attach de Byte Buddy sigue siendo deuda del entorno de pruebas.
+- Docker Desktop tuvo que iniciarse manualmente para Testcontainers; una ejecución con Docker
+  detenido falla antes de probar la aplicación.
+
+### Decisiones técnicas
+
+- Interfaz de servicio separada de implementación.
+- Strategy por país inyectada por Spring.
+- Fallo de arranque ante dos estrategias del mismo país.
+- NFKC antes del filtro ASCII.
+- Lista cerrada de separadores eliminables.
+- Sin transliteración.
+- Forma nacional como clave; país en columna separada.
+- Prefijo NIF-IVA español eliminado de la forma canónica.
+- Garantías locales explícitas en el value object.
+- Fallback permisivo pero honesto para alcance internacional.
+- Sin red desde validators locales.
+- Sin identificadores en excepciones o logs.
+- Sin migración ni checksum duplicado en PostgreSQL.
+- Índice único existente como autoridad concurrente.
+- Errores HTTP genéricos para no ampliar enumeración.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- existe una frontera documentada y extensible por país;
+- España valida las familias requeridas y sus controles;
+- variantes visuales y NIF-IVA convergen en una clave única;
+- los países no soportados no reciben garantías falsas;
+- el registro rechaza controles inválidos antes de escribir;
+- la unicidad canónica se demuestra sobre PostgreSQL real;
+- no se exponen datos fiscales en errores ni logs;
+- código, diseño, documentación arquitectónica, tracking y documento técnico están actualizados;
+- las pruebas dirigidas pasan con 28 casos;
+- `npm run verify` pasa con 22 tests frontend y 65 backend;
+- el diff final se revisa;
+- el commit y push dejan la rama de Fase 1 alineada con remoto.
+
 ## Tarea 1.4 - Implementar registro de local con identidad empresarial mínima
 
 - Fecha: 2026-06-28

@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3` y `1.4`.
-- Siguiente tarea pendiente recomendada: `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. `POST /api/auth/venues/register` crea atómicamente usuario `venue_business`, identidad empresarial `unverified` y rol `venue_owner`, persiste la contraseña con BCrypt y mantiene bloqueada la publicación.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4` y `1.5`.
+- Siguiente tarea pendiente recomendada: `1.6. Implementar adaptador de verificación empresarial remoto por país/proveedor.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. El registro obtiene una identidad fiscal canónica antes de consultar unicidad; España valida localmente NIF, NIE, NIF especiales y NIF de entidad, mientras que otros países se normalizan sin declarar garantías fiscales que aún no existen.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1233,3 +1233,56 @@ Fuente de verdad del avance:
   - La normalización fiscal de `1.4` es deliberadamente provisional: trim y mayúsculas. Formato, separadores y dígito de control pertenecen a `1.5`.
   - Los duplicados de email o identidad fiscal responden el mismo `409 REGISTRATION_CONFLICT`, incluidos conflictos de carrera detectados por PostgreSQL.
   - Evidencia de cierre: 6 pruebas dirigidas correctas; `npm run verify` correcto con 22 tests frontend y 42 tests backend, Flyway V4 sobre PostgreSQL 17, Redis/RabbitMQ y ambos builds.
+
+## Conversación 33 - Normalización y validación local de identificadores empresariales
+
+- Fecha: 2026-06-28
+- Resumen: se completó `1.5` creando una frontera de dominio extensible para normalizar identificadores fiscales y aplicar reglas locales por país antes de consultar unicidad. La estrategia española reconoce DNI/NIF, NIE, NIF especiales `K/L/M`, NIF de entidades y la representación NIF-IVA con prefijo `ES`; valida formato y carácter de control y produce una clave nacional sin separadores. Los países sin estrategia aplican canonicalización segura, pero declaran explícitamente que formato y control no han sido comprobados. El registro usa únicamente esta clave para precheck y persistencia, por lo que variantes visuales equivalentes colisionan contra el índice único existente.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierScheme.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationException.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/NormalizedBusinessTaxIdentifier.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/CountryBusinessTaxIdentifierValidator.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/SpanishBusinessTaxIdentifierValidator.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/validation/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/VenueRegistrationService.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/VenueRegistrationServiceImpl.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/validation/BusinessTaxIdentifierValidationServiceTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/validation/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/identity/controller/VenueRegistrationIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/architecture/business-tax-identifiers.md`
+  - `docs/architecture/venue-registration.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
+  - Prepara `1.6`, `1.7`, `1.8`, `1.11`, `1.22`, `2.9` y `14.6` a `14.8`.
+- Tareas completadas:
+  - `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
+- Siguiente tarea pendiente recomendada:
+  - `1.6. Implementar adaptador de verificación empresarial remoto por país/proveedor.`
+- Decisiones o aclaraciones relevantes:
+  - La canonicalización común usa NFKC, mayúsculas con locale neutro y solo elimina espacios, guion, punto y barra; cualquier otra puntuación o carácter no ASCII se rechaza para evitar colisiones ambiguas.
+  - `taxCountry` forma parte de la clave única. En España el prefijo NIF-IVA `ES` se acepta como representación, pero se elimina del valor nacional canónico.
+  - La validación española cubre persona física, NIE, NIF especiales y entidades; no acredita emisión, titularidad, alta censal ni ROI/VIES.
+  - Los países sin estrategia no se bloquean: se normalizan con esquema `GENERIC` y garantías locales en `false`, manteniendo la cuenta en `unverified`.
+  - El índice único de V4 continúa siendo la autoridad concurrente. No se añade V5 porque la columna canónica y la restricción ya existen, y el checksum nacional debe tener una sola implementación versionable en dominio.
+  - Los errores no contienen el identificador aportado y el endpoint conserva el contrato genérico `400 REGISTRATION_INVALID`.
+  - Se corrigieron fixtures y ejemplos previos que usaban `B12345678`, cuyo control es inválido, por `B12345674`.
+  - Evidencia de cierre: 22 pruebas unitarias específicas y 6 de integración de registro correctas; `npm run verify` correcto con 22 tests frontend y 65 backend, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.

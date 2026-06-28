@@ -50,7 +50,7 @@ class VenueRegistrationIntegrationTests {
         .perform(
             post(ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(validRequest("Local@Example.com", "B-12345678")))
+                .content(validRequest("Local@Example.com", "ES/B-12345674")))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.userId").isNotEmpty())
         .andExpect(jsonPath("$.businessAccountId").isNotEmpty())
@@ -92,8 +92,8 @@ class VenueRegistrationIntegrationTests {
     assertThat(business)
         .containsEntry("taxCountry", "ES")
         .containsEntry("businessLegalName", "Empresa de Prueba SL")
-        .containsEntry("businessTaxIdentifier", "B-12345678")
-        .containsEntry("businessTaxIdentifierNormalized", "B-12345678")
+        .containsEntry("businessTaxIdentifier", "ES/B-12345674")
+        .containsEntry("businessTaxIdentifierNormalized", "B12345674")
         .containsEntry("businessVerificationStatus", "unverified");
 
     String role =
@@ -115,14 +115,14 @@ class VenueRegistrationIntegrationTests {
         .perform(
             post(ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(validRequest("local@example.com", "B12345678")))
+                .content(validRequest("local@example.com", "B12345674")))
         .andExpect(status().isCreated());
 
     mockMvc
         .perform(
             post(ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(validRequest("LOCAL@example.com", "B87654321")))
+                .content(validRequest("LOCAL@example.com", "B87654323")))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.error").value("REGISTRATION_CONFLICT"));
 
@@ -136,14 +136,14 @@ class VenueRegistrationIntegrationTests {
         .perform(
             post(ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(validRequest("first@example.com", "B12345678")))
+                .content(validRequest("first@example.com", "B-12345674")))
         .andExpect(status().isCreated());
 
     mockMvc
         .perform(
             post(ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(validRequest("second@example.com", "b12345678")))
+                .content(validRequest("second@example.com", "es b.1234567-4")))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.error").value("REGISTRATION_CONFLICT"));
 
@@ -192,7 +192,7 @@ class VenueRegistrationIntegrationTests {
   void rejectsPasswordAboveBcryptByteLimit() throws Exception {
     String multiBytePassword = "á".repeat(40);
     String request =
-        validRequest("local@example.com", "B12345678").replace(RAW_PASSWORD, multiBytePassword);
+        validRequest("local@example.com", "B12345674").replace(RAW_PASSWORD, multiBytePassword);
 
     mockMvc
         .perform(post(ENDPOINT).contentType(MediaType.APPLICATION_JSON).content(request))
@@ -200,6 +200,20 @@ class VenueRegistrationIntegrationTests {
         .andExpect(jsonPath("$.error").value("REGISTRATION_INVALID"));
 
     assertThat(countUsers()).isZero();
+  }
+
+  @Test
+  void rejectsInvalidSpanishControlCharacterWithoutWritingPartialData() throws Exception {
+    mockMvc
+        .perform(
+            post(ENDPOINT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validRequest("local@example.com", "B12345678")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("REGISTRATION_INVALID"));
+
+    assertThat(countUsers()).isZero();
+    assertThat(countBusinessAccounts()).isZero();
   }
 
   private String validRequest(String email, String taxIdentifier) {

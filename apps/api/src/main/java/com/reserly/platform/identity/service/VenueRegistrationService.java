@@ -16,7 +16,8 @@ public interface VenueRegistrationService {
    * Registra una identidad empresarial pendiente.
    *
    * @throws RegistrationConflictException si email o identidad fiscal ya existen
-   * @throws RegistrationValidationException si el secreto supera el límite seguro de BCrypt
+   * @throws RegistrationValidationException si el secreto supera el límite seguro de BCrypt o la
+   *     identidad fiscal incumple una regla local conocida
    */
   VenueRegistrationResponse register(VenueRegistrationCommand command);
 }

@@ -30,7 +30,7 @@ Request:
   "business": {
     "taxCountry": "ES",
     "legalName": "Empresa de Prueba SL",
-    "taxIdentifier": "B12345678",
+    "taxIdentifier": "ES/B-12345674",
     "registeredAddress": "Calle Ejemplo 1"
   },
   "acceptsLegalTerms": true
@@ -56,8 +56,8 @@ Response `201 Created`:
 
 Errores públicos:
 
-- `400 {"error":"REGISTRATION_INVALID"}` para JSON mal formado, validación de campos o una
-  contraseña que excede el límite seguro de BCrypt;
+- `400 {"error":"REGISTRATION_INVALID"}` para JSON mal formado, validación de campos, carácter de
+  control fiscal inválido o una contraseña que excede el límite seguro de BCrypt;
 - `409 {"error":"REGISTRATION_CONFLICT"}` para email o identidad fiscal duplicados.
 
 El error de conflicto no identifica el campo duplicado. Esta decisión evita convertir el endpoint
@@ -70,7 +70,8 @@ El controlador valida el DTO y un conversor lo transforma en un comando interno.
 
 1. valida el tamaño UTF-8 de la contraseña;
 2. normaliza el email mediante `strip`, minúsculas y locale neutro;
-3. aplica la normalización fiscal provisional `strip` y mayúsculas;
+3. normaliza la identidad fiscal y aplica formato y carácter de control cuando existe una
+   estrategia nacional;
 4. comprueba conflictos conocidos sin revelar cuál se produjo;
 5. genera un hash BCrypt con coste 12 y sal aleatoria;
 6. persiste usuario, cuenta empresarial y rol propietario;
@@ -99,9 +100,16 @@ aprobada y perfil mínimo completo.
 
 ## Normalización y límites deliberados
 
-La normalización fiscal de esta iteración solo recorta espacios exteriores y convierte a mayúsculas.
-No elimina separadores ni valida formato o dígito de control porque esas reglas dependen del país y
-se implementan en `1.5`. Por tanto, el contrato actual no debe presentarse como una validación fiscal.
+La normalización fiscal convierte país e identificador a mayúsculas con locale neutro, aplica NFKC,
+retira únicamente separadores de presentación controlados y conserva solo letras y dígitos ASCII.
+España tiene una estrategia local para NIF de persona física, NIE, NIF especiales de persona y NIF
+de entidad. También se admite el prefijo NIF-IVA `ES`, que no forma parte del valor canónico porque
+el país ya está incluido en la clave única.
+
+Los países sin estrategia específica comparten la normalización segura, pero el resultado declara
+explícitamente que formato y carácter de control no fueron validados. Esto permite registrar la
+identidad en `unverified` sin inventar reglas nacionales. El contrato completo y los algoritmos se
+documentan en `business-tax-identifiers.md`.
 
 El registro usa BCrypt desde esta tarea para cumplir la invariante de no persistir secretos en claro.
 La tarea `1.12` permanece pendiente: debe cerrar el contrato de verificación de hashes, política

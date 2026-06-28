@@ -1574,7 +1574,7 @@ Request:
   "business": {
     "taxCountry": "ES",
     "legalName": "Barrola Restauracion SL",
-    "taxIdentifier": "B12345678",
+    "taxIdentifier": "ES/B-12345674",
     "registeredAddress": "Rua exemplo 1, Santiago de Compostela"
   },
   "acceptsLegalTerms": true
@@ -1594,10 +1594,17 @@ Response:
 }
 ```
 
-El estado inicial es `unverified`: el endpoint no simula una comprobación remota. La transición a
-`pending_remote_check` y el resto de la máquina empresarial pertenecen a las tareas `1.6` a `1.8`.
-Email e identificador fiscal duplicados producen el mismo `409 REGISTRATION_CONFLICT` para evitar
-enumeración. Los payloads inválidos producen `400 REGISTRATION_INVALID`.
+El identificador se normaliza antes de consultar unicidad. Para España se eliminan separadores y el
+prefijo NIF-IVA `ES`, se reconoce NIF de persona física, NIE, NIF especial de persona o NIF de
+entidad y se comprueba el carácter de control. Por ello, representaciones equivalentes comparten la
+misma clave canónica. Los países sin estrategia específica reciben normalización sintáctica segura,
+sin declarar formato ni control como validados.
+
+El estado inicial es `unverified`: la validación local no simula una comprobación remota. La
+transición a `pending_remote_check` y el resto de la máquina empresarial pertenecen a las tareas
+`1.6` a `1.8`. Email e identificador fiscal duplicados producen el mismo
+`409 REGISTRATION_CONFLICT` para evitar enumeración. Los payloads inválidos, incluido un carácter de
+control incorrecto en un país soportado, producen `400 REGISTRATION_INVALID`.
 
 ### 8.5 Resultado de verificación empresarial
 
