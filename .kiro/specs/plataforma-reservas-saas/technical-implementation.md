@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14` y `0.15`.
-- Siguiente tarea pendiente recomendada: `1.1. Crear tablas de identidad, sesiones/tokens y roles aplicando nombres físicos UpperCamelCase y atributos/columnas lowerCamelCase.`
+- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3` y `1.4`.
+- Siguiente tarea pendiente recomendada: `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -4407,6 +4407,336 @@ La tarea se considera completada porque:
 - `npm run verify` es correcto con tests y builds completos;
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
+
+## Tarea 1.4 - Implementar registro de local con identidad empresarial mínima
+
+- Fecha: 2026-06-28
+- Commit o referencia: commit de cierre en `phase/1-identidad-roles-base-saas`
+- Estado: completada y verificada
+- Responsable: Codex
+
+### Objetivo técnico
+
+Exponer el primer caso de uso HTTP de identidad de la Fase 1 para que una empresa o profesional
+pueda crear una cuenta de local aportando email, contraseña, país fiscal, razón social e
+identificador fiscal o registral. El alta debía ser atómica, no aceptar privilegios enviados por el
+cliente, no persistir la contraseña en claro, reutilizar las tablas de `1.1` a `1.3` y dejar la
+cuenta cerrada a publicación hasta completar las verificaciones posteriores.
+
+La tarea no debía adelantar el perfil de local. `Venues`, categorías, imágenes y datos públicos
+comienzan en la Fase 2, por lo que este incremento registra la identidad del propietario y de su
+empresa, no el establecimiento publicable.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007 Registro de local`: implementa el alta backend con credenciales e identidad fiscal.
+- `RF-032 Verificación empresarial de cuentas de local`: crea la identidad empresarial en estado
+  previo a cualquier verificación.
+- `RNF-001 Seguridad`: valida en servidor, usa hash robusto con sal y no filtra secretos.
+- `RNF-002 Privacidad y protección de datos`: minimiza el payload persistido y exige aceptación
+  legal explícita.
+- `RNF-010 Verificación empresarial remota`: no simula una consulta externa; conserva
+  `unverified` hasta que exista el adaptador.
+- `RNF-011 Convenciones backend`: controlador, servicio, DTO y conversor tienen interfaces y capas
+  separadas; los DAOs usan consultas explícitas.
+- `RNF-013 GitFlow`: el cierre se realiza en la rama única de Fase 1.
+- `RB-012 Publicación de cuentas de local`: la respuesta siempre declara
+  `canPublishVenue=false`.
+
+La sección `8.4` de `design.md` se corrigió para representar el alcance ejecutable por fases. Se
+eliminó el objeto `venue` de este endpoint mientras no exista su modelo, se añadieron `userId` y
+`businessAccountId`, y el estado inicial se fijó en `unverified` en lugar de
+`pending_remote_check`. Una cuenta no puede afirmar que espera una comprobación remota antes de que
+esa comprobación haya sido solicitada.
+
+### Archivos creados
+
+- `identity/controller/VenueRegistrationController.java`: contrato HTTP público.
+- `identity/controller/VenueRegistrationControllerImpl.java`: adaptación request/comando y
+  respuesta `201 Created`.
+- `identity/controller/RegistrationExceptionHandler.java`: errores públicos estables.
+- `identity/converter/VenueRegistrationConverter.java`: frontera entre DTO REST y comando.
+- `identity/dto/VenueRegistrationRequest.java`: payload y Bean Validation.
+- `identity/dto/VenueRegistrationCommand.java`: entrada interna del caso de uso.
+- `identity/dto/VenueRegistrationResponse.java`: respuesta no sensible.
+- `identity/dto/RegistrationErrorResponse.java`: envoltorio de código de error.
+- `identity/service/VenueRegistrationService.java`: contrato transaccional.
+- `identity/service/VenueRegistrationServiceImpl.java`: orquestación del alta.
+- `identity/service/PasswordHashingService.java`: abstracción de hash de secretos.
+- `identity/service/PasswordHashingServiceImpl.java`: implementación BCrypt.
+- `identity/service/RegistrationConflictException.java`: conflicto público deliberadamente opaco.
+- `identity/service/RegistrationValidationException.java`: invariante de seguridad del servicio.
+- `package-info.java` en controller, converter, dto y service para documentar responsabilidad y
+  restricciones de cada paquete.
+- `VenueRegistrationIntegrationTests.java`: contrato HTTP y persistencia real.
+- `PasswordHashingServiceTests.java`: propiedades criptográficas básicas del adaptador.
+- `package-info.java` en los dos paquetes de prueba.
+- `docs/architecture/venue-registration.md`: contrato operativo, flujo y deuda diferida.
+
+### Archivos modificados
+
+- `apps/api/pom.xml`: dependencia `spring-security-crypto`.
+- `UserDao.java`: consulta explícita `existsByEmailNormalized`.
+- `RoleDao.java`: consulta explícita `findByCode`.
+- `BusinessAccountDao.java`: consulta explícita de existencia por país e identificador normalizado.
+- `apps/api/README.md` y `docs/README.md`: índice y descripción operativa.
+- `design.md`: contrato alineado con el alcance por fases.
+- `tasks.md`: cierre de `1.4`.
+- `conversation-tracking.md`: conversación 32 y siguiente tarea.
+- `technical-implementation.md`: esta evidencia técnica.
+
+No se eliminaron archivos ni se añadió una migración. La tarea consume el esquema Flyway V4
+existente.
+
+### Contrato HTTP implementado
+
+Endpoint:
+
+```http
+POST /api/auth/venues/register
+Content-Type: application/json
+```
+
+Campos aceptados:
+
+- `account.email`: obligatorio, formato email, máximo 320 caracteres;
+- `account.password`: obligatorio, entre 12 y 72 caracteres y máximo 72 bytes UTF-8;
+- `account.preferredLocale`: exactamente `es` o `en`;
+- `business.taxCountry`: dos letras ASCII;
+- `business.legalName`: obligatorio, máximo 255 caracteres;
+- `business.taxIdentifier`: obligatorio, máximo 64 caracteres;
+- `business.registeredAddress`: opcional, máximo 500 caracteres;
+- `acceptsLegalTerms`: debe ser `true`.
+
+El cliente no puede enviar `accountType`, `role`, estado de usuario, estado empresarial ni permiso
+de publicación. Aunque apareciesen propiedades JSON desconocidas, no participan en el comando y no
+pueden alterar las invariantes fijadas por el servicio.
+
+Respuesta correcta `201`:
+
+- `userId`;
+- `businessAccountId`;
+- `accountType = venue_business`;
+- `businessVerificationStatus = unverified`;
+- `emailVerificationRequired = true`;
+- `canPublishVenue = false`.
+
+Errores:
+
+- `400 REGISTRATION_INVALID`: JSON ilegible, Bean Validation o contraseña que excede el límite
+  real de BCrypt;
+- `409 REGISTRATION_CONFLICT`: email o identidad fiscal ya existentes, incluida una carrera
+  resuelta por el índice único.
+
+Los mensajes humanos traducidos se difieren a `1.21`; esta API entrega por ahora códigos técnicos
+estables que no dependen de locale.
+
+### Arquitectura y flujo de ejecución
+
+1. Spring MVC deserializa `VenueRegistrationRequest`.
+2. Jakarta Bean Validation rechaza estructura, formato, longitudes y consentimiento inválidos.
+3. `VenueRegistrationControllerImpl` usa `VenueRegistrationConverter`, evitando que el DTO HTTP
+   atraviese la capa de negocio.
+4. `VenueRegistrationServiceImpl.register` abre una transacción.
+5. El servicio valida bytes UTF-8 de la contraseña antes de invocar BCrypt.
+6. El email se normaliza con `strip()` y `toLowerCase(Locale.ROOT)`.
+7. País e identificador fiscal se recortan y convierten a mayúsculas con `Locale.ROOT`.
+8. Los DAOs consultan conflictos conocidos.
+9. Se construye `UserEntity` con tipo y estado fijados por backend.
+10. BCrypt genera el hash con sal aleatoria y coste 12.
+11. `saveAndFlush` inserta el usuario y fuerza la detección temprana de restricciones.
+12. Se construye e inserta `BusinessAccountEntity` enlazado al propietario.
+13. Se resuelve el seed `venue_owner`; su ausencia se considera configuración inválida y no un
+    error de negocio recuperable.
+14. Se inserta `UserRoleEntity`.
+15. Se devuelve una representación no sensible.
+
+Los tres `saveAndFlush` permanecen dentro de la misma transacción. Si cualquier escritura falla,
+no queda un usuario huérfano, una identidad empresarial sin rol ni una asignación parcial.
+
+### Modelo de datos, índices y restricciones utilizados
+
+No cambia el esquema. El flujo usa:
+
+- `"Users"."emailNormalized"` y su unicidad;
+- `"Users"."accountType"` con valor canónico `venue_business`;
+- `"Users"."status"` con `pending_email_verification`;
+- `"BusinessAccounts"."ownerUserId"` como relación única con el propietario;
+- unicidad de `"taxCountry"` y `"businessTaxIdentifierNormalized"`;
+- `"BusinessAccounts"."businessVerificationStatus" = unverified`;
+- seed `"Roles"."code" = venue_owner`;
+- clave compuesta de `"UserRoles"` para evitar asignaciones repetidas.
+
+Los prechecks de existencia mejoran el camino habitual, pero no sustituyen los índices. Una carrera
+puede superar ambos prechecks; por eso `DataIntegrityViolationException` también se traduce a
+`RegistrationConflictException`. Al relanzarse desde el método transaccional, Spring revierte todas
+las escrituras.
+
+### Normalización y unicidad
+
+La normalización del email es suficiente para la identidad de acceso prevista en este incremento:
+recorte exterior y minúsculas independientes del locale.
+
+La normalización fiscal es provisional y está documentada en código. Solo recorta extremos y
+convierte a mayúsculas. No elimina guiones, espacios interiores o prefijos, ni valida dígitos de
+control. Esas transformaciones pueden cambiar según el país y se implementarán en `1.5`. Esta
+limitación evita introducir una normalización global incorrecta que colisione empresas legítimas.
+
+### Contraseñas y seguridad
+
+Se añadió únicamente `spring-security-crypto`, no el starter completo de Spring Security. Esto
+permite utilizar el componente criptográfico sin adelantar filtros, sesiones o autorización HTTP de
+tareas posteriores.
+
+`PasswordHashingServiceImpl` usa `BCryptPasswordEncoder(12)`. BCrypt genera una sal distinta en cada
+hash; el coste 12 queda explícito para que no dependa de defaults cambiantes. El secreto:
+
+- solo existe en el request y el comando durante la ejecución;
+- no se escribe en logs;
+- no aparece en excepciones;
+- no se devuelve en la respuesta;
+- nunca se persiste sin hash.
+
+BCrypt procesa como máximo 72 bytes, no 72 caracteres. La validación adicional con UTF-8 evita
+truncamiento silencioso de contraseñas multibyte que podría hacer equivalentes dos secretos
+visualmente distintos. `@Size(max=72)` limita caracteres y el servicio limita bytes.
+
+`1.12` no se considera completada. Quedan por implementar verificación del hash en login,
+configuración/política de coste, detección de hashes que requieren actualización, rehash y contrato
+completo de credenciales.
+
+### Permisos, privacidad e internacionalización
+
+- El tipo `venue_business` se fija en backend.
+- El rol `venue_owner` se obtiene del seed, no del payload.
+- La cuenta comienza pendiente de email.
+- La identidad empresarial comienza no verificada.
+- La respuesta bloquea publicación.
+- No se crea sesión ni token de acceso.
+- No se ejecutan llamadas remotas ni se persisten respuestas de terceros.
+- El conflicto no revela si existe el email, el país/identificador o ambos.
+- El domicilio empresarial es opcional y se convierte a `null` si llega vacío.
+- `preferredLocale` conserva únicamente `es` o `en`.
+- Los códigos de error no son textos visibles; la localización se completará en `1.21`.
+
+La aceptación legal se valida, pero todavía no existe una tabla/versionado para conservar la
+versión concreta de términos aceptados. Esa trazabilidad deberá añadirse antes de producción cuando
+se defina el modelo legal.
+
+### Errores, logs, auditoría y observabilidad
+
+`RegistrationExceptionHandler` está acotado al controlador de registro. No altera la política de
+errores de otros contextos.
+
+Los errores esperados se reducen a dos códigos públicos. No se exponen nombres de constraints,
+mensajes JDBC, stack traces ni valores duplicados. Los fallos estructurales como la ausencia del rol
+seed no se camuflan como conflicto: deben fallar de forma visible para operación y provocar
+rollback.
+
+No se añadieron logs de payload para evitar capturar contraseña o datos fiscales. Tampoco se añadió
+auditoría funcional porque aún no existe su infraestructura. Métricas de tasa de alta, conflictos y
+latencia, además de correlación segura, quedan para la fase de observabilidad. El rate limiting
+corresponde expresamente a `1.16`.
+
+### Tests añadidos
+
+`VenueRegistrationIntegrationTests` usa `@SpringBootTest`, MockMvc y PostgreSQL/PostGIS real de
+Testcontainers. Cada test es transaccional y prueba:
+
+1. `201`, respuesta no sensible, email normalizado, tipo `venue_business`, estado de email,
+   identidad empresarial, estado `unverified`, BCrypt verificable y rol `venue_owner`;
+2. email duplicado con diferencias de mayúsculas, `409` genérico y una sola cuenta persistida;
+3. identidad fiscal duplicada con diferencias de mayúsculas, `409` genérico y ausencia del segundo
+   usuario;
+4. payload inválido, `400` estable y cero escrituras;
+5. contraseña multibyte dentro del límite de caracteres pero por encima de 72 bytes, `400` y cero
+   escrituras.
+
+`PasswordHashingServiceTests` prueba que dos invocaciones con el mismo secreto producen hashes
+distintos, no contienen el secreto y ambos son verificables por BCrypt.
+
+### Comandos y evidencia de verificación
+
+Suite dirigida:
+
+```text
+mvn -f apps/api/pom.xml -Dtest=PasswordHashingServiceTests,VenueRegistrationIntegrationTests test
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+Convenciones:
+
+```text
+npm run backend:conventions:check
+Convenciones backend válidas
+```
+
+Verificación integral:
+
+```text
+npm run verify
+Frontend: 22 tests correctos
+Backend: 42 tests correctos
+Flyway: 4 migraciones validadas y aplicadas sobre PostgreSQL 17
+Infraestructura: PostgreSQL/PostGIS, Redis y RabbitMQ correctos
+Checkstyle: 0 violaciones
+Spotless, ESLint, Prettier, TypeScript, i18n, UTF-8 y convenciones: correctos
+Build Next.js: correcto
+Package Spring Boot: correcto
+```
+
+### Riesgos, limitaciones y deuda técnica
+
+- La normalización/validación fiscal completa queda en `1.5`.
+- No se solicita verificación remota; corresponde a `1.6` y `1.7`.
+- La máquina de estados empresarial completa queda en `1.8`.
+- No se solicita documentación de respaldo; corresponde a `1.9` y `1.10`.
+- La regla de publicación todavía no tiene middleware central; corresponde a `1.11`.
+- La gestión completa del hash y credenciales queda en `1.12`.
+- No existe login, logout, verificación de email o recuperación (`1.13` a `1.15`).
+- No existe rate limiting (`1.16`).
+- No existe autorización HTTP por rol (`1.17`).
+- No existe formulario ni catálogo de mensajes (`1.18` y `1.21`).
+- No existe perfil de local; corresponde a la Fase 2.
+- No se conserva versión, fecha o IP de términos legales aceptados.
+- El endpoint depende del seed `venue_owner`; una base manipulada sin el seed produce fallo
+  operativo y rollback.
+- Los prechecks añaden dos lecturas antes de insertar; son aceptables para MVP, pero la carga y
+  telemetría futuras determinarán si conviene otro patrón.
+- La advertencia de Mockito sobre auto-attach del agente Byte Buddy es deuda del entorno de pruebas
+  ante versiones futuras del JDK, no un fallo de esta tarea.
+
+### Decisiones técnicas
+
+- Alta de identidad separada de creación del perfil público de local.
+- Una transacción para usuario, empresa y rol.
+- DTO HTTP y comando interno separados por conversor.
+- Privilegios y estados exclusivamente server-side.
+- BCrypt coste 12 desde el primer alta, aunque la tarea de política completa sea posterior.
+- Límite de contraseña en bytes para evitar truncamiento BCrypt.
+- Estado empresarial honesto `unverified`.
+- Errores genéricos para reducir enumeración.
+- Precheck para experiencia habitual más constraint como autoridad concurrente.
+- `saveAndFlush` para detectar la violación antes de abandonar la frontera transaccional.
+- Locale neutro para normalizaciones técnicas.
+- Sin logs de payload ni llamadas externas.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- el endpoint público existe y su contrato está validado;
+- cuenta, identidad empresarial y rol se crean atómicamente;
+- la contraseña nunca se persiste en claro;
+- tipo, rol y estados no pueden ser elegidos por el cliente;
+- duplicados y carreras se traducen sin filtrar información;
+- la publicación permanece bloqueada;
+- el alcance con respecto a Fase 2 está documentado;
+- las seis pruebas nuevas pasan;
+- la suite completa pasa con 22 tests frontend y 42 backend;
+- diseño, documentación arquitectónica, tracking y documento técnico están actualizados;
+- el cierre queda listo para commit y push en la rama de Fase 1.
 
 ## Tarea 1.3 - Crear tablas business_accounts, business_verification_checks y business_verification_documents
 

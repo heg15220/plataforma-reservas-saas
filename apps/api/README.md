@@ -24,6 +24,12 @@ El contexto `identity.persistence` contiene la base de cuentas autenticadas, rol
 
 El contexto `businessverification.persistence` contiene identidades fiscales, historial mínimo de comprobaciones y metadatos de documentos privados. No persiste respuestas remotas completas, binarios ni URLs públicas. Su contrato de privacidad, auditoría e integridad está documentado en `docs/architecture/business-verification-persistence.md`.
 
+El endpoint público `POST /api/auth/venues/register` crea atómicamente una cuenta
+`venue_business`, su identidad empresarial no verificada y el rol `venue_owner`. La contraseña se
+persiste únicamente como BCrypt, el cliente no controla privilegios y el alta no crea todavía el
+perfil público del local. El contrato y sus límites están documentados en
+`docs/architecture/venue-registration.md`.
+
 ## Ejecución
 
 ```bash

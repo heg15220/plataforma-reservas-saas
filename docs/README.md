@@ -9,6 +9,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `cache-and-messaging.md`: contratos de Redis, RabbitMQ, reintentos e idempotencia.
   - `frontend-layout.md`: shells responsive, primitivas de composición y accesibilidad.
   - `identity-persistence.md`: modelo físico de cuentas, roles, sesiones y tokens de un solo uso.
+  - `venue-registration.md`: contrato, transacción, seguridad y alcance por fases del alta empresarial.
   - `internationalization.md`: catálogos `es`/`en`, `next-intl` y reglas de uso frontend.
   - `localized-data.md`: patrón JSONB para textos configurables localizados en base de datos.
   - `spanish-text-quality.md`: validación UTF-8, mojibake, tildes frecuentes y signos de apertura en textos españoles.

@@ -1558,6 +1558,10 @@ Error response:
 
 ### 8.4 Registro de local con verificación empresarial
 
+En la Fase 1 este endpoint crea únicamente la cuenta autenticable y la identidad empresarial. El
+perfil del local se incorpora en la Fase 2, cuando existan `Venues`, categorías y sus relaciones.
+Tipo de cuenta, rol y estados los fija el backend; no son campos aceptados del cliente.
+
 Request:
 
 ```json
@@ -1573,11 +1577,6 @@ Request:
     "taxIdentifier": "B12345678",
     "registeredAddress": "Rua exemplo 1, Santiago de Compostela"
   },
-  "venue": {
-    "name": "Restaurante A Barrola",
-    "categoryId": "uuid",
-    "address": "Rua exemplo 1, Santiago de Compostela"
-  },
   "acceptsLegalTerms": true
 }
 ```
@@ -1586,12 +1585,19 @@ Response:
 
 ```json
 {
+  "userId": "uuid",
+  "businessAccountId": "uuid",
   "accountType": "venue_business",
-  "businessVerificationStatus": "pending_remote_check",
+  "businessVerificationStatus": "unverified",
   "emailVerificationRequired": true,
   "canPublishVenue": false
 }
 ```
+
+El estado inicial es `unverified`: el endpoint no simula una comprobación remota. La transición a
+`pending_remote_check` y el resto de la máquina empresarial pertenecen a las tareas `1.6` a `1.8`.
+Email e identificador fiscal duplicados producen el mismo `409 REGISTRATION_CONFLICT` para evitar
+enumeración. Los payloads inválidos producen `400 REGISTRATION_INVALID`.
 
 ### 8.5 Resultado de verificación empresarial
 

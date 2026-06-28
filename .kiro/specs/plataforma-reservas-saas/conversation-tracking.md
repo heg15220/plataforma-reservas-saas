@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2` y `1.3`.
-- Siguiente tarea pendiente recomendada: `1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Flyway alcanza V4 y existen `"BusinessAccounts"`, `"BusinessVerificationChecks"` y `"BusinessVerificationDocuments"` con entidades/DAOs, unicidad fiscal, evidencia remota mínima, localizadores privados, revisión coherente y borrado explícito.
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3` y `1.4`.
+- Siguiente tarea pendiente recomendada: `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. `POST /api/auth/venues/register` crea atómicamente usuario `venue_business`, identidad empresarial `unverified` y rol `venue_owner`, persiste la contraseña con BCrypt y mantiene bloqueada la publicación.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1169,3 +1169,67 @@ Fuente de verdad del avance:
   - PostgreSQL no almacena binarios documentales.
   - Propietarios, revisores y cuentas con evidencias no pueden eliminarse mediante una operación parcial.
   - Evidencia de cierre: suite dirigida con 12 tests correcta; `npm run verify` correcto con 22 tests frontend y 36 tests backend, Flyway V4 sobre PostgreSQL 17, Redis/RabbitMQ y ambos builds.
+
+## Conversación 32 - Registro transaccional de cuentas de local
+
+- Fecha: 2026-06-28
+- Resumen: se completó `1.4` implementando `POST /api/auth/venues/register`. El caso de uso valida el payload, fija privilegios en backend, normaliza email, aplica normalización fiscal provisional, genera BCrypt con coste 12 y crea en una transacción el usuario, la identidad empresarial y el rol propietario. Los conflictos son genéricos, la publicación queda bloqueada y el contrato se separa expresamente de la creación del perfil de local de la Fase 2.
+- Archivos modificados:
+  - `apps/api/pom.xml`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/RoleDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/persistence/UserDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/controller/VenueRegistrationController.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/controller/VenueRegistrationControllerImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/controller/RegistrationExceptionHandler.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/controller/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/converter/VenueRegistrationConverter.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/converter/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/dto/VenueRegistrationRequest.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/dto/VenueRegistrationCommand.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/dto/VenueRegistrationResponse.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/dto/RegistrationErrorResponse.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/dto/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/VenueRegistrationService.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/VenueRegistrationServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/PasswordHashingService.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/PasswordHashingServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/RegistrationConflictException.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/RegistrationValidationException.java`
+  - `apps/api/src/main/java/com/reserly/platform/identity/service/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/identity/controller/VenueRegistrationIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/identity/controller/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/identity/service/PasswordHashingServiceTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/identity/service/package-info.java`
+  - `apps/api/README.md`
+  - `docs/README.md`
+  - `docs/architecture/venue-registration.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.`
+  - Prepara `1.5`, `1.6`, `1.8`, `1.11`, `1.12`, `1.14`, `1.16`, `1.17`, `1.18`, `1.21`, `1.22` y la Fase 2.
+- Tareas completadas:
+  - `1.4. Implementar registro de local con email, contraseña, país fiscal, razón social e identificador fiscal/registral.`
+- Siguiente tarea pendiente recomendada:
+  - `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
+- Decisiones o aclaraciones relevantes:
+  - El registro de Fase 1 crea cuenta e identidad empresarial, no un perfil `Venue`; ese modelo comienza en Fase 2.
+  - `accountType`, rol y estados se fijan en backend y no pueden ser elegidos por el cliente.
+  - El usuario arranca en `pending_email_verification` y la empresa en `unverified`; no se declara una comprobación remota que aún no ocurrió.
+  - La publicación queda cerrada mediante `canPublishVenue=false`.
+  - BCrypt con coste 12 se incorpora como mínimo seguro para no almacenar secretos en claro; `1.12` sigue pendiente para completar verificación, política configurable y rehash.
+  - La normalización fiscal de `1.4` es deliberadamente provisional: trim y mayúsculas. Formato, separadores y dígito de control pertenecen a `1.5`.
+  - Los duplicados de email o identidad fiscal responden el mismo `409 REGISTRATION_CONFLICT`, incluidos conflictos de carrera detectados por PostgreSQL.
+  - Evidencia de cierre: 6 pruebas dirigidas correctas; `npm run verify` correcto con 22 tests frontend y 42 tests backend, Flyway V4 sobre PostgreSQL 17, Redis/RabbitMQ y ambos builds.
