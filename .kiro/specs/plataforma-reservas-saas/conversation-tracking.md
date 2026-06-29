@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-28
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5`, `1.6`, `1.7` y `1.8`.
-- Siguiente tarea pendiente recomendada: `1.9. Implementar solicitud de documento de respaldo cuando la verificación remota no sea concluyente.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. La máquina de estados ya correlaciona la operación activa, aplica evidencia VIES/AEAT, evita solapamientos y caduca aprobaciones. Las cuentas `pending_review` todavía no generan una solicitud documental; ese flujo comienza en `1.9`.
+- Fecha de última actualización: 2026-06-29
+- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5`, `1.6`, `1.7`, `1.8` y `1.9`.
+- Siguiente tarea pendiente recomendada: `1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de actividad/apertura o documento equivalente.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Toda transición automática a `pending_review` genera ya una solicitud documental idempotente, con motivo y tipos derivados por servidor. V7 no almacena ficheros ni URLs; la subida privada comienza en `1.10`.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -1504,3 +1504,59 @@ Fuente de verdad del avance:
   - Los tests de estado confirman commits reales y limpian por IDs creados para no contaminar otras clases.
   - Evidencia de cierre: pruebas focalizadas conjuntas correctas con 28 tests; `npm run verify` correcto con 22 tests frontend y 93 backend, Flyway V1–V6, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
   - Tras la suite integral se añadió una regresión para limpiar actor y fecha de una decisión manual anterior al revalidar; las 9 pruebas focalizadas del servicio pasaron. No se repitió `npm run verify` porque la ejecución adicional no fue autorizada.
+
+## Conversación 37 - Solicitud automática de documentación de respaldo
+
+- Fecha: 2026-06-29
+- Resumen: se completó `1.9` creando un requerimiento documental persistente, idempotente y separado de los ficheros. V7 añade `"BusinessVerificationDocumentRequests"` con check origen, motivo cerrado, tipos admitidos, estado y timestamps. La máquina de estados lo crea en la misma transacción que `pending_review`; `verified` y `rejected` no generan solicitudes. Una revalidación cancela la solicitud abierta antes de consultar de nuevo. No se implementa aún carga, almacenamiento ni endpoint público.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V7__create_business_verification_document_requests.sql`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationDocumentRequestEntity.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessVerificationDocumentRequestDao.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/package-info.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentType.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentRequestReason.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentRequestSnapshot.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentRequestService.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentRequestServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentRequestPolicy.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/BusinessVerificationStateServiceImpl.java`
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/package-info.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/BusinessVerificationDocumentRequestPolicyTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationServiceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/persistence/BusinessVerificationPersistenceIntegrationTests.java`
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`
+  - `apps/api/README.md`
+  - `docs/architecture/business-verification-persistence.md`
+  - `docs/architecture/remote-business-verification.md`
+  - `.kiro/specs/plataforma-reservas-saas/design.md`
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+- Requisitos impactados:
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.9. Implementar solicitud de documento de respaldo cuando la verificación remota no sea concluyente.`
+  - Prepara `1.10`, `1.19`, `1.21`, `1.22` y `14.6` a `14.8`.
+- Tareas completadas:
+  - `1.9. Implementar solicitud de documento de respaldo cuando la verificación remota no sea concluyente.`
+- Siguiente tarea pendiente recomendada:
+  - `1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de actividad/apertura o documento equivalente.`
+- Decisiones o aclaraciones relevantes:
+  - Solicitud y documento son agregados diferentes; V7 no incluye binario, object key ni URL.
+  - Cada check puede originar una sola solicitud y cada cuenta solo puede mantener una abierta.
+  - Los motivos son `no_automated_channel`, `provider_unavailable`, `insufficient_provider_data`, `legal_name_unconfirmed` y `address_unconfirmed`.
+  - España admite los cinco tipos iniciales; para otros países se ofrecen documento administrativo equivalente y `other` hasta añadir políticas nacionales.
+  - La licencia de actividad/apertura es admisible como evidencia complementaria, pero no implica aprobación por sí sola.
+  - Motivo y tipos se derivan exclusivamente en servidor; no se acepta texto libre ni una selección del cliente.
+  - `ensureRequested` exige la transacción de la máquina de estados para que solicitud y `pending_review` sean atómicos.
+  - Una revalidación cancela y fecha el requerimiento abierto. Si vuelve a ser inconclusa, el nuevo check origina otro.
+  - Docker Desktop estaba detenido al primer intento de integración; se inició en segundo plano y las pruebas se repitieron correctamente.
+  - Evidencia de cierre: 4 pruebas unitarias de política y 25 focalizadas de integración correctas; `npm run verify` correcto con 22 tests frontend y 100 backend, Flyway V1–V7, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.

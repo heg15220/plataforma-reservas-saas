@@ -756,6 +756,49 @@ Restricciones:
 - estados finales con revisor y fecha obligatorios.
 - borrado restringido hasta retirar coordinadamente el objeto privado.
 
+#### business_verification_document_requests
+
+Requerimiento auditable creado cuando la verificación automática deja la cuenta en
+`pending_review`. Se materializa como `"BusinessVerificationDocumentRequests"` y se mantiene
+separado del fichero de `1.10`.
+
+- `id`
+- `business_account_id`
+- `source_verification_check_id`
+- `reason_code`
+- `requested_document_types`
+- `status`
+- `requested_at`
+- `resolved_at`
+- `created_at`
+- `updated_at`
+
+Motivos:
+
+- `no_automated_channel`
+- `provider_unavailable`
+- `insufficient_provider_data`
+- `legal_name_unconfirmed`
+- `address_unconfirmed`
+
+Estados:
+
+- `open`
+- `fulfilled`
+- `cancelled`
+
+Reglas:
+
+- una evidencia técnica solo puede originar un requerimiento;
+- una cuenta solo puede tener un requerimiento abierto;
+- el motivo y los tipos se derivan en servidor;
+- no admite texto libre, ficheros, URLs ni datos fiscales adicionales;
+- la solicitud se crea en la misma transacción que `pending_review`;
+- una revalidación cancela el requerimiento abierto y fecha su resolución;
+- `verified` y `rejected` no generan requerimiento;
+- la licencia española puede aportarse como evidencia complementaria, pero no basta por sí sola
+  para aprobar.
+
 #### venues
 
 Representa el local o negocio.

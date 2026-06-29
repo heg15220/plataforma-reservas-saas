@@ -167,6 +167,16 @@ operativa posterior; el caso de uso de caducidad ya es ejecutable.
 Los métodos de estado usan `REQUIRES_NEW` para que los locks pesimistas vivan solo durante cada
 transición y nunca durante la llamada al proveedor.
 
+Cuando el estado final es `pending_review`, `BusinessVerificationDocumentRequestService` crea en la
+misma transacción un requerimiento ligado al check. La operación es idempotente por
+`sourceVerificationCheckId`; una cuenta solo puede tener un requerimiento abierto. Los motivos y
+tipos admitidos se derivan en servidor de país, proveedor y evidencia, sin aceptar texto libre ni
+selección del cliente.
+
+Antes de una revalidación se cancela el requerimiento abierto con fecha de resolución. Si el nuevo
+resultado vuelve a ser inconcluso, se crea otro ligado al nuevo check. Una verificación o rechazo no
+genera solicitud.
+
 ## Política España y UE
 
 La selección no depende solo del país. `supports(request)` permite distinguir un NIF nacional de un

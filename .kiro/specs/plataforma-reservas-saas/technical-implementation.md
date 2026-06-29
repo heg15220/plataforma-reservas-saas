@@ -4408,6 +4408,235 @@ La tarea se considera completada porque:
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Tarea 1.9 - Solicitud de documento de respaldo ante verificación inconclusa
+
+- Fecha: 2026-06-29
+- Rama: `phase/1-identidad-roles-base-saas`
+- Estado: completada
+- Responsable: Codex
+
+### Objetivo técnico
+
+La tarea convierte `pending_review` en un requerimiento documental explícito y auditable. Separa la
+necesidad de aportar evidencia del documento privado que se implementará en `1.10`, evitando crear
+filas ficticias en `"BusinessVerificationDocuments"` antes de recibir un fichero real.
+
+El requerimiento se crea atómicamente con la transición de estado, conserva el check que explica su
+origen y enumera alternativas documentales derivadas por servidor.
+
+### Requisitos y diseño relacionados
+
+- `RF-032`: toda verificación no concluyente solicita respaldo antes de aprobación manual.
+- `RNF-001`: catálogo cerrado, invariantes SQL e idempotencia.
+- `RNF-002`: no se guardan ficheros, URLs, nombres ni datos fiscales adicionales.
+- `RNF-008`: motivo, check origen, estado y fechas son auditables.
+- `RNF-010`: indisponibilidad y falta de datos degradan a revisión documentada.
+- `RNF-011`: tabla UpperCamelCase, columnas lowerCamelCase, JPA por getters y DAO con `@Query`.
+- `RNF-013`: cierre en la rama única de Fase 1.
+- `RB-012`: el requerimiento no habilita publicación.
+- Diseño `3.15 Verificación empresarial`, modelo documental y política de revisión manual.
+
+### Archivos creados
+
+- `V7__create_business_verification_document_requests.sql`.
+- `BusinessVerificationDocumentRequestEntity.java`.
+- `BusinessVerificationDocumentRequestDao.java`.
+- `BusinessVerificationDocumentType.java`.
+- `BusinessVerificationDocumentRequestReason.java`.
+- `BusinessVerificationDocumentRequestSnapshot.java`.
+- `BusinessVerificationDocumentRequestService.java`.
+- `BusinessVerificationDocumentRequestServiceImpl.java`.
+- `BusinessVerificationDocumentRequestPolicy.java`.
+- `BusinessVerificationDocumentRequestPolicyTests.java`.
+
+### Archivos modificados
+
+- `BusinessVerificationStateServiceImpl`.
+- Package documentation de persistencia y servicio.
+- Tests de persistencia, flujo remoto y migraciones.
+- README de API y documentación arquitectónica.
+- Diseño, tareas, tracking y este documento técnico.
+
+No se eliminó ningún archivo.
+
+### Modelo de datos V7
+
+`"BusinessVerificationDocumentRequests"` contiene:
+
+- `"id"` UUID.
+- `"businessAccountId"` FK restrictiva.
+- `"sourceVerificationCheckId"` FK restrictiva.
+- `"reasonCode"` varchar cerrado.
+- `"requestedDocumentTypes"` array PostgreSQL `varchar(64)[]`.
+- `"status"`: `open`, `fulfilled` o `cancelled`.
+- `"requestedAt"` obligatorio.
+- `"resolvedAt"` opcional.
+- `"createdAt"` y `"updatedAt"`.
+
+Restricciones:
+
+- motivo dentro del catálogo;
+- cardinalidad de tipos entre uno y cinco;
+- todos los elementos pertenecen al catálogo documental;
+- abierta implica `resolvedAt IS NULL`;
+- satisfecha o cancelada implica `resolvedAt IS NOT NULL`.
+
+Índices:
+
+- único por `"sourceVerificationCheckId"` para idempotencia;
+- único parcial por `"businessAccountId"` cuando `status = open`;
+- cola por estado e instante de solicitud.
+
+Las FK usan `ON DELETE RESTRICT` para no perder el contexto de una petición pendiente o histórica.
+
+### Catálogo documental
+
+`BusinessVerificationDocumentType` comparte los valores ya preparados por V4:
+
+- `census_registration_036_037`;
+- `census_certificate`;
+- `activity_or_opening_license`;
+- `equivalent_administrative_document`;
+- `other`.
+
+Para España la solicitud enumera los cinco tipos admitidos. La licencia puede complementar la
+acreditación, pero la futura revisión no deberá aprobar únicamente por su presencia.
+
+Para otros países se solicitan inicialmente documento administrativo equivalente u `other`. Esta
+política permite operar sin inventar documentos nacionales y se ampliará al añadir adaptadores.
+
+### Motivos
+
+`BusinessVerificationDocumentRequestPolicy` deriva:
+
+- adaptador AEAT manual: `no_automated_channel`;
+- check `error`: `provider_unavailable`;
+- check válido sin nombre confirmado: `legal_name_unconfirmed`;
+- nombre confirmado y dirección aportada sin coincidencia: `address_unconfirmed`;
+- cualquier otra inconclusión: `insufficient_provider_data`.
+
+El orden prioriza el problema más determinante. Cada motivo genera una clave futura
+`businessVerification.documents.reason.<reason>` sin introducir aún los textos visibles de `1.21`.
+
+### Servicio e idempotencia
+
+`ensureRequested(accountId, checkId)`:
+
+1. Reutiliza la solicitud existente para el mismo check.
+2. Valida que la solicitud existente pertenezca a la cuenta esperada.
+3. Carga cuenta y check.
+4. Exige que el check pertenezca a la cuenta y esta esté en `pending_review`.
+5. Deriva motivo y tipos mediante la política.
+6. Persiste un requerimiento `open`.
+7. Devuelve un snapshot inmutable sin entidad JPA.
+
+El método usa `Propagation.MANDATORY`: no puede crear una solicitud fuera de la transacción que
+establece `pending_review`.
+
+`findOpen` devuelve un contrato mínimo para futuras pantallas y cargas. `cancelOpenForRevalidation`
+cambia la solicitud a `cancelled`, fecha resolución y mantiene el historial.
+
+### Integración con la máquina de estados
+
+En `completeRemoteCheck`, después de persistir el estado:
+
+- si el resultado es `pending_review`, se crea el requerimiento dentro de la misma transacción;
+- si es `verified` o `rejected`, no se crea;
+- un fallo al crear el requerimiento revierte también la transición final.
+
+En `beginRemoteCheck` se cancela primero cualquier requerimiento abierto. Así una nueva verificación
+no deja una petición obsoleta visible. Si el nuevo check vuelve a ser inconcluso, genera una nueva
+solicitud con su propio origen.
+
+### Seguridad, privacidad, permisos e i18n
+
+- No existe endpoint público en esta tarea.
+- Ningún cliente elige motivo o tipos.
+- Entidades JPA no se exponen por REST.
+- No hay binarios, object keys, URLs, MIME types ni nombres de fichero.
+- No hay notas libres que puedan contener datos personales.
+- Cuenta y check se validan antes de devolver o crear un requerimiento.
+- Los snapshots no incluyen NIF, razón social, dirección ni respuesta del proveedor.
+- Las claves i18n se preparan, pero sus catálogos visibles pertenecen a `1.21`.
+- Propiedad, rol y autorización de la carga se implementarán con el endpoint de `1.10` y middleware
+  de `1.17`.
+
+### Tests y evidencia
+
+`BusinessVerificationDocumentRequestPolicyTests` cubre cuatro casos:
+
+- AEAT manual y catálogo español;
+- error de proveedor y catálogo internacional;
+- nombre no confirmado;
+- dirección no confirmada tras coincidir el nombre.
+
+`RemoteBusinessVerificationServiceIntegrationTests` valida:
+
+- ausencia de solicitud para `verified`;
+- ausencia de solicitud para `rejected`;
+- solicitud internacional por proveedor no disponible;
+- solicitud española por falta de canal AEAT;
+- solicitud por discrepancia de nombre;
+- motivo, clave y orden de tipos;
+- cancelación y fecha de resolución al revalidar;
+- limpieza de fixtures confirmados respetando las nuevas FK.
+
+`BusinessVerificationPersistenceIntegrationTests` valida:
+
+- tabla y DAO;
+- rechazo de array documental vacío;
+- catálogo y cardinalidad SQL;
+- invariantes previas.
+
+`DatabaseMigrationIntegrationTests` exige Flyway V7.
+
+Comandos ejecutados:
+
+- `mvn ... -Dtest=BusinessVerificationDocumentRequestPolicyTests test`: 4 correctas.
+- pruebas focalizadas de estado, persistencia y migración: 25 correctas.
+- `npm run backend:conventions:check`: correcto.
+- `npm run verify`: correcto.
+
+Resultado integral:
+
+- 22 pruebas frontend correctas.
+- 100 pruebas backend correctas, 0 fallos y 0 errores.
+- Flyway V1–V7 validado y aplicado en PostgreSQL 17/PostGIS.
+- Redis y RabbitMQ correctos.
+- lint, formato, tipos, i18n, español y convenciones correctos.
+- builds Next.js y Spring Boot correctos.
+
+Docker Desktop estaba detenido en el primer intento de integración. Se inició en segundo plano y se
+repitieron tanto las pruebas focalizadas como la verificación integral con resultado correcto.
+
+### Riesgos, limitaciones y deuda técnica
+
+- V7 registra alternativas admitidas, pero no expresa todavía qué documentos son principales o
+  complementarios; la revisión debe aplicar esa política explícita.
+- `other` requerirá descripción controlada durante la carga sin introducir texto público.
+- La solicitud no tiene vencimiento ni recordatorios; no existe requisito temporal definido.
+- `fulfilled` se conectará cuando `1.10` persista una carga válida.
+- No se envía email ni notificación; las plantillas y textos pertenecen a tareas posteriores.
+- No hay endpoint autenticado de consulta; la UI de `1.19` consumirá un contrato autorizado futuro.
+- Las políticas documentales nacionales distintas de España siguen pendientes.
+- No se implementa revisión, aprobación o corrección administrativa.
+
+### Criterio de cierre
+
+La tarea se considera completada porque:
+
+- toda transición a `pending_review` crea un requerimiento atómico;
+- cada requerimiento conserva su check origen;
+- motivo y tipos son cerrados y derivados por servidor;
+- check y cuenta tienen idempotencia e invariantes SQL;
+- la revalidación cancela solicitudes obsoletas;
+- estados concluyentes no generan solicitudes;
+- V7 no adelanta almacenamiento ni subida de `1.10`;
+- código, esquema y contratos están documentados;
+- diseño, tracking y tareas están actualizados;
+- pruebas focalizadas y `npm run verify` pasan;
+- la siguiente tarea recomendada es `1.10`.
+
 ## Tarea 1.8 - Máquina de estados de verificación empresarial
 
 - Fecha: 2026-06-28

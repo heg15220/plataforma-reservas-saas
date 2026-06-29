@@ -54,6 +54,11 @@ una confirmación oficial con razón social y, si se aportó, dirección coheren
 inconclusión, error o discrepancia produce `pending_review`, e invalidez oficial produce `rejected`.
 Las aprobaciones caducan de forma configurable, 365 días por defecto.
 
+Una transición a `pending_review` genera atómicamente un
+`BusinessVerificationDocumentRequest`: conserva el check origen, un motivo cerrado y los tipos de
+respaldo admitidos. No contiene fichero ni URL. La misma evidencia no duplica requerimientos y una
+revalidación cancela el requerimiento abierto antes de consultar de nuevo.
+
 ## Ejecución
 
 ```bash

@@ -53,6 +53,8 @@ class RemoteBusinessVerificationServiceIntegrationTests {
 
   @Autowired private BusinessVerificationStateService verificationStateService;
 
+  @Autowired private BusinessVerificationDocumentRequestService documentRequestService;
+
   private final List<UUID> createdAccountIds = new ArrayList<>();
   private final List<UUID> createdOwnerIds = new ArrayList<>();
 
@@ -64,6 +66,12 @@ class RemoteBusinessVerificationServiceIntegrationTests {
   @AfterEach
   void removeCommittedFixtures() {
     for (UUID accountId : createdAccountIds) {
+      jdbcTemplate.update(
+          """
+          DELETE FROM "BusinessVerificationDocumentRequests"
+          WHERE "businessAccountId" = ?
+          """,
+          accountId);
       jdbcTemplate.update(
           """
           DELETE FROM "BusinessVerificationChecks"
@@ -110,6 +118,7 @@ class RemoteBusinessVerificationServiceIntegrationTests {
         .isEqualTo(Instant.parse("2027-06-28T12:00:00Z"));
     assertThat(repeated.verificationCheckId()).isEqualTo(first.verificationCheckId());
     assertThat(adapter.invocations).hasValue(2);
+    assertThat(documentRequestService.findOpen(accountId)).isEmpty();
 
     Map<String, Object> evidence =
         jdbcTemplate.queryForMap(
@@ -170,6 +179,12 @@ class RemoteBusinessVerificationServiceIntegrationTests {
         .containsEntry("errorCode", "NO_ADAPTER_CONFIGURED")
         .containsEntry("errorMessageKey", "businessVerification.remote.noAdapter");
     assertThat(((Number) evidence.get("attemptCount")).intValue()).isZero();
+
+    BusinessVerificationDocumentRequestSnapshot request =
+        documentRequestService.findOpen(accountId).orElseThrow();
+    assertThat(request.reasonCode()).isEqualTo("provider_unavailable");
+    assertThat(request.requestedDocumentTypes())
+        .containsExactly("equivalent_administrative_document", "other");
   }
 
   @Test
@@ -203,6 +218,19 @@ class RemoteBusinessVerificationServiceIntegrationTests {
     assertThat(outcome.attemptCount()).isEqualTo((short) 1);
     assertThat(outcome.businessVerificationStatus()).isEqualTo("pending_review");
     assertThat(adapter.invocations).hasValue(0);
+
+    BusinessVerificationDocumentRequestSnapshot request =
+        documentRequestService.findOpen(accountId).orElseThrow();
+    assertThat(request.reasonCode()).isEqualTo("no_automated_channel");
+    assertThat(request.reasonMessageKey())
+        .isEqualTo("businessVerification.documents.reason.no_automated_channel");
+    assertThat(request.requestedDocumentTypes())
+        .containsExactly(
+            "census_registration_036_037",
+            "census_certificate",
+            "activity_or_opening_license",
+            "equivalent_administrative_document",
+            "other");
   }
 
   @Test
@@ -217,6 +245,7 @@ class RemoteBusinessVerificationServiceIntegrationTests {
     assertThat(outcome.technicalStatus()).isEqualTo("invalid");
     assertThat(outcome.businessVerificationStatus()).isEqualTo("rejected");
     assertThat(outcome.businessVerificationExpiresAt()).isNull();
+    assertThat(documentRequestService.findOpen(accountId)).isEmpty();
   }
 
   @Test
@@ -230,6 +259,8 @@ class RemoteBusinessVerificationServiceIntegrationTests {
 
     assertThat(outcome.technicalStatus()).isEqualTo("verified");
     assertThat(outcome.businessVerificationStatus()).isEqualTo("pending_review");
+    assertThat(documentRequestService.findOpen(accountId).orElseThrow().reasonCode())
+        .isEqualTo("legal_name_unconfirmed");
   }
 
   @Test
@@ -303,6 +334,28 @@ class RemoteBusinessVerificationServiceIntegrationTests {
         .containsEntry("manualReviewStatus", null)
         .containsEntry("manualReviewedByUserId", null)
         .containsEntry("manualReviewedAt", null);
+  }
+
+  @Test
+  void revalidationCancelsPreviousOpenDocumentRequest() {
+    UUID accountId = insertBusinessAccount("ES", "B-12345674", "B12345674");
+    verificationService.verify(
+        new RemoteBusinessVerificationCommand(UUID.randomUUID(), accountId, null));
+    UUID previousRequestId = documentRequestService.findOpen(accountId).orElseThrow().requestId();
+
+    verificationStateService.beginRemoteCheck(accountId, UUID.randomUUID());
+
+    assertThat(documentRequestService.findOpen(accountId)).isEmpty();
+    Map<String, Object> cancelled =
+        jdbcTemplate.queryForMap(
+            """
+            SELECT "status", "resolvedAt"
+            FROM "BusinessVerificationDocumentRequests"
+            WHERE "id" = ?
+            """,
+            previousRequestId);
+    assertThat(cancelled.get("status")).isEqualTo("cancelled");
+    assertThat(cancelled.get("resolvedAt")).isNotNull();
   }
 
   private UUID insertBusinessAccount(String country) {

@@ -41,11 +41,14 @@ class BusinessVerificationPersistenceIntegrationTests {
 
   @Autowired private BusinessVerificationDocumentDao businessVerificationDocumentDao;
 
+  @Autowired private BusinessVerificationDocumentRequestDao businessVerificationDocumentRequestDao;
+
   @Test
   void exposesRepositoriesAndExpectedUpperCamelCaseTables() {
     assertThat(businessAccountDao).isNotNull();
     assertThat(businessVerificationCheckDao).isNotNull();
     assertThat(businessVerificationDocumentDao).isNotNull();
+    assertThat(businessVerificationDocumentRequestDao).isNotNull();
 
     List<String> tables =
         jdbcTemplate.queryForList(
@@ -56,6 +59,7 @@ class BusinessVerificationPersistenceIntegrationTests {
               AND "table_name" IN (
                 'BusinessAccounts',
                 'BusinessVerificationChecks',
+                'BusinessVerificationDocumentRequests',
                 'BusinessVerificationDocuments'
               )
             ORDER BY "table_name"
@@ -64,7 +68,10 @@ class BusinessVerificationPersistenceIntegrationTests {
 
     assertThat(tables)
         .containsExactly(
-            "BusinessAccounts", "BusinessVerificationChecks", "BusinessVerificationDocuments");
+            "BusinessAccounts",
+            "BusinessVerificationChecks",
+            "BusinessVerificationDocumentRequests",
+            "BusinessVerificationDocuments");
   }
 
   @Test
@@ -197,6 +204,37 @@ class BusinessVerificationPersistenceIntegrationTests {
             () -> insertCheck(accountId, "vies", "error", VALID_RESPONSE_HASH, null, null))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("ckBusinessVerificationChecksError");
+  }
+
+  @Test
+  void rejectsDocumentRequestWithoutAllowedTypes() {
+    UUID ownerId = insertUser("owner@example.com", "venue_business");
+    UUID accountId = insertBusinessAccount(ownerId, "ES", "B12345674", "B12345674");
+    UUID checkId = insertCheck(accountId, "aeat-census-manual", "inconclusive", null, null, null);
+
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    INSERT INTO "BusinessVerificationDocumentRequests" (
+                      "businessAccountId",
+                      "sourceVerificationCheckId",
+                      "reasonCode",
+                      "requestedDocumentTypes",
+                      "requestedAt"
+                    )
+                    VALUES (
+                      ?,
+                      ?,
+                      'no_automated_channel',
+                      ARRAY[]::varchar[],
+                      CURRENT_TIMESTAMP
+                    )
+                    """,
+                    accountId,
+                    checkId))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("ckBusinessVerificationDocumentRequestsTypes");
   }
 
   @Test

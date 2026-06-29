@@ -2,7 +2,7 @@
 
 ## Alcance
 
-La migración `V4__create_business_verification_tables.sql` crea la base persistente para identidades empresariales, intentos de comprobación y documentos de respaldo. V5 añade identidad idempotente y telemetría mínima a las ejecuciones remotas. V6 incorpora correlación de la operación activa y caducidad de aprobaciones. La carga de ficheros y revisión administrativa siguen perteneciendo a tareas posteriores.
+La migración `V4__create_business_verification_tables.sql` crea la base persistente para identidades empresariales, intentos de comprobación y documentos de respaldo. V5 añade identidad idempotente y telemetría mínima a las ejecuciones remotas. V6 incorpora correlación de la operación activa y caducidad de aprobaciones. V7 separa el requerimiento documental del fichero que se cargará en `1.10`. La carga privada y revisión administrativa siguen perteneciendo a tareas posteriores.
 
 El modelo aplica minimización desde el esquema: conserva datos fiscales necesarios, resultados estructurados y hashes de evidencia, pero no respuestas remotas completas ni binarios documentales.
 
@@ -97,6 +97,40 @@ Estados:
 
 Los estados finales exigen revisor y fecha. El mismo hash no puede registrarse dos veces para una cuenta. La eliminación de una cuenta con documentos queda restringida para obligar al futuro flujo de supresión a retirar primero los objetos privados.
 
+## `"BusinessVerificationDocumentRequests"`
+
+Representa una solicitud de respaldo, no un fichero. Se crea atómicamente cuando una evidencia
+técnica deja la cuenta en `pending_review`.
+
+Datos mínimos:
+
+- cuenta empresarial;
+- check que originó el requerimiento;
+- motivo controlado;
+- array cerrado de tipos documentales admitidos;
+- estado `open`, `fulfilled` o `cancelled`;
+- instante de solicitud y resolución;
+- timestamps UTC.
+
+Motivos: `no_automated_channel`, `provider_unavailable`, `insufficient_provider_data`,
+`legal_name_unconfirmed` y `address_unconfirmed`.
+
+Invariantes:
+
+- un check origina como máximo una solicitud;
+- una cuenta tiene como máximo una solicitud abierta;
+- el array contiene entre uno y cinco tipos del catálogo conocido;
+- una solicitud abierta no tiene fecha de resolución;
+- una solicitud satisfecha o cancelada exige fecha de resolución;
+- cuenta y check no pueden borrarse mientras exista el requerimiento.
+
+España recibe alta 036/037, certificado censal, licencia de actividad/apertura, documento
+administrativo equivalente y `other`. La licencia es evidencia complementaria; su presencia no
+implica aprobación. Otros países reciben documento administrativo equivalente y `other` hasta
+disponer de una política nacional.
+
+V7 no almacena nombres de fichero, binarios, URLs, notas libres ni datos fiscales adicionales.
+
 ## Seguridad y privacidad
 
 - No hay respuestas remotas completas.
@@ -115,6 +149,7 @@ El paquete `com.reserly.platform.businessverification.persistence` contiene:
 - `BusinessAccountEntity` y `BusinessAccountDao`;
 - `BusinessVerificationCheckEntity` y `BusinessVerificationCheckDao`;
 - `BusinessVerificationDocumentEntity` y `BusinessVerificationDocumentDao`.
+- `BusinessVerificationDocumentRequestEntity` y `BusinessVerificationDocumentRequestDao`.
 
 Las relaciones se declaran sobre getters y usan carga lazy. `BusinessVerificationCheckDao` consulta
 por `requestId` y por proveedor/referencia para resolver idempotencia y carreras. Las consultas
@@ -136,5 +171,6 @@ propias continúan usando `@Query`.
 - coherencia de revisión documental;
 - rechazo de URLs públicas;
 - restricción de borrado cuando existe evidencia.
+- catálogo, cardinalidad e idempotencia de solicitudes documentales.
 
-`DatabaseMigrationIntegrationTests` exige Flyway V6 y el arranque valida los mapeos mediante Hibernate.
+`DatabaseMigrationIntegrationTests` exige Flyway V7 y el arranque valida los mapeos mediante Hibernate.

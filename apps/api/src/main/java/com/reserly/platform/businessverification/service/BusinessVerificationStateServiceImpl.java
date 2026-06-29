@@ -25,14 +25,17 @@ public class BusinessVerificationStateServiceImpl implements BusinessVerificatio
   private final BusinessAccountDao businessAccountDao;
   private final BusinessVerificationCheckDao verificationCheckDao;
   private final BusinessVerificationStateProperties properties;
+  private final BusinessVerificationDocumentRequestService documentRequestService;
 
   public BusinessVerificationStateServiceImpl(
       BusinessAccountDao businessAccountDao,
       BusinessVerificationCheckDao verificationCheckDao,
-      BusinessVerificationStateProperties properties) {
+      BusinessVerificationStateProperties properties,
+      BusinessVerificationDocumentRequestService documentRequestService) {
     this.businessAccountDao = businessAccountDao;
     this.verificationCheckDao = verificationCheckDao;
     this.properties = properties;
+    this.documentRequestService = documentRequestService;
   }
 
   @Override
@@ -45,6 +48,8 @@ public class BusinessVerificationStateServiceImpl implements BusinessVerificatio
       throw new BusinessVerificationInProgressException();
     }
 
+    Instant now = Instant.now();
+    documentRequestService.cancelOpenForRevalidation(businessAccountId, now);
     account.setBusinessVerificationStatus(
         BusinessVerificationStatus.PENDING_REMOTE_CHECK.persistedValue());
     account.setActiveVerificationRequestId(requestId);
@@ -55,7 +60,7 @@ public class BusinessVerificationStateServiceImpl implements BusinessVerificatio
     account.setManualReviewStatus(null);
     account.setManualReviewedByUser(null);
     account.setManualReviewedAt(null);
-    account.setUpdatedAt(Instant.now());
+    account.setUpdatedAt(now);
     businessAccountDao.saveAndFlush(account);
     return snapshot(account);
   }
@@ -82,6 +87,10 @@ public class BusinessVerificationStateServiceImpl implements BusinessVerificatio
     account.setActiveVerificationRequestId(null);
     account.setUpdatedAt(Instant.now());
     businessAccountDao.saveAndFlush(account);
+    if (BusinessVerificationStatus.PENDING_REVIEW
+        == BusinessVerificationStatus.fromPersistedValue(account.getBusinessVerificationStatus())) {
+      documentRequestService.ensureRequested(businessAccountId, verificationCheckId);
+    }
     return snapshot(account);
   }
 

@@ -1,5 +1,5 @@
 /**
- * Casos de uso internos de verificación empresarial y persistencia de evidencia mínima.
+ * Casos de uso internos de verificación empresarial, estados y solicitudes de respaldo.
  *
  * <p>Las transiciones del estado agregado se implementan separadamente para no confundir un
  * resultado técnico remoto con autorización de publicación.
