@@ -1943,7 +1943,9 @@ Navegación inferior:
 
 ### 12.1 Autenticación
 
-- Hash de contraseña robusto.
+- Hash de contraseña BCrypt 2b con sal aleatoria, coste configurable validado entre 12 y 16,
+  límite de entrada de 72 bytes UTF-8, comparación fail-closed con hash dummy y actualización tras
+  autenticación cuando la variante sea anterior o el coste inferior.
 - Verificación de email para locales.
 - Verificación empresarial aprobada para publicar locales.
 - Sesiones seguras o tokens firmados.

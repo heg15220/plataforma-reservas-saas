@@ -73,7 +73,7 @@ El controlador valida el DTO y un conversor lo transforma en un comando interno.
 3. normaliza la identidad fiscal y aplica formato y carácter de control cuando existe una
    estrategia nacional;
 4. comprueba conflictos conocidos sin revelar cuál se produjo;
-5. genera un hash BCrypt con coste 12 y sal aleatoria;
+5. genera mediante `PasswordHashingService` un hash BCrypt 2b con coste configurado y sal aleatoria;
 6. persiste usuario, cuenta empresarial y rol propietario;
 7. devuelve únicamente identificadores y estados no sensibles.
 
@@ -111,9 +111,9 @@ explícitamente que formato y carácter de control no fueron validados. Esto per
 identidad en `unverified` sin inventar reglas nacionales. El contrato completo y los algoritmos se
 documentan en `business-tax-identifiers.md`.
 
-El registro usa BCrypt desde esta tarea para cumplir la invariante de no persistir secretos en claro.
-La tarea `1.12` permanece pendiente: debe cerrar el contrato de verificación de hashes, política
-configurable, rehash por aumento de coste y ciclo completo de credenciales.
+El registro delega validación criptográfica y generación en `PasswordHashingService`. La tarea
+`1.12` completa el contrato con comparación fail-closed, hash dummy, coste configurable entre 12 y
+16 y detección de rehash por variante o coste. Login y recuperación deben reutilizar esta frontera.
 
 También quedan fuera:
 

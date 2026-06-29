@@ -14,7 +14,6 @@ import com.reserly.platform.identity.persistence.UserDao;
 import com.reserly.platform.identity.persistence.UserEntity;
 import com.reserly.platform.identity.persistence.UserRoleDao;
 import com.reserly.platform.identity.persistence.UserRoleEntity;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Locale;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,8 +33,6 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
   private static final String VENUE_OWNER_ROLE = "venue_owner";
   private static final String INITIAL_USER_STATUS = "pending_email_verification";
   private static final String INITIAL_BUSINESS_STATUS = "unverified";
-  private static final int BCRYPT_MAX_PASSWORD_BYTES = 72;
-
   private final UserDao userDao;
   private final RoleDao roleDao;
   private final UserRoleDao userRoleDao;
@@ -61,7 +58,11 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
   @Override
   @Transactional
   public VenueRegistrationResponse register(VenueRegistrationCommand command) {
-    validatePasswordBytes(command.rawPassword());
+    try {
+      passwordHashingService.validate(command.rawPassword());
+    } catch (PasswordHashingValidationException exception) {
+      throw new RegistrationValidationException();
+    }
 
     String normalizedEmail = normalizeEmail(command.email());
     NormalizedBusinessTaxIdentifier taxIdentifier;
@@ -141,12 +142,6 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
     businessAccount.setCreatedAt(now);
     businessAccount.setUpdatedAt(now);
     return businessAccount;
-  }
-
-  private void validatePasswordBytes(String rawPassword) {
-    if (rawPassword.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES) {
-      throw new RegistrationValidationException();
-    }
   }
 
   private String normalizeEmail(String email) {

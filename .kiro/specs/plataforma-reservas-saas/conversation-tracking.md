@@ -1688,3 +1688,59 @@ Fuente de verdad del avance:
   - Evidencia de cierre: 7 pruebas focalizadas correctas y `npm run verify` correcto con 22 tests
     frontend y 114 backend, cero fallos; Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds
     Next.js/Spring Boot correctos.
+
+## Conversación 40 - Política completa de hashing de contraseñas
+
+- Fecha: 2026-06-29.
+- Resumen de la conversación:
+  - Se completó `1.12` ampliando la protección BCrypt que el registro había adelantado en `1.4`.
+  - `PasswordHashingService` centraliza validación criptográfica, generación BCrypt 2b con sal,
+    comparación fail-closed y detección de rehash.
+  - El coste se configura mediante `RESERLY_PASSWORD_BCRYPT_STRENGTH`, con rango de arranque 12–16.
+  - Los hashes ausentes, malformados o con coste no acotado se comparan contra un hash dummy de la
+    política vigente para reducir diferencias temporales y evitar trabajo arbitrario.
+  - El registro ya delega también el límite de 72 bytes UTF-8 en esta frontera común.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example`, `.env.production.example`.
+  - `apps/api/src/main/resources/application.yaml`.
+  - `PasswordHashingService`, `PasswordHashingServiceImpl`, `PasswordHashingProperties` y
+    `PasswordHashingValidationException`.
+  - `VenueRegistrationServiceImpl` y el `package-info` de servicios de identidad.
+  - `PasswordHashingServiceTests` y `PasswordHashingPropertiesTests`.
+  - `apps/api/README.md`, `docs/configuration.md`, `docs/architecture/identity-persistence.md` y
+    `docs/architecture/venue-registration.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro y gestión de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `1.12. Implementar hashing seguro de contraseñas`.
+  - Prepara `1.13` y `1.15` para verificar y actualizar credenciales sin duplicar lógica.
+- Tareas completadas:
+  - `1.12. Implementar hashing seguro de contraseñas`.
+- Siguiente tarea pendiente recomendada:
+  - `1.13. Implementar login y logout de locales`.
+- Decisiones o aclaraciones relevantes:
+  - Se conserva BCrypt por compatibilidad con los hashes ya emitidos y por ser una función
+    adaptativa con sal; las nuevas credenciales usan explícitamente variante 2b.
+  - La política funcional de registro mantiene mínimo 12 caracteres. La frontera criptográfica
+    aplica además no nulo, no vacío y máximo 72 bytes UTF-8 para todos los casos de uso.
+  - `matches` admite sintácticamente hashes 2a, 2b y 2y para migración, pero nunca registra
+    contraseña, hash ni resultado detallado.
+  - Un hash de variante anterior o coste menor requiere rehash tras autenticar; un coste superior
+    válido no se reduce.
+  - Costes codificados fuera de 4–16 se tratan como hash inválido, evitando un cálculo controlado por
+    datos corruptos.
+  - La primera continuación quedó bloqueada por el límite temporal de herramientas; no se cerró ni
+    commiteó la tarea. Al retomarla, las pruebas unitarias pasaron.
+  - Docker Desktop estaba detenido al primer intento de integración. Se inició y las pruebas se
+    repitieron correctamente.
+  - Evidencia de cierre final: 6 pruebas focalizadas correctas; integración de registro y arranque
+    correcta; `npm run verify` correcto con 22 tests frontend y 119 backend, cero fallos; Flyway
+    V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.

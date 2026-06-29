@@ -22,6 +22,11 @@ Las convenciones de entidades, migraciones, DAOs, servicios, controladores, DTOs
 
 El contexto `identity.persistence` contiene la base de cuentas autenticadas, roles asignables, sesiones revocables y tokens de un solo uso. `AccountType` diferencia cuentas `customer`, `venue_business` y `admin` sin sustituir la autorización por roles. Los secretos de sesión, verificación y recuperación solo se persisten como hashes SHA-256. El modelo y sus invariantes están documentados en `docs/architecture/identity-persistence.md`.
 
+Las contraseñas pasan exclusivamente por `PasswordHashingService`: BCrypt 2b con sal aleatoria,
+coste 12–16, límite de 72 bytes UTF-8, comparación fail-closed con hash dummy y detección de rehash
+para credenciales antiguas. El registro ya consume esta frontera; login y recuperación deberán
+reutilizarla.
+
 El contexto `businessverification.persistence` contiene identidades fiscales, historial mínimo de comprobaciones y metadatos de documentos privados. No persiste respuestas remotas completas, binarios ni URLs públicas. Su contrato de privacidad, auditoría e integridad está documentado en `docs/architecture/business-verification-persistence.md`.
 
 El endpoint público `POST /api/auth/venues/register` crea atómicamente una cuenta

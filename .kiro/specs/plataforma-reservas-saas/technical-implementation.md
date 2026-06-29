@@ -4783,6 +4783,193 @@ sensibles; ofrece una operación fail-closed; coordina concurrencia con la máqu
 pruebas unitarias e integración real pasan; y diseño, arquitectura, tracking y documento técnico
 quedan actualizados con el contrato que deberá consumir la Fase 2.
 
+## Iteración 1.12 - Hashing seguro y evolutivo de contraseñas
+
+### Identificación y fecha
+
+- Tarea exacta: `1.12. Implementar hashing seguro de contraseñas`.
+- Fecha de implementación y verificación: 2026-06-29.
+- Estado: completada y verificada.
+
+### Objetivo técnico y requisitos relacionados
+
+El objetivo es disponer de una única frontera criptográfica para registro, login, recuperación y
+futuros cambios de contraseña. Debe impedir texto claro, truncamiento silencioso, comparaciones
+frágiles y configuración insegura, y permitir elevar el coste sin invalidar credenciales existentes.
+
+La tarea completa la implementación mínima adelantada por `1.4`: el registro ya generaba BCrypt con
+coste 12, pero no existían comparación, hash dummy, configuración validada ni detección de rehash.
+Se satisfacen `RNF-001` —hash robusto con sal—, `RNF-002`, el registro de `RF-007`, las convenciones
+de `RNF-011` y el cierre GitFlow de `RNF-013`.
+
+### Archivos creados
+
+- `PasswordHashingProperties.java`: binding validado del coste BCrypt.
+- `PasswordHashingValidationException.java`: error interno sin incluir el secreto.
+- `PasswordHashingPropertiesTests.java`: límites de configuración.
+
+### Archivos modificados
+
+- `PasswordHashingService.java`: contrato completo de validación, hash, comparación y rehash.
+- `PasswordHashingServiceImpl.java`: BCrypt 2b, hash dummy y validaciones defensivas.
+- `VenueRegistrationServiceImpl.java`: delegación del límite de bytes en la frontera común.
+- `PasswordHashingServiceTests.java`: cobertura de generación, verificación y evolución.
+- `identity.service/package-info.java`.
+- `application.yaml` y las tres plantillas `.env`.
+- `apps/api/README.md`, `docs/configuration.md`, `docs/architecture/identity-persistence.md` y
+  `docs/architecture/venue-registration.md`.
+- Diseño, tareas, seguimiento y este documento técnico en `.kiro`.
+
+No se elimina ningún archivo funcional ni se necesita migración: `"Users"."passwordHash"` ya
+dispone de 255 caracteres, suficiente para el formato BCrypt de 60 caracteres.
+
+### Arquitectura y contrato
+
+`PasswordHashingService` es la única API autorizada:
+
+- `validate(rawPassword)` valida las invariantes propias del algoritmo;
+- `hash(rawPassword)` repite validación y genera la credencial autocontenida;
+- `matches(rawPassword, encodedHash)` compara sin lanzar por entradas inválidas;
+- `requiresRehash(encodedHash)` decide si una autenticación correcta debe actualizar la fila.
+
+La longitud mínima o reglas funcionales siguen en DTO/caso de uso; el registro exige 12–72
+caracteres. La frontera criptográfica aplica de forma independiente:
+
+- valor no nulo;
+- valor no vacío;
+- máximo 72 bytes después de codificar UTF-8.
+
+Esta separación evita que login o recuperación omitan el límite aunque no reutilicen el DTO de
+registro.
+
+### Algoritmo, formato y configuración
+
+Las nuevas credenciales usan `BCryptPasswordEncoder.BCryptVersion.$2B`. Cada invocación genera una
+sal aleatoria y un hash con formato:
+
+```text
+$2b$<coste>$<sal-y-hash>
+```
+
+El coste es `log2` del trabajo y se configura con
+`RESERLY_PASSWORD_BCRYPT_STRENGTH`, enlazado a
+`reserly.identity.password.bcryptStrength`. Bean Validation exige 12–16:
+
+- 12 es el baseline en local, staging y producción;
+- elevar el valor aumenta CPU/latencia y debe medirse;
+- 16 actúa como tope operativo ante configuración accidental.
+
+No hay pepper porque no está definido un gestor de claves para credenciales en esta fase. Añadirlo
+sin rotación ni disponibilidad operativa introduciría un punto único de fallo. Una futura decisión
+de pepper o migración a Argon2id deberá versionarse y conservar compatibilidad de verificación.
+
+### Comparación, temporización y rehash
+
+El servicio genera al arrancar un hash dummy con el mismo encoder y coste vigentes. Si el hash no
+existe, está malformado o su coste queda fuera del rango aceptado, `matches` ejecuta BCrypt contra el
+dummy y devuelve `false`. Esto evita un retorno inmediato que diferencie claramente un usuario
+inexistente de una contraseña incorrecta en `1.13`.
+
+Se aceptan para comparación formatos sintácticos 2a, 2b y 2y con 60 caracteres. El coste embebido
+debe estar entre 4 y 16; un valor como 31 se rechaza antes de invocar BCrypt para impedir que datos
+corruptos controlen trabajo exponencial.
+
+`requiresRehash` devuelve:
+
+- `false` para 2b con coste igual o superior al configurado;
+- `true` para 2a/2y, coste inferior, hash nulo, malformado o fuera de rango.
+
+El login solo debe rehashear después de que `matches` sea correcto. Nunca se rebaja un hash con coste
+superior. La actualización futura debe suceder en una transacción breve y no conservar la
+contraseña.
+
+### Integración con registro
+
+`VenueRegistrationServiceImpl` elimina su constante y cálculo UTF-8 duplicados. Al comenzar el caso
+de uso llama a `passwordHashingService.validate`; la excepción criptográfica se traduce a
+`RegistrationValidationException`, preservando el contrato público
+`400 REGISTRATION_INVALID`. Al construir la entidad llama a `hash`, que vuelve a validar por
+defensa en profundidad.
+
+El DTO sigue impidiendo menos de 12 o más de 72 caracteres. Una contraseña multibyte puede cumplir
+el límite de caracteres y superar 72 bytes; el servicio la rechaza antes de persistir.
+
+### Seguridad, privacidad, permisos e internacionalización
+
+- La contraseña nunca se devuelve, persiste ni registra.
+- Cada hash incluye sal independiente; dos hashes del mismo secreto son distintos.
+- No se usa SHA-256 para contraseñas; se reserva para tokens aleatorios de alta entropía.
+- Entrada inválida, hash desconocido o formato malformado fallan cerrados.
+- Los mensajes de excepción no contienen longitud, contraseña ni hash.
+- La propiedad de coste no es un secreto y se versiona en las plantillas.
+- Ningún endpoint nuevo se expone; login y recuperación consumirán el servicio.
+- No hay texto visible nuevo. Los errores futuros deben mapearse a claves i18n genéricas.
+- Hashing no concede permisos ni cambia roles.
+
+### Errores, logs, auditoría y observabilidad
+
+`PasswordHashingValidationException` comunica únicamente una violación interna. El registro la
+convierte al error genérico existente. `matches` devuelve `false` en vez de propagar errores de
+formato, evitando respuestas 500 y filtraciones.
+
+No se añaden logs de intentos ni métricas con email, contraseña o hash. El futuro login puede medir
+latencia y resultado agregado, pero debe evitar etiquetas de alta cardinalidad o PII. Rehash
+correcto será un mantenimiento de credencial, no una auditoría con el secreto.
+
+### Tests añadidos o modificados
+
+`PasswordHashingServiceTests` comprueba:
+
+- hashes 2b, coste 12, sal aleatoria y ausencia del secreto;
+- coincidencia correcta y rechazo de contraseña errónea;
+- rechazo de nulo, vacío y valor multibyte superior a 72 bytes;
+- comparación fail-closed con hash nulo, malformado, entrada nula o sobredimensionada;
+- rechazo defensivo de coste embebido 31;
+- rehash de 2a y coste inferior;
+- conservación de un coste superior;
+- hash malformado o fuera de rango marcado para actualización.
+
+`PasswordHashingPropertiesTests` valida los bordes 12 y 16 y rechaza 11 y 17.
+`VenueRegistrationIntegrationTests` confirma sobre PostgreSQL real que el registro conserva su
+contrato, persiste un hash verificable y rechaza entradas inválidas sin escritura parcial.
+
+### Comandos y evidencia
+
+- `mvn -Dtest=PasswordHashingServiceTests test`: 4 tests correctos.
+- `mvn -Dtest=PasswordHashingServiceTests,PasswordHashingPropertiesTests test`: 6 tests correctos.
+- `mvn -Dtest=VenueRegistrationIntegrationTests,ReserlyApplicationTests test`: 7 tests correctos
+  tras iniciar Docker Desktop.
+- `npm run env:check`: tres plantillas válidas.
+- `npm run backend:conventions:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- `git diff --check`: correcto.
+- `npm run verify` sobre el diff final: correcto; 22 tests frontend y 119 backend, cero fallos y
+  errores; Flyway V1–V8, PostgreSQL 17/PostGIS, Redis 8, RabbitMQ 4, lint, formato, typecheck,
+  contratos CI/entorno/i18n y builds Next.js/Spring Boot correctos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- El login aún no existe. `1.13` debe usar `matches` también para usuario inexistente y actualizar
+  el hash si `requiresRehash` después de autenticar.
+- Recuperación `1.15` debe invalidar sesiones y reutilizar `hash`.
+- No hay rate limiting; corresponde a `1.16`.
+- La comparación dummy reduce diferencias obvias, pero la defensa completa contra enumeración
+  también exige respuestas públicas uniformes y rate limiting.
+- El coste 12 debe medirse con carga real; la propiedad permite elevarlo sin despliegue de código.
+- No se implementa pepper ni Argon2id. Cualquier migración futura necesita estrategia versionada,
+  dependencia criptográfica y operación de claves.
+- Java `String` es inmutable y no permite borrar la contraseña de memoria de forma fiable; se limita
+  su alcance y nunca se conserva en campos, logs o eventos.
+- Permanece la advertencia de auto-adjunción Mockito/Byte Buddy del entorno de pruebas.
+
+### Criterio de cierre
+
+La tarea queda cerrada porque todas las contraseñas nuevas usan BCrypt 2b con sal y coste seguro;
+existe validación central contra truncamiento; la comparación falla cerrada y usa trabajo dummy; los
+hashes antiguos pueden verificarse y marcarse para actualización; la configuración insegura falla al
+arranque; registro, documentación y plantillas consumen la política; y las pruebas focalizadas,
+integración PostgreSQL y suite integral pasan sobre el diff final.
+
 ## Tarea 1.9 - Solicitud de documento de respaldo ante verificación inconclusa
 
 - Fecha: 2026-06-29

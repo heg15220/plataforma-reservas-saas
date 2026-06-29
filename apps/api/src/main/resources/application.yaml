@@ -60,6 +60,9 @@ reserly:
   allowedOrigins: ${RESERLY_ALLOWED_ORIGINS}
   security:
     secureCookies: ${RESERLY_SECURE_COOKIES}
+  identity:
+    password:
+      bcryptStrength: ${RESERLY_PASSWORD_BCRYPT_STRENGTH:12}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   business-verification:

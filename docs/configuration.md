@@ -30,6 +30,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_ALLOWED_ORIGINS`                               | API              | No      | Sí                         |
 | `RESERLY_SECURE_COOKIES`                                | API              | No      | Sí                         |
 | `RESERLY_REAL_PAYMENTS_ENABLED`                         | API              | No      | Sí; debe ser `false`       |
+| `RESERLY_PASSWORD_BCRYPT_STRENGTH`                      | API              | No      | Sí; entre 12 y 16          |
 | `RESERLY_DATABASE_NAME`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_PORT`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_URL`                                  | API              | No      | Sí                         |
@@ -70,6 +71,11 @@ carga documental privada consume además:
 
 La clave de cifrado debe decodificar exactamente 32 bytes. Staging y producción exigen endpoint S3
 HTTPS, bucket precreado y secretos no locales; MinIO y ClamAV de Compose son solo desarrollo.
+
+`RESERLY_PASSWORD_BCRYPT_STRENGTH` determina el coste adaptativo de nuevas credenciales y del hash
+dummy usado en comparaciones sin usuario. El baseline es 12. Aumentarlo exige medir latencia y CPU;
+los hashes existentes con coste inferior se actualizarán tras un login correcto, sin almacenar ni
+registrar la contraseña.
 
 ## Reglas de seguridad
 
