@@ -1,5 +1,6 @@
 package com.reserly.platform.identity.persistence;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,4 +22,13 @@ public interface UserDao extends JpaRepository<UserEntity, UUID> {
       where user.emailNormalized = :emailNormalized
       """)
   boolean existsByEmailNormalized(@Param("emailNormalized") String emailNormalized);
+
+  /** Carga una credencial por email canónico sin exponer una consulta derivada implícita. */
+  @Query(
+      """
+      select user
+      from UserEntity user
+      where user.emailNormalized = :emailNormalized
+      """)
+  Optional<UserEntity> findForAuthentication(@Param("emailNormalized") String emailNormalized);
 }

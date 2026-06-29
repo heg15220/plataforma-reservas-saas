@@ -45,6 +45,7 @@ Una sesión operativa deberá cumplir simultáneamente:
 - el hash calculado del secreto coincide mediante comparación segura.
 
 Los índices parciales por cuenta y expiración preparan lookup y limpieza sin indexar sesiones ya revocadas.
+Login y logout se documentan en `docs/architecture/authentication-sessions.md`.
 
 ### `"AuthTokens"`
 
@@ -103,4 +104,4 @@ recuperación y futuros flujos internos. Contraseña, hash y resultado detallado
 - rechazo de secretos sin hash;
 - cascada de asignaciones, sesiones y tokens al eliminar una cuenta.
 
-`DatabaseMigrationIntegrationTests` verifica además que Flyway alcanza la versión `3` y Hibernate valida los mapeos contra el esquema real.
+`DatabaseMigrationIntegrationTests` verifica además que Flyway alcanza la versión `8` y Hibernate valida los mapeos contra el esquema real.

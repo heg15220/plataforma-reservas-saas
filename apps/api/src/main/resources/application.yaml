@@ -63,6 +63,8 @@ reserly:
   identity:
     password:
       bcryptStrength: ${RESERLY_PASSWORD_BCRYPT_STRENGTH:12}
+    session:
+      lifetime: ${RESERLY_SESSION_LIFETIME:12h}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   business-verification:

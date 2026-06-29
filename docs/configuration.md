@@ -31,6 +31,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_SECURE_COOKIES`                                | API              | No      | Sí                         |
 | `RESERLY_REAL_PAYMENTS_ENABLED`                         | API              | No      | Sí; debe ser `false`       |
 | `RESERLY_PASSWORD_BCRYPT_STRENGTH`                      | API              | No      | Sí; entre 12 y 16          |
+| `RESERLY_SESSION_LIFETIME`                              | API              | No      | Sí; 5 minutos–30 días      |
 | `RESERLY_DATABASE_NAME`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_PORT`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_URL`                                  | API              | No      | Sí                         |
@@ -76,6 +77,10 @@ HTTPS, bucket precreado y secretos no locales; MinIO y ClamAV de Compose son sol
 dummy usado en comparaciones sin usuario. El baseline es 12. Aumentarlo exige medir latencia y CPU;
 los hashes existentes con coste inferior se actualizarán tras un login correcto, sin almacenar ni
 registrar la contraseña.
+
+`RESERLY_SESSION_LIFETIME` controla la vigencia absoluta de la cookie y la fila revocable. El valor
+inicial es `12h`; no existe renovación deslizante hasta que el middleware privado gestione
+`lastSeenAt`.
 
 ## Reglas de seguridad
 

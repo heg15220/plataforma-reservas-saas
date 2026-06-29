@@ -6197,6 +6197,251 @@ La tarea se considera completada porque:
 - el diff final se revisa;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Iteración 1.13 - Login, sesión y logout de cuentas de local
+
+### Identificación y fecha
+
+- Tarea exacta: `1.13. Implementar login y logout de locales`.
+- Fecha de la iteración: 2026-06-29.
+- Requisito funcional principal: `RF-008 Login y logout de local`.
+- Requisitos relacionados: `RF-007`, `RNF-001`, `RNF-002`, `RNF-007`, `RNF-011` y `RNF-013`.
+
+### Objetivo técnico
+
+Implementar una frontera completa de autenticación para cuentas de local que:
+
+- valide credenciales sin permitir enumeración de emails;
+- reutilice la política BCrypt centralizada en `1.12`;
+- cree sesiones opacas con secretos criptográficamente aleatorios;
+- persista únicamente una huella irreversible del secreto;
+- transporte la credencial en una cookie endurecida;
+- permita revocación inmediata e idempotente mediante logout;
+- conserve contratos HTTP y errores estables para el futuro panel web.
+
+### Archivos creados
+
+- `apps/api/src/main/java/com/reserly/platform/identity/controller/AuthenticationController.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/controller/AuthenticationControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/controller/AuthenticationExceptionHandler.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/controller/SessionCookieFactory.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/converter/AuthenticationConverter.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/dto/AuthenticationErrorResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/dto/LoginCommand.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/dto/LoginRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/dto/LoginResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/AuthenticationService.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/AuthenticationServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/InvalidAuthenticationException.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/LoginOutcome.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/SessionProperties.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/SessionTokenService.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/service/SessionTokenServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/controller/AuthenticationIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/controller/SessionCookieFactoryTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/service/SessionPropertiesTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/service/SessionTokenServiceTests.java`.
+- `docs/architecture/authentication-sessions.md`.
+
+### Archivos modificados
+
+- Los tres ejemplos `.env` y `application.yaml`, para incorporar
+  `RESERLY_SESSION_LIFETIME`.
+- `AuthSessionDao` y `UserDao`, con consultas explícitas de autenticación y revocación.
+- El `package-info` de controladores de identidad.
+- `apps/api/README.md`, `docs/configuration.md`,
+  `docs/architecture/identity-persistence.md` y el diseño de la especificación.
+- `tasks.md`, `conversation-tracking.md` y este documento técnico.
+
+No se eliminó ningún archivo.
+
+### Arquitectura y decisiones
+
+La implementación conserva las fronteras del backend:
+
+1. El controlador define el contrato HTTP y delega la conversión.
+2. El convertidor separa DTOs externos de comandos y resultados internos.
+3. `AuthenticationServiceImpl` concentra reglas de cuenta, contraseña y transacción.
+4. `SessionTokenServiceImpl` encapsula generación, validación sintáctica y hashing del token.
+5. `SessionCookieFactory` es el único responsable de atributos de transporte.
+6. Los DAO expresan acceso y mutación persistente sin exponer JPA al adaptador HTTP.
+
+El secreto se genera con `SecureRandom` a partir de 32 bytes, equivalentes a 256 bits de entropía.
+Se codifica en Base64 URL-safe sin relleno, produciendo exactamente 43 caracteres. Antes de usar un
+valor recibido se valida contra un alfabeto y longitud cerrados. La clave de búsqueda persistente es
+el SHA-256 hexadecimal en minúsculas; el token en claro solo vive el tiempo imprescindible para
+construir la cabecera `Set-Cookie`.
+
+La duración es absoluta, no deslizante, para acotar una sesión incluso si existe actividad. El valor
+predeterminado es 12 horas. `SessionProperties` impide arrancar con menos de 5 minutos o más de 30
+días. La futura tarea `1.17` podrá actualizar `lastSeenAt` para auditoría sin prolongar
+`expiresAt`.
+
+### Modelo de datos, índices y migraciones
+
+Se reutiliza `auth_sessions`, creada por Flyway V2:
+
+- `token_hash` almacena la huella SHA-256 y mantiene unicidad física;
+- `user_id` relaciona la sesión con la identidad autenticada;
+- `created_at`, `last_seen_at` y `expires_at` conservan trazabilidad y vigencia;
+- `revoked_at` permite invalidación sin eliminar evidencia histórica;
+- la restricción existente exige caducidad posterior a creación.
+
+No se creó migración porque el esquema ya cubría íntegramente este contrato. Crear una versión vacía
+habría añadido ruido operativo sin modificar datos, índices ni invariantes.
+
+`UserDao.findForAuthentication` recupera por `emailNormalized`. `AuthSessionDao.revokeByTokenHash`
+ejecuta una actualización directa condicionada por `revokedAt is null`: el primer logout revoca y
+los siguientes no alteran la fecha original.
+
+### Endpoints y contratos
+
+#### `POST /api/auth/login`
+
+Entrada:
+
+- `email`: obligatorio, formato email, máximo 320 caracteres;
+- `password`: obligatorio y máximo 72 caracteres en la frontera HTTP.
+
+Salida correcta:
+
+- HTTP `200`;
+- JSON con `userId`, `accountType`, `preferredLocale`, `emailVerified` y `sessionExpiresAt`;
+- `Set-Cookie` con `reserly_session=<token>`, `HttpOnly`, `Path=/`, `SameSite=Strict`, sin
+  `Domain`, `Max-Age` alineado con la duración y `Secure` en entornos configurados como seguros.
+
+El secreto no forma parte del JSON. La cookie host-only reduce la superficie entre subdominios.
+
+Credenciales incorrectas, cuenta inexistente, tipo no local o estado no autenticable producen HTTP
+`401` con el mismo código público `AUTHENTICATION_INVALID` y el mismo mensaje genérico. Un cuerpo
+malformado produce HTTP `400` con ese contrato estable, sin filtrar detalles internos.
+
+#### `POST /api/auth/logout`
+
+Lee opcionalmente `reserly_session`, valida su forma, calcula su huella y revoca una sesión activa si
+existe. Responde siempre HTTP `204` y emite una cookie de borrado con `Max-Age=0`. Una cookie ausente,
+malformada, desconocida o previamente revocada no cambia la respuesta.
+
+### Flujos de ejecución
+
+#### Login correcto
+
+1. Bean Validation comprueba límites estructurales.
+2. El email se recorta y normaliza a minúsculas.
+3. Se busca el usuario por la forma normalizada.
+4. Siempre se ejecuta `PasswordHashingService.matches`: para usuario inexistente o hash inválido,
+   el servicio usa su hash dummy BCrypt.
+5. Se exige `accountType = venue_business` y estado `active` o
+   `pending_email_verification`.
+6. Si el hash válido requiere actualización, se genera uno con la política vigente dentro de la
+   misma transacción.
+7. Se genera el token, se persiste únicamente su SHA-256 y se fijan creación, última actividad y
+   caducidad.
+8. Tras completar la transacción, el controlador crea la cookie y el DTO público.
+
+#### Login rechazado
+
+La comparación BCrypt se mantiene aunque el usuario no exista o el tipo/estado no sea admisible. El
+servicio lanza una única excepción de autenticación; no se distingue públicamente qué condición
+falló y no se crea ninguna sesión.
+
+#### Logout
+
+La revocación compara por hash, no por secreto en claro. La actualización condicionada conserva
+idempotencia y evidencia temporal. El adaptador elimina la cookie independientemente del resultado.
+
+### Validaciones, permisos, seguridad, privacidad e i18n
+
+- La normalización del email coincide con el registro y evita identidades lógicas duplicadas.
+- No se registra ni devuelve contraseña, hash BCrypt, token de sesión o hash del token.
+- La comparación dummy reduce diferencias observables entre usuario inexistente y contraseña
+  errónea.
+- Solo las cuentas de local pueden abrir sesión en estos endpoints.
+- `pending_email_verification` puede autenticarse para avanzar en el onboarding, pero `1.11`
+  continúa impidiendo publicar.
+- `suspended` y `disabled` se rechazan incluso con contraseña correcta.
+- El rehash ocurre únicamente después de verificar correctamente la credencial.
+- La cookie es `HttpOnly`, host-only y `SameSite=Strict`; producción conserva `Secure`.
+- Los mensajes no incluyen PII ni causa interna. `preferredLocale` se devuelve para que el panel
+  seleccione el idioma, sin introducir texto visible nuevo no traducible.
+- La autorización de recursos propios se implementará en `1.17`; este endpoint solo establece la
+  identidad de sesión.
+- La defensa CSRF específica prevista en `16.3` sigue pendiente y está documentada como límite.
+
+### Errores, logs, auditoría y observabilidad
+
+El manejador traduce validación y autenticación a respuestas deliberadamente uniformes. El logout
+no convierte tokens inválidos en errores, por lo que tampoco actúa como oráculo de sesiones.
+
+`createdAt`, `lastSeenAt`, `expiresAt` y `revokedAt` proporcionan la evidencia persistente mínima.
+No se añadieron logs que contengan credenciales. La actualización continua de actividad, métricas de
+login y rate limiting pertenecen respectivamente a `1.17`, observabilidad posterior y `1.16`.
+
+### Pruebas añadidas
+
+`SessionTokenServiceTests` cubre:
+
+- longitud, alfabeto y unicidad del secreto;
+- SHA-256 determinista y rechazo de formatos incorrectos.
+
+`SessionPropertiesTests` cubre el valor permitido y los límites de configuración.
+
+`SessionCookieFactoryTests` verifica atributos de creación y borrado.
+
+`AuthenticationIntegrationTests`, sobre PostgreSQL real con Flyway, cubre:
+
+- login correcto, cookie endurecida y ausencia del token en JSON y almacenamiento;
+- acceso de una cuenta pendiente de verificar email;
+- respuesta indistinguible para email desconocido y contraseña errónea;
+- rechazo de cuenta suspendida y de tipo cliente;
+- actualización de un hash BCrypt antiguo;
+- logout, persistencia de `revokedAt`, borrado de cookie e idempotencia;
+- rechazo de payload malformado.
+
+### Comandos y evidencia de verificación
+
+- Pruebas focalizadas de token, configuración y cookie: 6 tests, cero fallos.
+- Suite focalizada de autenticación: 7 tests, cero fallos, con PostgreSQL real.
+- `npm run env:check`: correcto.
+- `npm run backend:conventions:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- `npm run test:web`: 22 tests, cero fallos.
+- `npm run verify`: correcto.
+- Suite integral backend: 132 tests, cero fallos y cero errores.
+- Flyway validó V1–V8 sobre PostgreSQL 17/PostGIS sin requerir migración nueva.
+- Redis 8 y RabbitMQ 4 se verificaron mediante Testcontainers.
+- Next.js compiló y generó sus rutas de producción.
+- Spring Boot generó el JAR ejecutable.
+
+Durante el cierre, Prettier detectó inicialmente el documento arquitectónico nuevo y se aplicó su
+formato. Una ejecución posterior sufrió un timeout transitorio de workers Vitest sin ejecutar tests;
+la suite web aislada pasó y la repetición integral final confirmó los 22 tests web. La primera
+integración también aclaró que `@Email` rechaza espacios exteriores antes de la normalización; el
+fixture se corrigió para probar específicamente mayúsculas, mientras el contrato HTTP conserva esa
+validación estricta.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Todavía no existe middleware que resuelva la cookie, compruebe expiración/revocación y limite
+  recursos al propietario; corresponde a `1.17`.
+- `lastSeenAt` se inicializa, pero no se refresca hasta implementar ese middleware.
+- Las sesiones son múltiples y no existe todavía una pantalla para revocarlas globalmente.
+- La duración es absoluta y no hay rotación durante una sesión activa.
+- El rate limiting de autenticación corresponde a `1.16`.
+- La verificación de email y recuperación de contraseña corresponden a `1.14` y `1.15`.
+- La protección CSRF adicional corresponde a `16.3`; `SameSite=Strict` reduce riesgo pero no
+  sustituye esa tarea.
+- No se añadieron métricas específicas de éxito, fallo o latencia.
+- Permanece la advertencia de Mockito/Byte Buddy sobre carga dinámica futura del agente.
+
+### Criterio de cierre
+
+La tarea se considera completada porque los contratos de login y logout existen, aplican las reglas
+de cuenta local, no enumeran usuarios, verifican y actualizan BCrypt de forma segura, crean tokens
+opacos de 256 bits, persisten únicamente sus huellas, endurecen la cookie, revocan de manera
+idempotente, documentan explícitamente sus límites y han sido comprobados por pruebas unitarias,
+integración con PostgreSQL y la suite integral. Código, configuración, diseño, documentación,
+tracking y estado de tareas quedan alineados; la siguiente tarea recomendada es `1.14`.
+
 ## Tarea 1.4 - Implementar registro de local con identidad empresarial mínima
 
 - Fecha: 2026-06-28

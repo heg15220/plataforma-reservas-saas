@@ -1744,3 +1744,70 @@ Fuente de verdad del avance:
   - Evidencia de cierre final: 6 pruebas focalizadas correctas; integración de registro y arranque
     correcta; `npm run verify` correcto con 22 tests frontend y 119 backend, cero fallos; Flyway
     V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.
+
+## Conversación 41 - Login y logout seguro de cuentas de local
+
+- Fecha: 2026-06-29.
+- Resumen de la conversación:
+  - Se completó `1.13` con los contratos `POST /api/auth/login` y `POST /api/auth/logout`.
+  - El login normaliza el email, verifica BCrypt mediante la política central de `1.12`, admite
+    exclusivamente cuentas de local activas o pendientes de verificar el email y renueva hashes
+    antiguos después de autenticar correctamente.
+  - Cada login crea una sesión absoluta configurable, entrega el secreto únicamente en una cookie
+    host-only `HttpOnly`, `SameSite=Strict` y persiste solo su SHA-256.
+  - El logout es idempotente: revoca la sesión conocida si existe, elimina siempre la cookie y no
+    revela si el token era válido.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example`, `.env.production.example` y
+    `apps/api/src/main/resources/application.yaml`.
+  - `AuthenticationController`, `AuthenticationControllerImpl`, `AuthenticationExceptionHandler`,
+    `SessionCookieFactory` y el `package-info` de controladores de identidad.
+  - `AuthenticationConverter`, `AuthenticationErrorResponse`, `LoginCommand`, `LoginRequest` y
+    `LoginResponse`.
+  - `AuthenticationService`, `AuthenticationServiceImpl`, `InvalidAuthenticationException`,
+    `LoginOutcome`, `SessionProperties`, `SessionTokenService` y `SessionTokenServiceImpl`.
+  - `AuthSessionDao` y `UserDao`.
+  - `AuthenticationIntegrationTests`, `SessionCookieFactoryTests`, `SessionPropertiesTests` y
+    `SessionTokenServiceTests`.
+  - `apps/api/README.md`, `docs/configuration.md`,
+    `docs/architecture/authentication-sessions.md` y
+    `docs/architecture/identity-persistence.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Login y logout de local`.
+  - `RF-007 Registro y gestión de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-007 Internacionalización`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `1.13. Implementar login y logout de locales`.
+  - Prepara `1.14`, `1.15`, `1.16`, `1.17` y `16.3`.
+- Tareas completadas:
+  - `1.13. Implementar login y logout de locales`.
+- Siguiente tarea pendiente recomendada:
+  - `1.14. Implementar verificación de email`.
+- Decisiones o aclaraciones relevantes:
+  - Una cuenta de local `pending_email_verification` puede autenticarse para completar su
+    configuración, pero la barrera de publicación de `1.11` continúa bloqueándola.
+  - Cuentas suspendidas, deshabilitadas, de cliente, inexistentes o con contraseña errónea reciben
+    el mismo error genérico y consumen una comparación BCrypt.
+  - El secreto de sesión tiene 256 bits aleatorios, 43 caracteres Base64 URL-safe sin relleno y
+    nunca aparece en DTO, respuesta JSON ni base de datos.
+  - La duración predeterminada es absoluta de 12 horas y se valida entre 5 minutos y 30 días.
+  - No se añadió migración: `auth_sessions` de V2 ya incluye hash único, fechas, caducidad y
+    revocación necesarias.
+  - La autorización de peticiones y actualización de `lastSeenAt` pertenecen a `1.17`; la
+    protección CSRF adicional pertenece a `16.3`.
+  - La primera prueba de integración usó espacios alrededor del email, rechazados correctamente
+    por `@Email`; el caso se corrigió para comprobar la normalización de mayúsculas.
+  - El primer `npm run verify` detectó formato Markdown pendiente. Tras corregirlo, un segundo
+    intento sufrió un timeout transitorio de workers Vitest; la suite web aislada y la ejecución
+    integral final pasaron.
+  - Evidencia de cierre final: pruebas focalizadas de sesión y autenticación correctas;
+    `npm run verify` correcto con 22 tests frontend y 132 backend, cero fallos; Flyway V1–V8,
+    PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.

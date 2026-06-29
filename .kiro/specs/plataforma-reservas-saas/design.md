@@ -1714,7 +1714,24 @@ Response:
 }
 ```
 
-### 8.6 Comprobar elegibilidad de reseña desde ficha
+### 8.6 Login y logout de local
+
+`POST /api/auth/login` recibe email y contraseña. Una autenticación correcta devuelve únicamente
+metadatos de la cuenta y establece `reserly_session` como cookie host-only, `HttpOnly`, `Path=/`,
+`SameSite=Strict` y `Secure` fuera de local/test. El secreto contiene 256 bits CSPRNG; PostgreSQL
+solo recibe su SHA-256. La sesión dura 12 horas por defecto y es revocable.
+
+Email inexistente, contraseña incorrecta, tipo distinto de `venue_business` y estado
+`suspended`/`disabled` producen el mismo `401 AUTHENTICATION_INVALID`. El coste BCrypt dummy se
+ejecuta cuando no existe hash válido. Una cuenta `pending_email_verification` puede entrar para
+completar su configuración, pero continúa bloqueada para publicar.
+
+`POST /api/auth/logout` acepta la cookie si existe, revoca por hash de forma idempotente, responde
+`204` y siempre emite la cookie expirada. No revela si la sesión era válida. La validación de sesión
+y actualización de `lastSeenAt` en rutas privadas pertenecen al middleware de `1.17`; la protección
+CSRF se endurece en `16.3`.
+
+### 8.7 Comprobar elegibilidad de reseña desde ficha
 
 Request:
 
@@ -1747,7 +1764,7 @@ Response no elegible:
 
 Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
 
-### 8.7 Crear reseña desde ficha
+### 8.8 Crear reseña desde ficha
 
 Request:
 

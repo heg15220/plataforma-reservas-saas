@@ -24,8 +24,13 @@ El contexto `identity.persistence` contiene la base de cuentas autenticadas, rol
 
 Las contraseñas pasan exclusivamente por `PasswordHashingService`: BCrypt 2b con sal aleatoria,
 coste 12–16, límite de 72 bytes UTF-8, comparación fail-closed con hash dummy y detección de rehash
-para credenciales antiguas. El registro ya consume esta frontera; login y recuperación deberán
+para credenciales antiguas. Registro y login consumen esta frontera; recuperación deberá
 reutilizarla.
+
+`POST /api/auth/login` crea una sesión revocable de local y entrega su secreto solo en cookie
+host-only `HttpOnly`, `SameSite=Strict` y `Secure` según entorno. PostgreSQL conserva SHA-256.
+`POST /api/auth/logout` revoca por hash de forma idempotente y siempre elimina la cookie. El contrato
+completo está en `docs/architecture/authentication-sessions.md`.
 
 El contexto `businessverification.persistence` contiene identidades fiscales, historial mínimo de comprobaciones y metadatos de documentos privados. No persiste respuestas remotas completas, binarios ni URLs públicas. Su contrato de privacidad, auditoría e integridad está documentado en `docs/architecture/business-verification-persistence.md`.
 
