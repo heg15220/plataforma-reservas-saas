@@ -1,8 +1,10 @@
 package com.reserly.platform.identity.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,4 +33,18 @@ public interface UserDao extends JpaRepository<UserEntity, UUID> {
       where user.emailNormalized = :emailNormalized
       """)
   Optional<UserEntity> findForAuthentication(@Param("emailNormalized") String emailNormalized);
+
+  /**
+   * Serializa la rotación de desafíos de verificación para una cuenta identificada por email.
+   *
+   * <p>La respuesta pública de reenvío nunca revela si esta consulta encontró una cuenta.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select user
+      from UserEntity user
+      where user.emailNormalized = :emailNormalized
+      """)
+  Optional<UserEntity> findForEmailVerification(@Param("emailNormalized") String emailNormalized);
 }

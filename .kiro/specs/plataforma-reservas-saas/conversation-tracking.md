@@ -1811,3 +1811,77 @@ Fuente de verdad del avance:
   - Evidencia de cierre final: pruebas focalizadas de sesión y autenticación correctas;
     `npm run verify` correcto con 22 tests frontend y 132 backend, cero fallos; Flyway V1–V8,
     PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.
+
+## Conversación 42 - Verificación transaccional de email
+
+- Fecha: 2026-06-30.
+- Resumen de la conversación:
+  - Se completó `1.14` conectando el registro de local con un desafío de verificación de email de un
+    solo uso.
+  - Se añadieron los contratos `POST /api/auth/email/verify` y
+    `POST /api/auth/email/verification/request`.
+  - El consumo bloquea el token, valida propósito, vigencia y estados finales, fija
+    `emailVerifiedAt`, activa solo cuentas pendientes y revoca desafíos hermanos.
+  - El reenvío responde de forma genérica para evitar enumeración y rota el desafío anterior bajo
+    lock de usuario.
+  - La entrega se representa mediante un evento posterior al commit y una cola RabbitMQ durable,
+    aislada y versionada; proveedor, plantillas, consumidor con reintentos y outbox permanecen en la
+    Fase 8.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example`, `.env.production.example` y
+    `apps/api/src/main/resources/application.yaml`.
+  - `VenueRegistrationServiceImpl`, `UserDao`, `AuthTokenDao` y los `package-info` de identidad.
+  - `EmailVerificationController`, `EmailVerificationControllerImpl`,
+    `EmailVerificationExceptionHandler` y `EmailVerificationConverter`.
+  - DTOs de verificación, solicitud y error.
+  - `EmailVerificationService`, `EmailVerificationServiceImpl`, propiedades, resultado, excepción,
+    evento y servicio criptográfico de tokens de un solo uso.
+  - Topología, configuración y relay RabbitMQ del contexto de identidad.
+  - Pruebas de integración de verificación y registro, pruebas unitarias de token, propiedades y
+    relay, y ampliación de la prueba real de infraestructura.
+  - `apps/api/README.md`, `docs/configuration.md`,
+    `docs/architecture/email-verification.md`, `identity-persistence.md` y
+    `cache-and-messaging.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-007 Internacionalización`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `1.14. Implementar verificación de email`.
+  - Prepara `1.15`, `1.16`, `1.17`, `2.9`, `8.1`, `8.2`, `8.7` y `8.8`.
+- Tareas completadas:
+  - `1.14. Implementar verificación de email`.
+- Siguiente tarea pendiente recomendada:
+  - `1.15. Implementar recuperación de contraseña`.
+- Decisiones o aclaraciones relevantes:
+  - El secreto contiene 256 bits CSPRNG, usa 43 caracteres Base64 URL-safe y PostgreSQL conserva
+    solo SHA-256.
+  - La vigencia predeterminada es 24 horas y se valida entre 15 minutos y 7 días.
+  - Una cuenta suspendida puede probar la dirección sin quedar reactivada; una deshabilitada no
+    consume el desafío.
+  - Token inexistente, malformado, expirado, revocado o usado comparte
+    `EMAIL_VERIFICATION_INVALID`.
+  - Cuenta inexistente, ya verificada, suspendida o deshabilitada comparte `202` en la solicitud de
+    otro desafío.
+  - No se añadió migración: `AuthTokens` de V2 ya incluye todas las columnas, restricciones e
+    índices requeridos.
+  - La publicación `AFTER_COMMIT` evita entregar un token revertido, pero no cierra la ventana entre
+    PostgreSQL y RabbitMQ; el outbox y los reintentos operativos corresponden a `8.7`.
+  - El primer intento focalizado detectó que Spring Boot 4 expone `tools.jackson.databind` en lugar
+    del `ObjectMapper` legado; se corrigió antes de repetir 15 pruebas focalizadas.
+  - El primer cierre integral quedó aplazado por cuota de herramientas. Al retomarlo, un intento
+    sufrió un timeout transitorio al arrancar workers Vitest y otro encontró Docker Desktop
+    detenido; la suite web aislada pasó, Docker se inició y la ejecución integral final fue
+    correcta.
+  - Evidencia final: `npm run verify` correcto con 22 tests frontend y 142 backend, cero fallos;
+    Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ, topología de verificación y builds
+    Next.js/Spring Boot correctos.

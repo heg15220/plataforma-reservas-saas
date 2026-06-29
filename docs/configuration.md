@@ -32,6 +32,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_REAL_PAYMENTS_ENABLED`                         | API              | No      | Sí; debe ser `false`       |
 | `RESERLY_PASSWORD_BCRYPT_STRENGTH`                      | API              | No      | Sí; entre 12 y 16          |
 | `RESERLY_SESSION_LIFETIME`                              | API              | No      | Sí; 5 minutos–30 días      |
+| `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME`             | API              | No      | Sí; 15 minutos–7 días      |
 | `RESERLY_DATABASE_NAME`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_PORT`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_URL`                                  | API              | No      | Sí                         |
@@ -81,6 +82,10 @@ registrar la contraseña.
 `RESERLY_SESSION_LIFETIME` controla la vigencia absoluta de la cookie y la fila revocable. El valor
 inicial es `12h`; no existe renovación deslizante hasta que el middleware privado gestione
 `lastSeenAt`.
+
+`RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME` controla la vigencia absoluta de cada desafío de
+verificación. El valor inicial es `24h`; debe permanecer entre 15 minutos y 7 días. Un reenvío
+revoca el desafío anterior en vez de prolongarlo.
 
 ## Reglas de seguridad
 

@@ -74,6 +74,19 @@ class VenueRegistrationIntegrationTests {
     assertThat(user.get("passwordHash")).isNotEqualTo(RAW_PASSWORD);
     assertThat(new BCryptPasswordEncoder().matches(RAW_PASSWORD, (String) user.get("passwordHash")))
         .isTrue();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT count(*)
+                FROM "AuthTokens"
+                WHERE "userId" = ?
+                  AND "purpose" = 'email_verification'
+                  AND "consumedAt" IS NULL
+                  AND "revokedAt" IS NULL
+                """,
+                Integer.class,
+                user.get("id")))
+        .isEqualTo(1);
 
     Map<String, Object> business =
         jdbcTemplate.queryForMap(

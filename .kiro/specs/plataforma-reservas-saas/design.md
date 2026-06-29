@@ -1487,6 +1487,7 @@ POST /api/auth/logout
 POST /api/auth/password/forgot
 POST /api/auth/password/reset
 POST /api/auth/email/verify
+POST /api/auth/email/verification/request
 POST /api/auth/venues/business-verification/retry
 
 GET /api/venue/me
@@ -1731,7 +1732,32 @@ completar su configuración, pero continúa bloqueada para publicar.
 y actualización de `lastSeenAt` en rutas privadas pertenecen al middleware de `1.17`; la protección
 CSRF se endurece en `16.3`.
 
-### 8.7 Comprobar elegibilidad de reseña desde ficha
+### 8.7 Verificación de email
+
+El registro genera un secreto CSPRNG de 256 bits, persiste exclusivamente su SHA-256 en
+`"AuthTokens"` con propósito `email_verification` y vigencia absoluta de 24 horas por defecto. Tras
+confirmar la transacción publica un trabajo durable y versionado en
+`reserly.identity.email-verification.v1`; el proveedor y las plantillas que convertirán el trabajo
+en email pertenecen a `8.1`, `8.2` y `8.7` del plan de construcción.
+
+`POST /api/auth/email/verify` recibe el token Base64 URL-safe. El consumo bloquea el desafío y su
+cuenta, exige propósito correcto, caducidad futura y ausencia de consumo o revocación. Una cuenta
+pendiente pasa a `active`, fija `emailVerifiedAt` y revoca cualquier desafío hermano. Una cuenta
+suspendida puede verificar su dirección, pero no se reactiva; una deshabilitada se rechaza.
+Token inexistente, malformado, expirado, revocado o reutilizado produce el mismo
+`400 EMAIL_VERIFICATION_INVALID`.
+
+`POST /api/auth/email/verification/request` recibe un email, responde siempre `202` para solicitudes
+válidas y solo rota desafíos si encuentra una cuenta de local pendiente. La respuesta no diferencia
+cuenta inexistente, ya verificada, suspendida o deshabilitada. El rate limiting se incorpora en
+`1.16`.
+
+La entrega se publica después del commit para no anunciar cuentas o tokens revertidos. Hasta la
+tarea `8.7`, la ausencia de outbox deja una ventana de pérdida si RabbitMQ falla tras confirmar
+PostgreSQL; el error registra únicamente `eventId` y el endpoint de nueva solicitud permite
+recuperación manual.
+
+### 8.8 Comprobar elegibilidad de reseña desde ficha
 
 Request:
 
@@ -1764,7 +1790,7 @@ Response no elegible:
 
 Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
 
-### 8.8 Crear reseña desde ficha
+### 8.9 Crear reseña desde ficha
 
 Request:
 

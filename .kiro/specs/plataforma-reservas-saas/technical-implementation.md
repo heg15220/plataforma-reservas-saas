@@ -7763,3 +7763,283 @@ La tarea se considera completada porque:
 - `npm run verify` pasa con 22 tests frontend y 75 backend;
 - el diff final se revisa;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
+
+## Iteración 1.14 - Verificación transaccional de email
+
+### Identificación y fecha
+
+- Tarea exacta: `1.14. Implementar verificación de email`.
+- Fecha de cierre: 2026-06-30.
+- Requisito funcional principal: `RF-007 Registro de local`.
+- Requisitos relacionados: `RNF-001`, `RNF-002`, `RNF-006`, `RNF-007`, `RNF-008`, `RNF-011` y
+  `RNF-013`.
+
+### Objetivo técnico
+
+Convertir el estado `pending_email_verification` del registro en un flujo verificable y seguro que:
+
+- emita un desafío de alta entropía junto con la cuenta;
+- persista exclusivamente una huella irreversible;
+- entregue el secreto a una frontera asíncrona solo después del commit;
+- consuma el desafío exactamente una vez bajo concurrencia;
+- active únicamente la cuenta pendiente correcta;
+- permita rotación sin enumerar emails;
+- preserve suspensiones y decisiones administrativas.
+
+### Archivos creados
+
+- Controlador: `EmailVerificationController`, `EmailVerificationControllerImpl` y
+  `EmailVerificationExceptionHandler`.
+- Conversión y DTOs: `EmailVerificationConverter`, `VerifyEmailRequest`,
+  `RequestEmailVerificationRequest`, `EmailVerificationResponse` y
+  `EmailVerificationErrorResponse`.
+- Servicio: `EmailVerificationService`, `EmailVerificationServiceImpl`,
+  `EmailVerificationProperties`, `EmailVerificationResult`,
+  `InvalidEmailVerificationException`, `EmailVerificationRequestedEvent`,
+  `OneTimeTokenService` y `OneTimeTokenServiceImpl`.
+- Mensajería: `EmailVerificationMessagingTopology`,
+  `EmailVerificationMessagingConfiguration`, `EmailVerificationEventRelay` y su `package-info`.
+- Pruebas: `EmailVerificationIntegrationTests`, `EmailVerificationEventRelayTests`,
+  `EmailVerificationPropertiesTests`, `OneTimeTokenServiceTests` y el `package-info` de pruebas de
+  mensajería.
+- Arquitectura: `docs/architecture/email-verification.md`.
+
+### Archivos modificados
+
+- Las tres plantillas de entorno y `application.yaml`.
+- `VenueRegistrationServiceImpl`, `UserDao`, `AuthTokenDao` y documentación de paquetes.
+- `VenueRegistrationIntegrationTests` e `InfrastructureServicesIntegrationTests`.
+- `apps/api/README.md`, `docs/configuration.md`,
+  `docs/architecture/identity-persistence.md` y `docs/architecture/cache-and-messaging.md`.
+- Diseño, tareas, seguimiento y este documento técnico.
+
+No se eliminó ningún archivo.
+
+### Arquitectura aplicada
+
+El flujo mantiene las fronteras del monolito modular:
+
+1. El registro termina de persistir usuario, identidad empresarial y rol.
+2. `EmailVerificationService` crea el desafío en la misma transacción.
+3. `ApplicationEventPublisher` conserva temporalmente el secreto dentro del proceso.
+4. `EmailVerificationEventRelay`, registrado en fase `AFTER_COMMIT`, construye el trabajo AMQP.
+5. El controlador de verificación consume un DTO validado y solo devuelve metadatos no sensibles.
+6. Los DAO expresan locks y actualizaciones masivas mediante `@Query`.
+
+Separar el evento de la transacción impide publicar un token de una cuenta cuyo alta finalmente se
+revierta. No se oculta que aún existe una ventana commit-publicación: la cola con reintentos,
+registro de fallos y outbox corresponde a las tareas `8.7` y `8.8`. El relay captura el fallo del
+broker y registra únicamente `eventId`, nunca destinatario ni secreto; el endpoint de nueva
+solicitud ofrece recuperación manual hasta completar aquella infraestructura.
+
+### Criptografía y formato del token
+
+`OneTimeTokenServiceImpl` genera 32 bytes mediante `SecureRandom`, equivalentes a 256 bits de
+entropía. La codificación Base64 URL-safe sin relleno produce exactamente 43 caracteres del
+alfabeto `[A-Za-z0-9_-]`.
+
+Antes de tocar persistencia, el servicio rechaza cualquier valor que no cumpla ese contrato. Para
+valores válidos calcula SHA-256 sobre ASCII y devuelve 64 caracteres hexadecimales minúsculos. El
+secreto original no entra en entidades, DTOs de salida, logs ni PostgreSQL.
+
+La duración se configura mediante `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME`, con valor
+predeterminado `24h`. El arranque rechaza valores menores de 15 minutos o mayores de 7 días.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No fue necesaria una migración. La tabla `"AuthTokens"` creada en V2 ya proporciona:
+
+- relación obligatoria con `"Users"` y cascada al eliminar la cuenta;
+- propósito cerrado `email_verification`;
+- `tokenHash` único y restringido a SHA-256 hexadecimal;
+- `createdAt` y `expiresAt`, con caducidad posterior a emisión;
+- `consumedAt` y `revokedAt` como estados finales mutuamente excluyentes;
+- índice parcial por usuario, propósito y caducidad para tokens activos;
+- índice parcial para limpieza por caducidad.
+
+`AuthTokenDao.findForConsumption` usa `PESSIMISTIC_WRITE` y `join fetch` del usuario. El lock
+serializa consumos concurrentes del mismo desafío y mantiene disponible la cuenta dentro de la
+transacción.
+
+`revokeActiveByUserAndPurpose` invalida desafíos previos al reenviar. Tras una verificación,
+`revokeOtherActiveTokens` invalida cualquier hermano sin marcar como revocado el token consumido,
+respetando la restricción de estados finales.
+
+`UserDao.findForEmailVerification` bloquea la cuenta por email normalizado para serializar dos
+solicitudes simultáneas de rotación.
+
+### Endpoints y contratos
+
+#### `POST /api/auth/email/verify`
+
+Entrada:
+
+```json
+{
+  "token": "43-caracteres-Base64-URL-safe"
+}
+```
+
+Respuesta `200`:
+
+```json
+{
+  "emailVerified": true,
+  "emailVerifiedAt": "2026-06-30T00:00:00Z",
+  "accountStatus": "active"
+}
+```
+
+No devuelve token, email, hash ni identidad empresarial. Un secreto malformado, desconocido,
+expirado, consumido, revocado, de otro propósito o asociado a una cuenta deshabilitada produce
+`400` con `EMAIL_VERIFICATION_INVALID`.
+
+#### `POST /api/auth/email/verification/request`
+
+Entrada:
+
+```json
+{
+  "email": "local@example.com"
+}
+```
+
+Todo email con estructura válida recibe `202` sin cuerpo. Solo una cuenta `venue_business`,
+pendiente, no verificada y en estado `pending_email_verification` rota el desafío. Cuenta
+inexistente, activa, suspendida o deshabilitada mantiene exactamente el mismo contrato público.
+
+El rate limiting y mitigaciones temporales adicionales pertenecen a `1.16`.
+
+### Flujo de emisión
+
+1. El registro valida y persiste usuario, empresa y rol.
+2. Se genera el secreto y su SHA-256.
+3. Se crea `"AuthTokens"` con propósito, emisión y caducidad.
+4. Se publica `EmailVerificationRequestedEvent` dentro de la transacción.
+5. Si la transacción revierte, el listener no se ejecuta.
+6. Tras commit, el relay serializa JSON y publica un mensaje persistente.
+
+El mensaje contiene `eventId` idempotente, `userId`, email, locale, token y caducidad. La routing
+key es `identity.email-verification.requested.v1`; la cola durable propia es
+`reserly.identity.email-verification.v1`. Su dead lettering apunta a la infraestructura compartida.
+La Fase 8 añadirá consumidor, plantilla y proveedor Brevo.
+
+### Flujo de consumo
+
+1. Bean Validation y `OneTimeTokenService` comprueban formato.
+2. Se calcula el hash y se bloquea token más usuario por hash y propósito.
+3. Se exige ausencia de consumo/revocación y `expiresAt > now`.
+4. Se exige cuenta `venue_business` no deshabilitada.
+5. Si `emailVerifiedAt` es nulo, se fija al instante actual.
+6. Solo `pending_email_verification` transiciona a `active`.
+7. Una suspensión se preserva aunque la propiedad del email quede demostrada.
+8. Se fija `consumedAt`, se hace flush y se revocan hermanos.
+9. Un segundo uso encuentra `consumedAt` y recibe el error genérico.
+
+### Seguridad, privacidad, permisos e internacionalización
+
+- El token posee 256 bits CSPRNG y una única finalidad.
+- PostgreSQL conserva solo SHA-256.
+- El formato se rechaza antes de una consulta.
+- El endpoint no diferencia causas de invalidez.
+- El reenvío no enumera existencia ni estado de cuentas.
+- La rotación revoca el desafío previo en vez de ampliar su vida.
+- La verificación no reactiva cuentas suspendidas.
+- Las cuentas deshabilitadas fallan cerradas.
+- Email y token solo existen juntos en el mensaje necesario para entrega.
+- El relay no registra payload, email, usuario ni token.
+- El mensaje incluye `preferredLocale`, preparando plantillas ES/EN sin resolver texto visible en
+  este incremento.
+- La barrera de publicación de `1.11` observará `emailVerifiedAt`; verificar email no sustituye la
+  aprobación empresarial.
+
+### Errores, logs, auditoría y observabilidad
+
+El error público `EMAIL_VERIFICATION_INVALID` agrupa formato, lookup, propósito, caducidad, consumo,
+revocación y cuenta no admisible. El reenvío no devuelve indicador de emisión.
+
+`createdAt`, `expiresAt`, `consumedAt` y `revokedAt` aportan auditoría mínima persistente. El usuario
+conserva `emailVerifiedAt` y `updatedAt`. La mensajería usa `eventId` como identificador estable; un
+fallo de publicación solo registra ese valor y la excepción técnica.
+
+No se añadieron métricas ni almacenamiento de errores de envío porque pertenecen a `8.8`.
+
+### Pruebas añadidas y modificadas
+
+`OneTimeTokenServiceTests` verifica:
+
+- longitud y alfabeto URL-safe;
+- generación no repetida;
+- hash SHA-256 estable y sin secreto;
+- rechazo previo de formatos incorrectos.
+
+`EmailVerificationPropertiesTests` verifica el valor operativo y límites.
+
+`EmailVerificationIntegrationTests`, sobre PostgreSQL real, verifica:
+
+- consumo correcto, activación y persistencia de `emailVerifiedAt`;
+- rechazo de reutilización;
+- rechazo uniforme de token expirado y malformado;
+- verificación sin reactivar una cuenta suspendida;
+- rotación, revocación del token anterior y respuesta genérica;
+- ausencia de desafío para cuenta verificada o deshabilitada.
+
+`VenueRegistrationIntegrationTests` exige que el alta cree un desafío activo.
+
+`EmailVerificationEventRelayTests` inspecciona exchange, routing key, JSON, `messageId`, modo
+persistente y conservación exacta del secreto para el destinatario.
+
+`InfrastructureServicesIntegrationTests` exige que RabbitMQ declare la cola de identidad junto a la
+topología compartida.
+
+### Comandos y evidencia de verificación
+
+- `mvn ... -Dtest=EmailVerificationPropertiesTests,OneTimeTokenServiceTests,` más integración de
+  verificación y registro: 15 tests, cero fallos.
+- `EmailVerificationEventRelayTests`: 1 test, cero fallos.
+- `npm run env:check`: correcto.
+- `npm run backend:conventions:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- `npm run format:check:web`: correcto.
+- `git diff --check`: correcto antes del cierre documental.
+- `npm run test:web`: 22 tests, cero fallos.
+- `npm run verify`: correcto en la ejecución final.
+- Suite integral backend: 142 tests, cero fallos y cero errores.
+- Flyway validó V1–V8 sobre PostgreSQL 17/PostGIS.
+- Redis 8 y RabbitMQ 4 se verificaron mediante Testcontainers.
+- La cola `reserly.identity.email-verification.v1` quedó declarada.
+- Next.js compiló sus rutas y Spring Boot generó el JAR ejecutable.
+
+Incidencias de verificación observadas y resueltas:
+
+- El primer arranque focalizado detectó que Spring Boot 4 usa Jackson 3 bajo el paquete `tools`; se
+  corrigió el import del `ObjectMapper`.
+- El primer intento de cierre quedó aplazado por límite de cuota de herramientas, sin marcar ni
+  commitear la tarea.
+- Un intento integral sufrió timeout transitorio de workers Vitest sin ejecutar tests; la suite web
+  aislada y las ejecuciones posteriores pasaron.
+- Otro intento integral encontró Docker Desktop detenido; se inició el motor y Testcontainers
+  completó correctamente PostgreSQL, Redis y RabbitMQ.
+
+### Riesgos, limitaciones y deuda técnica
+
+- El proveedor Brevo y las plantillas pertenecen a `8.1` y `8.2`.
+- El consumidor, reintentos operativos, idempotencia de entrega, outbox y almacenamiento de errores
+  pertenecen a `8.7` y `8.8`.
+- La ventana commit-publicación puede perder un trabajo si RabbitMQ falla; el usuario puede pedir
+  otro mientras llega el outbox.
+- El payload durable de RabbitMQ contiene el secreto necesario para el enlace. La infraestructura
+  debe usar TLS/red privada, permisos mínimos y retención acotada.
+- El rate limiting de emisión y consumo pertenece a `1.16`.
+- No existen métricas específicas de solicitudes, verificaciones o caducidades.
+- No se implementa todavía una pantalla para informar éxito, expiración o reenvío.
+- Permanece la advertencia futura de Mockito/Byte Buddy sobre carga dinámica del agente.
+
+### Criterio de cierre
+
+La tarea se considera completada porque el registro emite un desafío verificable, el secreto tiene
+alta entropía y no se persiste en PostgreSQL, el consumo es transaccional y de un solo uso, las
+transiciones respetan estados administrativos, la rotación no enumera cuentas, la entrega queda
+encaminada en una cola durable posterior al commit y todos los contratos están documentados. Las
+pruebas unitarias, integración real, infraestructura y suite integral pasan; la siguiente tarea
+pendiente es `1.15`.

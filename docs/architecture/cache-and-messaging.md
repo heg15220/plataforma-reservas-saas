@@ -32,6 +32,11 @@ La topología compartida contiene:
 
 Los contextos de negocio deben declarar colas durables independientes. Una cola debe contener un único contrato versionado o contratos compatibles bajo el mismo consumidor. Cada cola debe configurar dead lettering, límites de reintento y una routing key específica.
 
+Identidad declara `reserly.identity.email-verification.v1`, enlazada mediante
+`identity.email-verification.requested.v1`. Su payload incluye `eventId`, identidad del
+destinatario, locale, token de un solo uso y caducidad. El token es sensible: no puede registrarse ni
+copiarse a métricas. El consumidor y proveedor se incorporarán en las tareas de email de la Fase 8.
+
 La plantilla de publicación activa:
 
 - mensajes obligatorios para detectar rutas inexistentes;

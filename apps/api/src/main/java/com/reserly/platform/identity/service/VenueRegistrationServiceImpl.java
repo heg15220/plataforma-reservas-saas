@@ -39,6 +39,7 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
   private final BusinessAccountDao businessAccountDao;
   private final PasswordHashingService passwordHashingService;
   private final BusinessTaxIdentifierValidationService taxIdentifierValidationService;
+  private final EmailVerificationService emailVerificationService;
 
   public VenueRegistrationServiceImpl(
       UserDao userDao,
@@ -46,13 +47,15 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
       UserRoleDao userRoleDao,
       BusinessAccountDao businessAccountDao,
       PasswordHashingService passwordHashingService,
-      BusinessTaxIdentifierValidationService taxIdentifierValidationService) {
+      BusinessTaxIdentifierValidationService taxIdentifierValidationService,
+      EmailVerificationService emailVerificationService) {
     this.userDao = userDao;
     this.roleDao = roleDao;
     this.userRoleDao = userRoleDao;
     this.businessAccountDao = businessAccountDao;
     this.passwordHashingService = passwordHashingService;
     this.taxIdentifierValidationService = taxIdentifierValidationService;
+    this.emailVerificationService = emailVerificationService;
   }
 
   @Override
@@ -98,6 +101,7 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
       assignment.setRole(venueOwnerRole);
       assignment.setAssignedAt(now);
       userRoleDao.saveAndFlush(assignment);
+      emailVerificationService.issueInitialChallenge(user, now);
 
       return new VenueRegistrationResponse(
           user.getId(),

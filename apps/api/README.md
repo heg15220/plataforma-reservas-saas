@@ -32,6 +32,12 @@ host-only `HttpOnly`, `SameSite=Strict` y `Secure` según entorno. PostgreSQL co
 `POST /api/auth/logout` revoca por hash de forma idempotente y siempre elimina la cookie. El contrato
 completo está en `docs/architecture/authentication-sessions.md`.
 
+El registro crea además un desafío de verificación de email de 24 horas.
+`POST /api/auth/email/verify` lo consume una sola vez y activa la cuenta pendiente;
+`POST /api/auth/email/verification/request` rota el desafío con respuesta genérica. PostgreSQL
+conserva solo SHA-256 y el trabajo de entrega se publica en RabbitMQ después del commit. El contrato
+completo está en `docs/architecture/email-verification.md`.
+
 El contexto `businessverification.persistence` contiene identidades fiscales, historial mínimo de comprobaciones y metadatos de documentos privados. No persiste respuestas remotas completas, binarios ni URLs públicas. Su contrato de privacidad, auditoría e integridad está documentado en `docs/architecture/business-verification-persistence.md`.
 
 El endpoint público `POST /api/auth/venues/register` crea atómicamente una cuenta

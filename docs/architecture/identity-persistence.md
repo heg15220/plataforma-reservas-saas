@@ -56,6 +56,10 @@ Representa credenciales de un solo uso para:
 
 El esquema exige hash SHA-256 hexadecimal, expiración posterior a emisión y estados finales coherentes. Un token no puede figurar consumido y revocado a la vez. Las operaciones futuras de consumo deben ser transaccionales e impedir reutilización concurrente.
 
+La verificación de email ya implementa ese consumo bajo bloqueo pesimista, rota tokens anteriores y
+activa únicamente cuentas que siguen en `pending_email_verification`. El contrato completo se
+documenta en `docs/architecture/email-verification.md`.
+
 ## Privacidad y seguridad
 
 - No se guardan tokens ni contraseñas en claro.
@@ -70,6 +74,8 @@ El esquema exige hash SHA-256 hexadecimal, expiración posterior a emisión y es
 - No se incorporan IP, ubicación ni agente de usuario a las sesiones, aplicando minimización de datos.
 - Las credenciales dependientes se eliminan al suprimir la cuenta.
 - Los hashes de token son únicos para impedir que un secreto represente dos credenciales.
+- Los tokens de verificación contienen 256 bits CSPRNG, duran 24 horas por defecto y solo viajan en
+  el evento dirigido al transporte de email.
 - Las restricciones críticas viven también en PostgreSQL y no dependen únicamente de validación de aplicación.
 
 ## Persistencia Java

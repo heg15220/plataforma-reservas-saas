@@ -50,7 +50,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.11. Bloquear publicación de locales si email o verificación empresarial no están aprobados.
 - [x] 1.12. Implementar hashing seguro de contraseñas.
 - [x] 1.13. Implementar login y logout de locales.
-- [ ] 1.14. Implementar verificación de email.
+- [x] 1.14. Implementar verificación de email.
 - [ ] 1.15. Implementar recuperación de contraseña.
 - [ ] 1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial.
 - [ ] 1.17. Implementar middleware de autorización por rol.
