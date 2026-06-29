@@ -4599,6 +4599,190 @@ autorización y concurrencia se comprueban transaccionalmente; V8 conserva evide
 binarios ni URLs públicas; la infraestructura local, configuración, documentación y seguimiento
 están actualizados; y la suite integral pasa completamente.
 
+## Iteración 1.11 - Barrera de elegibilidad para publicar locales
+
+### Identificación y fecha
+
+- Tarea exacta: `1.11. Bloquear publicación de locales si email o verificación empresarial no están
+  aprobados`.
+- Fecha de implementación y verificación: 2026-06-29.
+- Estado: completada y verificada.
+
+### Objetivo técnico y alcance
+
+El objetivo es convertir `RB-012` en una barrera backend explícita, centralizada y reutilizable, de
+modo que ninguna operación futura pueda inferir publicabilidad a partir de un único booleano o
+estado incompleto. La tarea cubre las condiciones que ya existen en Fase 1:
+
+- email verificado;
+- tipo de cuenta empresarial;
+- identificador fiscal normalizado;
+- aprobación empresarial remota vigente o administrativa.
+
+El perfil `Venues`, sus datos mínimos y el cambio efectivo de visibilidad pertenecen a Fase 2. No se
+crea una entidad, migración o endpoint prematuros. El servicio queda como precondición obligatoria
+del caso de uso `2.9`, que deberá combinarlo con las reglas del perfil en una única transacción.
+
+Requisitos relacionados: `RF-007`, `RF-032`, `RNF-001`, `RNF-002`, `RNF-011`, `RNF-013` y
+`RB-012`.
+
+### Archivos creados
+
+- `VenuePublicationBlocker.java`: catálogo cerrado de causas.
+- `VenuePublicationEligibility.java`: decisión inmutable sin datos sensibles.
+- `VenuePublicationEligibilityContext.java`: proyección mínima para la política.
+- `VenuePublicationEligibilityPolicy.java`: evaluación pura de condiciones.
+- `VenuePublicationEligibilityService.java` y `VenuePublicationEligibilityServiceImpl.java`:
+  frontera transaccional.
+- `VenuePublicationNotAllowedException.java`: rechazo genérico.
+- `VenuePublicationEligibilityPolicyTests.java`.
+- `VenuePublicationEligibilityServiceIntegrationTests.java`.
+- `docs/architecture/venue-publication-eligibility.md`.
+
+### Archivos modificados
+
+- `BusinessAccountDao.java`: consulta con `join fetch` del propietario y lock pesimista.
+- `businessverification.service/package-info.java`.
+- `apps/api/README.md`.
+- `docs/architecture/business-verification-persistence.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- Los documentos de tareas, seguimiento de conversación e implementación técnica.
+
+No se creó migración porque las fuentes de verdad necesarias ya existen en `"Users"` y
+`"BusinessAccounts"`. No se eliminó ningún archivo.
+
+### Contrato e invariantes de negocio
+
+`VenuePublicationEligibilityPolicy.evaluate(context, evaluatedAt)` produce una decisión permitida
+solo si no existe ningún bloqueo:
+
+1. `emailVerifiedAt` debe ser no nulo.
+2. `accountType` debe ser exactamente `AccountType.VENUE_BUSINESS`.
+3. `businessTaxIdentifierNormalized` debe existir y no estar vacío.
+4. Debe existir una vía de aprobación:
+   - `businessVerificationStatus = VERIFIED` y `businessVerificationExpiresAt > evaluatedAt`; o
+   - `manualReviewStatus = approved`.
+
+La comparación de caducidad es estricta. Una aprobación que expira en el mismo instante ya no
+autoriza. La vía manual es alternativa a la remota porque `RB-012` admite revisión administrativa
+aprobada. PostgreSQL ya obliga a conservar actor y fecha para una decisión manual final.
+
+Los motivos persistentes no se convierten en texto visible: el catálogo interno es
+`EMAIL_NOT_VERIFIED`, `ACCOUNT_TYPE_NOT_VENUE_BUSINESS`, `TAX_IDENTIFIER_NOT_NORMALIZED` y
+`BUSINESS_VERIFICATION_NOT_APPROVED`. La futura capa REST deberá mapearlos a claves i18n y decidir
+qué detalle puede mostrarse al titular autenticado.
+
+### Arquitectura y flujo de ejecución
+
+`VenuePublicationEligibilityServiceImpl.evaluate(accountId)`:
+
+1. abre o participa en una transacción;
+2. carga cuenta y propietario en una consulta JPA explícita;
+3. toma `PESSIMISTIC_READ` sobre la cuenta empresarial;
+4. proyecta únicamente tipo, instante de verificación de email, identificador normalizado, estado,
+   caducidad y revisión manual;
+5. evalúa con el instante actual;
+6. devuelve motivos inmutables, sin datos fiscales.
+
+`requireEligible(accountId)` ejecuta la misma evaluación y lanza
+`VenuePublicationNotAllowedException` si hay bloqueos. Si la Fase 2 lo invoca desde la transacción
+que modifica visibilidad, la propagación `REQUIRED` mantiene el lock hasta el commit. Separar
+evaluación y publicación en transacciones distintas queda expresamente prohibido por la carrera que
+introduciría.
+
+Las transiciones empresariales usan `PESSIMISTIC_WRITE` sobre la misma fila, por lo que no pueden
+cambiar estado, caducidad, revisión manual o identificador mientras una publicación conserva el
+lock compartido. El email se carga en el mismo query; su flujo normal solo evoluciona de pendiente a
+verificado, por lo que una confirmación concurrente puede causar un rechazo conservador, nunca una
+autorización indebida.
+
+### Modelo de datos e índices
+
+No cambia el esquema. Se reutilizan:
+
+- `"Users"."emailVerifiedAt"` y `"Users"."accountType"`;
+- `"BusinessAccounts"."businessTaxIdentifierNormalized"`;
+- `"BusinessAccounts"."businessVerificationStatus"`;
+- `"BusinessAccounts"."businessVerificationExpiresAt"`;
+- `"BusinessAccounts"."manualReviewStatus"` y la evidencia administrativa ya restringida.
+
+El lookup usa la PK de `BusinessAccounts`; no necesita un índice adicional. `join fetch
+account.ownerUser` evita lazy loading fuera de la transacción y no expone la entidad al consumidor.
+
+### Seguridad, privacidad, permisos e i18n
+
+- La decisión no contiene email, identificador fiscal original o normalizado, razón social,
+  proveedor, referencia ni timestamps de evidencia.
+- Cuenta inexistente y cuenta no elegible comparten una excepción genérica para evitar que esta
+  frontera se convierta en un oráculo de enumeración.
+- La regla comprueba `accountType` como invariante empresarial, no como autorización del actor.
+  Roles y pertenencia se aplicarán en `1.17` y en el caso de uso de publicación.
+- No se expone endpoint ni texto visible. La futura representación pública debe usar claves i18n.
+- La política se ejecuta siempre en backend; ningún flag enviado por cliente puede omitirla.
+
+### Errores, logs, auditoría y observabilidad
+
+La excepción no incorpora IDs ni causas específicas. Los bloqueos son estructurados para permitir
+telemetría agregada futura sin registrar PII. Esta tarea no escribe auditoría porque una evaluación
+no cambia estado; la publicación efectiva y su actor deberán auditarse en Fase 2.
+
+No se añaden logs por cada denegación para evitar ruido y filtración. Métricas por causa, si se
+incorporan, deberán usar únicamente el enum cerrado.
+
+### Tests y evidencia de verificación
+
+Pruebas unitarias:
+
+- permite cuenta empresarial con email confirmado y aprobación remota no expirada;
+- permite aprobación administrativa como vía alternativa;
+- acumula las cuatro causas cuando faltan todas las precondiciones;
+- bloquea tanto en el instante exacto de caducidad como después.
+
+Pruebas de integración PostgreSQL:
+
+- una cuenta sin email ni aprobación queda bloqueada y `requireEligible` lanza;
+- email confirmado más verificación remota vigente permite;
+- revisión manual auditada permite;
+- una cuenta desconocida se rechaza genéricamente;
+- la consulta real ejecuta `FOR SHARE` y carga el propietario dentro de la transacción.
+
+La primera ejecución de integración descubrió que PostgreSQL no permite `SELECT FOR SHARE` dentro de
+una transacción declarada read-only. Se corrigió la frontera para abrir una transacción escribible,
+aunque el servicio no modifica filas. Los fixtures con `Instant` se tiparon mediante
+`Timestamp.from` porque el driver JDBC no infiere automáticamente el tipo PostgreSQL.
+
+Comandos y resultados finales:
+
+- pruebas focalizadas de política e integración: 7 tests, 0 fallos y 0 errores;
+- `npm run backend:conventions:check`: correcto;
+- `npm run spanish:text:check`: correcto;
+- `git diff --check`: correcto;
+- `npm run verify`: correcto, con 22 tests frontend y 114 backend, cero fallos y errores; Flyway
+  V1–V8, PostgreSQL 17/PostGIS, Redis 8 y RabbitMQ 4 verificados mediante Testcontainers; lint,
+  formato, typecheck, contratos CI/entorno/i18n y builds Next.js/Spring Boot correctos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La barrera no publica nada por sí sola. `2.9` debe invocar `requireEligible` dentro de su
+  transacción y comprobar datos mínimos de `Venues`.
+- Estado operativo del usuario (`suspended`/`disabled`) y autorización por rol no forman parte de
+  esta tarea; deberán bloquear en las capas de seguridad y publicación correspondientes.
+- Una futura revocación de email requeriría coordinar lock del usuario o verificarlo en el update de
+  publicación. El flujo actual no revoca emails verificados.
+- La aprobación manual todavía no tiene caso de uso administrativo; el esquema y la política están
+  preparados para `14.7`.
+- No se añadieron métricas de denegación ni auditoría de publicación porque no existe todavía la
+  operación que cambia visibilidad.
+- Permanece la advertencia de auto-adjunción Mockito/Byte Buddy del entorno de pruebas.
+
+### Criterio de cierre
+
+La tarea se considera completada porque existe una única política backend documentada para todas las
+precondiciones empresariales disponibles; maneja caducidad y aprobación manual; no filtra datos
+sensibles; ofrece una operación fail-closed; coordina concurrencia con la máquina de estados; sus
+pruebas unitarias e integración real pasan; y diseño, arquitectura, tracking y documento técnico
+quedan actualizados con el contrato que deberá consumir la Fase 2.
+
 ## Tarea 1.9 - Solicitud de documento de respaldo ante verificación inconclusa
 
 - Fecha: 2026-06-29

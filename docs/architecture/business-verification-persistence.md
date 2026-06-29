@@ -156,7 +156,9 @@ El paquete `com.reserly.platform.businessverification.persistence` contiene:
 
 Las relaciones se declaran sobre getters y usan carga lazy. `BusinessVerificationCheckDao` consulta
 por `requestId` y por proveedor/referencia para resolver idempotencia y carreras. Las consultas
-propias continúan usando `@Query`.
+propias continúan usando `@Query`. La consulta de elegibilidad de publicación carga el propietario y
+aplica lock pesimista para coordinarse con las transiciones de estado; su contrato se documenta en
+`docs/architecture/venue-publication-eligibility.md`.
 
 ## Verificación
 

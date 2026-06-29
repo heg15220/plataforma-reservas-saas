@@ -1626,3 +1626,65 @@ Fuente de verdad del avance:
     operativa deberá detectar residuos si también falla esa compensación.
   - Evidencia de cierre: 7 pruebas nuevas focalizadas, migración V8 real y `npm run verify` correcto
     con 22 tests frontend y 107 backend, cero fallos, builds Next.js y Spring Boot correctos.
+
+## Conversación 39 - Barrera empresarial de publicación
+
+- Fecha: 2026-06-29.
+- Resumen de la conversación:
+  - Se completó `1.11` mediante una política backend reutilizable que bloquea la publicación cuando
+    falta verificar el email, la cuenta no es `venue_business`, no existe identificador fiscal
+    normalizado o la verificación empresarial no está aprobada.
+  - La aprobación se reconoce por verificación remota `verified` todavía vigente o por revisión
+    administrativa `approved`.
+  - El servicio devuelve únicamente motivos cerrados y no expone email, identificador, razón social
+    ni evidencia remota.
+  - La lectura usa lock pesimista sobre `BusinessAccounts`; el futuro caso de uso de `2.9` deberá
+    invocarla en la misma transacción que publique el perfil y añadir la validación de datos mínimos
+    de `Venues`, tabla que todavía no existe.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/persistence/BusinessAccountDao.java`.
+  - `VenuePublicationBlocker`, `VenuePublicationEligibility`,
+    `VenuePublicationEligibilityContext`, `VenuePublicationEligibilityPolicy`,
+    `VenuePublicationEligibilityService`, `VenuePublicationEligibilityServiceImpl` y
+    `VenuePublicationNotAllowedException`.
+  - `VenuePublicationEligibilityPolicyTests` y
+    `VenuePublicationEligibilityServiceIntegrationTests`.
+  - `apps/api/src/main/java/com/reserly/platform/businessverification/service/package-info.java`.
+  - `apps/api/README.md`, `docs/architecture/business-verification-persistence.md` y
+    `docs/architecture/venue-publication-eligibility.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro y gestión de local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.11. Bloquear publicación de locales si email o verificación empresarial no están aprobados`.
+  - Prepara `1.14`, `1.17`, `2.4`, `2.9`, `2.13`, `7.6` y `14.7`.
+- Tareas completadas:
+  - `1.11. Bloquear publicación de locales si email o verificación empresarial no están aprobados`.
+- Siguiente tarea pendiente recomendada:
+  - `1.12. Implementar hashing seguro de contraseñas`.
+- Decisiones o aclaraciones relevantes:
+  - La tarea no crea `Venues` ni un endpoint ficticio: ambos pertenecen a la Fase 2. Cierra la
+    barrera previa sobre identidad y verificación empresarial.
+  - Una aprobación automática requiere estado `verified` y caducidad estrictamente futura. En el
+    instante exacto de expiración ya bloquea.
+  - La aprobación administrativa es una vía alternativa; el esquema existente garantiza actor y
+    fecha para `manualReviewStatus = approved`.
+  - `accountType` forma parte de la regla de negocio, pero no sustituye los roles que autorizarán al
+    actor en `1.17`.
+  - `PESSIMISTIC_READ` se coordina con el `PESSIMISTIC_WRITE` de la máquina empresarial. El método
+    usa una transacción escribible porque PostgreSQL prohíbe `SELECT FOR SHARE` en una transacción
+    declarada read-only.
+  - La primera integración permitió detectar y corregir esa incompatibilidad y tipar como
+    `Timestamp` los `Instant` de fixtures JDBC.
+  - Evidencia de cierre: 7 pruebas focalizadas correctas y `npm run verify` correcto con 22 tests
+    frontend y 114 backend, cero fallos; Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds
+    Next.js/Spring Boot correctos.

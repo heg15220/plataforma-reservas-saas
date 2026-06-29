@@ -66,6 +66,12 @@ privado. PostgreSQL conserva solo la clave interna, SHA-256 y metadatos mínimos
 completo está en `docs/architecture/private-business-documents.md`; el endpoint autenticado se
 conectará cuando se implemente el middleware de seguridad.
 
+`VenuePublicationEligibilityService` concentra la barrera empresarial de publicación. Bloquea si
+falta verificar el email, el tipo no es `venue_business`, no existe identificador normalizado o no
+hay verificación remota vigente ni aprobación administrativa. Solo devuelve motivos cerrados y
+mantiene un lock de cuenta para que la operación de publicación de la Fase 2 pueda ejecutarlo en su
+misma transacción. El contrato está en `docs/architecture/venue-publication-eligibility.md`.
+
 ## Ejecución
 
 ```bash

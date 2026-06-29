@@ -40,6 +40,24 @@ public interface BusinessAccountDao extends JpaRepository<BusinessAccountEntity,
       """)
   Optional<BusinessAccountEntity> findByIdForStateUpdate(@Param("accountId") UUID accountId);
 
+  /**
+   * Mantiene estable la elegibilidad durante la transacción que publique un local.
+   *
+   * <p>La carga anticipada del propietario evita acceder a identidad fuera de la frontera
+   * transaccional. El futuro caso de uso de publicación debe invocar la política dentro de su misma
+   * transacción para conservar el lock hasta el cambio de visibilidad.
+   */
+  @Lock(LockModeType.PESSIMISTIC_READ)
+  @Query(
+      """
+      select account
+      from BusinessAccountEntity account
+      join fetch account.ownerUser
+      where account.id = :accountId
+      """)
+  Optional<BusinessAccountEntity> findByIdForPublicationEligibility(
+      @Param("accountId") UUID accountId);
+
   /** Caduca en bloque aprobaciones vencidas sin cargar datos fiscales en memoria. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(

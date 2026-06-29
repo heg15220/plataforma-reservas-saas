@@ -486,6 +486,13 @@ Responsabilidades:
 - Impedir publicación de locales si la verificación no está aprobada.
 - Permitir reintento automático, revalidación manual y revisión administrativa.
 
+La tarea `1.11` materializa esta barrera como `VenuePublicationEligibilityService`. La política
+evalúa en backend email verificado, tipo `venue_business`, identificador normalizado y una de estas
+dos vías: verificación remota `verified` todavía vigente o revisión administrativa `approved`.
+Devuelve únicamente motivos cerrados, nunca email, identificador ni evidencia fiscal. La lectura
+usa lock pesimista sobre la cuenta; el futuro caso de uso de `2.9` debe invocarla dentro de la misma
+transacción que cambie la visibilidad y añadir allí la validación de datos mínimos de `Venues`.
+
 Identificador recomendado:
 
 - Campo canónico: `business_tax_identifier`.
