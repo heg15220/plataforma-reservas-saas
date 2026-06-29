@@ -129,7 +129,10 @@ administrativo equivalente y `other`. La licencia es evidencia complementaria; s
 implica aprobación. Otros países reciben documento administrativo equivalente y `other` hasta
 disponer de una política nacional.
 
-V7 no almacena nombres de fichero, binarios, URLs, notas libres ni datos fiscales adicionales.
+V7 no almacena nombres de fichero, binarios, URLs, notas libres ni datos fiscales adicionales. V8
+vincula el fichero cifrado con la solicitud, registra MIME, tamaño, análisis limpio e ID de clave y
+garantiza una sola carga por solicitud. El pipeline se documenta en
+`docs/architecture/private-business-documents.md`.
 
 ## Seguridad y privacidad
 
@@ -173,4 +176,4 @@ propias continúan usando `@Query`.
 - restricción de borrado cuando existe evidencia.
 - catálogo, cardinalidad e idempotencia de solicitudes documentales.
 
-`DatabaseMigrationIntegrationTests` exige Flyway V7 y el arranque valida los mapeos mediante Hibernate.
+`DatabaseMigrationIntegrationTests` exige Flyway V8 y el arranque valida los mapeos mediante Hibernate.

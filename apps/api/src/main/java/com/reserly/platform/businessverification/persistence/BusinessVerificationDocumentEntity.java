@@ -26,9 +26,15 @@ public class BusinessVerificationDocumentEntity {
 
   private UUID id;
   private BusinessAccountEntity businessAccount;
+  private BusinessVerificationDocumentRequestEntity documentRequest;
   private String documentType;
   private String fileUrl;
   private String fileHash;
+  private String mediaType;
+  private Long fileSizeBytes;
+  private String malwareScanStatus;
+  private Instant malwareScannedAt;
+  private String encryptionKeyId;
   private String status;
   private UserEntity uploadedByUser;
   private UserEntity reviewedByUser;
@@ -60,6 +66,17 @@ public class BusinessVerificationDocumentEntity {
     this.businessAccount = businessAccount;
   }
 
+  /** Requerimiento abierto que queda satisfecho por este fichero. */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "\"documentRequestId\"")
+  public BusinessVerificationDocumentRequestEntity getDocumentRequest() {
+    return documentRequest;
+  }
+
+  public void setDocumentRequest(BusinessVerificationDocumentRequestEntity documentRequest) {
+    this.documentRequest = documentRequest;
+  }
+
   /** Tipo documental cerrado por el esquema. */
   @Column(name = "\"documentType\"", nullable = false, length = 64)
   public String getDocumentType() {
@@ -88,6 +105,56 @@ public class BusinessVerificationDocumentEntity {
 
   public void setFileHash(String fileHash) {
     this.fileHash = fileHash;
+  }
+
+  /** Tipo detectado y permitido; no se confía únicamente en la cabecera declarada. */
+  @Column(name = "\"mediaType\"", length = 100)
+  public String getMediaType() {
+    return mediaType;
+  }
+
+  public void setMediaType(String mediaType) {
+    this.mediaType = mediaType;
+  }
+
+  /** Tamaño del contenido original antes del cifrado. */
+  @Column(name = "\"fileSizeBytes\"")
+  public Long getFileSizeBytes() {
+    return fileSizeBytes;
+  }
+
+  public void setFileSizeBytes(Long fileSizeBytes) {
+    this.fileSizeBytes = fileSizeBytes;
+  }
+
+  /** Resultado cerrado del análisis antivirus; las cargas nuevas solo admiten `clean`. */
+  @Column(name = "\"malwareScanStatus\"", length = 32)
+  public String getMalwareScanStatus() {
+    return malwareScanStatus;
+  }
+
+  public void setMalwareScanStatus(String malwareScanStatus) {
+    this.malwareScanStatus = malwareScanStatus;
+  }
+
+  /** Instante UTC del análisis sobre el contenido en claro. */
+  @Column(name = "\"malwareScannedAt\"")
+  public Instant getMalwareScannedAt() {
+    return malwareScannedAt;
+  }
+
+  public void setMalwareScannedAt(Instant malwareScannedAt) {
+    this.malwareScannedAt = malwareScannedAt;
+  }
+
+  /** Identificador no secreto de la clave AES-GCM usada para permitir rotación futura. */
+  @Column(name = "\"encryptionKeyId\"", length = 64)
+  public String getEncryptionKeyId() {
+    return encryptionKeyId;
+  }
+
+  public void setEncryptionKeyId(String encryptionKeyId) {
+    this.encryptionKeyId = encryptionKeyId;
   }
 
   /** Estado de revisión documental; las transiciones se implementarán en tareas posteriores. */

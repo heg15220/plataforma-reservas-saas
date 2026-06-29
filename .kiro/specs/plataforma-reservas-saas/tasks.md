@@ -46,7 +46,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.7. Implementar validación inicial para España/UE usando NIF/CIF/NIF-IVA/VAT ID según corresponda.
 - [x] 1.8. Implementar estados `pending_remote_check`, `verified`, `pending_review`, `rejected` y `expired`.
 - [x] 1.9. Implementar solicitud de documento de respaldo cuando la verificación remota no sea concluyente.
-- [ ] 1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de actividad/apertura o documento equivalente.
+- [x] 1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de actividad/apertura o documento equivalente.
 - [ ] 1.11. Bloquear publicación de locales si email o verificación empresarial no están aprobados.
 - [ ] 1.12. Implementar hashing seguro de contraseñas.
 - [ ] 1.13. Implementar login y logout de locales.

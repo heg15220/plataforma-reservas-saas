@@ -5,6 +5,8 @@
 - PostgreSQL 17 con PostGIS 3.5 como fuente de verdad transaccional.
 - Redis 8.8 para caché, rate limiting y TTL auxiliares.
 - RabbitMQ 4.3 con el plugin de gestión para trabajos asíncronos.
+- MinIO S3-compatible para objetos privados cifrados.
+- ClamAV para análisis fail-closed de documentación.
 
 Desde la raíz, después de crear `.env.local`:
 
@@ -30,9 +32,12 @@ Los puertos se publican únicamente en `127.0.0.1`:
 - Redis: `6379`.
 - RabbitMQ AMQP: `5672`.
 - RabbitMQ Management: `15672`.
+- MinIO API: `9000`.
+- MinIO Console: `9001`.
+- ClamAV: `3310`.
 
-Las imágenes están fijadas por versión y digest. Redis exige contraseña y guarda un AOF con sincronización cada segundo. RabbitMQ crea un usuario local no `guest`, conserva su estado y expone la consola de gestión solo en localhost.
+Las imágenes están fijadas por versión y digest. Redis exige contraseña y guarda un AOF con sincronización cada segundo. RabbitMQ crea un usuario local no `guest`. MinIO y ClamAV solo publican puertos en localhost; el bucket no recibe política pública y los documentos llegan ya cifrados.
 
-Los datos persisten en los volúmenes `reserly_postgres-data`, `reserly_redis-data` y `reserly_rabbitmq-data`; `infra:down` conserva los tres. No existe un comando automático de borrado de volúmenes.
+Los datos persisten en volúmenes dedicados para PostgreSQL, Redis, RabbitMQ, MinIO y firmas ClamAV; `infra:down` los conserva. No existe un comando automático de borrado de volúmenes.
 
 No deben almacenarse credenciales, certificados ni secretos reales en este directorio.

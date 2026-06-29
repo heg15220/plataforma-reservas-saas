@@ -4408,6 +4408,197 @@ La tarea se considera completada porque:
 - el diff se revisa antes del commit;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Iteración 1.10 - Subida privada y cifrada de documentos de respaldo
+
+### Identificación y fecha
+
+- Tarea exacta: `1.10. Implementar subida privada de alta censal 036/037, certificado censal,
+  licencia de actividad/apertura o documento equivalente`.
+- Fecha de implementación y verificación: 2026-06-29.
+- Estado: completada y verificada.
+
+### Objetivo técnico y requisitos relacionados
+
+El objetivo es recibir de forma segura el documento solicitado en `1.9`, vincularlo a la cuenta y al
+requerimiento que lo originó y dejarlo listo para revisión administrativa sin exponerlo
+públicamente. Implementa los criterios de `RF-032` que exigen admitir los respaldos españoles y
+protegerlos como documentación sensible, junto con `RNF-001`, `RNF-002`, `RNF-010`, las invariantes
+de persistencia de `RNF-011` y la regla `RB-012`.
+
+La solución sigue el diseño que prescribe S3-compatible, MinIO local, ausencia de BLOB principal,
+validación de tipo/tamaño/antivirus, localizador privado, SHA-256 único por cuenta, acceso restringido
+y cifrado. La superficie HTTP no se adelanta: el contrato interno recibe actor explícito y deberá
+ser invocado por el controlador autenticado de las tareas posteriores.
+
+### Archivos creados
+
+- `V8__add_private_document_upload_metadata.sql`.
+- Paquete `com.reserly.platform.businessverification.document`:
+  - `BusinessDocumentUploadProperties`, `PrivateObjectStorageProperties`, `ClamAvProperties` y
+    `DocumentEncryptionProperties`;
+  - `BusinessDocumentContentValidator` y `ValidatedBusinessDocumentContent`;
+  - `MalwareScanner`, `MalwareScanResult`, `ClamAvMalwareScanner` y excepciones fail-closed;
+  - `DocumentEncryptionService` y `AesGcmDocumentEncryptionServiceImpl`;
+  - `PrivateObjectStorage`, `MinioPrivateObjectStorage` y excepción de almacenamiento;
+  - `DocumentStorageSecurityValidator` y documentación de paquete.
+- Contratos de aplicación `BusinessVerificationDocumentUploadCommand`,
+  `BusinessVerificationDocumentUploadOutcome`, `BusinessVerificationDocumentUploadService` y su
+  implementación.
+- Frontera transaccional `BusinessVerificationDocumentPersistenceService`, implementación y comando
+  de persistencia.
+- Pruebas `BusinessDocumentContentValidatorTests`,
+  `AesGcmDocumentEncryptionServiceTests` y `BusinessVerificationDocumentUploadServiceTests`.
+- `docs/architecture/private-business-documents.md`.
+
+### Archivos modificados
+
+- `BusinessVerificationDocumentEntity`, `BusinessVerificationDocumentRequestDao` y `UserRoleDao`.
+- `application.yaml`, las tres plantillas `.env`, `apps/api/pom.xml` y `apps/api/README.md`.
+- `DatabaseMigrationIntegrationTests`.
+- `infrastructure/compose.yaml`, `infrastructure/README.md`, `docs/configuration.md` y
+  `docs/architecture/business-verification-persistence.md`.
+- Los tres documentos de seguimiento `.kiro`: tareas, conversación e implementación técnica.
+
+No se eliminó ningún archivo funcional.
+
+### Arquitectura y decisiones
+
+El pipeline se separa en puertos para antivirus, cifrado y object storage. Esta división evita que
+la lógica de negocio dependa de ClamAV o MinIO y permite sustituir S3/R2 sin cambiar el caso de uso.
+La implementación no mantiene una transacción mientras lee, analiza, cifra o llama al storage.
+
+`BusinessVerificationDocumentUploadServiceImpl` coordina:
+
+1. normalización del tipo documental contra el enum cerrado;
+2. autorización preliminar;
+3. lectura acotada, detección de tipo y SHA-256;
+4. escaneo antivirus;
+5. cifrado autenticado;
+6. `put` privado;
+7. transacción corta de metadatos;
+8. borrado compensatorio ante fallo.
+
+`BusinessVerificationDocumentPersistenceServiceImpl` abre `REQUIRES_NEW`, bloquea la solicitud con
+`PESSIMISTIC_WRITE` y repite cuenta, estado, tipo y actor. Esta segunda validación evita que una
+revalidación, cancelación o carga concurrente convierta el preflight en autorización obsoleta.
+
+### Modelo de datos, migración, índices y restricciones
+
+Flyway V8 amplía `"BusinessVerificationDocuments"` con:
+
+- `"documentRequestId"` y FK restrictiva al requerimiento;
+- `"mediaType"` y `"fileSizeBytes"`;
+- `"malwareScanStatus"` y `"malwareScannedAt"`;
+- `"encryptionKeyId"`.
+
+`"ckBusinessVerificationDocumentsSecureUpload"` exige, para documentos vinculados a una solicitud,
+MIME permitido, tamaño positivo, resultado antivirus `clean`, instante de análisis e ID de clave.
+El índice parcial único `"uqBusinessVerificationDocumentsRequest"` impide que un requerimiento se
+satisfaga más de una vez. Continúan vigentes el hash SHA-256 único por cuenta, la validación del
+localizador privado y las restricciones de revisión. La migración es compatible con filas
+históricas porque los campos nuevos solo son obligatorios cuando existe `documentRequestId`.
+
+Al completar la carga, el documento nace en `pending_review`; el requerimiento pasa de `open` a
+`fulfilled` y recibe `resolvedAt` en la misma transacción.
+
+### Contratos, componentes e infraestructura
+
+`BusinessVerificationDocumentUploadCommand` transporta IDs de cuenta, solicitud y actor, tipo,
+MIME declarado y stream. No acepta filename. El resultado solo devuelve IDs, estado e instante.
+
+`ClamAvMalwareScanner` implementa el protocolo `zINSTREAM` con bloques de 8192 bytes, terminador de
+longitud cero y timeouts configurables. Únicamente `OK` produce `CLEAN`; `FOUND` produce
+`INFECTED`; errores de red, respuestas grandes o desconocidas lanzan una excepción no detallada.
+No se registra contenido, amenaza ni respuesta.
+
+`AesGcmDocumentEncryptionServiceImpl` usa AES-256-GCM, nonce aleatorio de 12 bytes y tag de 128 bits.
+El formato versionado `RSY1 || nonce || ciphertext+tag` permite reconocer evoluciones futuras. La
+clave se obtiene en Base64, debe medir exactamente 32 bytes y nunca se persiste; cada documento
+conserva `encryptionKeyId`.
+
+`MinioPrivateObjectStorage` guarda `application/octet-stream` bajo
+`business-verification/{accountId}/{uuid}.rsy`. No genera URL ni configura policy pública. Solo crea
+el bucket cuando `createBucket=true`, opción permitida en local/test. `DocumentStorageSecurityValidator`
+rechaza fuera de esos perfiles endpoint no HTTPS, creación de bucket e ID de clave local.
+
+Compose incorpora MinIO `RELEASE.2025-04-22T22-12-26Z` y ClamAV `1.4.3`, ambos fijados por digest,
+con puertos enlazados a localhost, healthchecks y volúmenes separados. MinIO expone API 9000 y
+consola 9001; ClamAV usa 3310.
+
+### Validaciones, permisos, seguridad, privacidad e i18n
+
+- MIME admitidos: PDF, PNG y JPEG; el declarado debe coincidir con magic bytes.
+- Tamaño: 10 MiB por defecto, configurable entre 1 KiB y 50 MiB.
+- Stream vacío, nulo, ilegible, sobredimensionado o de firma desconocida se rechaza antes de red.
+- Se calcula SHA-256 sobre el original para deduplicación; el storage recibe solo ciphertext.
+- Solo puede cargar el propietario exacto con rol explícito `venue_owner`, o un actor con rol
+  `admin`. `accountType` no se usa como permiso.
+- Cuenta `pending_review`, solicitud `open`, pertenencia y tipo solicitado son invariantes.
+- No se guardan binarios, nombres, extensiones, respuestas antivirus, amenazas, URLs públicas,
+  credenciales ni material criptográfico.
+- No se añadieron textos visibles; las excepciones no filtran detalles y la futura capa HTTP deberá
+  mapearlas a claves i18n genéricas.
+
+### Errores, logs, auditoría y observabilidad
+
+Las excepciones de validación y autorización carecen de datos sensibles. La indisponibilidad del
+antivirus y del almacenamiento se distingue internamente, pero no incluye payloads. El pipeline
+falla cerrado antes de persistir si el análisis no es limpio. Si el `put` ya ocurrió y la
+transacción falla, se ejecuta `delete`; si también falla, esa excepción se adjunta como suprimida sin
+ocultar la causa primaria.
+
+La evidencia auditable persistida es tipo, SHA-256, actor, timestamps, análisis limpio, ID de clave,
+estado y solicitud origen. Métricas específicas, log estructurado de compensaciones y reconciliador
+de objetos huérfanos quedan como endurecimiento operativo posterior.
+
+### Tests y evidencia de verificación
+
+Pruebas añadidas:
+
+- aceptación de PDF por firma y SHA-256 esperado;
+- rechazo de discrepancia MIME/firma y exceso de tamaño;
+- sobre AES-GCM versionado, distinto del plaintext y no determinista por nonce;
+- orden scan → encrypt → storage → metadata;
+- rechazo de malware antes de cifrado o almacenamiento;
+- borrado compensatorio ante fallo transaccional;
+- versión Flyway esperada actualizada a V8.
+
+Comandos y resultados:
+
+- `mvn -DskipTests compile`: correcto, 152 fuentes principales.
+- pruebas focalizadas: 7 tests, 0 fallos y 0 errores.
+- `DatabaseMigrationIntegrationTests`: V1–V8 aplicadas sobre PostgreSQL 17/PostGIS y mapeo Hibernate
+  válido, 2 tests correctos.
+- `npm run env:check`: tres plantillas válidas.
+- `npm run backend:conventions:check`: convenciones válidas.
+- `npm run infra:config`: Compose válido.
+- `git diff --check`: sin errores.
+- `npm run verify`: correcto; 22 tests frontend y 107 backend, cero fallos y cero errores; lint,
+  formato, typecheck, contratos CI/i18n/entorno, Testcontainers de PostgreSQL, Redis y RabbitMQ,
+  build Next.js y JAR Spring Boot correctos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- No existe endpoint multipart ni extracción del actor desde sesión; se implementarán al conectar
+  seguridad/API. El servicio interno ya exige actor y repite autorización.
+- No se implementa descarga o descifrado administrativo, URL firmada efímera, rotación material ni
+  eliminación por retención.
+- Si fallan persistencia y borrado compensatorio puede quedar un objeto huérfano; falta un job de
+  reconciliación con métricas y alertas.
+- ClamAV y MinIO no se añaden a Testcontainers de la suite; el protocolo y el pipeline se prueban
+  con dobles deterministas y Compose se valida sintácticamente.
+- La clave local es pública y solo sirve para desarrollo. Staging/producción deben usar gestor de
+  secretos, credenciales S3 de mínimo privilegio, cifrado de transporte y política de bucket.
+- La advertencia de auto-adjunción Mockito/Byte Buddy permanece como deuda del entorno de pruebas.
+
+### Criterio de cierre
+
+La tarea queda cerrada porque todos los tipos documentales solicitables atraviesan un único
+pipeline privado; tipo, tamaño y malware se validan; el original se cifra antes del storage; la
+autorización y concurrencia se comprueban transaccionalmente; V8 conserva evidencia mínima sin
+binarios ni URLs públicas; la infraestructura local, configuración, documentación y seguimiento
+están actualizados; y la suite integral pasa completamente.
+
 ## Tarea 1.9 - Solicitud de documento de respaldo ante verificación inconclusa
 
 - Fecha: 2026-06-29

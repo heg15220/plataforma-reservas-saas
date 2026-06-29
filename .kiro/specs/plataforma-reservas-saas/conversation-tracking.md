@@ -1560,3 +1560,69 @@ Fuente de verdad del avance:
   - Una revalidación cancela y fecha el requerimiento abierto. Si vuelve a ser inconclusa, el nuevo check origina otro.
   - Docker Desktop estaba detenido al primer intento de integración; se inició en segundo plano y las pruebas se repitieron correctamente.
   - Evidencia de cierre: 4 pruebas unitarias de política y 25 focalizadas de integración correctas; `npm run verify` correcto con 22 tests frontend y 100 backend, Flyway V1–V7, PostgreSQL 17/PostGIS, Redis, RabbitMQ y ambos builds.
+
+## Conversación 38 - Subida cifrada de documentación empresarial privada
+
+- Fecha: 2026-06-29.
+- Resumen de la conversación:
+  - Se completó `1.10` con un pipeline interno fail-closed para cargar los tipos admitidos por una
+    solicitud documental abierta.
+  - El contenido se limita y valida por MIME y magic bytes, se analiza mediante ClamAV `zINSTREAM`,
+    se cifra con AES-256-GCM y se almacena en un bucket privado S3-compatible.
+  - PostgreSQL conserva únicamente object key interno, SHA-256 del original y metadatos mínimos de
+    seguridad. La solicitud se satisface bajo lock pesimista y la autorización se repite después del
+    almacenamiento para impedir TOCTOU.
+  - MinIO y ClamAV quedan disponibles en Compose local; staging y producción exigen endpoint HTTPS,
+    bucket precreado y secretos externos.
+  - No se expone todavía un endpoint HTTP: el servicio queda preparado para conectarse al contexto
+    autenticado cuando se implementen las tareas de seguridad/API.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example`, `.env.production.example`.
+  - `apps/api/pom.xml`, `apps/api/README.md`, `apps/api/src/main/resources/application.yaml`.
+  - `apps/api/src/main/resources/db/migration/V8__add_private_document_upload_metadata.sql`.
+  - Entidad y DAOs de documento, solicitud documental y roles.
+  - Nuevo paquete `businessverification.document` con propiedades, validación, ClamAV, cifrado y
+    almacenamiento MinIO.
+  - Contratos e implementaciones de carga y persistencia en `businessverification.service`.
+  - Pruebas de contenido, cifrado, pipeline y migración V8.
+  - `infrastructure/compose.yaml`, `infrastructure/README.md`.
+  - `docs/configuration.md`, `docs/architecture/business-verification-persistence.md` y
+    `docs/architecture/private-business-documents.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+  - `RB-012 Publicación de cuentas de local`.
+- Tareas impactadas:
+  - `1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de
+    actividad/apertura o documento equivalente`.
+  - Prepara `1.11`, `1.17`, `1.19`, `1.21`, `1.22`, `14.6`, `14.8` y `14.14`.
+- Tareas completadas:
+  - `1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de
+    actividad/apertura o documento equivalente`.
+- Siguiente tarea pendiente recomendada:
+  - `1.11. Bloquear publicación de locales si email o verificación empresarial no están aprobados`.
+- Decisiones o aclaraciones relevantes:
+  - Solo se admiten `application/pdf`, `image/png` e `image/jpeg`, confirmados por firma binaria; no
+    se confía en nombre ni extensión y no se conservan.
+  - El límite predeterminado es 10 MiB y la lectura usa `maxBytes + 1` para detectar exceso sin
+    aceptar streams ilimitados.
+  - Cualquier error, timeout o respuesta desconocida de ClamAV bloquea la carga.
+  - El sobre cifrado versionado es `RSY1 || nonce(12) || ciphertext+tag`; solo se persiste el ID de
+    clave para permitir rotación futura.
+  - `fileUrl` sigue siendo un localizador interno y nunca una URL pública o firmada.
+  - La autorización depende de roles explícitos: propietario de la cuenta con `venue_owner` o
+    `admin`. `accountType` no concede permisos.
+  - La cuenta debe estar `pending_review`, la solicitud debe seguir `open` y el tipo debe haber sido
+    solicitado. Las comprobaciones se realizan antes del trabajo costoso y de nuevo bajo lock.
+  - Si falla la transacción tras almacenar, se intenta borrar el objeto; una futura reconciliación
+    operativa deberá detectar residuos si también falla esa compensación.
+  - Evidencia de cierre: 7 pruebas nuevas focalizadas, migración V8 real y `npm run verify` correcto
+    con 22 tests frontend y 107 backend, cero fallos, builds Next.js y Spring Boot correctos.

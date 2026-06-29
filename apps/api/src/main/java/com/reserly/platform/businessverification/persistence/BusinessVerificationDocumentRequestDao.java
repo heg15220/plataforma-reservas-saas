@@ -1,8 +1,10 @@
 package com.reserly.platform.businessverification.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,4 +32,15 @@ public interface BusinessVerificationDocumentRequestDao
       """)
   Optional<BusinessVerificationDocumentRequestEntity> findOpenByBusinessAccountId(
       @Param("businessAccountId") UUID businessAccountId);
+
+  /** Serializa cargas concurrentes que intenten satisfacer el mismo requerimiento. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select request
+      from BusinessVerificationDocumentRequestEntity request
+      where request.id = :requestId
+      """)
+  Optional<BusinessVerificationDocumentRequestEntity> findByIdForUpload(
+      @Param("requestId") UUID requestId);
 }

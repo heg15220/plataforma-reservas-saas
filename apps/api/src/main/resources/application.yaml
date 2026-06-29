@@ -63,6 +63,24 @@ reserly:
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   business-verification:
+    documents:
+      upload:
+        maxBytes: ${RESERLY_DOCUMENT_MAX_BYTES:10485760}
+      encryption:
+        keyId: ${RESERLY_DOCUMENT_ENCRYPTION_KEY_ID:local-dev-v1}
+        keyBase64: ${RESERLY_DOCUMENT_ENCRYPTION_KEY_BASE64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      storage:
+        endpoint: ${RESERLY_S3_ENDPOINT:http://localhost:9000}
+        bucket: ${RESERLY_S3_BUCKET:reserly-local}
+        accessKey: ${RESERLY_S3_ACCESS_KEY:reserly-minio-local}
+        secretKey: ${RESERLY_S3_SECRET_KEY:reserly-minio-local-secret}
+        region: ${RESERLY_S3_REGION:us-east-1}
+        createBucket: ${RESERLY_S3_CREATE_BUCKET:true}
+      antivirus:
+        host: ${RESERLY_CLAMAV_HOST:localhost}
+        port: ${RESERLY_CLAMAV_PORT:3310}
+        connectTimeout: ${RESERLY_CLAMAV_CONNECT_TIMEOUT:2s}
+        readTimeout: ${RESERLY_CLAMAV_READ_TIMEOUT:20s}
     state:
       validityPeriod: ${RESERLY_BUSINESS_VERIFICATION_VALIDITY_PERIOD:365d}
     matching:

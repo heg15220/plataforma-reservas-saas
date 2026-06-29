@@ -59,6 +59,13 @@ Una transición a `pending_review` genera atómicamente un
 respaldo admitidos. No contiene fichero ni URL. La misma evidencia no duplica requerimientos y una
 revalidación cancela el requerimiento abierto antes de consultar de nuevo.
 
+`BusinessVerificationDocumentUploadService` acepta contenido únicamente para una solicitud abierta
+y un propietario con rol `venue_owner` o un `admin`. Valida límite, MIME y firma binaria, exige
+resultado limpio de ClamAV, cifra con AES-256-GCM y guarda el sobre en almacenamiento S3-compatible
+privado. PostgreSQL conserva solo la clave interna, SHA-256 y metadatos mínimos. El contrato
+completo está en `docs/architecture/private-business-documents.md`; el endpoint autenticado se
+conectará cuando se implemente el middleware de seguridad.
+
 ## Ejecución
 
 ```bash

@@ -58,7 +58,18 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `NEXT_PUBLIC_API_BASE_URL`                              | Web y navegador  | Sí      | Sí                         |
 | `RESERLY_API_INTERNAL_URL`                              | Servidor Next.js | No      | No; fallback a URL pública |
 
-Las variables de PostgreSQL, Redis y RabbitMQ ya son consumidas por Spring Boot y Docker Compose. S3 permanece como contrato reservado hasta las tareas de archivos.
+Las variables de PostgreSQL, Redis y RabbitMQ son consumidas por Spring Boot y Docker Compose. La
+carga documental privada consume además:
+
+- `RESERLY_DOCUMENT_MAX_BYTES`;
+- `RESERLY_DOCUMENT_ENCRYPTION_KEY_ID` y `RESERLY_DOCUMENT_ENCRYPTION_KEY_BASE64`;
+- `RESERLY_S3_ENDPOINT`, `RESERLY_S3_BUCKET`, `RESERLY_S3_ACCESS_KEY`,
+  `RESERLY_S3_SECRET_KEY`, `RESERLY_S3_REGION` y `RESERLY_S3_CREATE_BUCKET`;
+- `RESERLY_CLAMAV_HOST`, `RESERLY_CLAMAV_PORT`, `RESERLY_CLAMAV_CONNECT_TIMEOUT` y
+  `RESERLY_CLAMAV_READ_TIMEOUT`.
+
+La clave de cifrado debe decodificar exactamente 32 bytes. Staging y producción exigen endpoint S3
+HTTPS, bucket precreado y secretos no locales; MinIO y ClamAV de Compose son solo desarrollo.
 
 ## Reglas de seguridad
 
