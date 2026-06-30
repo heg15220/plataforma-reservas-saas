@@ -8343,3 +8343,269 @@ transiciones respetan estados administrativos, la rotación no enumera cuentas, 
 encaminada en una cola durable posterior al commit y todos los contratos están documentados. Las
 pruebas unitarias, integración real, infraestructura y suite integral pasan; la siguiente tarea
 pendiente es `1.15`.
+
+## Iteración 1.16 - Rate limiting distribuido de identidad y verificación empresarial
+
+### Identificación y fecha
+
+- Tarea exacta: `1.16. Añadir rate limiting a login, registro, recuperación y verificación
+  empresarial`.
+- Fecha de implementación y verificación: 2026-06-30.
+- Estado final: completada y verificada.
+
+### Objetivo técnico
+
+Incorporar una barrera distribuida antes de operaciones anónimas o costosas que pudiera abusar un
+cliente para probar credenciales, crear cuentas, emitir/consumir desafíos de recuperación o forzar
+consultas repetidas a proveedores empresariales. La solución debía funcionar con varias instancias
+de API, caducar sin mantenimiento manual, no introducir datos personales adicionales y conservar
+los contratos genéricos antienumeración existentes.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007` exige un registro público seguro y condicionado a identidad empresarial.
+- `RF-008` exige login y recuperación sin revelar si el email existe o qué estado tiene.
+- `RF-032` y `RNF-010` exigen que la verificación empresarial remota sea controlada, trazable e
+  idempotente.
+- `RNF-001` exige rate limiting en endpoints sensibles.
+- `RNF-002` obliga a minimizar datos personales; por ello Redis no conserva discriminadores en
+  claro.
+- `RNF-006` exige un comportamiento operativo explícito cuando una dependencia no está disponible.
+- `RNF-008` prohíbe observabilidad que filtre secretos o identificadores sensibles.
+- `RNF-011` exige contratos, interfaces, implementaciones y configuración documentados.
+- El diseño selecciona Redis mediante Spring Data Redis para rate limits y TTL auxiliares.
+
+Se eligió una ventana fija porque permite una operación Redis pequeña, determinista y atómica, sin
+incorporar una dependencia adicional. El límite se aplica antes de validar el cuerpo en endpoints
+HTTP: también cuentan los payloads malformados, que de otro modo permitirían consumir CPU de
+parsing/validación sin cuota. Para verificación empresarial se aplica después de resolver una
+respuesta idempotente previa y cargar la cuenta, pero antes de abrir la transición
+`pending_remote_check` o invocar el gateway.
+
+### Archivos creados
+
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitScope.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitProperties.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitService.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitExceededException.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitUnavailableException.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/SensitiveEndpointRateLimitInterceptor.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitWebConfiguration.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitErrorResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/RateLimitExceptionHandler.java`.
+- `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/infrastructure/ratelimit/SensitiveEndpointRateLimitInterceptorTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/infrastructure/ratelimit/RateLimitExceptionHandlerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/businessverification/service/RemoteBusinessVerificationRateLimitTests.java`.
+- `docs/architecture/rate-limiting.md`.
+
+### Archivos modificados
+
+- Las tres plantillas `.env.*.example` exponen la activación, máximos y ventanas sin secretos.
+- `application.yaml` enlaza todas las propiedades y sus valores predeterminados.
+- `application-test.yaml` desactiva la barrera en pruebas de otros casos de uso que deliberadamente
+  no levantan Redis.
+- `RemoteBusinessVerificationServiceImpl` consume cuota por cuenta para cada comprobación nueva.
+- `InfrastructureServicesIntegrationTests` prueba el algoritmo contra Redis 8 real.
+- `apps/api/README.md`, `docs/configuration.md` y
+  `docs/architecture/cache-and-messaging.md` enlazan el contrato y la operación.
+- `design.md`, `tasks.md`, `conversation-tracking.md` y este documento reflejan decisiones, estado
+  y evidencia.
+
+No se eliminó ningún archivo. No se creó migración: las cuotas son estado efímero con TTL y no
+pertenecen a PostgreSQL ni a la fuente de verdad del negocio.
+
+### Arquitectura aplicada
+
+`RateLimitService` es el puerto transversal consumido por MVC y por el contexto de verificación
+empresarial. `RateLimitServiceImpl` usa `StringRedisTemplate`, manteniendo el algoritmo fuera de los
+controladores y servicios de dominio. `RateLimitScope` define cinco espacios independientes:
+
+- `LOGIN`;
+- `REGISTRATION`;
+- `PASSWORD_RESET_REQUEST`;
+- `PASSWORD_RESET_CONSUME`;
+- `BUSINESS_VERIFICATION`.
+
+Cada clave tiene la forma
+`reserly:rate-limit:v1:<scope>:<sha256-discriminator>`. El prefijo versionado separa este estado de
+Spring Cache y permite sustituir semántica sin reutilizar contadores incompatibles. SHA-256 se
+calcula en memoria sobre UTF-8; Redis no recibe la dirección ni el UUID original.
+
+Un script Lua ejecuta:
+
+1. `INCR` sobre la clave.
+2. Si el resultado es uno, `PEXPIRE` con la duración de la ventana.
+3. `PTTL` y devolución conjunta de contador y vigencia restante.
+
+Redis serializa la ejecución como una única operación. No existe carrera entre `INCR` y asignación
+de TTL, ni dos instancias pueden inaugurar ventanas distintas para la misma clave. El máximo es
+inclusivo: las primeras `N` operaciones continúan y la `N+1` se rechaza con el TTL restante.
+
+`SensitiveEndpointRateLimitInterceptor` se registra mediante `WebMvcConfigurer` y mapea únicamente
+los cuatro `POST` públicos actuales. El discriminador es `getRemoteAddr()`. No se acepta
+directamente `X-Forwarded-For`, porque confiar en una cabecera aportada por el cliente permitiría
+rotar la clave. El despliegue con proxy debe sanear cabeceras externas y transmitir una dirección
+verificada mediante una frontera confiable.
+
+### Configuración y cuotas
+
+`RateLimitProperties` valida cada máximo entre 1 y 10.000 y cada ventana entre un segundo y 24
+horas. Los valores iniciales son:
+
+- login: 10 peticiones cada 5 minutos por dirección;
+- registro: 5 peticiones por hora por dirección;
+- solicitud de recuperación: 5 peticiones cada 15 minutos por dirección;
+- consumo de recuperación: 10 peticiones cada 15 minutos por dirección;
+- verificación empresarial: 5 comprobaciones por hora por cuenta.
+
+`RESERLY_RATE_LIMIT_ENABLED` es `true` por defecto y debe permanecer activo en local, staging y
+producción. El perfil automatizado `test` lo desactiva para que pruebas transaccionales ajenas no
+dependan de Redis; `InfrastructureServicesIntegrationTests` lo reactiva y sustituye login por una
+cuota 2/30 segundos contra su contenedor real.
+
+### Contratos y flujos de ejecución
+
+#### Endpoint anónimo permitido
+
+1. Spring MVC recibe la petición.
+2. El interceptor identifica método y ruta exactos.
+3. El servicio hashea la dirección observada.
+4. Lua incrementa el contador y asegura el TTL.
+5. Si el contador está dentro del máximo, continúa validación, controlador y caso de uso.
+
+#### Endpoint anónimo limitado
+
+1. Lua devuelve un contador superior al máximo y el `PTTL`.
+2. Se lanza `RateLimitExceededException` sin conservar discriminador.
+3. `RateLimitExceptionHandler` calcula segundos con redondeo hacia arriba.
+4. La respuesta es `429`, cabecera `Retry-After` y
+   `{"error":"RATE_LIMIT_EXCEEDED"}`.
+5. No se ejecuta el controlador y no se revela email, cuenta, máximo ni operación interna.
+
+#### Verificación empresarial
+
+1. Se consulta `requestId`.
+2. Si ya existe evidencia de la misma cuenta, se devuelve el resultado idempotente sin cuota
+   adicional ni proveedor.
+3. Para una petición nueva se carga la cuenta desde PostgreSQL.
+4. Se consume cuota usando el UUID como discriminador hasheado.
+5. Solo después se abre la transición de estado y se construye la solicitud remota.
+6. Si la cuota está agotada, no cambia estado, no crea evidencia y no invoca el gateway.
+
+#### Redis no disponible
+
+Errores de acceso Redis o resultados Lua estructuralmente inválidos producen
+`RateLimitUnavailableException`. En HTTP se traduce a `503 RATE_LIMIT_UNAVAILABLE`. La política es
+fail-closed: permitir tráfico sin protección durante una caída silenciosa degradaría seguridad
+precisamente cuando todas las instancias han perdido coordinación.
+
+### Seguridad, privacidad e internacionalización
+
+- Los discriminadores solo existen en memoria durante el hash.
+- No se almacenan IP, email, token, contraseña ni UUID empresarial en claro en Redis.
+- Ninguna excepción contiene el discriminador o la clave.
+- Los payloads malformados también consumen cuota.
+- Las cuotas están aisladas por operación para que recuperar contraseña no bloquee login o
+  registro.
+- El contrato HTTP usa códigos estables, sin mensajes de infraestructura ni enumeración.
+- `Retry-After` permite backoff estándar sin publicar el máximo configurado.
+- No hay texto UI nuevo; `RATE_LIMIT_EXCEEDED` y `RATE_LIMIT_UNAVAILABLE` se localizarán al crear
+  los catálogos de errores de identidad en `1.21`.
+- La desactivación de test está acotada al perfil y sobrescrita en la prueba Redis real.
+
+### Errores, logs, auditoría y observabilidad
+
+No se añadieron logs por petición para evitar convertir IP o hashes correlacionables en telemetría.
+Los errores públicos distinguen agotamiento (`429`) de dependencia no disponible (`503`) sin
+detalles internos. No se crea auditoría PostgreSQL por cada intento: el volumen, la naturaleza
+efímera y la minimización desaconsejan persistirlos.
+
+Las métricas agregadas de aceptaciones, rechazos, errores Redis y latencia del script pertenecen a
+la Fase 17. Deberán etiquetarse por scope, nunca por discriminador. Alertas de incremento sostenido
+de `503` o `429` deberán separar incidencia de Redis de abuso de clientes.
+
+### Tests añadidos y modificados
+
+- `InfrastructureServicesIntegrationTests`:
+  - activa cuota 2/30 segundos;
+  - permite los dos primeros consumos;
+  - rechaza el tercero;
+  - comprueba `retryAfter` entre 1 y 30 segundos;
+  - inspecciona que exista una sola clave, tenga TTL y no contenga la IP.
+- `SensitiveEndpointRateLimitInterceptorTests`:
+  - cubre las cuatro rutas protegidas;
+  - verifica scope y dirección;
+  - confirma que otras rutas y métodos no consumen cuota.
+- `RateLimitExceptionHandlerTests`:
+  - valida `429`, redondeo de `Retry-After` y código público;
+  - valida `503` sin detalle de infraestructura.
+- `RemoteBusinessVerificationRateLimitTests`:
+  - fuerza cuota agotada por cuenta;
+  - confirma propagación del límite;
+  - confirma cero interacción con estado y gateway.
+
+### Comandos y evidencia de verificación
+
+1. `mvn -f apps/api/pom.xml test "-Dspring.profiles.active=test" -DskipTests`
+   - 222 fuentes principales y 49 fuentes de test compiladas.
+   - Spotless y Checkstyle correctos, cero infracciones.
+2. `mvn -f apps/api/pom.xml test "-Dspring.profiles.active=test"
+   "-Dtest=InfrastructureServicesIntegrationTests,SensitiveEndpointRateLimitInterceptorTests,RateLimitExceptionHandlerTests,RemoteBusinessVerificationRateLimitTests"`
+   - 8 pruebas focalizadas, cero fallos.
+   - Redis 8, RabbitMQ y PostGIS levantados mediante Testcontainers.
+3. `npm run env:check`
+   - tres plantillas coherentes y válidas.
+4. `npm run backend:conventions:check`
+   - interfaces, implementación, paquetes y capas válidos.
+5. `npm run spanish:text:check`
+   - UTF-8, tildes y signos correctos.
+6. `npm run format:check:web` y `git diff --check`
+   - Markdown/Prettier y whitespace correctos.
+7. `npm run verify`
+   - contrato CI, variables, i18n, español, convenciones, ESLint, Checkstyle, Spotless, TypeScript y
+     Prettier correctos;
+   - 7 archivos y 22 tests frontend correctos;
+   - 156 tests backend correctos, cero fallos, errores u omitidos;
+   - Flyway validó V1–V8 sobre PostgreSQL/PostGIS real;
+   - Redis y RabbitMQ reales verificados;
+   - build Next.js y JAR ejecutable Spring Boot correctos.
+
+### Incidencias encontradas y resolución
+
+- El primer intento Maven dentro del sandbox no pudo acceder a Central; se repitió con el permiso
+  de red previsto por el entorno.
+- PowerShell interpretó sin comillas una propiedad `-Dspring.profiles.active`; se corrigió el
+  comando sin cambiar código.
+- El validador de convenciones rechazó inicialmente el nombre
+  `RedisRateLimitServiceImpl` porque exigía una interfaz homónima. La implementación se renombró a
+  `RateLimitServiceImpl`, coherente con su puerto `RateLimitService`.
+- Prettier detectó formato pendiente en el documento arquitectónico nuevo; se aplicó antes de la
+  verificación integral.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Una ventana fija permite una ráfaga cercana a dos máximos alrededor del límite entre ventanas.
+  Si las métricas muestran abuso real, puede migrarse a token bucket o sliding window bajo un
+  prefijo v2.
+- Usuarios legítimos detrás de un NAT comparten cuota por dirección. Las cifras iniciales son
+  conservadoras y deben revisarse con telemetría agregada.
+- La dirección correcta depende de configurar el proxy confiable; aceptar cabeceras arbitrarias en
+  la aplicación sería inseguro.
+- No existe todavía segunda dimensión por email hasheado. Añadirla requerirá una integración
+  posterior a parsing que preserve respuestas antienumeración y evite duplicar excesivamente
+  contadores.
+- Redis es una dependencia de seguridad y su caída produce `503` en estos flujos. Producción
+  requiere alta disponibilidad, timeouts y alertas.
+- La tarea `16.6` ampliará la frontera a reservas y enlaces públicos.
+- La Fase 17 añadirá métricas, dashboards y alertas sin cardinalidad sensible.
+- Permanece la advertencia futura de Mockito/Byte Buddy sobre carga dinámica del agente.
+
+### Criterio de cierre
+
+La tarea queda completada porque todos los flujos solicitados tienen una cuota distribuida,
+configurable y atómica; los discriminadores están minimizados; los contratos de agotamiento y caída
+son seguros; la verificación empresarial respeta idempotencia y se detiene antes del proveedor; la
+implementación, configuración y operación están documentadas; y pruebas focalizadas e integrales
+pasan. La siguiente tarea pendiente es `1.17`.

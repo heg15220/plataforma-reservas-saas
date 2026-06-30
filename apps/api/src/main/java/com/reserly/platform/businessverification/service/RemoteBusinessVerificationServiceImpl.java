@@ -9,6 +9,8 @@ import com.reserly.platform.businessverification.remote.RemoteBusinessVerificati
 import com.reserly.platform.businessverification.remote.RemoteBusinessVerificationResult;
 import com.reserly.platform.businessverification.remote.RemoteVerificationExecution;
 import com.reserly.platform.businessverification.remote.RemoteVerificationExecutionException;
+import com.reserly.platform.infrastructure.ratelimit.RateLimitScope;
+import com.reserly.platform.infrastructure.ratelimit.RateLimitService;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,18 +34,21 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
   private final RemoteBusinessVerificationGatewayService verificationGateway;
   private final EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy;
   private final BusinessVerificationStateService verificationStateService;
+  private final RateLimitService rateLimitService;
 
   public RemoteBusinessVerificationServiceImpl(
       BusinessAccountDao businessAccountDao,
       BusinessVerificationCheckDao verificationCheckDao,
       RemoteBusinessVerificationGatewayService verificationGateway,
       EuropeanVatIdentifierPolicy europeanVatIdentifierPolicy,
-      BusinessVerificationStateService verificationStateService) {
+      BusinessVerificationStateService verificationStateService,
+      RateLimitService rateLimitService) {
     this.businessAccountDao = businessAccountDao;
     this.verificationCheckDao = verificationCheckDao;
     this.verificationGateway = verificationGateway;
     this.europeanVatIdentifierPolicy = europeanVatIdentifierPolicy;
     this.verificationStateService = verificationStateService;
+    this.rateLimitService = rateLimitService;
   }
 
   @Override
@@ -58,6 +63,10 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
         businessAccountDao
             .findById(command.businessAccountId())
             .orElseThrow(BusinessAccountNotFoundException::new);
+    // Las respuestas idempotentes anteriores salen antes; solo una comprobación remota nueva
+    // consume cuota de la cuenta y puede generar coste o carga en el proveedor.
+    rateLimitService.check(
+        RateLimitScope.BUSINESS_VERIFICATION, businessAccount.getId().toString());
     verificationStateService.beginRemoteCheck(businessAccount.getId(), command.requestId());
     RemoteBusinessVerificationRequest request =
         new RemoteBusinessVerificationRequest(

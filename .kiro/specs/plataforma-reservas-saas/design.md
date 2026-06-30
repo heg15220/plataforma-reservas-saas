@@ -1779,7 +1779,25 @@ Token, cuenta o contraseña no admisibles producen el mismo
 `400 PASSWORD_RESET_INVALID`. El rate limiting corresponde a `1.16`; proveedor, plantilla, outbox
 y reintentos operativos se completarán en la Fase 8.
 
-### 8.9 Comprobar elegibilidad de reseña desde ficha
+### 8.9 Rate limiting de identidad y verificación empresarial
+
+Redis aplica ventanas fijas independientes mediante un script Lua que incrementa el contador y
+establece su TTL atómicamente. Las claves usan el prefijo versionado
+`reserly:rate-limit:v1`, un segmento de operación y SHA-256 del discriminador; nunca conservan IP,
+email o UUID empresarial en claro.
+
+Login admite inicialmente 10 intentos por dirección remota cada 5 minutos; registro, 5 por hora;
+solicitud de recuperación, 5 cada 15 minutos; consumo de recuperación, 10 cada 15 minutos; y cada
+cuenta empresarial, 5 verificaciones remotas por hora. Las respuestas idempotentes de una
+verificación ya persistida no vuelven a consumir cuota.
+
+Una cuota HTTP agotada produce `429 RATE_LIMIT_EXCEEDED` y `Retry-After` entero en segundos, sin
+revelar identidad, cuota ni estado interno. Si Redis no puede garantizar el límite, la operación
+sensible falla cerrada con `503 RATE_LIMIT_UNAVAILABLE`. El servidor usa la dirección remota
+observada y no confía directamente en `X-Forwarded-For`; el proxy de producción debe sanear y
+normalizar cabeceras de origen.
+
+### 8.10 Comprobar elegibilidad de reseña desde ficha
 
 Request:
 
@@ -1812,7 +1830,7 @@ Response no elegible:
 
 Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
 
-### 8.10 Crear reseña desde ficha
+### 8.11 Crear reseña desde ficha
 
 Request:
 

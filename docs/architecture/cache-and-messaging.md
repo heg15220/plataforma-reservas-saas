@@ -21,6 +21,11 @@ Spring Cache usa estas políticas comunes:
 
 Cada módulo debe documentar sus claves, TTL e invalidaciones. No se permite usar `KEYS` en flujos de producción; la llamada de ese tipo presente en tests solo inspecciona un contenedor aislado.
 
+Rate limiting usa claves `reserly:rate-limit:v1:<operación>:<sha256>` separadas de Spring Cache.
+Un script Lua incrementa y aplica TTL atómicamente. Las ventanas son fijas, configurables por
+operación y nunca contienen el discriminador en claro. Redis no disponible bloquea temporalmente
+la operación sensible; el contrato completo está en `rate-limiting.md`.
+
 ## RabbitMQ
 
 La topología compartida contiene:

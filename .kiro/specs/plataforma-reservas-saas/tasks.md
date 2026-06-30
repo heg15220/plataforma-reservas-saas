@@ -52,7 +52,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.13. Implementar login y logout de locales.
 - [x] 1.14. Implementar verificación de email.
 - [x] 1.15. Implementar recuperación de contraseña.
-- [ ] 1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial.
+- [x] 1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial.
 - [ ] 1.17. Implementar middleware de autorización por rol.
 - [ ] 1.18. Crear pantalla de registro de local con campos empresariales.
 - [ ] 1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes.

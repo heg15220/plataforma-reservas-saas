@@ -14,6 +14,11 @@ PostgreSQL es la fuente de verdad. Flyway ejecuta las migraciones antes de que H
 
 Redis se integra mediante Spring Data Redis y Spring Cache con TTL de cinco minutos, prefijo `reserly::` y valores nulos deshabilitados. Ningún dato transaccional puede depender exclusivamente de la caché.
 
+El paquete `infrastructure.ratelimit` protege login, registro y recuperación por dirección remota,
+y la verificación empresarial por cuenta. Usa contadores Lua atómicos con TTL y discriminadores
+SHA-256; una cuota agotada devuelve `429` con `Retry-After` y Redis no disponible falla cerrado. El
+contrato está en `docs/architecture/rate-limiting.md`.
+
 RabbitMQ se integra mediante Spring AMQP. La topología base declara los exchanges `reserly.jobs.v1` y `reserly.jobs.dead-letter.v1`, además de una cola durable de aparcamiento. Cada contexto de negocio deberá declarar su propia cola y routing key.
 
 Los textos configurables que se persistan en base de datos deben usar el contrato `LocalizedText` del paquete `localization` y columnas JSONB `lowerCamelCase` como `"descriptionI18n"`. El patrón completo está documentado en `docs/architecture/localized-data.md`.

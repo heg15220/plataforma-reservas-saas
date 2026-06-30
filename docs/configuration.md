@@ -34,6 +34,17 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_SESSION_LIFETIME`                              | API              | No      | Sí; 5 minutos–30 días      |
 | `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME`             | API              | No      | Sí; 15 minutos–7 días      |
 | `RESERLY_PASSWORD_RESET_TOKEN_LIFETIME`                 | API              | No      | Sí; 10 minutos–24 horas    |
+| `RESERLY_RATE_LIMIT_ENABLED`                            | API              | No      | Sí; `true` fuera de test   |
+| `RESERLY_RATE_LIMIT_LOGIN_REQUESTS`                     | API              | No      | Sí; 1–10.000               |
+| `RESERLY_RATE_LIMIT_LOGIN_WINDOW`                       | API              | No      | Sí; 1 segundo–24 horas     |
+| `RESERLY_RATE_LIMIT_REGISTRATION_REQUESTS`              | API              | No      | Sí; 1–10.000               |
+| `RESERLY_RATE_LIMIT_REGISTRATION_WINDOW`                | API              | No      | Sí; 1 segundo–24 horas     |
+| `RESERLY_RATE_LIMIT_PASSWORD_RESET_REQUEST_REQUESTS`    | API              | No      | Sí; 1–10.000               |
+| `RESERLY_RATE_LIMIT_PASSWORD_RESET_REQUEST_WINDOW`      | API              | No      | Sí; 1 segundo–24 horas     |
+| `RESERLY_RATE_LIMIT_PASSWORD_RESET_CONSUME_REQUESTS`    | API              | No      | Sí; 1–10.000               |
+| `RESERLY_RATE_LIMIT_PASSWORD_RESET_CONSUME_WINDOW`      | API              | No      | Sí; 1 segundo–24 horas     |
+| `RESERLY_RATE_LIMIT_BUSINESS_VERIFICATION_REQUESTS`     | API              | No      | Sí; 1–10.000               |
+| `RESERLY_RATE_LIMIT_BUSINESS_VERIFICATION_WINDOW`       | API              | No      | Sí; 1 segundo–24 horas     |
 | `RESERLY_DATABASE_NAME`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_PORT`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_URL`                                  | API              | No      | Sí                         |
@@ -90,6 +101,11 @@ revoca el desafío anterior en vez de prolongarlo.
 
 `RESERLY_PASSWORD_RESET_TOKEN_LIFETIME` controla el enlace de recuperación. El valor inicial es
 `30m`; debe permanecer entre 10 minutos y 24 horas. Una nueva solicitud revoca el enlace anterior.
+
+Las variables `RESERLY_RATE_LIMIT_*` controlan contadores Redis independientes para login,
+registro, solicitud/consumo de recuperación y verificación empresarial. Los valores iniciales se
+documentan en `docs/architecture/rate-limiting.md`. Staging y producción deben mantener
+`RESERLY_RATE_LIMIT_ENABLED=true`.
 
 ## Reglas de seguridad
 

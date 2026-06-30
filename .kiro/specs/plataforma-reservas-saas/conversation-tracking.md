@@ -1956,3 +1956,70 @@ Fuente de verdad del avance:
   - Evidencia final: `npm run verify` correcto con 22 tests frontend y 150 backend, cero fallos;
     Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ, colas de verificación/recuperación y builds
     Next.js/Spring Boot correctos.
+
+## Conversación 44 - Rate limiting distribuido de identidad y verificación empresarial
+
+- Fecha: 2026-06-30.
+- Resumen de la conversación:
+  - Se completó `1.16` con ventanas fijas atómicas sobre Redis para login, registro, solicitud y
+    consumo de recuperación de contraseña, y verificaciones empresariales remotas.
+  - Los endpoints anónimos se discriminan por la dirección remota observada por la aplicación; las
+    comprobaciones empresariales se aíslan por UUID de cuenta.
+  - Las claves contienen SHA-256 del discriminador y nunca almacenan IP, email ni UUID empresarial
+    en claro.
+  - El contador y su TTL se crean mediante un script Lua indivisible entre todas las instancias.
+  - Una cuota agotada devuelve `429 RATE_LIMIT_EXCEEDED` con `Retry-After`; Redis no disponible
+    devuelve `503 RATE_LIMIT_UNAVAILABLE` para fallar cerrado.
+  - Las respuestas empresariales ya persistidas conservan su idempotencia y no consumen una nueva
+    unidad; una comprobación nueva agota cuota antes de cambiar estado o llamar al proveedor.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example` y `.env.production.example`.
+  - `apps/api/src/main/resources/application.yaml` y `application-test.yaml`.
+  - Nuevo paquete `apps/api/src/main/java/com/reserly/platform/infrastructure/ratelimit` con
+    propiedades, scopes, servicio Redis, interceptor MVC, configuración, excepciones y contrato
+    HTTP.
+  - `RemoteBusinessVerificationServiceImpl`.
+  - `InfrastructureServicesIntegrationTests`,
+    `RemoteBusinessVerificationRateLimitTests`, `SensitiveEndpointRateLimitInterceptorTests` y
+    `RateLimitExceptionHandlerTests`.
+  - `apps/api/README.md`, `docs/configuration.md`,
+    `docs/architecture/cache-and-messaging.md` y `docs/architecture/rate-limiting.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial`.
+  - Prepara `16.6` para ampliar la misma frontera a reservas y enlaces públicos.
+  - Prepara `17.3` y `17.4` para métricas y alertas operativas de rechazos.
+- Tareas completadas:
+  - `1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial`.
+- Siguiente tarea pendiente recomendada:
+  - `1.17. Implementar middleware de autorización por rol`.
+- Decisiones o aclaraciones relevantes:
+  - Cuotas iniciales: login 10/5 min; registro 5/h; solicitud de recuperación 5/15 min; consumo de
+    recuperación 10/15 min; verificación empresarial 5/h por cuenta.
+  - Las ventanas admiten entre 1 segundo y 24 horas y los máximos entre 1 y 10.000.
+  - La aplicación no confía directamente en `X-Forwarded-For`; el proxy de producción debe sanear
+    y normalizar la dirección verificada.
+  - El perfil `test` desactiva la barrera para suites funcionales no relacionadas; la prueba de
+    infraestructura la activa explícitamente contra Redis real.
+  - No se añadió migración porque los contadores son efímeros y no forman parte de la fuente de
+    verdad transaccional.
+  - Riesgos pendientes: ráfaga en borde de ventana fija, usuarios tras NAT compartiendo cuota,
+    configuración confiable del proxy y ausencia de métricas específicas hasta la Fase 17.
+  - Evidencia focalizada: 8 pruebas correctas, incluidas Redis 8 real, TTL, hash de clave,
+    enrutamiento de endpoints, `Retry-After` y bloqueo previo del proveedor.
+  - Evidencia final: `npm run verify` correcto con 22 tests frontend y 156 backend, cero fallos;
+    Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.

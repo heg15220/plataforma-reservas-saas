@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.reserly.platform.identity.messaging.EmailVerificationMessagingTopology;
 import com.reserly.platform.identity.messaging.PasswordResetMessagingTopology;
 import com.reserly.platform.infrastructure.messaging.MessagingTopology;
+import com.reserly.platform.infrastructure.ratelimit.RateLimitExceededException;
+import com.reserly.platform.infrastructure.ratelimit.RateLimitScope;
+import com.reserly.platform.infrastructure.ratelimit.RateLimitService;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +45,10 @@ import org.testcontainers.utility.DockerImageName;
     properties = {
       "spring.cache.type=redis",
       "spring.rabbitmq.dynamic=true",
-      "spring.rabbitmq.template.receive-timeout=5s"
+      "spring.rabbitmq.template.receive-timeout=5s",
+      "reserly.rate-limit.enabled=true",
+      "reserly.rate-limit.login.requests=2",
+      "reserly.rate-limit.login.window=30s"
     })
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -85,6 +91,8 @@ class InfrastructureServicesIntegrationTests {
   @Autowired private AmqpAdmin amqpAdmin;
 
   @Autowired private RabbitTemplate rabbitTemplate;
+
+  @Autowired private RateLimitService rateLimitService;
 
   @DynamicPropertySource
   static void infrastructureProperties(DynamicPropertyRegistry registry) {
@@ -145,6 +153,27 @@ class InfrastructureServicesIntegrationTests {
     assertThat(correlationData.getFuture().get(5, TimeUnit.SECONDS).ack()).isTrue();
     assertThat(rabbitTemplate.receiveAndConvert(queueName)).isEqualTo("job-payload");
     assertThat(amqpAdmin.deleteQueue(queueName)).isTrue();
+  }
+
+  @Test
+  void enforcesAtomicRateLimitWithTtlAndHashedDiscriminator() {
+    String discriminator = "198.51.100.42";
+
+    rateLimitService.check(RateLimitScope.LOGIN, discriminator);
+    rateLimitService.check(RateLimitScope.LOGIN, discriminator);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> rateLimitService.check(RateLimitScope.LOGIN, discriminator))
+        .isInstanceOfSatisfying(
+            RateLimitExceededException.class,
+            exception ->
+                assertThat(exception.retryAfter())
+                    .isBetween(Duration.ofSeconds(1), Duration.ofSeconds(30)));
+
+    Set<String> keys = redisTemplate.keys("reserly:rate-limit:v1:login:*");
+    assertThat(keys).hasSize(1);
+    assertThat(keys.iterator().next()).doesNotContain(discriminator);
+    assertThat(redisTemplate.getExpire(keys.iterator().next())).isBetween(1L, 30L);
   }
 
   private String awaitCacheValue(Cache cache, String key) throws InterruptedException {
