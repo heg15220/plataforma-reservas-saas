@@ -14,6 +14,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Dos workers evitan agotar memoria al crear siete procesos jsdom durante la suite integral.
+    maxWorkers: 2,
     setupFiles: ["./vitest.setup.ts"],
   },
 });

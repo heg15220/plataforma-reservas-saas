@@ -3,6 +3,7 @@ package com.reserly.platform.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.reserly.platform.identity.messaging.EmailVerificationMessagingTopology;
+import com.reserly.platform.identity.messaging.PasswordResetMessagingTopology;
 import com.reserly.platform.infrastructure.messaging.MessagingTopology;
 import java.time.Duration;
 import java.util.Set;
@@ -125,6 +126,7 @@ class InfrastructureServicesIntegrationTests {
   void declaresSharedTopologyAndRoutesAJobMessage() throws Exception {
     assertThat(amqpAdmin.getQueueProperties(MessagingTopology.DEAD_LETTER_QUEUE)).isNotNull();
     assertThat(amqpAdmin.getQueueProperties(EmailVerificationMessagingTopology.QUEUE)).isNotNull();
+    assertThat(amqpAdmin.getQueueProperties(PasswordResetMessagingTopology.QUEUE)).isNotNull();
 
     Queue testQueue = new AnonymousQueue();
     String queueName = amqpAdmin.declareQueue(testQueue);

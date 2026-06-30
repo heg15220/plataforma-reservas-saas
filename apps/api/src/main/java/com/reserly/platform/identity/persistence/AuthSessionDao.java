@@ -30,4 +30,19 @@ public interface AuthSessionDao extends JpaRepository<AuthSessionEntity, UUID> {
       """)
   int revokeByTokenHash(
       @Param("tokenHash") String tokenHash, @Param("revokedAt") Instant revokedAt);
+
+  /**
+   * Revoca todas las sesiones de una cuenta después de cambiar su credencial.
+   *
+   * <p>Incluye sesiones expiradas sin revocar para impedir que una lectura defectuosa las recupere.
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
+      update AuthSessionEntity session
+      set session.revokedAt = :revokedAt
+      where session.user.id = :userId
+        and session.revokedAt is null
+      """)
+  int revokeActiveByUserId(@Param("userId") UUID userId, @Param("revokedAt") Instant revokedAt);
 }

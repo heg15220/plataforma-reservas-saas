@@ -1757,7 +1757,29 @@ tarea `8.7`, la ausencia de outbox deja una ventana de pérdida si RabbitMQ fall
 PostgreSQL; el error registra únicamente `eventId` y el endpoint de nueva solicitud permite
 recuperación manual.
 
-### 8.8 Comprobar elegibilidad de reseña desde ficha
+### 8.8 Recuperación de contraseña
+
+`POST /api/auth/password/forgot` recibe un email válido y responde siempre `202` sin cuerpo. Solo
+las cuentas `venue_business` no deshabilitadas rotan un token con propósito `password_reset`; email
+inexistente, tipo distinto o cuenta deshabilitada conserva el mismo contrato. Una suspensión no
+impide renovar la credencial, pero tampoco queda anulada.
+
+El token contiene 256 bits CSPRNG, PostgreSQL conserva únicamente su SHA-256 y la vigencia
+predeterminada es 30 minutos, configurable entre 10 minutos y 24 horas. La solicitud publica tras
+el commit un mensaje persistente en `reserly.identity.password-reset.v1` con routing key
+`identity.password-reset.requested.v1`.
+
+`POST /api/auth/password/reset` recibe token y nueva contraseña. El consumo bloquea el desafío y su
+cuenta, exige propósito, vigencia y estados finales válidos, aplica la política BCrypt común y
+actualiza `passwordHash` dentro de la misma transacción. Después marca el token consumido, revoca
+sus hermanos y todas las sesiones de la cuenta. No modifica `status`, `emailVerifiedAt`, roles ni
+verificación empresarial.
+
+Token, cuenta o contraseña no admisibles producen el mismo
+`400 PASSWORD_RESET_INVALID`. El rate limiting corresponde a `1.16`; proveedor, plantilla, outbox
+y reintentos operativos se completarán en la Fase 8.
+
+### 8.9 Comprobar elegibilidad de reseña desde ficha
 
 Request:
 
@@ -1790,7 +1812,7 @@ Response no elegible:
 
 Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
 
-### 8.9 Crear reseña desde ficha
+### 8.10 Crear reseña desde ficha
 
 Request:
 

@@ -37,6 +37,10 @@ Identidad declara `reserly.identity.email-verification.v1`, enlazada mediante
 destinatario, locale, token de un solo uso y caducidad. El token es sensible: no puede registrarse ni
 copiarse a métricas. El consumidor y proveedor se incorporarán en las tareas de email de la Fase 8.
 
+La recuperación declara `reserly.identity.password-reset.v1`, enlazada mediante
+`identity.password-reset.requested.v1`. Mantiene el mismo sobre sensible y aislamiento de cola que
+la verificación, pero sus tokens, propósito y caducidad son independientes.
+
 La plantilla de publicación activa:
 
 - mensajes obligatorios para detectar rutas inexistentes;

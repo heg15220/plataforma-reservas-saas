@@ -1885,3 +1885,74 @@ Fuente de verdad del avance:
   - Evidencia final: `npm run verify` correcto con 22 tests frontend y 142 backend, cero fallos;
     Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ, topología de verificación y builds
     Next.js/Spring Boot correctos.
+
+## Conversación 43 - Recuperación segura de contraseña
+
+- Fecha: 2026-06-30.
+- Resumen de la conversación:
+  - Se completó `1.15` con `POST /api/auth/password/forgot` y
+    `POST /api/auth/password/reset`.
+  - La solicitud responde siempre `202` para emails válidos y solo rota desafíos de cuentas de
+    local no deshabilitadas.
+  - El restablecimiento consume bajo lock un token `password_reset`, aplica la política BCrypt,
+    revoca desafíos hermanos y cierra todas las sesiones de la cuenta.
+  - El mensaje de entrega se publica después del commit en una cola RabbitMQ durable, aislada y
+    versionada.
+  - Se limitó Vitest a dos workers para eliminar timeouts recurrentes al crear siete procesos jsdom
+    simultáneos en el entorno disponible.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example`, `.env.production.example` y
+    `apps/api/src/main/resources/application.yaml`.
+  - `PasswordResetController`, implementación, manejador, DTOs, servicio, propiedades, excepción y
+    evento.
+  - `AuthSessionDao` y `UserDao`.
+  - Topología, configuración y relay RabbitMQ de recuperación.
+  - `PasswordResetIntegrationTests`, pruebas de propiedades y relay, e infraestructura RabbitMQ.
+  - `apps/web/vitest.config.mts`.
+  - `apps/api/README.md`, `docs/configuration.md`,
+    `docs/architecture/password-recovery.md`, `identity-persistence.md` y
+    `cache-and-messaging.md`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`,
+    `.kiro/specs/plataforma-reservas-saas/design.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-007 Internacionalización`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-013 Flujo GitFlow y promoción entre ramas`.
+- Tareas impactadas:
+  - `1.15. Implementar recuperación de contraseña`.
+  - Se amplió `8.2` para incluir plantillas ES/EN de recuperación.
+  - Prepara `1.16`, `1.20`, `1.21`, `8.1`, `8.2`, `8.7` y `8.8`.
+- Tareas completadas:
+  - `1.15. Implementar recuperación de contraseña`.
+- Siguiente tarea pendiente recomendada:
+  - `1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial`.
+- Decisiones o aclaraciones relevantes:
+  - El token tiene 256 bits CSPRNG, propósito independiente y vigencia predeterminada de 30 minutos,
+    validada entre 10 minutos y 24 horas.
+  - PostgreSQL solo conserva SHA-256; secreto y email solo coinciden en el transporte de entrega.
+  - Las cuentas pendientes o suspendidas pueden renovar la credencial sin cambiar su estado; las
+    deshabilitadas no emiten ni consumen desafíos.
+  - Cambiar la contraseña no modifica email, verificación, roles ni estado empresarial.
+  - Token, cuenta o contraseña no admisibles comparten `PASSWORD_RESET_INVALID`.
+  - La nueva contraseña conserva mínimo funcional de 12 caracteres y máximo criptográfico de 72
+    bytes UTF-8.
+  - Se revocan todas las sesiones no revocadas, incluidas las ya expiradas, para fallar cerrado ante
+    cualquier lectura futura defectuosa.
+  - No se añadió migración: `AuthTokens` y `AuthSessions` de V2 ya contienen el modelo requerido.
+  - La publicación posterior al commit mantiene la ventana sin outbox documentada para `8.7`.
+  - El primer intento focalizado no ejecutó integración porque Docker Desktop estaba detenido; tras
+    iniciarlo, 8 pruebas focalizadas pasaron.
+  - El primer `npm run verify` volvió a agotar el timeout al arrancar siete workers Vitest sin
+    ejecutar tests. Se fijó `maxWorkers = 2`; la suite web aislada y la ejecución integral final
+    pasaron.
+  - Evidencia final: `npm run verify` correcto con 22 tests frontend y 150 backend, cero fallos;
+    Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ, colas de verificación/recuperación y builds
+    Next.js/Spring Boot correctos.

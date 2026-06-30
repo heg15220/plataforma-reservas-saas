@@ -67,6 +67,8 @@ reserly:
       lifetime: ${RESERLY_SESSION_LIFETIME:12h}
     emailVerification:
       tokenLifetime: ${RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME:24h}
+    passwordReset:
+      tokenLifetime: ${RESERLY_PASSWORD_RESET_TOKEN_LIFETIME:30m}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   business-verification:

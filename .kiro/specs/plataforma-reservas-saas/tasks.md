@@ -51,7 +51,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.12. Implementar hashing seguro de contraseñas.
 - [x] 1.13. Implementar login y logout de locales.
 - [x] 1.14. Implementar verificación de email.
-- [ ] 1.15. Implementar recuperación de contraseña.
+- [x] 1.15. Implementar recuperación de contraseña.
 - [ ] 1.16. Añadir rate limiting a login, registro, recuperación y verificación empresarial.
 - [ ] 1.17. Implementar middleware de autorización por rol.
 - [ ] 1.18. Crear pantalla de registro de local con campos empresariales.
@@ -166,7 +166,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 ## 10. Fase 8 - Emails y enlace seguro de gestión
 
 - [ ] 8.1. Configurar proveedor de email transaccional.
-- [ ] 8.2. Crear plantillas ES/EN de verificación de email.
+- [ ] 8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña.
 - [ ] 8.3. Crear plantillas ES/EN de confirmación para usuario.
 - [ ] 8.4. Crear plantillas ES/EN de aviso de nueva reserva para local.
 - [ ] 8.5. Crear plantillas ES/EN de cancelación por usuario.

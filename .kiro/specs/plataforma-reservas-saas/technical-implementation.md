@@ -7764,6 +7764,306 @@ La tarea se considera completada porque:
 - el diff final se revisa;
 - el commit y push dejan la rama de Fase 1 alineada con remoto.
 
+## Iteración 1.15 - Recuperación segura de contraseña
+
+### Identificación y fecha
+
+- Tarea exacta: `1.15. Implementar recuperación de contraseña`.
+- Fecha de cierre: 2026-06-30.
+- Requisito funcional principal: `RF-008 Acceso y panel privado del local`.
+- Requisitos relacionados: `RNF-001`, `RNF-002`, `RNF-006`, `RNF-007`, `RNF-008`, `RNF-011` y
+  `RNF-013`.
+
+### Objetivo técnico
+
+Permitir que el titular de una cuenta de local sustituya una credencial perdida mediante un enlace
+de un solo uso sin convertir el endpoint en un oráculo de cuentas. El cierre debía garantizar:
+
+- solicitud pública con respuesta indistinguible;
+- token de alta entropía, finalidad y caducidad específicas;
+- almacenamiento exclusivo de SHA-256;
+- rotación serializada de enlaces anteriores;
+- consumo transaccional bajo lock;
+- nueva contraseña procesada por la política BCrypt común;
+- revocación global de sesiones después del cambio;
+- transporte asíncrono sensible posterior al commit.
+
+### Requisitos y especificación aclarados
+
+`RF-008` incorpora tres criterios verificables:
+
+- la solicitud no revela si el email existe, está suspendido o no admite recuperación;
+- un enlace válido reemplaza el hash y revoca sesiones anteriores;
+- enlace inválido, expirado, revocado o usado devuelve error genérico sin mutar credenciales.
+
+La tarea `8.2` se amplió para incluir la futura plantilla ES/EN de recuperación, evitando dejar un
+contrato AMQP sin artefacto de entrega planificado.
+
+### Archivos creados
+
+- `PasswordResetController`, `PasswordResetControllerImpl` y
+  `PasswordResetExceptionHandler`.
+- `ForgotPasswordRequest`, `ResetPasswordRequest` y `PasswordResetErrorResponse`.
+- `PasswordResetService`, `PasswordResetServiceImpl`, `PasswordResetProperties`,
+  `PasswordResetRequestedEvent` e `InvalidPasswordResetException`.
+- `PasswordResetMessagingTopology`, `PasswordResetMessagingConfiguration` y
+  `PasswordResetEventRelay`.
+- `PasswordResetIntegrationTests`, `PasswordResetPropertiesTests` y
+  `PasswordResetEventRelayTests`.
+- `docs/architecture/password-recovery.md`.
+
+### Archivos modificados
+
+- Las tres plantillas de entorno y `application.yaml`.
+- `UserDao`, `AuthSessionDao` y los `package-info` de servicio, controlador y mensajería.
+- `InfrastructureServicesIntegrationTests`.
+- `apps/web/vitest.config.mts`.
+- README de API, configuración y documentos de persistencia y mensajería.
+- Requisitos, diseño, tareas, seguimiento y este documento técnico.
+
+No se eliminó ningún archivo ni se creó migración.
+
+### Arquitectura del caso de uso
+
+La implementación replica deliberadamente las fronteras seguras de verificación de email, pero
+mantiene propósito, duración, cola y contrato separados:
+
+1. El controlador solo valida la forma HTTP.
+2. `PasswordResetServiceImpl` concentra elegibilidad, token, contraseña y transacción.
+3. `OneTimeTokenService` genera y hashea el secreto.
+4. `PasswordHashingService` es la única frontera BCrypt.
+5. `AuthTokenDao` bloquea y muta desafíos.
+6. `AuthSessionDao` invalida todas las sesiones.
+7. Un evento de aplicación conserva temporalmente el secreto.
+8. `PasswordResetEventRelay` lo publica después del commit.
+
+No se reutilizó el propósito `email_verification`: ambos flujos pueden coexistir y revocarse sin
+interferencia.
+
+### Configuración y criptografía
+
+`RESERLY_PASSWORD_RESET_TOKEN_LIFETIME` controla la vigencia absoluta:
+
+- valor predeterminado: `30m`;
+- mínimo: 10 minutos;
+- máximo: 24 horas.
+
+`PasswordResetProperties` valida el rango durante el arranque.
+
+El token usa `OneTimeTokenService`: 32 bytes de `SecureRandom`, 256 bits de entropía y 43 caracteres
+Base64 URL-safe sin relleno. PostgreSQL recibe únicamente SHA-256 hexadecimal de 64 caracteres.
+
+La nueva contraseña exige al menos 12 caracteres en el contrato funcional. La frontera
+criptográfica vuelve a comprobar no vacío y máximo de 72 bytes UTF-8, evitando el truncamiento
+silencioso de BCrypt con caracteres multibyte. El hash nuevo es BCrypt 2b, con sal aleatoria y coste
+configurado entre 12 y 16.
+
+### Modelo de datos, migraciones e índices
+
+No se añadió migración. V2 ya soporta el flujo.
+
+`"AuthTokens"` aporta:
+
+- `purpose = password_reset`;
+- hash único y restringido a SHA-256;
+- emisión y expiración coherentes;
+- consumo o revocación mutuamente excluyentes;
+- índice parcial por usuario, propósito y caducidad;
+- cascada al eliminar la cuenta.
+
+`"AuthSessions"` aporta `revokedAt` e índices parciales para sesiones no revocadas.
+
+`UserDao.findForPasswordReset` usa `PESSIMISTIC_WRITE`. Dos solicitudes concurrentes para el mismo
+email quedan serializadas: cada una revoca tokens activos antes de emitir el suyo, por lo que solo
+el último desafío permanece utilizable.
+
+`AuthTokenDao.findForConsumption` bloquea token y usuario. `revokeActiveByUserAndPurpose` rota
+solicitudes y `revokeOtherActiveTokens` cierra hermanos al completar.
+
+`AuthSessionDao.revokeActiveByUserId` actualiza toda sesión con `revokedAt is null`. También marca
+sesiones ya expiradas pero no revocadas para fallar cerrado si otra lectura futura olvidara filtrar
+la caducidad.
+
+### Endpoint `POST /api/auth/password/forgot`
+
+Entrada:
+
+```json
+{
+  "email": "local@example.com"
+}
+```
+
+Para cualquier email estructuralmente válido responde `202` sin cuerpo.
+
+Solo se emite si la cuenta:
+
+- existe;
+- tiene `accountType = venue_business`;
+- no está `disabled`.
+
+Una cuenta pendiente, activa o suspendida puede renovar la credencial. La respuesta no indica si se
+creó el desafío. Un email malformado recibe `400 PASSWORD_RESET_INVALID`.
+
+### Endpoint `POST /api/auth/password/reset`
+
+Entrada:
+
+```json
+{
+  "token": "43-caracteres-Base64-URL-safe",
+  "newPassword": "nueva-contraseña-segura"
+}
+```
+
+El servicio exige:
+
+- formato exacto del token;
+- propósito `password_reset`;
+- ausencia de `consumedAt` y `revokedAt`;
+- `expiresAt` estrictamente futuro;
+- cuenta de local no deshabilitada;
+- contraseña dentro de política.
+
+Una operación correcta responde `204`. Token inexistente, malformado, expirado, revocado, usado, de
+otro propósito, cuenta no admisible o contraseña no segura comparte
+`400 PASSWORD_RESET_INVALID`.
+
+### Flujo de solicitud
+
+1. Bean Validation comprueba el email.
+2. Se normaliza con `strip` y minúsculas.
+3. Se bloquea la cuenta si existe.
+4. Se aplica elegibilidad sin modificar su estado.
+5. Se revocan desafíos `password_reset` activos.
+6. Se genera secreto, hash, emisión y caducidad.
+7. Se persiste el token y se publica el evento de aplicación.
+8. Tras commit, el relay crea un mensaje JSON persistente.
+
+El mensaje contiene `eventId`, `userId`, email, locale, token y `expiresAt`. Usa:
+
+- exchange `reserly.jobs.v1`;
+- routing key `identity.password-reset.requested.v1`;
+- cola durable `reserly.identity.password-reset.v1`;
+- dead lettering compartido.
+
+Email y token nunca se registran.
+
+### Flujo de restablecimiento
+
+1. Se valida formato y política de contraseña.
+2. Se calcula SHA-256 y se bloquea token más usuario.
+3. Se comprueban estados finales, caducidad, propósito y elegibilidad.
+4. Se genera un hash BCrypt nuevo.
+5. Se actualizan `passwordHash` y `updatedAt`.
+6. El token se marca consumido.
+7. Se revocan desafíos hermanos.
+8. Se revocan todas las sesiones no revocadas.
+9. La transacción confirma todos los cambios conjuntamente.
+
+No se cambia `status`, `emailVerifiedAt`, email, roles, tipo de cuenta ni estado empresarial. Una
+cuenta suspendida conserva la suspensión. Una deshabilitada falla antes de modificar datos.
+
+### Seguridad, privacidad, permisos e i18n
+
+- La solicitud no enumera emails ni estados.
+- El token tiene 256 bits y una finalidad cerrada.
+- El secreto no aparece en respuestas, logs ni PostgreSQL.
+- La rotación invalida el enlace anterior.
+- El consumo es de un solo uso y usa lock pesimista.
+- La contraseña nunca se registra ni se incluye en eventos.
+- BCrypt usa sal y coste vigente.
+- Cambiar credencial cierra todas las sesiones.
+- La suspensión no se revoca implícitamente.
+- La cuenta deshabilitada falla cerrada.
+- El mensaje transporta `preferredLocale` para la plantilla ES/EN de `8.2`.
+- El rate limiting corresponde a `1.16`.
+
+### Errores, logs, auditoría y observabilidad
+
+`PASSWORD_RESET_INVALID` agrupa token, propósito, tiempo, estado y contraseña. El endpoint de
+solicitud no devuelve indicador de emisión.
+
+`AuthTokens.createdAt`, `expiresAt`, `consumedAt` y `revokedAt` conservan auditoría mínima. La cuenta
+actualiza `updatedAt` y las sesiones guardan el instante común de revocación.
+
+El relay registra solo `eventId` y excepción si RabbitMQ falla. No registra email, usuario, token ni
+payload. Métricas, almacenamiento de errores, outbox y reintentos operativos pertenecen a
+`8.7`–`8.8`.
+
+### Estabilización de Vitest
+
+La suite integral había fallado repetidamente antes de ejecutar tests porque Vitest intentaba abrir
+siete procesos jsdom simultáneos en un equipo con 10 GB de RAM. `apps/web/vitest.config.mts` fija
+`maxWorkers: 2`.
+
+La decisión sacrifica paralelismo máximo a cambio de eliminar el timeout de 60 segundos durante el
+handshake de workers. Los 22 tests web pasaron tanto aislados como dentro de `npm run verify`.
+
+### Pruebas
+
+`PasswordResetPropertiesTests` cubre valor válido, ausencia y ambos límites.
+
+`PasswordResetEventRelayTests` verifica exchange, routing key, JSON, `messageId`, persistencia y
+secreto exacto del destinatario.
+
+`PasswordResetIntegrationTests`, sobre PostgreSQL real, cubre:
+
+- rotación del desafío y respuesta genérica para email desconocido;
+- actualización BCrypt;
+- consumo y rechazo de reutilización;
+- revocación de hermanos y todas las sesiones;
+- token expirado, propósito incorrecto y formato inválido;
+- contraseña multibyte superior a 72 bytes;
+- cuenta suspendida sin reactivación;
+- cuenta deshabilitada sin emisión ni consumo;
+- payload débil o email malformado con error estable.
+
+`InfrastructureServicesIntegrationTests` exige la cola durable de recuperación sobre RabbitMQ real.
+
+### Comandos y evidencia
+
+- Compilación Java con Checkstyle y Spotless: correcta.
+- Suite focalizada final: 8 tests, cero fallos.
+- `npm run env:check`: correcto.
+- `npm run backend:conventions:check`: correcto.
+- `npm run spanish:text:check`: correcto.
+- `git diff --check`: correcto antes del cierre documental.
+- `npm run test:web` con dos workers: 22 tests, cero fallos.
+- `npm run verify`: correcto.
+- Suite integral: 22 tests frontend y 150 backend, cero fallos y cero errores.
+- Flyway validó V1–V8 sobre PostgreSQL 17/PostGIS.
+- Redis 8 y RabbitMQ 4 pasaron con Testcontainers.
+- Se verificaron colas de verificación de email y recuperación.
+- Next.js compiló sus rutas y Spring Boot generó el JAR.
+
+Incidencias resueltas:
+
+- Docker Desktop estaba detenido en el primer intento focalizado; se inició antes de repetir.
+- El primer intento integral sufrió el timeout conocido de siete workers Vitest sin ejecutar tests.
+- Se limitó Vitest a dos workers; la suite aislada y la integral pasaron.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Proveedor y plantillas ES/EN pertenecen a `8.1` y `8.2`.
+- Consumidor, outbox, entrega idempotente, reintentos y errores pertenecen a `8.7` y `8.8`.
+- Existe una ventana commit-publicación en la que puede perderse un trabajo.
+- RabbitMQ contiene temporalmente el secreto necesario; requiere TLS o red privada, permisos mínimos
+  y retención acotada.
+- El rate limiting se implementará en `1.16`.
+- No se aplican listas de contraseñas comprometidas ni historial de credenciales.
+- No hay métricas específicas de solicitud, éxito, fallo o caducidad.
+- No existe todavía pantalla de recuperación; corresponde a `1.20`–`1.21`.
+- Permanece la advertencia Mockito/Byte Buddy sobre carga dinámica futura.
+
+### Criterio de cierre
+
+La tarea queda completada porque la recuperación no enumera cuentas, emite tokens opacos con
+finalidad y vida acotadas, reemplaza la credencial mediante BCrypt dentro de una transacción,
+impide reutilización, preserva estados administrativos, revoca todas las sesiones y encamina la
+entrega sensible después del commit. Código, requisitos, diseño, tareas, configuración,
+documentación y pruebas están alineados; `npm run verify` pasa y la siguiente tarea es `1.16`.
+
 ## Iteración 1.14 - Verificación transaccional de email
 
 ### Identificación y fecha

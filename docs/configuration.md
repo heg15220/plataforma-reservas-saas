@@ -33,6 +33,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_PASSWORD_BCRYPT_STRENGTH`                      | API              | No      | Sí; entre 12 y 16          |
 | `RESERLY_SESSION_LIFETIME`                              | API              | No      | Sí; 5 minutos–30 días      |
 | `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME`             | API              | No      | Sí; 15 minutos–7 días      |
+| `RESERLY_PASSWORD_RESET_TOKEN_LIFETIME`                 | API              | No      | Sí; 10 minutos–24 horas    |
 | `RESERLY_DATABASE_NAME`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_PORT`                                 | Docker Compose   | No      | Sí                         |
 | `RESERLY_DATABASE_URL`                                  | API              | No      | Sí                         |
@@ -86,6 +87,9 @@ inicial es `12h`; no existe renovación deslizante hasta que el middleware priva
 `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME` controla la vigencia absoluta de cada desafío de
 verificación. El valor inicial es `24h`; debe permanecer entre 15 minutos y 7 días. Un reenvío
 revoca el desafío anterior en vez de prolongarlo.
+
+`RESERLY_PASSWORD_RESET_TOKEN_LIFETIME` controla el enlace de recuperación. El valor inicial es
+`30m`; debe permanecer entre 10 minutos y 24 horas. Una nueva solicitud revoca el enlace anterior.
 
 ## Reglas de seguridad
 

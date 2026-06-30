@@ -60,6 +60,10 @@ La verificación de email ya implementa ese consumo bajo bloqueo pesimista, rota
 activa únicamente cuentas que siguen en `pending_email_verification`. El contrato completo se
 documenta en `docs/architecture/email-verification.md`.
 
+La recuperación usa el mismo modelo con propósito `password_reset`, vigencia independiente y
+consumo bajo lock. Al completar el cambio revoca todas las sesiones de la cuenta. El contrato
+completo se documenta en `docs/architecture/password-recovery.md`.
+
 ## Privacidad y seguridad
 
 - No se guardan tokens ni contraseñas en claro.

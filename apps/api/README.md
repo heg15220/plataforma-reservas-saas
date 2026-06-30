@@ -24,8 +24,7 @@ El contexto `identity.persistence` contiene la base de cuentas autenticadas, rol
 
 Las contraseñas pasan exclusivamente por `PasswordHashingService`: BCrypt 2b con sal aleatoria,
 coste 12–16, límite de 72 bytes UTF-8, comparación fail-closed con hash dummy y detección de rehash
-para credenciales antiguas. Registro y login consumen esta frontera; recuperación deberá
-reutilizarla.
+para credenciales antiguas. Registro, login y recuperación consumen esta frontera.
 
 `POST /api/auth/login` crea una sesión revocable de local y entrega su secreto solo en cookie
 host-only `HttpOnly`, `SameSite=Strict` y `Secure` según entorno. PostgreSQL conserva SHA-256.
@@ -37,6 +36,11 @@ El registro crea además un desafío de verificación de email de 24 horas.
 `POST /api/auth/email/verification/request` rota el desafío con respuesta genérica. PostgreSQL
 conserva solo SHA-256 y el trabajo de entrega se publica en RabbitMQ después del commit. El contrato
 completo está en `docs/architecture/email-verification.md`.
+
+`POST /api/auth/password/forgot` crea o rota un desafío sin enumerar cuentas.
+`POST /api/auth/password/reset` consume el secreto, reemplaza el hash BCrypt y revoca todas las
+sesiones anteriores. El trabajo de entrega se publica en una cola RabbitMQ independiente después
+del commit. El contrato completo está en `docs/architecture/password-recovery.md`.
 
 El contexto `businessverification.persistence` contiene identidades fiscales, historial mínimo de comprobaciones y metadatos de documentos privados. No persiste respuestas remotas completas, binarios ni URLs públicas. Su contrato de privacidad, auditoría e integridad está documentado en `docs/architecture/business-verification-persistence.md`.
 

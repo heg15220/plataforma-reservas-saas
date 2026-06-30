@@ -47,4 +47,18 @@ public interface UserDao extends JpaRepository<UserEntity, UUID> {
       where user.emailNormalized = :emailNormalized
       """)
   Optional<UserEntity> findForEmailVerification(@Param("emailNormalized") String emailNormalized);
+
+  /**
+   * Serializa la rotación de recuperaciones para una cuenta identificada por email.
+   *
+   * <p>La respuesta pública nunca revela si la cuenta existe o admite recuperación.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select user
+      from UserEntity user
+      where user.emailNormalized = :emailNormalized
+      """)
+  Optional<UserEntity> findForPasswordReset(@Param("emailNormalized") String emailNormalized);
 }

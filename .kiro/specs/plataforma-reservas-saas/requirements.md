@@ -227,6 +227,12 @@ El local debe iniciar sesión y acceder a un panel privado.
 
 - WHEN el local introduce credenciales válidas, THEN accede a su panel.
 - WHEN las credenciales son inválidas, THEN se muestra error genérico sin revelar si el email existe.
+- WHEN un local solicita recuperar su contraseña, THEN la respuesta no revela si el email existe,
+  está suspendido o no admite recuperación.
+- WHEN consume un enlace de recuperación válido con una nueva contraseña segura, THEN el sistema
+  reemplaza el hash y revoca todas sus sesiones anteriores.
+- WHEN el enlace es inválido, expiró, fue revocado o ya se usó, THEN el sistema devuelve un error
+  genérico sin cambiar la credencial.
 - WHEN el local está autenticado, THEN puede acceder solo a sus propios datos.
 - WHEN el local usa móvil, THEN el panel muestra una versión simplificada con resumen, reservas, calendario y más.
 
