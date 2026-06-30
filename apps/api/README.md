@@ -36,6 +36,11 @@ host-only `HttpOnly`, `SameSite=Strict` y `Secure` según entorno. PostgreSQL co
 `POST /api/auth/logout` revoca por hash de forma idempotente y siempre elimina la cookie. El contrato
 completo está en `docs/architecture/authentication-sessions.md`.
 
+Spring Security valida esa cookie contra PostgreSQL en namespaces privados, construye un principal
+sin secreto y exige `venue_owner` en `/api/venue/me/**` o `admin` en `/api/admin/**`. Sesiones
+inválidas devuelven `401`; permisos insuficientes, `403`. No usa sesión HTTP, Basic ni formulario.
+El contrato completo está en `docs/architecture/role-authorization.md`.
+
 El registro crea además un desafío de verificación de email de 24 horas.
 `POST /api/auth/email/verify` lo consume una sola vez y activa la cuenta pendiente;
 `POST /api/auth/email/verification/request` rota el desafío con respuesta genérica. PostgreSQL

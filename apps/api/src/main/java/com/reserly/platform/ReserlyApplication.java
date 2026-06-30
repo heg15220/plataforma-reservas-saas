@@ -3,6 +3,7 @@ package com.reserly.platform;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 
 /**
  * Punto de entrada del monolito modular de Reserly.
@@ -11,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
  * contexto de negocio vive en un paquete hijo y deberá publicar interfaces explícitas para
  * colaborar con otros contextos.
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 @ConfigurationPropertiesScan
 public class ReserlyApplication {
 

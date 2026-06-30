@@ -1797,7 +1797,28 @@ sensible falla cerrada con `503 RATE_LIMIT_UNAVAILABLE`. El servidor usa la dire
 observada y no confía directamente en `X-Forwarded-For`; el proxy de producción debe sanear y
 normalizar cabeceras de origen.
 
-### 8.10 Comprobar elegibilidad de reseña desde ficha
+### 8.10 Autenticación de sesión y autorización por rol
+
+Spring Security opera sin `HttpSession`, Basic ni formulario. Para `/api/venue/me` y descendientes,
+el filtro exige una única cookie `reserly_session`, valida formato, consulta su SHA-256 contra una
+sesión no revocada y no expirada, y carga cuenta y roles desde PostgreSQL. El principal contiene
+`userId`, `sessionId`, `accountType`, locale y roles, nunca el secreto.
+
+Una cuenta `active` puede autenticarse; una cuenta `venue_business` pendiente de email puede entrar
+para completar configuración sin adquirir capacidad de publicación. Observar una sesión de una
+cuenta suspendida o deshabilitada la revoca. Los roles se leen en cada petición para que retirar una
+concesión tenga efecto inmediato.
+
+`/api/venue/me` y `/api/venue/me/**` exigen `venue_owner`; `/api/admin` y `/api/admin/**` exigen
+`admin`. `account_type` no concede permisos por sí mismo y `employee_user` no obtiene acceso global
+al namespace propietario. Sesión ausente o no admisible produce `401 AUTHENTICATION_REQUIRED`;
+sesión válida sin rol produce `403 AUTHORIZATION_DENIED`, sin publicar roles ni estado interno.
+
+`lastSeenAt` se actualiza como máximo cada cinco minutos por defecto, con un update condicionado que
+no modifica la caducidad absoluta. CORS admite credenciales solo desde `allowedOrigins`, con
+métodos y cabeceras cerrados. CSRF permanece explícitamente pendiente de `16.3`.
+
+### 8.11 Comprobar elegibilidad de reseña desde ficha
 
 Request:
 
@@ -1830,7 +1851,7 @@ Response no elegible:
 
 Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
 
-### 8.11 Crear reseña desde ficha
+### 8.12 Crear reseña desde ficha
 
 Request:
 

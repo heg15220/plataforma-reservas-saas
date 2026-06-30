@@ -50,10 +50,10 @@ Nombre estable: `reserly_session`.
 - `Secure` según `RESERLY_SECURE_COOKIES`, obligatorio en staging/producción;
 - `Max-Age` igual a `RESERLY_SESSION_LIFETIME`, 12 horas por defecto.
 
-La tarea no implementa autenticación de rutas privadas ni CSRF. El middleware de 1.17 deberá
-hashear la cookie, exigir sesión no revocada/no expirada y usuario operativo, y actualizar
-`lastSeenAt` con una frecuencia acotada. La tarea 16.3 añadirá la defensa CSRF apropiada para
-operaciones con cookie.
+El middleware de `1.17` hashea la cookie, exige sesión no revocada/no expirada y cuenta operativa,
+carga roles explícitos y actualiza `lastSeenAt` con frecuencia acotada. Protege los namespaces de
+local y administración según `docs/architecture/role-authorization.md`. La tarea `16.3` añadirá la
+defensa CSRF apropiada para operaciones con cookie.
 
 ## Logout y persistencia
 
@@ -67,13 +67,14 @@ transacción de login haya completado; si persistir la sesión falla, no se emit
 
 ## Configuración
 
-`SessionProperties` valida una duración absoluta entre 5 minutos y 30 días. No existe renovación
-deslizante en esta tarea. Aumentar la duración amplía exposición ante robo de cookie; reducirla
-afecta experiencia y debe coordinarse con el panel.
+`SessionProperties` valida una duración absoluta entre 5 minutos y 30 días y un intervalo de
+escritura de actividad entre 1 minuto y 1 hora. No existe renovación deslizante. Aumentar la
+duración amplía exposición ante robo de cookie; reducirla afecta experiencia y debe coordinarse con
+el panel.
 
 ## Verificación
 
 Las pruebas unitarias cubren entropía/formato, hash estable, rechazo de cookies no acotadas,
-duración y atributos de cookie por entorno. La integración PostgreSQL cubre login, error uniforme,
-cuentas pendientes, bloqueo por estado/tipo, rehash, secreto no persistido, logout repetido y
-payload inválido.
+duración, frecuencia de actividad y atributos de cookie por entorno. La integración PostgreSQL
+cubre login, error uniforme, cuentas pendientes, bloqueo por estado/tipo, rehash, secreto no
+persistido, logout repetido, autorización por roles y payload inválido.

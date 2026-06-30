@@ -2023,3 +2023,58 @@ Fuente de verdad del avance:
     enrutamiento de endpoints, `Retry-After` y bloqueo previo del proveedor.
   - Evidencia final: `npm run verify` correcto con 22 tests frontend y 156 backend, cero fallos;
     Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.
+
+## Conversación 45 - Middleware de autorización por rol
+
+- Fecha: 2026-06-30.
+- Resumen de la conversación:
+  - Se inició `1.17` incorporando Spring Security stateless sobre la cookie opaca ya existente.
+  - Se implementó resolución de sesión vigente, carga de roles desde PostgreSQL, principal
+    inmutable, revocación al observar cuentas bloqueadas y actualización acotada de `lastSeenAt`.
+  - Se definieron `venue_owner` para `/api/venue/me/**` y `admin` para `/api/admin/**`, con errores
+    JSON uniformes `401` y `403`.
+  - Se añadió CORS con credenciales limitado a `allowedOrigins`, métodos y cabeceras cerrados.
+  - La primera prueba no incorporaba la cadena Security al `MockMvc` manual; tras conectarla con el
+    soporte oficial, 13 pruebas focalizadas pasaron.
+  - Al retomar, se añadió CORS estricto para credenciales, se excluyó la cuenta aleatoria de Spring
+    Boot, se verificaron límites exactos de namespace y se completó la suite integral.
+- Archivos modificados:
+  - `.env.local.example`, `.env.staging.example` y `.env.production.example`.
+  - `apps/api/pom.xml`, `ReserlyApplication`, `AuthSessionDao`, `UserRoleDao`,
+    `SessionProperties`, `application.yaml` y pruebas de propiedades/cookie.
+  - Nuevo paquete `apps/api/src/main/java/com/reserly/platform/identity/security`.
+  - Nueva integración `RoleAuthorizationIntegrationTests`.
+  - `apps/api/README.md`, `docs/configuration.md`,
+    `docs/architecture/authentication-sessions.md` y
+    `docs/architecture/role-authorization.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md` y
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`,
+    `.kiro/specs/plataforma-reservas-saas/tasks.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-030 Administración de plataforma`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+- Tareas impactadas:
+  - `1.17. Implementar middleware de autorización por rol`.
+  - Prepara `1.19`, `2.4`, `2.12`, `9.1`, `14.1` y `16.3`.
+- Tareas completadas:
+  - `1.17. Implementar middleware de autorización por rol`.
+- Siguiente tarea pendiente recomendada:
+  - `1.18. Crear pantalla de registro de local con campos empresariales`.
+- Decisiones o aclaraciones relevantes:
+  - `account_type` no concede permisos; la autorización depende de `UserRoles`.
+  - `employee_user` no recibe acceso global al namespace propietario.
+  - La sesión sigue teniendo caducidad absoluta; `lastSeenAt` no renueva `expiresAt`.
+  - CSRF permanece pendiente de `16.3`.
+  - No se añadió migración: V2 ya contiene sesiones, usuarios, roles y asignaciones requeridas.
+  - La primera repetición tras la pausa encontró Docker Desktop detenido; se arrancó y Testcontainers
+    continuó sobre infraestructura real.
+  - Una aserción comparaba un instante Java con el redondeo microsegundo de PostgreSQL; se corrigió
+    para comprobar la invariancia real de `expiresAt` antes y después de la petición.
+  - Evidencia focalizada final: 14 pruebas correctas, con 9 casos de integración de seguridad.
+  - Evidencia final: `npm run verify` correcto con 22 tests frontend y 166 backend, cero fallos;
+    Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.

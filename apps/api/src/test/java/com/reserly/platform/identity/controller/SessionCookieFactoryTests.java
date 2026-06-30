@@ -14,7 +14,7 @@ import org.springframework.http.ResponseCookie;
 class SessionCookieFactoryTests {
 
   private static final SessionProperties SESSION_PROPERTIES =
-      new SessionProperties(Duration.ofHours(12));
+      new SessionProperties(Duration.ofHours(12), Duration.ofMinutes(5));
 
   @Test
   void createsHostOnlyHttpOnlyStrictCookieAndUsesEnvironmentSecureFlag() {

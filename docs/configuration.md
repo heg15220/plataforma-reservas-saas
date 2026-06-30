@@ -32,6 +32,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 | `RESERLY_REAL_PAYMENTS_ENABLED`                         | API              | No      | Sí; debe ser `false`       |
 | `RESERLY_PASSWORD_BCRYPT_STRENGTH`                      | API              | No      | Sí; entre 12 y 16          |
 | `RESERLY_SESSION_LIFETIME`                              | API              | No      | Sí; 5 minutos–30 días      |
+| `RESERLY_SESSION_ACTIVITY_UPDATE_INTERVAL`              | API              | No      | Sí; 1 minuto–1 hora        |
 | `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME`             | API              | No      | Sí; 15 minutos–7 días      |
 | `RESERLY_PASSWORD_RESET_TOKEN_LIFETIME`                 | API              | No      | Sí; 10 minutos–24 horas    |
 | `RESERLY_RATE_LIMIT_ENABLED`                            | API              | No      | Sí; `true` fuera de test   |
@@ -92,8 +93,11 @@ los hashes existentes con coste inferior se actualizarán tras un login correcto
 registrar la contraseña.
 
 `RESERLY_SESSION_LIFETIME` controla la vigencia absoluta de la cookie y la fila revocable. El valor
-inicial es `12h`; no existe renovación deslizante hasta que el middleware privado gestione
-`lastSeenAt`.
+inicial es `12h` y no existe renovación deslizante.
+
+`RESERLY_SESSION_ACTIVITY_UPDATE_INTERVAL` controla la frecuencia mínima con la que el middleware
+privado escribe `lastSeenAt`. El valor inicial es `5m`; debe permanecer entre un minuto y una hora.
+No cambia `expiresAt`.
 
 `RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME` controla la vigencia absoluta de cada desafío de
 verificación. El valor inicial es `24h`; debe permanecer entre 15 minutos y 7 días. Un reenvío

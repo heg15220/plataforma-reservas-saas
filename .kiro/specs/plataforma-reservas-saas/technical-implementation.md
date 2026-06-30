@@ -8609,3 +8609,328 @@ configurable y atómica; los discriminadores están minimizados; los contratos d
 son seguros; la verificación empresarial respeta idempotencia y se detiene antes del proveedor; la
 implementación, configuración y operación están documentadas; y pruebas focalizadas e integrales
 pasan. La siguiente tarea pendiente es `1.17`.
+
+## Iteración 1.17 - Autenticación de sesión y autorización por roles
+
+### Identificación y fecha
+
+- Tarea exacta: `1.17. Implementar middleware de autorización por rol`.
+- Fecha de implementación, reanudación y verificación: 2026-06-30.
+- Estado final: completada y verificada.
+
+### Objetivo técnico
+
+Convertir la sesión opaca creada en `1.13` en una identidad utilizable de forma segura por los
+controladores privados y establecer una frontera central de autorización por roles para locales y
+administración. La solución debía comprobar revocación y caducidad en PostgreSQL, aplicar cambios de
+estado o rol sin demora, no crear una segunda sesión de framework, no exponer el secreto al código
+de negocio y distinguir autenticación ausente de permisos insuficientes mediante contratos REST
+estables.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-008 Acceso y panel privado del local`: un local autenticado solo puede entrar en su panel y
+  operar sobre su ámbito.
+- `RF-030 Administración de plataforma`: el acceso administrativo necesita una barrera separada.
+- `RNF-001 Seguridad`: el acceso se protege por roles `anonymous`, local y admin.
+- `RNF-002 Privacidad`: token, email, roles y estados internos no se publican en errores ni logs.
+- `RNF-006 Disponibilidad operativa`: sesión y permisos tienen una única fuente de verdad
+  transaccional y fallan cerrados si la consulta no puede completarse.
+- `RNF-011 Convenciones backend`: servicios con interfaz, DAOs con `@Query`, DTO/principal
+  documentado y JPA por propiedades.
+- El diseño existente establece que `account_type` clasifica la cuenta pero no concede permisos.
+- La sesión de `1.13` usa un secreto CSPRNG de 256 bits y persiste solo SHA-256 en `AuthSessions`.
+- La protección CSRF completa continúa asignada a `16.3`.
+
+Se seleccionó Spring Security porque aporta una cadena probada de filtros, contexto de seguridad,
+semántica 401/403 y autorización declarativa. No se reutiliza `HttpSession`: la cookie opaca y
+PostgreSQL siguen siendo la credencial y la fuente de verdad. La lectura de roles se hace en cada
+petición privada para que una retirada administrativa tenga efecto inmediato.
+
+### Archivos creados
+
+- `apps/api/src/main/java/com/reserly/platform/identity/security/AuthenticatedAccount.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/SessionAuthenticationService.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/SessionAuthenticationServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/SessionAuthenticationFilter.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/RestAuthenticationEntryPoint.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/RestAccessDeniedHandler.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/SecurityConfiguration.java`.
+- `apps/api/src/main/java/com/reserly/platform/identity/security/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/identity/security/RoleAuthorizationIntegrationTests.java`.
+- `docs/architecture/role-authorization.md`.
+
+### Archivos modificados
+
+- `.env.local.example`, `.env.staging.example` y `.env.production.example`.
+- `apps/api/pom.xml`.
+- `ReserlyApplication`.
+- `AuthSessionDao` y `UserRoleDao`.
+- `SessionProperties` y `application.yaml`.
+- `SessionCookieFactoryTests` y `SessionPropertiesTests`.
+- `apps/api/README.md`, `docs/configuration.md` y
+  `docs/architecture/authentication-sessions.md`.
+- `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+
+No se eliminó código funcional. Se retiró durante la iteración un record de error que quedó
+innecesario porque los handlers de filtro escriben contratos JSON constantes sin serializar objetos.
+
+### Dependencias y configuración de framework
+
+`spring-security-crypto` se sustituyó por `spring-boot-starter-security`; el starter conserva BCrypt
+y añade configuración/web. `spring-security-test` se incorporó solo en scope test para instalar la
+cadena real en `MockMvc`.
+
+`ReserlyApplication` excluye `UserDetailsServiceAutoConfiguration`. Sin esa exclusión, Spring Boot
+creaba y anunciaba una contraseña aleatoria de desarrollo aunque Basic y formulario estuvieran
+desactivados. Reserly no admite esa identidad paralela y solo autentica su modelo persistido.
+
+La cadena:
+
+- usa `SessionCreationPolicy.STATELESS`;
+- desactiva HTTP Basic;
+- desactiva form login;
+- desactiva el logout de Spring, porque `/api/auth/logout` revoca la sesión propia;
+- desactiva request cache y redirecciones;
+- mantiene CSRF explícitamente desactivado hasta `16.3`;
+- activa CORS con la configuración exacta de `allowedOrigins`;
+- instala `SessionAuthenticationFilter` antes de `UsernamePasswordAuthenticationFilter`;
+- permite el resto de rutas salvo namespaces privados declarados.
+
+### Modelo de datos, consultas y ausencia de migración
+
+No fue necesaria una migración. V2 ya contiene:
+
+- `AuthSessions.tokenHash`, `expiresAt`, `revokedAt` y `lastSeenAt`;
+- `Users.status`, `accountType` y `preferredLocale`;
+- catálogo `Roles`;
+- asignaciones únicas `UserRoles`.
+
+`AuthSessionDao.findActiveForAuthentication` usa JPQL explícito y `join fetch` de usuario. Exige
+simultáneamente:
+
+- hash exacto;
+- `revokedAt IS NULL`;
+- `expiresAt > now`.
+
+`UserRoleDao.findRoleCodesByUserId` selecciona solo códigos y los ordena, evitando cargar entidades
+completas. `AuthSessionDao.touchActiveSession` actualiza `lastSeenAt` únicamente si:
+
+- pasó el intervalo configurado;
+- la sesión aún no fue revocada;
+- la sesión aún no expiró.
+
+El update no cambia `expiresAt`; por tanto, la sesión conserva caducidad absoluta y no se convierte
+en una sesión deslizante.
+
+### Principal y authorities
+
+`AuthenticatedAccount` es un record inmutable con:
+
+- `userId`;
+- `sessionId`;
+- `accountType`;
+- `preferredLocale`;
+- copia inmutable de roles.
+
+No contiene email, hash ni token. `SessionAuthenticationFilter` convierte cada código persistido en
+una authority `ROLE_<CÓDIGO_MAYÚSCULAS>` con `Locale.ROOT`. Los controladores futuros pueden recibir
+el principal mediante `@AuthenticationPrincipal` y deben derivar el actor desde `userId`, nunca
+aceptar el propietario desde un payload.
+
+### Políticas de sesión y cuenta
+
+Una credencial debe aparecer en una única cookie `reserly_session`. La ausencia, duplicación,
+formato no acotado, hash desconocido, revocación o expiración produce contexto anónimo sin revelar
+la causa.
+
+Pueden autenticarse:
+
+- cuentas `active`;
+- cuentas `venue_business` en `pending_email_verification`, para completar configuración.
+
+Una cuenta suspendida o deshabilitada no puede reutilizar una sesión anterior. Al observarla, el
+servicio revoca idempotentemente el hash de esa sesión. Una cuenta admin pendiente no recibe la
+excepción permitida a locales pendientes.
+
+`RESERLY_SESSION_ACTIVITY_UPDATE_INTERVAL` vale cinco minutos por defecto y se valida entre un
+minuto y una hora. Evita una escritura por petición sin relajar revocación, expiración o lectura de
+roles.
+
+### Autorización por namespace
+
+La política central exige:
+
+- `venue_owner` para `/api/venue/me` y `/api/venue/me/**`;
+- `admin` para `/api/admin` y `/api/admin/**`.
+
+Los matchers incluyen la raíz y descendientes. El filtro comprueba segmentos completos, de modo que
+`/api/venue/mechanical` no se interpreta como ruta privada por coincidencia textual. `account_type`
+no concede acceso sin una fila `UserRoles`.
+
+`employee_user` no hereda todo el namespace del propietario. Permitirlo globalmente daría acceso a
+perfil, pagos, reglas e incidencias. Sus permisos se diseñarán por operación cuando exista el flujo
+de empleados.
+
+La tarea protege el namespace, pero no sustituye ownership dentro de cada caso de uso. Los futuros
+servicios deben filtrar recursos por `userId`/cuenta empresarial y no aceptar IDs de otro local.
+
+### Contratos HTTP y flujos
+
+#### Sin sesión admisible
+
+1. La petición entra por un namespace privado.
+2. El filtro no encuentra una única cookie válida o el servicio devuelve vacío.
+3. Spring instala autenticación anónima.
+4. La regla de rol no se satisface.
+5. `RestAuthenticationEntryPoint` devuelve `401` y:
+
+```json
+{"error":"AUTHENTICATION_REQUIRED"}
+```
+
+#### Sesión válida sin rol
+
+1. Se valida sesión y cuenta.
+2. Se cargan las concesiones actuales.
+3. Se instala un principal autenticado.
+4. La authority requerida no existe.
+5. `RestAccessDeniedHandler` devuelve `403` y:
+
+```json
+{"error":"AUTHORIZATION_DENIED"}
+```
+
+Ninguna respuesta publica el rol esperado, roles actuales, estado de cuenta, sesión o email.
+
+#### Sesión y rol válidos
+
+1. El filtro valida y construye el principal.
+2. Spring autoriza el namespace.
+3. El controlador recibe `AuthenticatedAccount`.
+4. `lastSeenAt` se actualiza solo si venció el umbral.
+5. `expiresAt` permanece intacto.
+
+### CORS
+
+`CorsConfigurationSource` registra `/api/**` y:
+
+- obtiene orígenes exactos de `ReserlyProperties.allowedOrigins`;
+- permite credenciales;
+- permite `GET`, `POST`, `PUT`, `PATCH`, `DELETE` y `OPTIONS`;
+- acepta solo `Accept`, `Accept-Language`, `Content-Type` y `X-CSRF-Token`;
+- cachea preflight 3.600 segundos.
+
+El origen no configurado recibe `403` antes de autenticación. No se usan comodines con
+credenciales. `X-CSRF-Token` queda preparado, pero no activo, para `16.3`.
+
+### Seguridad, privacidad e internacionalización
+
+- El token se valida antes de hashear y nunca se registra.
+- PostgreSQL recibe únicamente SHA-256.
+- La sesión se consulta solo para rutas privadas, reduciendo carga y exposición.
+- Cookies duplicadas fallan cerradas para evitar ambigüedad entre proxy, navegador y servlet.
+- Roles se consultan en cada petición y no se confía en claims del cliente.
+- Suspensión/deshabilitación revoca la sesión observada.
+- El principal minimiza datos.
+- Errores 401/403 no contienen textos humanos ni detalles; sus códigos se localizarán en `1.21`.
+- CORS usa orígenes exactos y credenciales solo en la lista aprobada.
+- CSRF continúa como deuda explícita; `SameSite=Strict` y CORS no lo sustituyen.
+
+### Errores, logs, auditoría y observabilidad
+
+No se añadieron logs por credencial, usuario o rol. Las denegaciones se expresan con códigos
+estables y sin exception message. Los errores inesperados de PostgreSQL no se convierten en
+autenticación anónima: la petición falla cerrada como error servidor.
+
+La revocación por cuenta bloqueada modifica `revokedAt`, que constituye evidencia persistente
+mínima de invalidación. La auditoría del cambio administrativo que suspendió la cuenta corresponde a
+los casos admin posteriores. Métricas agregadas de 401, 403, validación de sesión y latencia
+pertenecen a la Fase 17 y nunca deberán etiquetarse con user/session ID.
+
+### Tests añadidos y modificados
+
+`RoleAuthorizationIntegrationTests` instala la cadena real mediante `spring-security-test` y prueba
+contra PostgreSQL/PostGIS Testcontainers:
+
+- namespace público accesible de forma anónima;
+- prefijo parecido pero no protegido (`/api/venue/mechanical`);
+- preflight permitido para origen configurado;
+- preflight rechazado para origen externo;
+- cookie ausente, malformada y desconocida con el mismo 401;
+- sesión expirada, revocada y cookies duplicadas con el mismo 401;
+- `venue_owner` autorizado y principal correcto;
+- actualización de `lastSeenAt`;
+- invariancia de `expiresAt`;
+- local pendiente de email autorizado en su namespace;
+- local denegado en admin;
+- admin autorizado solo por rol explícito;
+- admin denegado en namespace propietario;
+- cuenta activa sin rol autenticada pero denegada con 403;
+- cuenta suspendida rechazada y sesión revocada.
+
+`SessionPropertiesTests` cubre límites de duración absoluta e intervalo de actividad.
+`SessionCookieFactoryTests` se adaptó al contrato ampliado sin cambiar atributos de cookie.
+
+### Comandos y evidencia de verificación
+
+1. `mvn -f apps/api/pom.xml test "-Dspring.profiles.active=test" -DskipTests`
+   - 230 fuentes principales y 50 fuentes de test compiladas.
+   - Checkstyle y Spotless correctos.
+2. `mvn -f apps/api/pom.xml test "-Dspring.profiles.active=test"
+   "-Dtest=RoleAuthorizationIntegrationTests,SessionPropertiesTests,SessionCookieFactoryTests"`
+   - 14 pruebas focalizadas correctas.
+   - 9 casos pertenecen a la integración de autorización con PostgreSQL real.
+3. `npm run env:check`
+   - las tres plantillas contienen la nueva variable y mantienen paridad.
+4. `npm run backend:conventions:check`
+   - servicios, DAOs y capas válidos.
+5. `npm run spanish:text:check`
+   - UTF-8 y calidad de español correctos.
+6. `npm run format:check:web` y `git diff --check`
+   - Prettier y whitespace correctos.
+7. `npm run verify`
+   - CI, configuración, i18n, español, convenciones, ESLint, Checkstyle, Spotless, TypeScript y
+     Prettier correctos;
+   - 7 archivos y 22 tests frontend correctos;
+   - 166 tests backend correctos, sin fallos, errores u omitidos;
+   - Flyway V1–V8 validado sobre PostgreSQL/PostGIS;
+   - Redis y RabbitMQ reales verificados;
+   - build Next.js y JAR Spring Boot correctos.
+
+### Incidencias encontradas y resolución
+
+- El primer `MockMvc` focalizado se construyó sin el configurador de Spring Security. Los
+  controladores de sonda recibían principal nulo porque la cadena no se ejecutaba. Se añadió
+  `spring-security-test` y `springSecurity()`; después los 13 casos existentes pasaron.
+- La ejecución quedó temporalmente bloqueada por la cuota operativa del entorno. La tarea permaneció
+  `[ ]`, sin commit ni push, hasta reanudar.
+- La primera repetición tras reanudar encontró Docker Desktop detenido. Se arrancó en segundo plano
+  y se comprobó disponibilidad antes de Testcontainers.
+- Al añadir CORS y el caso de invariancia temporal, PostgreSQL redondeó un instante a microsegundos
+  con diferencia de 1 μs frente a Java. La prueba se corrigió para comparar el valor persistido
+  antes y después, que verifica la invariante real sin asumir estrategia de redondeo.
+- La siguiente ejecución focalizada pasó 14/14 y la integral pasó 166/166 backend.
+
+### Riesgos, limitaciones y deuda técnica
+
+- CSRF está desactivado hasta `16.3`; CORS, `SameSite=Strict` y `Secure` son capas complementarias,
+  no equivalentes.
+- Cada petición privada consulta sesión y roles. Es correcto para revocación inmediata, pero deberá
+  medirse antes de introducir caché.
+- `venue_owner` protege el namespace; cada servicio aún debe imponer pertenencia del recurso.
+- El acceso de `employee_user` requiere permisos más finos y no está habilitado.
+- La autenticación admin y su pantalla se implementarán en `14.1`; la barrera ya está preparada.
+- Una cookie robada sigue siendo válida hasta revocación o expiración; no se implementó rotación ni
+  fingerprinting en esta tarea.
+- La política CORS debe mantenerse sincronizada con despliegues y no aceptar comodines.
+- No hay todavía métricas o auditoría visible de denegaciones.
+- Permanece la advertencia futura de Mockito/Byte Buddy sobre carga dinámica del agente.
+
+### Criterio de cierre
+
+La tarea queda completada porque los namespaces privados exigen sesiones opacas vigentes y roles
+persistidos explícitos; revocación, expiración, estado y permisos se comprueban contra PostgreSQL;
+el principal minimiza datos; 401/403 y CORS tienen contratos seguros; la actividad no renueva la
+sesión; no existe identidad paralela de Spring Boot; la arquitectura y operación están documentadas;
+y las pruebas focalizadas e integrales pasan. La siguiente tarea pendiente es `1.18`.
