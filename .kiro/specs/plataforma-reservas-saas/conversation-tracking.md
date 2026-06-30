@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-29
-- Tareas completadas en `tasks.md`: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3`, `1.4`, `1.5`, `1.6`, `1.7`, `1.8` y `1.9`.
-- Siguiente tarea pendiente recomendada: `1.10. Implementar subida privada de alta censal 036/037, certificado censal, licencia de actividad/apertura o documento equivalente.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. Toda transición automática a `pending_review` genera ya una solicitud documental idempotente, con motivo y tipos derivados por servidor. V7 no almacena ficheros ni URLs; la subida privada comienza en `1.10`.
+- Fecha de última actualización: 2026-06-30
+- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.18`.
+- Siguiente tarea pendiente recomendada: `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes.`
+- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. El registro empresarial ya dispone de contrato backend, controles de seguridad y pantalla pública responsive; el perfil comercial del local continúa reservado para la Fase 2.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -2077,4 +2077,64 @@ Fuente de verdad del avance:
     para comprobar la invariancia real de `expiresAt` antes y después de la petición.
   - Evidencia focalizada final: 14 pruebas correctas, con 9 casos de integración de seguridad.
   - Evidencia final: `npm run verify` correcto con 22 tests frontend y 166 backend, cero fallos;
+    Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.
+
+## Conversación 46 - Pantalla pública de registro empresarial
+
+- Fecha: 2026-06-30.
+- Resumen de la conversación:
+  - Se implementó la ruta pública `/locales/registro` con composición responsive, explicación del
+    proceso y formulario de cuenta e identidad empresarial.
+  - El formulario envía exactamente el contrato existente de `POST /api/auth/venues/register`:
+    email, contraseña, locale, país fiscal, razón social, identificador, dirección registral
+    opcional y consentimiento legal.
+  - Se añadieron validación contextual, límite BCrypt por caracteres y bytes, foco en el primer
+    error, mostrar/ocultar contraseña, bloqueo durante el envío, cancelación al desmontar y estados
+    genéricos de conflicto, petición inválida, rate limit e indisponibilidad.
+  - El éxito informa de la verificación de email y del bloqueo de publicación hasta aprobar también
+    el negocio, sin fingir que el perfil `Venue` exista todavía.
+  - Se corrigió el enlace global de acceso para usar la ruta especificada `/locales/acceso`.
+  - Se validó visualmente la pantalla a 1265 px y 390 px: una cuadrícula de dos columnas pasa a una
+    columna, no existe overflow horizontal, el idioma del documento es `es`, el título es
+    `Registro de local | Reserly` y los landmarks/nombres accesibles están presentes.
+- Archivos modificados:
+  - `apps/web/src/app/locales/registro/page.tsx`.
+  - `apps/web/src/features/venue-registration/venue-registration-form.tsx`.
+  - `apps/web/src/features/venue-registration/venue-registration-schema.ts`.
+  - `apps/web/src/features/venue-registration/venue-registration-api.ts`.
+  - Tests unitarios y de componente de los tres módulos anteriores.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `apps/web/src/components/layout/public-shell.tsx` y
+    `apps/web/src/components/layout/layout-system.test.tsx`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+    `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-005 Usabilidad y responsive`.
+  - `RNF-007 Compatibilidad e internacionalización`.
+- Tareas impactadas:
+  - `1.18. Crear pantalla de registro de local con campos empresariales`.
+  - Prepara `1.19`, `1.20`, `1.21`, `1.22` y el perfil de local de la Fase 2.
+- Tareas completadas:
+  - `1.18. Crear pantalla de registro de local con campos empresariales`.
+- Siguiente tarea pendiente recomendada:
+  - `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes`.
+- Decisiones o aclaraciones relevantes:
+  - La Fase 1 no solicita nombre comercial, categoría, imagen, descripción u horarios porque el
+    modelo `Venue` se crea en la Fase 2. La pantalla lo comunica y no descarta esos requisitos.
+  - La validación cliente es de usabilidad; formato fiscal, normalización, control, unicidad y
+    verificación remota siguen siendo autoridad exclusiva del backend.
+  - Un `409` nunca indica si colisionó el email o el identificador fiscal.
+  - No se persisten credenciales ni datos fiscales en almacenamiento del navegador y no se
+    registran payloads.
+  - Los textos imprescindibles de esta pantalla se incorporan ya en ES/EN para cumplir la
+    infraestructura i18n; `1.21` conserva el alcance transversal de login, errores y estados.
+  - No se añadió migración ni se modificó el backend.
+  - Evidencia focalizada: 13 tests nuevos correctos.
+  - Evidencia integral: `npm run verify` correcto con 35 tests frontend y 166 backend, cero fallos;
     Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.

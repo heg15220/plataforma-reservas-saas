@@ -80,7 +80,7 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
             </Box>
             <Button
               component={NavigationLink}
-              href="/acceso-local"
+              href="/locales/acceso"
               size="small"
               sx={{ ml: { xs: "auto", md: 2 } }}
               variant="outlined"

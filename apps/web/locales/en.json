@@ -116,6 +116,100 @@
     "description": "Responsive platform for discovering and managing bookings.",
     "title": "Reserly"
   },
+  "VenueRegistration": {
+    "actions": {
+      "goToAccess": "Go to venue access",
+      "hidePassword": "Hide password",
+      "showPassword": "Show password",
+      "submit": "Create venue account",
+      "submitting": "Creating account"
+    },
+    "errors": {
+      "fields": {
+        "country": "Enter a two-letter ISO country code.",
+        "email": "Enter a valid email address.",
+        "legalTerms": "You must accept the terms and privacy policy.",
+        "passwordBytes": "The password is too long because of the characters it contains.",
+        "passwordLength": "Use between 12 and 72 characters.",
+        "required": "This field is required.",
+        "tooLong": "The content exceeds the allowed length."
+      },
+      "submission": {
+        "conflict": "We could not complete registration with these details. Review the information or contact support.",
+        "invalid": "Some details are invalid. Review them before trying again.",
+        "rateLimited": "There have been too many attempts. Wait a few minutes before trying again.",
+        "unavailable": "We could not connect to the service. Try again in a few minutes."
+      }
+    },
+    "fields": {
+      "email": {
+        "helper": "You will use it to sign in and verify your account.",
+        "label": "Email address"
+      },
+      "legalName": {
+        "helper": "Legal name of the company or professional.",
+        "label": "Legal business name"
+      },
+      "legalTerms": {
+        "label": "I accept the <terms>terms of service</terms> and the <privacy>privacy policy</privacy>."
+      },
+      "password": {
+        "helper": "Between 12 and 72 characters. Do not reuse a password from another service.",
+        "label": "Password"
+      },
+      "registeredAddress": {
+        "helper": "Optional. It can help us cross-check the business identity.",
+        "label": "Registered address"
+      },
+      "taxCountry": {
+        "helper": "Two-letter ISO code, for example ES or PT.",
+        "label": "Tax country"
+      },
+      "taxIdentifier": {
+        "helper": "NIF, CIF, VAT ID or the equivalent identifier in your country.",
+        "label": "Tax or registration identifier"
+      }
+    },
+    "hero": {
+      "description": "Create the account you will use to manage your business. We will check the business identity before publishing is allowed.",
+      "eyebrow": "VENUE REGISTRATION",
+      "profileNotice": "After registration, you can complete your public profile, opening hours and venue information.",
+      "title": "Start managing your bookings"
+    },
+    "metadata": {
+      "description": "Create a Reserly business account to manage your venue bookings.",
+      "title": "Venue registration"
+    },
+    "sections": {
+      "account": {
+        "description": "Set secure credentials for the person responsible.",
+        "title": "Access details"
+      },
+      "business": {
+        "description": "These details are used solely to identify and verify the business.",
+        "title": "Business identity"
+      }
+    },
+    "steps": {
+      "account": {
+        "description": "We will create your private owner access.",
+        "title": "Create your account"
+      },
+      "business": {
+        "description": "Publishing remains blocked until the check is approved.",
+        "title": "We verify the business"
+      },
+      "email": {
+        "description": "We will send a link to the email address provided.",
+        "title": "Confirm your email"
+      }
+    },
+    "success": {
+      "body": "We have sent a link to the email address provided. Open it to confirm the address belongs to you.",
+      "title": "Your account has been created",
+      "verificationNotice": "Business verification is processed separately. You cannot publish the venue until both the email and business are approved."
+    }
+  },
   "Navigation": {
     "public": {
       "explore": "Explore",

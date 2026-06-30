@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1`, `0.2`, `0.3`, `0.4`, `0.5`, `0.6`, `0.7`, `0.8`, `0.9`, `0.10`, `0.11`, `0.12`, `0.13`, `0.14`, `0.15`, `1.1`, `1.2`, `1.3` y `1.4`.
-- Siguiente tarea pendiente recomendada: `1.5. Implementar normalización, unicidad, formato y dígito de control de identificador empresarial por país cuando existan reglas conocidas.`
+- Tareas implementadas documentadas: `0.1` a `0.15` y `1.1` a `1.18`.
+- Siguiente tarea pendiente recomendada: `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -8934,3 +8934,314 @@ persistidos explícitos; revocación, expiración, estado y permisos se comprueb
 el principal minimiza datos; 401/403 y CORS tienen contratos seguros; la actividad no renueva la
 sesión; no existe identidad paralela de Spring Boot; la arquitectura y operación están documentadas;
 y las pruebas focalizadas e integrales pasan. La siguiente tarea pendiente es `1.18`.
+
+## Iteración 1.18 - Pantalla pública de registro empresarial
+
+- **Identificador exacto:** `1.18. Crear pantalla de registro de local con campos empresariales`.
+- **Fecha:** 2026-06-30.
+- **Estado:** completada, verificada y preparada para commit.
+- **Rama:** `phase/1-identidad-roles-base-saas`.
+
+### Objetivo técnico
+
+La iteración incorpora el primer flujo frontend de identidad de la Fase 1. Expone una pantalla
+pública responsive para que el responsable de un negocio cree una cuenta `venue_business` y aporte
+la identidad fiscal mínima que ya acepta el endpoint de registro.
+
+El objetivo no es crear todavía el perfil comercial del local. `Venues`, categorías, imágenes,
+descripciones, horarios y condiciones de reserva pertenecen a la Fase 2 y posteriores. Solicitar
+esos datos ahora produciría un formulario engañoso porque el backend no dispone aún del agregado que
+los persiste. La pantalla delimita expresamente las dos etapas: primero cuenta e identidad
+empresarial; después perfil público.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007`: registro público, credenciales, país fiscal, razón social, identificador y aceptación
+  legal.
+- `RF-031`: todo texto visible debe salir de catálogos ES/EN.
+- `RF-032`: diferenciación empresarial, datos fiscales mínimos y publicación bloqueada hasta
+  completar las comprobaciones.
+- `RNF-001`: validación de entrada, errores no enumerables y tratamiento seguro de contraseña.
+- `RNF-002`: minimización y ausencia de persistencia cliente de datos fiscales o credenciales.
+- `RNF-005`: experiencia responsive, controles táctiles y validación contextual.
+- `RNF-007`: locale efectivo usado tanto para interfaz como para `preferredLocale`.
+- `design.md` 8.4: contrato de `POST /api/auth/venues/register`.
+- `design.md` 9.1 y 9.2: principios frontend y ruta canónica `/locales/registro`.
+- `design.md` 10 y 17.1: composición mobile-first, tokens, accesibilidad y sistema visual Reserly.
+
+Se conserva la autoridad del backend sobre `accountType`, rol, estado de email, estado empresarial,
+normalización fiscal, unicidad y capacidad de publicación. Ninguno de esos valores puede elegirlo el
+cliente.
+
+### Archivos creados
+
+- `apps/web/src/app/locales/registro/page.tsx`
+  - página App Router server-rendered;
+  - metadata localizada;
+  - composición informativa y contenedor del formulario;
+  - cuadrícula responsive y proceso de tres hitos.
+- `apps/web/src/features/venue-registration/venue-registration-form.tsx`
+  - componente cliente y máquina de estados del formulario.
+- `apps/web/src/features/venue-registration/venue-registration-schema.ts`
+  - esquema Zod, tipos de error y conversión al payload REST.
+- `apps/web/src/features/venue-registration/venue-registration-api.ts`
+  - adaptador HTTP público y clasificación segura de fallos.
+- `venue-registration-schema.test.ts`
+  - normalización, campos requeridos y límite BCrypt en bytes.
+- `venue-registration-api.test.ts`
+  - request HTTP, respuesta correcta y categorías de error.
+- `venue-registration-form.test.tsx`
+  - validación accesible, visibilidad de contraseña, doble envío, éxito y conflicto genérico.
+
+### Archivos modificados
+
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`:
+  - metadata, hero, hitos, secciones, campos, ayudas, acciones, errores y éxito;
+  - paridad estructural completa entre ambos idiomas.
+- `apps/web/src/components/layout/public-shell.tsx`:
+  - el acceso de locales usa la ruta canónica `/locales/acceso` definida en diseño.
+- `apps/web/src/components/layout/layout-system.test.tsx`:
+  - aserción de la ruta de acceso.
+- `tasks.md`, `conversation-tracking.md` y este documento:
+  - cierre, histórico y evidencia técnica.
+
+No se eliminó ningún archivo. No se modificaron backend, esquema SQL, migraciones ni infraestructura.
+
+### Arquitectura frontend
+
+La implementación separa cuatro responsabilidades:
+
+1. La página servidor resuelve metadata y textos estructurales mediante `getTranslations`.
+2. El formulario cliente gestiona interacción, accesibilidad y ciclo asíncrono.
+3. El esquema convierte `FormData` no confiable en un payload tipado.
+4. El adaptador HTTP conoce URL, headers, credenciales y semántica de estados.
+
+Esta separación evita acoplar JSX a detalles de transporte, permite probar el contrato sin renderizar
+MUI y deja el esquema reutilizable para futuras pruebas end-to-end. Los módulos exportados incluyen
+documentación de responsabilidad, entradas, salidas, efectos y límites de autoridad.
+
+La máquina de UI usa `idle`, `submitting` y `success`. El estado `submitting` deshabilita la acción
+dominante y evita un segundo envío desde la propia función. Un `AbortController` cancela la petición
+si el componente se desmonta. La referencia al formulario se captura antes del primer `await`;
+esto evita depender del `currentTarget` sintético después de que React libere el evento.
+
+### Contrato de datos y flujo de ejecución
+
+Los campos visibles son:
+
+- `email`;
+- `password`;
+- `taxCountry`, con `ES` como valor inicial editable y código ISO alpha-2;
+- `legalName`;
+- `taxIdentifier`;
+- `registeredAddress`, opcional;
+- `acceptsLegalTerms`.
+
+El locale efectivo de `next-intl` se añade como `preferredLocale`; no se presenta un campo duplicado.
+Tras validar, el esquema construye:
+
+```json
+{
+  "account": {
+    "email": "negocio@example.com",
+    "password": "<secreto>",
+    "preferredLocale": "es"
+  },
+  "business": {
+    "taxCountry": "ES",
+    "legalName": "Ejemplo Reservas SL",
+    "taxIdentifier": "B12345674",
+    "registeredAddress": ""
+  },
+  "acceptsLegalTerms": true
+}
+```
+
+El adaptador ejecuta `POST {NEXT_PUBLIC_API_BASE_URL}/api/auth/venues/register`, declara JSON y usa
+`credentials: include` para mantener un contrato compatible con la política CORS autenticada, aunque
+el alta actual no crea una sesión. No se implementan reintentos automáticos: repetir un POST de alta
+sin clave de idempotencia podría convertir una respuesta perdida en un conflicto confuso.
+
+Una respuesta correcta sustituye el formulario por una región viva con:
+
+- confirmación de creación;
+- instrucción de verificar el correo;
+- advertencia de que la comprobación empresarial es independiente;
+- recordatorio de que no se puede publicar hasta aprobar ambas barreras;
+- enlace a `/locales/acceso`, preparado para `1.20`.
+
+No se expone `userId` ni `businessAccountId` porque la pantalla no los necesita.
+
+### Validación
+
+La validación cliente replica únicamente restricciones estables del contrato:
+
+- email obligatorio, sintáctico y máximo 320 caracteres;
+- contraseña entre 12 y 72 caracteres;
+- contraseña de máximo 72 bytes UTF-8 para respetar la invariante BCrypt del servicio;
+- país de dos letras ASCII;
+- razón social obligatoria y máximo 255;
+- identificador obligatorio y máximo 64;
+- dirección opcional y máximo 500;
+- consentimiento legal exactamente verdadero.
+
+Los valores textuales se recortan y el país se convierte a mayúsculas. La contraseña no se recorta:
+los espacios pueden formar parte intencionada del secreto y alterar su valor sería incorrecto.
+
+El frontend no intenta validar NIF, CIF, NIE, VAT ID o dígitos de control. Esas reglas cambian por
+país y ya están centralizadas en backend. La comprobación cliente no sustituye nunca Jakarta
+Validation, políticas fiscales, normalización canónica, unicidad ni verificación remota.
+
+### Accesibilidad y responsive
+
+- Dos `fieldset` con leyendas separan credenciales e identidad empresarial.
+- Cada campo conserva etiqueta visible y ayuda asociada.
+- Los campos obligatorios usan semántica `required`.
+- Los errores activan `aria-invalid` mediante MUI y aparecen junto al control.
+- Al fallar localmente, el foco pasa al primer campo inválido.
+- Los errores de envío usan una alerta `aria-live="assertive"`.
+- El éxito usa una región `aria-live="polite"`.
+- Mostrar/ocultar contraseña dispone de nombre accesible cambiante y `type="button"`.
+- Iconos ornamentales se ocultan a tecnologías de asistencia.
+- El CTA ocupa el ancho disponible y mantiene la altura táctil del tema.
+- La composición usa dos columnas desde `md` y una columna por debajo.
+- La columna informativa es sticky solo en escritorio; no bloquea lectura móvil.
+- La validación manual confirmó `scrollWidth === clientWidth` tanto a 1265 px como a 390/375 px.
+- La navegación inferior móvil permanece disponible y el formulario reserva espacio para ella.
+
+La inspección DOM verificó un único `h1`, grupos accesibles, checkbox con nombre completo, enlaces
+legales, navegación principal/móvil, `lang="es"` y metadata `Registro de local | Reserly`.
+
+### Internacionalización
+
+La pantalla no contiene textos visibles hardcodeados. `VenueRegistration` agrupa las mismas claves
+en `es.json` y `en.json`, incluidas:
+
+- metadata;
+- explicación de alcance;
+- nombres y ayudas;
+- acciones y estados de carga;
+- errores de campo y transporte;
+- confirmación y siguiente paso.
+
+`t.rich` inserta los enlaces legales sin separar la frase localizada en fragmentos rígidos. Los
+códigos técnicos no llegan al usuario. La tarea `1.21` sigue pendiente porque debe cubrir de forma
+transversal login, errores restantes y todos los estados de verificación; incorporar aquí los textos
+necesarios no reduce ese alcance.
+
+### Seguridad y privacidad
+
+- La contraseña solo vive en el control, `FormData` y el cuerpo efímero de la petición.
+- No se escribe en localStorage, sessionStorage, cookies, logs ni estado persistente React.
+- El adaptador no registra payloads, respuestas ni excepciones internas.
+- El componente no conserva identificadores fiscales tras un éxito.
+- `409` se traduce a un mensaje único que no distingue email de identificador fiscal.
+- `400`, `429` y fallos de red usan mensajes acotados sin `exception.message`.
+- La URL base procede del contrato de entorno validado en build.
+- El cliente no acepta `accountType`, roles, estados ni `canPublishVenue`.
+- Los enlaces legales son navegación explícita; la aceptación nunca se infiere.
+- No se transmitieron datos reales durante la comprobación visual.
+
+CSRF permanece pendiente de `16.3`. Este POST público no depende de una sesión previa, pero la
+política global debe completarse antes de producción.
+
+### Errores y observabilidad
+
+`VenueRegistrationApiError` reduce fallos a:
+
+- `conflict` para HTTP 409;
+- `invalid` para HTTP 400;
+- `rateLimited` para HTTP 429;
+- `unavailable` para red, respuesta inesperada, HTTP restante o JSON ilegible.
+
+El usuario puede corregir o reintentar sin recibir datos internos. No se añadieron métricas ni logs
+cliente con PII. Las métricas agregadas de resultado, latencia y rate limit pertenecen a la Fase 17.
+
+### Tests añadidos y modificados
+
+Los 13 casos focalizados cubren:
+
+- transformación y trimming correctos;
+- mayúsculas de país y locale efectivo;
+- requeridos, formato de email, país y aceptación;
+- límite UTF-8 de 72 bytes;
+- URL, método, credenciales y cuerpo HTTP;
+- clasificación de 400, 409, 429, 503 y error de red;
+- foco en primer error y mensajes contextuales;
+- mostrar y ocultar contraseña;
+- CTA deshabilitado durante la promesa;
+- transición a éxito y enlace posterior;
+- mensaje 409 genérico sin la palabra «duplicado».
+
+El test de layout añade la comprobación de `/locales/acceso`.
+
+### Comandos y evidencia de verificación
+
+1. `npm run test --workspace @reserly/web -- src/features/venue-registration`
+   - 3 archivos y 13 tests correctos.
+2. `npm run typecheck`
+   - TypeScript sin errores.
+3. `npm run lint:web`
+   - ESLint sin warnings ni errores.
+4. `npm run i18n:check`
+   - catálogos completos y UI sin textos visibles hardcodeados.
+5. `npm run spanish:text:check`
+   - UTF-8, tildes, signos y ausencia de mojibake correctos.
+6. `git diff --check`
+   - whitespace correcto.
+7. Validación con navegador integrado:
+   - escritorio: viewport efectivo 1265 px, documento de 999 px y sin overflow;
+   - móvil: viewport solicitado 390 × 844, ancho efectivo 375 px, documento de 1603 px y sin
+     overflow;
+   - composición, metadata, idioma, landmarks, labels y navegación verificados.
+8. `npm run verify`
+   - primera ejecución detenida porque el sandbox bloqueó la descarga del parent POM de Maven;
+   - repetición autorizada con acceso de red: correcta;
+   - 10 archivos y 35 tests frontend correctos;
+   - 166 tests backend correctos, sin fallos, errores u omitidos;
+   - Checkstyle, Spotless, ESLint, TypeScript, Prettier, i18n, español, entorno, CI y convenciones
+     correctos;
+   - Flyway V1–V8 validado sobre PostgreSQL/PostGIS;
+   - Redis y RabbitMQ reales verificados;
+   - ruta dinámica `/locales/registro` incluida en el build Next.js;
+   - JAR Spring Boot generado correctamente.
+
+### Incidencias encontradas y resueltas
+
+- La primera versión consultaba `event.currentTarget` después del `await`. React ya no garantiza que
+  esa referencia sintética permanezca utilizable; el test de éxito detectó que `reset()` lanzaba y
+  convertía un 201 en indisponibilidad. Se captura el elemento `form` antes de iniciar la promesa.
+- Zod recibía `null` cuando un nombre no existía en `FormData` y generaba un texto interno en vez del
+  código `required`. La frontera convierte ausencias a cadena vacía antes de validar.
+- Los tests no heredaban `NEXT_PUBLIC_API_BASE_URL`. Cada suite que prueba transporte declara y
+  limpia el entorno explícitamente.
+- La ejecución integral inicial no pudo resolver Maven Central por aislamiento de red. No se
+  ignoró: se repitió con permiso y toda la suite pasó.
+- Next.js modifica automáticamente `next-env.d.ts` al usar modo desarrollo. Se restauró la variante
+  de build para no introducir ruido generado.
+- El servidor de desarrollo notificó que `next-intl` no tiene `timeZone` global. La pantalla no
+  formatea fechas y el build es correcto, pero se registra como deuda transversal de i18n.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Las páginas reales de condiciones y privacidad aún deben implementarse; los enlaces ya tienen
+  rutas estables.
+- `/locales/acceso` queda preparado pero su pantalla corresponde a `1.20`.
+- La carga documental y sus estados corresponden a `1.19`.
+- Los mensajes completos de verificación y login siguen en `1.21`.
+- `1.22` debe añadir integración/e2e conjunta con backend, rate limit y estados empresariales.
+- No hay idempotency key para el registro; por eso el cliente no reintenta automáticamente.
+- No se muestra un selector exhaustivo de países: el código ISO editable mantiene cobertura global
+  del backend, pero puede evolucionar a un selector accesible localizado.
+- El locale se toma del contexto actual; la preferencia persistida de una cuenta nueva se aplicará
+  al iniciar sesión cuando exista el flujo completo.
+- Debe fijarse un `timeZone` global de `next-intl` antes de introducir fechas server/client.
+- CSRF global permanece pendiente de `16.3`.
+
+### Criterio de cierre
+
+La tarea se cierra porque existe una ruta pública canónica y responsive que recoge todos los campos
+empresariales admitidos en la Fase 1, construye exactamente el contrato backend, valida sin duplicar
+la autoridad fiscal, protege los errores frente a enumeración, no persiste datos sensibles, ofrece
+estados accesibles e internacionalizados y ha superado tests focalizados, suite integral, build y
+validación visual. La siguiente tarea pendiente es `1.19`.

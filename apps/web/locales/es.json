@@ -116,6 +116,100 @@
     "description": "Plataforma responsive para descubrir y gestionar reservas.",
     "title": "Reserly"
   },
+  "VenueRegistration": {
+    "actions": {
+      "goToAccess": "Ir al acceso de locales",
+      "hidePassword": "Ocultar contraseña",
+      "showPassword": "Mostrar contraseña",
+      "submit": "Crear cuenta de local",
+      "submitting": "Creando cuenta"
+    },
+    "errors": {
+      "fields": {
+        "country": "Introduce un código de país ISO de dos letras.",
+        "email": "Introduce un correo electrónico válido.",
+        "legalTerms": "Debes aceptar las condiciones y la política de privacidad.",
+        "passwordBytes": "La contraseña es demasiado larga por los caracteres que contiene.",
+        "passwordLength": "Usa entre 12 y 72 caracteres.",
+        "required": "Este campo es obligatorio.",
+        "tooLong": "El contenido supera la longitud permitida."
+      },
+      "submission": {
+        "conflict": "No hemos podido completar el alta con estos datos. Revisa la información o contacta con soporte.",
+        "invalid": "Algunos datos no son válidos. Revísalos antes de volver a intentarlo.",
+        "rateLimited": "Se han realizado demasiados intentos. Espera unos minutos antes de volver a intentarlo.",
+        "unavailable": "No hemos podido conectar con el servicio. Inténtalo de nuevo dentro de unos minutos."
+      }
+    },
+    "fields": {
+      "email": {
+        "helper": "Lo usarás para acceder y verificar tu cuenta.",
+        "label": "Correo electrónico"
+      },
+      "legalName": {
+        "helper": "Nombre legal de la empresa o del profesional.",
+        "label": "Razón social"
+      },
+      "legalTerms": {
+        "label": "Acepto las <terms>condiciones del servicio</terms> y la <privacy>política de privacidad</privacy>."
+      },
+      "password": {
+        "helper": "Entre 12 y 72 caracteres. No reutilices una contraseña de otro servicio.",
+        "label": "Contraseña"
+      },
+      "registeredAddress": {
+        "helper": "Opcional. Puede ayudar a contrastar la identidad empresarial.",
+        "label": "Dirección registral"
+      },
+      "taxCountry": {
+        "helper": "Código ISO de dos letras, por ejemplo ES o PT.",
+        "label": "País fiscal"
+      },
+      "taxIdentifier": {
+        "helper": "NIF, CIF, NIF-IVA o identificador equivalente de tu país.",
+        "label": "Identificador fiscal o registral"
+      }
+    },
+    "hero": {
+      "description": "Crea la cuenta con la que gestionarás tu negocio. Comprobaremos la identidad empresarial antes de permitir la publicación.",
+      "eyebrow": "ALTA DE LOCAL",
+      "profileNotice": "Después del alta podrás completar el perfil público, los horarios y la información comercial de tu local.",
+      "title": "Empieza a gestionar tus reservas"
+    },
+    "metadata": {
+      "description": "Crea una cuenta empresarial de Reserly para gestionar las reservas de tu local.",
+      "title": "Registro de local"
+    },
+    "sections": {
+      "account": {
+        "description": "Configura unas credenciales seguras para la persona responsable.",
+        "title": "Datos de acceso"
+      },
+      "business": {
+        "description": "Estos datos se usan exclusivamente para identificar y verificar el negocio.",
+        "title": "Identidad empresarial"
+      }
+    },
+    "steps": {
+      "account": {
+        "description": "Crearemos tu acceso privado de propietario.",
+        "title": "Crea tu cuenta"
+      },
+      "business": {
+        "description": "La publicación quedará bloqueada hasta aprobar la comprobación.",
+        "title": "Verificamos el negocio"
+      },
+      "email": {
+        "description": "Te enviaremos un enlace al correo indicado.",
+        "title": "Confirma tu correo"
+      }
+    },
+    "success": {
+      "body": "Te hemos enviado un enlace al correo indicado. Ábrelo para confirmar que la dirección te pertenece.",
+      "title": "La cuenta se ha creado",
+      "verificationNotice": "La verificación empresarial se procesa por separado. No podrás publicar el local hasta que el correo y el negocio estén aprobados."
+    }
+  },
   "Navigation": {
     "public": {
       "explore": "Explorar",

@@ -18,6 +18,10 @@ describe("sistema de layout", () => {
     for (const link of screen.getAllByRole("link", { name: "Explorar" })) {
       expect(link).toHaveAttribute("aria-current", "page");
     }
+    expect(screen.getByRole("link", { name: "Acceso local" })).toHaveAttribute(
+      "href",
+      "/locales/acceso",
+    );
   });
 
   it("ofrece navegación de escritorio y móvil en el panel", () => {
