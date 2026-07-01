@@ -2550,3 +2550,66 @@ Fuente de verdad del avance:
     V11 sobre PostgreSQL 17.5/PostGIS.
   - Evidencia integral: `npm run verify` correcto tras implementación y documentación, con 82
     tests web y 183 tests API.
+
+## Conversación 54 - CRUD privado del perfil del local
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.4` como primera tarea pendiente sobre la rama
+    `phase/2-locales-categorias-perfil`.
+  - Se implementaron entidades JPA y DAOs documentados para `Venues` y `Categories`, con acceso por
+    propiedades y consultas explícitas por propietario.
+  - Se añadió el servicio transaccional de creación, lectura, actualización y archivo del perfil
+    singular asociado al principal autenticado.
+  - Se expusieron `GET /api/venue/me`, `POST`, `PATCH` y `DELETE /api/venue/me/profile`, con interfaz
+    de controlador, implementación, DTOs, conversor y errores estables.
+  - El payload no admite IDs de propietario/cuenta, slug, estado, publicación, imagen ni
+    disponibilidad manual.
+  - La creación genera slug seguro, estado `draft` y disponibilidad `automatic`; actualizar
+    conserva identidad/slug/estado y archivar realiza borrado lógico.
+  - `V12` incorpora unicidad parcial para un único perfil no archivado por propietario y permite
+    recreación tras archivo.
+  - Se añadieron pruebas de adaptador REST, errores, ciclo CRUD real, aislamiento básico,
+    normalización, coordenadas, categoría y migración.
+- Archivos modificados:
+  - Nuevo módulo productivo bajo `apps/api/src/main/java/com/reserly/platform/venues` con paquetes
+    `controller`, `converter`, `dto`, `persistence` y `service`.
+  - Nueva migración
+    `apps/api/src/main/resources/db/migration/V12__enforce_single_current_venue_per_owner.sql`.
+  - Nuevas pruebas bajo `apps/api/src/test/java/com/reserly/platform/venues`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RF-032 Verificación empresarial`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.4. Implementar CRUD de perfil del local para propietario`.
+  - Prepara `2.5` a `2.13`, `3.1` y `14.3`.
+- Tareas completadas:
+  - `2.4. Implementar CRUD de perfil del local para propietario`.
+- Siguiente tarea pendiente recomendada:
+  - `2.5. Implementar campos localizados para descripción, servicios, reglas y textos públicos
+    configurables`.
+- Decisiones o aclaraciones relevantes:
+  - El contrato MVP gestiona un perfil vigente por propietario. Los perfiles archivados permanecen
+    como historial y no bloquean una nueva alta.
+  - El `PATCH` es sustitutivo para los campos editables; permite limpiar opcionales con `null`.
+  - La imagen principal no se acepta como URL arbitraria; corresponde a la carga segura de `2.7`.
+  - Los campos localizados se reservan para `2.5`; `2.4` conserva la descripción canónica simple.
+  - Crear un borrador no exige verificación empresarial aprobada. La barrera se aplica al publicar
+    en `2.9`.
+  - El aislamiento exhaustivo por HTTP permanece en `2.12`; esta iteración ya demuestra que el
+    servicio usa solo `ownerUserId` y que otro propietario no puede leer el perfil.
+  - Evidencia focalizada: 11 tests correctos entre migración, controlador y servicio.
+  - Evidencia integral: `npm run verify` correcto tras implementación y documentación, con 82
+    tests web y 187 tests API.

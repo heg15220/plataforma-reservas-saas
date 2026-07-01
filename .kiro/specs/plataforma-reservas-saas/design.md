@@ -861,6 +861,21 @@ Restricciones físicas incorporadas en `V9`:
 - Los índices de nombre, categoría/estado, ubicación textual y punto geográfico preparan la
   búsqueda pública sin implementar todavía sus endpoints.
 
+Contrato privado incorporado en `2.4`:
+
+- `/api/venue/me` representa el único perfil vigente del principal autenticado.
+- `POST /api/venue/me/profile` crea un borrador; `GET /api/venue/me` lo consulta;
+  `PATCH /api/venue/me/profile` sustituye el snapshot editable y
+  `DELETE /api/venue/me/profile` lo archiva.
+- Propietario y cuenta empresarial se derivan siempre de la sesión. El cliente no puede editar
+  slug, estado, publicación, disponibilidad manual ni imagen.
+- `PATCH` conserva identidad, slug y estado; los opcionales enviados como `null` se eliminan.
+- `V12` añade un índice único parcial por propietario cuando el estado no es `archived`. Evita
+  duplicados concurrentes, conserva historial y permite crear un perfil nuevo tras archivar.
+- Actualización y archivo toman lock pesimista del perfil vigente. La categoría debe existir y
+  estar activa.
+- El borrado del CRUD es lógico. El borrado físico y sus cascadas quedan fuera del contrato normal.
+
 #### venue_images
 
 - `id`
@@ -1544,7 +1559,9 @@ POST /api/auth/venues/business-verification/retry
 GET /api/venue/me/business-verification/document-request
 POST /api/venue/me/business-verification/documents
 GET /api/venue/me
+POST /api/venue/me/profile
 PATCH /api/venue/me/profile
+DELETE /api/venue/me/profile
 POST /api/venue/me/images
 DELETE /api/venue/me/images/{imageId}
 GET /api/venue/me/custom-tabs

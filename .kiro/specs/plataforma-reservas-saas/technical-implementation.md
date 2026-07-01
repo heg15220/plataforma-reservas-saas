@@ -11389,3 +11389,239 @@ La tarea se cierra porque las ocho categorías tienen nombre y descripción ES/E
 descripciones parciales, el contenido se resuelve mediante el contrato común con fallback inglés y
 la suite focalizada verifica el estado real de PostgreSQL. Diseño, tareas, seguimiento e
 implementación técnica quedan sincronizados. La siguiente tarea pendiente es `2.4`.
+
+## Iteración 2.4 - CRUD privado del perfil del local
+
+### Identificación y fecha
+
+- Tarea: `2.4. Implementar CRUD de perfil del local para propietario`.
+- Fecha: 2026-07-01.
+
+### Objetivo técnico
+
+Implementar el primer caso de uso completo del módulo `venues`: crear, consultar, sustituir campos
+editables y archivar el perfil singular del propietario autenticado. El resultado debía respetar
+la arquitectura por capas, impedir que el cliente elija propiedad o estados sensibles, serializar
+mutaciones concurrentes y demostrar el ciclo de vida sobre PostgreSQL/PostGIS real.
+
+### Requisitos y diseño relacionados
+
+- `RF-008`: panel privado limitado a datos propios.
+- `RF-009`: edición de nombre, descripción, categoría, dirección, ubicación y contacto.
+- `RF-031`: locale por defecto restringido a ES/EN.
+- `RF-032`: perfil asociado a una identidad empresarial existente.
+- `RNF-001`: validación backend, rol y autorización horizontal.
+- `RNF-002`: respuesta sin identidad empresarial ni datos fiscales.
+- `RNF-003`: transacciones, locks e índice único frente a carreras.
+- `RNF-008`: pruebas unitarias/de integración repetibles.
+- `RNF-011`: entidades/DTOs `UpperCamelCase`, propiedades/columnas `lowerCamelCase`, relaciones en
+  getters, DAOs con `@Query`, interfaces separadas y conversor explícito.
+
+### Archivos y módulos
+
+Se creó bajo `com.reserly.platform.venues`:
+
+- `persistence`: `VenueEntity`, `CategoryEntity`, `VenueDao`, `CategoryDao`;
+- `dto`: request, command, response y error;
+- `converter`: `VenueProfileConverter`;
+- `service`: interfaz, implementación y cuatro excepciones de dominio;
+- `controller`: interfaz REST, implementación y advice;
+- documentación `package-info.java` en cada límite.
+
+También se creó `V12__enforce_single_current_venue_per_owner.sql`, dos suites nuevas y se amplió la
+suite de migración. No se modificó el frontend.
+
+### Modelo de datos y migración V12
+
+`V12` crea:
+
+```sql
+CREATE UNIQUE INDEX "uqVenuesOwnerCurrent"
+  ON "Venues" ("ownerUserId")
+  WHERE "status" <> 'archived';
+```
+
+La unicidad parcial materializa el contrato singular `/api/venue/me` y cubre la carrera entre dos
+creaciones que superen simultáneamente el precheck. Un propietario puede conservar cualquier
+número de perfiles archivados, pero solo uno vigente. Archivar libera el índice y permite recrear.
+
+No se añaden columnas. `DatabaseMigrationIntegrationTests` espera Flyway 12 y verifica el índice.
+
+### Entidades y relaciones
+
+`VenueEntity` mapea las columnas necesarias de `Venues` y omite deliberadamente:
+
+- `descriptionI18n`, pendiente de `2.5`;
+- `mainImageUrl`, gestionado por `2.7`;
+- `location`, columna generada por PostGIS.
+
+Mapea relaciones `ownerUser`, `businessAccount` y `category` mediante getters. La base conserva la
+FK compuesta cuenta/propietario introducida en V9. El servicio nunca acepta esas relaciones desde
+el request: carga `BusinessAccountEntity` por el usuario autenticado y reutiliza su propietario.
+
+`CategoryEntity` proyecta ID, nombre canónico, slug, actividad y timestamps. Los JSONB localizados
+no se exponen desde el perfil privado; el endpoint público futuro resolverá `nameI18n`.
+
+### DAOs y consistencia
+
+`CategoryDao.findActiveById` solo permite categorías activas.
+
+`VenueDao` ofrece:
+
+- `findCurrentByOwnerUserId`, con categoría cargada para lectura;
+- `findCurrentByOwnerUserIdForUpdate`, con `PESSIMISTIC_WRITE` para actualización y archivo.
+
+Ambas consultas filtran `status <> archived` y reciben el ID del principal, no un venue ID del
+cliente. Actualizar y archivar quedan serializados. Crear usa precheck y la unicidad parcial como
+barrera definitiva.
+
+### Contrato HTTP
+
+- `GET /api/venue/me`: devuelve el perfil vigente.
+- `POST /api/venue/me/profile`: crea un borrador y responde `201` con `Location:
+  /api/venue/me`.
+- `PATCH /api/venue/me/profile`: sustituye el snapshot editable y responde `200`.
+- `DELETE /api/venue/me/profile`: archiva y responde `204`.
+
+Todos requieren el rol `venue_owner` por la política existente para `/api/venue/me/**`.
+`AuthenticatedAccount.userId` es la única identidad que llega al servicio.
+
+El request acepta nombre, categoría, descripción canónica, locale, contacto, dirección,
+coordenadas y flags de visibilidad. No acepta propietario, cuenta empresarial, slug, estado,
+publicación, imagen, fecha ni disponibilidad manual.
+
+PATCH usa semántica sustitutiva para los campos editables: los opcionales nulos o en blanco se
+normalizan a `NULL`, haciendo posible borrar contacto o dirección sin un protocolo adicional.
+
+### Creación, actualización y archivo
+
+Crear:
+
+1. valida que latitud/longitud estén ambas presentes o ausentes;
+2. comprueba ausencia de perfil vigente;
+3. carga identidad empresarial propia;
+4. exige categoría activa;
+5. genera slug transliterado con sufijo aleatorio;
+6. crea estado `draft` y disponibilidad `automatic`;
+7. normaliza strings/email y persiste atómicamente.
+
+Actualizar bloquea el perfil, valida categoría/coordenadas y reemplaza solo campos editables.
+Conserva ID, slug, propietario, cuenta, estado, publicación, imagen y creación.
+
+Eliminar es archivo lógico: cambia estado a `archived` y `updatedAt`. No ejecuta `delete`, no
+dispara cascadas de galería y conserva trazabilidad.
+
+### Normalización y validación
+
+Bean Validation limita tamaños, email, país, locale y rangos numéricos. El servicio aplica reglas
+que cruzan campos y no deben depender de HTTP:
+
+- coordenadas completas;
+- categoría activa;
+- strings blancos convertidos en `NULL`;
+- email recortado y en minúsculas;
+- nombre recortado;
+- slug NFD sin diacríticos, caracteres seguros y sufijo de ocho caracteres.
+
+El límite de 350 palabras y documentos localizados permanecen en `2.5`/`2.6`. La imagen no puede
+inyectarse como URL; se reserva para almacenamiento seguro.
+
+### Respuesta, privacidad y errores
+
+`VenueProfileResponse` incluye datos editables, categoría, slug, estado y timestamps. Omite:
+
+- `ownerUserId`;
+- `businessAccountId`;
+- identidad fiscal, verificación y documentos;
+- flags internos de disponibilidad;
+- cualquier entidad JPA.
+
+Códigos estables:
+
+- `400 VENUE_PROFILE_INVALID`;
+- `403 VENUE_PROFILE_FORBIDDEN`;
+- `404 VENUE_PROFILE_NOT_FOUND`;
+- `409 VENUE_PROFILE_CONFLICT`.
+
+Los errores no incluyen mensajes de constraints, IDs ajenos ni existencia de perfiles externos.
+Las carreras de unicidad se traducen a conflicto genérico.
+
+### Seguridad, permisos y concurrencia
+
+- Spring Security protege todo `/api/venue/me/**` con `ROLE_VENUE_OWNER`.
+- El request carece de campos de propiedad.
+- Lectura/escritura consultan por `ownerUserId`.
+- Un actor sin identidad empresarial recibe denegación.
+- Otro propietario obtiene el mismo `not found` que un perfil inexistente.
+- Estado/publicación no son mass-assignable.
+- Locks pesimistas protegen update/archive.
+- El índice parcial protege create concurrente.
+- Publicar sigue siendo imposible desde este CRUD.
+
+### Tests y evidencia
+
+`VenueProfileControllerTests` verifica:
+
+- las cuatro operaciones delegan usando exclusivamente el principal;
+- `201`, `Location`, `200` y `204`;
+- proyección sin identidad empresarial;
+- códigos de error y estados HTTP estables.
+
+`VenueProfileServiceIntegrationTests` verifica sobre PostgreSQL:
+
+- creación con asociación correcta a propietario/cuenta/categoría;
+- normalización de nombre, email y slug;
+- estado inicial y disponibilidad;
+- lectura propia y ausencia para otro propietario;
+- actualización que conserva ID, slug y estado;
+- cambio de categoría, coordenadas y visibilidad;
+- limpieza de opcionales;
+- conflicto por segundo perfil vigente;
+- archivo real en base;
+- invisibilidad del archivado;
+- recreación posterior;
+- rechazo de coordenadas parciales y categoría desconocida sin escritura.
+
+`DatabaseMigrationIntegrationTests` verifica Flyway V12 e índice.
+
+Comandos focalizados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml \
+  -Dtest=DatabaseMigrationIntegrationTests,VenueProfileServiceIntegrationTests,VenueProfileControllerTests \
+  test
+npm run backend:conventions:check
+git diff --check
+```
+
+Resultado: 11 tests, cero fallos/errores; Spotless, Checkstyle y convenciones correctos.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado correcto tras código y documentación: CI, entornos, i18n, español, convenciones, lint,
+formato, TypeScript, 82 tests web, 187 tests API y ambos builds.
+
+### Riesgos, limitaciones y deuda
+
+- `2.5` debe mapear `descriptionI18n` y otros textos configurables.
+- `2.6` aplicará 350 palabras por idioma.
+- `2.7`/`2.8` gestionarán imágenes; este CRUD no acepta localizadores arbitrarios.
+- `2.9` añadirá publicación y elegibilidad empresarial en la misma transacción.
+- `2.12` profundizará el aislamiento con pruebas HTTP completas y sesiones reales.
+- Aún no existe auditoría persistente de cambios de perfil; se añadirá con infraestructura de
+  auditoría.
+- El slug no cambia al renombrar, evitando romper URLs, pero aún no existe flujo administrativo
+  para alias.
+- El perfil singular es decisión MVP. Multi-local futuro requerirá endpoints por ID y revisar el
+  índice parcial mediante nueva migración.
+
+### Criterio de cierre
+
+La tarea se cierra porque el CRUD privado completo existe por capas, deriva propiedad de la sesión,
+impide mass assignment sensible, conserva historial al borrar, protege concurrencia y pasa pruebas
+reales de ciclo de vida y aislamiento básico. La siguiente tarea pendiente es `2.5`.

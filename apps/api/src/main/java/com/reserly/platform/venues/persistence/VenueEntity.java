@@ -1,0 +1,278 @@
+package com.reserly.platform.venues.persistence;
+
+import com.reserly.platform.businessverification.persistence.BusinessAccountEntity;
+import com.reserly.platform.identity.persistence.UserEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Perfil de local gestionado por su propietario.
+ *
+ * <p>La entidad no concede publicación ni acepta cambios de propiedad. Imagen principal,
+ * descripciones localizadas y reglas avanzadas se incorporan en sus tareas específicas.
+ */
+@Entity
+@Table(name = "\"Venues\"")
+public class VenueEntity {
+
+  private UUID id;
+  private UserEntity ownerUser;
+  private BusinessAccountEntity businessAccount;
+  private CategoryEntity category;
+  private String name;
+  private String slug;
+  private String description;
+  private String defaultLocale;
+  private String contactEmail;
+  private String phone;
+  private String address;
+  private String city;
+  private String province;
+  private String country;
+  private String postalCode;
+  private BigDecimal latitude;
+  private BigDecimal longitude;
+  private String status;
+  private String manualAvailabilityStatus;
+  private boolean showPhone;
+  private boolean showEmail;
+  private Instant publishedAt;
+  private Instant createdAt;
+  private Instant updatedAt;
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  @Column(name = "\"id\"", nullable = false)
+  public UUID getId() {
+    return id;
+  }
+
+  public void setId(UUID id) {
+    this.id = id;
+  }
+
+  /** Propietario autenticado. La relación compuesta del esquema valida también la cuenta. */
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "\"ownerUserId\"", nullable = false)
+  public UserEntity getOwnerUser() {
+    return ownerUser;
+  }
+
+  public void setOwnerUser(UserEntity ownerUser) {
+    this.ownerUser = ownerUser;
+  }
+
+  /** Identidad empresarial del propietario; no puede elegirse desde la API. */
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "\"businessAccountId\"", nullable = false)
+  public BusinessAccountEntity getBusinessAccount() {
+    return businessAccount;
+  }
+
+  public void setBusinessAccount(BusinessAccountEntity businessAccount) {
+    this.businessAccount = businessAccount;
+  }
+
+  /** Categoría activa seleccionada por el propietario. */
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "\"categoryId\"", nullable = false)
+  public CategoryEntity getCategory() {
+    return category;
+  }
+
+  public void setCategory(CategoryEntity category) {
+    this.category = category;
+  }
+
+  @Column(name = "\"name\"", nullable = false, length = 160)
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  /** Slug generado por servidor y no editable para preservar enlaces futuros. */
+  @Column(name = "\"slug\"", nullable = false, length = 180)
+  public String getSlug() {
+    return slug;
+  }
+
+  public void setSlug(String slug) {
+    this.slug = slug;
+  }
+
+  @Column(name = "\"description\"")
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  @Column(name = "\"defaultLocale\"", nullable = false, length = 2)
+  public String getDefaultLocale() {
+    return defaultLocale;
+  }
+
+  public void setDefaultLocale(String defaultLocale) {
+    this.defaultLocale = defaultLocale;
+  }
+
+  @Column(name = "\"contactEmail\"", length = 320)
+  public String getContactEmail() {
+    return contactEmail;
+  }
+
+  public void setContactEmail(String contactEmail) {
+    this.contactEmail = contactEmail;
+  }
+
+  @Column(name = "\"phone\"", length = 32)
+  public String getPhone() {
+    return phone;
+  }
+
+  public void setPhone(String phone) {
+    this.phone = phone;
+  }
+
+  @Column(name = "\"address\"", length = 500)
+  public String getAddress() {
+    return address;
+  }
+
+  public void setAddress(String address) {
+    this.address = address;
+  }
+
+  @Column(name = "\"city\"", length = 160)
+  public String getCity() {
+    return city;
+  }
+
+  public void setCity(String city) {
+    this.city = city;
+  }
+
+  @Column(name = "\"province\"", length = 160)
+  public String getProvince() {
+    return province;
+  }
+
+  public void setProvince(String province) {
+    this.province = province;
+  }
+
+  @Column(name = "\"country\"", length = 2)
+  public String getCountry() {
+    return country;
+  }
+
+  public void setCountry(String country) {
+    this.country = country;
+  }
+
+  @Column(name = "\"postalCode\"", length = 24)
+  public String getPostalCode() {
+    return postalCode;
+  }
+
+  public void setPostalCode(String postalCode) {
+    this.postalCode = postalCode;
+  }
+
+  @Column(name = "\"latitude\"", precision = 9, scale = 6)
+  public BigDecimal getLatitude() {
+    return latitude;
+  }
+
+  public void setLatitude(BigDecimal latitude) {
+    this.latitude = latitude;
+  }
+
+  @Column(name = "\"longitude\"", precision = 9, scale = 6)
+  public BigDecimal getLongitude() {
+    return longitude;
+  }
+
+  public void setLongitude(BigDecimal longitude) {
+    this.longitude = longitude;
+  }
+
+  /** Estado editorial controlado por casos de uso; el CRUD solo crea borradores y archiva. */
+  @Column(name = "\"status\"", nullable = false, length = 32)
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(String status) {
+    this.status = status;
+  }
+
+  @Column(name = "\"manualAvailabilityStatus\"", nullable = false, length = 32)
+  public String getManualAvailabilityStatus() {
+    return manualAvailabilityStatus;
+  }
+
+  public void setManualAvailabilityStatus(String manualAvailabilityStatus) {
+    this.manualAvailabilityStatus = manualAvailabilityStatus;
+  }
+
+  @Column(name = "\"showPhone\"", nullable = false)
+  public boolean isShowPhone() {
+    return showPhone;
+  }
+
+  public void setShowPhone(boolean showPhone) {
+    this.showPhone = showPhone;
+  }
+
+  @Column(name = "\"showEmail\"", nullable = false)
+  public boolean isShowEmail() {
+    return showEmail;
+  }
+
+  public void setShowEmail(boolean showEmail) {
+    this.showEmail = showEmail;
+  }
+
+  @Column(name = "\"publishedAt\"")
+  public Instant getPublishedAt() {
+    return publishedAt;
+  }
+
+  public void setPublishedAt(Instant publishedAt) {
+    this.publishedAt = publishedAt;
+  }
+
+  @Column(name = "\"createdAt\"", nullable = false)
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  @Column(name = "\"updatedAt\"", nullable = false)
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
+}
