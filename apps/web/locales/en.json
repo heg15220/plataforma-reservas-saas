@@ -194,6 +194,119 @@
     "description": "Responsive platform for discovering and managing bookings.",
     "title": "Reserly"
   },
+  "Verification": {
+    "business": {
+      "statuses": {
+        "expired": {
+          "description": "The previous check has passed its validity period. You must renew it before publishing.",
+          "title": "Verification expired"
+        },
+        "pendingRemoteCheck": {
+          "description": "We are checking an official or authorised source. You do not need to do anything yet.",
+          "title": "Check in progress"
+        },
+        "pendingReview": {
+          "description": "We need to review the information or documentation before making a decision.",
+          "title": "Manual review pending"
+        },
+        "rejected": {
+          "description": "Review the information provided before requesting a new check.",
+          "title": "Verification not approved"
+        },
+        "unverified": {
+          "description": "We have received the business details and the check has not started yet.",
+          "title": "Check not started"
+        },
+        "verified": {
+          "description": "The business identity is confirmed for the stated validity period.",
+          "title": "Business verified"
+        }
+      }
+    },
+    "documents": {
+      "statuses": {
+        "accepted": {
+          "description": "The document is valid as supporting evidence for the business check.",
+          "title": "Document accepted"
+        },
+        "needsCorrection": {
+          "description": "You must provide a corrected copy following the review instructions.",
+          "title": "Correction required"
+        },
+        "pendingReview": {
+          "description": "The file has been received securely and is waiting for review.",
+          "title": "Document pending review"
+        },
+        "rejected": {
+          "description": "The document cannot complete the check. Review the reason before sending another one.",
+          "title": "Document not accepted"
+        }
+      }
+    },
+    "email": {
+      "statuses": {
+        "pending": {
+          "description": "Open the link sent to your email address to confirm that it belongs to you.",
+          "title": "Confirmation pending"
+        },
+        "verified": {
+          "description": "The account email address has been confirmed.",
+          "title": "Email confirmed"
+        }
+      }
+    },
+    "errors": {
+      "authenticationInvalid": "We could not sign you in with those credentials.",
+      "authenticationRequired": "Your session has expired. Sign in again to continue.",
+      "authorizationDenied": "Your account does not have permission to perform this action.",
+      "conflict": "The information changed while you were completing the operation. Refresh the page and try again.",
+      "invalidRequest": "Some details are invalid. Review them before continuing.",
+      "rateLimited": "There have been too many attempts. Wait a few minutes before continuing.",
+      "unavailable": "The service is not available right now. Try again later.",
+      "unknown": "We could not complete the operation. Try again."
+    },
+    "manualReview": {
+      "statuses": {
+        "approved": {
+          "description": "The review team has confirmed the business identity.",
+          "title": "Review approved"
+        },
+        "needsCorrection": {
+          "description": "You must correct or complete the stated information to continue.",
+          "title": "Correction requested"
+        },
+        "pendingReview": {
+          "description": "The team will review the information and documentation provided.",
+          "title": "Pending manual review"
+        },
+        "rejected": {
+          "description": "The review could not confirm the business identity with the evidence provided.",
+          "title": "Review rejected"
+        }
+      }
+    },
+    "publication": {
+      "blocked": {
+        "description": "Complete all mandatory checks before publishing the venue.",
+        "title": "Publishing blocked"
+      },
+      "blockers": {
+        "businessVerificationNotApproved": "The business identity has not been approved yet.",
+        "emailNotVerified": "The email address has not been confirmed yet.",
+        "identifierNotNormalized": "The business identifier has not been validated yet.",
+        "notVenueBusiness": "The account does not have a business identity."
+      },
+      "ready": {
+        "description": "The mandatory checks are approved. Publishing will also require a complete profile.",
+        "title": "Verification ready for publishing"
+      }
+    },
+    "summary": {
+      "businessLabel": "Business identity",
+      "emailLabel": "Email address",
+      "title": "Check status"
+    }
+  },
   "VenueLogin": {
     "actions": {
       "forgotPassword": "I forgot my password",

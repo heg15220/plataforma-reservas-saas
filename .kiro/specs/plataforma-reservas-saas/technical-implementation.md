@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.20`.
-- Siguiente tarea pendiente recomendada: `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.`
+- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.21`.
+- Siguiente tarea pendiente recomendada: `1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -10082,3 +10082,386 @@ credenciales fuera del alcance de JavaScript persistente, bloquea dobles envíos
 recuperables, aplica el locale de cuenta y navega a una entrada privada estable. Los 16 tests nuevos,
 los 72 tests frontend totales, TypeScript, ESLint, Prettier, i18n, español, build y revisión visual
 pasan. La siguiente tarea pendiente es `1.21`.
+
+## Iteración 1.21 - Textos ES/EN de identidad y estados de verificación
+
+- **Identificador exacto:** `1.21. Crear textos ES/EN para registro, login, errores y estados de
+  verificación`.
+- **Fecha:** 2026-07-01.
+- **Estado:** completada y verificada.
+- **Rama:** `phase/1-identidad-roles-base-saas`.
+
+### Objetivo técnico
+
+Las tareas `1.18`, `1.19` y `1.20` incorporaron los textos imprescindibles para que registro,
+documentación y login fueran utilizables desde el primer momento. Esa cobertura era deliberadamente
+local a cada pantalla. Faltaba un vocabulario transversal que representara todas las máquinas de
+estado de la Fase 1 y evitara que futuras vistas:
+
+- mostraran valores persistidos como `pending_remote_check`;
+- interpolaran códigos backend como claves i18n;
+- confundieran aprobación manual con aceptación documental;
+- usaran solo color para comunicar resultado;
+- olvidaran ampliar uno de los dos idiomas al añadir un estado.
+
+La iteración crea un contrato único y comprobable entre dominio, catálogo y presentación. También
+lo integra en el éxito del registro, primer punto donde ya existe una respuesta real con estado.
+
+### Requisitos y diseño relacionados
+
+- `RF-007`: el alta informa de email y comprobación empresarial.
+- `RF-008`: login y errores no enumeran cuentas.
+- `RF-031`: botones, errores, estados y mensajes existen en ES/EN.
+- `RF-032`: estados empresariales y revisión documental.
+- `RNF-001`: estados desconocidos fallan cerrados.
+- `RNF-005`: lenguaje claro, acción siguiente y semántica redundante.
+- `RNF-007` y `RNF-009`: catálogos versionados, paridad y fallback.
+- `design.md` 3.15: flujo empresarial y documentos.
+- `design.md` 8.4: respuesta del registro.
+- `design.md` 9.1.1: nuevo contrato de textos de verificación.
+- Decisión de `1.11`: motivos cerrados de bloqueo de publicación.
+- Decisión de `1.21`: el resultado técnico remoto no es un estado presentable de cuenta.
+
+### Inventario previo y brecha detectada
+
+Antes de esta tarea existían:
+
+- `VenueRegistration`: campos, validaciones, conflicto, rate limit, indisponibilidad y éxito;
+- `VenueLogin`: campos, credencial genérica, rate limit e indisponibilidad;
+- `BusinessDocuments`: solicitud, tipos, razones, carga, errores y estado pendiente.
+
+No existían textos exhaustivos para:
+
+- los seis estados de `BusinessVerificationStatus`;
+- email pendiente/confirmado;
+- los cuatro estados de revisión manual;
+- los cuatro estados de documento;
+- los cuatro bloqueos de `VenuePublicationEligibilityService`;
+- categorías comunes de error reutilizables;
+- explicación de cada estado más allá de una etiqueta corta.
+
+Además, `VenueRegistrationResult.businessVerificationStatus` era `string` y la respuesta se obtenía
+con cast TypeScript. Un backend alterado o una evolución no coordinada podía introducir un valor
+desconocido en UI.
+
+### Namespace `Verification`
+
+Se añaden 113 líneas de catálogo por idioma bajo un namespace compartido.
+
+#### Estados de email
+
+- `pending`
+  - ES: «Confirmación pendiente».
+  - EN: «Confirmation pending».
+  - Explica que debe abrirse el enlace recibido.
+- `verified`
+  - ES: «Correo confirmado».
+  - EN: «Email confirmed».
+  - Confirma que la dirección de cuenta ya está verificada.
+
+El estado de presentación se deriva de `emailVerificationRequired` en registro y de
+`emailVerified` cuando lo proporcione una consulta autenticada. No se expone el estado interno de
+usuario `pending_email_verification`.
+
+#### Estados empresariales
+
+Se cubre exactamente `BusinessVerificationStatus`:
+
+- `unverified`: datos recibidos, comprobación aún no iniciada;
+- `pending_remote_check`: consulta oficial/autorizada en curso;
+- `verified`: identidad confirmada durante su vigencia;
+- `pending_review`: decisión pendiente de revisión de información o documentos;
+- `rejected`: no aprobada, con instrucción profesional de revisar;
+- `expired`: aprobación fuera de vigencia y necesidad de renovación.
+
+Los textos evitan promesas temporales no garantizadas y no nombran proveedor, referencia, NIF ni
+evidencia interna.
+
+#### Revisión manual
+
+- `pending_review`;
+- `approved`;
+- `rejected`;
+- `needs_correction`.
+
+La aprobación manual usa `approved`, conforme a `"BusinessAccounts"."manualReviewStatus"`. No se
+reutiliza el término documental `accepted`.
+
+#### Revisión documental
+
+- `pending_review`;
+- `accepted`;
+- `rejected`;
+- `needs_correction`.
+
+Cada descripción explica si el archivo está esperando, sirve como evidencia, no permite completar
+la comprobación o debe sustituirse.
+
+#### Publicación
+
+Se preparan:
+
+- estado listo para publicar, dejando claro que el perfil también debe estar completo;
+- estado bloqueado;
+- `emailNotVerified`;
+- `businessVerificationNotApproved`;
+- `notVenueBusiness`;
+- `identifierNotNormalized`.
+
+Estos valores reflejan `VenuePublicationBlocker`. No habilitan publicación desde frontend; la
+autoridad permanece en `VenuePublicationEligibilityService` y el caso de uso futuro `2.9`.
+
+#### Errores compartidos
+
+Ocho categorías seguras:
+
+- `authenticationInvalid`;
+- `authenticationRequired`;
+- `authorizationDenied`;
+- `conflict`;
+- `invalidRequest`;
+- `rateLimited`;
+- `unavailable`;
+- `unknown`.
+
+Son textos presentables, no un mapeo ciego de cualquier código HTTP. Las pantallas actuales
+mantienen sus mensajes contextuales más precisos. El vocabulario compartido sirve como fallback
+controlado para futuras superficies de identidad/verificación.
+
+### Contrato TypeScript
+
+`apps/web/src/features/verification/verification-status.ts` exporta:
+
+- cuatro tuplas `as const` con estados permitidos;
+- cuatro tipos derivados;
+- `VerificationStatusPresentation`;
+- cuatro mapas exhaustivos con `satisfies Record<Status, Presentation>`.
+
+Cada entrada obliga a declarar:
+
+- `titleKey`;
+- `descriptionKey`;
+- `tone`.
+
+Si se añade un estado a una tupla y no al mapa, TypeScript falla. Si se elimina un estado del tipo
+sin ajustar el mapa, el exceso también queda visible. Las claves se declaran de forma explícita; no
+se ejecuta `t("statuses." + backendValue)`.
+
+Tonos:
+
+- `success`: verificaciones/aprobaciones positivas;
+- `warning`: espera, revisión o caducidad;
+- `danger`: rechazo;
+- `neutral`: comprobación no iniciada;
+- `info`: comprobación en curso o corrección solicitada.
+
+El tono no es lógica de negocio y no cambia permisos.
+
+### Componente `VerificationStatusSummary`
+
+El componente recibe:
+
+```ts
+{
+  businessStatus: BusinessVerificationStatus;
+  emailVerified: boolean;
+}
+```
+
+Renderiza una sección etiquetada con:
+
+- título «Estado de las comprobaciones» / «Check status»;
+- fila de correo;
+- fila de identidad empresarial;
+- `StatusChip` con texto, icono y tono;
+- descripción bajo cada fila.
+
+Detalles de accesibilidad:
+
+- `useId` evita colisiones al asociar `aria-labelledby`;
+- título de sección `h3`;
+- cada barrera usa `h4`;
+- el icono del chip es decorativo;
+- el estado completo existe como texto;
+- la descripción explica significado y acción;
+- layout cambia de columna a fila desde `sm` sin alterar orden semántico.
+
+### Integración en registro
+
+`venue-registration-api.ts` sustituye la interfaz abierta por un esquema Zod:
+
+```ts
+z.object({
+  accountType: z.literal("venue_business"),
+  businessVerificationStatus: z.enum(businessVerificationStatuses),
+  emailVerificationRequired: z.boolean(),
+  canPublishVenue: z.literal(false),
+});
+```
+
+El registro falla como `unavailable` si recibe:
+
+- tipo de cuenta distinto;
+- estado desconocido;
+- flags de tipo incorrecto;
+- `canPublishVenue: true`;
+- JSON inválido.
+
+No se intenta mostrar un estado desconocido ni usarlo como clave.
+
+`VenueRegistrationForm` conserva el resultado validado solo en memoria durante el éxito. Deriva:
+
+- `emailVerified = !emailVerificationRequired`;
+- estado empresarial del enum validado.
+
+El estado inicial real del backend es `unverified`; las fixtures antiguas que indicaban
+`pending_remote_check` se corrigen para reflejar el contrato implementado en `1.4`.
+
+### Seguridad, privacidad y permisos
+
+- No se añaden identificadores fiscales, actor, proveedor o referencias al catálogo.
+- Los textos no revelan por qué una autenticación concreta falló.
+- Un estado arbitrario nunca se evalúa como clave i18n.
+- Zod bloquea respuestas no coordinadas antes de renderizar.
+- Las descripciones de rechazo no incluyen evidencia administrativa sensible.
+- Los bloqueos de publicación son explicaciones; no autorizan acciones.
+- No se añaden llamadas HTTP, almacenamiento cliente ni logs.
+- No se modifica la cookie, sesión, CORS, rate limiting o CSRF.
+- Los catálogos no contienen HTML.
+
+### Modelo de datos y backend
+
+No se modifican migraciones, entidades, DAOs, servicios ni endpoints.
+
+El contrato refleja valores ya restringidos por:
+
+- V4: estados empresariales, manuales y documentales;
+- V6: vigencia y operación remota activa;
+- `BusinessVerificationStatus`;
+- `VenuePublicationBlocker`;
+- DTO de registro;
+- DTO documental.
+
+Los resultados técnicos `RemoteVerificationStatus.VERIFIED`, `INVALID` e `INCONCLUSIVE`, así como el
+estado histórico `error`, no se incluyen. Son evidencia interna que la máquina agregada traduce a
+un estado de cuenta antes de presentar nada.
+
+### Tests añadidos y modificados
+
+#### Contrato de estados
+
+`verification-status.test.ts`:
+
+- comprueba que las claves de cada mapa coinciden exactamente con su tupla;
+- recorre los cuatro mapas;
+- resuelve título y descripción tanto en `es.json` como en `en.json`;
+- exige contenido no vacío;
+- impide que el título o descripción sean simplemente el código técnico;
+- exige las ocho categorías de error en ambos idiomas.
+
+La resolución de catálogo del test sigue rutas explícitas declaradas por la aplicación. No prueba
+solo paridad estructural: garantiza que todos los estados de dominio esperados existen incluso si
+alguien eliminara la misma clave en ambos idiomas.
+
+#### Componente
+
+`verification-status-summary.test.tsx`:
+
+- representa email pendiente y comprobación remota en español;
+- verifica etiquetas y explicaciones;
+- impide mostrar `pending_remote_check`;
+- representa estados positivos;
+- representa rechazo y siguiente acción;
+- monta un `NextIntlClientProvider` inglés real;
+- verifica «Check status», «Email confirmed» y «Verification expired»;
+- comprueba ausencia de fallback español y del código `expired`.
+
+#### Registro
+
+- fixture actualizada a `unverified`;
+- éxito muestra ambas barreras;
+- `unverified` no aparece visible;
+- una respuesta con `provider_waiting` se rechaza como indisponible.
+
+### Internacionalización y fallback
+
+Los catálogos ES/EN conservan idéntica estructura. `Messages` continúa derivándose del catálogo
+inglés, por lo que `next-intl` mantiene tipado global.
+
+El fallback general permanece en inglés. El contrato reduce la posibilidad de alcanzarlo por una
+clave ausente porque:
+
+1. `i18n:check` compara todas las hojas de ambos catálogos;
+2. TypeScript valida claves usadas por componentes;
+3. los tests recorren todos los mapas, incluidos estados todavía no visibles;
+4. español pasa el validador ortográfico y de mojibake.
+
+### Verificación visual
+
+Se arrancó la build de producción y un mock HTTP local, efímero y sin persistencia. Solo recibió
+datos ficticios `example.invalid` y devolvió el estado inicial `unverified`.
+
+Resultado español:
+
+- 1280 px: resumen alineado, jerarquía visible y sin overflow horizontal;
+- 390 × 844 px: filas apiladas, chips legibles, descripciones completas y sin overflow;
+- DOM: región «Estado de las comprobaciones», `h3`, dos `h4`, estados y explicaciones;
+- el texto visible del `main` no contiene `unverified` ni `pending_remote_check`.
+
+El navegador integrado conservó su preferencia española al navegar a una URL inglesa incluso sobre
+otro host local. No se atribuye una revisión visual inglesa que no ocurrió. El render inglés se
+verificó mediante proveedor `NextIntlClientProvider` en jsdom; la matriz visual explícita de ambos
+idiomas sigue asignada a `15.15`.
+
+El mock temporal y ambos procesos se eliminaron al terminar. No queda fixture, puerto escuchando ni
+artefacto en el repositorio.
+
+### Comandos y evidencia
+
+1. `npm run test --workspace @reserly/web -- src/features/verification
+   src/features/venue-registration`
+   - verificación final: 5 archivos y 23 tests correctos.
+2. `npm run typecheck`
+   - correcto.
+3. `npm run lint:web`
+   - correcto, cero warnings.
+4. `npm run i18n:check`
+   - paridad y ausencia de hardcodes correctas.
+5. `npm run spanish:text:check`
+   - UTF-8, tildes, signos y mojibake correctos.
+6. `npm run test --workspace @reserly/web -- --maxWorkers=1`
+   - 18 archivos y 82 tests correctos.
+7. `npm run build:web:test`
+   - build correcto, ocho rutas dinámicas incluidas.
+8. `npm run format:check:web`
+   - Prettier correcto.
+9. `git diff --check`
+   - correcto antes de documentación.
+10. Navegador integrado:
+    - español en escritorio y móvil correcto;
+    - sin overflow ni códigos técnicos visibles.
+
+La verificación final repitió pruebas focalizadas, suite, TypeScript, ESLint, Prettier, i18n,
+español y whitespace después de actualizar la documentación; todos finalizaron correctamente.
+
+### Riesgos, limitaciones y deuda
+
+- Aún no existe endpoint autenticado de resumen completo de verificación; el componente recibe
+  estado desde contratos disponibles.
+- Los textos de revisión manual/documental se consumirán en `14.6` y `14.8`.
+- Los bloqueos de publicación se consumirán en `2.9`.
+- La pantalla de revalidación de un estado `expired` pertenece a una iteración posterior.
+- Los motivos administrativos concretos deben tratarse como datos localizados o códigos cerrados,
+  nunca como mensajes libres sin sanitización.
+- `15.15` conserva la matriz visual ES/EN completa.
+- `1.22` debe cubrir flujos integrados y permisos, no solo presentación.
+- Las plantillas de email ES/EN corresponden a `8.2`; este catálogo no sustituye contenido de email.
+- Los textos legales permanecen fuera del alcance de esta tarea.
+
+### Criterio de cierre
+
+La tarea se cierra porque registro, login y documentación conservan sus textos ES/EN y ahora existe
+un contrato transversal, exhaustivo y probado para errores, email, cuenta empresarial, revisión
+manual, documentos y publicación. Ningún estado backend se presenta directamente; registro valida
+la respuesta y muestra ambas barreras con semántica accesible. Catálogos, TypeScript, tests, lint,
+formato, build, español y revisión visual pasan. La siguiente tarea pendiente es `1.22`.

@@ -79,7 +79,7 @@ describe("VenueRegistrationForm", () => {
       new Response(
         JSON.stringify({
           accountType: "venue_business",
-          businessVerificationStatus: "pending_remote_check",
+          businessVerificationStatus: "unverified",
           emailVerificationRequired: true,
           canPublishVenue: false,
         }),
@@ -88,6 +88,9 @@ describe("VenueRegistrationForm", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "La cuenta se ha creado" })).toBeVisible();
+    expect(screen.getByText("Confirmación pendiente")).toBeVisible();
+    expect(screen.getByText("Comprobación aún no iniciada")).toBeVisible();
+    expect(screen.queryByText("unverified")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ir al acceso de locales" })).toHaveAttribute(
       "href",
       "/locales/acceso",

@@ -33,7 +33,7 @@ describe("registerVenue", () => {
       new Response(
         JSON.stringify({
           accountType: "venue_business",
-          businessVerificationStatus: "pending_remote_check",
+          businessVerificationStatus: "unverified",
           emailVerificationRequired: true,
           canPublishVenue: false,
         }),
@@ -70,6 +70,25 @@ describe("registerVenue", () => {
 
   it("convierte fallos de red en un error no sensible", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("detalle interno")));
+
+    await expect(registerVenue(payload)).rejects.toMatchObject({ kind: "unavailable" });
+  });
+
+  it("rechaza estados de verificación ajenos al contrato cerrado", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accountType: "venue_business",
+            businessVerificationStatus: "provider_waiting",
+            emailVerificationRequired: true,
+            canPublishVenue: false,
+          }),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
 
     await expect(registerVenue(payload)).rejects.toMatchObject({ kind: "unavailable" });
   });

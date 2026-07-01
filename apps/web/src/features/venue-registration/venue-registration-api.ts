@@ -1,11 +1,17 @@
+import { z } from "zod";
+
+import { businessVerificationStatuses } from "@/features/verification/verification-status";
+
 import type { VenueRegistrationPayload } from "./venue-registration-schema";
 
-export interface VenueRegistrationResult {
-  accountType: "venue_business";
-  businessVerificationStatus: string;
-  emailVerificationRequired: boolean;
-  canPublishVenue: false;
-}
+const venueRegistrationResultSchema = z.object({
+  accountType: z.literal("venue_business"),
+  businessVerificationStatus: z.enum(businessVerificationStatuses),
+  emailVerificationRequired: z.boolean(),
+  canPublishVenue: z.literal(false),
+});
+
+export type VenueRegistrationResult = z.infer<typeof venueRegistrationResultSchema>;
 
 export class VenueRegistrationApiError extends Error {
   constructor(
@@ -61,7 +67,7 @@ export async function registerVenue(
   }
 
   try {
-    return (await response.json()) as VenueRegistrationResult;
+    return venueRegistrationResultSchema.parse(await response.json());
   } catch (error) {
     throw new VenueRegistrationApiError("unavailable", { cause: error });
   }

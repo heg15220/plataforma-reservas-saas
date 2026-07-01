@@ -57,7 +57,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.18. Crear pantalla de registro de local con campos empresariales.
 - [x] 1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes.
 - [x] 1.20. Crear pantalla de acceso para locales.
-- [ ] 1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.
+- [x] 1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.
 - [ ] 1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.
 
 ## 4. Fase 2 - Locales, categorías y perfil público

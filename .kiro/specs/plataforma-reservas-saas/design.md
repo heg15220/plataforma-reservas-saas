@@ -1963,6 +1963,34 @@ Errores esperados:
 - Todos los textos visibles deben renderizarse mediante claves i18n en `es` o `en`.
 - El idioma debe resolverse automáticamente por navegador/app y permitir preferencia manual.
 
+#### 9.1.1 Contrato de textos de identidad y verificación
+
+Los estados persistidos no se presentan directamente. Frontend mantiene listas cerradas y mapas
+exhaustivos que convierten cada valor de dominio en:
+
+- clave de título;
+- clave de descripción orientada a la siguiente acción;
+- tono visual semántico.
+
+El contrato inicial cubre:
+
+- email: `pending`, `verified`;
+- cuenta empresarial: `unverified`, `pending_remote_check`, `verified`, `pending_review`,
+  `rejected`, `expired`;
+- revisión manual: `pending_review`, `approved`, `rejected`, `needs_correction`;
+- documento: `pending_review`, `accepted`, `rejected`, `needs_correction`;
+- bloqueos de publicación de `VenuePublicationEligibilityService`;
+- categorías seguras de error de identidad y verificación.
+
+Los mapas deben usar claves de un namespace compartido `Verification`. Un estado nuevo no puede
+mostrarse mediante interpolación dinámica de una clave remitida por backend: exige ampliar el tipo,
+el mapa, ambos catálogos y sus pruebas. Las respuestas HTTP que contengan estados desconocidos
+fallan cerradas como contrato no disponible.
+
+Cada estado tiene título y explicación en ES/EN. El color nunca comunica el significado por sí solo:
+se combina con icono decorativo, etiqueta textual y descripción. Los códigos `snake_case`, errores
+de proveedor y detalles de persistencia no son textos de usuario.
+
 ### 9.2 Rutas públicas
 
 ```text

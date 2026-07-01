@@ -18,9 +18,14 @@ import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { NavigationLink } from "@/components/navigation-link";
+import { VerificationStatusSummary } from "@/features/verification/verification-status-summary";
 import type { SupportedLocale } from "@/i18n/config";
 
-import { registerVenue, VenueRegistrationApiError } from "./venue-registration-api";
+import {
+  registerVenue,
+  VenueRegistrationApiError,
+  type VenueRegistrationResult,
+} from "./venue-registration-api";
 import {
   parseVenueRegistrationForm,
   type RegistrationFieldErrors,
@@ -69,6 +74,7 @@ export function VenueRegistrationForm() {
   const [fieldErrors, setFieldErrors] = useState<RegistrationFieldErrors>({});
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [submissionError, setSubmissionError] = useState<keyof typeof submissionErrorKeys>();
+  const [registrationResult, setRegistrationResult] = useState<VenueRegistrationResult>();
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(
@@ -102,8 +108,9 @@ export function VenueRegistrationForm() {
     abortControllerRef.current = abortController;
 
     try {
-      await registerVenue(result.payload, abortController.signal);
+      const response = await registerVenue(result.payload, abortController.signal);
       form.reset();
+      setRegistrationResult(response);
       setSubmissionState("success");
     } catch (error) {
       if (abortController.signal.aborted) {
@@ -139,7 +146,7 @@ export function VenueRegistrationForm() {
     }
   }
 
-  if (submissionState === "success") {
+  if (submissionState === "success" && registrationResult) {
     return (
       <Stack aria-live="polite" spacing={4} sx={{ py: { xs: 2, md: 4 } }}>
         <Box
@@ -163,6 +170,10 @@ export function VenueRegistrationForm() {
           <Typography color="text.secondary">{t("success.body")}</Typography>
         </Box>
         <Alert severity="info">{t("success.verificationNotice")}</Alert>
+        <VerificationStatusSummary
+          businessStatus={registrationResult.businessVerificationStatus}
+          emailVerified={!registrationResult.emailVerificationRequired}
+        />
         <Button component={NavigationLink} href="/locales/acceso" variant="outlined">
           {t("actions.goToAccess")}
         </Button>

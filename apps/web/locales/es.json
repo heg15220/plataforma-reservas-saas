@@ -194,6 +194,119 @@
     "description": "Plataforma responsive para descubrir y gestionar reservas.",
     "title": "Reserly"
   },
+  "Verification": {
+    "business": {
+      "statuses": {
+        "expired": {
+          "description": "La comprobación anterior ha superado su periodo de validez. Debes renovarla antes de publicar.",
+          "title": "Verificación caducada"
+        },
+        "pendingRemoteCheck": {
+          "description": "Estamos consultando una fuente oficial o autorizada. No necesitas hacer nada por ahora.",
+          "title": "Comprobación en curso"
+        },
+        "pendingReview": {
+          "description": "Necesitamos revisar la información o documentación antes de tomar una decisión.",
+          "title": "Revisión manual pendiente"
+        },
+        "rejected": {
+          "description": "Revisa la información indicada antes de solicitar una nueva comprobación.",
+          "title": "Verificación no aprobada"
+        },
+        "unverified": {
+          "description": "Hemos recibido los datos empresariales y la comprobación todavía no ha comenzado.",
+          "title": "Comprobación aún no iniciada"
+        },
+        "verified": {
+          "description": "La identidad empresarial está confirmada durante el periodo de validez indicado.",
+          "title": "Negocio verificado"
+        }
+      }
+    },
+    "documents": {
+      "statuses": {
+        "accepted": {
+          "description": "El documento es válido para respaldar la comprobación empresarial.",
+          "title": "Documento aceptado"
+        },
+        "needsCorrection": {
+          "description": "Debes aportar una copia corregida siguiendo las indicaciones de la revisión.",
+          "title": "Corrección necesaria"
+        },
+        "pendingReview": {
+          "description": "El archivo se ha recibido de forma segura y está pendiente de revisión.",
+          "title": "Documento pendiente de revisión"
+        },
+        "rejected": {
+          "description": "El documento no permite completar la comprobación. Consulta el motivo antes de enviar otro.",
+          "title": "Documento no aceptado"
+        }
+      }
+    },
+    "email": {
+      "statuses": {
+        "pending": {
+          "description": "Abre el enlace que hemos enviado a tu correo para confirmar que la dirección te pertenece.",
+          "title": "Confirmación pendiente"
+        },
+        "verified": {
+          "description": "La dirección de correo de la cuenta ya está confirmada.",
+          "title": "Correo confirmado"
+        }
+      }
+    },
+    "errors": {
+      "authenticationInvalid": "No hemos podido iniciar sesión con esas credenciales.",
+      "authenticationRequired": "Tu sesión ha caducado. Accede de nuevo para continuar.",
+      "authorizationDenied": "Tu cuenta no tiene permiso para realizar esta acción.",
+      "conflict": "La información ha cambiado mientras realizabas la operación. Actualiza la página y vuelve a intentarlo.",
+      "invalidRequest": "Algunos datos no son válidos. Revísalos antes de continuar.",
+      "rateLimited": "Se han realizado demasiados intentos. Espera unos minutos antes de continuar.",
+      "unavailable": "El servicio no está disponible en este momento. Inténtalo de nuevo más tarde.",
+      "unknown": "No hemos podido completar la operación. Inténtalo de nuevo."
+    },
+    "manualReview": {
+      "statuses": {
+        "approved": {
+          "description": "El equipo de revisión ha confirmado la identidad empresarial.",
+          "title": "Revisión aprobada"
+        },
+        "needsCorrection": {
+          "description": "Debes corregir o completar la información indicada para continuar.",
+          "title": "Corrección solicitada"
+        },
+        "pendingReview": {
+          "description": "El equipo revisará la información y la documentación aportadas.",
+          "title": "Pendiente de revisión manual"
+        },
+        "rejected": {
+          "description": "La revisión no ha podido confirmar la identidad empresarial con la evidencia aportada.",
+          "title": "Revisión rechazada"
+        }
+      }
+    },
+    "publication": {
+      "blocked": {
+        "description": "Completa todas las comprobaciones obligatorias antes de publicar el local.",
+        "title": "Publicación bloqueada"
+      },
+      "blockers": {
+        "businessVerificationNotApproved": "La identidad empresarial todavía no está aprobada.",
+        "emailNotVerified": "El correo electrónico todavía no está confirmado.",
+        "identifierNotNormalized": "El identificador empresarial todavía no se ha validado.",
+        "notVenueBusiness": "La cuenta no dispone de identidad empresarial."
+      },
+      "ready": {
+        "description": "Las comprobaciones obligatorias están aprobadas. La publicación dependerá también de que el perfil esté completo.",
+        "title": "Verificación preparada para publicar"
+      }
+    },
+    "summary": {
+      "businessLabel": "Identidad empresarial",
+      "emailLabel": "Correo electrónico",
+      "title": "Estado de las comprobaciones"
+    }
+  },
   "VenueLogin": {
     "actions": {
       "forgotPassword": "He olvidado mi contraseña",

@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-01
-- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.20`.
-- Siguiente tarea pendiente recomendada: `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.`
-- Observación: `1.20` conecta la autenticación existente con `/locales/acceso`, conserva la sesión exclusivamente en la cookie HttpOnly y usa `/panel` como entrada estable al área privada.
+- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.21`.
+- Siguiente tarea pendiente recomendada: `1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.`
+- Observación: `1.21` consolida textos ES/EN y mapas exhaustivos para identidad, errores, publicación y estados de verificación; los códigos persistidos ya no se presentan directamente.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -2260,3 +2260,66 @@ Fuente de verdad del avance:
   - Evidencia focalizada: 16 tests correctos.
   - Evidencia integral: 16 archivos y 72 tests frontend correctos con un worker; build Next.js,
     TypeScript, ESLint, Prettier, i18n y calidad de español correctos.
+
+## Conversación 49 - Contrato ES/EN de identidad y verificación
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `1.21` como primera tarea pendiente y se auditó la cobertura creada durante
+    registro, carga documental y login.
+  - Se creó el namespace compartido `Verification` con títulos y descripciones ES/EN para email,
+    cuenta empresarial, revisión manual, documentos y barreras de publicación.
+  - Se añadieron ocho categorías seguras de error para identidad y verificación sin mensajes
+    internos, proveedores ni pistas de enumeración.
+  - Se implementaron listas cerradas y mapas TypeScript exhaustivos entre valores persistidos,
+    claves de catálogo y tonos visuales.
+  - La respuesta de registro pasó de un cast abierto a validación Zod; un estado empresarial
+    desconocido ahora falla cerrado.
+  - El éxito del registro muestra por separado la confirmación del correo y la identidad
+    empresarial mediante un resumen accesible que no expone códigos `snake_case`.
+  - Se verificaron catálogos y componentes tanto en español como en inglés.
+  - La inspección visual española pasó en 1280 px y 390 × 844 px sin overflow. El navegador
+    integrado retuvo su preferencia española al solicitar inglés; la variante inglesa se verificó
+    en prueba de componente y la matriz visual completa permanece en `15.15`.
+- Archivos modificados:
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - Nuevo feature `apps/web/src/features/verification`.
+  - `apps/web/src/features/venue-registration/venue-registration-api.ts`.
+  - `apps/web/src/features/venue-registration/venue-registration-form.tsx`.
+  - Pruebas de API y formulario de registro.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RF-032 Verificación empresarial`.
+  - `RNF-001 Seguridad`.
+  - `RNF-005 Usabilidad y responsive`.
+  - `RNF-007 Compatibilidad e internacionalización`.
+  - `RNF-009 Internacionalización y localización`.
+- Tareas impactadas:
+  - `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación`.
+  - Prepara `1.22`, `2.9`, `14.6`, `14.8` y `15.15`.
+- Tareas completadas:
+  - `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación`.
+- Siguiente tarea pendiente recomendada:
+  - `1.22. Crear tests de registro, login, verificación de email, verificación empresarial,
+    documentación de respaldo y permisos`.
+- Decisiones o aclaraciones relevantes:
+  - El estado técnico remoto (`verified`, `invalid`, `inconclusive`, `error`) no se muestra al
+    propietario; la UI usa el estado agregado de la cuenta.
+  - Los mapas no construyen claves i18n a partir de valores arbitrarios del servidor.
+  - Revisión manual y documentos tienen vocabularios separados porque `approved` y `accepted` no
+    son intercambiables en persistencia.
+  - Los bloqueos de publicación ya disponen de texto, aunque la pantalla que los consumirá
+    corresponde a `2.9`.
+  - El resumen usa texto, icono y color; nunca depende solo del tono.
+  - No se modificaron backend, base de datos, migraciones ni contratos HTTP.
+  - Evidencia focalizada final: 5 archivos y 23 tests correctos, incluidos estado desconocido y
+    render inglés.
+  - Evidencia integral: 18 archivos y 82 tests correctos; build, TypeScript, ESLint, Prettier, i18n
+    y español correctos.
