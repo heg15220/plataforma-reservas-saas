@@ -3,9 +3,12 @@ package com.reserly.platform.configuration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.reserly.platform.localization.LocalizedText;
+import com.reserly.platform.localization.SupportedLocale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -31,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("11");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -109,6 +112,68 @@ class DatabaseMigrationIntegrationTests {
                 "centro-de-estetica",
                 "Beauty center"),
             categorySeedRow("20000000-0000-0000-0000-000000000008", "Otros", "otros", "Other"));
+  }
+
+  /**
+   * Audita el contenido bilingüe persistido y lo atraviesa por el mismo value object que usarán los
+   * futuros servicios. La resolución con locale nulo demuestra además el fallback inglés sin
+   * exponer el documento JSONB al consumidor.
+   */
+  @Test
+  void resolvesCompleteInitialCategoryTranslations() {
+    Map<String, CategoryTranslationExpectation> expected = initialCategoryTranslations();
+    Map<String, CategoryTranslationExpectation> persisted = new LinkedHashMap<>();
+
+    jdbcTemplate.query(
+        """
+        SELECT
+          "slug",
+          "nameI18n"->>'sourceLocale' AS "sourceLocale",
+          "nameI18n"->'values'->>'es' AS "nameEs",
+          "nameI18n"->'values'->>'en' AS "nameEn",
+          "descriptionI18n"->'values'->>'es' AS "descriptionEs",
+          "descriptionI18n"->'values'->>'en' AS "descriptionEn"
+        FROM "Categories"
+        WHERE "id"::text LIKE '20000000-0000-0000-0000-00000000000_'
+        ORDER BY "id"
+        """,
+        resultSet -> {
+          String sourceLocale = resultSet.getString("sourceLocale");
+          CategoryTranslationExpectation translation =
+              new CategoryTranslationExpectation(
+                  resultSet.getString("nameEs"),
+                  resultSet.getString("nameEn"),
+                  resultSet.getString("descriptionEs"),
+                  resultSet.getString("descriptionEn"));
+          persisted.put(resultSet.getString("slug"), translation);
+
+          LocalizedText name =
+              LocalizedText.fromLanguageTagValues(
+                  sourceLocale, Map.of("es", translation.nameEs(), "en", translation.nameEn()));
+          LocalizedText description =
+              LocalizedText.fromLanguageTagValues(
+                  sourceLocale,
+                  Map.of("es", translation.descriptionEs(), "en", translation.descriptionEn()));
+
+          assertThat(name.hasRequiredTranslations(Set.of(SupportedLocale.ES, SupportedLocale.EN)))
+              .isTrue();
+          assertThat(description.resolve(SupportedLocale.ES)).contains(translation.descriptionEs());
+          assertThat(description.resolve(SupportedLocale.EN)).contains(translation.descriptionEn());
+          assertThat(description.resolve(null)).contains(translation.descriptionEn());
+        });
+
+    assertThat(persisted).containsExactlyEntriesOf(expected);
+
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    UPDATE "Categories"
+                    SET "descriptionI18n" =
+                      '{"sourceLocale":"es","values":{"es":"Solo español"}}'::jsonb
+                    WHERE "id" = '20000000-0000-0000-0000-000000000008'
+                    """))
+        .isInstanceOf(DataIntegrityViolationException.class);
   }
 
   /**
@@ -384,4 +449,69 @@ class DatabaseMigrationIntegrationTests {
     row.put("isActive", true);
     return row;
   }
+
+  private Map<String, CategoryTranslationExpectation> initialCategoryTranslations() {
+    Map<String, CategoryTranslationExpectation> translations = new LinkedHashMap<>();
+    translations.put(
+        "restaurante",
+        new CategoryTranslationExpectation(
+            "Restaurante",
+            "Restaurant",
+            "Restaurantes y espacios gastronómicos con reserva de mesa.",
+            "Restaurants and dining venues with table reservations."));
+    translations.put(
+        "peluqueria",
+        new CategoryTranslationExpectation(
+            "Peluquería",
+            "Hair salon",
+            "Peluquerías y salones para servicios de cuidado del cabello.",
+            "Hairdressers and salons offering hair care services."));
+    translations.put(
+        "campo-de-futbol",
+        new CategoryTranslationExpectation(
+            "Campo de fútbol",
+            "Football pitch",
+            "Campos e instalaciones para reservar partidos y entrenamientos de fútbol.",
+            "Football pitches and facilities for booking matches and training sessions."));
+    translations.put(
+        "pista-de-padel",
+        new CategoryTranslationExpectation(
+            "Pista de pádel",
+            "Padel court",
+            "Pistas e instalaciones para reservar partidos y entrenamientos de pádel.",
+            "Padel courts and facilities for booking matches and training sessions."));
+    translations.put(
+        "instalacion-municipal",
+        new CategoryTranslationExpectation(
+            "Instalación municipal",
+            "Municipal facility",
+            "Espacios y servicios municipales disponibles mediante reserva.",
+            "Municipal spaces and services available by reservation."));
+    translations.put(
+        "centro-deportivo",
+        new CategoryTranslationExpectation(
+            "Centro deportivo",
+            "Sports center",
+            "Centros con actividades, clases e instalaciones deportivas reservables.",
+            "Centers with bookable sports activities, classes and facilities."));
+    translations.put(
+        "centro-de-estetica",
+        new CategoryTranslationExpectation(
+            "Centro de estética",
+            "Beauty center",
+            "Centros para reservar tratamientos de estética y cuidado personal.",
+            "Centers for booking beauty and personal care treatments."));
+    translations.put(
+        "otros",
+        new CategoryTranslationExpectation(
+            "Otros",
+            "Other",
+            "Otros negocios, servicios y espacios que funcionan con reserva.",
+            "Other businesses, services and spaces that operate by reservation."));
+    return translations;
+  }
+
+  /** Contenido visible esperado por locale para una categoría inicial. */
+  private record CategoryTranslationExpectation(
+      String nameEs, String nameEn, String descriptionEs, String descriptionEn) {}
 }

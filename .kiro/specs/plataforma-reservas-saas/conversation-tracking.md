@@ -2495,3 +2495,58 @@ Fuente de verdad del avance:
     V10 sobre PostgreSQL 17.5/PostGIS.
   - Evidencia integral: `npm run verify` correcto tras implementación y documentación, con 82
     tests web y 182 tests API.
+
+## Conversación 53 - Traducciones completas de categorías
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.3` como primera tarea pendiente sobre la rama limpia y sincronizada
+    `phase/2-locales-categorias-perfil`.
+  - Se creó la migración Flyway `V11` para completar las ocho categorías iniciales con
+    descripciones naturales en español e inglés.
+  - Se conservó el nombre y la descripción canónica en español, mientras `nameI18n` y
+    `descriptionI18n` actúan como fuentes localizadas estructuradas.
+  - Se endureció `ckCategoriesDescriptionI18n`: una descripción localizada, cuando existe, debe
+    incluir valores ES/EN no vacíos.
+  - La prueba de migración carga los JSONB persistidos mediante `LocalizedText`, comprueba el
+    contenido exacto, la completitud, la resolución ES/EN y el fallback inglés.
+  - Se verificó además que PostgreSQL rechaza intentar dejar una categoría inicial con descripción
+    solo en español.
+- Archivos modificados:
+  - Nuevo
+    `apps/api/src/main/resources/db/migration/V11__complete_initial_category_translations.sql`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.3. Crear traducciones ES/EN para categorías iniciales`.
+  - Prepara `2.4`, `3.3`, `3.14` y `14.2`.
+- Tareas completadas:
+  - `2.3. Crear traducciones ES/EN para categorías iniciales`.
+- Siguiente tarea pendiente recomendada:
+  - `2.4. Implementar CRUD de perfil del local para propietario`.
+- Decisiones o aclaraciones relevantes:
+  - Se añadieron descripciones localizadas porque `V10` ya contenía los nombres ES/EN mínimos
+    exigidos por `V9`; `V11` cierra el contenido completo y su auditoría.
+  - No se editó `V10`: la evolución es forward-only y conserva checksums Flyway publicados.
+  - `descriptionI18n` puede ser `NULL` para una categoría futura aún sin contenido, pero no puede
+    contener un documento parcial.
+  - Los slugs y UUID no se traducen ni cambian con el locale.
+  - No se implementó endpoint de categorías; la futura API deberá resolver el texto antes de
+    responder y no exponer JSONB.
+  - Evidencia focalizada: 7 tests correctos en `DatabaseMigrationIntegrationTests`, con Flyway V1 a
+    V11 sobre PostgreSQL 17.5/PostGIS.
+  - Evidencia integral: `npm run verify` correcto tras implementación y documentación, con 82
+    tests web y 183 tests API.

@@ -11172,3 +11172,220 @@ requeridas, sus identidades son estables, sus slugs son válidos, los textos esp
 UTF-8, el contrato JSONB se cumple y la prueba focalizada verifica el contenido persistido real. La
 documentación de diseño, tareas, seguimiento e implementación queda sincronizada. La siguiente
 tarea pendiente es `2.3`.
+
+## Iteración 2.3 - Traducciones ES/EN de categorías iniciales
+
+### Identificación y fecha
+
+- Tarea: `2.3. Crear traducciones ES/EN para categorías iniciales`.
+- Fecha: 2026-07-01.
+
+### Objetivo técnico
+
+Completar y verificar el contenido bilingüe del catálogo inicial creado en `V10`. La iteración
+debía convertir la presencia estructural de nombres ES/EN en un contrato localizado completo:
+nombres y descripciones editoriales en ambos idiomas, constraints que impidan documentos parciales
+y evidencia de que el contenido persistido puede resolverse mediante el value object común
+`LocalizedText` sin filtrar JSONB a consumidores futuros.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-002`: nombres localizados en filtros por categoría.
+- `RF-003`: categoría presentable en tarjetas según locale.
+- `RF-004`: nombre y explicación de categoría disponibles para ficha pública.
+- `RF-009`: categoría seleccionable en el panel del propietario.
+- `RF-031`: todo texto visible de plataforma disponible en ES/EN y codificado en UTF-8.
+- `RNF-003`: la base impide estados localizados parciales.
+- `RNF-008`: contenido y resolución cubiertos con integración real.
+- `RNF-009`: valores localizados para categorías y fallback controlado.
+- `RNF-011`: columnas físicas `description` y `descriptionI18n`.
+- Diseño `4.1` y `4.3`: entidad `Categories`, JSONB con `sourceLocale` y `values`, resolución
+  solicitado → inglés → idioma fuente.
+
+### Archivos creados y modificados
+
+- Creado
+  `apps/api/src/main/resources/db/migration/V11__complete_initial_category_translations.sql`.
+- Modificado
+  `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- Modificados `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+- No se eliminaron archivos.
+- No se añadieron endpoints, DTOs, DAOs, entidades JPA ni componentes frontend.
+
+### Arquitectura aplicada
+
+La evolución se implementa en `V11`, sin modificar `V10`. Flyway conserva así la secuencia
+forward-only y el checksum de la semilla ya publicada.
+
+Cada categoría mantiene dos representaciones con responsabilidades distintas:
+
+- `description`: texto canónico español útil para administración, diagnóstico y compatibilidad
+  interna;
+- `descriptionI18n`: documento visible localizado y fuente autoritativa para presentar contenido.
+
+Los nombres siguen la misma estrategia creada en V10 con `name` y `nameI18n`. Los slugs y UUID son
+identificadores, no textos presentables, y por ello no se traducen.
+
+Los futuros adaptadores de persistencia deberán convertir `nameI18n` y `descriptionI18n` a
+`LocalizedText`. Los DTOs públicos resolverán el locale efectivo y devolverán strings, no la
+estructura JSONB completa. Esta decisión evita acoplar clientes al formato interno y centraliza el
+fallback.
+
+### Modelo de datos y migración
+
+`V11` actualiza exclusivamente los UUID reservados `...0001` a `...0008`. Para cada fila:
+
+- escribe una descripción española natural en `description`;
+- escribe `descriptionI18n` con `sourceLocale: es`;
+- incluye `values.es` y `values.en`;
+- actualiza `updatedAt`;
+- conserva UUID, slug, nombre, estado y fecha de creación.
+
+Contenido incorporado:
+
+| Slug | Descripción ES | Descripción EN |
+| --- | --- | --- |
+| `restaurante` | Restaurantes y espacios gastronómicos con reserva de mesa. | Restaurants and dining venues with table reservations. |
+| `peluqueria` | Peluquerías y salones para servicios de cuidado del cabello. | Hairdressers and salons offering hair care services. |
+| `campo-de-futbol` | Campos e instalaciones para reservar partidos y entrenamientos de fútbol. | Football pitches and facilities for booking matches and training sessions. |
+| `pista-de-padel` | Pistas e instalaciones para reservar partidos y entrenamientos de pádel. | Padel courts and facilities for booking matches and training sessions. |
+| `instalacion-municipal` | Espacios y servicios municipales disponibles mediante reserva. | Municipal spaces and services available by reservation. |
+| `centro-deportivo` | Centros con actividades, clases e instalaciones deportivas reservables. | Centers with bookable sports activities, classes and facilities. |
+| `centro-de-estetica` | Centros para reservar tratamientos de estética y cuidado personal. | Centers for booking beauty and personal care treatments. |
+| `otros` | Otros negocios, servicios y espacios que funcionan con reserva. | Other businesses, services and spaces that operate by reservation. |
+
+Después de actualizar datos, la migración sustituye `ckCategoriesDescriptionI18n`. La constraint
+final permite:
+
+- `NULL`, para una categoría futura aún sin descripción;
+- o un objeto JSONB con `sourceLocale` `es`/`en`, objeto `values` y textos ES/EN no vacíos.
+
+No permite documentos con solo el idioma fuente, traducción vacía o estructura distinta.
+Actualizar antes de endurecer la constraint hace que la migración sea compatible con el estado
+V10 y mantenga la operación atómica.
+
+### Flujo de ejecución
+
+1. Flyway valida checksums V1–V10.
+2. Ejecuta ocho `UPDATE` dirigidos por UUID estable.
+3. Cada actualización conserva identidad y completa la descripción.
+4. Elimina la constraint anterior, más permisiva.
+5. Crea la constraint bilingüe con el mismo nombre contractual.
+6. PostgreSQL valida todas las filas existentes al crearla.
+7. Flyway registra V11 solo si datos y constraint terminan correctamente.
+8. Hibernate arranca con el esquema en versión 11.
+
+Si falta una categoría inicial, su `UPDATE` afecta cero filas; la prueba de integración detecta la
+ausencia al exigir el mapa completo. Si un texto viola longitud, JSON o constraints, la transacción
+V11 se revierte.
+
+### Resolución y fallback
+
+La prueba extrae de PostgreSQL:
+
+- slug;
+- `sourceLocale`;
+- nombre ES/EN;
+- descripción ES/EN.
+
+Construye `LocalizedText` mediante `fromLanguageTagValues`, el mismo límite de conversión previsto
+para persistencia. Para cada categoría comprueba:
+
+- traducciones requeridas ES y EN completas;
+- resolución española exacta;
+- resolución inglesa exacta;
+- locale nulo resuelto a inglés por el fallback general.
+
+El idioma fuente es español para las ocho filas. El fallback a inglés precede al idioma fuente, tal
+como define el diseño. Las variantes regionales se normalizarán en la resolución de locale de la
+request antes de llegar a `LocalizedText`; el documento persistido solo usa locales base.
+
+### Validaciones, seguridad, privacidad e internacionalización
+
+- La migración no contiene datos personales ni contenido de propietarios.
+- Todo texto español usa UTF-8, tildes, eñes y ortografía completa.
+- Los textos ingleses son traducciones editoriales, no claves técnicas.
+- JSONB no contiene HTML, scripts ni interpolación.
+- Las descripciones explican el tipo de servicio sin prometer disponibilidad concreta.
+- La constraint bloquea degradaciones parciales futuras a nivel de base de datos.
+- `LocalizedText` recorta valores, valida el idioma fuente y encapsula el fallback.
+- Los slugs siguen siendo ASCII estables y no se presentan como traducciones.
+- No cambia autenticación, autorización, sesiones, CORS ni exposición pública.
+
+### Errores, logs, auditoría y observabilidad
+
+Flyway registra versión, checksum y resultado. Un documento parcial o una traducción vacía produce
+un error de integridad y revierte la migración. No se añaden logs ni auditoría de aplicación porque
+la operación ocurre durante despliegue.
+
+Los futuros CRUD administrativos deberán traducir la violación de constraint a un error de dominio
+y auditar cambios de contenido. La prueba usa `DataIntegrityViolationException` para demostrar que
+la barrera existe sin fijarse al mensaje interno de PostgreSQL.
+
+### Tests añadidos y modificados
+
+`DatabaseMigrationIntegrationTests`:
+
+- actualiza la versión esperada de 10 a 11;
+- añade `resolvesCompleteInitialCategoryTranslations`;
+- declara el contenido esperado mediante `CategoryTranslationExpectation`;
+- compara las ocho categorías por slug;
+- atraviesa cada documento con `LocalizedText`;
+- exige traducciones ES/EN;
+- valida resolución ES, EN y fallback;
+- intenta escribir una descripción solo española y espera rechazo.
+
+El mapa esperado es independiente del SQL ejecutado: los textos se declaran en Java y se comparan
+con el resultado real. La prueba filtra por el rango UUID reservado para no confundir categorías
+administrativas futuras.
+
+### Comandos y evidencia
+
+Formateo:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+```
+
+Resultado correcto.
+
+Prueba focalizada:
+
+```text
+mvn -f apps/api/pom.xml -Dtest=DatabaseMigrationIntegrationTests test
+```
+
+Resultado: 7 tests, cero fallos, cero errores y cero omitidos. PostgreSQL 17.5/PostGIS arrancó con
+Testcontainers, Flyway validó y aplicó V1–V11 y Hibernate inició correctamente.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado correcto tras código y documentación: CI, entornos, i18n, calidad de español,
+convenciones backend, lint, formato, TypeScript, 82 tests web, 183 tests API y ambos builds.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Todavía no existe endpoint público de categorías; la exposición localizada se implementará con
+  los casos de uso de catálogo/búsqueda.
+- No existe entidad JPA de categoría. Su mapeo deberá usar `LocalizedText` o un conversor
+  equivalente, no mapas JSON abiertos.
+- Las descripciones son deliberadamente breves y generales; administración podrá refinarlas en
+  `14.2`.
+- No hay orden editorial ni iconografía.
+- El fallback se prueba con locale nulo en el value object. La negociación HTTP completa permanece
+  cubierta por la infraestructura de locale y deberá reutilizarse en el endpoint futuro.
+- Permitir `descriptionI18n = NULL` facilita preparar una categoría futura, pero dicha categoría no
+  debería exponerse públicamente hasta tener contenido completo o una política explícita.
+- Cualquier ajuste a textos publicados debe añadirse mediante una nueva migración, no editando
+  V10/V11.
+
+### Evidencia y criterio de cierre
+
+La tarea se cierra porque las ocho categorías tienen nombre y descripción ES/EN, la base impide
+descripciones parciales, el contenido se resuelve mediante el contrato común con fallback inglés y
+la suite focalizada verifica el estado real de PostgreSQL. Diseño, tareas, seguimiento e
+implementación técnica quedan sincronizados. La siguiente tarea pendiente es `2.4`.

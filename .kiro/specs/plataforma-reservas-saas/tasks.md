@@ -64,7 +64,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 - [x] 2.1. Crear migraciones de `venues`, `categories` y `venue_images`.
 - [x] 2.2. Crear seed de categorías iniciales: restaurante, peluquería, campo de fútbol, pista de pádel, instalación municipal, centro deportivo, centro de estética y otros.
-- [ ] 2.3. Crear traducciones ES/EN para categorías iniciales.
+- [x] 2.3. Crear traducciones ES/EN para categorías iniciales.
 - [ ] 2.4. Implementar CRUD de perfil del local para propietario.
 - [ ] 2.5. Implementar campos localizados para descripción, servicios, reglas y textos públicos configurables.
 - [ ] 2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado.

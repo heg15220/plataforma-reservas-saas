@@ -937,6 +937,18 @@ Semilla inicial incorporada en `V10`:
 - Cada fila incluye un `nameI18n` estructuralmente válido porque `V9` no permite persistir textos de
   plataforma incompletos. La auditoría dedicada de traducciones y fallback corresponde a `2.3`.
 
+Traducciones completas incorporadas en `V11`:
+
+- Las ocho categorías incluyen nombre y descripción en español e inglés, con español como idioma
+  fuente.
+- `description` conserva la versión canónica española y `descriptionI18n` es la fuente para
+  presentación localizada.
+- Cuando existe `descriptionI18n`, la base exige valores ES/EN no vacíos. La ausencia completa de
+  descripción sigue permitida para categorías administrativas futuras todavía en preparación.
+- Los consumidores deben materializar el JSONB mediante `LocalizedText` y devolver únicamente el
+  texto resuelto para el locale efectivo; no deben exponer el documento interno en APIs públicas.
+- El fallback visible permanece en el orden locale solicitado, inglés e idioma fuente.
+
 #### venue_opening_hours
 
 - `id`
