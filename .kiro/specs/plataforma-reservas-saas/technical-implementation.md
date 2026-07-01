@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.21`.
-- Siguiente tarea pendiente recomendada: `1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.`
+- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.22`.
+- Siguiente tarea pendiente recomendada: `2.1. Crear migraciones de venues, categories y venue_images.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -10465,3 +10465,187 @@ un contrato transversal, exhaustivo y probado para errores, email, cuenta empres
 manual, documentos y publicación. Ningún estado backend se presenta directamente; registro valida
 la respuesta y muestra ambas barreras con semántica accesible. Catálogos, TypeScript, tests, lint,
 formato, build, español y revisión visual pasan. La siguiente tarea pendiente es `1.22`.
+
+## Iteración 1.22 - Tests integrados de identidad, verificación, documentos y permisos
+
+### Identificación y fecha
+
+- Tarea: `1.22. Crear tests de registro, login, verificación de email, verificación empresarial,
+  documentación de respaldo y permisos`.
+- Fecha: 2026-07-01.
+
+### Objetivo técnico
+
+Cerrar la Fase 1 con evidencia automatizada de que sus piezas no solo funcionan de manera aislada,
+sino también como un recorrido autenticado continuo. La cobertura debía demostrar dos propiedades:
+
+1. un propietario puede pasar por registro, verificación de email y login y, con la sesión emitida
+   por la aplicación, acceder a su propia solicitud documental;
+2. esa sesión no concede acceso horizontal a solicitudes ni documentos de otro propietario.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007`: registro de local con identidad empresarial.
+- `RF-008`: acceso autenticado al panel privado.
+- `RF-032`: verificación empresarial y documentación de respaldo.
+- `RNF-001`: autenticación, autorización y respuesta segura ante accesos indebidos.
+- `RNF-002`: minimización de datos y ausencia de filtraciones entre propietarios.
+- `RNF-003`: persistencia coherente de tokens, sesiones, comprobaciones y documentos.
+- `RNF-008`: tests repetibles sobre infraestructura representativa.
+- Diseño `15.2`: integración del recorrido del local y aislamiento horizontal sobre endpoints HTTP
+  y PostgreSQL real.
+
+Se decidió ampliar `VenueRegistrationIntegrationTests` porque el recorrido comienza en el borde
+público de registro y termina en un recurso privado. Así se reutiliza el contexto Spring completo,
+se evita crear una suite duplicada y se ejercita la cadena de filtros de seguridad que antes no se
+aplicaba en esta clase.
+
+### Archivos creados, modificados o eliminados
+
+- Modificado
+  `apps/api/src/test/java/com/reserly/platform/identity/controller/VenueRegistrationIntegrationTests.java`.
+- Modificados los documentos `design.md`, `tasks.md`, `conversation-tracking.md` y este registro.
+- No se crearon ni eliminaron archivos productivos.
+- No se modificaron migraciones, contratos HTTP ni configuración de despliegue.
+
+### Arquitectura de prueba
+
+La suite continúa usando `@SpringBootTest`, `MockMvc`, Testcontainers y la base PostgreSQL/PostGIS
+real del proyecto. La configuración de `MockMvc` incorpora `springSecurity()`, requisito para que
+las solicitudes de prueba atraviesen los mismos filtros de sesión y autorización que producción.
+
+Los helpers privados representan preparación de fixture, no sustitutos de reglas de negocio:
+
+- `registerVenue` invoca `POST /api/auth/venues/register` y devuelve el JSON real;
+- `insertEmailVerificationToken` persiste únicamente el hash de un token conocido, respetando el
+  modelo de no almacenar secretos en claro;
+- `login` invoca `POST /api/auth/login` y extrae la cookie desde `Set-Cookie`;
+- `createOpenDocumentRequest` crea el estado previo que correspondería a una comprobación remota
+  inconclusa y una petición administrativa;
+- `userId` resuelve el propietario persistido para asociar fixtures sin depender de identificadores
+  fijos.
+
+No se usa `@WithMockUser` en los recorridos nuevos. La identidad procede de la cookie HttpOnly
+emitida por el endpoint de login y validada por la infraestructura real de sesión.
+
+### Modelo de datos, índices y restricciones afectados
+
+No cambia el esquema. Los tests atraviesan las tablas ya existentes:
+
+- `users` y `venue_accounts` durante el registro;
+- `one_time_tokens` para verificar email;
+- `user_sessions` para autenticar las llamadas privadas;
+- `business_verification_checks` y `business_document_requests` para preparar la revisión;
+- `business_verification_documents` para comprobar que una carga no autorizada no deja rastro.
+
+La limpieza transaccional explícita conserva el aislamiento entre métodos. Las aserciones validan
+que hay exactamente una sesión activa tras el login y cero documentos tras el intento cruzado.
+
+### Endpoints y contratos ejercitados
+
+- `POST /api/auth/venues/register`: crea usuario y cuenta de local.
+- `POST /api/auth/email/verify`: consume el token y habilita el acceso autenticado.
+- `POST /api/auth/login`: emite la cookie de sesión HttpOnly.
+- `GET /api/venue/me/business-verification/document-request`: devuelve solo la solicitud abierta
+  del propietario autenticado.
+- `POST /api/venue/me/business-verification/documents`: recibe multipart y rechaza una solicitud
+  que no pertenece al propietario.
+
+El DTO privado se comprueba de forma negativa: no expone identificadores internos de cuenta ni de
+la comprobación empresarial. Una petición sin cookie devuelve `401 AUTHENTICATION_REQUIRED`.
+
+### Flujos de ejecución cubiertos
+
+#### Recorrido completo del propietario
+
+1. Registro de un local con datos únicos.
+2. Creación de un token temporal con hash y expiración válidos.
+3. Verificación del email a través de HTTP.
+4. Login a través de HTTP y captura de la cookie de sesión.
+5. Preparación de una comprobación `pending_review` y una solicitud documental abierta.
+6. Consulta autenticada del endpoint privado.
+7. Validación del identificador público, propósito, estado y minimización del DTO.
+8. Confirmación de una única sesión activa.
+
+#### Aislamiento entre propietarios
+
+1. Confirmación de que el recurso privado rechaza una llamada anónima.
+2. Registro, verificación y login independientes de dos propietarios.
+3. Creación de una solicitud perteneciente al primero.
+4. Confirmación de que el primero la consulta.
+5. Confirmación de que el segundo recibe `204` y no descubre la solicitud.
+6. Intento multipart del segundo contra el identificador público ajeno.
+7. Confirmación de `403 DOCUMENT_UPLOAD_FORBIDDEN`.
+8. Confirmación de que no se persistió ningún documento.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+- Autenticación real por cookie, sin principal inyectado.
+- Token de email almacenado como hash y con vencimiento.
+- Autorización horizontal evaluada con dos propietarios reales.
+- La lectura ajena no revela existencia ni metadatos: responde sin contenido.
+- La escritura ajena usa un error estable y no produce efectos secundarios.
+- El multipart usa un PDF sintético mínimo; no contiene datos personales.
+- Los emails de fixture usan `example.invalid`.
+- Las respuestas se validan mediante códigos de error, no mediante texto localizado mutable.
+
+### Errores, logs, auditoría y observabilidad
+
+La prueba comprueba las fronteras públicas `401` y `403` y sus códigos estables. No se añadieron
+logs ni eventos productivos porque no cambió el comportamiento de la aplicación. La ausencia de
+persistencia después del `403` actúa como evidencia de que el rechazo ocurre antes de cualquier
+efecto documental.
+
+### Tests y comandos de verificación
+
+Prueba focalizada:
+
+```text
+mvn -f apps/api/pom.xml -Dtest=VenueRegistrationIntegrationTests test
+```
+
+Resultado: 8 tests ejecutados, cero fallos, cero errores y cero omitidos. Testcontainers arrancó
+PostgreSQL 17.5/PostGIS y Flyway aplicó V1 a V8.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado correcto. Incluyó validación del workflow CI y entornos, i18n, calidad del español,
+convenciones backend, ESLint, Checkstyle, Prettier, Spotless, TypeScript, suites web y API, build
+Next.js de prueba y empaquetado Maven. El artefacto API
+`reserly-api-0.0.1-SNAPSHOT.jar` y el `BUILD_ID` de Next.js se generaron al final del proceso. Los
+informes Surefire no contienen fallos ni errores.
+
+Comprobaciones adicionales:
+
+- `mvn spotless:apply`: correcto.
+- `git diff --check`: correcto antes de documentar.
+- Inspección de `target/surefire-reports`: suite focalizada y suite completa sin fallos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La tarea cubre integración backend; los recorridos E2E completos con navegador siguen asignados
+  a la fase transversal correspondiente.
+- Los estados remotos aprobados, inválidos, inconclusos y de error conservan sus suites focalizadas;
+  el nuevo recorrido profundiza en el camino documental `pending_review`.
+- Los fixtures crean directamente el estado administrativo previo porque todavía no existe una API
+  pública destinada a administradores para solicitar documentos; introducirla solo para tests
+  ampliaría indebidamente la superficie productiva.
+- La suite usa Docker/Testcontainers y necesita acceso al motor local o al servicio equivalente en
+  CI.
+- La siguiente fase debe mantener este aislamiento al introducir `venues` y sus recursos asociados.
+
+### Evidencia y criterio de cierre
+
+La cobertura previa ya validaba individualmente registro, autenticación, verificación de email,
+verificación remota, pipeline documental, controladores y sondas de seguridad. La nueva cobertura
+conecta esas fronteras críticas mediante HTTP, sesión real y persistencia real, y prueba tanto el
+caso permitido como la tentativa horizontal prohibida.
+
+La tarea se considera cerrada porque las dos propiedades transversales quedan automatizadas, el
+intento no autorizado no produce efectos, la suite focalizada pasa y la verificación integral del
+repositorio termina correctamente. Con `1.22` se completa la Fase 1. La siguiente tarea pendiente
+es `2.1`.

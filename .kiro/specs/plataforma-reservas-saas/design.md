@@ -2256,6 +2256,10 @@ Si no hay datos suficientes:
 ### 15.2 Integración
 
 - Registro y verificación de local.
+- Recorrido autenticado de propietario desde registro, verificación de email y login hasta la
+  consulta de una solicitud documental propia.
+- Aislamiento horizontal de solicitudes y documentos entre propietarios, comprobado sobre los
+  endpoints HTTP reales y con persistencia PostgreSQL.
 - Verificación empresarial aprobada, rechazada y pendiente por proveedor no disponible.
 - Crear horarios y franjas.
 - Crear hold y confirmar reserva.

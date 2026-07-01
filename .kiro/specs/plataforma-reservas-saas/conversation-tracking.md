@@ -11,9 +11,10 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-01
-- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.21`.
-- Siguiente tarea pendiente recomendada: `1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.`
-- Observación: `1.21` consolida textos ES/EN y mapas exhaustivos para identidad, errores, publicación y estados de verificación; los códigos persistidos ya no se presentan directamente.
+- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.22`.
+- Siguiente tarea pendiente recomendada: `2.1. Crear migraciones de venues, categories y venue_images.`
+- Observación: la Fase 1 queda cerrada con cobertura integrada del recorrido autenticado de
+  propietario y del aislamiento horizontal de solicitudes y documentos empresariales.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -2323,3 +2324,54 @@ Fuente de verdad del avance:
     render inglés.
   - Evidencia integral: 18 archivos y 82 tests correctos; build, TypeScript, ESLint, Prettier, i18n
     y español correctos.
+
+## Conversación 50 - Cierre integrado de identidad, verificación y permisos
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se auditó la cobertura existente de registro, login, verificación de email, verificación
+    empresarial, documentos y seguridad.
+  - Se conservaron las suites focalizadas ya existentes y se cerró la carencia transversal con
+    dos recorridos HTTP autenticados sobre PostgreSQL real.
+  - El primer recorrido registra un local, verifica su email mediante token de un solo uso, inicia
+    sesión, reutiliza la cookie HttpOnly y consulta su solicitud documental privada.
+  - El segundo recorrido demuestra que el endpoint requiere autenticación y que otro propietario
+    no puede consultar ni adjuntar un archivo a una solicitud ajena.
+  - Se verificó que el intento cruzado devuelve `403 DOCUMENT_UPLOAD_FORBIDDEN` y no persiste
+    ningún documento.
+  - La verificación integral del repositorio terminó correctamente.
+- Archivos modificados:
+  - `apps/api/src/test/java/com/reserly/platform/identity/controller/VenueRegistrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-032 Verificación empresarial`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-003 Integridad y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+- Tareas impactadas:
+  - `1.22. Crear tests de registro, login, verificación de email, verificación empresarial,
+    documentación de respaldo y permisos`.
+- Tareas completadas:
+  - `1.22. Crear tests de registro, login, verificación de email, verificación empresarial,
+    documentación de respaldo y permisos`.
+- Siguiente tarea pendiente recomendada:
+  - `2.1. Crear migraciones de venues, categories y venue_images`.
+- Decisiones o aclaraciones relevantes:
+  - La prueba transversal vive en la suite de registro porque parte del contrato público y cruza
+    todos los límites relevantes hasta el recurso privado; no replica la lógica de los servicios.
+  - Los tokens de verificación se insertan como fixtures con hash conocido. El consumo, la
+    invalidación y el cambio de estado se ejercitan a través del endpoint real.
+  - Las sesiones se obtienen exclusivamente desde `Set-Cookie`; los tests no inyectan un principal
+    artificial en los recorridos que validan autenticación.
+  - El aislamiento se comprueba con dos cuentas persistidas y dos cookies reales. Una consulta
+    ajena no filtra la existencia de la solicitud y una escritura ajena falla de forma explícita.
+  - No se modificaron contratos productivos, migraciones ni modelos de datos.
+  - Evidencia focalizada: 8 tests en `VenueRegistrationIntegrationTests`, cero fallos.
+  - Evidencia integral: `npm run verify` correcto, incluidas suites web/API, lint, formato,
+    TypeScript, i18n, calidad de español y builds de producción.
