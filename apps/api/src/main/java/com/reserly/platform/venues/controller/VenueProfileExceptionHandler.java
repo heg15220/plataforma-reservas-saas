@@ -23,7 +23,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
     assignableTypes = {
       VenueProfileControllerImpl.class,
       VenueMainImageControllerImpl.class,
-      VenueGalleryControllerImpl.class
+      VenueGalleryControllerImpl.class,
+      VenuePublicProfileControllerImpl.class
     })
 public class VenueProfileExceptionHandler {
 

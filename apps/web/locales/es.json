@@ -473,6 +473,33 @@
       "reservations": "Reservas"
     }
   },
+  "VenuePublicProfile": {
+    "booking": {
+      "action": "Reservas próximamente",
+      "description": "La reserva online se habilitará cuando el local publique su disponibilidad.",
+      "title": "Reserva tu visita"
+    },
+    "galleryImageAlt": "Imagen de {name}",
+    "location": {
+      "openMap": "Abrir en el mapa",
+      "title": "Ubicación y contacto"
+    },
+    "mainImageAlt": "Imagen principal de {name}",
+    "metadata": {
+      "notFoundTitle": "Local no disponible"
+    },
+    "reviews": {
+      "pending": "Las valoraciones aparecerán cuando comiencen las reservas verificadas.",
+      "title": "Valoraciones"
+    },
+    "sections": {
+      "about": "Sobre el local",
+      "additional": "Información adicional",
+      "gallery": "Galería",
+      "rules": "Normas",
+      "services": "Servicios"
+    }
+  },
   "PanelPreview": {
     "actions": {
       "backPublic": "Volver a la web pública"

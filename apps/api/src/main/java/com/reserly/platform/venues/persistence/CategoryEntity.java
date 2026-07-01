@@ -1,18 +1,21 @@
 package com.reserly.platform.venues.persistence;
 
+import com.reserly.platform.localization.LocalizedText;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Categoría administrable usada para clasificar perfiles de local.
  *
- * <p>Esta proyección persiste solo los campos necesarios para el CRUD del propietario. Los
- * documentos JSONB localizados se incorporarán al mapeo de catálogo cuando exista su endpoint; no
- * deben exponerse como mapas abiertos desde el perfil privado.
+ * <p>Esta proyección reúne los campos necesarios para el CRUD y el nombre público localizado. Los
+ * documentos JSONB nunca se exponen como mapas abiertos: cada contrato resuelve una cadena para el
+ * locale efectivo.
  */
 @Entity
 @Table(name = "\"Categories\"")
@@ -20,6 +23,7 @@ public class CategoryEntity {
 
   private UUID id;
   private String name;
+  private LocalizedText nameI18n;
   private String slug;
   private boolean active;
   private Instant createdAt;
@@ -43,6 +47,17 @@ public class CategoryEntity {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  /** Nombre público localizado; conserva el nombre canónico como alternativa segura. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"nameI18n\"", nullable = false, columnDefinition = "jsonb")
+  public LocalizedText getNameI18n() {
+    return nameI18n;
+  }
+
+  public void setNameI18n(LocalizedText nameI18n) {
+    this.nameI18n = nameI18n;
   }
 
   /** Identificador semántico estable, independiente de traducciones. */

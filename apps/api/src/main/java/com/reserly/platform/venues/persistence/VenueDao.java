@@ -44,4 +44,15 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
         and venue.mainImageObjectKey is not null
       """)
   Optional<VenueEntity> findPublishedWithMainImage(@Param("venueId") UUID venueId);
+
+  /** Carga la proyección pública de un local solo cuando su estado editorial permite exposición. */
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      join fetch venue.category
+      where venue.slug = :slug
+        and venue.status = 'published'
+      """)
+  Optional<VenueEntity> findPublishedBySlug(@Param("slug") String slug);
 }

@@ -38,4 +38,14 @@ public interface VenueImageDao extends JpaRepository<VenueImageEntity, UUID> {
       where image.id = :imageId and image.venue.status = 'published'
       """)
   Optional<VenueImageEntity> findPublished(@Param("imageId") UUID imageId);
+
+  /** Devuelve la galería pública ordenada sin depender de identidad autenticada. */
+  @Query(
+      """
+      select image from VenueImageEntity image
+      where image.venue.id = :venueId
+        and image.venue.status = 'published'
+      order by image.position
+      """)
+  List<VenueImageEntity> findAllPublishedByVenueId(@Param("venueId") UUID venueId);
 }

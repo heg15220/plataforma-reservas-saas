@@ -2678,3 +2678,28 @@ Solo `draft` y `pending_verification` pueden transicionar; repetir sobre `publis
 La transición fija conjuntamente `status=published`, `publishedAt` y `updatedAt`. Un rechazo devuelve
 HTTP `422`, código `VENUE_PUBLICATION_REJECTED` y requisitos cerrados ordenados, sin email,
 identificador fiscal, proveedor ni evidencia.
+
+### Ficha pública inicial localizada
+
+La lectura anónima se concentra en `GET /api/public/venues/{slug}`. El DAO aplica
+`status = 'published'` en la propia consulta y carga la categoría en la misma operación; por tanto,
+un borrador, un perfil suspendido, uno archivado y un slug inexistente son indistinguibles y
+responden `404`. La galería se consulta por el identificador ya autorizado y se ordena por
+`position`.
+
+El backend negocia `es` o `en` mediante el parámetro explícito `locale` y, si falta, mediante
+`Accept-Language`; valores no soportados caen a inglés. `LocalizedText` resuelve idioma solicitado,
+inglés y finalmente idioma fuente. El contrato devuelve únicamente cadenas resueltas, nunca los
+mapas JSONB completos. `Categories.nameI18n` se incorpora al mapeo JPA para localizar la categoría
+y mantiene el nombre canónico como último fallback.
+
+La proyección excluye IDs internos, propietario, cuenta empresarial, estado de verificación,
+claves de almacenamiento y metadatos técnicos de imagen. Teléfono y correo solo se serializan si
+`showPhone` o `showEmail` lo permiten. El alt text existente se trata en este MVP como texto
+accesible neutro; su localización queda como evolución de modelo.
+
+Next.js sirve `/locales/[slug]` bajo renderizado dinámico sin caché hasta definir invalidación
+editorial. Valida la respuesta con un esquema cerrado, genera metadatos localizados y convierte el
+`404` del API en la página no encontrada. La ficha adapta hero, textos, galería, ubicación y
+contacto a una o dos columnas. Horarios, reservas y valoraciones no se simulan: el CTA permanece
+deshabilitado y las capacidades futuras se comunican explícitamente mediante catálogos i18n.

@@ -12340,3 +12340,113 @@ formato, TypeScript, 82 tests web, 210 tests API y ambos builds.
 
 La tarea se cierra porque publicación, elegibilidad empresarial, completitud, locks, fecha,
 idempotencia y privacidad están implementados y verificados sobre base real. Siguiente: `2.10`.
+
+## Iteración 2.10 - Ficha pública inicial localizada
+
+### Identificación, fecha y objetivo
+
+- Tarea: `2.10. Crear ficha pública inicial del local con textos vía i18n`.
+- Fecha: 2026-07-01.
+- Objetivo: exponer y representar una proyección anónima, localizada, responsive y segura de un
+  local publicado, sin adelantar reservas, horarios ni valoraciones.
+- Requisitos: `RF-004`, `RF-008`, `RF-009`, `RF-031`; `RNF-001`, `RNF-002`, `RNF-003`,
+  `RNF-004`, `RNF-008`, `RNF-011`.
+
+### Arquitectura y archivos
+
+Backend creado:
+
+- `VenuePublicProfileController`/`Impl`: contrato anónimo y negociación del locale.
+- `VenuePublicProfileService`/`Impl`: autorización por estado, resolución i18n y privacidad.
+- `VenuePublicProfileResponse` y `VenuePublicGalleryImageResponse`: proyecciones públicas cerradas.
+- `VenuePublicProfileServiceTests` y `VenuePublicProfileControllerTests`.
+
+Se modifican `VenueDao` con `findPublishedBySlug`, `VenueImageDao` con la galería pública ordenada,
+`CategoryEntity` con el mapeo JSONB de `nameI18n` y `VenueProfileExceptionHandler` con el controlador
+público. No hay migración: la columna de categoría ya existe desde el esquema vigente.
+
+Frontend creado:
+
+- `app/locales/[slug]/page.tsx`: ruta SSR dinámica, metadata y traducción de `404`.
+- `features/public-venue/public-venue-api.ts`: cliente server-side sin caché, Zod y URLs públicas.
+- `features/public-venue/public-venue-profile.tsx`: hero, textos, galería, ubicación y contactos.
+- Tests de cliente/componente y namespace `VenuePublicProfile` en catálogos ES/EN.
+
+### Contrato, datos y flujo de ejecución
+
+`GET /api/public/venues/{slug}?locale=es|en` no requiere sesión. El controlador prioriza el locale
+explícito; si falta, acepta `Accept-Language` español y usa inglés para el resto. La consulta
+contiene `status = 'published'`, carga la categoría y después recupera la galería con el mismo
+requisito editorial y `order by position`.
+
+Cada `LocalizedText` se reduce a una cadena con fallback solicitado → inglés → idioma fuente. La
+categoría conserva además el nombre canónico para datos históricos. La respuesta incluye slug,
+nombre, categoría, textos públicos, URLs, dirección, coordenadas y contactos permitidos. Excluye
+IDs, propietario, cuenta empresarial, verificación, documentos i18n, object keys, MIME, tamaño y
+dimensiones internas. `showPhone` y `showEmail` se aplican antes de serializar.
+
+Next.js consulta `RESERLY_API_INTERNAL_URL`, resuelve imágenes con
+`NEXT_PUBLIC_API_BASE_URL` y usa `cache: no-store` para no conservar un perfil retirado sin
+invalidación editorial. Un `404` produce `notFound()`; otros fallos alcanzan el límite de error. Zod
+valida el payload antes de renderizar.
+
+### UI, accesibilidad e internacionalización
+
+La vista reutiliza `PublicShell`, mantiene un `h1`, secciones `h2`, `main`, `aside`, región de
+galería y alt text. En escritorio usa columnas 2:1; bajo `md` colapsa a una columna con navegación
+móvil. Los ratios de imagen son estables. Todos los textos de interfaz y metadata viven en ES/EN;
+el contenido configurable llega localizado desde el API.
+
+El alt text existente se considera neutro y dispone de fallback localizado con el nombre. Teléfono
+y correo solo crean `tel:`/`mailto:` cuando fueron autorizados. El mapa abre OpenStreetMap con
+coordenadas públicas y `rel=noreferrer`. No se inventan horarios ni puntuaciones: la reserva queda
+deshabilitada y las valoraciones explican su dependencia futura de reservas verificadas.
+
+### Errores, permisos, seguridad y observabilidad
+
+- Borrador, suspendido, archivado y slug inexistente comparten `404 VENUE_PROFILE_NOT_FOUND`.
+- La condición de publicación vive en SQL, no después de recuperar el perfil.
+- La lectura server-side no propaga cookies.
+- Zod rechaza estructuras, locales y tipos inesperados.
+- Ningún error o log añade propiedad, empresa, claves o textos privados.
+- La monitorización específica de latencia/error público queda pendiente de operaciones.
+
+### Tests y evidencia
+
+```text
+mvn -f apps/api/pom.xml \
+  -Dtest=VenuePublicProfileServiceTests,VenuePublicProfileControllerTests test
+npm test --workspace @reserly/web -- --run src/features/public-venue
+npm run test:web
+npm run lint
+npm run format:check
+npm run typecheck
+npm run build:web:test
+npm run build:api
+```
+
+Resultados: 5 tests backend focalizados, 5 tests web focalizados y 87 tests web completos; lint,
+formato, tipos y ambos builds correctos. Cubren locale/fallback, privacidad, orden, no publicación,
+URL interna, no-cache, 404, contrato, galería, contactos y CTA deshabilitado. El build confirma
+`/locales/[slug]` como ruta SSR dinámica.
+
+La verificación manual en navegador comprobó escritorio 1280×720 y móvil 390×844: hero, columnas,
+galería, enlaces, navegación y ausencia de desbordes. El snapshot accesible confirmó jerarquía,
+regiones, alt text y botón deshabilitado.
+
+`npm run verify` alcanzó el límite externo durante la suite API con Testcontainers, sin aserción
+fallida. Se aislaron y confirmaron las pruebas backend de la tarea y todas las comprobaciones
+anteriores.
+
+### Riesgos, limitaciones y deuda
+
+- Localizar `altText` exigirá evolución de esquema y edición.
+- Se usa `no-store` hasta disponer de invalidación editorial.
+- La galería no necesita paginación porque el límite vigente es ocho.
+- Horarios, disponibilidad, reservas y valoraciones pertenecen a fases posteriores.
+- Falta monitorización específica del endpoint antes de producción.
+
+### Criterio de cierre
+
+La ficha solo expone perfiles publicados, resuelve textos según idioma, respeta privacidad, valida
+el contrato, funciona en escritorio y móvil y no finge capacidades ausentes. Siguiente: `2.11`.

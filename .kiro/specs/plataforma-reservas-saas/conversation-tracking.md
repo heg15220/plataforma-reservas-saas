@@ -2812,3 +2812,36 @@ Fuente de verdad del avance:
   - No se crea migración: V9 ya soporta estado y `publishedAt`.
   - Evidencia focalizada: 12 tests de elegibilidad/publicación y 9 tests de transición/regresión.
   - Evidencia integral: `npm run verify` correcto, con 82 tests web, 210 tests API y ambos builds.
+
+## Conversación 60 - Ficha pública inicial localizada
+
+- Fecha: 2026-07-01.
+- Resumen:
+  - Se confirmó `2.10` como primera tarea pendiente.
+  - Se creó lectura anónima por slug limitada en SQL a perfiles `published`.
+  - Categoría y textos dinámicos se resuelven en ES/EN sin exponer JSONB.
+  - `showPhone` y `showEmail` se aplican antes de serializar.
+  - `/locales/[slug]` usa SSR, metadata, Zod y diseño responsive.
+  - Reservas y valoraciones futuras se comunican sin simular disponibilidad.
+- Archivos modificados:
+  - Nuevos controlador, servicio, DTOs y pruebas públicas en `venues`.
+  - Mapeo de categoría, consultas de local/galería y advice.
+  - Nueva ruta y feature `public-venue`, pruebas y catálogos ES/EN.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004`, `RF-008`, `RF-009`, `RF-031`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-008`, `RNF-011`.
+- Tareas impactadas y completadas:
+  - `2.10. Crear ficha pública inicial del local con textos vía i18n`.
+- Siguiente tarea pendiente recomendada:
+  - `2.11. Crear panel de edición de perfil`.
+- Decisiones:
+  - Un perfil no publicado es indistinguible de un slug inexistente.
+  - Locale no soportado cae a inglés; el contenido conserva fallback al idioma fuente.
+  - El alt text actual es neutro; localizarlo exige evolución de modelo.
+  - Se usa `no-store` hasta disponer de invalidación editorial.
+  - No se inventan horarios, puntuaciones ni disponibilidad.
+  - Evidencia: 5 tests backend y 5 web focalizados, 87 tests web completos, lint, formato, tipos y
+    ambos builds correctos.
+  - `npm run verify` agotó el límite durante Testcontainers; no registró fallos de aserción y las
+    comprobaciones de esta tarea pasaron aisladas.

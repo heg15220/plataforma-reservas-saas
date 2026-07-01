@@ -473,6 +473,33 @@
       "reservations": "Bookings"
     }
   },
+  "VenuePublicProfile": {
+    "booking": {
+      "action": "Bookings coming soon",
+      "description": "Online booking will be enabled when the venue publishes its availability.",
+      "title": "Book your visit"
+    },
+    "galleryImageAlt": "Image of {name}",
+    "location": {
+      "openMap": "Open map",
+      "title": "Location and contact"
+    },
+    "mainImageAlt": "Main image of {name}",
+    "metadata": {
+      "notFoundTitle": "Venue unavailable"
+    },
+    "reviews": {
+      "pending": "Reviews will appear once verified bookings begin.",
+      "title": "Reviews"
+    },
+    "sections": {
+      "about": "About the venue",
+      "additional": "Additional information",
+      "gallery": "Gallery",
+      "rules": "Rules",
+      "services": "Services"
+    }
+  },
   "PanelPreview": {
     "actions": {
       "backPublic": "Back to public website"
