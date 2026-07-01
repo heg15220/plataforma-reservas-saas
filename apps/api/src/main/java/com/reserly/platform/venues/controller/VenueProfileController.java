@@ -40,6 +40,11 @@ public interface VenueProfileController {
       @AuthenticationPrincipal AuthenticatedAccount account,
       @Valid @RequestBody VenueProfileRequest request);
 
+  /** Publica el perfil cuando empresa, email y datos públicos cumplen todos los requisitos. */
+  @PostMapping(path = "/publish")
+  ResponseEntity<VenueProfileResponse> publish(
+      @AuthenticationPrincipal AuthenticatedAccount account);
+
   /** Archiva el perfil vigente y conserva su historial. */
   @DeleteMapping(path = "/profile")
   ResponseEntity<Void> archive(@AuthenticationPrincipal AuthenticatedAccount account);

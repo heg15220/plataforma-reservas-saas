@@ -1,0 +1,15 @@
+package com.reserly.platform.venues.service;
+
+/** Motivos seguros y cerrados que impiden publicar un perfil. */
+public enum VenuePublicationRequirement {
+  EMAIL_NOT_VERIFIED,
+  BUSINESS_VERIFICATION_NOT_APPROVED,
+  ACCOUNT_NOT_ELIGIBLE,
+  CATEGORY_NOT_ACTIVE,
+  DESCRIPTION_TRANSLATIONS_MISSING,
+  OPTIONAL_TEXT_TRANSLATIONS_MISSING,
+  MAIN_IMAGE_MISSING,
+  ADDRESS_MISSING,
+  LOCATION_MISSING,
+  STATUS_NOT_PUBLISHABLE
+}

@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.dto.VenueProfileCommand;
 import com.reserly.platform.venues.persistence.VenueEntity;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,8 @@ class VenueProfileServiceIntegrationTests {
       UUID.fromString("20000000-0000-0000-0000-000000000006");
 
   @Autowired private VenueProfileService venueProfileService;
+  @Autowired private VenuePublicationService venuePublicationService;
+  @Autowired private EntityManager entityManager;
 
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -189,6 +193,81 @@ class VenueProfileServiceIntegrationTests {
 
     assertThatThrownBy(() -> venueProfileService.create(ownerUserId, overlong))
         .isInstanceOf(VenueDescriptionTooLongException.class);
+  }
+
+  @Test
+  void publishesACompleteProfileWithVerifiedEmailAndBusinessApproval() {
+    UUID ownerUserId = createVenueOwner("profile-publish");
+    Instant approvalTime = Instant.now().minusSeconds(60);
+    jdbcTemplate.update(
+        """
+        UPDATE "Users"
+        SET "emailVerifiedAt" = ?, "status" = 'active'
+        WHERE "id" = ?
+        """,
+        java.sql.Timestamp.from(approvalTime),
+        ownerUserId);
+    jdbcTemplate.update(
+        """
+        UPDATE "BusinessAccounts"
+        SET "businessVerificationStatus" = 'verified',
+            "businessVerifiedAt" = ?,
+            "businessVerificationExpiresAt" = ?
+        WHERE "ownerUserId" = ?
+        """,
+        java.sql.Timestamp.from(approvalTime),
+        java.sql.Timestamp.from(approvalTime.plusSeconds(86_400)),
+        ownerUserId);
+    VenueProfileCommand command =
+        new VenueProfileCommand(
+            "Local publicable",
+            RESTAURANT_CATEGORY_ID,
+            localized("es", "Descripción completa", "Complete description"),
+            null,
+            null,
+            null,
+            "es",
+            "contacto@example.invalid",
+            null,
+            "Calle Mayor, 1",
+            "Madrid",
+            "Madrid",
+            "ES",
+            "28013",
+            new BigDecimal("40.416775"),
+            new BigDecimal("-3.703790"),
+            false,
+            true);
+    VenueEntity venue = venueProfileService.create(ownerUserId, command);
+    jdbcTemplate.update(
+        """
+        UPDATE "Venues"
+        SET "mainImageUrl" = ?,
+            "mainImageObjectKey" = 'venues/test/main.png',
+            "mainImageMediaType" = 'image/png',
+            "mainImageSizeBytes" = 1024,
+            "mainImageWidth" = 640,
+            "mainImageHeight" = 480
+        WHERE "id" = ?
+        """,
+        "/api/public/venue-images/" + venue.getId() + "/main",
+        venue.getId());
+    entityManager.clear();
+
+    VenueEntity published = venuePublicationService.publish(ownerUserId);
+
+    assertThat(published.getStatus()).isEqualTo("published");
+    assertThat(published.getPublishedAt()).isNotNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT "status"
+                FROM "Venues"
+                WHERE "id" = ?
+                """,
+                String.class,
+                venue.getId()))
+        .isEqualTo("published");
   }
 
   private VenueProfileCommand initialCommand() {

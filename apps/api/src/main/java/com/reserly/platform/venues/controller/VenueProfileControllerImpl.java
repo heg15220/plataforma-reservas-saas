@@ -6,6 +6,7 @@ import com.reserly.platform.venues.dto.VenueProfileRequest;
 import com.reserly.platform.venues.dto.VenueProfileResponse;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileService;
+import com.reserly.platform.venues.service.VenuePublicationService;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,11 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class VenueProfileControllerImpl implements VenueProfileController {
 
   private final VenueProfileService venueProfileService;
+  private final VenuePublicationService publicationService;
   private final VenueProfileConverter converter;
 
   public VenueProfileControllerImpl(
-      VenueProfileService venueProfileService, VenueProfileConverter converter) {
+      VenueProfileService venueProfileService,
+      VenuePublicationService publicationService,
+      VenueProfileConverter converter) {
     this.venueProfileService = venueProfileService;
+    this.publicationService = publicationService;
     this.converter = converter;
   }
 
@@ -40,6 +45,11 @@ public class VenueProfileControllerImpl implements VenueProfileController {
       AuthenticatedAccount account, VenueProfileRequest request) {
     VenueEntity venue = venueProfileService.update(account.userId(), converter.toCommand(request));
     return ResponseEntity.ok(converter.toResponse(venue));
+  }
+
+  @Override
+  public ResponseEntity<VenueProfileResponse> publish(AuthenticatedAccount account) {
+    return ResponseEntity.ok(converter.toResponse(publicationService.publish(account.userId())));
   }
 
   @Override

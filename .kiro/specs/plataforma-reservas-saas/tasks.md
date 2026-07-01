@@ -70,7 +70,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado.
 - [x] 2.7. Implementar carga segura de imagen principal.
 - [x] 2.8. Implementar galería opcional.
-- [ ] 2.9. Implementar publicación de local solo con email verificado, verificación empresarial aprobada y datos mínimos.
+- [x] 2.9. Implementar publicación de local solo con email verificado, verificación empresarial aprobada y datos mínimos.
 - [ ] 2.10. Crear ficha pública inicial del local con textos vía i18n.
 - [ ] 2.11. Crear panel de edición de perfil.
 - [ ] 2.12. Crear tests de permisos para que un local no edite datos de otro.

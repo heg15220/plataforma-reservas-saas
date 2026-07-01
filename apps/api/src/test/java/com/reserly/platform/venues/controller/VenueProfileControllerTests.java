@@ -16,6 +16,9 @@ import com.reserly.platform.venues.persistence.CategoryEntity;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
 import com.reserly.platform.venues.service.VenueProfileService;
+import com.reserly.platform.venues.service.VenuePublicationRejectedException;
+import com.reserly.platform.venues.service.VenuePublicationRequirement;
+import com.reserly.platform.venues.service.VenuePublicationService;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -32,6 +35,7 @@ import org.springframework.http.ResponseEntity;
 class VenueProfileControllerTests {
 
   @Mock private VenueProfileService venueProfileService;
+  @Mock private VenuePublicationService publicationService;
 
   private VenueProfileControllerImpl controller;
   private VenueProfileExceptionHandler exceptionHandler;
@@ -41,7 +45,7 @@ class VenueProfileControllerTests {
   @BeforeEach
   void setUp() {
     converter = new VenueProfileConverter();
-    controller = new VenueProfileControllerImpl(venueProfileService, converter);
+    controller = new VenueProfileControllerImpl(venueProfileService, publicationService, converter);
     exceptionHandler = new VenueProfileExceptionHandler();
     account =
         new AuthenticatedAccount(
@@ -60,11 +64,13 @@ class VenueProfileControllerTests {
     when(venueProfileService.create(account.userId(), command)).thenReturn(venue);
     when(venueProfileService.find(account.userId())).thenReturn(venue);
     when(venueProfileService.update(account.userId(), command)).thenReturn(venue);
+    when(publicationService.publish(account.userId())).thenReturn(venue);
 
     ResponseEntity<VenueProfileResponse> created = controller.create(account, request);
     ResponseEntity<VenueProfileResponse> found = controller.find(account);
     ResponseEntity<VenueProfileResponse> updated = controller.update(account, request);
     ResponseEntity<Void> archived = controller.archive(account);
+    ResponseEntity<VenueProfileResponse> published = controller.publish(account);
 
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(created.getHeaders().getLocation()).hasToString("/api/venue/me");
@@ -74,10 +80,12 @@ class VenueProfileControllerTests {
     assertThat(found.getBody().descriptionI18n().values()).containsEntry("en", "Market cuisine");
     assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(archived.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(published.getStatusCode()).isEqualTo(HttpStatus.OK);
     verify(venueProfileService).create(account.userId(), command);
     verify(venueProfileService).find(account.userId());
     verify(venueProfileService).update(account.userId(), command);
     verify(venueProfileService).archive(account.userId());
+    verify(publicationService).publish(account.userId());
   }
 
   @Test
@@ -102,6 +110,17 @@ class VenueProfileControllerTests {
     assertThat(descriptionError.getBody().locale()).isEqualTo("en");
     assertThat(descriptionError.getBody().maxWords()).isEqualTo(350);
     assertThat(descriptionError.getBody().actualWords()).isEqualTo(351);
+
+    var publicationError =
+        exceptionHandler.handlePublicationRejected(
+            new VenuePublicationRejectedException(
+                Set.of(
+                    VenuePublicationRequirement.MAIN_IMAGE_MISSING,
+                    VenuePublicationRequirement.EMAIL_NOT_VERIFIED)));
+    assertThat(publicationError.getStatusCode().value()).isEqualTo(422);
+    assertThat(publicationError.getBody().error()).isEqualTo("VENUE_PUBLICATION_REJECTED");
+    assertThat(publicationError.getBody().requirements())
+        .containsExactly("EMAIL_NOT_VERIFIED", "MAIN_IMAGE_MISSING");
   }
 
   private VenueProfileRequest request(UUID categoryId) {

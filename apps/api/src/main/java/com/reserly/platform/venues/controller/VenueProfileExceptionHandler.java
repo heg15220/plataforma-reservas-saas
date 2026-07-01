@@ -2,6 +2,7 @@ package com.reserly.platform.venues.controller;
 
 import com.reserly.platform.venues.dto.VenueDescriptionLimitErrorResponse;
 import com.reserly.platform.venues.dto.VenueProfileErrorResponse;
+import com.reserly.platform.venues.dto.VenuePublicationErrorResponse;
 import com.reserly.platform.venues.image.VenueImageStorageException;
 import com.reserly.platform.venues.image.VenueImageValidationException;
 import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
@@ -10,6 +11,7 @@ import com.reserly.platform.venues.service.VenueProfileConflictException;
 import com.reserly.platform.venues.service.VenueProfileForbiddenException;
 import com.reserly.platform.venues.service.VenueProfileInvalidException;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
+import com.reserly.platform.venues.service.VenuePublicationRejectedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +26,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
       VenueGalleryControllerImpl.class
     })
 public class VenueProfileExceptionHandler {
+
+  @ExceptionHandler(VenuePublicationRejectedException.class)
+  public ResponseEntity<VenuePublicationErrorResponse> handlePublicationRejected(
+      VenuePublicationRejectedException exception) {
+    return ResponseEntity.status(422)
+        .body(
+            new VenuePublicationErrorResponse(
+                "VENUE_PUBLICATION_REJECTED",
+                exception.getRequirements().stream().map(Enum::name).sorted().toList()));
+  }
 
   @ExceptionHandler(VenueGalleryLimitException.class)
   public ResponseEntity<VenueProfileErrorResponse> handleGalleryLimit() {

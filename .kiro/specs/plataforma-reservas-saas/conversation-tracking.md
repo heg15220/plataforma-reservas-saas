@@ -2783,3 +2783,32 @@ Fuente de verdad del avance:
   - Las imágenes no se convierten en principales automáticamente.
   - Evidencia focalizada: 13 tests unitarios y 7 tests de migración correctos.
   - Evidencia integral: `npm run verify` correcto, con 82 tests web, 206 tests API y ambos builds.
+
+## Conversación 59 - Publicación condicionada del local
+
+- Fecha: 2026-07-01.
+- Resumen:
+  - Se confirmó `2.9` como primera tarea pendiente.
+  - Se reutilizó la barrera empresarial creada en `1.11` dentro de la transacción de publicación.
+  - Se añadió validación de categoría, traducciones, imagen, dirección y coordenadas mínimas.
+  - La transición a `published` fija `publishedAt` y es idempotente.
+  - Los rechazos agregan requisitos seguros y accionables.
+- Archivos modificados:
+  - Nuevos servicio, implementación, enum, excepción y DTO de publicación.
+  - Controlador/advice del perfil y pruebas unitarias, REST e integración.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004`, `RF-008`, `RF-009`, `RF-031`, `RF-032`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-008`.
+- Tareas impactadas y completadas:
+  - `2.9. Implementar publicación de local solo con email verificado, verificación empresarial
+    aprobada y datos mínimos`.
+- Siguiente tarea pendiente recomendada:
+  - `2.10. Crear ficha pública inicial del local con textos vía i18n`.
+- Decisiones:
+  - Descripción requiere ES/EN; documentos opcionales requieren ambos solo cuando existen.
+  - Los datos mínimos geográficos son dirección, ciudad, país y coordenadas.
+  - Imagen principal es obligatoria; galería no.
+  - No se crea migración: V9 ya soporta estado y `publishedAt`.
+  - Evidencia focalizada: 12 tests de elegibilidad/publicación y 9 tests de transición/regresión.
+  - Evidencia integral: `npm run verify` correcto, con 82 tests web, 210 tests API y ambos builds.

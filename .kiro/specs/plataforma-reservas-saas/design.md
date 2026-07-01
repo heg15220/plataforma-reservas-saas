@@ -2665,3 +2665,16 @@ completa de IDs propios; rechaza duplicados, omisiones e IDs ajenos. Las posicio
 El borrado compacta posiciones y elimina el objeto después del commit. Un rollback de carga elimina
 el objeto nuevo. El límite produce `409 VENUE_GALLERY_LIMIT_REACHED`; orden, contenido o alt text
 inválidos producen `400 VENUE_IMAGE_INVALID`.
+
+### Publicación atómica del perfil
+
+`POST /api/venue/me/publish` bloquea el perfil vigente y, dentro de la misma transacción, evalúa la
+barrera empresarial de Fase 1. Exige email verificado y aprobación remota vigente o revisión manual
+aprobada. También exige categoría activa, descripción ES/EN, imagen principal, dirección
+(dirección, ciudad, país) y coordenadas completas. Servicios, reglas y texto público son opcionales,
+pero cualquier documento configurado debe incluir ES/EN antes de publicar.
+
+Solo `draft` y `pending_verification` pueden transicionar; repetir sobre `published` es idempotente.
+La transición fija conjuntamente `status=published`, `publishedAt` y `updatedAt`. Un rechazo devuelve
+HTTP `422`, código `VENUE_PUBLICATION_REJECTED` y requisitos cerrados ordenados, sin email,
+identificador fiscal, proveedor ni evidencia.

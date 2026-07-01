@@ -12232,3 +12232,111 @@ formato, TypeScript, 82 tests web, 206 tests API y ambos builds.
 El propietario gestiona una galería completa y ordenada; la base impide posiciones inválidas, los
 bytes siguen el pipeline seguro, cada mutación verifica propiedad y la lectura anónima depende de
 publicación. Siguiente tarea: `2.9`.
+
+## Iteración 2.9 - Publicación condicionada
+
+### Objetivo, fecha y requisitos
+
+- Tarea: `2.9. Implementar publicación de local solo con email verificado, verificación empresarial
+  aprobada y datos mínimos`.
+- Fecha: 2026-07-01.
+- Objetivo: transición atómica y segura desde borrador a perfil visible.
+- Relaciona `RF-004`, `RF-008`, `RF-009`, `RF-031`, `RF-032` y
+  `RNF-001`/`002`/`003`/`008`.
+
+### Arquitectura y archivos
+
+`VenuePublicationService`/`Impl` coordina el lock del perfil con
+`VenuePublicationEligibilityService`, ya implementado en `1.11`. Se añaden
+`VenuePublicationRequirement`, `VenuePublicationRejectedException` y
+`VenuePublicationErrorResponse`. El controlador incorpora `POST /api/venue/me/publish` y el advice
+traduce rechazos a `422`.
+
+No hay migración: `Venues.status`, `publishedAt` y el constraint que exige fecha al publicar existen
+desde V9.
+
+### Política de elegibilidad
+
+La barrera empresarial exige:
+
+- `emailVerifiedAt` no nulo;
+- cuenta `venue_business`;
+- identificador fiscal normalizado;
+- verificación remota `verified` no caducada o revisión manual `approved`.
+
+La completitud del perfil exige:
+
+- estado `draft` o `pending_verification`;
+- categoría activa;
+- `descriptionI18n` con ES y EN y máximo de 350 palabras por traducción;
+- servicios, reglas y texto público con ES/EN cuando están configurados;
+- imagen principal segura;
+- address, city y country;
+- latitude y longitude.
+
+Nombre y categoría son obligatorios por esquema/CRUD. Contacto, galería y textos opcionales no
+bloquean. Repetir sobre un perfil `published` devuelve el mismo perfil sin modificar fechas.
+
+### Flujo transaccional y concurrencia
+
+1. El controlador deriva `ownerUserId` de la sesión.
+2. El servicio toma lock pesimista del perfil vigente.
+3. Si ya está publicado retorna idempotentemente.
+4. La elegibilidad empresarial toma lock compartido de cuenta dentro de la misma transacción.
+5. Se agregan bloqueos empresariales y de completitud.
+6. Si existen, se lanza un único rechazo sin escribir.
+7. Si no existen, se fijan `status`, `publishedAt` y `updatedAt` al mismo instante y se hace flush.
+
+Los locks impiden que una verificación o edición concurrente cambie la base evaluada antes del
+commit. Una excepción revierte estado y fechas conjuntamente.
+
+### Contrato, privacidad y errores
+
+Respuesta correcta: el `VenueProfileResponse` privado existente con estado `published`.
+Rechazo:
+
+```json
+{
+  "error": "VENUE_PUBLICATION_REJECTED",
+  "requirements": ["EMAIL_NOT_VERIFIED", "MAIN_IMAGE_MISSING"]
+}
+```
+
+Los requisitos son enum cerrados, ordenados y no contienen email, NIF/VAT, razón social, proveedor,
+referencia remota ni documentos. Perfil inexistente conserva `404` genérico.
+
+### Tests y evidencia
+
+`VenuePublicationServiceTests` cubre éxito, idempotencia, estado no publicable, traducciones
+opcionales incompletas y combinación de bloqueos. `VenueProfileControllerTests` cubre endpoint y
+respuesta segura. Las pruebas previas de elegibilidad cubren email, aprobación remota vigente,
+manual y cuenta desconocida. `VenueProfileServiceIntegrationTests` crea datos reales, verifica
+email/empresa, completa imagen y demuestra `status=published`/`publishedAt` en PostgreSQL.
+
+```text
+mvn -f apps/api/pom.xml \
+  -Dtest=VenuePublicationServiceTests,VenueProfileControllerTests,VenuePublicationEligibilityPolicyTests,VenuePublicationEligibilityServiceIntegrationTests \
+  test
+mvn -f apps/api/pom.xml \
+  -Dtest=VenueProfileServiceIntegrationTests,VenuePublicationServiceTests,VenueProfileControllerTests \
+  test
+```
+
+Resultados focalizados: 12 y 9 tests correctos, sin fallos ni errores; Flyway V1–V15, Hibernate y
+PostgreSQL 17 correctos.
+
+La verificación integral `npm run verify` confirmó CI, entornos, i18n, español, convenciones, lint,
+formato, TypeScript, 82 tests web, 210 tests API y ambos builds.
+
+### Riesgos y deuda
+
+- `2.10` debe proyectar exclusivamente perfiles `published`.
+- Los requisitos cerrados deberán mapearse a catálogos UI en `2.11`.
+- Horarios y disponibilidad aún no existen y no bloquean esta publicación inicial.
+- Cambios posteriores que dejen incompleto un perfil publicado no lo despublican automáticamente;
+  una política de mantenimiento deberá definirse al incorporar edición pública completa.
+
+### Criterio de cierre
+
+La tarea se cierra porque publicación, elegibilidad empresarial, completitud, locks, fecha,
+idempotencia y privacidad están implementados y verificados sobre base real. Siguiente: `2.10`.
