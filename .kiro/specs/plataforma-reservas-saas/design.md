@@ -2615,3 +2615,19 @@ Excluido del MVP:
 - PostGIS, modelo e índices espaciales: <https://postgis.net/docs/using_postgis_dbmanagement.html>
 - RedSys, documentación para desarrolladores y contratación mediante entidad bancaria: <https://pagosonline.redsys.es/desarrolladores-inicio/>
 - LOPDGDD, artículo 32 sobre bloqueo: <https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673>
+### Política de longitud de la descripción localizada
+
+El guardado del perfil aplica una política de dominio previa a cualquier consulta o escritura. Cada
+valor presente en `descriptionI18n.values` se valida de forma independiente con un máximo inclusivo
+de 350 palabras; el documento completo no comparte un contador global. Una descripción ausente
+sigue siendo válida durante el estado borrador.
+
+El contador reconoce secuencias de letras o números Unicode. Los apóstrofes rectos o tipográficos y
+los guiones situados dentro de una secuencia se consideran parte de la misma palabra; puntuación,
+símbolos y emojis son separadores y no incrementan el contador. Esta definición determinista evita
+depender del locale de la JVM y se aplica por igual a español e inglés.
+
+Si una traducción supera el límite, la operación se revierte con HTTP `422` y código estable
+`VENUE_DESCRIPTION_TOO_LONG`. La respuesta incluye únicamente `locale`, `maxWords` y `actualWords`;
+no devuelve el texto introducido. La restricción vive en el servicio porque PostgreSQL no ofrece un
+conteo léxico equivalente y estable sobre documentos JSONB.

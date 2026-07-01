@@ -67,7 +67,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 2.3. Crear traducciones ES/EN para categorías iniciales.
 - [x] 2.4. Implementar CRUD de perfil del local para propietario.
 - [x] 2.5. Implementar campos localizados para descripción, servicios, reglas y textos públicos configurables.
-- [ ] 2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado.
+- [x] 2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado.
 - [ ] 2.7. Implementar carga segura de imagen principal.
 - [ ] 2.8. Implementar galería opcional.
 - [ ] 2.9. Implementar publicación de local solo con email verificado, verificación empresarial aprobada y datos mínimos.

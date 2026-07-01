@@ -11831,3 +11831,171 @@ La tarea se cierra porque los cuatro textos localizados pueden crearse, leerse, 
 eliminarse mediante el CRUD privado; V13 preserva contenido previo; Hibernate persiste
 `LocalizedText` directamente; locales arbitrarios y fuentes vacías quedan rechazados; y el
 roundtrip real pasa. La siguiente tarea pendiente es `2.6`.
+
+## Iteración 2.6 - Límite de descripción por idioma publicado
+
+### Identificación, fecha y objetivo
+
+- Tarea: `2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado`.
+- Fecha: 2026-07-01.
+- Objetivo: impedir que una alta o actualización persista cualquier traducción de descripción con
+  más de 350 palabras, preservando una semántica Unicode estable y un error REST accionable.
+
+### Requisitos y decisiones de diseño
+
+La iteración implementa el límite editorial de `RF-004`, se integra en las operaciones de edición
+de `RF-009` y respeta el documento localizado de `RF-031`. La decisión central es validar cada
+entrada de `descriptionI18n.values` de forma independiente. Un texto español de 350 palabras no
+compensa ni oculta un texto inglés de 351.
+
+La descripción sigue siendo opcional en borrador. Cuando existe, el máximo es inclusivo: 350 se
+acepta y 351 se rechaza. La política se ejecuta al guardar, no se posterga a la publicación, porque
+el requisito exige impedir el guardado o solicitar acortar el texto.
+
+### Archivos creados y modificados
+
+Productivos:
+
+- `VenueDescriptionService`: puerto de dominio que documenta entrada, ausencia válida y excepción.
+- `VenueDescriptionServiceImpl`: implementación Unicode y constante `MAX_WORDS`.
+- `VenueDescriptionTooLongException`: error de negocio con locale, recuento real y máximo.
+- `VenueDescriptionLimitErrorResponse`: contrato REST seguro y específico.
+- `VenueProfileServiceImpl`: invoca la política en `create` y `update`.
+- `VenueProfileExceptionHandler`: traduce el error a HTTP `422`.
+
+Pruebas:
+
+- nuevo `VenueDescriptionPolicyTests`;
+- ampliación de `VenueProfileControllerTests`;
+- ampliación de `VenueProfileServiceIntegrationTests`.
+
+Especificación:
+
+- `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+
+No se crean, modifican ni eliminan tablas, columnas, índices o migraciones.
+
+### Arquitectura y flujo de ejecución
+
+La regla se encapsula en una política inyectable en vez de incorporarse al controlador o al value
+object genérico `LocalizedText`. Así el value object puede seguir sirviendo para servicios, reglas
+y textos públicos, mientras el límite específico permanece asociado a la descripción del local.
+
+Flujo de alta y actualización:
+
+1. El controlador convierte el DTO localizado a `LocalizedText`.
+2. `VenueProfileServiceImpl` entrega `descriptionI18n` a `VenueDescriptionService`.
+3. La política retorna inmediatamente si la descripción es `null`.
+4. Para cada par locale/texto calcula el recuento y compara con 350.
+5. Si todos cumplen, continúa la validación de coordenadas, autorización implícita por propietario,
+   consulta de categoría y persistencia transaccional.
+6. Si uno excede el máximo, lanza `VenueDescriptionTooLongException` antes de acceder a repositorios.
+7. El advice produce HTTP `422`; Spring revierte la transacción sin escritura parcial.
+
+Validar antes de consultas reduce trabajo innecesario y hace que el resultado no dependa de si el
+perfil o la categoría existen. La misma política se utiliza en alta y actualización, evitando
+divergencias entre caminos de escritura.
+
+### Algoritmo de conteo
+
+La expresión regular es:
+
+```text
+[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*
+```
+
+`Matcher.find()` recorre coincidencias sin transformar el contenido:
+
+- `café`, `fútbol` y palabras de otros alfabetos cuentan mediante categorías Unicode de letras;
+- números cuentan como palabras;
+- `rock'n'roll`, `l’été` y `fútbol-sala` cuentan como una palabra;
+- puntuación exterior, espacios, símbolos y emojis separan o no cuentan;
+- no se usa el locale por defecto de la JVM ni una llamada externa.
+
+El coste es lineal respecto al tamaño de los textos. El límite técnico previo de 10.000 caracteres
+acota el payload y el trabajo máximo del matcher.
+
+### Contrato de error, seguridad y privacidad
+
+El error público es:
+
+```json
+{
+  "error": "VENUE_DESCRIPTION_TOO_LONG",
+  "locale": "en",
+  "maxWords": 350,
+  "actualWords": 351
+}
+```
+
+No contiene la descripción, IDs de usuario/local, constraints ni estado empresarial. El locale
+proviene del enum cerrado `SupportedLocale`, por lo que no refleja entrada arbitraria. HTTP `422`
+indica que la estructura del request es válida pero incumple una regla editorial.
+
+La política no cambia permisos: el CRUD continúa derivando el propietario exclusivamente de la
+cuenta autenticada. No añade logs con contenido, telemetría ni llamadas externas.
+
+### Persistencia, concurrencia y consistencia
+
+No hay migración porque el conteo léxico sobre valores JSONB no puede expresarse con la misma
+semántica Unicode de forma fiable mediante un constraint PostgreSQL. La barrera autoritativa es el
+servicio de aplicación, común a todas las escrituras actuales del perfil.
+
+La actualización mantiene el lock pesimista y la transacción introducidos en `2.4`. Como la política
+se ejecuta antes del lock, un rechazo no bloquea la fila. Cualquier excepción posterior conserva la
+atomicidad existente entre `descriptionI18n` y su proyección canónica `description`.
+
+### Tests y evidencia focalizada
+
+`VenueDescriptionServiceTests` verifica:
+
+- descripción nula;
+- frontera exacta de 350;
+- rechazo de 351 y metadatos de excepción;
+- validación separada de español e inglés;
+- letras acentuadas, números, puntuación, emoji, apóstrofe y guion interno.
+
+`VenueProfileControllerTests` comprueba estado `422`, código estable y los cuatro campos de la
+respuesta. `VenueProfileServiceIntegrationTests` demuestra que el bean se inyecta y rechaza una
+alta sobredimensionada dentro del contexto Spring real con PostgreSQL/Testcontainers.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml \
+  -Dtest=VenueDescriptionServiceTests,VenueProfileServiceIntegrationTests,VenueProfileControllerTests \
+  test
+```
+
+Resultado focalizado: 9 tests, cero fallos, cero errores y cero omitidos; Spotless y Checkstyle sin
+incidencias; Spring Boot, Hibernate, Flyway V1-V13 y PostgreSQL 17 correctos.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado: contrato CI, entornos, catálogos i18n, texto español, convenciones backend, lint,
+formato y TypeScript correctos; 82 tests web y 193 tests API superados; build Next.js de producción
+y empaquetado Spring Boot completados.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Las reglas editoriales sobre contracciones o compuestos pueden evolucionar; la expresión regular
+  documentada constituye el contrato actual y sus cambios requerirán tests de compatibilidad.
+- El límite no se replica en SQL, por lo que futuras escrituras fuera del servicio deberán reutilizar
+  la política.
+- No se valida longitud de servicios, reglas o texto público con 350 palabras porque `RF-004`
+  circunscribe el máximo a la descripción.
+- `2.9` todavía debe comprobar completitud y resto de prerrequisitos al publicar.
+- La interfaz futura debe usar `locale`, `actualWords` y `maxWords` para señalar exactamente el texto
+  que debe acortarse.
+
+### Criterio de cierre
+
+La tarea se considera cerrada porque ambas escrituras del perfil aplican el máximo inclusivo por
+cada traducción, el algoritmo y sus límites están documentados, el error no filtra contenido y las
+pruebas unitarias, REST e integración real demuestran los casos 350/351. La siguiente tarea
+pendiente es `2.7`.

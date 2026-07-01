@@ -158,6 +158,39 @@ class VenueProfileServiceIntegrationTests {
         .isZero();
   }
 
+  @Test
+  void rejectsAnOverlongLocalizedDescriptionBeforeWritingTheProfile() {
+    UUID ownerUserId = createVenueOwner("profile-description-limit");
+    VenueProfileCommand base = initialCommand();
+    VenueProfileCommand overlong =
+        new VenueProfileCommand(
+            base.name(),
+            base.categoryId(),
+            new com.reserly.platform.localization.LocalizedText(
+                SupportedLocale.ES,
+                Map.of(
+                    SupportedLocale.ES,
+                    String.join(" ", java.util.Collections.nCopies(351, "palabra")))),
+            base.servicesI18n(),
+            base.rulesI18n(),
+            base.publicTextI18n(),
+            base.defaultLocale(),
+            base.contactEmail(),
+            base.phone(),
+            base.address(),
+            base.city(),
+            base.province(),
+            base.country(),
+            base.postalCode(),
+            base.latitude(),
+            base.longitude(),
+            base.showPhone(),
+            base.showEmail());
+
+    assertThatThrownBy(() -> venueProfileService.create(ownerUserId, overlong))
+        .isInstanceOf(VenueDescriptionTooLongException.class);
+  }
+
   private VenueProfileCommand initialCommand() {
     return new VenueProfileCommand(
         "  Café Central  ",

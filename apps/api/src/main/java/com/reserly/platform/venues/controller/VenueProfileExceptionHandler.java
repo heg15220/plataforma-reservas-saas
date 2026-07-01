@@ -1,6 +1,8 @@
 package com.reserly.platform.venues.controller;
 
+import com.reserly.platform.venues.dto.VenueDescriptionLimitErrorResponse;
 import com.reserly.platform.venues.dto.VenueProfileErrorResponse;
+import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
 import com.reserly.platform.venues.service.VenueProfileConflictException;
 import com.reserly.platform.venues.service.VenueProfileForbiddenException;
 import com.reserly.platform.venues.service.VenueProfileInvalidException;
@@ -14,6 +16,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /** Traduce errores del perfil a códigos estables sin publicar IDs ni constraints. */
 @RestControllerAdvice(assignableTypes = VenueProfileControllerImpl.class)
 public class VenueProfileExceptionHandler {
+
+  @ExceptionHandler(VenueDescriptionTooLongException.class)
+  public ResponseEntity<VenueDescriptionLimitErrorResponse> handleDescriptionTooLong(
+      VenueDescriptionTooLongException exception) {
+    return ResponseEntity.status(422)
+        .body(
+            new VenueDescriptionLimitErrorResponse(
+                "VENUE_DESCRIPTION_TOO_LONG",
+                exception.getLocale().languageTag(),
+                exception.getMaxWords(),
+                exception.getActualWords()));
+  }
 
   @ExceptionHandler({MethodArgumentNotValidException.class, VenueProfileInvalidException.class})
   public ResponseEntity<VenueProfileErrorResponse> handleInvalid() {

@@ -30,17 +30,23 @@ public class VenueProfileServiceImpl implements VenueProfileService {
   private final VenueDao venueDao;
   private final CategoryDao categoryDao;
   private final BusinessAccountDao businessAccountDao;
+  private final VenueDescriptionService descriptionService;
 
   public VenueProfileServiceImpl(
-      VenueDao venueDao, CategoryDao categoryDao, BusinessAccountDao businessAccountDao) {
+      VenueDao venueDao,
+      CategoryDao categoryDao,
+      BusinessAccountDao businessAccountDao,
+      VenueDescriptionService descriptionService) {
     this.venueDao = venueDao;
     this.categoryDao = categoryDao;
     this.businessAccountDao = businessAccountDao;
+    this.descriptionService = descriptionService;
   }
 
   @Override
   @Transactional
   public VenueEntity create(UUID ownerUserId, VenueProfileCommand command) {
+    descriptionService.validate(command.descriptionI18n());
     validateCoordinates(command.latitude(), command.longitude());
     if (venueDao.findCurrentByOwnerUserId(ownerUserId).isPresent()) {
       throw new VenueProfileConflictException();
@@ -81,6 +87,7 @@ public class VenueProfileServiceImpl implements VenueProfileService {
   @Override
   @Transactional
   public VenueEntity update(UUID ownerUserId, VenueProfileCommand command) {
+    descriptionService.validate(command.descriptionI18n());
     validateCoordinates(command.latitude(), command.longitude());
     VenueEntity venue =
         venueDao

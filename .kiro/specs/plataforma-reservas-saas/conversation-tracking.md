@@ -2667,3 +2667,50 @@ Fuente de verdad del avance:
   - La validación de 350 palabras no se adelanta y permanece exclusivamente en `2.6`.
   - Evidencia focalizada: 17 tests correctos entre migración, localización, controlador y servicio.
   - Evidencia integral: `npm run verify` correcto tras código y documentación.
+
+## Conversación 56 - Límite de descripción por idioma
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.6` como primera tarea pendiente después de revisar la especificación completa.
+  - Se creó una política de dominio que limita cada traducción presente de `descriptionI18n` a un
+    máximo inclusivo de 350 palabras.
+  - Se definió un conteo Unicode determinista: letras y números forman palabras, apóstrofes y
+    guiones internos permanecen unidos, y puntuación, símbolos y emojis actúan como separadores.
+  - La política se ejecuta en altas y actualizaciones antes de consultar o modificar el perfil.
+  - El error se expone como HTTP `422`, código `VENUE_DESCRIPTION_TOO_LONG` y metadatos seguros del
+    idioma y del límite, sin devolver contenido escrito por el usuario.
+  - Se verificaron límites 350/351, descripción ausente, idiomas independientes, Unicode,
+    adaptación REST e integración real con PostgreSQL.
+- Archivos modificados:
+  - Nuevos `VenueDescriptionService`, `VenueDescriptionServiceImpl` y
+    `VenueDescriptionTooLongException`.
+  - Nuevo DTO `VenueDescriptionLimitErrorResponse`.
+  - `VenueProfileServiceImpl` y `VenueProfileExceptionHandler`.
+  - Nuevas pruebas unitarias y ampliaciones de pruebas de controlador e integración del perfil.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+- Tareas impactadas:
+  - `2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado`.
+  - Prepara `2.9` y la futura interfaz de edición del perfil.
+- Tareas completadas:
+  - `2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado`.
+- Siguiente tarea pendiente recomendada:
+  - `2.7. Implementar carga segura de imagen principal del local`.
+- Decisiones o aclaraciones relevantes:
+  - El límite se aplica al guardar tanto borradores como perfiles ya existentes, no solo en el
+    futuro cambio de estado a publicado.
+  - Se valida cada traducción presente aunque no sea el idioma fuente.
+  - No se añade constraint SQL: no reproduciría con fidelidad la semántica léxica Unicode aplicada
+    por la API.
+  - Servicios, reglas y texto público conservan su límite técnico de payload y no reciben el límite
+    editorial de descripción.
+  - Evidencia focalizada: 9 tests correctos, cero fallos, errores u omitidos.
+  - Evidencia integral: `npm run verify` correcto, con 82 tests web, 193 tests API y ambos builds.

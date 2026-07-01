@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.reserly.platform.identity.AccountType;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
+import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.converter.VenueProfileConverter;
 import com.reserly.platform.venues.dto.LocalizedTextDto;
 import com.reserly.platform.venues.dto.VenueProfileCommand;
@@ -13,6 +14,7 @@ import com.reserly.platform.venues.dto.VenueProfileRequest;
 import com.reserly.platform.venues.dto.VenueProfileResponse;
 import com.reserly.platform.venues.persistence.CategoryEntity;
 import com.reserly.platform.venues.persistence.VenueEntity;
+import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
 import com.reserly.platform.venues.service.VenueProfileService;
 import java.time.Instant;
 import java.util.Set;
@@ -91,6 +93,15 @@ class VenueProfileControllerTests {
     assertThat(exceptionHandler.handleNotFound().getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(exceptionHandler.handleForbidden().getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(exceptionHandler.handleConflict().getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+    var descriptionError =
+        exceptionHandler.handleDescriptionTooLong(
+            new VenueDescriptionTooLongException(SupportedLocale.EN, 351, 350));
+    assertThat(descriptionError.getStatusCode().value()).isEqualTo(422);
+    assertThat(descriptionError.getBody().error()).isEqualTo("VENUE_DESCRIPTION_TOO_LONG");
+    assertThat(descriptionError.getBody().locale()).isEqualTo("en");
+    assertThat(descriptionError.getBody().maxWords()).isEqualTo(350);
+    assertThat(descriptionError.getBody().actualWords()).isEqualTo(351);
   }
 
   private VenueProfileRequest request(UUID categoryId) {
