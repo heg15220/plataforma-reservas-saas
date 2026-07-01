@@ -2714,3 +2714,43 @@ Fuente de verdad del avance:
     editorial de descripción.
   - Evidencia focalizada: 9 tests correctos, cero fallos, errores u omitidos.
   - Evidencia integral: `npm run verify` correcto, con 82 tests web, 193 tests API y ambos builds.
+
+## Conversación 57 - Carga segura de imagen principal
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.7` como primera tarea pendiente y se auditó el esquema y la carga privada previa.
+  - Se implementó carga multipart limitada al propietario autenticado.
+  - JPEG/PNG se validan por decodificación real, MIME, tamaño, dimensiones, píxeles y frame único.
+  - Toda imagen aceptada se vuelve a codificar para retirar metadatos.
+  - Se creó almacenamiento MinIO en bucket privado independiente y entrega pública mediada por API
+    únicamente para locales publicados.
+  - La sustitución compensa en rollback y limpia el objeto anterior después del commit.
+  - V14 añade clave interna, MIME, tamaño y dimensiones con integridad todo-o-nada.
+- Archivos modificados:
+  - Nueva migración `V14__add_secure_venue_main_image_metadata.sql`.
+  - Nuevo paquete `venues.image`, controladores, servicio y DTOs de imagen principal.
+  - Entidad, DAO, respuesta/conversor de perfil y advice de errores.
+  - Configuración API, plantillas de entorno y pruebas de imagen/migración.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003`, `RF-004`, `RF-008`, `RF-009`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-008`, `RNF-011`.
+- Tareas impactadas:
+  - `2.7. Implementar carga segura de imagen principal`.
+  - Prepara `2.9`, `2.10` y `3.1`.
+- Tareas completadas:
+  - `2.7. Implementar carga segura de imagen principal`.
+- Siguiente tarea pendiente recomendada:
+  - `2.8. Implementar galería opcional`.
+- Decisiones o aclaraciones relevantes:
+  - El bucket permanece privado; la API exige estado publicado antes de entregar bytes.
+  - La galería y su orden permanecen en `2.8`.
+  - No se aceptan GIF, SVG, WebP ni URLs arbitrarias.
+  - El nombre original nunca se persiste ni construye claves.
+  - Evidencia focalizada: 20 tests correctos, cero fallos, errores u omitidos.
+  - Verificación transversal correcta para CI, entornos, i18n, español, convenciones, lint,
+    formato, TypeScript, 82 tests web y ambos builds.
+  - La repetición integral de tests API quedó impedida por un error 500 del motor Linux de Docker
+    Desktop. No fue un fallo de aserción: Testcontainers informó que no encontraba un entorno
+    Docker. La integración específica ya había pasado antes de la incidencia.

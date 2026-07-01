@@ -11999,3 +11999,148 @@ La tarea se considera cerrada porque ambas escrituras del perfil aplican el máx
 cada traducción, el algoritmo y sus límites están documentados, el error no filtra contenido y las
 pruebas unitarias, REST e integración real demuestran los casos 350/351. La siguiente tarea
 pendiente es `2.7`.
+
+## Iteración 2.7 - Carga segura de imagen principal
+
+### Identificación, fecha y objetivo
+
+- Tarea: `2.7. Implementar carga segura de imagen principal`.
+- Fecha: 2026-07-01.
+- Objetivo: permitir al propietario sustituir la imagen principal sin aceptar URLs ni confiar en
+  metadatos multipart, almacenando solo contenido decodificado y normalizado.
+
+### Requisitos y diseño
+
+La imagen alimentará `RF-003`, `RF-004` y `RF-009`; `RF-008` exige alcance por propietario.
+`RNF-001`/`RNF-002` motivan validación, eliminación de metadatos y bucket privado; `RNF-003` exige
+coordinar base y objeto; `RNF-006` limita bytes y píxeles.
+
+### Archivos y módulos
+
+- V14 añade metadatos internos y constraint.
+- `venues.image` contiene propiedades, validador, puerto y adaptador MinIO.
+- `VenueMainImageController`/`Impl` ofrece multipart privado y lectura pública.
+- `VenueMainImageService`/`Impl` aplica propiedad, persistencia y compensaciones.
+- Nuevos DTOs cerrados evitan exponer la clave.
+- Entidad/DAO, respuesta/conversor de perfil, advice y configuración fueron ampliados.
+- Se añadieron pruebas de validador, controlador, servicio y migración.
+
+### Modelo de datos
+
+V14 añade a `Venues`:
+
+- `mainImageObjectKey varchar(500)`;
+- `mainImageMediaType varchar(32)`;
+- `mainImageSizeBytes bigint`;
+- `mainImageWidth integer`;
+- `mainImageHeight integer`.
+
+`mainImageUrl` sigue como referencia pública estable. `ckVenuesMainImageMetadata` exige todos los
+campos nulos o todos presentes, MIME JPEG/PNG, tamaño positivo y dimensiones 320–4096.
+`VenueImages` no cambia: queda reservado a `2.8`.
+
+### Contratos y flujo
+
+`POST /api/venue/me/main-image`, multipart `file`:
+
+1. rechaza part vacío/sin MIME y descarta el nombre;
+2. valida contenido;
+3. carga perfil vigente propio bajo lock;
+4. escribe `venues/{venueId}/main/{uuid}.{png|jpg}`;
+5. persiste URL, clave, MIME, tamaño y dimensiones;
+6. tras commit elimina el objeto sustituido;
+7. tras rollback elimina el objeto nuevo.
+
+Respuesta:
+
+```json
+{
+  "url": "/api/public/venue-images/{venueId}/main",
+  "mediaType": "image/png",
+  "sizeBytes": 12345,
+  "width": 1280,
+  "height": 720
+}
+```
+
+`GET /api/public/venue-images/{venueId}/main` exige `status='published'` y clave presente. Lee del
+bucket privado y devuelve MIME confiable. Borradores, archivados, suspendidos e IDs desconocidos
+producen el mismo `404`.
+
+### Validación y normalización
+
+Máximo 5 MiB antes y después de recodificar, ejes 320–4096 y 16.777.216 píxeles. El lector:
+
+- selecciona decoder por contenido y contrasta MIME;
+- lee dimensiones antes del raster para frenar bombas de descompresión;
+- exige una imagen/frame;
+- decodifica por completo y vuelve a codificar sin metadatos.
+
+JPEG se materializa como RGB; PNG conserva raster compatible. EXIF, geolocalización, thumbnails,
+comentarios, perfiles y nombres no alcanzan el objeto. SVG/GIF/WebP se rechazan.
+
+### Almacenamiento, concurrencia y consistencia
+
+`VenueImageStorage` abstrae `put/get/delete`. MinIO usa credenciales S3 inyectadas y un bucket
+separado (`RESERLY_VENUE_IMAGE_S3_BUCKET`) sin acceso anónimo. La API media la lectura.
+
+La operación mantiene lock mientras escribe objeto/metadatos. El nuevo se compensa si no hay commit;
+el antiguo se elimina en `afterCommit`, evitando referencia rota. La limpieza es best-effort: su
+fallo no revierte un commit y se registra sin clave, bucket o contenido.
+
+### Seguridad, privacidad, errores y observabilidad
+
+- La identidad procede solo de `AuthenticatedAccount.userId`.
+- No se acepta `venueId`, propietario, object key ni URL.
+- La clave lleva UUID aleatorio y no usa nombre original.
+- El bucket no es público; lectura exige local publicado.
+- No se registran bytes, URLs, claves o nombres.
+- `400 VENUE_IMAGE_INVALID`, `404 VENUE_PROFILE_NOT_FOUND` y
+  `503 VENUE_IMAGE_STORAGE_UNAVAILABLE` son códigos estables.
+- Solo una limpieza diferida fallida genera warning genérico.
+
+### Configuración
+
+Se documentan bucket, máximo de bytes, dimensiones y píxeles en los tres `.env.*.example`.
+Endpoint, credenciales, región y creación local reutilizan la conexión S3, con bucket segregado.
+
+### Tests y evidencia
+
+El validador cubre PNG válido/recodificado, MIME suplantado, contenido desconocido y dimensiones.
+Servicio cubre propiedad, clave aleatoria, persistencia, borrado poscommit y lectura publicada.
+Controlador cubre multipart, nombre hostil ignorado, MIME y errores. Migración aplica V1–V14 y
+verifica columnas.
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml \
+  -Dtest=VenueImageContentValidatorTests,VenueMainImageServiceTests,VenueMainImageControllerTests,DatabaseMigrationIntegrationTests,VenueProfileControllerTests,VenueProfileServiceIntegrationTests \
+  test
+npm run backend:conventions:check
+npm run env:check
+```
+
+Resultado focalizado: 20 tests correctos; Spotless, Checkstyle, convenciones, entornos, Hibernate,
+PostgreSQL 17 y Flyway V1–V14 correctos.
+
+La verificación transversal posterior confirmó contrato CI, entornos, i18n, español, convenciones,
+lint, formato, TypeScript, 82 tests web y los builds Next.js/Spring Boot. La repetición de la suite
+API completa no pudo arrancar sus contextos de integración porque Docker Desktop devolvió HTTP 500
+en el motor Linux; Testcontainers reportó `Previous attempts to find a Docker environment failed`.
+No hubo fallo funcional ni de aserción del cambio. Se conserva como evidencia válida la ejecución
+focalizada previa con PostgreSQL 17 real y Flyway V1–V14.
+
+### Riesgos, limitaciones y deuda
+
+- Una limpieza fallida deja objeto huérfano; una tarea operativa futura podrá reconciliar claves.
+- La recodificación es en memoria; límites de bytes/píxeles acotan coste, pero producción debe
+  dimensionar concurrencia y heap.
+- No hay CDN ni variantes responsivas; podrán añadirse detrás de la URL estable.
+- No se ejecuta antivirus porque no se conservan bytes originales y solo salen formatos generados
+  por ImageIO.
+- `2.8` implementará galería, orden y alt text.
+
+### Criterio de cierre
+
+Una imagen válida puede sustituirse por el propietario; contenido falso se rechaza; base y objeto
+se compensan; la clave no se filtra y solo un local publicado entrega bytes. Siguiente tarea: `2.8`.

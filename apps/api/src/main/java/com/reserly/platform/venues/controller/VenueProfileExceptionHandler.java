@@ -2,6 +2,8 @@ package com.reserly.platform.venues.controller;
 
 import com.reserly.platform.venues.dto.VenueDescriptionLimitErrorResponse;
 import com.reserly.platform.venues.dto.VenueProfileErrorResponse;
+import com.reserly.platform.venues.image.VenueImageStorageException;
+import com.reserly.platform.venues.image.VenueImageValidationException;
 import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
 import com.reserly.platform.venues.service.VenueProfileConflictException;
 import com.reserly.platform.venues.service.VenueProfileForbiddenException;
@@ -14,8 +16,20 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Traduce errores del perfil a códigos estables sin publicar IDs ni constraints. */
-@RestControllerAdvice(assignableTypes = VenueProfileControllerImpl.class)
+@RestControllerAdvice(
+    assignableTypes = {VenueProfileControllerImpl.class, VenueMainImageControllerImpl.class})
 public class VenueProfileExceptionHandler {
+
+  @ExceptionHandler(VenueImageValidationException.class)
+  public ResponseEntity<VenueProfileErrorResponse> handleInvalidImage() {
+    return ResponseEntity.badRequest().body(new VenueProfileErrorResponse("VENUE_IMAGE_INVALID"));
+  }
+
+  @ExceptionHandler(VenueImageStorageException.class)
+  public ResponseEntity<VenueProfileErrorResponse> handleImageStorageUnavailable() {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(new VenueProfileErrorResponse("VENUE_IMAGE_STORAGE_UNAVAILABLE"));
+  }
 
   @ExceptionHandler(VenueDescriptionTooLongException.class)
   public ResponseEntity<VenueDescriptionLimitErrorResponse> handleDescriptionTooLong(

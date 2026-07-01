@@ -21,8 +21,8 @@ import org.hibernate.type.SqlTypes;
 /**
  * Perfil de local gestionado por su propietario.
  *
- * <p>La entidad no concede publicación ni acepta cambios de propiedad. Imagen principal,
- * descripciones localizadas y reglas avanzadas se incorporan en sus tareas específicas.
+ * <p>La entidad no concede publicación ni acepta cambios de propiedad. La imagen principal separa
+ * la URL pública estable de la clave privada de almacenamiento.
  */
 @Entity
 @Table(name = "\"Venues\"")
@@ -49,6 +49,12 @@ public class VenueEntity {
   private String postalCode;
   private BigDecimal latitude;
   private BigDecimal longitude;
+  private String mainImageUrl;
+  private String mainImageObjectKey;
+  private String mainImageMediaType;
+  private Long mainImageSizeBytes;
+  private Integer mainImageWidth;
+  private Integer mainImageHeight;
   private String status;
   private String manualAvailabilityStatus;
   private boolean showPhone;
@@ -261,6 +267,61 @@ public class VenueEntity {
 
   public void setLongitude(BigDecimal longitude) {
     this.longitude = longitude;
+  }
+
+  /** URL pública estable; la clave privada de objeto se mantiene separada. */
+  @Column(name = "\"mainImageUrl\"", length = 1024)
+  public String getMainImageUrl() {
+    return mainImageUrl;
+  }
+
+  public void setMainImageUrl(String mainImageUrl) {
+    this.mainImageUrl = mainImageUrl;
+  }
+
+  @Column(name = "\"mainImageObjectKey\"", length = 500)
+  public String getMainImageObjectKey() {
+    return mainImageObjectKey;
+  }
+
+  public void setMainImageObjectKey(String mainImageObjectKey) {
+    this.mainImageObjectKey = mainImageObjectKey;
+  }
+
+  @Column(name = "\"mainImageMediaType\"", length = 32)
+  public String getMainImageMediaType() {
+    return mainImageMediaType;
+  }
+
+  public void setMainImageMediaType(String mainImageMediaType) {
+    this.mainImageMediaType = mainImageMediaType;
+  }
+
+  @Column(name = "\"mainImageSizeBytes\"")
+  public Long getMainImageSizeBytes() {
+    return mainImageSizeBytes;
+  }
+
+  public void setMainImageSizeBytes(Long mainImageSizeBytes) {
+    this.mainImageSizeBytes = mainImageSizeBytes;
+  }
+
+  @Column(name = "\"mainImageWidth\"")
+  public Integer getMainImageWidth() {
+    return mainImageWidth;
+  }
+
+  public void setMainImageWidth(Integer mainImageWidth) {
+    this.mainImageWidth = mainImageWidth;
+  }
+
+  @Column(name = "\"mainImageHeight\"")
+  public Integer getMainImageHeight() {
+    return mainImageHeight;
+  }
+
+  public void setMainImageHeight(Integer mainImageHeight) {
+    this.mainImageHeight = mainImageHeight;
   }
 
   /** Estado editorial controlado por casos de uso; el CRUD solo crea borradores y archiva. */

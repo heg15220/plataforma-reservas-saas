@@ -27,6 +27,7 @@ public record VenueProfileResponse(
     String postalCode,
     BigDecimal latitude,
     BigDecimal longitude,
+    String mainImageUrl,
     String status,
     boolean showPhone,
     boolean showEmail,

@@ -93,6 +93,20 @@ reserly:
       tokenLifetime: ${RESERLY_PASSWORD_RESET_TOKEN_LIFETIME:30m}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
+  venues:
+    images:
+      upload:
+        maxBytes: ${RESERLY_VENUE_IMAGE_MAX_BYTES:5242880}
+        minDimension: ${RESERLY_VENUE_IMAGE_MIN_DIMENSION:320}
+        maxDimension: ${RESERLY_VENUE_IMAGE_MAX_DIMENSION:4096}
+        maxPixels: ${RESERLY_VENUE_IMAGE_MAX_PIXELS:16777216}
+      storage:
+        endpoint: ${RESERLY_S3_ENDPOINT:http://localhost:9000}
+        bucket: ${RESERLY_VENUE_IMAGE_S3_BUCKET:reserly-local-venue-images}
+        accessKey: ${RESERLY_S3_ACCESS_KEY:reserly-minio-local}
+        secretKey: ${RESERLY_S3_SECRET_KEY:reserly-minio-local-secret}
+        region: ${RESERLY_S3_REGION:us-east-1}
+        createBucket: ${RESERLY_S3_CREATE_BUCKET:true}
   business-verification:
     documents:
       upload:

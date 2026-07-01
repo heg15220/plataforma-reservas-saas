@@ -33,4 +33,15 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
         and venue.status <> 'archived'
       """)
   Optional<VenueEntity> findCurrentByOwnerUserIdForUpdate(@Param("ownerUserId") UUID ownerUserId);
+
+  /** Resuelve exclusivamente imágenes de perfiles publicados para entrega anónima. */
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      where venue.id = :venueId
+        and venue.status = 'published'
+        and venue.mainImageObjectKey is not null
+      """)
+  Optional<VenueEntity> findPublishedWithMainImage(@Param("venueId") UUID venueId);
 }

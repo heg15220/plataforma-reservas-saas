@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("13");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("14");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -228,7 +228,12 @@ class DatabaseMigrationIntegrationTests {
             "updatedAt",
             "servicesI18n",
             "rulesI18n",
-            "publicTextI18n"));
+            "publicTextI18n",
+            "mainImageObjectKey",
+            "mainImageMediaType",
+            "mainImageSizeBytes",
+            "mainImageWidth",
+            "mainImageHeight"));
     expectedColumns.put(
         "VenueImages", List.of("id", "venueId", "url", "altText", "position", "createdAt"));
 

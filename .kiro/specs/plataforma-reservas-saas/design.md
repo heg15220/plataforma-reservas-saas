@@ -2631,3 +2631,23 @@ Si una traducción supera el límite, la operación se revierte con HTTP `422` y
 `VENUE_DESCRIPTION_TOO_LONG`. La respuesta incluye únicamente `locale`, `maxWords` y `actualWords`;
 no devuelve el texto introducido. La restricción vive en el servicio porque PostgreSQL no ofrece un
 conteo léxico equivalente y estable sobre documentos JSONB.
+
+### Carga y entrega segura de la imagen principal
+
+`POST /api/venue/me/main-image` recibe un único part `file` y deriva el propietario exclusivamente
+de la sesión. Admite JPEG y PNG de hasta 5 MiB, entre 320 y 4096 píxeles por eje y como máximo
+16.777.216 píxeles. El backend selecciona un decoder por contenido, contrasta el formato real,
+comprueba dimensiones antes de materializar el raster, rechaza múltiples frames y vuelve a
+codificar la imagen. Así elimina EXIF, perfiles, comentarios y otros metadatos aportados.
+
+Los bytes normalizados se almacenan en un bucket privado separado de documentos empresariales. La
+base conserva una URL pública estable y, en columnas internas, clave de objeto, MIME, tamaño y
+dimensiones. Un constraint exige que el conjunto esté completamente ausente o sea coherente.
+
+La sustitución coloca un objeto de nombre aleatorio, actualiza metadatos bajo lock y elimina el
+objeto anterior después del commit. Un rollback elimina el objeto nuevo como compensación. Los
+fallos de limpieza se registran sin claves ni contenido.
+
+`GET /api/public/venue-images/{venueId}/main` media la lectura desde el bucket privado y solo
+resuelve perfiles `published`. Los errores son `400 VENUE_IMAGE_INVALID`,
+`404 VENUE_PROFILE_NOT_FOUND` y `503 VENUE_IMAGE_STORAGE_UNAVAILABLE`.

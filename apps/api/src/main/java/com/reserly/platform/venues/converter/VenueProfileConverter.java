@@ -61,6 +61,7 @@ public class VenueProfileConverter {
         venue.getPostalCode(),
         venue.getLatitude(),
         venue.getLongitude(),
+        venue.getMainImageUrl(),
         venue.getStatus(),
         venue.isShowPhone(),
         venue.isShowEmail(),
