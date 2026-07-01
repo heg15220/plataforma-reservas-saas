@@ -2375,3 +2375,65 @@ Fuente de verdad del avance:
   - Evidencia focalizada: 8 tests en `VenueRegistrationIntegrationTests`, cero fallos.
   - Evidencia integral: `npm run verify` correcto, incluidas suites web/API, lint, formato,
     TypeScript, i18n, calidad de español y builds de producción.
+
+## Conversación 51 - Esquema base de locales, categorías e imágenes
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.1` como primera tarea pendiente y el inicio de la Fase 2 en la rama
+    `phase/2-locales-categorias-perfil`.
+  - Se creó la migración Flyway `V9` con las tablas físicas `Categories`, `Venues` y
+    `VenueImages`, siguiendo `UpperCamelCase` para tablas y `lowerCamelCase` para columnas.
+  - Se añadieron claves foráneas, vocabularios cerrados, validación de slugs, email, país,
+    timestamps, JSONB localizado, publicación, coordenadas y orden de galería.
+  - La pertenencia del local se protege mediante una clave foránea compuesta que obliga a que
+    `businessAccountId` y `ownerUserId` correspondan a la misma cuenta empresarial.
+  - Se añadió una ubicación PostGIS generada desde latitud/longitud y un índice GiST, además de
+    índices de búsqueda por nombre, categoría, estado y ubicación textual.
+  - No se incluyeron categorías iniciales ni datos semilla; corresponden a `2.2`.
+  - La prueba de migración se amplió para verificar versión, columnas, índices e invariantes sobre
+    PostgreSQL/PostGIS real. La primera prueba de coordenadas detectó que un `CHECK` SQL podía
+    evaluar a `NULL`; se corrigió exigiendo explícitamente ambos componentes.
+  - La verificación integral expuso que el validador de convenciones delimitaba `CREATE TABLE`
+    mediante una expresión regular y confundía SQL multilínea con columnas. Se sustituyó por un
+    lector acotado que respeta paréntesis, literales y comentarios.
+- Archivos modificados:
+  - Nuevo
+    `apps/api/src/main/resources/db/migration/V9__create_venue_category_and_image_tables.sql`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `scripts/validate-backend-conventions.mjs`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.1. Crear migraciones de venues, categories y venue_images`.
+  - Prepara `2.2` a `2.13`, `3.1` a `3.6` y `14.2`.
+- Tareas completadas:
+  - `2.1. Crear migraciones de venues, categories y venue_images`.
+- Siguiente tarea pendiente recomendada:
+  - `2.2. Crear seed de categorías iniciales`.
+- Decisiones o aclaraciones relevantes:
+  - `Categories` se crea vacía deliberadamente; la semilla y sus traducciones se cierran en las
+    tareas `2.2` y `2.3`.
+  - Una categoría es obligatoria al crear `Venues`, pero la migración no crea automáticamente el
+    perfil durante el registro empresarial.
+  - `mainImageUrl` pertenece al perfil y `VenueImages` representa solo la galería ordenada.
+  - La columna `location` es derivada y no constituye una segunda fuente de verdad.
+  - El borrado de categoría y cuenta empresarial queda restringido; las imágenes usan cascada solo
+    cuando se elimina físicamente su local.
+  - Evidencia focalizada: 5 tests correctos en `DatabaseMigrationIntegrationTests`, con Flyway V1 a
+    V9 sobre PostgreSQL 17.5/PostGIS.
+  - Evidencia integral: `npm run verify` correcto tras código y documentación.

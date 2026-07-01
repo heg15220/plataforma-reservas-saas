@@ -10649,3 +10649,301 @@ La tarea se considera cerrada porque las dos propiedades transversales quedan au
 intento no autorizado no produce efectos, la suite focalizada pasa y la verificación integral del
 repositorio termina correctamente. Con `1.22` se completa la Fase 1. La siguiente tarea pendiente
 es `2.1`.
+
+## Iteración 2.1 - Migraciones de locales, categorías e imágenes
+
+### Identificación y fecha
+
+- Tarea: `2.1. Crear migraciones de venues, categories y venue_images`.
+- Fecha: 2026-07-01.
+
+### Objetivo técnico
+
+Abrir la Fase 2 con un esquema relacional verificable para el catálogo de locales. La iteración
+debía permitir crear perfiles asociados de forma segura a la identidad empresarial cerrada en la
+Fase 1, clasificar cada perfil, almacenar sus datos públicos y ordenar una galería, dejando
+preparadas la localización, la búsqueda y la internacionalización sin adelantar seeds, CRUD,
+subidas de archivos ni publicación.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-002`: filtro futuro por categoría y ubicación.
+- `RF-003`: nombre, categoría, ubicación, imagen y descripción en resultados.
+- `RF-004`: ficha con datos, coordenadas, imagen principal y galería.
+- `RF-009`: persistencia editable del perfil y visibilidad de contacto.
+- `RF-031`: contenido dinámico localizado en ES/EN.
+- `RNF-001`: integridad en servidor y reducción de asociaciones horizontales inválidas.
+- `RNF-003`: restricciones relacionales como última barrera de consistencia.
+- `RNF-004`: índices preparados para búsquedas crecientes.
+- `RNF-008`: migración repetible y probada contra PostgreSQL real.
+- `RNF-009`: contrato JSONB compatible con `LocalizedText`.
+- `RNF-011`: tablas `UpperCamelCase` y columnas `lowerCamelCase`.
+- Diseño `3.2`, `4.1`, `4.3` y `15.2`: módulo de locales, entidades base, datos localizados y
+  verificación de migraciones con Testcontainers.
+
+### Archivos creados y modificados
+
+- Creado
+  `apps/api/src/main/resources/db/migration/V9__create_venue_category_and_image_tables.sql`.
+- Modificado
+  `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- Modificado `scripts/validate-backend-conventions.mjs`.
+- Modificados `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+- No se eliminaron archivos.
+- No se añadieron entidades JPA, DAOs, servicios, controladores, DTOs, endpoints ni componentes de
+  interfaz; pertenecen a las siguientes tareas de la fase.
+
+### Arquitectura aplicada
+
+La migración conserva el monolito modular y crea exclusivamente persistencia dentro del límite de
+locales y catálogo. Las tablas físicas son:
+
+- `Categories`: taxonomía administrable y localizable.
+- `Venues`: agregado raíz del perfil público, ligado a identidad empresarial y categoría.
+- `VenueImages`: elementos ordenados de galería dependientes del local.
+
+El orden de creación es categorías, clave candidata empresarial, locales e imágenes. Así todas las
+claves foráneas existen al declarar cada tabla. No se usan triggers: las invariantes estáticas se
+expresan con claves, `CHECK`, columnas generadas e índices; las reglas que requieren consultar
+verificación empresarial o datos mínimos se reservan para el servicio de publicación de `2.9`.
+
+### Modelo de datos y migración
+
+#### `Categories`
+
+Campos:
+
+- UUID con `gen_random_uuid()`.
+- `name` canónico, `slug` y descripción opcional.
+- `nameI18n` obligatorio y `descriptionI18n` opcional como `jsonb`.
+- `isActive`, `createdAt` y `updatedAt`.
+
+Restricciones:
+
+- nombre no vacío;
+- slug único con patrón `^[a-z0-9]+(?:-[a-z0-9]+)*$`;
+- locale fuente `es` o `en`;
+- objeto `values` obligatorio;
+- traducciones española e inglesa no vacías para el nombre controlado por plataforma;
+- valor fuente no vacío cuando existe descripción localizada;
+- `updatedAt` no anterior a `createdAt`.
+
+No se insertan filas en `V9`. Esto evita mezclar la creación estructural de `2.1` con los datos y
+traducciones auditables de `2.2` y `2.3`.
+
+#### `Venues`
+
+Identidad y propiedad:
+
+- UUID propio;
+- `ownerUserId`;
+- `businessAccountId`;
+- `categoryId`.
+
+La migración añade la clave candidata `uqBusinessAccountsIdOwner` sobre
+`BusinessAccounts(id, ownerUserId)`. `Venues` referencia esa pareja mediante
+`fkVenuesBusinessAccountOwner`. Esta relación compuesta impide en la propia base asociar una cuenta
+empresarial a otro propietario, incluso si un error futuro en un servicio enviara dos UUID válidos
+pero incompatibles. La categoría usa `ON DELETE RESTRICT`; no se permite borrar una clasificación
+que todavía tenga perfiles.
+
+Perfil:
+
+- nombre y slug obligatorios;
+- descripción simple y `descriptionI18n`;
+- locale por defecto;
+- email, teléfono y dirección postal;
+- ciudad, provincia, país y código postal;
+- imagen principal;
+- flags independientes `showPhone` y `showEmail`.
+
+Estado:
+
+- editorial: `draft`, `pending_verification`, `published`, `suspended` o `archived`;
+- disponibilidad manual: `automatic`, `available` o `unavailable`;
+- un perfil publicado necesita `publishedAt`;
+- `publishedAt` puede conservarse tras suspender o archivar como fecha histórica.
+
+Ubicación:
+
+- latitud `numeric(9,6)` entre -90 y 90;
+- longitud `numeric(9,6)` entre -180 y 180;
+- ambas deben existir o faltar conjuntamente;
+- `location geography(Point,4326)` se genera siempre con PostGIS a partir de
+  `ST_MakePoint(longitude, latitude)`.
+
+La columna generada evita que coordenadas numéricas y punto espacial diverjan. La prueba inicial
+descubrió que la primera forma del `CHECK` podía evaluar a `NULL` cuando solo había latitud, y
+PostgreSQL considera válido un `CHECK` que no sea explícitamente falso. La versión final exige
+`IS NOT NULL` para ambos componentes antes de comprobar rangos.
+
+Índices:
+
+- slug único;
+- propietario y cuenta empresarial;
+- categoría más estado;
+- país, ciudad y estado;
+- GIN trigram parcial por nombre publicado;
+- GiST parcial sobre `location`.
+
+Los dos últimos aprovechan `pg_trgm` y PostGIS habilitados en `V1`. Preparan búsqueda textual y por
+radio, pero no implementan la API ni prometen todavía un plan concreto de consulta.
+
+#### `VenueImages`
+
+Campos:
+
+- UUID;
+- `venueId`;
+- localizador de imagen;
+- texto alternativo opcional;
+- posición no negativa;
+- fecha de creación.
+
+La pareja `venueId`, `position` es única y hace determinista el orden. La clave foránea usa
+`ON DELETE CASCADE` porque una imagen de galería no tiene sentido sin su agregado. El flujo normal
+de retirada seguirá siendo archivar el local; la cascada solo cubre una supresión física explícita.
+`mainImageUrl` no se duplica como fila de galería: permanece en `Venues` de acuerdo con el diseño.
+
+### Flujos de ejecución relevantes
+
+Al arrancar una base vacía:
+
+1. Flyway aplica `V1` a `V8`.
+2. `V9` crea `Categories`.
+3. Declara la clave candidata de identidad empresarial.
+4. Crea `Venues` y sus índices, incluida la columna espacial generada.
+5. Crea `VenueImages`.
+6. Registra la versión 9 en el historial Flyway.
+
+Al persistir coordenadas válidas, PostgreSQL genera el punto con orden longitud/latitud y lo indexa.
+Al intentar persistir propietario cruzado, i18n incompleto, coordenadas parciales o posición
+repetida, la base rechaza la escritura antes de que exista un estado incoherente.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+- No se almacenan secretos ni documentos privados en las nuevas tablas.
+- La FK compuesta constituye defensa en profundidad frente a acceso horizontal.
+- Emails de contacto deben estar recortados, en minúsculas y con formato básico válido.
+- País usa ISO alfa-2 en mayúsculas.
+- Slugs solo admiten un alfabeto URL seguro y normalizado.
+- Los estados no aceptan valores arbitrarios.
+- Los documentos localizados deben ser objetos con locale fuente y valores válidos.
+- Las categorías exigen ES/EN porque son texto de plataforma.
+- La descripción de un local puede permanecer ausente durante borrador; la completitud para
+  publicación se validará en `2.5`, `2.6` y `2.9`.
+- Los flags de contacto nacen en `false`, minimizando exposición por defecto.
+- No se almacena ubicación del usuario final; solo coordenadas públicas configuradas por el local.
+
+### Errores, logs, auditoría y observabilidad
+
+Flyway aborta de forma transaccional si la migración o una dependencia PostGIS falla. Las
+restricciones producen errores SQL de integridad que los futuros servicios deberán traducir a
+errores de dominio estables; no se exponen todavía mediante HTTP.
+
+No se añaden logs ni auditoría productiva porque esta iteración no incorpora casos de uso. La
+versión y checksum de Flyway aportan trazabilidad estructural. Los cambios posteriores de perfil,
+publicación y administración deberán añadir la auditoría correspondiente en sus tareas.
+
+### Tests añadidos o modificados
+
+`DatabaseMigrationIntegrationTests` pasa de dos a cinco pruebas y ahora comprueba:
+
+- versión Flyway exacta `9`;
+- extensiones PostGIS, trigramas y unaccent;
+- UTF-8 y zona horaria UTC;
+- nombres y orden de todas las columnas de `Categories`, `Venues` y `VenueImages`;
+- existencia de índices de categoría, búsqueda textual, ubicación textual y punto geográfico;
+- rechazo de una categoría sin traducción inglesa;
+- rechazo de propietario distinto al de la cuenta empresarial;
+- rechazo de coordenadas parciales;
+- generación correcta del punto y del orden longitud/latitud;
+- rechazo de dos imágenes con la misma posición dentro del local.
+
+Los fixtures usan UUID aleatorios, dominio reservado `example.invalid`, texto sintético y limpieza
+explícita. Cada infracción se ejecuta en autocommit para no reutilizar una transacción marcada como
+fallida por PostgreSQL.
+
+### Corrección del validador de convenciones
+
+La migración hizo visible una limitación previa en `readColumnDefinitions`: una expresión regular
+no codiciosa interpretaba el primer `);` interno como final de `CREATE TABLE` y después trataba cada
+línea que empezara por una palabra como una columna. SQL válido con funciones PostGIS, columnas
+generadas y constraints multilínea producía falsos positivos como `AND`, `WHEN` o `REFERENCES`.
+
+El lector actualizado:
+
+1. localiza el paréntesis inicial de cada `CREATE TABLE`;
+2. recorre el texto contando profundidad estructural;
+3. ignora paréntesis y comas dentro de literales simples, identificadores entrecomillados,
+   comentarios de línea y comentarios de bloque;
+4. separa definiciones solo por comas de primer nivel;
+5. valida el primer identificador de cada definición real.
+
+El alcance permanece deliberadamente pequeño: no es un parser SQL general y solo resuelve la
+estructura necesaria para identificar columnas Flyway. Si encuentra SQL incompleto, devuelve el
+resto del texto y el validador sigue fallando de forma conservadora sobre identificadores no
+conformes. Los helpers incluyen documentación de contrato y razón técnica.
+
+### Comandos y evidencia de verificación
+
+Prueba focalizada:
+
+```text
+mvn -f apps/api/pom.xml -Dtest=DatabaseMigrationIntegrationTests test
+```
+
+Resultado final: 5 tests, cero fallos, cero errores y cero omitidos. Testcontainers inició
+PostgreSQL 17.5/PostGIS, Flyway validó y aplicó nueve migraciones sobre un esquema vacío y Hibernate
+arrancó con validación del esquema.
+
+Formateo aplicado:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+```
+
+Resultado correcto. La siguiente ejecución confirmó cero infracciones de Spotless y Checkstyle.
+
+Validación específica de convenciones y formato del parser:
+
+```text
+npm run backend:conventions:check
+npx prettier --check scripts/validate-backend-conventions.mjs
+git diff --check
+```
+
+Resultado correcto: la migración compleja identifica únicamente sus columnas reales, el script
+cumple Prettier y el diff no contiene errores de whitespace.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado correcto tras actualizar código y documentación: convenciones de migración, codificación,
+calidad de español, formato, lint, suites web/API y builds de producción.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Todavía no existen entidades JPA ni DAOs para estas tablas; se incorporarán con los casos de uso
+  que las consuman.
+- La semilla está deliberadamente pendiente de `2.2` y sus traducciones de `2.3`.
+- El límite de 350 palabras no se expresa en SQL; requiere conteo lingüístico por locale en `2.6`.
+- La FK compuesta admite varios locales para una misma cuenta empresarial. No se impone una
+  limitación artificial de un solo perfil y el alcance operativo se decidirá en el CRUD.
+- `available` es un override manual persistible, pero su semántica respecto al horario se resolverá
+  en la Fase 4.
+- Los localizadores de imágenes no se validan todavía contra almacenamiento gestionado; la carga
+  segura corresponde a `2.7` y `2.8`.
+- La normalización avanzada de búsqueda, ranking y geocodificación pertenece a la Fase 3.
+- No hay migración de rollback automática; cualquier corrección tras publicar `V9` deberá hacerse
+  mediante una nueva migración forward-only.
+
+### Criterio de cierre
+
+La tarea se cierra porque el esquema V9 puede aplicarse desde cero, las tres tablas físicas y sus
+índices existen, las invariantes críticas se ejercitan contra PostgreSQL/PostGIS real y la
+verificación integral pasa. La documentación de diseño, seguimiento y esta evidencia quedan
+actualizadas. La siguiente tarea pendiente es `2.2`.

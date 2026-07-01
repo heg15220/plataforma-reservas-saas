@@ -211,20 +211,166 @@ async function validateMigrationFile(file, errors) {
 
 function readColumnDefinitions(source) {
   const columns = [];
-  const createTableBlocks = source.matchAll(/CREATE\s+TABLE[\s\S]*?\(([\s\S]*?)\);/giu);
+  const createTableStatements = source.matchAll(
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[^\s(]+\s*\(/giu,
+  );
 
-  for (const block of createTableBlocks) {
-    for (const line of block[1].split(/\r?\n/)) {
-      const trimmedLine = line.trim();
-      const columnMatch = trimmedLine.match(/^("[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s+/u);
+  for (const statement of createTableStatements) {
+    const openingParenthesis = statement.index + statement[0].lastIndexOf("(");
+    const body = readParenthesizedSql(source, openingParenthesis);
+
+    for (const definition of splitTopLevelSqlDefinitions(body)) {
+      const columnMatch = definition.trim().match(/^("[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s+/u);
 
       if (columnMatch && !/^(CONSTRAINT|PRIMARY|FOREIGN|UNIQUE|CHECK)\b/iu.test(columnMatch[1])) {
-        columns.push(columnMatch[1].replace(/,$/u, ""));
+        columns.push(columnMatch[1]);
       }
     }
   }
 
   return columns;
+}
+
+/**
+ * Extrae el cuerpo de unos paréntesis SQL respetando literales y comentarios.
+ *
+ * El parser anterior usaba una expresión regular no codiciosa y terminaba una tabla en el primer
+ * `);` interno, por ejemplo el de una función PostGIS. Este lector pequeño no pretende analizar
+ * todo SQL: únicamente encuentra el paréntesis de cierre estructural de CREATE TABLE.
+ */
+function readParenthesizedSql(source, openingParenthesis) {
+  let depth = 0;
+  let state = "code";
+
+  for (let index = openingParenthesis; index < source.length; index += 1) {
+    const character = source[index];
+    const nextCharacter = source[index + 1];
+
+    if (state === "lineComment") {
+      if (character === "\n") {
+        state = "code";
+      }
+      continue;
+    }
+
+    if (state === "blockComment") {
+      if (character === "*" && nextCharacter === "/") {
+        state = "code";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (state === "singleQuote") {
+      if (character === "'" && nextCharacter === "'") {
+        index += 1;
+      } else if (character === "'") {
+        state = "code";
+      }
+      continue;
+    }
+
+    if (state === "doubleQuote") {
+      if (character === '"' && nextCharacter === '"') {
+        index += 1;
+      } else if (character === '"') {
+        state = "code";
+      }
+      continue;
+    }
+
+    if (character === "-" && nextCharacter === "-") {
+      state = "lineComment";
+      index += 1;
+    } else if (character === "/" && nextCharacter === "*") {
+      state = "blockComment";
+      index += 1;
+    } else if (character === "'") {
+      state = "singleQuote";
+    } else if (character === '"') {
+      state = "doubleQuote";
+    } else if (character === "(") {
+      depth += 1;
+    } else if (character === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(openingParenthesis + 1, index);
+      }
+    }
+  }
+
+  return source.slice(openingParenthesis + 1);
+}
+
+/**
+ * Separa columnas y constraints solo por comas del primer nivel del cuerpo de CREATE TABLE.
+ * Las comas de tipos, funciones, checks o literales permanecen dentro de su definición.
+ */
+function splitTopLevelSqlDefinitions(body) {
+  const definitions = [];
+  let start = 0;
+  let depth = 0;
+  let state = "code";
+
+  for (let index = 0; index < body.length; index += 1) {
+    const character = body[index];
+    const nextCharacter = body[index + 1];
+
+    if (state === "lineComment") {
+      if (character === "\n") {
+        state = "code";
+      }
+      continue;
+    }
+
+    if (state === "blockComment") {
+      if (character === "*" && nextCharacter === "/") {
+        state = "code";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (state === "singleQuote") {
+      if (character === "'" && nextCharacter === "'") {
+        index += 1;
+      } else if (character === "'") {
+        state = "code";
+      }
+      continue;
+    }
+
+    if (state === "doubleQuote") {
+      if (character === '"' && nextCharacter === '"') {
+        index += 1;
+      } else if (character === '"') {
+        state = "code";
+      }
+      continue;
+    }
+
+    if (character === "-" && nextCharacter === "-") {
+      state = "lineComment";
+      index += 1;
+    } else if (character === "/" && nextCharacter === "*") {
+      state = "blockComment";
+      index += 1;
+    } else if (character === "'") {
+      state = "singleQuote";
+    } else if (character === '"') {
+      state = "doubleQuote";
+    } else if (character === "(") {
+      depth += 1;
+    } else if (character === ")") {
+      depth -= 1;
+    } else if (character === "," && depth === 0) {
+      definitions.push(body.slice(start, index));
+      start = index + 1;
+    }
+  }
+
+  definitions.push(body.slice(start));
+  return definitions;
 }
 
 async function readJavaTypes(files) {

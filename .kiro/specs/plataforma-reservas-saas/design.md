@@ -828,6 +828,7 @@ Representa el local o negocio.
 - `postal_code`
 - `latitude`
 - `longitude`
+- `location` geográfica derivada
 - `main_image_url`
 - `status`
 - `manual_availability_status`
@@ -845,6 +846,21 @@ Estados recomendados:
 - `suspended`
 - `archived`
 
+Restricciones físicas incorporadas en `V9`:
+
+- La relación compuesta `businessAccountId`, `ownerUserId` referencia la misma pareja en
+  `BusinessAccounts`; una cuenta empresarial nunca puede asignarse a un propietario distinto.
+- Categoría, nombre y slug son obligatorios desde la creación del perfil.
+- El slug es único y usa minúsculas, números y guiones.
+- Latitud y longitud deben estar ambas ausentes o ambas presentes dentro de sus rangos válidos.
+- `location` es una columna PostGIS `geography(Point, 4326)` generada siempre desde longitud y
+  latitud. No se escribe de forma independiente.
+- Los estados editoriales y de disponibilidad manual están restringidos a vocabularios cerrados.
+- Un estado `published` exige `publishedAt`; conservar esa fecha tras una suspensión o archivo
+  sigue siendo válido como evidencia de publicación previa.
+- Los índices de nombre, categoría/estado, ubicación textual y punto geográfico preparan la
+  búsqueda pública sin implementar todavía sus endpoints.
+
 #### venue_images
 
 - `id`
@@ -853,6 +869,12 @@ Estados recomendados:
 - `alt_text`
 - `position`
 - `created_at`
+
+Restricciones físicas incorporadas en `V9`:
+
+- La eliminación física de un local elimina su galería, mientras que archivar conserva los datos.
+- Cada posición es no negativa y única dentro del local.
+- URL y texto alternativo, cuando existe, no pueden estar vacíos.
 
 #### venue_custom_tabs
 
@@ -871,6 +893,15 @@ Pestañas públicas configurables por cada local para ampliar los detalles de su
 - `is_active`
 - `created_at`
 - `updated_at`
+
+Restricciones físicas incorporadas en `V9`:
+
+- Slug único, normalizado a minúsculas, números y guiones.
+- Nombre canónico no vacío.
+- `nameI18n` usa el contrato `LocalizedText`, exige `sourceLocale` válido y traducciones ES/EN no
+  vacías porque las categorías son textos controlados por la plataforma.
+- `descriptionI18n`, si existe, debe contener el idioma fuente y un valor fuente no vacío.
+- Activar o desactivar una categoría no elimina ni reasigna locales existentes.
 
 Tipos iniciales de contenido:
 

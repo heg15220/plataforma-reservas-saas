@@ -62,7 +62,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 4. Fase 2 - Locales, categorías y perfil público
 
-- [ ] 2.1. Crear migraciones de `venues`, `categories` y `venue_images`.
+- [x] 2.1. Crear migraciones de `venues`, `categories` y `venue_images`.
 - [ ] 2.2. Crear seed de categorías iniciales: restaurante, peluquería, campo de fútbol, pista de pádel, instalación municipal, centro deportivo, centro de estética y otros.
 - [ ] 2.3. Crear traducciones ES/EN para categorías iniciales.
 - [ ] 2.4. Implementar CRUD de perfil del local para propietario.
