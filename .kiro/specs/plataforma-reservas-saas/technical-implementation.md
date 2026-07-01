@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.19`.
-- Siguiente tarea pendiente recomendada: `1.20. Crear pantalla de acceso para locales.`
+- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.20`.
+- Siguiente tarea pendiente recomendada: `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -9680,3 +9680,405 @@ seguro existente. Cuenta y actor no son controlables por cliente; las respuestas
 multipart, contenido, malware, cifrado, almacenamiento y concurrencia fallan cerrados; UI y errores
 están localizados y accesibles; 34 pruebas focalizadas, la suite frontend y ambos builds pasan. La
 siguiente tarea pendiente es `1.20`.
+
+## Iteración 1.20 - Pantalla de acceso para locales
+
+- **Identificador exacto:** `1.20. Crear pantalla de acceso para locales`.
+- **Fecha:** 2026-07-01.
+- **Estado:** completada y verificada.
+- **Rama:** `phase/1-identidad-roles-base-saas`.
+
+### Objetivo técnico
+
+La autenticación de propietarios ya existía desde `1.13`: backend validaba cuentas empresariales,
+comparaba BCrypt sin enumeración, creaba una sesión revocable y entregaba su secreto exclusivamente
+como cookie HttpOnly. Sin embargo, no existía una interfaz pública que utilizara ese contrato. Los
+enlaces globales y el éxito del registro apuntaban a `/locales/acceso`, que aún respondía 404.
+
+Esta iteración cierra esa brecha con los siguientes objetivos:
+
+1. recoger únicamente email y contraseña;
+2. mantener ambos valores fuera de URL y almacenamiento persistente;
+3. consumir el endpoint real sin duplicar autenticación en Next.js;
+4. conservar el error genérico exigido por `RF-008`;
+5. impedir doble envío y representar estados de espera recuperables;
+6. entrar al panel mediante una ruta estable;
+7. aplicar la preferencia de idioma guardada en la cuenta;
+8. ofrecer una experiencia accesible y responsive.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-008`: credenciales válidas abren el panel y las inválidas no enumeran cuentas.
+- `RF-031`: todo texto visible usa catálogos ES/EN.
+- `RNF-001`: validación, rate limiting existente, cookie segura y errores cerrados.
+- `RNF-002`: minimización y ausencia de persistencia cliente de credenciales o sesión.
+- `RNF-005`: formulario contextual, táctil, responsive y accesible.
+- `RNF-007`: locale efectivo y preferencia guardada.
+- `design.md` 8.6: contrato de login/logout y semántica uniforme de `401`.
+- `design.md` 9.1: formularios cortos, acciones principales visibles y mobile-first.
+- `design.md` 9.2: ruta pública canónica `/locales/acceso`.
+- `design.md` 9.3: punto de entrada privado `/panel`.
+- Decisión de `1.13`: el token solo se entrega como cookie host-only HttpOnly.
+- Decisión de `1.16`: `POST /api/auth/login` ya dispone de rate limit distribuido.
+- Decisión de `1.17`: las rutas `/api/venue/me/**` vuelven a validar sesión y rol.
+
+### Archivos creados
+
+#### Ruta pública
+
+`apps/web/src/app/locales/acceso/page.tsx`:
+
+- genera metadata localizada y marca la pantalla como `noindex`;
+- utiliza `PublicShell` y `PageContainer`;
+- mantiene un único `h1`;
+- presenta dos garantías del flujo sin afirmar capacidades todavía inexistentes;
+- coloca el formulario dentro de una `Surface`;
+- pasa de dos columnas a una columna en viewport estrecho;
+- no recibe ni serializa credenciales en el Server Component.
+
+La pantalla sigue la gramática visual de `/locales/registro`: overline de contexto, título,
+explicación breve, iconografía Lucide decorativa y superficie de formulario. La similitud reduce
+fricción entre alta y acceso sin reutilizar un componente prematuramente generalizado.
+
+#### Punto de entrada privado
+
+`apps/web/src/app/panel/page.tsx` crea por primera vez la ruta canónica `/panel`. Actualmente ejecuta
+un redirect de servidor a `/panel/verificacion`, porque la verificación documental es la única
+capacidad privada funcional de negocio disponible.
+
+El login depende de `/panel`, no de `/panel/verificacion`. Así, cuando las fases siguientes creen el
+resumen operativo, solo habrá que sustituir el redirect; no será necesario cambiar el formulario,
+tests, enlaces externos ni marcadores.
+
+#### Feature `venue-login`
+
+Se crea `apps/web/src/features/venue-login` con tres módulos productivos y tres de pruebas:
+
+- `venue-login-schema.ts`;
+- `venue-login-api.ts`;
+- `venue-login-form.tsx`;
+- `venue-login-schema.test.ts`;
+- `venue-login-api.test.ts`;
+- `venue-login-form.test.tsx`.
+
+Esta separación replica el patrón probado en registro:
+
+- el esquema transforma controles en contrato;
+- el cliente HTTP aísla transporte y validación de respuesta;
+- el componente gestiona interacción y navegación.
+
+### Contrato cliente
+
+`VenueLoginPayload` contiene exclusivamente:
+
+```json
+{
+  "email": "local@example.com",
+  "password": "<secreto>"
+}
+```
+
+`loginVenue` envía:
+
+```http
+POST /api/auth/login
+Accept: application/json
+Content-Type: application/json
+credentials: include
+```
+
+No se añade cabecera de autenticación, identificador de usuario, tipo de cuenta, rol ni locale al
+request. Todos esos atributos proceden de la cuenta encontrada por backend.
+
+La respuesta se valida con Zod:
+
+- `userId`: UUID;
+- `accountType`: literal `venue_business`;
+- `preferredLocale`: literal cerrado `es` o `en`;
+- `emailVerified`: booleano;
+- `sessionExpiresAt`: fecha ISO con zona.
+
+El cliente no confía en una respuesta `200` cuya forma no corresponda al contrato. Un tipo `admin`,
+locale desconocido, UUID inválido o fecha malformada se reduce a indisponibilidad y no abre el
+panel. Esta validación evita usar metadatos alterados o parciales para tomar decisiones de
+navegación.
+
+`userId`, `emailVerified` y `sessionExpiresAt` no se muestran ni persisten en esta pantalla. Se
+validan porque forman parte del contrato, pero las futuras vistas privadas deben consultar su propio
+estado autorizado en backend y no depender de datos retenidos por el login.
+
+### Validación del formulario
+
+`parseVenueLoginForm` usa Zod y construye errores por campo:
+
+- email obligatorio, con formato válido y máximo 320 caracteres;
+- contraseña obligatoria, máximo 72 caracteres y máximo 72 bytes UTF-8.
+
+El email se recorta en extremos como ayuda de interacción. La contraseña se conserva byte a byte:
+no se recorta, normaliza ni transforma. Cambiar espacios o Unicode alteraría una credencial válida.
+
+El límite de bytes replica la frontera segura de `PasswordHashingServiceImpl`. No se exige el mínimo
+de 12 caracteres usado en nuevas altas, porque el login no debe introducir una política de creación
+retroactiva sobre hashes ya existentes.
+
+La validación frontend no decide si existe una cuenta ni si la credencial coincide. Backend vuelve a
+validar email, tamaño, normalización, hash, tipo y estado.
+
+### Máquina de estados e interacción
+
+`VenueLoginForm` mantiene:
+
+- `idle`: controles editables y CTA disponible;
+- `submitting`: petición activa y CTA «Comprobando acceso» deshabilitado;
+- `redirecting`: respuesta válida y CTA «Abriendo el panel» deshabilitado.
+
+El componente:
+
+- ignora un segundo submit fuera de `idle`;
+- crea un `AbortController` por petición;
+- aborta al desmontarse;
+- limpia errores de campo al editar ese campo;
+- enfoca email o contraseña según el primer error;
+- permite mostrar u ocultar la contraseña mediante un botón con nombre accesible variable;
+- resetea el formulario tras éxito antes de navegar.
+
+El estado `redirecting` evita reactivar los controles durante el intervalo entre respuesta y cambio
+de ruta. No se implementa reintento automático: repetir un POST de autenticación puede consumir
+cuota de rate limit y crear sesiones adicionales si la respuesta original se perdió.
+
+### Navegación y locale
+
+Tras autenticar, el componente ejecuta:
+
+```text
+/panel?locale={preferredLocale}
+```
+
+El valor no procede de entrada libre: Zod lo limita a `es` o `en` y `encodeURIComponent` protege su
+inclusión en URL. El proxy vuelve a normalizarlo, persiste `reserly-locale` y atiende la navegación
+con el catálogo permitido. El parámetro no contiene identidad ni secreto.
+
+La navegación usa `router.replace` para que el botón «Atrás» no devuelva al formulario con
+credenciales vacías después de iniciar sesión. `/panel` redirige en servidor a la primera
+funcionalidad privada real.
+
+### Estrategia de errores
+
+`VenueLoginApiError` expone solo:
+
+- `invalid`;
+- `rateLimited`;
+- `unavailable`.
+
+Mapeo HTTP:
+
+- `400` y `401` → `invalid`;
+- `429` → `rateLimited`;
+- cualquier otro estado no exitoso → `unavailable`;
+- red, aborto no iniciado por desmontaje, JSON inválido o contrato inesperado → `unavailable`.
+
+`400` y `401` comparten el texto «No hemos podido iniciar sesión. Comprueba el correo y la
+contraseña». La UI nunca distingue:
+
+- email inexistente;
+- contraseña incorrecta;
+- cuenta de cliente;
+- cuenta suspendida;
+- cuenta deshabilitada;
+- payload inválido.
+
+El componente no presenta `error.message`, cuerpo JSON, código interno, proveedor ni stack. Los
+fallos temporales conservan el formulario y permiten reintento manual.
+
+### Seguridad y privacidad
+
+- La contraseña solo vive en el control, `FormData`, objeto efímero y cuerpo HTTPS.
+- No se usa localStorage, sessionStorage, IndexedDB ni Cache API.
+- No se incorpora email ni contraseña a query params, fragmentos o rutas.
+- No se registran payloads o respuestas.
+- `credentials: include` permite que el navegador reciba la cookie.
+- JavaScript no puede leer `reserly_session` por su atributo HttpOnly.
+- El cliente no crea ni interpreta tokens.
+- El backend conserva `SameSite=Strict`, host-only, `Path=/` y `Secure` fuera de local/test.
+- El login existente ejecuta comparación BCrypt dummy cuando no hay hash válido.
+- El backend compara contraseña antes de revelar elegibilidad de tipo/estado.
+- El rate limit de `1.16` permanece como autoridad server-side.
+- La respuesta solo se usa después de validar `venue_business`.
+- Metadata `noindex` evita indexar una pantalla sin valor público.
+
+CSRF sigue pendiente de `16.3`. El login no opera sobre una sesión previa, pero el endurecimiento
+global debe cubrir logout y acciones privadas antes de producción.
+
+### Accesibilidad
+
+- Un único `h1` describe el propósito de página.
+- El formulario tiene un `h2` y explicación.
+- Los `TextField` mantienen etiquetas persistentes, `required` y `aria-invalid` cuando corresponde.
+- Los errores aparecen junto al control.
+- El primer campo inválido recibe foco.
+- Mostrar/ocultar contraseña es un botón real y no altera el submit.
+- El spinner es decorativo; el texto comunica el estado.
+- Los errores de petición usan `Alert` con región viva asertiva.
+- El CTA tiene tamaño grande y ancho completo.
+- Registro y recuperación son enlaces, no botones que imitan navegación.
+- Iconos informativos se ocultan de tecnologías de asistencia.
+- La página conserva skip link, `main` y navegaciones con nombres distintos desde `PublicShell`.
+
+### Responsive y composición visual
+
+En escritorio:
+
+- cuadrícula de dos columnas;
+- explicación a la izquierda y formulario con ancho mínimo controlado a la derecha;
+- alineación vertical centrada;
+- CTA y controles ocupan el ancho de la superficie.
+
+En móvil:
+
+- una sola columna;
+- cabecera pública compacta;
+- beneficios apilados;
+- controles táctiles de ancho completo;
+- navegación inferior con espacio reservado por `PublicShell`;
+- enlaces largos permiten salto de línea.
+
+La inspección del DOM calculado confirmó:
+
+- 1280 px: `scrollWidth = innerWidth`, sin elementos fuera del viewport;
+- 390 × 844 px: cero elementos fuera del viewport y ausencia de scroll horizontal;
+- dos inputs, nombres accesibles correctos y foco inicial en email;
+- errores vacíos visibles y email enfocado tras submit local inválido.
+
+No se enviaron credenciales durante la prueba visual. El submit comprobado se detuvo en validación
+cliente con ambos campos vacíos.
+
+### Internacionalización
+
+Se añade el namespace `VenueLogin` con paridad estructural completa en `es.json` y `en.json`:
+
+- acciones y estados;
+- beneficios;
+- campos;
+- errores de validación;
+- errores de autenticación;
+- metadata;
+- hero;
+- acceso al registro.
+
+Los textos imprescindibles se incorporan en esta tarea porque una pantalla funcional no puede
+mostrar claves o hardcodes. `1.21` continúa pendiente: debe revisar transversalmente registro,
+login, errores y la totalidad de estados de verificación, no solo este namespace.
+
+La sesión de navegador usada para validación visual mantuvo su preferencia española incluso al
+intentar una segunda URL explícita en inglés. No se atribuye una validación visual inglesa que no
+ocurrió. La paridad inglesa sí fue comprobada por el validador i18n, el build y el catálogo tipado;
+la revisión visual conjunta ES/EN permanece además en `15.15`.
+
+### Modelo de datos, migraciones y backend
+
+No se modifica modelo de datos, migración ni código Java.
+
+La tarea reutiliza:
+
+- `"Users"` para email, hash, estado, tipo y locale;
+- `"AuthSessions"` para hash de token, creación, expiración y revocación;
+- `AuthenticationService` para comparación y creación transaccional;
+- `SessionCookieFactory` para atributos de cookie;
+- `SensitiveEndpointRateLimitInterceptor` para cuota distribuida;
+- `SessionAuthenticationFilter` para las peticiones privadas posteriores.
+
+Modificar backend habría duplicado un contrato ya implementado y verificado en `1.13`, `1.16` y
+`1.17`.
+
+### Tests añadidos
+
+#### Esquema, 3 casos
+
+- normaliza únicamente el email y conserva contraseña;
+- clasifica campos vacíos e email inválido;
+- rechaza más de 72 bytes UTF-8.
+
+#### API, 7 casos
+
+- endpoint, método, cookies y cuerpo exactos;
+- respuesta válida;
+- `400`, `401`, `429` y `503`;
+- tipo de cuenta inesperado;
+- fallo de red.
+
+#### Formulario, 6 casos
+
+- validación y foco;
+- mostrar/ocultar contraseña;
+- doble envío y estados de espera;
+- navegación con locale guardado;
+- error genérico no enumerable;
+- enlaces a recuperación y registro;
+- reintento manual tras indisponibilidad.
+
+El conjunto focal suma 16 tests.
+
+### Comandos y evidencia de verificación
+
+1. `npm run test --workspace @reserly/web -- src/features/venue-login`
+   - 3 archivos y 16 tests correctos.
+2. `npm run typecheck`
+   - TypeScript sin errores.
+3. `npm run lint:web`
+   - ESLint sin warnings.
+4. `npm run i18n:check`
+   - catálogos completos y UI sin hardcodes.
+5. `npm run spanish:text:check`
+   - UTF-8, mojibake, tildes y signos correctos.
+6. `npm run format:check:web`
+   - todos los archivos cumplen Prettier.
+7. `npm run build:web:test`
+   - build Next.js correcto;
+   - incluye `/locales/acceso`, `/panel` y `/panel/verificacion`.
+8. `npm run test --workspace @reserly/web -- src/components/layout/layout-system.test.tsx
+   src/features/venue-registration/venue-registration-form.test.tsx`
+   - 2 archivos y 7 tests antiguos correctos.
+9. `npm run test --workspace @reserly/web -- --maxWorkers=1`
+   - 16 archivos y 72 tests correctos.
+10. `git diff --check`
+    - whitespace correcto antes de documentación.
+11. Navegador integrado sobre build de producción:
+    - escritorio 1280 px sin overflow;
+    - móvil 390 × 844 px sin overflow;
+    - DOM semántico, labels, enlaces, foco y errores verificados.
+
+La primera ejecución completa con dos workers registró dos timeouts de 5 segundos en pruebas
+antiguas (`layout-system` y validación inicial de registro), sin aserciones fallidas. Ambos archivos
+pasaron aislados inmediatamente después y la suite completa pasó con un worker. Se clasifica como
+presión temporal del entorno jsdom, no como regresión; no se aumentó el timeout para ocultarla.
+
+### Observabilidad y auditoría
+
+La pantalla no añade logging de cliente para evitar capturar credenciales o email. Backend mantiene
+la política existente de no registrar secretos. La auditoría detallada de intentos y métricas de
+autenticación pertenece a la fase transversal de observabilidad; el rate limiter conserva sus
+señales operativas actuales.
+
+### Riesgos, limitaciones y deuda técnica
+
+- `/panel` es un redirect temporal, no un dashboard.
+- `/locales/recuperar-contrasena` queda enlazado pero su pantalla aún no existe.
+- `1.21` debe revisar todos los textos y estados de verificación.
+- `1.22` debe añadir cobertura integrada/e2e de registro, login, email, empresa y permisos.
+- `15.8` debe repetir validación específica de login móvil.
+- `15.15` debe ejecutar la matriz visual completa ES/EN.
+- `16.3` debe habilitar protección CSRF global.
+- No se implementa detección de sesión ya activa en la pantalla pública.
+- No se añade «recordarme»: la sesión mantiene la vida fija de backend.
+- No se añade reintento automático para no crear sesiones adicionales ni consumir cuota.
+- Un fallo entre creación de sesión y recepción de respuesta puede dejar una sesión válida no usada
+  hasta su expiración; es comportamiento ya inherente al contrato.
+
+### Criterio de cierre
+
+La tarea se cierra porque `/locales/acceso` ya es una pantalla real y responsive que consume el
+login seguro existente, valida entradas y respuestas, no enumera cuentas, mantiene sesión y
+credenciales fuera del alcance de JavaScript persistente, bloquea dobles envíos, informa fallos
+recuperables, aplica el locale de cuenta y navega a una entrada privada estable. Los 16 tests nuevos,
+los 72 tests frontend totales, TypeScript, ESLint, Prettier, i18n, español, build y revisión visual
+pasan. La siguiente tarea pendiente es `1.21`.

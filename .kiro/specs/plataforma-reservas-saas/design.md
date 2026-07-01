@@ -1734,6 +1734,21 @@ completar su configuración, pero continúa bloqueada para publicar.
 y actualización de `lastSeenAt` en rutas privadas pertenecen al middleware de `1.17`; la protección
 CSRF se endurece en `16.3`.
 
+La ruta pública `/locales/acceso` consume el login mediante un formulario cliente que:
+
+- valida email y los límites de entrada BCrypt únicamente como ayuda de interacción;
+- envía JSON con `credentials: include` y nunca intenta leer la cookie de sesión;
+- reduce `400` y `401` al mismo mensaje de credenciales no válidas;
+- diferencia solo rate limit e indisponibilidad para permitir una recuperación útil;
+- bloquea reenvíos mientras la petición está activa y cancela el `fetch` al desmontarse;
+- valida que la respuesta pertenece a `venue_business` y contiene un locale soportado;
+- navega a `/panel?locale={preferredLocale}` tras el éxito.
+
+El proxy normaliza el parámetro de locale contra el catálogo cerrado, persiste la preferencia y el
+punto de entrada `/panel` redirige temporalmente a `/panel/verificacion`, primera capacidad privada
+real disponible. Cuando exista el resumen operativo del panel, este redirect se sustituirá por la
+página de inicio sin cambiar el destino estable usado por el login.
+
 ### 8.7 Verificación de email
 
 El registro genera un secreto CSPRNG de 256 bits, persiste exclusivamente su SHA-256 en

@@ -194,6 +194,63 @@
     "description": "Responsive platform for discovering and managing bookings.",
     "title": "Reserly"
   },
+  "VenueLogin": {
+    "actions": {
+      "forgotPassword": "I forgot my password",
+      "hidePassword": "Hide password",
+      "redirecting": "Opening the dashboard",
+      "showPassword": "Show password",
+      "submit": "Access the dashboard",
+      "submitting": "Checking access"
+    },
+    "benefits": {
+      "private": {
+        "description": "Your session is stored in a secure cookie that JavaScript cannot read.",
+        "title": "Private access"
+      },
+      "verification": {
+        "description": "Check your business status and complete any pending documentation.",
+        "title": "Verification under control"
+      }
+    },
+    "errors": {
+      "fields": {
+        "email": "Enter a valid email address.",
+        "passwordBytes": "The password exceeds the allowed length.",
+        "required": "This field is required."
+      },
+      "submission": {
+        "invalid": "We could not sign you in. Check your email address and password.",
+        "rateLimited": "There have been too many attempts. Wait a few minutes before trying again.",
+        "unavailable": "We could not connect to the service. Try again in a few minutes."
+      }
+    },
+    "fields": {
+      "email": {
+        "label": "Email address"
+      },
+      "password": {
+        "label": "Password"
+      }
+    },
+    "form": {
+      "description": "Enter the credentials of the person responsible for the venue.",
+      "title": "Sign in"
+    },
+    "hero": {
+      "description": "Enter the private space where you will manage verification and, progressively, all your booking operations.",
+      "eyebrow": "VENUE ACCESS",
+      "title": "Your business, in a secure space"
+    },
+    "metadata": {
+      "description": "Access your venue's private Reserly dashboard.",
+      "title": "Venue access"
+    },
+    "registration": {
+      "action": "Create an account",
+      "prompt": "Do not have an account yet?"
+    }
+  },
   "VenueRegistration": {
     "actions": {
       "goToAccess": "Go to venue access",

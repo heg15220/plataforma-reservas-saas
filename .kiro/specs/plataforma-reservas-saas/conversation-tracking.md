@@ -11,9 +11,9 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-01
-- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.19`.
-- Siguiente tarea pendiente recomendada: `1.20. Crear pantalla de acceso para locales.`
-- Observación: `1.19` conecta la solicitud documental con un portal privado, endpoints autenticados y el pipeline cifrado de `1.10`. La revisión administrativa continúa reservada para la Fase 14.
+- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.20`.
+- Siguiente tarea pendiente recomendada: `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.`
+- Observación: `1.20` conecta la autenticación existente con `/locales/acceso`, conserva la sesión exclusivamente en la cookie HttpOnly y usa `/panel` como entrada estable al área privada.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -2198,3 +2198,65 @@ Fuente de verdad del avance:
     atribuyeron estos bloqueos al código ni se ocultaron; las pruebas nuevas no dependen de Docker.
   - `git add` fue rechazado por el límite de uso del entorno. No se creó commit ni se ejecutó push;
     los cambios permanecieron íntegros y se retomaron posteriormente para completar el cierre Git.
+
+## Conversación 48 - Pantalla de acceso para locales
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `1.20` como primera tarea pendiente sobre una rama limpia y sincronizada.
+  - Se implementó `/locales/acceso` con una composición responsive alineada con el registro
+    empresarial y el sistema visual existente.
+  - El formulario autentica mediante `POST /api/auth/login`, solicita entrega de cookie con
+    `credentials: include` y valida únicamente los metadatos no sensibles de la respuesta.
+  - Los errores `400` y `401` se presentan con el mismo mensaje para no revelar si existe el email,
+    si la contraseña es incorrecta, si el tipo de cuenta no corresponde o si la cuenta está
+    suspendida.
+  - Se añadieron validación contextual, foco en el primer error, mostrar/ocultar contraseña,
+    cancelación al desmontar, bloqueo de doble envío y estados diferenciados de rate limit e
+    indisponibilidad.
+  - Tras el éxito se navega a `/panel` con el locale de cuenta como parámetro seguro; el proxy lo
+    normaliza y el nuevo punto de entrada redirige a `/panel/verificacion` mientras se construye el
+    resumen operativo definitivo.
+  - Se añadieron enlaces explícitos a registro y recuperación de contraseña.
+  - La pantalla se verificó visualmente a 1280 px y 390 × 844 px, sin overflow horizontal y con
+    jerarquía, landmarks, nombres accesibles y errores de campo correctos.
+- Archivos modificados:
+  - `apps/web/src/app/locales/acceso/page.tsx`.
+  - `apps/web/src/app/panel/page.tsx`.
+  - Nuevo feature `apps/web/src/features/venue-login` con API, esquema, formulario y pruebas.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-005 Usabilidad y responsive`.
+  - `RNF-007 Compatibilidad e internacionalización`.
+- Tareas impactadas:
+  - `1.20. Crear pantalla de acceso para locales`.
+  - Prepara `1.21`, `1.22`, `15.8` y `16.3`.
+- Tareas completadas:
+  - `1.20. Crear pantalla de acceso para locales`.
+- Siguiente tarea pendiente recomendada:
+  - `1.21. Crear textos ES/EN para registro, login, errores y estados de verificación`.
+- Decisiones o aclaraciones relevantes:
+  - La pantalla no implementa autenticación propia: consume el contrato seguro cerrado en `1.13`.
+  - La contraseña no se recorta, persiste, incluye en URL ni registra; el cliente solo aplica el
+    límite de 72 bytes de BCrypt como ayuda.
+  - `userId` y `sessionExpiresAt` se validan pero no se muestran ni almacenan.
+  - El secreto de sesión permanece inaccesible a JavaScript porque backend lo entrega como cookie
+    HttpOnly.
+  - `/panel` es ya el destino estable del login; su redirect temporal evita acoplar el formulario a
+    una subsección que cambiará al aparecer el dashboard.
+  - El enlace de recuperación queda preparado en `/locales/recuperar-contrasena`; su pantalla no
+    forma parte de `1.20`, aunque el endpoint backend ya existe desde `1.15`.
+  - Los textos imprescindibles del login se añaden en ES/EN para que la pantalla sea utilizable.
+    `1.21` permanece pendiente por su revisión transversal de registro, login, errores y todos los
+    estados de verificación.
+  - Evidencia focalizada: 16 tests correctos.
+  - Evidencia integral: 16 archivos y 72 tests frontend correctos con un worker; build Next.js,
+    TypeScript, ESLint, Prettier, i18n y calidad de español correctos.

@@ -194,6 +194,63 @@
     "description": "Plataforma responsive para descubrir y gestionar reservas.",
     "title": "Reserly"
   },
+  "VenueLogin": {
+    "actions": {
+      "forgotPassword": "He olvidado mi contraseña",
+      "hidePassword": "Ocultar contraseña",
+      "redirecting": "Abriendo el panel",
+      "showPassword": "Mostrar contraseña",
+      "submit": "Acceder al panel",
+      "submitting": "Comprobando acceso"
+    },
+    "benefits": {
+      "private": {
+        "description": "La sesión se guarda en una cookie segura que no puede leer JavaScript.",
+        "title": "Acceso privado"
+      },
+      "verification": {
+        "description": "Consulta el estado de tu negocio y completa cualquier documentación pendiente.",
+        "title": "Verificación bajo control"
+      }
+    },
+    "errors": {
+      "fields": {
+        "email": "Introduce un correo electrónico válido.",
+        "passwordBytes": "La contraseña supera la longitud permitida.",
+        "required": "Este campo es obligatorio."
+      },
+      "submission": {
+        "invalid": "No hemos podido iniciar sesión. Comprueba el correo y la contraseña.",
+        "rateLimited": "Se han realizado demasiados intentos. Espera unos minutos antes de volver a intentarlo.",
+        "unavailable": "No hemos podido conectar con el servicio. Inténtalo de nuevo dentro de unos minutos."
+      }
+    },
+    "fields": {
+      "email": {
+        "label": "Correo electrónico"
+      },
+      "password": {
+        "label": "Contraseña"
+      }
+    },
+    "form": {
+      "description": "Introduce las credenciales de la persona responsable del local.",
+      "title": "Inicia sesión"
+    },
+    "hero": {
+      "description": "Entra en el espacio privado desde el que gestionarás la verificación y, progresivamente, toda la operativa de tus reservas.",
+      "eyebrow": "ACCESO DE LOCALES",
+      "title": "Tu negocio, en un espacio seguro"
+    },
+    "metadata": {
+      "description": "Accede al panel privado de tu local en Reserly.",
+      "title": "Acceso de locales"
+    },
+    "registration": {
+      "action": "Crear una cuenta",
+      "prompt": "¿Todavía no tienes cuenta?"
+    }
+  },
   "VenueRegistration": {
     "actions": {
       "goToAccess": "Ir al acceso de locales",
