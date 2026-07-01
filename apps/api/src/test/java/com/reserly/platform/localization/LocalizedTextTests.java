@@ -3,6 +3,7 @@ package com.reserly.platform.localization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -62,5 +63,21 @@ class LocalizedTextTests {
             () -> new LocalizedText(SupportedLocale.ES, Map.of(SupportedLocale.EN, "Menu")));
     assertThatIllegalArgumentException()
         .isThrownBy(() -> LocalizedText.fromLanguageTagValues("fr", Map.of("fr", "Menu")));
+  }
+
+  @Test
+  void serializesPersistedLocalesAsLowercaseLanguageTags() throws Exception {
+    ObjectMapper objectMapper = new ObjectMapper();
+    LocalizedText original =
+        new LocalizedText(
+            SupportedLocale.ES,
+            Map.of(SupportedLocale.ES, "Servicios", SupportedLocale.EN, "Services"));
+
+    String json = objectMapper.writeValueAsString(original);
+    LocalizedText restored = objectMapper.readValue(json, LocalizedText.class);
+
+    assertThat(json)
+        .contains("\"sourceLocale\":\"es\"", "\"es\":\"Servicios\"", "\"en\":\"Services\"");
+    assertThat(restored).isEqualTo(original);
   }
 }

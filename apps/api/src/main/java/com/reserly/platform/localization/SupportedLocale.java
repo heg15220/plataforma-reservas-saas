@@ -1,5 +1,7 @@
 package com.reserly.platform.localization;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
@@ -26,6 +28,7 @@ public enum SupportedLocale {
    *
    * @return etiqueta BCP 47 soportada
    */
+  @JsonValue
   public String languageTag() {
     return languageTag;
   }
@@ -45,5 +48,12 @@ public enum SupportedLocale {
     return Arrays.stream(values())
         .filter(locale -> locale.languageTag.equals(normalizedValue))
         .findFirst();
+  }
+
+  /** Deserializa el locale base de documentos JSONB y rechaza etiquetas no soportadas. */
+  @JsonCreator
+  public static SupportedLocale fromJson(String value) {
+    return fromLanguageTag(value)
+        .orElseThrow(() -> new IllegalArgumentException("Unsupported persisted locale"));
   }
 }

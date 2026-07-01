@@ -2,6 +2,7 @@ package com.reserly.platform.venues.persistence;
 
 import com.reserly.platform.businessverification.persistence.BusinessAccountEntity;
 import com.reserly.platform.identity.persistence.UserEntity;
+import com.reserly.platform.localization.LocalizedText;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,6 +15,8 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Perfil de local gestionado por su propietario.
@@ -32,6 +35,10 @@ public class VenueEntity {
   private String name;
   private String slug;
   private String description;
+  private LocalizedText descriptionI18n;
+  private LocalizedText servicesI18n;
+  private LocalizedText rulesI18n;
+  private LocalizedText publicTextI18n;
   private String defaultLocale;
   private String contactEmail;
   private String phone;
@@ -120,6 +127,50 @@ public class VenueEntity {
 
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  /** Descripción localizada; el campo canónico conserva el valor del idioma fuente. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"descriptionI18n\"", columnDefinition = "jsonb")
+  public LocalizedText getDescriptionI18n() {
+    return descriptionI18n;
+  }
+
+  public void setDescriptionI18n(LocalizedText descriptionI18n) {
+    this.descriptionI18n = descriptionI18n;
+  }
+
+  /** Resumen localizado de servicios ofrecidos. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"servicesI18n\"", columnDefinition = "jsonb")
+  public LocalizedText getServicesI18n() {
+    return servicesI18n;
+  }
+
+  public void setServicesI18n(LocalizedText servicesI18n) {
+    this.servicesI18n = servicesI18n;
+  }
+
+  /** Reglas públicas localizadas previas a reserva. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"rulesI18n\"", columnDefinition = "jsonb")
+  public LocalizedText getRulesI18n() {
+    return rulesI18n;
+  }
+
+  public void setRulesI18n(LocalizedText rulesI18n) {
+    this.rulesI18n = rulesI18n;
+  }
+
+  /** Texto público libre y seguro para información adicional del perfil. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"publicTextI18n\"", columnDefinition = "jsonb")
+  public LocalizedText getPublicTextI18n() {
+    return publicTextI18n;
+  }
+
+  public void setPublicTextI18n(LocalizedText publicTextI18n) {
+    this.publicTextI18n = publicTextI18n;
   }
 
   @Column(name = "\"defaultLocale\"", nullable = false, length = 2)

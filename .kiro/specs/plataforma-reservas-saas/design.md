@@ -818,6 +818,9 @@ Representa el local o negocio.
 - `slug`
 - `description`
 - `description_i18n`
+- `services_i18n`
+- `rules_i18n`
+- `public_text_i18n`
 - `default_locale`
 - `contact_email`
 - `phone`
@@ -875,6 +878,19 @@ Contrato privado incorporado en `2.4`:
 - Actualización y archivo toman lock pesimista del perfil vigente. La categoría debe existir y
   estar activa.
 - El borrado del CRUD es lógico. El borrado físico y sus cascadas quedan fuera del contrato normal.
+
+Campos localizados incorporados en `2.5`:
+
+- `V13` añade `servicesI18n`, `rulesI18n` y `publicTextI18n` como JSONB; `descriptionI18n` ya
+  existía desde V9.
+- Cada documento usa `LocalizedText`: `sourceLocale` y mapa `values` limitado a `es`/`en`.
+- Un borrador puede tener traducciones parciales, pero el valor del idioma fuente es obligatorio.
+  La completitud necesaria para publicar se validará en `2.9`.
+- La descripción canónica se deriva siempre del valor del idioma fuente. V13 migra descripciones
+  anteriores a un documento localizado usando `defaultLocale`.
+- Hibernate mapea JSONB directamente a `LocalizedText` mediante `@JdbcTypeCode(SqlTypes.JSON)`.
+- El DTO privado de edición devuelve documentos completos; los DTOs públicos futuros devolverán
+  únicamente texto resuelto.
 
 #### venue_images
 

@@ -3,9 +3,11 @@ package com.reserly.platform.venues.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.dto.VenueProfileCommand;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,13 @@ class VenueProfileServiceIntegrationTests {
     assertThat(created.getCategory().getId()).isEqualTo(RESTAURANT_CATEGORY_ID);
     assertThat(created.getName()).isEqualTo("Café Central");
     assertThat(created.getSlug()).startsWith("cafe-central-");
+    assertThat(created.getDescription()).isEqualTo("Cocina de mercado");
+    assertThat(created.getDescriptionI18n().resolve(SupportedLocale.EN)).contains("Market cuisine");
+    assertThat(created.getServicesI18n().resolve(SupportedLocale.EN))
+        .contains("Reservas y eventos");
+    assertThat(created.getRulesI18n().resolve(SupportedLocale.ES))
+        .contains("Arrive ten minutes early");
+    assertThat(created.getPublicTextI18n().resolve(null)).contains("Welcome");
     assertThat(created.getContactEmail()).isEqualTo("reservas@example.invalid");
     assertThat(created.getStatus()).isEqualTo("draft");
     assertThat(created.getManualAvailabilityStatus()).isEqualTo("automatic");
@@ -57,6 +66,10 @@ class VenueProfileServiceIntegrationTests {
     assertThat(updated.getCategory().getId()).isEqualTo(SPORTS_CENTER_CATEGORY_ID);
     assertThat(updated.getName()).isEqualTo("Centro Activo");
     assertThat(updated.getDescription()).isNull();
+    assertThat(updated.getDescriptionI18n()).isNull();
+    assertThat(updated.getServicesI18n()).isNull();
+    assertThat(updated.getRulesI18n()).isNull();
+    assertThat(updated.getPublicTextI18n()).isNull();
     assertThat(updated.getContactEmail()).isNull();
     assertThat(updated.getLatitude()).isEqualByComparingTo("40.416775");
     assertThat(updated.getLongitude()).isEqualByComparingTo("-3.703790");
@@ -93,6 +106,9 @@ class VenueProfileServiceIntegrationTests {
             "Local inválido",
             RESTAURANT_CATEGORY_ID,
             null,
+            null,
+            null,
+            null,
             "es",
             null,
             null,
@@ -109,6 +125,9 @@ class VenueProfileServiceIntegrationTests {
         new VenueProfileCommand(
             "Local inválido",
             UUID.randomUUID(),
+            null,
+            null,
+            null,
             null,
             "es",
             null,
@@ -143,7 +162,12 @@ class VenueProfileServiceIntegrationTests {
     return new VenueProfileCommand(
         "  Café Central  ",
         RESTAURANT_CATEGORY_ID,
-        "  Cocina de mercado  ",
+        localized("es", "Cocina de mercado", "Market cuisine"),
+        new com.reserly.platform.localization.LocalizedText(
+            SupportedLocale.ES, Map.of(SupportedLocale.ES, "Reservas y eventos")),
+        new com.reserly.platform.localization.LocalizedText(
+            SupportedLocale.EN, Map.of(SupportedLocale.EN, "Arrive ten minutes early")),
+        localized("es", "Te damos la bienvenida", "Welcome"),
         "es",
         "  RESERVAS@EXAMPLE.INVALID  ",
         "  +34 910 000 000  ",
@@ -163,6 +187,9 @@ class VenueProfileServiceIntegrationTests {
         "Centro Activo",
         SPORTS_CENTER_CATEGORY_ID,
         null,
+        null,
+        null,
+        null,
         "en",
         null,
         "+34 920 000 000",
@@ -175,6 +202,12 @@ class VenueProfileServiceIntegrationTests {
         new BigDecimal("-3.703790"),
         true,
         false);
+  }
+
+  private com.reserly.platform.localization.LocalizedText localized(
+      String sourceLocale, String spanish, String english) {
+    return com.reserly.platform.localization.LocalizedText.fromLanguageTagValues(
+        sourceLocale, Map.of("es", spanish, "en", english));
   }
 
   private UUID createVenueOwner(String prefix) {

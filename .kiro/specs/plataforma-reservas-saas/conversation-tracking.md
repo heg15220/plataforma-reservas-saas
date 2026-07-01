@@ -2436,7 +2436,8 @@ Fuente de verdad del avance:
     cuando se elimina físicamente su local.
   - Evidencia focalizada: 5 tests correctos en `DatabaseMigrationIntegrationTests`, con Flyway V1 a
     V9 sobre PostgreSQL 17.5/PostGIS.
-  - Evidencia integral: `npm run verify` correcto tras código y documentación.
+  - Evidencia integral: `npm run verify` correcto tras código y documentación, con 82 tests web y
+    188 tests API.
 
 ## Conversación 52 - Semilla inicial de categorías
 
@@ -2613,3 +2614,56 @@ Fuente de verdad del avance:
   - Evidencia focalizada: 11 tests correctos entre migración, controlador y servicio.
   - Evidencia integral: `npm run verify` correcto tras implementación y documentación, con 82
     tests web y 187 tests API.
+
+## Conversación 55 - Textos públicos localizados del perfil
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.5` como primera tarea pendiente y se auditó el CRUD privado de `2.4`.
+  - Se creó `V13` con `servicesI18n`, `rulesI18n` y `publicTextI18n` JSONB.
+  - La migración transforma descripciones canónicas preexistentes en `descriptionI18n` usando el
+    locale por defecto, evitando pérdida de contenido en despliegues incrementales.
+  - Se mapearon los cuatro documentos JSONB de `VenueEntity` al value object `LocalizedText`.
+  - Se añadió `LocalizedTextDto` al request/response privado; solo admite claves `es` y `en`, exige
+    idioma fuente con valor visible y permite limpiar documentos con `null`.
+  - El servicio deriva `description` del idioma fuente para impedir divergencia entre la columna
+    canónica y `descriptionI18n`.
+  - Se adaptó la serialización de `SupportedLocale` para persistir etiquetas minúsculas estables.
+  - Se verificaron roundtrip JSON, persistencia Hibernate, fallback, traducciones parciales y
+    limpieza de los cuatro campos.
+- Archivos modificados:
+  - Nueva migración
+    `apps/api/src/main/resources/db/migration/V13__add_localized_public_venue_texts.sql`.
+  - Nuevo `apps/api/src/main/java/com/reserly/platform/venues/dto/LocalizedTextDto.java`.
+  - `SupportedLocale`, entidad, DTOs, conversor y servicio del perfil.
+  - Pruebas de localización, migración, controlador y servicio del perfil.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.5. Implementar campos localizados para descripción, servicios, reglas y textos públicos
+    configurables`.
+  - Prepara `2.6`, `2.9`, `2.10` y `2.11`.
+- Tareas completadas:
+  - `2.5. Implementar campos localizados para descripción, servicios, reglas y textos públicos
+    configurables`.
+- Siguiente tarea pendiente recomendada:
+  - `2.6. Implementar validación de descripción máxima de 350 palabras por idioma publicado`.
+- Decisiones o aclaraciones relevantes:
+  - Los borradores permiten documentos parciales siempre que exista el idioma fuente. La
+    publicación decidirá si exige ambas traducciones o fallback aprobado.
+  - `description` permanece como proyección canónica del idioma fuente; no es una segunda entrada
+    editable.
+  - Los campos son texto plano. No se acepta HTML ni rich text en este contrato.
+  - La vista privada expone los documentos completos para edición; la futura ficha pública debe
+    resolver el locale y devolver strings.
+  - La validación de 350 palabras no se adelanta y permanece exclusivamente en `2.6`.
+  - Evidencia focalizada: 17 tests correctos entre migración, localización, controlador y servicio.
+  - Evidencia integral: `npm run verify` correcto tras código y documentación.

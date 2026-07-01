@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.identity.AccountType;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.venues.converter.VenueProfileConverter;
+import com.reserly.platform.venues.dto.LocalizedTextDto;
 import com.reserly.platform.venues.dto.VenueProfileCommand;
 import com.reserly.platform.venues.dto.VenueProfileRequest;
 import com.reserly.platform.venues.dto.VenueProfileResponse;
@@ -68,6 +69,7 @@ class VenueProfileControllerTests {
     assertThat(found.getBody()).isNotNull();
     assertThat(found.getBody().id()).isEqualTo(venue.getId());
     assertThat(found.getBody().categoryId()).isEqualTo(venue.getCategory().getId());
+    assertThat(found.getBody().descriptionI18n().values()).containsEntry("en", "Market cuisine");
     assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(archived.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(venueProfileService).create(account.userId(), command);
@@ -95,7 +97,11 @@ class VenueProfileControllerTests {
     return new VenueProfileRequest(
         "Café Central",
         categoryId,
-        "Cocina de mercado",
+        new LocalizedTextDto(
+            "es", java.util.Map.of("es", "Cocina de mercado", "en", "Market cuisine")),
+        new LocalizedTextDto("es", java.util.Map.of("es", "Reservas")),
+        null,
+        null,
         "es",
         "reservas@example.invalid",
         "+34 910 000 000",
@@ -126,6 +132,12 @@ class VenueProfileControllerTests {
     venue.setName("Café Central");
     venue.setSlug("cafe-central-12345678");
     venue.setDescription("Cocina de mercado");
+    venue.setDescriptionI18n(
+        com.reserly.platform.localization.LocalizedText.fromLanguageTagValues(
+            "es", java.util.Map.of("es", "Cocina de mercado", "en", "Market cuisine")));
+    venue.setServicesI18n(
+        com.reserly.platform.localization.LocalizedText.fromLanguageTagValues(
+            "es", java.util.Map.of("es", "Reservas")));
     venue.setDefaultLocale("es");
     venue.setContactEmail("reservas@example.invalid");
     venue.setPhone("+34 910 000 000");

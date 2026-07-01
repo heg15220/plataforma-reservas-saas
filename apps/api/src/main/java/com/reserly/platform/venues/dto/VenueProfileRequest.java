@@ -1,5 +1,6 @@
 package com.reserly.platform.venues.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
@@ -19,7 +20,10 @@ import java.util.UUID;
 public record VenueProfileRequest(
     @NotBlank @Size(max = 160) String name,
     @NotNull UUID categoryId,
-    @Size(max = 10_000) String description,
+    @Valid LocalizedTextDto descriptionI18n,
+    @Valid LocalizedTextDto servicesI18n,
+    @Valid LocalizedTextDto rulesI18n,
+    @Valid LocalizedTextDto publicTextI18n,
     @NotNull @Pattern(regexp = "es|en") String defaultLocale,
     @Email @Size(max = 320) String contactEmail,
     @Size(max = 32) String phone,

@@ -115,7 +115,11 @@ public class VenueProfileServiceImpl implements VenueProfileService {
   private void applyEditableFields(
       VenueEntity venue, VenueProfileCommand command, Instant updatedAt) {
     venue.setName(command.name().strip());
-    venue.setDescription(normalizeOptional(command.description()));
+    venue.setDescriptionI18n(command.descriptionI18n());
+    venue.setServicesI18n(command.servicesI18n());
+    venue.setRulesI18n(command.rulesI18n());
+    venue.setPublicTextI18n(command.publicTextI18n());
+    venue.setDescription(sourceValue(command.descriptionI18n()));
     venue.setDefaultLocale(command.defaultLocale());
     venue.setContactEmail(normalizeEmail(command.contactEmail()));
     venue.setPhone(normalizeOptional(command.phone()));
@@ -129,6 +133,13 @@ public class VenueProfileServiceImpl implements VenueProfileService {
     venue.setShowPhone(command.showPhone());
     venue.setShowEmail(command.showEmail());
     venue.setUpdatedAt(updatedAt);
+  }
+
+  private String sourceValue(com.reserly.platform.localization.LocalizedText value) {
+    if (value == null) {
+      return null;
+    }
+    return value.resolve(value.sourceLocale()).orElseThrow(VenueProfileInvalidException::new);
   }
 
   private void validateCoordinates(BigDecimal latitude, BigDecimal longitude) {

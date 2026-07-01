@@ -1,9 +1,13 @@
 package com.reserly.platform.venues.converter;
 
+import com.reserly.platform.localization.LocalizedText;
+import com.reserly.platform.venues.dto.LocalizedTextDto;
 import com.reserly.platform.venues.dto.VenueProfileCommand;
 import com.reserly.platform.venues.dto.VenueProfileRequest;
 import com.reserly.platform.venues.dto.VenueProfileResponse;
 import com.reserly.platform.venues.persistence.VenueEntity;
+import com.reserly.platform.venues.service.VenueProfileInvalidException;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /** Convierte contratos HTTP sin aplicar autorización ni reglas de dominio. */
@@ -15,7 +19,10 @@ public class VenueProfileConverter {
     return new VenueProfileCommand(
         request.name(),
         request.categoryId(),
-        request.description(),
+        toLocalizedText(request.descriptionI18n()),
+        toLocalizedText(request.servicesI18n()),
+        toLocalizedText(request.rulesI18n()),
+        toLocalizedText(request.publicTextI18n()),
         request.defaultLocale(),
         request.contactEmail(),
         request.phone(),
@@ -40,6 +47,10 @@ public class VenueProfileConverter {
         venue.getName(),
         venue.getSlug(),
         venue.getDescription(),
+        toDto(venue.getDescriptionI18n()),
+        toDto(venue.getServicesI18n()),
+        toDto(venue.getRulesI18n()),
+        toDto(venue.getPublicTextI18n()),
         venue.getDefaultLocale(),
         venue.getContactEmail(),
         venue.getPhone(),
@@ -55,5 +66,27 @@ public class VenueProfileConverter {
         venue.isShowEmail(),
         venue.getCreatedAt(),
         venue.getUpdatedAt());
+  }
+
+  private LocalizedText toLocalizedText(LocalizedTextDto value) {
+    if (value == null) {
+      return null;
+    }
+    if (value.values().keySet().stream().anyMatch(key -> !key.equals("es") && !key.equals("en"))) {
+      throw new VenueProfileInvalidException();
+    }
+    try {
+      return LocalizedText.fromLanguageTagValues(value.sourceLocale(), value.values());
+    } catch (IllegalArgumentException exception) {
+      throw new VenueProfileInvalidException();
+    }
+  }
+
+  private LocalizedTextDto toDto(LocalizedText value) {
+    if (value == null) {
+      return null;
+    }
+    Map<String, String> values = value.toLanguageTagValues();
+    return new LocalizedTextDto(value.sourceLocale().languageTag(), values);
   }
 }

@@ -11625,3 +11625,209 @@ formato, TypeScript, 82 tests web, 187 tests API y ambos builds.
 La tarea se cierra porque el CRUD privado completo existe por capas, deriva propiedad de la sesión,
 impide mass assignment sensible, conserva historial al borrar, protege concurrencia y pasa pruebas
 reales de ciclo de vida y aislamiento básico. La siguiente tarea pendiente es `2.5`.
+
+## Iteración 2.5 - Textos públicos localizados del perfil
+
+### Identificación y fecha
+
+- Tarea: `2.5. Implementar campos localizados para descripción, servicios, reglas y textos
+  públicos configurables`.
+- Fecha: 2026-07-01.
+
+### Objetivo técnico
+
+Extender el perfil privado para almacenar y editar descripción, servicios, reglas y texto público
+en el contrato localizado común `{sourceLocale, values}`. La implementación debía preservar
+descripciones creadas por V12 o versiones previas, impedir estructuras/locales arbitrarios,
+persistir JSONB como objetos de dominio y mantener separadas edición privada y presentación pública.
+
+### Requisitos y diseño relacionados
+
+- `RF-004`: contenido descriptivo de la ficha.
+- `RF-009`: persistencia editable del perfil.
+- `RF-031`: textos configurados por locales traducibles ES/EN o sujetos a fallback.
+- `RNF-001`: validación servidor y rechazo de estructura arbitraria.
+- `RNF-003`: columna canónica y documento localizado coherentes en una transacción.
+- `RNF-008`: roundtrip sobre PostgreSQL/Hibernate real.
+- `RNF-009`: idioma fuente, valores base y fallback controlado.
+- `RNF-011`: columnas `lowerCamelCase` y JSONB mapeado desde getters.
+- Diseño `4.3`: `LocalizedText` como contrato único para contenido dinámico.
+
+### Archivos creados y modificados
+
+- Nueva migración `V13__add_localized_public_venue_texts.sql`.
+- Nuevo DTO `LocalizedTextDto`.
+- Modificados `SupportedLocale`, `VenueEntity`, request, command, response, conversor y servicio.
+- Modificadas pruebas de localización, migración, controlador y servicio.
+- Actualizados los cuatro documentos `.kiro` obligatorios.
+- No se modificó frontend ni se creó endpoint público.
+
+### Migración V13 y modelo de datos
+
+V13 añade a `Venues`:
+
+- `servicesI18n jsonb`;
+- `rulesI18n jsonb`;
+- `publicTextI18n jsonb`.
+
+`descriptionI18n` ya existía desde V9. Las cuatro columnas son opcionales durante borrador.
+
+Antes de imponer el nuevo uso, V13 migra cualquier fila con `description` no vacía y
+`descriptionI18n` nula:
+
+1. toma `defaultLocale` como `sourceLocale`;
+2. crea `values` con la descripción bajo ese locale;
+3. conserva intacta la columna canónica.
+
+Esto permite actualizar una base que ya tenga perfiles creados por 2.4 sin perder texto ni
+inventar una traducción.
+
+Cada columna nueva tiene un `CHECK` que exige, si no es nula:
+
+- objeto JSONB;
+- `sourceLocale` `es` o `en`;
+- `values` objeto;
+- valor fuente presente y no vacío.
+
+No se exigen ambos idiomas al guardar borrador. La política de publicación de 2.9 decidirá
+completitud/fallback y 2.6 limitará palabras.
+
+### Mapeo Hibernate y serialización
+
+`VenueEntity` declara los cuatro getters como:
+
+```java
+@JdbcTypeCode(SqlTypes.JSON)
+@Column(name = "\"...I18n\"", columnDefinition = "jsonb")
+public LocalizedText get...I18n()
+```
+
+El dominio no usa `Map<String, Object>` abierto. `LocalizedText` normaliza whitespace, exige valor
+fuente, conoce locales soportados, calcula traducciones ausentes y resuelve fallback.
+
+`SupportedLocale.languageTag()` usa `@JsonValue` para serializar `ES`/`EN` como `es`/`en`.
+`fromJson` usa `@JsonCreator` y rechaza etiquetas persistidas no soportadas. Esto mantiene el JSONB
+compatible con SQL, DTOs y diseño aunque cambie el nombre del enum.
+
+### Contrato privado
+
+`VenueProfileRequest` sustituye la descripción simple editable por:
+
+- `descriptionI18n`;
+- `servicesI18n`;
+- `rulesI18n`;
+- `publicTextI18n`.
+
+Cada `LocalizedTextDto` contiene `sourceLocale` y un mapa de uno o dos valores. Bean Validation:
+
+- limita locale/keys a `es|en`;
+- exige mapa no vacío y máximo dos claves;
+- exige textos no vacíos;
+- limita cada valor a 10.000 caracteres como protección de payload.
+
+El conversor vuelve a comprobar claves soportadas y construye `LocalizedText`. Una estructura
+inválida produce `VENUE_PROFILE_INVALID`. La respuesta privada devuelve los documentos completos
+para que el panel futuro pueda editar ambos idiomas.
+
+Los DTOs públicos futuros no reutilizarán esta respuesta: deberán resolver el locale efectivo y
+devolver strings, evitando filtrar estructura interna o traducciones no solicitadas.
+
+### Coherencia de descripción
+
+El servicio considera `descriptionI18n` la entrada autoritativa. Al crear o actualizar:
+
+- persiste el value object;
+- resuelve exactamente su idioma fuente;
+- escribe ese valor en `description`;
+- si el documento es nulo, limpia ambas columnas.
+
+Así `description` sigue disponible para compatibilidad/búsqueda, pero nunca diverge por recibir dos
+campos independientes del cliente.
+
+Servicios, reglas y texto público no tienen columnas canónicas duplicadas. Enviar `null` mediante
+PATCH sustitutivo los elimina. Strings blancos no atraviesan DTO/domain.
+
+### Seguridad, privacidad e internacionalización
+
+- Solo el propietario autenticado reutiliza el CRUD protegido de 2.4.
+- No se añaden IDs ni campos de estado al payload.
+- Solo se aceptan locales base soportados.
+- No se acepta HTML; todo el contenido es texto plano.
+- El idioma fuente siempre tiene contenido visible.
+- Las traducciones parciales son válidas solo como borrador.
+- El fallback continúa solicitado → inglés → fuente.
+- No hay traducción automática ni llamadas externas.
+- No se registran contenidos públicos en logs.
+- La publicación no se habilita desde esta tarea.
+
+### Errores y consistencia
+
+Bean Validation y conversor traducen payloads inválidos al error seguro existente. PostgreSQL
+actúa como última barrera para escrituras que eviten la API. Flyway aplica columnas, backfill y
+constraints de forma transaccional.
+
+Una excepción durante persistencia revierte tanto JSONB como columna canónica. La actualización
+sigue usando el lock pesimista introducido en 2.4.
+
+### Tests y evidencia focalizada
+
+`LocalizedTextTests` añade roundtrip Jackson y demuestra:
+
+- tags minúsculos en JSON;
+- claves `es`/`en`;
+- restauración exacta del value object.
+
+`DatabaseMigrationIntegrationTests`:
+
+- espera Flyway V13;
+- verifica las tres columnas físicas nuevas.
+
+`VenueProfileServiceIntegrationTests`:
+
+- persiste cuatro documentos a través de Hibernate;
+- recupera traducción inglesa, contenido parcial y fallback;
+- deriva descripción canónica española;
+- limpia documento y columna canónica en update;
+- conserva el resto del ciclo CRUD.
+
+`VenueProfileControllerTests`:
+
+- convierte request localizado a comando;
+- proyecta el documento completo en respuesta privada.
+
+Comandos:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml \
+  -Dtest=DatabaseMigrationIntegrationTests,LocalizedTextTests,VenueProfileServiceIntegrationTests,VenueProfileControllerTests \
+  test
+```
+
+Resultado: 17 tests, cero fallos, cero errores y cero omitidos; Flyway V1–V13 y Hibernate correctos.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado correcto tras código y documentación: CI, entornos, i18n, español, convenciones, lint,
+formato, TypeScript, 82 tests web, 188 tests API y ambos builds.
+
+### Riesgos, limitaciones y deuda
+
+- `2.6` debe imponer 350 palabras por cada idioma publicado, no por documento completo.
+- `2.9` debe decidir completitud ES/EN o fallback aprobado antes de publicar.
+- Los campos no sustituyen las pestañas personalizadas de 2.14–2.16.
+- No hay sanitización rich text porque el contrato solo admite texto plano.
+- El límite técnico de 10.000 caracteres no representa el límite editorial de descripción.
+- No existe endpoint público que resuelva estos textos.
+- Categoría y nombre del local conservan contratos separados.
+
+### Criterio de cierre
+
+La tarea se cierra porque los cuatro textos localizados pueden crearse, leerse, sustituirse y
+eliminarse mediante el CRUD privado; V13 preserva contenido previo; Hibernate persiste
+`LocalizedText` directamente; locales arbitrarios y fuentes vacías quedan rechazados; y el
+roundtrip real pasa. La siguiente tarea pendiente es `2.6`.

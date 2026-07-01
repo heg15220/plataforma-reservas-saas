@@ -1,5 +1,6 @@
 package com.reserly.platform.venues.dto;
 
+import com.reserly.platform.localization.LocalizedText;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -7,7 +8,10 @@ import java.util.UUID;
 public record VenueProfileCommand(
     String name,
     UUID categoryId,
-    String description,
+    LocalizedText descriptionI18n,
+    LocalizedText servicesI18n,
+    LocalizedText rulesI18n,
+    LocalizedText publicTextI18n,
     String defaultLocale,
     String contactEmail,
     String phone,
