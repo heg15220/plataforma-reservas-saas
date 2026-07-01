@@ -31,7 +31,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -53,6 +53,62 @@ class DatabaseMigrationIntegrationTests {
 
     assertThat(encoding).isEqualToIgnoringCase("UTF8");
     assertThat(timezone).isEqualToIgnoringCase("UTC");
+  }
+
+  /**
+   * Verifica la identidad estable y el contenido mínimo de la taxonomía inicial. Se filtra por el
+   * prefijo UUID reservado para no impedir que futuras migraciones añadan categorías adicionales.
+   */
+  @Test
+  void seedsInitialVenueCategories() {
+    List<Map<String, Object>> categories =
+        jdbcTemplate.queryForList(
+            """
+            SELECT
+              "id"::text AS "id",
+              "name",
+              "slug",
+              "nameI18n"->>'sourceLocale' AS "sourceLocale",
+              "nameI18n"->'values'->>'es' AS "nameEs",
+              "nameI18n"->'values'->>'en' AS "nameEn",
+              "isActive"
+            FROM "Categories"
+            WHERE "id"::text LIKE '20000000-0000-0000-0000-00000000000_'
+            ORDER BY "id"
+            """);
+
+    assertThat(categories)
+        .containsExactly(
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000001", "Restaurante", "restaurante", "Restaurant"),
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000002", "Peluquería", "peluqueria", "Hair salon"),
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000003",
+                "Campo de fútbol",
+                "campo-de-futbol",
+                "Football pitch"),
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000004",
+                "Pista de pádel",
+                "pista-de-padel",
+                "Padel court"),
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000005",
+                "Instalación municipal",
+                "instalacion-municipal",
+                "Municipal facility"),
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000006",
+                "Centro deportivo",
+                "centro-deportivo",
+                "Sports center"),
+            categorySeedRow(
+                "20000000-0000-0000-0000-000000000007",
+                "Centro de estética",
+                "centro-de-estetica",
+                "Beauty center"),
+            categorySeedRow("20000000-0000-0000-0000-000000000008", "Otros", "otros", "Other"));
   }
 
   /**
@@ -314,5 +370,18 @@ class DatabaseMigrationIntegrationTests {
 
   private org.assertj.core.data.Offset<Double> withinCoordinateTolerance() {
     return org.assertj.core.data.Offset.offset(0.000001);
+  }
+
+  private Map<String, Object> categorySeedRow(
+      String id, String spanishName, String slug, String englishName) {
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("id", id);
+    row.put("name", spanishName);
+    row.put("slug", slug);
+    row.put("sourceLocale", "es");
+    row.put("nameEs", spanishName);
+    row.put("nameEn", englishName);
+    row.put("isActive", true);
+    return row;
   }
 }

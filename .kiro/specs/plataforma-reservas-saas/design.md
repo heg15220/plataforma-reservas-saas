@@ -894,15 +894,6 @@ Pestañas públicas configurables por cada local para ampliar los detalles de su
 - `created_at`
 - `updated_at`
 
-Restricciones físicas incorporadas en `V9`:
-
-- Slug único, normalizado a minúsculas, números y guiones.
-- Nombre canónico no vacío.
-- `nameI18n` usa el contrato `LocalizedText`, exige `sourceLocale` válido y traducciones ES/EN no
-  vacías porque las categorías son textos controlados por la plataforma.
-- `descriptionI18n`, si existe, debe contener el idioma fuente y un valor fuente no vacío.
-- Activar o desactivar una categoría no elimina ni reasigna locales existentes.
-
 Tipos iniciales de contenido:
 
 - `rich_text_safe`
@@ -928,6 +919,23 @@ Restricciones:
 - `is_active`
 - `created_at`
 - `updated_at`
+
+Restricciones físicas incorporadas en `V9`:
+
+- Slug único, normalizado a minúsculas, números y guiones.
+- Nombre canónico no vacío.
+- `nameI18n` usa el contrato `LocalizedText`, exige `sourceLocale` válido y traducciones ES/EN no
+  vacías porque las categorías son textos controlados por la plataforma.
+- `descriptionI18n`, si existe, debe contener el idioma fuente y un valor fuente no vacío.
+- Activar o desactivar una categoría no elimina ni reasigna locales existentes.
+
+Semilla inicial incorporada en `V10`:
+
+- Ocho categorías activas con UUID y slug estables: restaurante, peluquería, campo de fútbol,
+  pista de pádel, instalación municipal, centro deportivo, centro de estética y otros.
+- El nombre canónico usa español correcto y el slug elimina tildes para permanecer seguro en URL.
+- Cada fila incluye un `nameI18n` estructuralmente válido porque `V9` no permite persistir textos de
+  plataforma incompletos. La auditoría dedicada de traducciones y fallback corresponde a `2.3`.
 
 #### venue_opening_hours
 

@@ -10947,3 +10947,228 @@ La tarea se cierra porque el esquema V9 puede aplicarse desde cero, las tres tab
 índices existen, las invariantes críticas se ejercitan contra PostgreSQL/PostGIS real y la
 verificación integral pasa. La documentación de diseño, seguimiento y esta evidencia quedan
 actualizadas. La siguiente tarea pendiente es `2.2`.
+
+## Iteración 2.2 - Semilla inicial de categorías
+
+### Identificación y fecha
+
+- Tarea: `2.2. Crear seed de categorías iniciales: restaurante, peluquería, campo de fútbol, pista
+  de pádel, instalación municipal, centro deportivo, centro de estética y otros`.
+- Fecha: 2026-07-01.
+
+### Objetivo técnico
+
+Poblar el catálogo vacío creado en `V9` con una taxonomía mínima, determinista y reutilizable por
+los futuros perfiles de local, filtros públicos y herramientas administrativas. La semilla debía
+ser aplicable desde cero por Flyway, conservar ortografía española y proporcionar identidades
+estables que no dependan de secuencias, del orden de inserción ni de textos traducibles.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-002`: categorías disponibles para el filtro público.
+- `RF-003`: categoría presentable en tarjetas de resultado.
+- `RF-004`: categoría presentable en la ficha pública.
+- `RF-009`: selección futura de categoría durante la edición del perfil.
+- `RF-031`: textos visibles versionados, UTF-8 y preparados para ES/EN.
+- `RNF-003`: inserción coherente bajo restricciones de base de datos.
+- `RNF-008`: semilla reproducible y verificada con infraestructura representativa.
+- `RNF-009`: categorías como textos de plataforma localizables.
+- `RNF-011`: tabla `Categories` y columnas `lowerCamelCase`.
+- Diseño `3.2`, `4.1` y `4.3`: catálogo de locales, entidad de categorías y contrato
+  `LocalizedText`.
+
+### Archivos creados y modificados
+
+- Creado
+  `apps/api/src/main/resources/db/migration/V10__seed_initial_venue_categories.sql`.
+- Modificado
+  `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- Modificados `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+- No se eliminaron archivos.
+- No se añadieron entidades JPA, DAOs, endpoints, servicios, componentes web ni catálogos estáticos
+  de frontend.
+
+### Arquitectura aplicada y razones
+
+La semilla se implementa como migración Flyway versionada y no como carga de arranque de Spring.
+Esta decisión garantiza:
+
+- el mismo catálogo en local, test, staging y producción;
+- ejecución exactamente una vez y checksum auditable;
+- disponibilidad de las categorías antes de arrancar Hibernate;
+- compatibilidad con bases nuevas y despliegues incrementales;
+- ausencia de carreras entre varias instancias de la aplicación.
+
+No se usa `ON CONFLICT DO NOTHING`. Los UUID y slugs forman parte del contrato: si un entorno ya
+contiene un valor incompatible, el despliegue debe detenerse para investigar la divergencia en vez
+de declarar éxito silencioso.
+
+### Modelo de datos afectado
+
+La migración no altera columnas, índices ni constraints. Inserta ocho filas en `Categories`:
+
+| UUID final | Nombre canónico | Slug | Nombre inglés |
+| --- | --- | --- | --- |
+| `...0001` | Restaurante | `restaurante` | Restaurant |
+| `...0002` | Peluquería | `peluqueria` | Hair salon |
+| `...0003` | Campo de fútbol | `campo-de-futbol` | Football pitch |
+| `...0004` | Pista de pádel | `pista-de-padel` | Padel court |
+| `...0005` | Instalación municipal | `instalacion-municipal` | Municipal facility |
+| `...0006` | Centro deportivo | `centro-deportivo` | Sports center |
+| `...0007` | Centro de estética | `centro-de-estetica` | Beauty center |
+| `...0008` | Otros | `otros` | Other |
+
+El prefijo UUID reservado es `20000000-0000-0000-0000-00000000000`. Los últimos dígitos identifican
+la fila y permiten referencias legibles en fixtures o migraciones futuras sin convertir el UUID en
+un significado de negocio para APIs públicas.
+
+Todos los registros:
+
+- nacen activos;
+- usan `sourceLocale: es`;
+- conservan un nombre canónico español;
+- contienen `values.es` y `values.en`;
+- dejan descripción y descripción localizada ausentes;
+- reciben `createdAt` y `updatedAt` desde los defaults de `V9`.
+
+### Internacionalización y separación con `2.3`
+
+`V9` declara `nameI18n` como `NOT NULL` y exige valores ES/EN no vacíos porque las categorías son
+texto controlado por la plataforma. Por tanto, `2.2` no puede insertar filas parcialmente válidas
+ni posponer físicamente el documento JSONB: cada seed incorpora el mínimo bilingüe necesario para
+atravesar el contrato.
+
+La tarea `2.3` permanece pendiente como iteración dedicada para auditar de forma explícita:
+
+- calidad y adecuación de cada traducción;
+- resolución por locale solicitado;
+- fallback inglés y locale fuente;
+- completitud de todas las categorías activas;
+- ausencia de exposición de la estructura JSONB en contratos públicos futuros.
+
+Esta separación sigue el mismo patrón usado en fases anteriores: una tarea funcional puede incluir
+el texto mínimo que exige su persistencia, mientras la tarea i18n posterior cierra cobertura,
+resolución y garantías transversales.
+
+### Identidad, slugs y estabilidad
+
+Los nombres no funcionan como claves:
+
+- pueden corregirse editorialmente;
+- contienen tildes y espacios;
+- cambiarán según el locale.
+
+Los slugs son minúsculos, ASCII y separados por guiones. Se eligen una vez y se consideran identidad
+semántica estable para filtros y URLs. No se generan en cada arranque ni se recalculan al traducir
+el nombre. Los UUID aportan identidad relacional y los slugs aportan identidad legible.
+
+La categoría residual usa slug `otros` y nombre español plural, tal como pide el plan. Su
+traducción inglesa visible es `Other`, forma habitual para una opción residual singular en un
+selector.
+
+### Flujos de ejecución relevantes
+
+En una base vacía:
+
+1. Flyway aplica `V1` a `V9`.
+2. `V10` intenta insertar las ocho filas en una única migración transaccional.
+3. PostgreSQL valida UUID, slug único, nombre no vacío, estructura JSONB, traducciones ES/EN y
+   timestamps.
+4. Si cualquier fila falla, Flyway revierte `V10` completa y no registra la versión.
+5. Si todas pasan, el historial queda en versión 10 antes del arranque de Hibernate.
+
+En una base ya migrada a V10, Flyway valida el checksum y no repite la inserción. Modificar después
+el fichero publicado produciría una discrepancia visible; cualquier ajuste futuro debe añadirse
+mediante otra migración forward-only.
+
+### Validaciones, permisos, seguridad y privacidad
+
+- No se insertan datos personales, credenciales ni contenido aportado por usuarios.
+- Los UUID estables no identifican personas ni cuentas empresariales.
+- Los slugs cumplen la constraint de URL segura de `V9`.
+- Los textos españoles contienen tildes reales en UTF-8; no se degradan para igualarlos al slug.
+- Los documentos `nameI18n` son JSONB estructurado, no HTML ni texto ejecutable.
+- La semilla no concede permisos ni crea relaciones con locales.
+- Las categorías se activan para uso futuro, pero todavía no existe endpoint público o
+  administrativo que las exponga o modifique.
+
+### Errores, logs, auditoría y observabilidad
+
+Flyway aporta versión, checksum, fecha y resultado de ejecución. Una colisión de UUID, slug o
+constraint aborta el despliegue con el error SQL original. No se añaden logs de aplicación ni
+auditoría de usuario porque el seed es una operación de despliegue, no una acción interactiva.
+
+Las modificaciones administrativas posteriores deberán registrar auditoría cuando se implemente
+`14.2`. La semilla conserva su identidad original aunque una categoría se desactive; no debe
+eliminarse físicamente para ocultarla.
+
+### Tests añadidos o modificados
+
+`DatabaseMigrationIntegrationTests` incorpora `seedsInitialVenueCategories` y actualiza la versión
+esperada a 10.
+
+La prueba consulta solo el rango UUID reservado de la semilla y ordena por UUID. Así:
+
+- exige exactamente las ocho filas base;
+- no falla cuando el producto añada categorías fuera del rango reservado;
+- comprueba UUID, nombre canónico, slug y estado activo;
+- extrae `sourceLocale`, `values.es` y `values.en` con operadores JSONB;
+- verifica que español coincide con el nombre canónico;
+- verifica el valor inglés esperado de cada categoría.
+
+El helper `categorySeedRow` construye el contrato esperado de cada fila de manera explícita. No lee
+la migración ni replica lógica de producción; compara lo persistido por PostgreSQL con datos
+declarados en el test.
+
+### Comandos y evidencia de verificación
+
+Formateo Java:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+```
+
+Resultado correcto.
+
+Prueba focalizada:
+
+```text
+mvn -f apps/api/pom.xml -Dtest=DatabaseMigrationIntegrationTests test
+```
+
+Resultado: 6 tests, cero fallos, cero errores y cero omitidos. Testcontainers inició PostgreSQL
+17.5/PostGIS, Flyway validó y aplicó diez migraciones sobre un esquema vacío, insertó la taxonomía
+y Hibernate arrancó correctamente.
+
+Verificación integral:
+
+```text
+npm run verify
+```
+
+Resultado correcto tras implementación y documentación: CI, entornos, i18n, español, convenciones
+backend, lint, formato, TypeScript, 82 tests web, 182 tests API y ambos builds.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La migración incluye traducciones mínimas para satisfacer `V9`, pero `2.3` debe revisar de forma
+  dedicada su calidad, resolución y fallback.
+- No existe todavía un campo de orden editorial. Hasta que el diseño lo requiera, consumidores
+  deberán usar un criterio explícito y no asumir el orden UUID.
+- Los slugs están en español por ser el locale fuente inicial. Si el producto decide URLs
+  localizadas, deberán resolverse mediante una capa adicional sin mutar estos identificadores.
+- No hay iconos ni descripciones de categoría; no son necesarios para la selección mínima.
+- La categoría `Otros` puede acumular perfiles heterogéneos y requerir subdivisión futura basada en
+  uso real.
+- El seed no crea un endpoint de lectura. Su exposición corresponde a los casos de uso de catálogo
+  y búsqueda.
+- Cualquier corrección tras publicar V10 debe implementarse como nueva migración; no debe editarse
+  el historial aplicado.
+
+### Evidencia y criterio de cierre
+
+La tarea se considera cerrada porque una base vacía alcanza Flyway V10 con las ocho categorías
+requeridas, sus identidades son estables, sus slugs son válidos, los textos españoles conservan
+UTF-8, el contrato JSONB se cumple y la prueba focalizada verifica el contenido persistido real. La
+documentación de diseño, tareas, seguimiento e implementación queda sincronizada. La siguiente
+tarea pendiente es `2.3`.

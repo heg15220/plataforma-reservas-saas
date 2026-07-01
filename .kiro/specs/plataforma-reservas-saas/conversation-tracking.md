@@ -2437,3 +2437,61 @@ Fuente de verdad del avance:
   - Evidencia focalizada: 5 tests correctos en `DatabaseMigrationIntegrationTests`, con Flyway V1 a
     V9 sobre PostgreSQL 17.5/PostGIS.
   - Evidencia integral: `npm run verify` correcto tras código y documentación.
+
+## Conversación 52 - Semilla inicial de categorías
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.2` como primera tarea pendiente sobre la rama limpia y sincronizada
+    `phase/2-locales-categorias-perfil`.
+  - Se creó la migración Flyway `V10` con las ocho categorías iniciales requeridas: restaurante,
+    peluquería, campo de fútbol, pista de pádel, instalación municipal, centro deportivo, centro de
+    estética y otros.
+  - Cada categoría usa un UUID reservado y estable, un slug sin tildes apto para URL, nombre
+    canónico en español correcto y estado activo.
+  - `V9` exige que toda categoría tenga un `nameI18n` ES/EN válido. La semilla respeta esa
+    invariante desde su inserción; la auditoría específica de traducciones, fallback y completitud
+    permanece en `2.3`.
+  - Se amplió la prueba de migración para comprobar Flyway V10 y el contenido exacto de las ocho
+    filas sobre PostgreSQL/PostGIS real, sin bloquear futuras categorías adicionales.
+  - Se corrigió en `design.md` la ubicación de las restricciones de `Categories`, que durante
+    `2.1` habían quedado accidentalmente bajo `venue_custom_tabs`.
+- Archivos modificados:
+  - Nuevo
+    `apps/api/src/main/resources/db/migration/V10__seed_initial_venue_categories.sql`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.2. Crear seed de categorías iniciales`.
+  - Prepara `2.3`, `2.4`, `3.3` y `14.2`.
+- Tareas completadas:
+  - `2.2. Crear seed de categorías iniciales`.
+- Siguiente tarea pendiente recomendada:
+  - `2.3. Crear traducciones ES/EN para categorías iniciales`.
+- Decisiones o aclaraciones relevantes:
+  - Los UUID `20000000-0000-0000-0000-000000000001` a
+    `20000000-0000-0000-0000-000000000008` quedan reservados para el catálogo base.
+  - El slug es la identidad semántica estable de URL y filtros; no se deriva en tiempo de ejecución
+    del texto traducido.
+  - Los nombres canónicos conservan tildes y ortografía española; solo los slugs son ASCII.
+  - No se añaden descripciones, iconos, orden editorial ni endpoints porque no forman parte de
+    `2.2`.
+  - La migración no usa `ON CONFLICT`: Flyway garantiza una única aplicación y cualquier colisión
+    debe fallar de forma visible, no ocultarse.
+  - Evidencia focalizada: 6 tests correctos en `DatabaseMigrationIntegrationTests`, con Flyway V1 a
+    V10 sobre PostgreSQL 17.5/PostGIS.
+  - Evidencia integral: `npm run verify` correcto tras implementación y documentación, con 82
+    tests web y 182 tests API.
