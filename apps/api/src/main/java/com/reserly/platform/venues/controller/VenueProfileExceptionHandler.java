@@ -5,6 +5,7 @@ import com.reserly.platform.venues.dto.VenueProfileErrorResponse;
 import com.reserly.platform.venues.image.VenueImageStorageException;
 import com.reserly.platform.venues.image.VenueImageValidationException;
 import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
+import com.reserly.platform.venues.service.VenueGalleryLimitException;
 import com.reserly.platform.venues.service.VenueProfileConflictException;
 import com.reserly.platform.venues.service.VenueProfileForbiddenException;
 import com.reserly.platform.venues.service.VenueProfileInvalidException;
@@ -17,8 +18,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Traduce errores del perfil a códigos estables sin publicar IDs ni constraints. */
 @RestControllerAdvice(
-    assignableTypes = {VenueProfileControllerImpl.class, VenueMainImageControllerImpl.class})
+    assignableTypes = {
+      VenueProfileControllerImpl.class,
+      VenueMainImageControllerImpl.class,
+      VenueGalleryControllerImpl.class
+    })
 public class VenueProfileExceptionHandler {
+
+  @ExceptionHandler(VenueGalleryLimitException.class)
+  public ResponseEntity<VenueProfileErrorResponse> handleGalleryLimit() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new VenueProfileErrorResponse("VENUE_GALLERY_LIMIT_REACHED"));
+  }
 
   @ExceptionHandler(VenueImageValidationException.class)
   public ResponseEntity<VenueProfileErrorResponse> handleInvalidImage() {

@@ -2754,3 +2754,32 @@ Fuente de verdad del avance:
   - La repetición integral de tests API quedó impedida por un error 500 del motor Linux de Docker
     Desktop. No fue un fallo de aserción: Testcontainers informó que no encontraba un entorno
     Docker. La integración específica ya había pasado antes de la incidencia.
+
+## Conversación 58 - Galería opcional del local
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `2.8` como primera tarea pendiente.
+  - Se implementó listado, carga, reordenación, borrado y lectura pública de galería.
+  - Se fijó máximo MVP de ocho imágenes, alt text obligatorio y posiciones contiguas.
+  - Se reutilizaron recodificación y bucket privado de `2.7`.
+  - V15 añade metadatos seguros y unicidad de posición diferible.
+- Archivos modificados:
+  - Nueva migración `V15__secure_venue_gallery_images.sql`.
+  - Nuevos entidad/DAO, DTOs, controlador y servicio de galería.
+  - Advice, pruebas de controlador/servicio/migración y documentación `.kiro`.
+- Requisitos impactados:
+  - `RF-004`, `RF-008`, `RF-009`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-008`, `RNF-011`.
+- Tareas impactadas y completadas:
+  - `2.8. Implementar galería opcional`.
+- Siguiente tarea pendiente recomendada:
+  - `2.9. Implementar publicación de local solo con email verificado, verificación empresarial
+    aprobada y datos mínimos`.
+- Decisiones o aclaraciones relevantes:
+  - Ocho imágenes equilibra experiencia MVP, almacenamiento y renderizado.
+  - Alt text es obligatorio para accesibilidad.
+  - Reordenar exige el snapshot completo de IDs propios.
+  - Las imágenes no se convierten en principales automáticamente.
+  - Evidencia focalizada: 13 tests unitarios y 7 tests de migración correctos.
+  - Evidencia integral: `npm run verify` correcto, con 82 tests web, 206 tests API y ambos builds.

@@ -2651,3 +2651,17 @@ fallos de limpieza se registran sin claves ni contenido.
 `GET /api/public/venue-images/{venueId}/main` media la lectura desde el bucket privado y solo
 resuelve perfiles `published`. Los errores son `400 VENUE_IMAGE_INVALID`,
 `404 VENUE_PROFILE_NOT_FOUND` y `503 VENUE_IMAGE_STORAGE_UNAVAILABLE`.
+
+### Galería opcional ordenada
+
+La galería admite hasta ocho imágenes adicionales. Reutiliza el pipeline JPEG/PNG seguro y exige
+texto alternativo no vacío de hasta 300 caracteres. Cada objeto vive en el bucket privado bajo
+`venues/{venueId}/gallery/{imageId}.{ext}` y se entrega públicamente solo si el local está publicado.
+
+El contrato privado permite listar, subir, borrar y reordenar. La reordenación recibe la permutación
+completa de IDs propios; rechaza duplicados, omisiones e IDs ajenos. Las posiciones son contiguas
+`0..n-1` y su unicidad es diferible hasta commit para permitir intercambios atómicos.
+
+El borrado compacta posiciones y elimina el objeto después del commit. Un rollback de carga elimina
+el objeto nuevo. El límite produce `409 VENUE_GALLERY_LIMIT_REACHED`; orden, contenido o alt text
+inválidos producen `400 VENUE_IMAGE_INVALID`.

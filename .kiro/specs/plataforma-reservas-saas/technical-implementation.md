@@ -12144,3 +12144,91 @@ focalizada previa con PostgreSQL 17 real y Flyway V1–V14.
 
 Una imagen válida puede sustituirse por el propietario; contenido falso se rechaza; base y objeto
 se compensan; la clave no se filtra y solo un local publicado entrega bytes. Siguiente tarea: `2.8`.
+
+## Iteración 2.8 - Galería opcional
+
+### Identificación, fecha y objetivo
+
+- Tarea: `2.8. Implementar galería opcional`.
+- Fecha: 2026-07-01.
+- Objetivo: colección adicional segura, accesible y ordenable sin duplicar el pipeline de imágenes
+  ni permitir acceso horizontal.
+
+### Requisitos, arquitectura y archivos
+
+Implementa imágenes adicionales de `RF-004` y gestión privada según `RF-008`/`RF-009`. Reutiliza
+`VenueImageContentValidator` y `VenueImageStorage`: JPEG/PNG, 5 MiB, ejes 320–4096, límite de
+píxeles, frame único y recodificación sin metadatos.
+
+Se añaden `VenueImageEntity`, `VenueImageDao`, `VenueGalleryService`/`Impl`,
+`VenueGalleryController`/`Impl`, DTOs de respuesta/orden, excepción de límite, V15 y pruebas.
+
+### Modelo de datos y V15
+
+V15 añade a `VenueImages` `objectKey`, `mediaType`, `sizeBytes`, `width` y `height`.
+`ckVenueImagesSecureMetadata` exige clave, MIME JPEG/PNG, tamaño positivo y dimensiones válidas;
+`ckVenueImagesGalleryPosition` limita `0..7`. La unicidad `(venueId, position)` se recrea
+`DEFERRABLE INITIALLY DEFERRED`, de modo que PostgreSQL valida el orden final al commit y permite
+swaps mediante varios `UPDATE` atómicos.
+
+### Contratos y flujo
+
+- `GET /api/venue/me/gallery`: snapshot propio ordenado.
+- `POST /api/venue/me/gallery`: multipart `file` + `altText`, respuesta `201`.
+- `PUT /api/venue/me/gallery/order`: permutación completa `imageIds`.
+- `DELETE /api/venue/me/gallery/{imageId}`: elimina y compacta, respuesta `204`.
+- `GET /api/public/venue-gallery-images/{imageId}`: bytes solo para local publicado.
+
+La carga valida alt text/contenido, bloquea el perfil, exige menos de ocho, asigna siguiente
+posición, genera clave `venues/{venueId}/gallery/{imageId}.{ext}`, almacena y persiste metadatos.
+Rollback limpia el objeto nuevo. Reordenar exige igualdad exacta entre IDs persistidos/recibidos.
+Borrar consulta por imageId+ownerId, compacta y elimina el objeto después del commit.
+
+### Seguridad, privacidad, accesibilidad y errores
+
+- La identidad procede exclusivamente de `AuthenticatedAccount.userId`.
+- Todas las consultas privadas incorporan propietario y estado no archivado.
+- Bucket, object key y nombre original nunca se exponen o reutilizan.
+- Lectura pública exige `venue.status='published'`.
+- Alt text es obligatorio, recortado y máximo 300 caracteres.
+- Galería llena: `409 VENUE_GALLERY_LIMIT_REACHED`.
+- Contenido, alt text u orden inválido: `400 VENUE_IMAGE_INVALID`.
+- ID ajeno/inexistente: `404` uniforme.
+
+### Concurrencia, compensación y observabilidad
+
+El lock del perfil serializa altas, órdenes y bajas. El constraint diferible garantiza unicidad al
+commit. Rollback limpia cargas nuevas; commit limpia objetos borrados. Un fallo de limpieza emite
+warning genérico sin claves ni contenido y queda como objeto huérfano reconciliable.
+
+### Tests y evidencia
+
+Servicio cubre posición siguiente, normalización, máximo de ocho, permutación y orden incompleto.
+Controlador cubre CRUD por actor, DTO seguro, MIME público y código de límite. Migración aplica
+V1–V15, verifica columnas y unicidad con metadatos válidos.
+
+```text
+mvn -f apps/api/pom.xml \
+  -Dtest=VenueGalleryServiceTests,VenueGalleryControllerTests,VenueImageContentValidatorTests,VenueMainImageServiceTests,VenueMainImageControllerTests \
+  test
+mvn -f apps/api/pom.xml -Dtest=DatabaseMigrationIntegrationTests test
+```
+
+Resultado: 13 tests unitarios y 7 de migración correctos; Spotless, Checkstyle, Hibernate,
+PostgreSQL 17 y Flyway V1–V15 correctos.
+
+La verificación integral `npm run verify` confirmó CI, entornos, i18n, español, convenciones, lint,
+formato, TypeScript, 82 tests web, 206 tests API y ambos builds.
+
+### Riesgos y deuda
+
+- El máximo de ocho es MVP; deberá configurarse si aparecen planes comerciales.
+- Alt text aún no está localizado; `2.10` decidirá variantes ES/EN.
+- No hay edición aislada de alt text, CDN, thumbnails ni variantes responsive.
+- La reconciliación automática de objetos huérfanos queda pendiente.
+
+### Criterio de cierre
+
+El propietario gestiona una galería completa y ordenada; la base impide posiciones inválidas, los
+bytes siguen el pipeline seguro, cada mutación verifica propiedad y la lectura anónima depende de
+publicación. Siguiente tarea: `2.9`.

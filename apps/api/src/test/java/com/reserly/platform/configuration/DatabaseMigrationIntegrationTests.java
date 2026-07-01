@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("14");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("15");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -235,7 +235,19 @@ class DatabaseMigrationIntegrationTests {
             "mainImageWidth",
             "mainImageHeight"));
     expectedColumns.put(
-        "VenueImages", List.of("id", "venueId", "url", "altText", "position", "createdAt"));
+        "VenueImages",
+        List.of(
+            "id",
+            "venueId",
+            "url",
+            "altText",
+            "position",
+            "createdAt",
+            "objectKey",
+            "mediaType",
+            "sizeBytes",
+            "width",
+            "height"));
 
     expectedColumns.forEach(
         (table, columns) ->
@@ -382,8 +394,15 @@ class DatabaseMigrationIntegrationTests {
 
       jdbcTemplate.update(
           """
-          INSERT INTO "VenueImages" ("venueId", "url", "altText", "position")
-          VALUES (?, 'venues/example/gallery-1.webp', 'Fachada', 0)
+          INSERT INTO "VenueImages" (
+            "venueId", "url", "objectKey", "mediaType", "sizeBytes",
+            "width", "height", "altText", "position"
+          )
+          VALUES (
+            ?, '/api/public/venue-gallery-images/example-1',
+            'venues/example/gallery-1.png', 'image/png', 1024,
+            640, 480, 'Fachada', 0
+          )
           """,
           venueId);
 
@@ -391,8 +410,15 @@ class DatabaseMigrationIntegrationTests {
               () ->
                   jdbcTemplate.update(
                       """
-                      INSERT INTO "VenueImages" ("venueId", "url", "position")
-                      VALUES (?, 'venues/example/gallery-2.webp', 0)
+                      INSERT INTO "VenueImages" (
+                        "venueId", "url", "objectKey", "mediaType", "sizeBytes",
+                        "width", "height", "altText", "position"
+                      )
+                      VALUES (
+                        ?, '/api/public/venue-gallery-images/example-2',
+                        'venues/example/gallery-2.jpg', 'image/jpeg', 2048,
+                        800, 600, 'Interior', 0
+                      )
                       """,
                       venueId))
           .isInstanceOf(DataIntegrityViolationException.class);
