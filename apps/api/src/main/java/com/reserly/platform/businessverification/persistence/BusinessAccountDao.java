@@ -18,6 +18,17 @@ import org.springframework.data.repository.query.Param;
  */
 public interface BusinessAccountDao extends JpaRepository<BusinessAccountEntity, UUID> {
 
+  /**
+   * Resuelve la identidad empresarial propiedad del actor autenticado sin aceptar IDs del cliente.
+   */
+  @Query(
+      """
+      select account
+      from BusinessAccountEntity account
+      where account.ownerUser.id = :ownerUserId
+      """)
+  Optional<BusinessAccountEntity> findByOwnerUserId(@Param("ownerUserId") UUID ownerUserId);
+
   /** Comprueba conflictos por país e identificador fiscal canónico. */
   @Query(
       """

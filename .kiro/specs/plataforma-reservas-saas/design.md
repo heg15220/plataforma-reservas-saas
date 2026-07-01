@@ -1490,6 +1490,8 @@ POST /api/auth/email/verify
 POST /api/auth/email/verification/request
 POST /api/auth/venues/business-verification/retry
 
+GET /api/venue/me/business-verification/document-request
+POST /api/venue/me/business-verification/documents
 GET /api/venue/me
 PATCH /api/venue/me/profile
 POST /api/venue/me/images
@@ -1818,7 +1820,56 @@ sesión válida sin rol produce `403 AUTHORIZATION_DENIED`, sin publicar roles n
 no modifica la caducidad absoluta. CORS admite credenciales solo desde `allowedOrigins`, con
 métodos y cabeceras cerrados. CSRF permanece explícitamente pendiente de `16.3`.
 
-### 8.11 Comprobar elegibilidad de reseña desde ficha
+### 8.11 Consulta y carga privada de respaldo empresarial
+
+`GET /api/venue/me/business-verification/document-request` exige sesión con rol `venue_owner`.
+Cuenta y actor se derivan del principal; no acepta identificadores empresariales. Devuelve `204`
+cuando no existe solicitud abierta o:
+
+```json
+{
+  "requestId": "uuid",
+  "reasonCode": "no_automated_channel",
+  "requestedDocumentTypes": [
+    "census_registration_036_037",
+    "census_certificate"
+  ],
+  "status": "open",
+  "requestedAt": "2026-07-01T08:00:00Z"
+}
+```
+
+No expone `businessAccountId`, `sourceVerificationCheckId`, NIF, razón social, dirección ni
+evidencia técnica.
+
+`POST /api/venue/me/business-verification/documents` consume `multipart/form-data`:
+
+- `documentRequestId`: UUID de la solicitud abierta;
+- `documentType`: una de las alternativas devueltas por el servidor;
+- `file`: un único PDF, JPEG o PNG de hasta 10 MiB.
+
+El límite multipart corta la petición antes del controlador; el pipeline vuelve a comprobar tamaño,
+MIME y magic bytes, autorización, solicitud abierta y tipo. Después analiza con antivirus, cifra,
+almacena en objeto privado y persiste metadatos/hash. No confía en nombre o extensión y nunca
+devuelve URL privada.
+
+Respuesta `201`:
+
+```json
+{
+  "documentId": "uuid",
+  "documentRequestId": "uuid",
+  "status": "pending_review",
+  "uploadedAt": "2026-07-01T09:00:00Z"
+}
+```
+
+Errores cerrados: `400 DOCUMENT_UPLOAD_INVALID`, `403 DOCUMENT_UPLOAD_FORBIDDEN`,
+`409 DOCUMENT_UPLOAD_CONFLICT`, `422 DOCUMENT_MALWARE_DETECTED` y
+`503 DOCUMENT_UPLOAD_UNAVAILABLE`. `401/403` de sesión/rol mantienen los contratos globales. El
+cliente no reintenta automáticamente un POST sin idempotency key.
+
+### 8.12 Comprobar elegibilidad de reseña desde ficha
 
 Request:
 
@@ -1851,7 +1902,7 @@ Response no elegible:
 
 Este endpoint no debe devolver reservas, fechas, número de visitas ni otros datos históricos del email. La creación de la reseña debe repetir la misma validación en backend para evitar depender de una comprobación previa de frontend.
 
-### 8.12 Crear reseña desde ficha
+### 8.13 Crear reseña desde ficha
 
 Request:
 
@@ -1928,6 +1979,7 @@ Errores esperados:
 /panel/estadisticas
 /panel/suscripcion
 /panel/configuracion
+/panel/verificacion
 ```
 
 ### 9.4 Rutas admin

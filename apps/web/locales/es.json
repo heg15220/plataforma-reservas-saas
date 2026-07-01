@@ -4,6 +4,84 @@
     "panelHomeAria": "Ir al resumen del panel",
     "name": "Reserly"
   },
+  "BusinessDocuments": {
+    "actions": {
+      "chooseFile": "Seleccionar archivo",
+      "goToAccess": "Ir al acceso de locales",
+      "removeFile": "Quitar archivo",
+      "retry": "Volver a intentarlo",
+      "upload": "Enviar documentación",
+      "uploading": "Enviando de forma segura"
+    },
+    "documentTypes": {
+      "activityLicense": "Licencia de actividad o apertura",
+      "censusCertificate": "Certificado de situación censal",
+      "censusRegistration": "Alta censal 036/037",
+      "equivalentDocument": "Documento administrativo equivalente",
+      "other": "Otro documento acreditativo"
+    },
+    "errors": {
+      "api": {
+        "conflict": "Este archivo ya se aportó o la solicitud cambió. Actualiza la página antes de volver a intentarlo.",
+        "forbidden": "La solicitud ya no admite esta carga. Actualiza la página para consultar su estado.",
+        "invalid": "El servidor no ha aceptado el archivo. Comprueba el tipo, el tamaño y que el contenido no esté dañado.",
+        "malware": "El análisis de seguridad ha rechazado el archivo. Genera una copia limpia desde una fuente fiable.",
+        "rateLimited": "Se han realizado demasiados intentos. Espera unos minutos antes de continuar.",
+        "unauthenticated": "Tu sesión ha caducado. Accede de nuevo para enviar la documentación.",
+        "unavailable": "No podemos procesar documentos en este momento. El archivo no se ha guardado; inténtalo más tarde."
+      },
+      "file": {
+        "empty": "Selecciona un archivo con contenido.",
+        "tooLarge": "El archivo supera el tamaño máximo permitido.",
+        "unsupportedType": "Selecciona un archivo PDF, JPG o PNG."
+      }
+    },
+    "form": {
+      "documentTypeHelper": "Elige el tipo que corresponda al contenido del archivo.",
+      "documentTypeLabel": "Tipo de documento",
+      "fileConstraints": "PDF, JPG o PNG. Tamaño máximo: {maxSize}.",
+      "fileLabel": "Archivo",
+      "filePrompt": "Selecciona una copia legible y completa",
+      "privacyNotice": "El documento se cifra y se almacena de forma privada. Solo puede consultarlo personal autorizado durante la verificación.",
+      "requestedAt": "Solicitud creada el {date}.",
+      "title": "Documentación solicitada"
+    },
+    "hero": {
+      "eyebrow": "VERIFICACIÓN EMPRESARIAL",
+      "reviewTime": "La revisión suele resolverse en un máximo de 5 días laborables. Te informaremos si necesitamos una corrección.",
+      "summary": "Aporta uno de los documentos admitidos para que podamos comprobar la identidad del negocio.",
+      "title": "Completa la verificación de tu negocio"
+    },
+    "loading": "Consultando el estado de la verificación…",
+    "metadata": {
+      "description": "Carga privada de documentación para la verificación empresarial de Reserly.",
+      "title": "Documentación de verificación"
+    },
+    "noRequest": {
+      "body": "No tienes ninguna solicitud documental abierta. Si la comprobación cambia, encontrarás aquí las instrucciones.",
+      "title": "No necesitamos documentación adicional"
+    },
+    "reasons": {
+      "addressUnconfirmed": "No hemos podido confirmar la dirección empresarial con la fuente disponible.",
+      "insufficientProviderData": "La fuente consultada no ha proporcionado información suficiente para completar la comprobación.",
+      "legalNameUnconfirmed": "No hemos podido confirmar la razón social con la fuente disponible.",
+      "noAutomatedChannel": "No existe un canal automático disponible para completar esta comprobación.",
+      "providerUnavailable": "El servicio oficial no estaba disponible o no pudo completar la consulta."
+    },
+    "request": {
+      "title": "Necesitamos un documento de respaldo"
+    },
+    "status": {
+      "actionRequired": "Acción necesaria",
+      "noRequest": "Sin acciones pendientes",
+      "pendingReview": "Pendiente de revisión"
+    },
+    "success": {
+      "body": "El archivo se ha recibido, analizado y almacenado de forma privada. Ahora revisaremos su coherencia con los datos empresariales.",
+      "title": "Documentación enviada",
+      "uploadedAt": "Enviado el {date}."
+    }
+  },
   "Common": {
     "noData": "Sin datos"
   },

@@ -4,8 +4,28 @@
 
 La tarea 1.10 implementa el pipeline interno de carga de alta censal 036/037, certificado censal,
 licencia de actividad/apertura, documento administrativo equivalente u otro respaldo solicitado.
-No expone aún un endpoint HTTP: la autenticación y el controlador se conectarán en las tareas de
-seguridad y API, reutilizando este servicio sin saltarse sus autorizaciones.
+La tarea 1.19 lo conecta al propietario autenticado mediante una frontera REST y una pantalla
+responsive, reutilizando el pipeline completo sin trasladar decisiones de seguridad al navegador.
+
+## Frontera autenticada
+
+`GET /api/venue/me/business-verification/document-request` devuelve la única solicitud abierta o
+`204`. `POST /api/venue/me/business-verification/documents` acepta `documentRequestId`,
+`documentType` y un único `file` multipart. Ambos endpoints heredan `venue_owner` del namespace.
+
+`BusinessVerificationDocumentPortalService` resuelve `BusinessAccounts` por `ownerUserId`; el
+cliente no envía `businessAccountId` ni `uploaderUserId`. La respuesta de consulta omite también el
+check técnico de origen y cualquier identidad fiscal. La respuesta de carga contiene solo IDs
+opacos, estado e instante, nunca hash, nombre original o localizador privado.
+
+El límite servlet es 10 MiB por archivo y 11 MiB por request para admitir el overhead multipart.
+Después del corte HTTP, el pipeline repite su límite y valida contenido real. Los errores esperados
+se reducen a códigos `DOCUMENT_*` estables, sin propagar mensajes de ClamAV, S3 o PostgreSQL.
+
+La pantalla `/panel/verificacion` consulta con la cookie HttpOnly, localiza motivos y tipos mediante
+catálogos ES/EN, aplica una prevalidación de usabilidad y deja la validación autoritativa al backend.
+El `FormData` es efímero; no usa almacenamiento web, no fija manualmente el boundary y no reintenta
+automáticamente el POST.
 
 ## Flujo
 
@@ -46,8 +66,14 @@ La rotación se realiza cambiando `RESERLY_DOCUMENT_ENCRYPTION_KEY_ID` y
 `RESERLY_DOCUMENT_ENCRYPTION_KEY_BASE64`; cada fila conserva el ID usado. El descifrado y la
 rotación material quedan para el flujo administrativo de consulta documental.
 
+`RESERLY_DOCUMENT_MAX_BYTES` configura tanto el corte multipart de fichero como el límite de
+contenido real. `RESERLY_DOCUMENT_REQUEST_MAX_BYTES` debe ser ligeramente superior para incluir
+campos y boundary sin ampliar el tamaño permitido del documento.
+
 ## Verificación
 
 Las pruebas cubren límite y firmas MIME, SHA-256, sobre cifrado aleatorio, malware antes de
-almacenar, metadatos internos y borrado compensatorio. La prueba de migraciones ejecuta Flyway V1–V8
-sobre PostgreSQL/PostGIS real y Hibernate valida el mapeo.
+almacenar, metadatos internos, borrado compensatorio, derivación de ownership, proyección REST,
+clasificación de errores, multipart cliente, estados de pantalla y autorización real del namespace.
+La prueba de migraciones ejecuta Flyway V1–V8 sobre PostgreSQL/PostGIS real y Hibernate valida el
+mapeo.

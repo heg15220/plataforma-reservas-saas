@@ -77,7 +77,7 @@ Los ficheros `.env.local`, `.env.staging` y cualquier otra variante con valores 
 Las variables de PostgreSQL, Redis y RabbitMQ son consumidas por Spring Boot y Docker Compose. La
 carga documental privada consume además:
 
-- `RESERLY_DOCUMENT_MAX_BYTES`;
+- `RESERLY_DOCUMENT_MAX_BYTES` y `RESERLY_DOCUMENT_REQUEST_MAX_BYTES`;
 - `RESERLY_DOCUMENT_ENCRYPTION_KEY_ID` y `RESERLY_DOCUMENT_ENCRYPTION_KEY_BASE64`;
 - `RESERLY_S3_ENDPOINT`, `RESERLY_S3_BUCKET`, `RESERLY_S3_ACCESS_KEY`,
   `RESERLY_S3_SECRET_KEY`, `RESERLY_S3_REGION` y `RESERLY_S3_CREATE_BUCKET`;

@@ -4,6 +4,84 @@
     "panelHomeAria": "Go to the panel overview",
     "name": "Reserly"
   },
+  "BusinessDocuments": {
+    "actions": {
+      "chooseFile": "Select file",
+      "goToAccess": "Go to venue access",
+      "removeFile": "Remove file",
+      "retry": "Try again",
+      "upload": "Send documentation",
+      "uploading": "Sending securely"
+    },
+    "documentTypes": {
+      "activityLicense": "Activity or opening licence",
+      "censusCertificate": "Tax registration certificate",
+      "censusRegistration": "Tax registration form 036/037",
+      "equivalentDocument": "Equivalent administrative document",
+      "other": "Other supporting document"
+    },
+    "errors": {
+      "api": {
+        "conflict": "This file has already been provided or the request has changed. Refresh the page before trying again.",
+        "forbidden": "This request no longer accepts the upload. Refresh the page to check its status.",
+        "invalid": "The server did not accept the file. Check its type, size and that the content is not damaged.",
+        "malware": "The security scan rejected the file. Create a clean copy from a trusted source.",
+        "rateLimited": "There have been too many attempts. Wait a few minutes before continuing.",
+        "unauthenticated": "Your session has expired. Sign in again to send the documentation.",
+        "unavailable": "We cannot process documents right now. The file has not been stored; try again later."
+      },
+      "file": {
+        "empty": "Select a file with content.",
+        "tooLarge": "The file exceeds the maximum allowed size.",
+        "unsupportedType": "Select a PDF, JPG or PNG file."
+      }
+    },
+    "form": {
+      "documentTypeHelper": "Choose the type that matches the file content.",
+      "documentTypeLabel": "Document type",
+      "fileConstraints": "PDF, JPG or PNG. Maximum size: {maxSize}.",
+      "fileLabel": "File",
+      "filePrompt": "Select a complete, readable copy",
+      "privacyNotice": "The document is encrypted and stored privately. Only authorised staff can access it during verification.",
+      "requestedAt": "Request created on {date}.",
+      "title": "Requested documentation"
+    },
+    "hero": {
+      "eyebrow": "BUSINESS VERIFICATION",
+      "reviewTime": "Reviews are usually completed within 5 business days. We will let you know if a correction is needed.",
+      "summary": "Provide one of the accepted documents so we can verify the business identity.",
+      "title": "Complete your business verification"
+    },
+    "loading": "Checking your verification status…",
+    "metadata": {
+      "description": "Private document upload for Reserly business verification.",
+      "title": "Verification documents"
+    },
+    "noRequest": {
+      "body": "You have no open document requests. If the verification changes, you will find the instructions here.",
+      "title": "We do not need additional documentation"
+    },
+    "reasons": {
+      "addressUnconfirmed": "We could not confirm the business address with the available source.",
+      "insufficientProviderData": "The source did not provide enough information to complete the check.",
+      "legalNameUnconfirmed": "We could not confirm the legal business name with the available source.",
+      "noAutomatedChannel": "There is no automated channel available to complete this check.",
+      "providerUnavailable": "The official service was unavailable or could not complete the query."
+    },
+    "request": {
+      "title": "We need a supporting document"
+    },
+    "status": {
+      "actionRequired": "Action required",
+      "noRequest": "No pending actions",
+      "pendingReview": "Pending review"
+    },
+    "success": {
+      "body": "The file has been received, scanned and stored privately. We will now review it against the business details.",
+      "title": "Documentation sent",
+      "uploadedAt": "Sent on {date}."
+    }
+  },
   "Common": {
     "noData": "No data"
   },

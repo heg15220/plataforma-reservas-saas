@@ -10,10 +10,10 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-06-30
-- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.18`.
-- Siguiente tarea pendiente recomendada: `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes.`
-- Observación: la Fase 1 continúa en `phase/1-identidad-roles-base-saas`. El registro empresarial ya dispone de contrato backend, controles de seguridad y pantalla pública responsive; el perfil comercial del local continúa reservado para la Fase 2.
+- Fecha de última actualización: 2026-07-01
+- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.19`.
+- Siguiente tarea pendiente recomendada: `1.20. Crear pantalla de acceso para locales.`
+- Observación: `1.19` conecta la solicitud documental con un portal privado, endpoints autenticados y el pipeline cifrado de `1.10`. La revisión administrativa continúa reservada para la Fase 14.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -2138,3 +2138,63 @@ Fuente de verdad del avance:
   - Evidencia focalizada: 13 tests nuevos correctos.
   - Evidencia integral: `npm run verify` correcto con 35 tests frontend y 166 backend, cero fallos;
     Flyway V1–V8, PostgreSQL/PostGIS, Redis, RabbitMQ y builds Next.js/Spring Boot correctos.
+
+## Conversación 47 - Portal privado de documentación empresarial
+
+- Fecha: 2026-07-01.
+- Resumen de la conversación:
+  - Se confirmó `1.19` como primera tarea pendiente y se detectó que el pipeline seguro de `1.10`
+    todavía no tenía una frontera HTTP consumible por una pantalla.
+  - Se añadieron consulta y carga multipart autenticadas bajo
+    `/api/venue/me/business-verification`, derivando cuenta y actor de la sesión.
+  - Se implementó `/panel/verificacion` con estados de carga, ausencia de solicitud, sesión
+    caducada, error recuperable, solicitud abierta, validación de archivo y confirmación.
+  - La interfaz muestra exclusivamente motivos y tipos cerrados devueltos por el backend; no recibe
+    NIF, razón social, dirección, check técnico, hash ni URL privada.
+  - Se configuraron límites multipart de 10 MiB por documento y 11 MiB por request.
+  - Se actualizaron diseño, arquitectura documental, configuración y catálogos ES/EN.
+- Archivos modificados:
+  - Nuevos paquetes backend `businessverification/controller`, `converter` y `dto`.
+  - Nuevos `BusinessVerificationDocumentPortalService` e implementación.
+  - `BusinessAccountDao`, `application.yaml` y plantillas de entorno.
+  - Nuevas pruebas de portal y controlador.
+  - `apps/web/src/app/panel/verificacion/page.tsx`.
+  - Nuevo feature `apps/web/src/features/business-documents`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - `docs/architecture/private-business-documents.md` y `docs/configuration.md`.
+- Requisitos impactados:
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-005 Usabilidad y responsive`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-007 Compatibilidad e internacionalización`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+- Tareas impactadas:
+  - `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes`.
+  - Prepara `1.20`, `1.21`, `1.22`, `14.6`, `14.8` y `16.3`.
+- Tareas completadas:
+  - `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes`.
+- Siguiente tarea pendiente recomendada:
+  - `1.20. Crear pantalla de acceso para locales`.
+- Decisiones o aclaraciones relevantes:
+  - `GET .../document-request` devuelve `204` si no existe solicitud abierta.
+  - `POST .../documents` no acepta `businessAccountId` ni `uploaderUserId`; ambos se derivan del
+    principal autenticado.
+  - Los errores documentales se reducen a códigos `DOCUMENT_*` sin mensajes de ClamAV, S3,
+    PostgreSQL o datos de propiedad.
+  - La prevalidación cliente de PDF/JPEG/PNG y 10 MiB es solo usabilidad; backend vuelve a validar
+    límite, MIME, magic bytes, ownership, tipo, antivirus y almacenamiento.
+  - No se añadió migración: V7 y V8 ya contienen solicitudes, metadatos, restricciones e índices.
+  - Evidencia frontend: 21 tests focalizados y 56 tests totales correctos; build incluye
+    `/panel/verificacion`.
+  - Evidencia backend: 13 tests documentales correctos, Checkstyle/Spotless correctos y JAR
+    generado.
+  - La suite Testcontainers no pudo abrir el pipe de Docker dentro del sandbox y la validación
+    visual con navegador no pudo iniciar procesos por límite operativo del entorno. No se
+    atribuyeron estos bloqueos al código ni se ocultaron; las pruebas nuevas no dependen de Docker.
+  - `git add` fue rechazado por el límite de uso del entorno. No se creó commit ni se ejecutó push;
+    los cambios permanecieron íntegros y se retomaron posteriormente para completar el cierre Git.

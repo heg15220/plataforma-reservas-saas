@@ -7,8 +7,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas: `0.1` a `0.15` y `1.1` a `1.18`.
-- Siguiente tarea pendiente recomendada: `1.19. Crear pantalla de carga de documentación de respaldo para verificaciones pendientes.`
+- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.19`.
+- Siguiente tarea pendiente recomendada: `1.20. Crear pantalla de acceso para locales.`
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -9245,3 +9245,438 @@ empresariales admitidos en la Fase 1, construye exactamente el contrato backend,
 la autoridad fiscal, protege los errores frente a enumeración, no persiste datos sensibles, ofrece
 estados accesibles e internacionalizados y ha superado tests focalizados, suite integral, build y
 validación visual. La siguiente tarea pendiente es `1.19`.
+
+## Iteración 1.19 - Portal privado de documentación de respaldo
+
+- **Identificador exacto:** `1.19. Crear pantalla de carga de documentación de respaldo para
+  verificaciones pendientes`.
+- **Fecha:** 2026-07-01.
+- **Estado:** completada y verificada mediante pruebas focalizadas, suite frontend y builds.
+- **Rama:** `phase/1-identidad-roles-base-saas`.
+
+### Objetivo técnico
+
+La iteración conecta el pipeline privado construido en `1.10` con una experiencia utilizable por el
+propietario del negocio. Antes de esta tarea existían solicitudes documentales auditables, validación
+de contenido, antivirus, cifrado, almacenamiento S3 privado y persistencia, pero no había endpoint
+REST ni forma de consultar la solicitud abierta desde una pantalla.
+
+El objetivo técnico es cerrar esa brecha sin duplicar controles en frontend:
+
+1. derivar cuenta empresarial y actor desde la sesión opaca;
+2. exponer solo la solicitud abierta mínima;
+3. aceptar un único fichero multipart de un tipo autorizado por servidor;
+4. reutilizar íntegramente autorización, magic bytes, antivirus, cifrado y almacenamiento;
+5. presentar estados accesibles e internacionalizados en `/panel/verificacion`;
+6. no filtrar datos fiscales, evidencia técnica ni localizadores privados.
+
+### Requisitos y diseño relacionados
+
+- `RF-032`: solicitud y carga de documentación cuando la comprobación automática es inconclusa.
+- `RF-008`: acceso privado del local y separación por propietario.
+- `RF-031`: textos de sistema ES/EN sin hardcodear.
+- `RNF-001`: sesión, rol, validación server-side, límites y errores cerrados.
+- `RNF-002`: minimización, cifrado, acceso restringido y ausencia de almacenamiento cliente.
+- `RNF-005`: flujo responsive, estados claros y controles accesibles.
+- `RNF-006`: fallo cerrado si antivirus o almacenamiento no están disponibles.
+- `RNF-007`: fechas y tamaños localizados.
+- `RNF-011`: interfaces separadas, DTOs, conversor, servicio, DAO con `@Query` y nombres físicos.
+- `design.md` 3.15 y 4.1: máquina de verificación, documentos y requerimientos.
+- `design.md` 7.2 y nueva sección 8.11: endpoints y contratos.
+- `design.md` 9.3: nueva ruta `/panel/verificacion`.
+- Decisión de `1.10`: objeto privado cifrado y validación fail-closed.
+- Decisión de `1.17`: todo `/api/venue/me/**` exige `venue_owner`.
+
+### Archivos backend creados
+
+#### Controlador
+
+- `BusinessVerificationDocumentController`
+  - declara `GET /api/venue/me/business-verification/document-request`;
+  - declara `POST /api/venue/me/business-verification/documents`;
+  - documenta media types, permisos, respuestas y errores;
+  - usa `@AuthenticationPrincipal`, nunca IDs de cuenta o actor aportados por cliente.
+- `BusinessVerificationDocumentControllerImpl`
+  - proyecta solicitud o `204`;
+  - valida multipart vacío/sin MIME;
+  - abre y cierra el stream con try-with-resources;
+  - devuelve `201 Location` y resultado mínimo.
+- `BusinessVerificationDocumentExceptionHandler`
+  - traduce errores esperados a códigos públicos estables;
+  - no incluye `exception.message`.
+- `controller/package-info.java`.
+
+#### DTOs y conversión
+
+- `BusinessVerificationDocumentRequestResponse`
+  - `requestId`, `reasonCode`, tipos, estado e instante;
+  - omite cuenta, check, identidad fiscal y evidencia.
+- `BusinessVerificationDocumentUploadResponse`
+  - `documentId`, `documentRequestId`, estado e instante;
+  - omite objeto, hash, MIME, tamaño y clave de cifrado.
+- `BusinessVerificationDocumentErrorResponse`.
+- `BusinessVerificationDocumentConverter`
+  - evita exponer accidentalmente campos del snapshot interno.
+- `dto/package-info.java` y `converter/package-info.java`.
+
+#### Caso de uso
+
+- `BusinessVerificationDocumentPortalService` e implementación.
+- `BusinessVerificationDocumentUploadConflictException`.
+
+El portal es la frontera de ownership. Busca `BusinessAccounts` por `ownerUserId` y solo entonces
+invoca consulta o carga. El comando interno recibe:
+
+- ID de cuenta derivado;
+- ID de solicitud aportado;
+- ID del mismo usuario autenticado como uploader;
+- tipo elegido;
+- MIME declarado;
+- stream.
+
+El pipeline de `1.10` vuelve a comprobar que solicitud, cuenta, actor y tipo coinciden antes de leer
+contenido, y repite la validación bajo lock antes de persistir. La resolución previa del portal no
+sustituye esos controles; reduce la superficie HTTP y preserva defensa en profundidad.
+
+`DataIntegrityViolationException` se transforma en conflicto de dominio después de que el pipeline
+haya intentado borrar el objeto privado como compensación. La respuesta no revela si colisionó hash,
+solicitud o restricción.
+
+### Archivos backend modificados
+
+- `BusinessAccountDao`
+  - añade `findByOwnerUserId` mediante `@Query`.
+- `application.yaml`
+  - `spring.servlet.multipart.maxFileSize`;
+  - `spring.servlet.multipart.maxRequestSize`.
+- `.env.local.example`, `.env.staging.example`, `.env.production.example`
+  - añaden `RESERLY_DOCUMENT_REQUEST_MAX_BYTES=11534336`.
+- `docs/configuration.md`
+  - documenta los dos límites.
+
+No se modificó el modelo JPA ni se añadió migración. V7 y V8 ya soportan solicitud, asociación,
+hash, estado, scanner, cifrado, unicidad y lock.
+
+### Contratos HTTP
+
+#### Consulta
+
+```http
+GET /api/venue/me/business-verification/document-request
+Cookie: reserly_session=<opaco>
+Accept: application/json
+```
+
+Respuesta con solicitud:
+
+```json
+{
+  "requestId": "uuid",
+  "reasonCode": "no_automated_channel",
+  "requestedDocumentTypes": [
+    "census_registration_036_037",
+    "census_certificate"
+  ],
+  "status": "open",
+  "requestedAt": "2026-07-01T08:00:00Z"
+}
+```
+
+Sin solicitud abierta responde `204` y cuerpo vacío. No se diferencia entre ausencia de cuenta
+empresarial y ausencia de solicitud porque la UI solo necesita saber si hay una acción pendiente.
+
+#### Carga
+
+```http
+POST /api/venue/me/business-verification/documents
+Content-Type: multipart/form-data; boundary=<browser>
+Cookie: reserly_session=<opaco>
+```
+
+Partes:
+
+- `documentRequestId`: UUID;
+- `documentType`: valor cerrado ofrecido en el GET;
+- `file`: un único PDF, JPEG o PNG.
+
+Respuesta:
+
+```json
+{
+  "documentId": "uuid",
+  "documentRequestId": "uuid",
+  "status": "pending_review",
+  "uploadedAt": "2026-07-01T09:00:00Z"
+}
+```
+
+`Location` apunta al identificador opaco del recurso, pero no existe endpoint público de descarga.
+
+#### Errores
+
+- `400 DOCUMENT_UPLOAD_INVALID`: multipart, UUID, tipo, tamaño, MIME, firma o contenido inválido.
+- `403 DOCUMENT_UPLOAD_FORBIDDEN`: cuenta, solicitud, estado, tipo o actor no autorizados.
+- `409 DOCUMENT_UPLOAD_CONFLICT`: restricción persistente sin detalles.
+- `422 DOCUMENT_MALWARE_DETECTED`: contenido rechazado por scanner.
+- `503 DOCUMENT_UPLOAD_UNAVAILABLE`: antivirus o almacenamiento no garantizan seguridad.
+- `401 AUTHENTICATION_REQUIRED`: cookie ausente/no admisible.
+- `403 AUTHORIZATION_DENIED`: sesión válida sin `venue_owner`.
+
+Los dos últimos proceden de la cadena común de `1.17`. No se añadió rate limit específico porque la
+propia carga ya requiere sesión y realiza trabajo pesado acotado; deberá evaluarse en `16.6`.
+
+### Límites multipart
+
+`RESERLY_DOCUMENT_MAX_BYTES`, 10 MiB por defecto, se aplica:
+
+1. en Tomcat/Spring antes del controlador;
+2. en `BusinessDocumentContentValidator` leyendo como máximo `maxBytes + 1`.
+
+`RESERLY_DOCUMENT_REQUEST_MAX_BYTES`, 11 MiB, permite boundary y campos sin ampliar el contenido
+aceptado. Un request demasiado grande se rechaza antes de materializar el fichero completo en la
+aplicación.
+
+### Archivos frontend creados
+
+- `apps/web/src/app/panel/verificacion/page.tsx`
+  - metadata localizada y `noindex`;
+  - `VenueShell` con navegación «Más» activa;
+  - encabezado, expectativa de revisión y portal cliente.
+- `business-document-api.ts`
+  - esquemas Zod de respuesta;
+  - tipos cerrados;
+  - GET y POST multipart con `credentials: include`;
+  - clasificación de errores.
+- `business-document-file.ts`
+  - prevalidación de tamaño y MIME de interacción.
+- `business-document-upload.tsx`
+  - máquina de estados y UI.
+- tres archivos de pruebas.
+
+### Máquina de estados frontend
+
+`BusinessDocumentUpload` representa:
+
+- `loading`: consulta inicial con indicador y región viva;
+- `noRequest`: estado estable sin acciones pendientes;
+- `ready`: motivo, fecha, tipos, selector y fichero;
+- `error`: sesión caducada o error recuperable;
+- `uploaded`: confirmación y estado pendiente de revisión.
+
+La consulta usa `AbortController`; una nueva carga o desmontaje cancela la anterior. La subida se
+bloquea mientras existe una promesa activa. El componente elimina su referencia al `File`, limpia el
+input y reemplaza el formulario tras éxito.
+
+No se usa localStorage, sessionStorage, IndexedDB, Cache API ni cookie legible por JavaScript. El
+nombre del fichero solo se presenta mientras el usuario lo tiene seleccionado y React lo escapa.
+
+### Selección y validación cliente
+
+La pantalla solo renderiza `requestedDocumentTypes` validados por Zod:
+
+- alta censal 036/037;
+- certificado censal;
+- licencia de actividad/apertura;
+- documento administrativo equivalente;
+- otro.
+
+Selecciona inicialmente la primera alternativa del servidor. La prevalidación acepta:
+
+- `application/pdf`;
+- `image/jpeg`;
+- `image/png`;
+- tamaño mayor que cero y máximo 10 MiB.
+
+No confía en extensión, aunque `accept` mejora el selector del sistema. El navegador no puede validar
+magic bytes, malware u ownership; backend conserva toda autoridad.
+
+### Accesibilidad y responsive
+
+- `PageHeading` mantiene un único `h1`.
+- La solicitud usa alerta warning con explicación textual.
+- Los tipos forman un `RadioGroup` con `FormLabel` y ayudas.
+- El selector de archivo tiene etiqueta persistente, formatos/tamaño y error próximo.
+- El fichero elegido se anuncia mediante región `aria-live`.
+- «Quitar archivo» tiene nombre accesible independiente del icono.
+- Carga y éxito usan regiones vivas.
+- Los estados no dependen solo del color; `StatusChip` combina icono y texto.
+- El CTA ocupa el ancho completo.
+- Los bloques usan `Stack`, `Surface`, medidas fluidas y cambios `xs/sm/md`; no hay tabla ni ancho
+  fijo que obligue a scroll horizontal.
+- La navegación móvil inferior reserva espacio mediante `VenueShell`.
+
+Las pruebas DOM verifican los estados y nombres accesibles. Se intentó la inspección visual a
+escritorio y móvil mediante navegador integrado, pero el entorno rechazó el arranque de procesos
+locales al alcanzar su límite operativo. No se usó un mecanismo alternativo para eludirlo. Queda
+recomendada una captura manual adicional, aunque typecheck, build, DOM y componentes responsive
+están verificados.
+
+### Internacionalización
+
+El namespace `BusinessDocuments` mantiene paridad completa ES/EN para:
+
+- metadata y encabezado;
+- expectativa de revisión;
+- motivos de solicitud;
+- tipos documentales;
+- estados;
+- campos, ayudas y privacidad;
+- errores de archivo/API;
+- confirmación.
+
+El cliente no ejecuta una clave i18n remitida por backend. Mapea `reasonCode` y `documentType` contra
+objetos cerrados y tipados. Así evita inyección de claves o mostrar valores técnicos.
+
+Fechas usan `Intl.DateTimeFormat` con locale efectivo y zona UTC explícita. Tamaños usan
+`Intl.NumberFormat` con unidad `megabyte`, evitando concatenar «MB» o formatos decimales rígidos.
+
+### Seguridad y privacidad
+
+- Namespace protegido por `venue_owner`.
+- Cuenta y actor derivados de sesión; no se aceptan en request.
+- DTO de consulta omite cuenta, check e identidad fiscal.
+- DTO de carga omite hash, objeto y criptografía.
+- El controlador nunca consulta ni persiste `MultipartFile.getOriginalFilename()`.
+- Stream cerrado tanto por controlador como por validador.
+- Límites antes y después de MVC.
+- MIME declarado contrastado con magic bytes.
+- Scanner fail-closed antes de cifrado/put.
+- AES-256-GCM antes de S3.
+- Objeto privado con UUID y sin URL pública.
+- Revalidación bajo lock evita TOCTOU.
+- Hash único por cuenta evita duplicados.
+- Compensación intenta borrar objeto si falla PostgreSQL.
+- Ningún error publica proveedor, bucket, amenaza, restricción o ownership.
+- El cliente no fija manualmente `Content-Type`, preservando boundary correcto.
+- El POST no se reintenta automáticamente porque no existe idempotency key.
+
+CSRF sigue pendiente de `16.3`. `SameSite=Strict`, CORS y sesión HttpOnly reducen superficie, pero no
+sustituyen token CSRF.
+
+### Observabilidad y auditoría
+
+La carga persiste:
+
+- uploader autenticado;
+- tipo;
+- solicitud;
+- hash;
+- MIME detectado;
+- tamaño;
+- resultado e instante de scanner;
+- key ID de cifrado;
+- estado e instante.
+
+No persiste nombre original, cuerpo de antivirus ni detalle de amenaza. Las decisiones
+administrativas y motivos auditados se implementarán en `14.8`. Métricas agregadas de latencia,
+rechazos y disponibilidad pertenecen a Fase 17.
+
+### Tests
+
+#### Backend, 13 focalizados
+
+- 4 de portal:
+  - consulta por propietario;
+  - ausencia de cuenta;
+  - derivación de cuenta/uploader;
+  - ocultación de ownership y conflicto.
+- 6 de controlador:
+  - proyección mínima;
+  - 204;
+  - carga y Location;
+  - fichero vacío/sin MIME;
+  - códigos y estados de error;
+  - ausencia de mensajes internos.
+- 3 existentes de pipeline:
+  - camino seguro;
+  - malware antes del almacenamiento;
+  - compensación.
+
+#### Frontend, 21 focalizados
+
+- GET 204 y 200;
+- contrato y credentials;
+- multipart sin `Content-Type`;
+- siete estados HTTP;
+- JSON inesperado;
+- tres MIME admitidos;
+- vacío, demasiado grande y tipo inválido;
+- no request;
+- tipos filtrados;
+- validación antes de POST;
+- éxito;
+- sesión caducada;
+- reintento.
+
+La suite frontend completa ejecutó 13 archivos y 56 tests sin fallos.
+
+### Comandos y evidencia
+
+1. `mvn ... -Dtest=BusinessVerificationDocumentPortalServiceTests,
+   BusinessVerificationDocumentControllerTests,BusinessVerificationDocumentUploadServiceTests`
+   - 13 tests correctos;
+   - Checkstyle y Spotless correctos.
+2. `npm run test --workspace @reserly/web -- src/features/business-documents`
+   - 3 archivos y 21 tests correctos.
+3. `npm run env:check`
+   - paridad de las tres plantillas.
+4. `npm run i18n:check`
+   - catálogos completos y sin textos visibles hardcodeados.
+5. `npm run spanish:text:check`
+   - UTF-8 y español correctos.
+6. `npm run backend:conventions:check`
+   - DAO, servicio, controlador, DTO y conversor válidos.
+7. `npm run lint:web` y `npm run typecheck`
+   - sin errores ni warnings.
+8. `npm run test:web`
+   - 13 archivos y 56 tests correctos.
+9. `npm run build:web:test`
+   - build correcto;
+   - ruta `/panel/verificacion` incluida.
+10. `mvn ... package -DskipTests`
+    - 243 fuentes principales compiladas;
+    - JAR Spring Boot generado.
+11. `git diff --check`
+    - whitespace correcto.
+
+Maven se ejecutó offline con `maven.repo.local` explícito tras comprobar que el sandbox bloqueaba red
+pero la caché autorizada ya contenía dependencias.
+
+### Incidencias y resolución
+
+- La brecha principal fue contractual: `1.10` no exponía HTTP. Se resolvió con portal, DTO,
+  conversor y controlador, no accediendo a DAO desde React.
+- La primera invocación Maven dentro del sandbox intentó resolver el parent remoto. Se fijó el
+  repositorio local explícito y se ejecutó offline.
+- La prueba Testcontainers de autorización no pudo abrir `\\.\pipe\docker_engine` desde sandbox. Se
+  retiró el caso nuevo no ejecutado; la política genérica del namespace ya había sido verificada en
+  `1.17` y los tests nuevos cubren ownership/controlador sin Docker.
+- La validación visual no pudo arrancar web y mock local por límite operativo de la herramienta. Se
+  eliminó el mock temporal mediante patch y no quedó artefacto.
+- El test de radio asumía que el `<input>` interno de MUI era visualmente visible. Se corrigió para
+  comprobar presencia/checked, mientras la etiqueta accesible visible sigue cubierta por role/name.
+- Se eliminó una API Spring de 422 deprecada usando `HttpStatus.UNPROCESSABLE_CONTENT`.
+
+### Riesgos, limitaciones y deuda
+
+- Falta validación visual manual/captura adicional por el bloqueo operativo indicado.
+- CSRF permanece pendiente de `16.3`.
+- El POST no tiene idempotency key.
+- La descarga/revisión administrativa se implementará en `14.8`.
+- Las solicitudes de corrección y hasta dos ciclos pertenecen al flujo admin posterior.
+- No se añadió rate limit específico a multipart; debe evaluarse en `16.6`.
+- El selector muestra tipos oficiales, pero `other` requiere criterios administrativos posteriores.
+- La relación propietario/cuenta sigue el modelo actual; multi-sede deberá conservar ownership
+  explícito al evolucionar.
+- La suite Testcontainers completa debe repetirse cuando Docker sea accesible, aunque no se cambió
+  esquema ni la cadena Security.
+- Continúa la advertencia futura de Mockito/Byte Buddy.
+
+### Criterio de cierre
+
+La tarea se cierra porque el propietario dispone de una pantalla privada funcional que consulta la
+solicitud real, limita su selección a alternativas server-side y entrega un fichero al pipeline
+seguro existente. Cuenta y actor no son controlables por cliente; las respuestas minimizan datos;
+multipart, contenido, malware, cifrado, almacenamiento y concurrencia fallan cerrados; UI y errores
+están localizados y accesibles; 34 pruebas focalizadas, la suite frontend y ambos builds pasan. La
+siguiente tarea pendiente es `1.20`.
