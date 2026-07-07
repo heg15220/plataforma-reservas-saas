@@ -13011,3 +13011,279 @@ críticas que podrían afectar datos de otro local. La suite focalizada demuestr
 puede leer, actualizar, archivar, subir imagen principal, listar/reordenar/subir galería ni borrar
 imágenes ajenas mediante los servicios actuales, y que los intentos fallidos no dejan efectos
 secundarios en base de datos ni almacenamiento.
+
+## Iteración 2.13 - Tests de bloqueo de publicación por verificación empresarial pendiente o rechazada
+
+### Identificador de tarea
+
+`2.13. Crear tests de bloqueo de publicación por verificación empresarial pendiente o rechazada`.
+
+### Fecha
+
+2026-07-07.
+
+### Objetivo técnico
+
+El objetivo de esta iteración es reforzar con tests automatizados la barrera de publicación definida
+por `RB-012`: un local no puede pasar a estado `published` si su cuenta empresarial no está
+aprobada, incluso cuando el perfil del local cumple todos los requisitos editoriales de Fase 2.
+
+La tarea se ha implementado como ampliación de cobertura, no como cambio funcional. El código
+productivo ya concentraba la decisión en `VenuePublicationEligibilityPolicy` y en
+`VenuePublicationServiceImpl`; la iteración demuestra de forma explícita que los estados
+`pending_remote_check`, `pending_review` y `rejected` producen el requisito cerrado
+`BUSINESS_VERIFICATION_NOT_APPROVED` y no alteran el estado persistido del local.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-004 Ficha pública del local`: solo locales publicados deben alimentar la ficha pública.
+- `RF-009 Gestión de perfil público`: el propietario puede completar el perfil, pero completar datos
+  no equivale a publicarlo.
+- `RF-032 Verificación empresarial para publicación de locales`: la verificación empresarial
+  aprobada o la revisión manual aprobada son condición previa para publicar.
+- `RNF-001 Seguridad`: la publicación no depende del frontend ni de un campo enviado por cliente.
+- `RNF-002 Privacidad`: el rechazo de publicación usa motivos cerrados y no expone identificadores
+  fiscales, proveedor ni evidencia de verificación.
+- `RNF-008 Calidad y mantenibilidad`: los estados críticos de verificación quedan cubiertos por
+  tests unitarios e integración.
+- `RNF-010 Verificación empresarial remota`: los estados remotos pendientes o rechazados no degradan
+  a aprobación automática.
+- `RNF-011 Convenciones de nomenclatura`: se mantienen servicios, DAOs y tests Java con las
+  convenciones del proyecto.
+
+Decisión documentada: en esta tarea "pendiente" se interpreta de forma amplia para cubrir tanto
+`pending_remote_check` como `pending_review`. La primera representa una comprobación remota activa;
+la segunda representa revisión administrativa pendiente o inconclusa. Ambas bloquean publicación si
+no existe `manualReviewStatus = approved`.
+
+### Archivos modificados
+
+- `apps/api/src/test/java/com/reserly/platform/businessverification/service/VenuePublicationEligibilityPolicyTests.java`
+  - Añadida prueba parametrizada para estados empresariales pendientes y rechazados sin aprobación
+    manual.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueProfileServiceIntegrationTests.java`
+  - Añadida prueba parametrizada de integración para publicación bloqueada con perfil completo.
+  - Añadidos helpers de fixture para verificar email, fijar estado empresarial respetando constraints
+    y crear perfiles publicables con imagen principal.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - Marcada la tarea `2.13` como completada.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - Añadido el registro histórico de la conversación 63.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+  - Añadida esta entrada técnica de cierre.
+
+No se han modificado servicios productivos, controladores, DTOs, entidades, migraciones ni
+componentes frontend.
+
+### Arquitectura aplicada y razones técnicas
+
+La cobertura se reparte en dos capas:
+
+1. Política pura de elegibilidad empresarial:
+   - `VenuePublicationEligibilityPolicyTests` evalúa la política sin Spring ni base de datos.
+   - Permite comprobar de forma rápida que cada estado no aprobatorio genera exactamente
+     `VenuePublicationBlocker.BUSINESS_VERIFICATION_NOT_APPROVED`.
+   - Mantiene explícita la excepción de negocio: `pending_review` puede ser publicable solo cuando
+     hay revisión manual aprobada, comportamiento ya cubierto por el test existente
+     `allowsApprovedManualReviewAsAlternativeToRemoteVerification`.
+
+2. Integración real de publicación:
+   - `VenueProfileServiceIntegrationTests` crea usuarios, cuenta empresarial y perfil en PostgreSQL
+     Testcontainers usando las migraciones reales.
+   - La prueba completa el perfil con descripción ES/EN, categoría activa, contacto, dirección,
+     coordenadas e imagen principal para aislar el bloqueo empresarial.
+   - Después de intentar publicar, valida que la excepción contiene solo
+     `BUSINESS_VERIFICATION_NOT_APPROVED`, que el local sigue en `draft` y que `publishedAt` permanece
+     nulo.
+
+Esta combinación evita un falso positivo importante: un test unitario con mocks podría demostrar que
+un blocker se mapea, pero no que el fixture de base de datos y las constraints reales de
+verificación empresarial son compatibles con los estados pendientes.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No se añaden migraciones ni se cambia el modelo. Los tests usan las tablas existentes:
+
+- `Users`
+  - `emailVerifiedAt` se fija para garantizar que el email no sea el motivo del bloqueo.
+  - `status` se mantiene `active`.
+- `BusinessAccounts`
+  - `businessVerificationStatus` se parametriza con `pending_remote_check`, `pending_review` y
+    `rejected`.
+  - `businessVerifiedAt` y `businessVerificationExpiresAt` se dejan nulos para estados no
+    aprobados.
+  - `manualReviewStatus`, `manualReviewedByUserId` y `manualReviewedAt` se limpian para impedir una
+    aprobación manual implícita.
+  - `activeVerificationRequestId` se genera únicamente para `pending_remote_check`, respetando el
+    constraint `ckBusinessAccountsActiveVerification`.
+- `Venues`
+  - El perfil empieza en `draft`.
+  - Se inyecta metadata de imagen principal segura para no mezclar el caso con
+    `MAIN_IMAGE_MISSING`.
+  - Tras el rechazo se verifica que `status = draft` y `publishedAt IS NULL`.
+
+La iteración detectó durante verificación que `pending_remote_check` no puede persistirse sin
+`activeVerificationRequestId`; el fixture fue corregido para seguir la máquina de estados real en
+lugar de relajar constraints.
+
+### Endpoints, contratos, servicios y módulos cubiertos
+
+No se añaden endpoints ni contratos nuevos. La cobertura protege los servicios que ya sustentan
+`POST /api/venue/me/publish`:
+
+- `VenuePublicationEligibilityPolicy`
+  - Traduce el estado empresarial, email verificado, tipo de cuenta e identificador normalizado a
+    blockers cerrados no sensibles.
+- `VenuePublicationServiceImpl`
+  - Bloquea el perfil vigente del propietario.
+  - Evalúa elegibilidad empresarial por `businessAccountId`.
+  - Valida completitud del perfil.
+  - Lanza `VenuePublicationRejectedException` si quedan requisitos pendientes.
+  - Solo cambia a `published` cuando no hay requisitos.
+- `VenuePublicationEligibilityService`
+  - Sigue cubierto por la suite focalizada para asegurar integración con la proyección de
+    `BusinessAccounts`.
+
+### Flujos de ejecución relevantes
+
+#### Política de elegibilidad
+
+1. Se construye un `VenuePublicationEligibilityContext` con:
+   - `AccountType.VENUE_BUSINESS`.
+   - `emailVerifiedAt` presente.
+   - Identificador fiscal normalizado presente.
+   - Estado empresarial parametrizado: `pending_remote_check`, `pending_review` o `rejected`.
+   - Sin fecha de caducidad de verificación aprobada.
+   - Sin revisión manual aprobada.
+2. La política evalúa el contexto en un instante fijo.
+3. El resultado no permite publicar.
+4. El conjunto de blockers contiene exactamente
+   `BUSINESS_VERIFICATION_NOT_APPROVED`.
+
+#### Publicación con perfil completo pero negocio no aprobado
+
+1. Se crea un propietario de local y su cuenta empresarial.
+2. Se marca el email como verificado para eliminar `EMAIL_NOT_VERIFIED` del caso.
+3. Se configura el estado empresarial pendiente o rechazado respetando constraints de la tabla.
+4. Se crea un perfil que sí cumple los mínimos públicos:
+   - Categoría activa.
+   - Descripción localizada ES/EN.
+   - Dirección, ciudad, país, código postal y coordenadas.
+   - Imagen principal con URL pública y metadata técnica.
+5. Se limpia el contexto JPA para forzar lectura desde base de datos.
+6. `venuePublicationService.publish(ownerUserId)` falla con
+   `VenuePublicationRejectedException`.
+7. La prueba confirma que el único requisito pendiente es
+   `BUSINESS_VERIFICATION_NOT_APPROVED`.
+8. Se verifica por SQL que el local sigue en `draft` y no tiene `publishedAt`.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- La prueba de integración deja satisfechas las validaciones editoriales para aislar el bloqueo
+  empresarial.
+- La política valida que los estados no aprobatorios no se tratan como equivalentes a `verified`.
+- `pending_remote_check` se modela con `activeVerificationRequestId` para respetar la invariantes de
+  correlación de respuestas remotas.
+
+Permisos y seguridad:
+
+- La publicación sigue tomando `ownerUserId` desde el servicio privado y no acepta estado desde el
+  cliente.
+- El requisito devuelto es cerrado y no sensible: `BUSINESS_VERIFICATION_NOT_APPROVED`.
+- No se exponen identificador fiscal, proveedor, referencia remota, estado exacto interno ni
+  evidencia documental al rechazar.
+
+Privacidad:
+
+- Los tests comprueban el contrato de no exposición indirecta: el error no incluye datos fiscales ni
+  empresariales.
+- El local queda sin publicar y, por diseño de ficha pública, no podrá ser leído por
+  `/api/public/venues/{slug}` mientras permanezca en `draft`.
+
+Internacionalización:
+
+- La prueba de integración usa descripción ES/EN para garantizar que el bloqueo no se debe a falta
+  de traducciones.
+- No se modifican catálogos ni resolución de idioma.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+La estrategia de error cubierta es:
+
+- `VenuePublicationRejectedException` cuando el perfil no puede publicarse por requisitos pendientes.
+- Requisito cerrado `VenuePublicationRequirement.BUSINESS_VERIFICATION_NOT_APPROVED` para estados
+  empresariales no aprobados.
+- Ausencia de mutación persistida tras error: `status` continúa en `draft` y `publishedAt` continúa
+  nulo.
+
+No se añaden logs, métricas ni auditoría nueva. La auditoría administrativa de verificaciones queda
+fuera de esta tarea y permanece en el módulo de verificación empresarial.
+
+### Tests añadidos o modificados
+
+`VenuePublicationEligibilityPolicyTests`:
+
+- `blocksPendingOrRejectedBusinessVerificationWithoutManualApproval`
+  - Parametriza `PENDING_REMOTE_CHECK`, `PENDING_REVIEW` y `REJECTED`.
+  - Verifica que todos producen exactamente
+    `VenuePublicationBlocker.BUSINESS_VERIFICATION_NOT_APPROVED`.
+
+`VenueProfileServiceIntegrationTests`:
+
+- `blocksPublishingACompleteProfileWhenBusinessVerificationIsPendingOrRejected`
+  - Parametriza `pending_remote_check`, `pending_review` y `rejected`.
+  - Crea un perfil completamente publicable desde el punto de vista editorial.
+  - Verifica que el publish falla por `BUSINESS_VERIFICATION_NOT_APPROVED`.
+  - Verifica que no se cambia `status` ni `publishedAt`.
+
+Además:
+
+- Se extrajo `markEmailVerified` para configurar la precondición de email verificado.
+- Se añadió `markBusinessVerificationStatus` para fijar estados empresariales respetando
+  `ckBusinessAccountsActiveVerification`.
+- Se añadió `createPublishableVenue` para crear perfiles completos con imagen principal en tests de
+  publicación.
+
+### Comandos usados para verificación
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicationEligibilityPolicyTests,VenuePublicationEligibilityServiceIntegrationTests,VenueProfileServiceIntegrationTests,VenuePublicationServiceTests" test
+```
+
+Resultado final:
+
+- Spotless Java: correcto, 0 archivos pendientes de formato.
+- Checkstyle Java: correcto, 0 violaciones.
+- `VenuePublicationEligibilityPolicyTests`: 7 tests, 0 fallos, 0 errores.
+- `VenuePublicationEligibilityServiceIntegrationTests`: 3 tests, 0 fallos, 0 errores.
+- `VenueProfileServiceIntegrationTests`: 8 tests, 0 fallos, 0 errores.
+- `VenuePublicationServiceTests`: 3 tests, 0 fallos, 0 errores.
+- Total: 21 tests, 0 fallos, 0 errores.
+- Build Maven: `BUILD SUCCESS`.
+
+Incidencia corregida durante la iteración:
+
+- La primera ejecución funcional falló al persistir `pending_remote_check` sin
+  `activeVerificationRequestId`, violando `ckBusinessAccountsActiveVerification`.
+- Se corrigió el fixture para generar un request activo solo en ese estado, alineando la prueba con
+  la máquina de estados real.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La tarea no añade test de controlador específico para `POST /api/venue/me/publish`, porque el
+  mapeo de la excepción a respuesta ya está cubierto y el objetivo era probar estados empresariales.
+- Cuando existan decisiones administrativas completas en el panel admin, convendrá añadir tests de
+  transición manual `approved`/`rejected` desde el flujo de administración.
+- La futura migración de pestañas personalizadas debe conservar el mismo principio: ningún contenido
+  adicional debe exponerse públicamente si el local no está publicado.
+- Persisten advertencias de Mockito sobre carga dinámica de agente en JDK futuro; son deuda
+  transversal de infraestructura de tests.
+
+### Criterio de cierre
+
+La tarea se cierra porque existen tests unitarios e integración que prueban explícitamente que los
+estados empresariales pendientes o rechazados bloquean la publicación de un perfil completo. La
+suite verifica que el error es cerrado y no sensible, que las constraints reales de base de datos se
+respetan y que no queda mutación parcial de publicación tras el rechazo.

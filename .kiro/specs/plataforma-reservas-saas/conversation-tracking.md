@@ -2959,3 +2959,52 @@ Fuente de verdad del avance:
     persistencia cuando no hay local editable para el propietario autenticado.
   - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=VenueProfileServiceIntegrationTests,VenueMainImageServiceTests,VenueGalleryServiceTests" test`
     correcto con 13 tests, 0 fallos, Spotless y Checkstyle correctos dentro del ciclo Maven.
+
+## Conversación 63 - Tests de bloqueo de publicación por verificación empresarial
+
+- Fecha: 2026-07-07.
+- Resumen de la conversación:
+  - Se confirmó `2.13` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica.
+  - Se añadió cobertura unitaria directa en la política de elegibilidad para demostrar que
+    `pending_remote_check`, `pending_review` y `rejected` bloquean la publicación cuando no existe
+    revisión manual aprobada.
+  - Se añadió cobertura de integración en `VenueProfileServiceIntegrationTests` para demostrar que
+    un perfil editorialmente completo, con email verificado, imagen principal, descripción ES/EN,
+    dirección y coordenadas, permanece en `draft` si la verificación empresarial está pendiente o
+    rechazada.
+  - Se ajustaron fixtures de integración para respetar el constraint real de
+    `pending_remote_check`: ese estado exige `activeVerificationRequestId`.
+  - No se modificaron servicios productivos, contratos REST, migraciones ni modelos; la iteración
+    refuerza la red de regresión sobre la barrera de publicación existente.
+- Archivos modificados:
+  - `apps/api/src/test/java/com/reserly/platform/businessverification/service/VenuePublicationEligibilityPolicyTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenueProfileServiceIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-032 Verificación empresarial para publicación de locales`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-010 Verificación empresarial remota`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.13. Crear tests de bloqueo de publicación por verificación empresarial pendiente o rechazada`.
+  - Prepara `2.14`, porque las futuras pestañas personalizadas deben respetar la misma barrera antes
+    de exposición pública.
+- Tareas completadas:
+  - `2.13. Crear tests de bloqueo de publicación por verificación empresarial pendiente o rechazada`.
+- Siguiente tarea pendiente recomendada:
+  - `2.14. Crear migración de venue_custom_tabs con orden, estado activo, contenido seguro y campos localizados`.
+- Decisiones o aclaraciones relevantes:
+  - Se interpreta "pendiente" en sentido amplio: `pending_remote_check` y `pending_review` deben
+    bloquear publicación salvo aprobación manual explícita.
+  - `rejected` también queda cubierto como estado no aprobatorio definitivo.
+  - El error público sigue siendo `VENUE_PUBLICATION_REJECTED` con requisito cerrado
+    `BUSINESS_VERIFICATION_NOT_APPROVED`; no se exponen proveedor, identificador fiscal ni evidencia.
+  - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicationEligibilityPolicyTests,VenuePublicationEligibilityServiceIntegrationTests,VenueProfileServiceIntegrationTests,VenuePublicationServiceTests" test`
+    correcto con 21 tests, 0 fallos, Spotless y Checkstyle correctos dentro del ciclo Maven.

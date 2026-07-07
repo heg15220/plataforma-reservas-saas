@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.reserly.platform.identity.AccountType;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class VenuePublicationEligibilityPolicyTests {
 
@@ -44,6 +46,25 @@ class VenuePublicationEligibilityPolicyTests {
             NOW);
 
     assertThat(decision.allowed()).isTrue();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PENDING_REMOTE_CHECK", "PENDING_REVIEW", "REJECTED"})
+  void blocksPendingOrRejectedBusinessVerificationWithoutManualApproval(String statusName) {
+    VenuePublicationEligibility decision =
+        policy.evaluate(
+            context(
+                AccountType.VENUE_BUSINESS,
+                EMAIL_VERIFIED_AT,
+                "B12345678",
+                BusinessVerificationStatus.valueOf(statusName),
+                null,
+                null),
+            NOW);
+
+    assertThat(decision.allowed()).isFalse();
+    assertThat(decision.blockers())
+        .containsExactly(VenuePublicationBlocker.BUSINESS_VERIFICATION_NOT_APPROVED);
   }
 
   @Test

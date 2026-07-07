@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -235,25 +237,9 @@ class VenueProfileServiceIntegrationTests {
   void publishesACompleteProfileWithVerifiedEmailAndBusinessApproval() {
     UUID ownerUserId = createVenueOwner("profile-publish");
     Instant approvalTime = Instant.now().minusSeconds(60);
-    jdbcTemplate.update(
-        """
-        UPDATE "Users"
-        SET "emailVerifiedAt" = ?, "status" = 'active'
-        WHERE "id" = ?
-        """,
-        java.sql.Timestamp.from(approvalTime),
-        ownerUserId);
-    jdbcTemplate.update(
-        """
-        UPDATE "BusinessAccounts"
-        SET "businessVerificationStatus" = 'verified',
-            "businessVerifiedAt" = ?,
-            "businessVerificationExpiresAt" = ?
-        WHERE "ownerUserId" = ?
-        """,
-        java.sql.Timestamp.from(approvalTime),
-        java.sql.Timestamp.from(approvalTime.plusSeconds(86_400)),
-        ownerUserId);
+    markEmailVerified(ownerUserId, approvalTime);
+    markBusinessVerificationStatus(
+        ownerUserId, "verified", approvalTime, approvalTime.plusSeconds(86_400));
     VenueProfileCommand command =
         new VenueProfileCommand(
             "Local publicable",
@@ -306,6 +292,52 @@ class VenueProfileServiceIntegrationTests {
         .isEqualTo("published");
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"pending_remote_check", "pending_review", "rejected"})
+  void blocksPublishingACompleteProfileWhenBusinessVerificationIsPendingOrRejected(
+      String businessVerificationStatus) {
+    UUID ownerUserId = createVenueOwner("profile-publish-blocked-" + businessVerificationStatus);
+    Instant verificationTime = Instant.now().minusSeconds(60);
+    markEmailVerified(ownerUserId, verificationTime);
+    markBusinessVerificationStatus(ownerUserId, businessVerificationStatus, null, null);
+    VenueEntity venue =
+        createPublishableVenue(ownerUserId, "Local bloqueado " + businessVerificationStatus);
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThatThrownBy(() -> venuePublicationService.publish(ownerUserId))
+        .isInstanceOfSatisfying(
+            VenuePublicationRejectedException.class,
+            exception ->
+                assertThat(exception.getRequirements())
+                    .containsExactly(
+                        VenuePublicationRequirement.BUSINESS_VERIFICATION_NOT_APPROVED));
+
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT "status"
+                FROM "Venues"
+                WHERE "id" = ?
+                """,
+                String.class,
+                venue.getId()))
+        .isEqualTo("draft");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT "publishedAt"
+                FROM "Venues"
+                WHERE "id" = ?
+                """,
+                Instant.class,
+                venue.getId()))
+        .isNull();
+  }
+
   private VenueProfileCommand initialCommand() {
     return new VenueProfileCommand(
         "  Café Central  ",
@@ -356,6 +388,76 @@ class VenueProfileServiceIntegrationTests {
       String sourceLocale, String spanish, String english) {
     return com.reserly.platform.localization.LocalizedText.fromLanguageTagValues(
         sourceLocale, Map.of("es", spanish, "en", english));
+  }
+
+  private void markEmailVerified(UUID ownerUserId, Instant verifiedAt) {
+    jdbcTemplate.update(
+        """
+        UPDATE "Users"
+        SET "emailVerifiedAt" = ?, "status" = 'active'
+        WHERE "id" = ?
+        """,
+        java.sql.Timestamp.from(verifiedAt),
+        ownerUserId);
+  }
+
+  private void markBusinessVerificationStatus(
+      UUID ownerUserId, String status, Instant verifiedAt, Instant expiresAt) {
+    jdbcTemplate.update(
+        """
+        UPDATE "BusinessAccounts"
+        SET "businessVerificationStatus" = ?,
+            "activeVerificationRequestId" = ?,
+            "businessVerifiedAt" = ?,
+            "businessVerificationExpiresAt" = ?,
+            "manualReviewStatus" = NULL,
+            "manualReviewedByUserId" = NULL,
+            "manualReviewedAt" = NULL
+        WHERE "ownerUserId" = ?
+        """,
+        status,
+        "pending_remote_check".equals(status) ? UUID.randomUUID() : null,
+        verifiedAt == null ? null : java.sql.Timestamp.from(verifiedAt),
+        expiresAt == null ? null : java.sql.Timestamp.from(expiresAt),
+        ownerUserId);
+  }
+
+  private VenueEntity createPublishableVenue(UUID ownerUserId, String name) {
+    VenueProfileCommand command =
+        new VenueProfileCommand(
+            name,
+            RESTAURANT_CATEGORY_ID,
+            localized("es", "Descripci\u00f3n completa", "Complete description"),
+            null,
+            null,
+            null,
+            "es",
+            "contacto@example.invalid",
+            null,
+            "Calle Mayor, 1",
+            "Madrid",
+            "Madrid",
+            "ES",
+            "28013",
+            new BigDecimal("40.416775"),
+            new BigDecimal("-3.703790"),
+            false,
+            true);
+    VenueEntity venue = venueProfileService.create(ownerUserId, command);
+    jdbcTemplate.update(
+        """
+        UPDATE "Venues"
+        SET "mainImageUrl" = ?,
+            "mainImageObjectKey" = 'venues/test/main.png',
+            "mainImageMediaType" = 'image/png',
+            "mainImageSizeBytes" = 1024,
+            "mainImageWidth" = 640,
+            "mainImageHeight" = 480
+        WHERE "id" = ?
+        """,
+        "/api/public/venue-images/" + venue.getId() + "/main",
+        venue.getId());
+    return venue;
   }
 
   private UUID createVenueOwner(String prefix) {
