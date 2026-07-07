@@ -2912,3 +2912,50 @@ Fuente de verdad del avance:
   - `npm run test:web` completo volvió a agotar el timeout de dos tests antiguos de UI en Vitest
     durante carga MUI/jsdom; no hubo fallo de aserción del perfil. Se ejecutaron suites focalizadas
     correctas y build web/API correcto.
+
+## Conversación 62 - Tests de permisos entre propietarios de locales
+
+- Fecha: 2026-07-07.
+- Resumen de la conversación:
+  - Se confirmó `2.12` como primera tarea pendiente tras revisar el estado de `tasks.md` y el
+    contexto reciente de especificación y seguimiento.
+  - Se añadieron pruebas backend para demostrar que un local autenticado no puede leer, actualizar,
+    archivar ni operar imágenes de un perfil perteneciente a otro propietario.
+  - Se cubrió el servicio transaccional de perfil con una prueba de integración sobre PostgreSQL
+    Testcontainers, verificando además que el perfil original conserva su estado y datos tras
+    intentos cruzados.
+  - Se cubrieron los servicios de imagen principal y galería con pruebas unitarias que fuerzan la
+    ausencia de local editable para el propietario autenticado y validan que no se escriben objetos
+    ni entidades cuando falla la autorización por propiedad.
+  - No se modificaron contratos REST, migraciones ni modelos de dominio; la iteración endurece la
+    red de regresión sobre reglas de propiedad ya implementadas.
+- Archivos modificados:
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenueProfileServiceIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenueMainImageServiceTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenueGalleryServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-011 Convenciones de nomenclatura`.
+  - Refuerzo indirecto de `RF-004`, `RF-008` y `RF-009`, porque los tests protegen edición de
+    perfil, imagen principal y galería.
+- Tareas impactadas:
+  - `2.12. Crear tests de permisos para que un local no edite datos de otro`.
+  - Prepara la siguiente cobertura de publicación `2.13`.
+- Tareas completadas:
+  - `2.12. Crear tests de permisos para que un local no edite datos de otro`.
+- Siguiente tarea pendiente recomendada:
+  - `2.13. Crear tests de bloqueo de publicación por verificación empresarial pendiente o rechazada`.
+- Decisiones o aclaraciones relevantes:
+  - La autorización entre locales se valida desde los servicios, no desde datos enviados por cliente:
+    todas las operaciones usan `ownerUserId` derivado de la sesión.
+  - Un intento cruzado se representa como `VenueProfileNotFoundException`, preservando privacidad al
+    no revelar si el recurso existe para otro propietario.
+  - Las pruebas de imagen validan explícitamente ausencia de efectos secundarios en almacenamiento y
+    persistencia cuando no hay local editable para el propietario autenticado.
+  - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=VenueProfileServiceIntegrationTests,VenueMainImageServiceTests,VenueGalleryServiceTests" test`
+    correcto con 13 tests, 0 fallos, Spotless y Checkstyle correctos dentro del ciclo Maven.

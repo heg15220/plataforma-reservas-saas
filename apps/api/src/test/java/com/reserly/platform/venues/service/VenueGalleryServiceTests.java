@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -117,6 +118,48 @@ class VenueGalleryServiceTests {
     assertThat(second.getPosition()).isZero();
     assertThat(first.getPosition()).isEqualTo(1);
     verify(imageDao).saveAllAndFlush(images);
+  }
+
+  @Test
+  void rejectsGalleryOperationsWhenTheAuthenticatedOwnerHasNoEditableVenue() {
+    UUID otherOwnerId = UUID.randomUUID();
+    when(venueDao.findCurrentByOwnerUserId(otherOwnerId)).thenReturn(Optional.empty());
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(otherOwnerId)).thenReturn(Optional.empty());
+    when(validator.validate(eq("image/png"), any(ByteArrayInputStream.class)))
+        .thenReturn(new ValidatedVenueImage(new byte[] {1}, "image/png", "png", 640, 480));
+
+    assertThatThrownBy(() -> service.list(otherOwnerId))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+    assertThatThrownBy(() -> service.reorder(otherOwnerId, List.of(UUID.randomUUID())))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+    assertThatThrownBy(() -> service.delete(otherOwnerId, UUID.randomUUID()))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+    assertThatThrownBy(
+            () ->
+                service.upload(
+                    otherOwnerId,
+                    "Texto alternativo",
+                    "image/png",
+                    new ByteArrayInputStream(new byte[] {1})))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+
+    verify(imageDao, never()).save(any());
+    verify(imageDao, never()).delete(any());
+    verify(storage, never()).put(any(), any(), any());
+  }
+
+  @Test
+  void rejectsDeletingAnImageThatIsNotOwnedByTheAuthenticatedOwner() {
+    VenueImageEntity foreignImage = image(0);
+    UUID foreignImageId = foreignImage.getId();
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(imageDao.findOwnedForUpdate(ownerId, foreignImageId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.delete(ownerId, foreignImageId))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+
+    verify(imageDao, never()).delete(any());
+    verify(storage, never()).delete(any());
   }
 
   private VenueImageEntity image(int position) {

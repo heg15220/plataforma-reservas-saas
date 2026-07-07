@@ -103,6 +103,42 @@ class VenueProfileServiceIntegrationTests {
   }
 
   @Test
+  void rejectsCrossOwnerReadUpdateAndArchiveWithoutChangingTheOriginalProfile() {
+    UUID ownerUserId = createVenueOwner("profile-owner-isolated");
+    UUID otherOwnerUserId = createVenueOwner("profile-other-isolated");
+    VenueEntity created = venueProfileService.create(ownerUserId, initialCommand());
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThatThrownBy(() -> venueProfileService.find(otherOwnerUserId))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+    assertThatThrownBy(() -> venueProfileService.update(otherOwnerUserId, updatedCommand()))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+    assertThatThrownBy(() -> venueProfileService.archive(otherOwnerUserId))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+
+    entityManager.flush();
+    entityManager.clear();
+
+    VenueEntity stillOwned = venueProfileService.find(ownerUserId);
+    assertThat(stillOwned.getId()).isEqualTo(created.getId());
+    assertThat(stillOwned.getName()).isEqualTo(created.getName());
+    assertThat(stillOwned.getCategory().getId()).isEqualTo(RESTAURANT_CATEGORY_ID);
+    assertThat(stillOwned.getStatus()).isEqualTo("draft");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT count(*)
+                FROM "Venues"
+                WHERE "ownerUserId" = ?
+                  AND "status" <> 'archived'
+                """,
+                Integer.class,
+                otherOwnerUserId))
+        .isZero();
+  }
+
+  @Test
   void rejectsPartialCoordinatesAndUnknownCategoriesWithoutWriting() {
     UUID ownerUserId = createVenueOwner("profile-invalid");
     VenueProfileCommand partialCoordinates =

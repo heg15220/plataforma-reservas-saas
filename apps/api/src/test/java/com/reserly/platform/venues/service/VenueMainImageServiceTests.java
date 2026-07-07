@@ -1,8 +1,10 @@
 package com.reserly.platform.venues.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +69,21 @@ class VenueMainImageServiceTests {
     synchronization.afterCommit();
     synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED);
     verify(storage).delete("venues/old.png");
+  }
+
+  @Test
+  void rejectsMainImageUploadWhenTheAuthenticatedOwnerHasNoEditableVenue() {
+    UUID ownerId = UUID.randomUUID();
+    when(validator.validate(eq("image/png"), any(ByteArrayInputStream.class)))
+        .thenReturn(new ValidatedVenueImage(new byte[] {1}, "image/png", "png", 640, 480));
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service.upload(ownerId, "image/png", new ByteArrayInputStream(new byte[] {9})))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+
+    verify(storage, never()).put(any(), any(), any());
+    verify(venueDao, never()).saveAndFlush(any());
   }
 
   @Test

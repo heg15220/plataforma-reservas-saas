@@ -12756,3 +12756,258 @@ textos localizados, contacto, ubicación, imagen principal, galería y publicaci
 autorizados del backend; las categorías no están hardcodeadas; la navegación del panel expone la
 sección; y las pruebas/builds focalizadas demuestran los flujos principales. Siguiente tarea:
 `2.12`.
+
+## Iteración 2.12 - Tests de permisos para que un local no edite datos de otro
+
+### Identificador de tarea
+
+`2.12. Crear tests de permisos para que un local no edite datos de otro`.
+
+### Fecha
+
+2026-07-07.
+
+### Objetivo técnico
+
+El objetivo de esta iteración es cerrar una brecha de cobertura de seguridad sobre el módulo de
+locales: demostrar mediante tests automatizados que las operaciones privadas de perfil, imagen
+principal y galería solo actúan sobre el local vigente del propietario autenticado y no permiten que
+un propietario use su sesión para leer, modificar, archivar o manipular datos asociados a otro
+local.
+
+La implementación previa ya seguía el patrón correcto: los endpoints privados derivan `ownerUserId`
+de la sesión y los servicios consultan el local por propietario mediante DAOs específicos. Esta tarea
+no cambia esa arquitectura; añade pruebas de regresión para hacerla verificable y evitar futuras
+relajaciones accidentales de permisos.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RNF-001 Seguridad`: las operaciones privadas no aceptan propietario desde el cliente y deben
+  validar propiedad en backend.
+- `RNF-002 Privacidad`: los intentos cruzados no deben revelar datos de locales ajenos.
+- `RNF-008 Calidad y mantenibilidad`: la autorización por propietario queda protegida por tests
+  focalizados y expresivos.
+- `RNF-011 Convenciones de nomenclatura`: se mantienen nombres Java `UpperCamelCase`,
+  atributos `lowerCamelCase`, servicios separados e infraestructura de tests existente.
+- `RF-004 Ficha pública del local`, `RF-008 Gestión de imágenes del local` y `RF-009 Gestión de
+  perfil público`: la cobertura afecta a los datos que alimentan ficha, imagen principal, galería y
+  panel privado de perfil.
+
+Decisión de seguridad conservada: cuando un propietario intenta operar sobre datos que no le
+pertenecen, el sistema responde con `VenueProfileNotFoundException`. Esta estrategia evita
+distinguir entre "no existe local" y "existe, pero pertenece a otro propietario", lo que reduce
+filtraciones laterales.
+
+### Archivos modificados
+
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueProfileServiceIntegrationTests.java`
+  - Añadido test de integración de lectura, actualización y archivado cruzado entre propietarios.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueMainImageServiceTests.java`
+  - Añadido test unitario para rechazo de subida de imagen principal sin local editable del
+    propietario autenticado.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueGalleryServiceTests.java`
+  - Añadidos tests unitarios para rechazo de operaciones de galería sin local editable y rechazo de
+    borrado de imagen no perteneciente al propietario autenticado.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`
+  - Marcada la tarea `2.12` como completada.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`
+  - Añadido registro histórico de la conversación 62.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`
+  - Añadida esta entrada técnica de cierre.
+
+No se han creado ni eliminado migraciones, entidades, endpoints, servicios productivos ni
+componentes frontend en esta iteración.
+
+### Arquitectura aplicada y razones técnicas
+
+La cobertura se sitúa en dos niveles porque el riesgo existe en dos superficies distintas:
+
+1. Servicio transaccional de perfil real con base de datos:
+   - `VenueProfileServiceIntegrationTests` levanta el contexto Spring y ejecuta migraciones Flyway
+     contra PostgreSQL/PostGIS vía Testcontainers.
+   - Este nivel comprueba consultas reales, restricciones de unicidad por propietario, estado
+     persistido y ausencia de modificaciones después de intentos cruzados.
+
+2. Servicios de imágenes con mocks de DAOs y almacenamiento:
+   - `VenueMainImageServiceTests` y `VenueGalleryServiceTests` aíslan la lógica de autorización y
+     efectos secundarios.
+   - Este nivel permite verificar de forma precisa que, si no existe local editable para el
+     `ownerUserId` autenticado, no se invoca `storage.put`, `storage.delete`, `imageDao.save`,
+     `imageDao.delete` ni `venueDao.saveAndFlush`.
+
+La combinación evita depender solo de mocks para reglas de propiedad críticas, pero mantiene tests
+unitarios rápidos para comprobar caminos de error y efectos laterales de almacenamiento que no
+requieren una base de datos real.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No se introducen cambios de modelo ni migraciones. La prueba de integración reutiliza el modelo
+existente:
+
+- `Users` para propietarios de tipo `venue_business`.
+- `Roles` y `UserRoles` para asignación de rol `venue_business`.
+- `BusinessAccounts` como cuenta empresarial verificada asociada al usuario propietario.
+- `Venues` como perfil de local vigente.
+- `Categories` sembradas por migraciones para asociar el local a una categoría activa.
+
+La prueba valida indirectamente que la consulta por propietario respeta la separación de filas en
+`Venues`: un segundo propietario sin local vigente no puede recuperar ni modificar el local creado
+por el primero, y el contador de locales vigentes para el segundo propietario permanece en `0`.
+
+### Endpoints, contratos, servicios y módulos cubiertos
+
+No se añaden endpoints ni contratos nuevos. Los tests protegen servicios que están detrás de los
+contratos privados existentes:
+
+- `VenueProfileService`:
+  - `find(ownerUserId)`.
+  - `update(ownerUserId, request)`.
+  - `archive(ownerUserId)`.
+- `VenueMainImageService`:
+  - `upload(ownerUserId, image)`.
+- `VenueGalleryService`:
+  - `list(ownerUserId)`.
+  - `reorder(ownerUserId, imageIds)`.
+  - `delete(ownerUserId, imageId)`.
+  - `upload(ownerUserId, image)`.
+
+En todos los casos el contrato probado es que `ownerUserId` representa al usuario autenticado y no
+se sustituye por ningún dato proporcionado por el cliente.
+
+### Flujos de ejecución relevantes
+
+#### Flujo de perfil cruzado
+
+1. La prueba crea dos propietarios independientes con cuenta empresarial verificada.
+2. El primer propietario crea un perfil de local válido.
+3. El segundo propietario intenta leer el perfil mediante `find(otherOwnerUserId)`.
+4. El segundo propietario intenta actualizar datos del perfil mediante `update(otherOwnerUserId,
+   updateRequest)`.
+5. El segundo propietario intenta archivar mediante `archive(otherOwnerUserId)`.
+6. Cada operación falla con `VenueProfileNotFoundException`.
+7. La prueba fuerza `flush` y `clear` del `EntityManager` para leer desde persistencia.
+8. Se comprueba que el local del primer propietario conserva id, nombre, categoría y estado `draft`.
+9. Se comprueba por SQL que el segundo propietario sigue sin locales vigentes.
+
+#### Flujo de imagen principal sin local editable
+
+1. El validador de imagen considera el archivo válido.
+2. `VenueDao.findCurrentByOwnerUserIdForUpdate(ownerId)` devuelve vacío.
+3. `VenueMainImageService.upload` lanza `VenueProfileNotFoundException`.
+4. No se ejecuta escritura en almacenamiento.
+5. No se persisten cambios en `Venues`.
+
+#### Flujo de galería sin local editable o imagen ajena
+
+1. Para `list`, `reorder` y `upload`, las consultas por local vigente del propietario devuelven
+   vacío.
+2. Cada operación falla con `VenueProfileNotFoundException`.
+3. Para `delete`, el propietario sí puede tener local, pero `findOwnedForUpdate(ownerId, imageId)`
+   devuelve vacío cuando la imagen no pertenece a su local.
+4. La eliminación falla con `VenueProfileNotFoundException`.
+5. No hay escrituras ni borrados en almacenamiento o persistencia.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones y permisos:
+
+- Las pruebas confirman que las rutas privadas no dependen de ids de local suministrados por el
+  cliente para autorizar.
+- La autorización se expresa mediante consultas DAO filtradas por `ownerUserId` y, en galería,
+  también por pertenencia de imagen.
+- Los caminos de error usan `VenueProfileNotFoundException` para evitar distinguir entre inexistente
+  y ajeno.
+
+Seguridad y privacidad:
+
+- No se filtran nombres, categorías, imágenes ni estados de locales ajenos al propietario
+  autenticado.
+- En errores de subida no se deja basura en almacenamiento porque `storage.put` no se invoca si no
+  existe local editable.
+- En errores de borrado no se elimina el objeto físico si la imagen no pertenece al propietario.
+
+Internacionalización:
+
+- La tarea no cambia catálogos ni resolución de idioma.
+- La prueba de perfil conserva datos con caracteres acentuados (`Café`) para detectar regresiones
+  accidentales de codificación en el flujo persistido.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden logs ni auditoría productiva en esta iteración. La estrategia de error verificada es:
+
+- `VenueProfileNotFoundException` para operaciones privadas sin local editable del propietario o
+  con imagen no perteneciente al propietario.
+- Ausencia de efectos secundarios tras error, validada con `verify(..., never())` en dependencias
+  críticas.
+
+Los logs observados durante la prueba de integración corresponden a Spring Boot, Flyway,
+Testcontainers, Hikari y Hibernate. No se detectaron errores de migración, conexión ni ejecución.
+
+### Tests añadidos o modificados
+
+`VenueProfileServiceIntegrationTests`:
+
+- `rejectsCrossOwnerReadUpdateAndArchiveWithoutChangingTheOriginalProfile`
+  - Crea dos propietarios y un perfil para el primero.
+  - Verifica que el segundo no puede leer, actualizar ni archivar.
+  - Verifica que el perfil original permanece sin cambios.
+  - Verifica que el segundo propietario no obtiene un local vigente de forma implícita.
+
+`VenueMainImageServiceTests`:
+
+- `rejectsMainImageUploadWhenTheAuthenticatedOwnerHasNoEditableVenue`
+  - Verifica que una subida válida se rechaza si el propietario autenticado no tiene perfil
+    editable.
+  - Verifica que no hay escritura de blob ni persistencia de metadatos.
+
+`VenueGalleryServiceTests`:
+
+- `rejectsGalleryOperationsWhenTheAuthenticatedOwnerHasNoEditableVenue`
+  - Verifica rechazo de listado, reordenación, borrado y subida cuando no hay local vigente del
+    propietario.
+  - Verifica ausencia de escrituras y borrados.
+- `rejectsDeletingAnImageThatIsNotOwnedByTheAuthenticatedOwner`
+  - Verifica que no puede borrarse una imagen que no pertenece al local del propietario
+    autenticado.
+  - Verifica que no se elimina entidad ni objeto físico.
+
+### Comandos usados para verificación
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenueProfileServiceIntegrationTests,VenueMainImageServiceTests,VenueGalleryServiceTests" test
+```
+
+Resultado resumido:
+
+- Spotless Java: correcto, 0 archivos pendientes de formato.
+- Checkstyle Java: correcto, 0 violaciones.
+- `VenueGalleryServiceTests`: 5 tests, 0 fallos, 0 errores.
+- `VenueMainImageServiceTests`: 3 tests, 0 fallos, 0 errores.
+- `VenueProfileServiceIntegrationTests`: 5 tests, 0 fallos, 0 errores.
+- Total: 13 tests, 0 fallos, 0 errores.
+- Build Maven: `BUILD SUCCESS`.
+
+Durante la iteración se detectó primero una aserción con mojibake (`CafÃ©`) frente al valor UTF-8
+correcto (`Café`). Se corrigió comparando contra el nombre creado por el propio flujo para evitar
+duplicar literales frágiles y mantener la comprobación de persistencia sin introducir falsos
+negativos por codificación.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La cobertura se centra en servicios; no añade tests nuevos de controlador para todos los caminos
+  cruzados porque los controladores ya derivan el usuario desde sesión y delegan en estos servicios.
+- La siguiente tarea `2.13` debe cubrir explícitamente bloqueos de publicación por estados de
+  verificación empresarial pendiente o rechazada.
+- Cuando se implementen pestañas personalizadas (`2.14`-`2.17`), deberá replicarse esta estrategia:
+  consultas por propietario, errores no reveladores y tests de efectos secundarios nulos.
+- Las advertencias de Mockito sobre carga dinámica de agente en JDK futuro siguen siendo deuda de
+  infraestructura de tests, no específica de esta tarea.
+
+### Criterio de cierre
+
+La tarea se considera completada porque existe cobertura automatizada sobre las operaciones privadas
+críticas que podrían afectar datos de otro local. La suite focalizada demuestra que un propietario no
+puede leer, actualizar, archivar, subir imagen principal, listar/reordenar/subir galería ni borrar
+imágenes ajenas mediante los servicios actuales, y que los intentos fallidos no dejan efectos
+secundarios en base de datos ni almacenamiento.
