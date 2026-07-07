@@ -30,7 +30,7 @@ describe("catálogos i18n", () => {
 
   it("conserva caracteres españoles críticos en el catálogo base", () => {
     expect(esMessages.DesignSystem.palette.success).toBe("Éxito");
-    expect(esMessages.Navigation.venue.more).toBe("Más");
+    expect(esMessages.Navigation.venue.profile).toBe("Perfil");
     expect(esMessages.DesignSystem.icons.location).toBe("Ubicación");
     expect(esMessages.PanelPreview.cards.nextSlot.label).toBe("Próxima franja");
   });

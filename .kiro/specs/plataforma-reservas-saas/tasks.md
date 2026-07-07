@@ -72,7 +72,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 2.8. Implementar galería opcional.
 - [x] 2.9. Implementar publicación de local solo con email verificado, verificación empresarial aprobada y datos mínimos.
 - [x] 2.10. Crear ficha pública inicial del local con textos vía i18n.
-- [ ] 2.11. Crear panel de edición de perfil.
+- [x] 2.11. Crear panel de edición de perfil.
 - [ ] 2.12. Crear tests de permisos para que un local no edite datos de otro.
 - [ ] 2.13. Crear tests de bloqueo de publicación por verificación empresarial pendiente o rechazada.
 - [ ] 2.14. Crear migración de `venue_custom_tabs` con orden, estado activo, contenido seguro y campos localizados.

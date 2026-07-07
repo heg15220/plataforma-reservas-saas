@@ -469,7 +469,7 @@
     "venue": {
       "calendar": "Calendario",
       "home": "Inicio",
-      "more": "Más",
+      "profile": "Perfil",
       "reservations": "Reservas"
     }
   },
@@ -498,6 +498,169 @@
       "gallery": "Galería",
       "rules": "Normas",
       "services": "Servicios"
+    }
+  },
+  "VenueProfileEditor": {
+    "actions": {
+      "chooseGalleryImage": "Seleccionar imagen",
+      "chooseMainImage": "Seleccionar imagen principal",
+      "deleteGalleryImage": "Eliminar imagen",
+      "goToAccess": "Ir al acceso de locales",
+      "publish": "Publicar local",
+      "publishing": "Publicando",
+      "retry": "Volver a intentarlo",
+      "save": "Guardar perfil",
+      "saving": "Guardando",
+      "uploadGalleryImage": "Subir a galería",
+      "uploadMainImage": "Subir imagen principal",
+      "uploading": "Subiendo"
+    },
+    "errors": {
+      "api": {
+        "conflict": "El perfil ha cambiado o ya existe un perfil activo. Actualiza la página antes de continuar.",
+        "descriptionTooLong": "La descripción supera el máximo de 350 palabras en alguno de los idiomas.",
+        "forbidden": "Tu cuenta no tiene permiso para modificar este perfil.",
+        "galleryLimit": "La galería ya tiene el máximo de ocho imágenes.",
+        "imageInvalid": "La imagen no cumple los requisitos. Usa JPG o PNG válido, sin exceder tamaño ni dimensiones.",
+        "invalid": "Hay datos incompletos o con formato no válido. Revísalos antes de guardar.",
+        "notFound": "Aún no existe un perfil para este local.",
+        "publicationRejected": "No se puede publicar todavía. Completa los requisitos pendientes.",
+        "rateLimited": "Se han realizado demasiados intentos. Espera unos minutos antes de continuar.",
+        "unauthenticated": "Tu sesión ha caducado. Accede de nuevo para editar el perfil.",
+        "unavailable": "No podemos conectar con el servicio en este momento. Inténtalo más tarde."
+      },
+      "fields": {
+        "invalid": "Formato no válido.",
+        "required": "Este campo es obligatorio.",
+        "tooLong": "El contenido supera la longitud permitida."
+      }
+    },
+    "fields": {
+      "address": {
+        "label": "Dirección"
+      },
+      "category": {
+        "helper": "Solo aparecen categorías activas.",
+        "label": "Categoría"
+      },
+      "city": {
+        "label": "Ciudad"
+      },
+      "contactEmail": {
+        "label": "Correo público de contacto"
+      },
+      "country": {
+        "label": "País"
+      },
+      "defaultLocale": {
+        "label": "Idioma principal del contenido"
+      },
+      "description": {
+        "label": "Descripción"
+      },
+      "galleryAltText": {
+        "helper": "Describe la imagen para accesibilidad. Máximo 300 caracteres.",
+        "label": "Texto alternativo"
+      },
+      "latitude": {
+        "label": "Latitud"
+      },
+      "localized": {
+        "en": "Versión inglesa visible en la ficha pública.",
+        "es": "Versión española visible en la ficha pública."
+      },
+      "longitude": {
+        "label": "Longitud"
+      },
+      "name": {
+        "helper": "Nombre comercial que verán los usuarios.",
+        "label": "Nombre del local"
+      },
+      "phone": {
+        "label": "Teléfono"
+      },
+      "postalCode": {
+        "label": "Código postal"
+      },
+      "province": {
+        "label": "Provincia o región"
+      },
+      "publicText": {
+        "label": "Texto público adicional"
+      },
+      "rules": {
+        "label": "Normas"
+      },
+      "services": {
+        "label": "Servicios"
+      },
+      "showEmail": {
+        "label": "Mostrar correo en la ficha pública"
+      },
+      "showPhone": {
+        "label": "Mostrar teléfono en la ficha pública"
+      }
+    },
+    "hero": {
+      "eyebrow": "PERFIL DEL LOCAL",
+      "summary": "Edita la información que se mostrará en la ficha pública, gestiona imágenes y publica cuando las verificaciones estén listas.",
+      "title": "Perfil público"
+    },
+    "images": {
+      "noGallery": "Aún no hay imágenes adicionales en la galería.",
+      "noMainImage": "Aún no has subido una imagen principal. Es obligatoria para publicar."
+    },
+    "loading": "Cargando el perfil del local…",
+    "locales": {
+      "en": "Inglés",
+      "es": "Español"
+    },
+    "mainImageAlt": "Imagen principal actual del local",
+    "metadata": {
+      "description": "Panel privado para editar el perfil público del local en Reserly.",
+      "title": "Editar perfil del local"
+    },
+    "publication": {
+      "status": "Estado actual: {status}",
+      "title": "Guardado y publicación"
+    },
+    "publicationRequirements": {
+      "BUSINESS_VERIFICATION_NOT_APPROVED": "La verificación empresarial debe estar aprobada.",
+      "CATEGORY_INACTIVE_OR_MISSING": "Selecciona una categoría activa.",
+      "COORDINATES_MISSING": "Completa latitud y longitud.",
+      "EMAIL_NOT_VERIFIED": "Confirma el correo de la cuenta.",
+      "LOCALIZED_DESCRIPTION_MISSING": "Añade descripción en español e inglés.",
+      "LOCALIZED_PUBLIC_TEXT_INCOMPLETE": "Completa los textos opcionales en ambos idiomas o déjalos vacíos.",
+      "MAIN_IMAGE_MISSING": "Sube una imagen principal.",
+      "MINIMUM_ADDRESS_MISSING": "Completa dirección, ciudad y país."
+    },
+    "sections": {
+      "contact": {
+        "body": "Decide qué datos de contacto se mostrarán públicamente.",
+        "title": "Contacto visible"
+      },
+      "gallery": {
+        "title": "Galería"
+      },
+      "identity": {
+        "body": "Define nombre, categoría e idioma principal del contenido.",
+        "title": "Identidad del local"
+      },
+      "images": {
+        "body": "Las imágenes se validan y se sirven desde el backend sin exponer claves de almacenamiento.",
+        "title": "Imágenes"
+      },
+      "location": {
+        "body": "Estos datos alimentan la ubicación pública y prepararán la búsqueda por zona.",
+        "title": "Ubicación"
+      },
+      "texts": {
+        "body": "La publicación requiere descripción en español e inglés; el resto puede quedar vacío.",
+        "title": "Textos localizados"
+      }
+    },
+    "status": {
+      "saved": "Cambios guardados correctamente."
     }
   },
   "PanelPreview": {

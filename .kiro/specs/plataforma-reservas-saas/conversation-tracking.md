@@ -2845,3 +2845,70 @@ Fuente de verdad del avance:
     ambos builds correctos.
   - `npm run verify` agotó el límite durante Testcontainers; no registró fallos de aserción y las
     comprobaciones de esta tarea pasaron aisladas.
+
+## Conversación 61 - Panel de edición de perfil
+
+- Fecha: 2026-07-07.
+- Resumen:
+  - Se confirmó `2.11` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica reciente.
+  - Se creó la ruta privada `/panel/perfil` con `VenueShell`, metadatos no indexables y componente
+    cliente para operar con cookie `HttpOnly`.
+  - Se implementó el editor de perfil con secciones de identidad, textos localizados ES/EN,
+    ubicación, contacto visible, imagen principal, galería y publicación.
+  - Se añadió cliente frontend para `GET/POST/PATCH /api/venue/me`, publicación, imagen principal,
+    galería y resolución de URLs de assets.
+  - Se añadió parser de formulario con normalización de blancos, país, coordenadas, visibilidad y
+    documentos localizados sin duplicar reglas de dominio sensibles.
+  - Se incorporó un endpoint de categorías activas `GET /api/public/categories` para alimentar el
+    selector sin hardcodear seeds en la UI.
+  - La navegación del panel sustituyó `Más` por `Perfil` como sección principal en desktop y móvil.
+- Archivos modificados:
+  - Nuevos backend:
+    - `VenueCategoryController` y `VenueCategoryControllerImpl`.
+    - `VenueCategoryService` y `VenueCategoryServiceImpl`.
+    - `VenueCategoryResponse`.
+    - `VenueCategoryServiceTests` y `VenueCategoryControllerTests`.
+  - Backend modificado:
+    - `CategoryDao` con consulta de categorías activas ordenadas.
+  - Nuevos frontend:
+    - `apps/web/src/app/panel/perfil/page.tsx`.
+    - `features/venue-profile/venue-profile-api.ts`.
+    - `features/venue-profile/venue-profile-schema.ts`.
+    - `features/venue-profile/venue-profile-editor.tsx`.
+    - Tests de API, schema y editor.
+  - Frontend modificado:
+    - `VenueShell`, catálogos `es`/`en` y `messages.test.ts`.
+  - Documentación:
+    - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-008 Gestión de imágenes del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RF-032 Verificación empresarial para publicación de locales`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.11. Crear panel de edición de perfil`.
+  - Prepara `2.12`, `2.13` y las futuras pestañas personalizadas `2.15`.
+- Tareas completadas:
+  - `2.11. Crear panel de edición de perfil`.
+- Siguiente tarea pendiente recomendada:
+  - `2.12. Crear tests de permisos para que un local no edite datos de otro`.
+- Decisiones o aclaraciones relevantes:
+  - El panel no replica reglas críticas de backend: propiedad, límites editoriales, publicación e
+    imágenes seguras siguen siendo autoridad del API.
+  - `GET /api/public/categories` se limita a categorías activas y nombres resueltos; no sustituye al
+    futuro CRUD admin de categorías.
+  - La creación del primer perfil queda soportada por el cliente API mediante `POST`; el componente
+    usa los mismos campos y la validación cliente no añade estado ni propietario.
+  - Las subidas de imagen se ofrecen después de existir perfil, porque los endpoints de imagen
+    requieren un perfil vigente del propietario.
+  - `npm run test:web` completo volvió a agotar el timeout de dos tests antiguos de UI en Vitest
+    durante carga MUI/jsdom; no hubo fallo de aserción del perfil. Se ejecutaron suites focalizadas
+    correctas y build web/API correcto.

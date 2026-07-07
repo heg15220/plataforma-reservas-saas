@@ -469,7 +469,7 @@
     "venue": {
       "calendar": "Calendar",
       "home": "Home",
-      "more": "More",
+      "profile": "Profile",
       "reservations": "Bookings"
     }
   },
@@ -498,6 +498,169 @@
       "gallery": "Gallery",
       "rules": "Rules",
       "services": "Services"
+    }
+  },
+  "VenueProfileEditor": {
+    "actions": {
+      "chooseGalleryImage": "Select image",
+      "chooseMainImage": "Select main image",
+      "deleteGalleryImage": "Delete image",
+      "goToAccess": "Go to venue access",
+      "publish": "Publish venue",
+      "publishing": "Publishing",
+      "retry": "Try again",
+      "save": "Save profile",
+      "saving": "Saving",
+      "uploadGalleryImage": "Upload to gallery",
+      "uploadMainImage": "Upload main image",
+      "uploading": "Uploading"
+    },
+    "errors": {
+      "api": {
+        "conflict": "The profile changed or an active profile already exists. Refresh the page before continuing.",
+        "descriptionTooLong": "The description exceeds the 350-word limit in one of the languages.",
+        "forbidden": "Your account does not have permission to edit this profile.",
+        "galleryLimit": "The gallery already has the maximum of eight images.",
+        "imageInvalid": "The image does not meet the requirements. Use a valid JPG or PNG within size and dimension limits.",
+        "invalid": "Some details are incomplete or invalid. Review them before saving.",
+        "notFound": "There is no profile for this venue yet.",
+        "publicationRejected": "The venue cannot be published yet. Complete the pending requirements.",
+        "rateLimited": "There have been too many attempts. Wait a few minutes before continuing.",
+        "unauthenticated": "Your session has expired. Sign in again to edit the profile.",
+        "unavailable": "We cannot connect to the service right now. Try again later."
+      },
+      "fields": {
+        "invalid": "Invalid format.",
+        "required": "This field is required.",
+        "tooLong": "The content exceeds the allowed length."
+      }
+    },
+    "fields": {
+      "address": {
+        "label": "Address"
+      },
+      "category": {
+        "helper": "Only active categories are listed.",
+        "label": "Category"
+      },
+      "city": {
+        "label": "City"
+      },
+      "contactEmail": {
+        "label": "Public contact email"
+      },
+      "country": {
+        "label": "Country"
+      },
+      "defaultLocale": {
+        "label": "Main content language"
+      },
+      "description": {
+        "label": "Description"
+      },
+      "galleryAltText": {
+        "helper": "Describe the image for accessibility. Maximum 300 characters.",
+        "label": "Alternative text"
+      },
+      "latitude": {
+        "label": "Latitude"
+      },
+      "localized": {
+        "en": "English version shown on the public profile.",
+        "es": "Spanish version shown on the public profile."
+      },
+      "longitude": {
+        "label": "Longitude"
+      },
+      "name": {
+        "helper": "Commercial name users will see.",
+        "label": "Venue name"
+      },
+      "phone": {
+        "label": "Phone"
+      },
+      "postalCode": {
+        "label": "Postal code"
+      },
+      "province": {
+        "label": "Province or region"
+      },
+      "publicText": {
+        "label": "Additional public text"
+      },
+      "rules": {
+        "label": "Rules"
+      },
+      "services": {
+        "label": "Services"
+      },
+      "showEmail": {
+        "label": "Show email on public profile"
+      },
+      "showPhone": {
+        "label": "Show phone on public profile"
+      }
+    },
+    "hero": {
+      "eyebrow": "VENUE PROFILE",
+      "summary": "Edit the information shown on the public profile, manage images and publish when checks are ready.",
+      "title": "Public profile"
+    },
+    "images": {
+      "noGallery": "There are no additional gallery images yet.",
+      "noMainImage": "You have not uploaded a main image yet. It is required for publishing."
+    },
+    "loading": "Loading venue profile…",
+    "locales": {
+      "en": "English",
+      "es": "Spanish"
+    },
+    "mainImageAlt": "Current main venue image",
+    "metadata": {
+      "description": "Private panel for editing the public venue profile in Reserly.",
+      "title": "Edit venue profile"
+    },
+    "publication": {
+      "status": "Current status: {status}",
+      "title": "Save and publish"
+    },
+    "publicationRequirements": {
+      "BUSINESS_VERIFICATION_NOT_APPROVED": "Business verification must be approved.",
+      "CATEGORY_INACTIVE_OR_MISSING": "Select an active category.",
+      "COORDINATES_MISSING": "Complete latitude and longitude.",
+      "EMAIL_NOT_VERIFIED": "Confirm the account email.",
+      "LOCALIZED_DESCRIPTION_MISSING": "Add description in Spanish and English.",
+      "LOCALIZED_PUBLIC_TEXT_INCOMPLETE": "Complete optional texts in both languages or leave them empty.",
+      "MAIN_IMAGE_MISSING": "Upload a main image.",
+      "MINIMUM_ADDRESS_MISSING": "Complete address, city and country."
+    },
+    "sections": {
+      "contact": {
+        "body": "Decide which contact details will be shown publicly.",
+        "title": "Visible contact"
+      },
+      "gallery": {
+        "title": "Gallery"
+      },
+      "identity": {
+        "body": "Set name, category and main content language.",
+        "title": "Venue identity"
+      },
+      "images": {
+        "body": "Images are validated and served from the backend without exposing storage keys.",
+        "title": "Images"
+      },
+      "location": {
+        "body": "These details power the public location and prepare search by area.",
+        "title": "Location"
+      },
+      "texts": {
+        "body": "Publishing requires a description in Spanish and English; the rest may stay empty.",
+        "title": "Localized texts"
+      }
+    },
+    "status": {
+      "saved": "Changes saved successfully."
     }
   },
   "PanelPreview": {

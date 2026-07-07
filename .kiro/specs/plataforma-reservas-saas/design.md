@@ -2703,3 +2703,31 @@ editorial. Valida la respuesta con un esquema cerrado, genera metadatos localiza
 `404` del API en la página no encontrada. La ficha adapta hero, textos, galería, ubicación y
 contacto a una o dos columnas. Horarios, reservas y valoraciones no se simulan: el CTA permanece
 deshabilitado y las capacidades futuras se comunican explícitamente mediante catálogos i18n.
+
+### Panel privado de edición del perfil
+
+La edición del perfil se concentra en la ruta privada `/panel/perfil` dentro de `VenueShell`. La
+página no serializa sesión ni datos sensibles desde SSR: el formulario se monta como componente
+cliente y todas las operaciones privadas viajan directamente al API con la cookie `HttpOnly` del
+navegador. El frontend no acepta ni construye `ownerUserId`, `businessAccountId`, estado arbitrario
+ni claves de almacenamiento; el propietario se deriva exclusivamente de la sesión en los endpoints
+existentes de `/api/venue/me`.
+
+El panel reutiliza el CRUD privado creado en `2.4`, los textos localizados de `2.5`, la validación
+de descripción de `2.6`, la imagen principal de `2.7`, la galería de `2.8` y la publicación atómica
+de `2.9`. Para poder mostrar un selector real de categoría sin hardcodear seeds en el cliente, se
+añade `GET /api/public/categories?locale=es|en`. Este endpoint devuelve solo categorías activas con
+`id`, `slug` y nombre localizado resuelto; no expone `nameI18n`, categorías inactivas ni operaciones
+administrativas.
+
+El formulario divide la edición en identidad, textos localizados, ubicación, contacto visible,
+imágenes y publicación. El cliente valida campos obligatorios, formatos básicos, coordenadas y
+normalización de blancos para feedback inmediato, pero las invariantes de dominio permanecen en
+backend: máximo de 350 palabras, categoría activa, pertenencia del perfil, requisitos de publicación,
+validación real de imágenes y límite de galería. Las subidas usan multipart sin fijar `Content-Type`
+para conservar el boundary generado por el navegador.
+
+La navegación del panel incorpora `Perfil` como entrada principal en desktop y móvil. El antiguo
+acceso genérico `Más` queda sustituido hasta que existan suficientes secciones privadas para
+justificar un menú secundario. La página expone metadatos `robots: noindex,nofollow` y todos los
+textos de UI viven en catálogos ES/EN.

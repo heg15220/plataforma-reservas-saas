@@ -12450,3 +12450,309 @@ anteriores.
 
 La ficha solo expone perfiles publicados, resuelve textos según idioma, respeta privacidad, valida
 el contrato, funciona en escritorio y móvil y no finge capacidades ausentes. Siguiente: `2.11`.
+
+## Iteración 2.11 - Panel de edición de perfil
+
+### Identificación, fecha y objetivo
+
+- Tarea: `2.11. Crear panel de edición de perfil`.
+- Fecha: 2026-07-07.
+- Objetivo técnico: entregar una interfaz privada y responsive para que el propietario cree,
+  actualice, complete multimedia y publique su perfil de local usando los contratos de dominio ya
+  implementados.
+- Requisitos relacionados: `RF-004`, `RF-008`, `RF-009`, `RF-031`, `RF-032`, `RNF-001`,
+  `RNF-002`, `RNF-004`, `RNF-008`, `RNF-009` y `RNF-011`.
+
+### Archivos creados y modificados
+
+Backend:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenueCategoryController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenueCategoryControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueCategoryResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCategoryService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCategoryServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/CategoryDao.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenueCategoryControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueCategoryServiceTests.java`.
+
+Frontend:
+
+- `apps/web/src/app/panel/perfil/page.tsx`.
+- `apps/web/src/features/venue-profile/venue-profile-api.ts`.
+- `apps/web/src/features/venue-profile/venue-profile-schema.ts`.
+- `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+- `apps/web/src/features/venue-profile/venue-profile-api.test.ts`.
+- `apps/web/src/features/venue-profile/venue-profile-schema.test.ts`.
+- `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+- `apps/web/src/components/layout/venue-shell.tsx`.
+- `apps/web/locales/es.json`, `apps/web/locales/en.json`.
+- `apps/web/src/i18n/messages.test.ts`.
+
+Documentación:
+
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+### Arquitectura aplicada
+
+La tarea se implementa como una capa de presentación privada sobre los casos de uso de locales
+existentes. No se crea un nuevo endpoint de edición que agregue responsabilidades heterogéneas. El
+panel consume:
+
+- `GET /api/venue/me` para cargar el perfil privado.
+- `POST /api/venue/me/profile` para crear el primer perfil.
+- `PATCH /api/venue/me/profile` para actualizar el snapshot editable.
+- `POST /api/venue/me/main-image` para imagen principal.
+- `GET /api/venue/me/gallery`, `POST /api/venue/me/gallery` y
+  `DELETE /api/venue/me/gallery/{imageId}` para galería.
+- `POST /api/venue/me/publish` para transición editorial.
+
+La razón es mantener las barreras ya verificadas: cada mutación privada deriva propietario desde
+`AuthenticatedAccount`, no desde el payload del navegador. El editor no recibe ni envía IDs de
+propietario, cuenta empresarial, estado de verificación, documentos fiscales, claves de objeto ni
+metadatos privados de almacenamiento.
+
+El único contrato backend nuevo es `GET /api/public/categories`. Es deliberadamente de lectura,
+anónimo y limitado a categorías activas. La UI necesitaba un selector real para no hardcodear IDs de
+seeds ni nombres traducidos. El endpoint pertenece al módulo de locales porque las categorías forman
+parte del catálogo público y se reutilizarán en búsqueda; la administración de categorías sigue
+pendiente para Fase 14.
+
+### Modelo de datos, migraciones e índices
+
+No se añade migración. La tarea reutiliza:
+
+- `Categories.id`, `name`, `nameI18n`, `slug`, `isActive`, `createdAt`, `updatedAt`.
+- `Venues` y columnas localizadas creadas en iteraciones previas.
+- Metadatos seguros de imagen principal y galería ya presentes.
+
+`CategoryDao.findAllActiveOrdered()` usa JPQL y filtra `active = true`, ordenando por `name` e `id`
+para una lista estable. No se crea índice nuevo porque el volumen inicial de categorías es pequeño y
+la tabla ya se consulta por clave primaria en edición. Si el catálogo crece o pasa a ser
+administrable con filtros, se evaluará índice parcial por `isActive`.
+
+### Endpoint de categorías activas
+
+Contrato:
+
+```http
+GET /api/public/categories?locale=es
+Accept-Language: es-ES,es;q=0.9
+```
+
+Respuesta:
+
+```json
+[
+  {
+    "id": "uuid",
+    "slug": "restaurante",
+    "name": "Restaurante"
+  }
+]
+```
+
+Reglas:
+
+- `locale` explícito tiene prioridad.
+- Solo se aceptan locales base soportados (`es`, `en`); valores no soportados caen a inglés.
+- Si falta `locale`, `Accept-Language` que empieza por `es` resuelve español; el resto inglés.
+- `nameI18n` se resuelve mediante `LocalizedText.resolve(locale)` y el nombre canónico es fallback.
+- No se devuelven categorías inactivas ni el mapa JSONB completo.
+
+### Cliente frontend y contrato de errores
+
+`venue-profile-api.ts` define esquemas Zod cerrados para:
+
+- `VenueCategory`.
+- `VenueProfile`.
+- `VenueGalleryImage`.
+- Rechazo de publicación.
+
+Todas las operaciones privadas usan `credentials: "include"` para transportar la cookie `HttpOnly`.
+Los errores se reducen a categorías seguras:
+
+- `unauthenticated`, `forbidden`, `notFound`, `conflict`, `invalid`.
+- `descriptionTooLong`.
+- `publicationRejected` con `requirements` cerrados recibidos del backend.
+- `imageInvalid`, `galleryLimit`, `rateLimited`, `unavailable`.
+
+El cliente no registra cuerpos de error ni propaga textos introducidos por el usuario. Las URLs de
+assets se resuelven contra `NEXT_PUBLIC_API_BASE_URL` solo cuando son rutas relativas; URLs absolutas
+se conservan para futuras CDN.
+
+### Parser del formulario y validaciones cliente
+
+`venue-profile-schema.ts` transforma `FormData` a `VenueProfilePayload`:
+
+- Recorta blancos en strings.
+- Convierte strings vacíos a `null` en opcionales.
+- Normaliza `country` a ISO-3166 alfa-2 mayúscula.
+- Convierte latitud y longitud a número y valida rangos `[-90,90]` y `[-180,180]`.
+- Construye documentos localizados para `description`, `services`, `rules` y `publicText` solo si
+  existe al menos una traducción visible.
+- Usa `defaultLocale` como `sourceLocale` de documentos editados.
+- Lee `showPhone` y `showEmail` desde checkboxes.
+
+La validación cliente se limita a ergonomía. No replica:
+
+- Conteo de 350 palabras por idioma.
+- Requisitos completos de publicación.
+- Verificación empresarial o email.
+- Propiedad del perfil.
+- Reglas reales de decodificación y recodificación de imágenes.
+
+Estas reglas permanecen en backend para evitar divergencias y bypasses.
+
+### UI y flujo de ejecución
+
+Ruta:
+
+- `/panel/perfil`, con metadata no indexable y `VenueShell currentPath="/panel/perfil"`.
+
+`VenueProfileEditor` es componente cliente porque necesita:
+
+- Cookie `HttpOnly` enviada por el navegador.
+- Subidas multipart de archivos locales.
+- Estado interactivo de guardado, publicación y errores.
+
+Flujo de carga:
+
+1. El componente resuelve locale activo de `next-intl`.
+2. Carga en paralelo categorías activas y perfil privado.
+3. Si el perfil responde `404`, se interpreta como ausencia de perfil editable.
+4. Si existe perfil, carga galería privada.
+5. Inicializa categoría e idioma principal con estado controlado y campos ocultos para garantizar
+   serialización estable en `FormData`.
+
+Flujo de guardado:
+
+1. El usuario envía el formulario.
+2. El parser normaliza y valida estructura básica.
+3. Si no existe perfil, se llama `POST /api/venue/me/profile`.
+4. Si existe, se llama `PATCH /api/venue/me/profile`.
+5. La respuesta sustituye el snapshot local y muestra estado de éxito.
+
+Flujo multimedia:
+
+- Imagen principal: input `image/jpeg,image/png`, `FormData(file)`, `POST /main-image`.
+- Galería: input de archivo + alt text obligatorio, `POST /gallery`.
+- Borrado: `DELETE /gallery/{imageId}` y eliminación optimista tras éxito.
+- Las subidas se deshabilitan mientras no exista perfil, porque los endpoints necesitan un perfil
+  vigente asociado al propietario autenticado.
+
+Flujo de publicación:
+
+- `POST /api/venue/me/publish`.
+- `422 VENUE_PUBLICATION_REJECTED` muestra una lista i18n de requisitos accionables.
+- El panel no intenta inferir ni saltarse bloqueos de publicación.
+
+### Seguridad, privacidad e internacionalización
+
+Seguridad:
+
+- Ningún payload del panel contiene propietario, cuenta empresarial, estado arbitrario ni claves de
+  almacenamiento.
+- Los endpoints privados mantienen autorización por sesión y rol existente.
+- Las categorías públicas solo exponen información no sensible.
+- Los errores públicos del cliente son categorías cerradas, no mensajes técnicos.
+
+Privacidad:
+
+- El SSR de `/panel/perfil` no consulta el API privado ni serializa datos del local.
+- Contacto público solo se guarda junto a flags explícitos `showEmail` y `showPhone`.
+- La UI recuerda que imágenes se sirven desde backend sin exponer object keys.
+
+Internacionalización:
+
+- Catálogos ES/EN nuevos bajo `VenueProfileEditor`.
+- Selector de idioma principal `es`/`en`.
+- Campos localizados por idioma para descripción, servicios, reglas y texto público.
+- Categorías resueltas por backend según `locale`.
+- `messages.test.ts` mantiene paridad de claves ES/EN y se actualiza por la navegación `Perfil`.
+
+### Accesibilidad y responsive
+
+La página usa:
+
+- `h1` en `PageHeading`, secciones con `h2` y subsecciones de textos/galería con `h3`.
+- Labels MUI asociados a inputs.
+- Alertas con `aria-live` para errores y guardado.
+- Botones deshabilitados durante operaciones concurrentes.
+- Layout de una columna en móvil y filas/pares en escritorio mediante breakpoints MUI.
+- Navegación inferior móvil con `Perfil` como destino principal.
+- Alt text obligatorio para galería y alt localizado para imagen principal actual.
+
+### Tests añadidos y evidencia
+
+Backend:
+
+- `VenueCategoryServiceTests`: resolución localizada y fallback canónico.
+- `VenueCategoryControllerTests`: prioridad de `locale`, negociación por `Accept-Language` y
+  fallback a inglés.
+
+Frontend:
+
+- `venue-profile-schema.test.ts`: normalización de payload y errores seguros.
+- `venue-profile-api.test.ts`: categorías, ausencia de perfil por 404, POST/PATCH, rechazo de
+  publicación y resolución de URLs.
+- `venue-profile-editor.test.tsx`: carga/edición por PATCH y presentación de requisitos de
+  publicación.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenueCategoryServiceTests,VenueCategoryControllerTests" test
+npm test --workspace @reserly/web -- --run src/features/venue-profile
+npm test --workspace @reserly/web -- --run src/features/venue-profile src/i18n/messages.test.ts src/components/layout/layout-system.test.tsx
+npm run lint --workspace @reserly/web
+npm run typecheck --workspace @reserly/web
+npm run format:check:web
+mvn -f apps/api/pom.xml spotless:check checkstyle:check
+npm run build:web:test
+npm run build:api
+```
+
+Resultados:
+
+- Backend focalizado: 3 tests correctos, 0 fallos.
+- Web perfil: 3 archivos, 8 tests correctos.
+- Web focalizado ampliado: 5 archivos, 14 tests correctos.
+- ESLint web: 0 errores, 0 warnings.
+- TypeScript: correcto.
+- Prettier web: correcto.
+- Spotless y Checkstyle backend: correctos.
+- Build web: correcto; Next.js incluye `/panel/perfil` como ruta dinámica.
+- Build API: correcto con `package -DskipTests`.
+
+Observaciones de verificación:
+
+- `npm run test:web` completo volvió a agotar timeouts de tests antiguos de UI con MUI/jsdom
+  (`DesignSystemPage` y `PublicVenueProfileView`) sin fallos de aserción. Los tests focalizados del
+  perfil, i18n y layout pasaron.
+- `npm run format:check` raíz falló por un symlink al evaluar patrón `.` después de completar
+  Prettier web; se verificó formato web y estilo Java por separado.
+
+### Riesgos, limitaciones y deuda
+
+- La gestión de orden visual de galería todavía no se expone en UI, aunque el backend ya tiene
+  endpoint de reordenación.
+- La edición de alt text de una imagen existente requiere borrar y subir de nuevo; una edición
+  directa puede añadirse cuando haya mayor uso real.
+- No hay preview pública embebida; se puede enlazar a `/locales/{slug}` cuando el perfil esté
+  publicado y se defina política de navegación.
+- Las categorías activas se cargan sin caché específica; si el catálogo crece se podrá cachear con
+  invalidación administrativa.
+- El panel no incluye todavía pestañas personalizadas; queda para `2.15`.
+- Las pruebas específicas de permisos entre propietarios quedan para `2.12`, como marca el plan.
+
+### Criterio de cierre
+
+La tarea se cierra porque el propietario ya dispone de una ruta privada para editar datos públicos,
+textos localizados, contacto, ubicación, imagen principal, galería y publicación usando contratos
+autorizados del backend; las categorías no están hardcodeadas; la navegación del panel expone la
+sección; y las pruebas/builds focalizadas demuestran los flujos principales. Siguiente tarea:
+`2.12`.
