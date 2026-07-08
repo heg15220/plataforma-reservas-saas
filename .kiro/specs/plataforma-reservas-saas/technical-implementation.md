@@ -16121,3 +16121,315 @@ Resultado:
 La tarea se cierra porque el endpoint acepta modos de ordenación cerrados, aplica relevancia,
 cercanía y disponibilidad manual en base de datos, acepta valoración con fallback estable hasta que
 existan reseñas, evita SQL dinámico inseguro y queda verificado con pruebas unitarias e integración.
+
+## Iteración 2026-07-08 - Tareas 3.7 y 3.8, estado resumido en resultados e inicio con buscador
+
+### Identificador exacto de las tareas completadas
+
+- `3.7. Añadir estado resumido de local en resultados`.
+- `3.8. Crear pantalla de inicio con buscador y mensaje principal`.
+
+### Objetivo técnico
+
+Completar el primer contrato útil de descubrimiento público antes de construir la pantalla de
+resultados:
+
+- Cada resultado de búsqueda debe exponer un estado resumido legible, localizado y estable para que
+  las futuras tarjetas puedan mostrar disponibilidad sin conocer campos internos del perfil.
+- La ruta pública `/` debe dejar de ser una demostración del sistema visual y convertirse en una
+  pantalla funcional con el mensaje principal requerido por `RF-001` y un formulario de búsqueda que
+  alimente la futura ruta de resultados.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos:
+
+- `RF-001 Buscador principal`: exige pantalla pública de inicio con barra de búsqueda principal y el
+  mensaje "¿Dónde quieres pedir cita hoy?".
+- `RF-002 Filtros avanzados`: anticipa refinado por ubicación y categoría.
+- `RF-003 Resultados de búsqueda`: exige que cada tarjeta muestre estado y disponibilidad resumida.
+- `RF-005 Estado público del local`: define estados públicos como abierto, cerrado, no disponible,
+  completo o próximamente disponible.
+- `RF-031 Internacionalización de textos`: todo texto visible debe salir localizado.
+- `RNF-001`, `RNF-002`, `RNF-004`, `RNF-008`, `RNF-009` y `RNF-010`.
+
+Decisiones de diseño aplicadas:
+
+- El backend no calcula todavía apertura real, cierre por horario ni cupos completos porque esas
+  fuentes pertenecen a Fase 4. En esta iteración solo resume el estado manual existente.
+- El DTO público expone código estable y texto localizado. Las futuras tarjetas podrán usar el código
+  para semántica visual y el texto para accesibilidad.
+- La home envía un formulario HTML `GET` a `/explorar`, usando los nombres `q` y `location` ya
+  alineados con el endpoint público de búsqueda.
+- Los accesos rápidos por categoría usan slugs estables soportados por `category`.
+
+### Archivos creados, modificados o eliminados
+
+Backend:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchItemResponse.java`
+  - Añade `statusCode`, `statusLabel`, `availabilitySummary` y `bookingAvailable`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`
+  - Añade mapeo de `manualAvailabilityStatus` a resumen público localizado.
+  - Añade fallback robusto para valores nulos o desconocidos.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`
+  - Añade aserciones para estado pendiente, disponible y no disponible.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`
+  - Verifica que la búsqueda real devuelve `statusCode` y `bookingAvailable` en el orden de
+    disponibilidad manual.
+
+Frontend:
+
+- `apps/web/src/app/page.tsx`
+  - Sustituye la pantalla de arranque visual por la pantalla pública con buscador.
+- `apps/web/src/app/page.test.tsx`
+  - Actualiza el test para validar mensaje principal, formulario, campos y enlaces rápidos.
+- `apps/web/locales/es.json`
+  - Añade textos españoles de la home y buscador.
+- `apps/web/locales/en.json`
+  - Añade textos ingleses equivalentes.
+- `apps/web/src/features/venue-profile/venue-profile-editor.tsx`
+  - Extrae nombres técnicos `_es` y `_en` a constantes para que el validador i18n no los interprete
+    como texto visible hardcodeado.
+
+Especificación:
+
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+### Arquitectura aplicada y razones técnicas
+
+Backend:
+
+- Se conserva la arquitectura por capas ya usada en búsqueda: controlador -> servicio -> DAO -> DTO.
+- La derivación de estado vive en `VenuePublicSearchServiceImpl` porque:
+  - usa un dato interno de persistencia (`manualAvailabilityStatus`);
+  - produce texto público localizado;
+  - evita exponer estados editoriales o campos internos del modelo.
+- Se define un record privado `StatusSummary` para agrupar el código, etiqueta, resumen y bandera de
+  reserva. Esto evita pasar parámetros sueltos y deja claro el contrato de mapeo.
+- El fallback `availability_pending` cubre `automatic`, `null` y cualquier valor desconocido. Aunque
+  la base de datos restringe valores válidos, los tests unitarios y futuras proyecciones parciales no
+  deben provocar `NullPointerException`.
+
+Frontend:
+
+- La home sigue usando `PublicShell` y `PageContainer`, por lo que conserva cabecera pública,
+  navegación móvil, skip-link y estructura responsive existentes.
+- El formulario se implementa como HTML semántico con `role="search"` y `method="get"`. No introduce
+  estado cliente innecesario ni dependencia de API antes de existir la pantalla de resultados.
+- Los campos usan `TextField` de MUI con iconos Lucide decorativos en `InputAdornment`.
+- El botón principal usa `type="submit"` y texto localizado.
+- Las categorías rápidas son datos estáticos de navegación, no llamadas remotas. Preparan el flujo
+  público sin bloquear a `3.9`.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No se añaden migraciones ni columnas nuevas.
+
+Datos leídos:
+
+- `"Venues"."manualAvailabilityStatus"`:
+  - `available` -> `statusCode = available`, `bookingAvailable = true`.
+  - `unavailable` -> `statusCode = unavailable`, `bookingAvailable = false`.
+  - `automatic`, `null` o desconocido -> `statusCode = availability_pending`,
+    `bookingAvailable = false`.
+
+Restricciones existentes relevantes:
+
+- `manualAvailabilityStatus` está restringido por migración a `automatic`, `available` y
+  `unavailable`.
+- El endpoint sigue filtrando únicamente `status = 'published'`.
+
+### Endpoints, contratos, servicios, componentes y módulos implementados
+
+Endpoint afectado:
+
+- `GET /api/public/venues/search`
+
+Contrato de cada item en `results` ampliado:
+
+```json
+{
+  "slug": "cafe-central",
+  "name": "Café Central",
+  "categorySlug": "restaurante",
+  "categoryName": "Restaurante",
+  "descriptionExcerpt": "Cocina de mercado...",
+  "mainImageUrl": "/api/public/venue-images/{id}/main",
+  "city": "Madrid",
+  "province": "Madrid",
+  "country": "ES",
+  "statusCode": "available",
+  "statusLabel": "Disponible",
+  "availabilitySummary": "Acepta reservas cuando tenga franjas publicadas.",
+  "bookingAvailable": true,
+  "latitude": 40.416775,
+  "longitude": -3.70379
+}
+```
+
+Componente/pantalla:
+
+- `HomePage` en `apps/web/src/app/page.tsx`.
+  - Mensaje principal: `HomePage.hero.title`.
+  - Formulario de búsqueda: `q` y `location`.
+  - Acción: `/explorar`.
+  - Categorías rápidas: restaurante, peluquería, centro deportivo y centro de estética.
+
+### Flujos de ejecución relevantes
+
+Flujo backend:
+
+1. El controlador recibe la búsqueda pública con locale, texto, categoría, ubicación, radio y sort.
+2. El servicio normaliza filtros y obtiene locales publicados desde el DAO.
+3. Para cada `VenueEntity`, `toResponse` resuelve textos localizados y crea `StatusSummary`.
+4. La respuesta pública incluye resumen de estado sin exponer identificadores internos ni estado
+   editorial.
+
+Flujo frontend:
+
+1. El usuario accede a `/`.
+2. La pantalla muestra cabecera pública, mensaje principal, campos "Qué buscas" y "Ubicación".
+3. Al enviar, el navegador navega a `/explorar?q=...&location=...`.
+4. Al pulsar una categoría rápida, navega a `/explorar?category=...`.
+
+### Validaciones, permisos, seguridad, privacidad, accesibilidad e internacionalización
+
+Validaciones y seguridad:
+
+- No se aceptan nuevos parámetros backend.
+- No hay SQL dinámico nuevo.
+- Los estados públicos se mapean desde una lista cerrada.
+- Valores inesperados caen en un estado conservador.
+
+Permisos:
+
+- El endpoint sigue siendo público y solo lista locales publicados.
+- La home no añade operaciones autenticadas.
+
+Privacidad:
+
+- No se exponen `ownerUserId`, cuenta empresarial, identificadores fiscales, contactos privados ni
+  estado de verificación.
+- La home no persiste ubicación del usuario ni solicita geolocalización.
+
+Accesibilidad:
+
+- El formulario usa `role="search"` y nombre accesible localizado.
+- Los `TextField` mantienen etiquetas visibles.
+- Los iconos son decorativos con `aria-hidden`.
+- Los enlaces rápidos son botones/enlaces con texto visible.
+
+Internacionalización:
+
+- Backend devuelve `statusLabel` y `availabilitySummary` en `es` o `en` según `SupportedLocale`.
+- Frontend añade claves ES/EN bajo `HomePage`.
+- `npm run i18n:check` valida catálogos completos y ausencia de texto visible hardcodeado.
+- Los textos españoles conservan tildes, eñes y signo de apertura.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Backend:
+
+- No se añaden excepciones públicas nuevas.
+- `manualAvailabilityStatus` nulo o desconocido no falla y usa `availability_pending`.
+- No se añaden logs ni auditoría porque la operación es lectura pública sin mutación.
+
+Frontend:
+
+- La home no realiza fetch, por lo que no introduce estados de error remotos.
+- La futura pantalla `/explorar` deberá gestionar carga, error y vacío en `3.9` y tareas posteriores.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenuePublicSearchServiceTests`
+  - Verifica campos localizados de estado pendiente para `automatic`/nulo.
+  - Verifica `available` con `bookingAvailable = true`.
+  - Verifica `unavailable` con `bookingAvailable = false`.
+- `VenuePublicSearchIntegrationTests`
+  - Verifica `statusCode` y `bookingAvailable` en una búsqueda con PostgreSQL/Testcontainers.
+- `page.test.tsx`
+  - Verifica título principal, navegación pública, formulario, `action`, `q`, `location`, submit y
+    enlace rápido de restaurantes.
+- `venue-profile-editor.test.tsx`
+  - Se ejecuta como prueba afectada por el ajuste de nombres técnicos.
+
+Comandos ejecutados y resultado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test
+```
+
+Resultado:
+
+- 13 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless correcto.
+- Checkstyle correcto.
+- `BUILD SUCCESS`.
+
+```text
+npm exec --workspace @reserly/web vitest -- run src/app/page.test.tsx src/features/venue-profile/venue-profile-editor.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000
+```
+
+Resultado:
+
+- 2 ficheros, 3 tests, 0 fallos.
+
+Comandos adicionales:
+
+```text
+npm run typecheck --workspace @reserly/web
+npm run i18n:check
+npm run spanish:text:check
+npm run backend:conventions:check
+npm run lint:web
+npm exec prettier -- --check apps/web/src/app/page.tsx apps/web/src/app/page.test.tsx apps/web/src/features/venue-profile/venue-profile-editor.tsx apps/web/locales/es.json apps/web/locales/en.json
+git diff --check
+```
+
+Resultado:
+
+- TypeScript correcto.
+- i18n correcto.
+- Validación de español correcta.
+- Convenciones backend correctas.
+- ESLint web correcto.
+- Prettier correcto en archivos afectados.
+- Diff sin whitespace problemático.
+
+Incidencia de verificación:
+
+- `npm exec --workspace @reserly/web vitest -- run --pool=threads --maxWorkers=1 --testTimeout=20000`
+  no emitió resultados antes del timeout del comando de 240 segundos en este entorno. Se sustituyó
+  por tests focalizados sobre los ficheros afectados.
+- `npm run format:check:web` informó que todos los archivos coinciden con Prettier, pero el comando
+  terminó con error adicional por patrón `.` como enlace simbólico. Se verificaron los archivos
+  afectados con `prettier --check` explícito.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- El estado `available` no equivale todavía a "abierto ahora"; solo indica que el local no ha pausado
+  manualmente reservas y está preparado para mostrar disponibilidad cuando existan franjas.
+- `availability_pending` seguirá apareciendo para locales en modo `automatic` hasta implementar
+  horarios, franjas y cálculo operativo real en Fase 4.
+- La home navega a `/explorar`, pero la pantalla de resultados se implementará en `3.9`; hasta
+  entonces la ruta puede no tener experiencia final.
+- Las categorías rápidas son una primera selección fija. En una fase posterior convendrá obtener
+  categorías activas desde backend o desde un módulo de configuración compartido.
+- No se implementan todavía recomendados, destacados ni cercanos; corresponden a `3.11`.
+
+### Criterio de cierre
+
+Las tareas se cierran porque:
+
+- Los resultados públicos ya incluyen estado resumido localizado, código estable y bandera de
+  reserva basada en el estado manual existente.
+- La pantalla pública inicial muestra el mensaje requerido, un buscador principal accesible y enlaces
+  rápidos coherentes con los filtros soportados.
+- La implementación queda documentada, traducida y verificada con tests backend, tests frontend
+  focalizados, typecheck, i18n, lint, validación de español, convenciones backend y comprobación de
+  whitespace.

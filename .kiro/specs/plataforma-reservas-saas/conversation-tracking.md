@@ -11,10 +11,11 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-08
-- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22` y `2.1` a `2.16`.
-- Siguiente tarea pendiente recomendada: `2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.`
-- Observación: la Fase 1 queda cerrada con cobertura integrada del recorrido autenticado de
-  propietario y del aislamiento horizontal de solicitudes y documentos empresariales.
+- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17` y `3.1` a
+  `3.8`.
+- Siguiente tarea pendiente recomendada: `3.9. Crear pantalla de resultados con tarjetas.`
+- Observación: la Fase 3 ya dispone de endpoint público de búsqueda con texto, categoría,
+  ubicación, radio, ordenación, estado resumido y pantalla de inicio con buscador principal.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -3349,6 +3350,81 @@ Fuente de verdad del avance:
     correcto con 10 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
     `git diff --check` correctos.
+
+## Conversación 73 - Estado resumido de resultados e inicio con buscador
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama de fase `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmaron como siguientes tareas pendientes `3.7` y `3.8`.
+  - Se amplió la tarjeta pública devuelta por `GET /api/public/venues/search` con estado resumido
+    del local: `statusCode`, `statusLabel`, `availabilitySummary` y `bookingAvailable`.
+  - El estado se deriva de `manualAvailabilityStatus` como aproximación inicial:
+    `available`, `unavailable` y `availability_pending`.
+  - Se mantuvo explícita la limitación de que la disponibilidad real por horarios, capacidad y
+    franjas pertenece a la Fase 4.
+  - Se sustituyó la home de demostración por una pantalla pública funcional con el mensaje
+    "¿Dónde quieres pedir cita hoy?", buscador principal, campos `q` y `location`, botón de envío y
+    accesos rápidos por categorías.
+  - Se añadieron traducciones ES/EN para el nuevo buscador y se eliminó el texto visible hardcodeado
+    de la home.
+  - Se ajustaron nombres técnicos `_es` y `_en` del editor de perfil para que el validador i18n no
+    los trate como texto visible.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchItemResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+  - `apps/web/src/app/page.tsx`.
+  - `apps/web/src/app/page.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-005 Estado público del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-010 Accesibilidad`.
+- Tareas impactadas:
+  - `3.7. Añadir estado resumido de local en resultados`.
+  - `3.8. Crear pantalla de inicio con buscador y mensaje principal`.
+  - Prepara `3.9`, que creará la pantalla de resultados con tarjetas.
+- Tareas completadas:
+  - `3.7. Añadir estado resumido de local en resultados`.
+  - `3.8. Crear pantalla de inicio con buscador y mensaje principal`.
+- Siguiente tarea pendiente recomendada:
+  - `3.9. Crear pantalla de resultados con tarjetas`.
+- Decisiones o aclaraciones relevantes:
+  - `manualAvailabilityStatus = available` se expone como `statusCode = available`,
+    `bookingAvailable = true` y etiqueta localizada.
+  - `manualAvailabilityStatus = unavailable` se expone como `statusCode = unavailable` y
+    `bookingAvailable = false`.
+  - `automatic`, valores desconocidos o nulos caen en `availability_pending` para no prometer
+    disponibilidad real antes de implementar horarios y franjas.
+  - La home envía el formulario por `GET` a `/explorar` con parámetros `q` y `location`, compatible
+    con la futura pantalla de resultados.
+  - Los accesos rápidos enlazan a `/explorar?category=...` usando slugs estables ya soportados por el
+    backend.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
+    correcto con 13 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+  - Evidencia frontend: `npm exec --workspace @reserly/web vitest -- run src/app/page.test.tsx src/features/venue-profile/venue-profile-editor.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000`
+    correcto con 2 ficheros, 3 tests, 0 fallos.
+  - Evidencia adicional: `npm run typecheck --workspace @reserly/web`, `npm run i18n:check`,
+    `npm run spanish:text:check`, `npm run backend:conventions:check`, `npm run lint:web`,
+    `npm exec prettier -- --check ...` y `git diff --check` correctos.
+  - La suite web completa con `vitest run --pool=threads --maxWorkers=1 --testTimeout=20000` no
+    emitió resultados antes del timeout del comando; se verificaron los tests afectados de forma
+    focalizada.
 
 ## Conversación 72 - Radio geográfico y ordenación pública
 

@@ -163,6 +163,12 @@ class VenuePublicSearchIntegrationTests {
     assertThat(byAvailabilitySort.results())
         .extracting("name")
         .containsExactly("Café Central", "Pista Norte");
+    assertThat(byAvailabilitySort.results())
+        .extracting("statusCode")
+        .containsExactly("available", "unavailable");
+    assertThat(byAvailabilitySort.results())
+        .extracting("bookingAvailable")
+        .containsExactly(true, false);
   }
 
   private VenueEntity createPublishableVenue(

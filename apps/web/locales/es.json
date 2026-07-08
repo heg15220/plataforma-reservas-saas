@@ -150,30 +150,28 @@
   },
   "HomePage": {
     "actions": {
-      "designSystem": "Ver sistema visual",
-      "panelPreview": "Ver panel responsive"
-    },
-    "foundations": {
-      "publicWeb": {
-        "description": "Cabecera ligera, contenido fluido y navegación inferior en móvil.",
-        "status": "Responsive",
-        "title": "Web pública"
-      },
-      "venuePanel": {
-        "description": "Sidebar persistente en escritorio y accesos esenciales en móvil.",
-        "status": "Adaptable",
-        "title": "Panel del local"
-      },
-      "visualSystem": {
-        "description": "Tokens, estados, iconos y componentes con contratos comunes.",
-        "status": "Consistente",
-        "title": "Sistema visual"
-      }
+      "search": "Buscar disponibilidad"
     },
     "hero": {
-      "eyebrow": "BASE DE PRODUCTO",
-      "summary": "Una estructura común y un lenguaje visual accesible para construir experiencias públicas y privadas coherentes.",
-      "title": "Reserly ya tiene una base visual"
+      "eyebrow": "RESERVAS ONLINE",
+      "summary": "Encuentra restaurantes, centros deportivos, peluquerías y servicios cercanos con disponibilidad clara para reservar sin crear una cuenta.",
+      "title": "¿Dónde quieres pedir cita hoy?"
+    },
+    "quickCategories": {
+      "items": {
+        "beauty": "Estética",
+        "hairdressers": "Peluquerías",
+        "restaurants": "Restaurantes",
+        "sports": "Deporte"
+      },
+      "title": "Categorías populares"
+    },
+    "search": {
+      "ariaLabel": "Buscador principal de locales",
+      "locationLabel": "Ubicación",
+      "locationPlaceholder": "Ciudad, zona o dirección",
+      "queryLabel": "Qué buscas",
+      "queryPlaceholder": "Nombre, servicio o categoría"
     }
   },
   "Layout": {

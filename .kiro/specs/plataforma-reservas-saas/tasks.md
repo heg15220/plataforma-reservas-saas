@@ -88,8 +88,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 3.4. Añadir filtros por ciudad, zona o dirección normalizada.
 - [x] 3.5. Añadir filtro por radio si hay coordenadas.
 - [x] 3.6. Añadir ordenación por relevancia, valoración, cercanía y disponibilidad.
-- [ ] 3.7. Añadir estado resumido de local en resultados.
-- [ ] 3.8. Crear pantalla de inicio con buscador y mensaje principal.
+- [x] 3.7. Añadir estado resumido de local en resultados.
+- [x] 3.8. Crear pantalla de inicio con buscador y mensaje principal.
 - [ ] 3.9. Crear pantalla de resultados con tarjetas.
 - [ ] 3.10. Crear panel de filtros desktop y móvil.
 - [ ] 3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple.

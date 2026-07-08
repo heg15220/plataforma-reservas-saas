@@ -28,6 +28,8 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
   private static final double MAX_RADIUS_KM = 500.0;
   private static final String NO_CATEGORY_SENTINEL = "__no-category__";
   private static final int DESCRIPTION_EXCERPT_LENGTH = 180;
+  private static final String MANUAL_AVAILABLE = "available";
+  private static final String MANUAL_UNAVAILABLE = "unavailable";
 
   private final VenueDao venueDao;
 
@@ -157,6 +159,7 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
   }
 
   private static VenueSearchItemResponse toResponse(VenueEntity venue, SupportedLocale locale) {
+    StatusSummary statusSummary = summarizeStatus(venue.getManualAvailabilityStatus(), locale);
     return new VenueSearchItemResponse(
         venue.getSlug(),
         venue.getName(),
@@ -167,8 +170,54 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
         venue.getCity(),
         venue.getProvince(),
         venue.getCountry(),
+        statusSummary.code(),
+        statusSummary.label(),
+        statusSummary.summary(),
+        statusSummary.bookingAvailable(),
         venue.getLatitude(),
         venue.getLongitude());
+  }
+
+  /**
+   * Resume la disponibilidad visible con el estado manual actual del perfil.
+   *
+   * <p>La fase de horarios y franjas sustituirá esta aproximación por cálculo operativo real.
+   */
+  private static StatusSummary summarizeStatus(
+      String manualAvailabilityStatus, SupportedLocale locale) {
+    boolean spanish = locale == SupportedLocale.ES;
+    if (manualAvailabilityStatus == null) {
+      return pendingStatusSummary(spanish);
+    }
+    return switch (manualAvailabilityStatus) {
+      case MANUAL_AVAILABLE ->
+          new StatusSummary(
+              "available",
+              spanish ? "Disponible" : "Available",
+              spanish
+                  ? "Acepta reservas cuando tenga franjas publicadas."
+                  : "Accepts bookings when time slots are published.",
+              true);
+      case MANUAL_UNAVAILABLE ->
+          new StatusSummary(
+              "unavailable",
+              spanish ? "No disponible" : "Unavailable",
+              spanish
+                  ? "El local ha pausado temporalmente las reservas."
+                  : "The venue has temporarily paused bookings.",
+              false);
+      default -> pendingStatusSummary(spanish);
+    };
+  }
+
+  private static StatusSummary pendingStatusSummary(boolean spanish) {
+    return new StatusSummary(
+        "availability_pending",
+        spanish ? "Disponibilidad pendiente" : "Availability pending",
+        spanish
+            ? "La disponibilidad por franjas se publicará próximamente."
+            : "Time-slot availability will be published soon.",
+        false);
   }
 
   private static String resolve(
@@ -190,4 +239,7 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
 
   private record GeoSearchFilter(
       boolean hasCoordinates, Double latitude, Double longitude, Double radiusMeters) {}
+
+  private record StatusSummary(
+      String code, String label, String summary, boolean bookingAvailable) {}
 }

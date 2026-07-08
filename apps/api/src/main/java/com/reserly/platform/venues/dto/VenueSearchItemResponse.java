@@ -17,5 +17,9 @@ public record VenueSearchItemResponse(
     String city,
     String province,
     String country,
+    String statusCode,
+    String statusLabel,
+    String availabilitySummary,
+    boolean bookingAvailable,
     BigDecimal latitude,
     BigDecimal longitude) {}

@@ -150,30 +150,28 @@
   },
   "HomePage": {
     "actions": {
-      "designSystem": "View visual system",
-      "panelPreview": "View responsive panel"
-    },
-    "foundations": {
-      "publicWeb": {
-        "description": "Light header, fluid content and bottom navigation on mobile.",
-        "status": "Responsive",
-        "title": "Public website"
-      },
-      "venuePanel": {
-        "description": "Persistent desktop sidebar and essential mobile shortcuts.",
-        "status": "Adaptable",
-        "title": "Venue panel"
-      },
-      "visualSystem": {
-        "description": "Tokens, states, icons and components with shared contracts.",
-        "status": "Consistent",
-        "title": "Visual system"
-      }
+      "search": "Search availability"
     },
     "hero": {
-      "eyebrow": "PRODUCT BASE",
-      "summary": "A shared structure and accessible visual language for building coherent public and private experiences.",
-      "title": "Reserly now has a visual base"
+      "eyebrow": "ONLINE BOOKINGS",
+      "summary": "Find nearby restaurants, sports centres, hairdressers and services with clear availability so you can book without creating an account.",
+      "title": "Where would you like to book today?"
+    },
+    "quickCategories": {
+      "items": {
+        "beauty": "Beauty",
+        "hairdressers": "Hairdressers",
+        "restaurants": "Restaurants",
+        "sports": "Sports"
+      },
+      "title": "Popular categories"
+    },
+    "search": {
+      "ariaLabel": "Main venue search",
+      "locationLabel": "Location",
+      "locationPlaceholder": "City, area or address",
+      "queryLabel": "What are you looking for?",
+      "queryPlaceholder": "Name, service or category"
     }
   },
   "Layout": {

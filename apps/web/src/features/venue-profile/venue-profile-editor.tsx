@@ -588,6 +588,8 @@ function LocalizedTextFields({
 }) {
   const t = useTranslations("VenueProfileEditor");
   const value = profile?.[`${name}I18n`];
+  const englishFieldName = `${name}_en`;
+  const spanishFieldName = `${name}_es`;
 
   return (
     <Box>
@@ -606,7 +608,7 @@ function LocalizedTextFields({
           }
           label={`${label} · ${t("locales.es")}`}
           multiline
-          name={`${name}_es`}
+          name={spanishFieldName}
           rows={rows}
         />
         <TextField
@@ -615,7 +617,7 @@ function LocalizedTextFields({
           helperText={t("fields.localized.en")}
           label={`${label} · ${t("locales.en")}`}
           multiline
-          name={`${name}_en`}
+          name={englishFieldName}
           rows={rows}
         />
       </Stack>

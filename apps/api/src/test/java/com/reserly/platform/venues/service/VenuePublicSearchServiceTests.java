@@ -59,6 +59,11 @@ class VenuePublicSearchServiceTests {
     assertThat(response.results().get(0).mainImageUrl())
         .isEqualTo("/api/public/venue-images/id/main");
     assertThat(response.results().get(0).city()).isEqualTo("Madrid");
+    assertThat(response.results().get(0).statusCode()).isEqualTo("availability_pending");
+    assertThat(response.results().get(0).statusLabel()).isEqualTo("Availability pending");
+    assertThat(response.results().get(0).availabilitySummary())
+        .isEqualTo("Time-slot availability will be published soon.");
+    assertThat(response.results().get(0).bookingAvailable()).isFalse();
     assertThat(response.results().get(0).latitude()).isEqualByComparingTo("40.416775");
   }
 
@@ -267,6 +272,7 @@ class VenuePublicSearchServiceTests {
   @Test
   void acceptsAvailabilityAndRatingSortModesWithStablePublicFallback() {
     VenueEntity venue = venue("casa-luz", "Casa Luz");
+    venue.setManualAvailabilityStatus("available");
     when(venueDao.findPublishedAdvancedSearch(
             nullable(String.class),
             anyList(),
@@ -296,6 +302,28 @@ class VenuePublicSearchServiceTests {
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).slug()).isEqualTo("casa-luz");
+    assertThat(response.results().get(0).statusCode()).isEqualTo("available");
+    assertThat(response.results().get(0).statusLabel()).isEqualTo("Disponible");
+    assertThat(response.results().get(0).availabilitySummary())
+        .isEqualTo("Acepta reservas cuando tenga franjas publicadas.");
+    assertThat(response.results().get(0).bookingAvailable()).isTrue();
+  }
+
+  @Test
+  void exposesUnavailableStatusSummaryWhenVenuePausesBookings() {
+    VenueEntity venue = venue("pausado", "Local Pausado");
+    venue.setManualAvailabilityStatus("unavailable");
+    stubAdvancedSearch(List.of(venue), 1L);
+
+    var response =
+        service.search(SupportedLocale.ES, null, null, null, null, null, null, null, 0, 20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).statusCode()).isEqualTo("unavailable");
+    assertThat(response.results().get(0).statusLabel()).isEqualTo("No disponible");
+    assertThat(response.results().get(0).availabilitySummary())
+        .isEqualTo("El local ha pausado temporalmente las reservas.");
+    assertThat(response.results().get(0).bookingAvailable()).isFalse();
   }
 
   private void stubAdvancedSearch(List<VenueEntity> venues, long totalElements) {
