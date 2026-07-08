@@ -58,4 +58,19 @@ public interface AvailabilityBlockDao extends JpaRepository<AvailabilityBlockEnt
       """)
   boolean existsOwnedDayOverride(
       @Param("ownerUserId") UUID ownerUserId, @Param("date") LocalDate date);
+
+  /** Busca la excepción de día completo visible para un local publicado. */
+  @Query(
+      """
+      select block from AvailabilityBlockEntity block
+      where block.venue.id = :venueId
+        and block.venue.status = 'published'
+        and block.scope = 'venue'
+        and block.date = :date
+        and block.startsAt is null
+        and block.endsAt is null
+        and block.kind in ('closed_day', 'reservations_disabled')
+      """)
+  Optional<AvailabilityBlockEntity> findPublishedDayOverride(
+      @Param("venueId") UUID venueId, @Param("date") LocalDate date);
 }

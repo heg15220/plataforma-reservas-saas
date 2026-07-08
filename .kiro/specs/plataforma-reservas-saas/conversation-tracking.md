@@ -12,12 +12,77 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-09
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14` y `4.1` a `4.8`.
-- Siguiente tarea pendiente recomendada: `4.9. Implementar cálculo de estado del local.`
+  `3.14` y `4.1` a `4.10`.
+- Siguiente tarea pendiente recomendada: `4.11. Crear calendario público de disponibilidad.`
 - Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
   disponibilidad, API privada de horario semanal, excepciones diarias, creación manual de franjas,
   generación automática por duración, actualización de capacidad máxima por franja, bloqueo y
-  reapertura manual de franjas y cierre operativo de día completo.
+  reapertura manual de franjas, cierre operativo de día completo, cálculo de estado del local y
+  endpoint público de disponibilidad por slug y fecha.
+
+## Conversación 81 - Estado operativo y disponibilidad pública por fecha
+
+- Fecha: 2026-07-09.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/4-horarios-franjas-disponibilidad`.
+  - Se confirmaron `4.9` y `4.10` como las dos siguientes tareas pendientes.
+  - Se implementó `GET /api/public/venues/{slug}/availability?date=YYYY-MM-DD` como endpoint
+    anónimo de disponibilidad pública de un local publicado.
+  - Se añadió el caso de uso `PublicVenueAvailabilityService` para calcular estado operativo por
+    fecha desde horario semanal, excepciones diarias y estado de franjas.
+  - El cálculo devuelve estados `open`, `closed`, `unavailable`, `full` y `upcoming_available`, con
+    labels localizados ES/EN y señal `bookingAvailable`.
+  - Las franjas públicas exponen inicio, fin, capacidad total, capacidad disponible temporal,
+    estado y si admiten reserva.
+  - Se reutilizó la resolución pública de idioma de locales haciendo público
+    `VenuePublicLocaleResolver`.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityExceptionHandler.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/PublicVenueAvailabilityController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/PublicVenueAvailabilityControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/PublicTimeSlotAvailabilityResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/PublicVenueAvailabilityResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/AvailabilityBlockDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/PublicVenueAvailabilityService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/PublicVenueAvailabilityServiceImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicLocaleResolver.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/controller/PublicVenueAvailabilityControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/service/PublicVenueAvailabilityServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-004 Ficha pública del local`.
+  - `RF-005 Estado público del local`.
+  - `RF-006 Calendario de disponibilidad`.
+  - `RF-011 Gestión de franjas`.
+  - `RF-012 Gestión de disponibilidad en tiempo real`.
+  - `RNF-001 Seguridad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `4.9. Implementar cálculo de estado del local`.
+  - `4.10. Implementar endpoint de disponibilidad pública por local y fecha`.
+  - Prepara `4.11`, `4.12`, `4.14` y el flujo de holds de Fase 7.
+- Tareas completadas:
+  - `4.9. Implementar cálculo de estado del local`.
+  - `4.10. Implementar endpoint de disponibilidad pública por local y fecha`.
+- Siguiente tarea pendiente recomendada:
+  - `4.11. Crear calendario público de disponibilidad.`
+- Decisiones o aclaraciones relevantes:
+  - El contrato público usa `slug` porque la ficha pública y la búsqueda ya trabajan con slugs y no
+    exponen IDs internos de local.
+  - La capacidad disponible se iguala temporalmente a `capacity` cuando la franja está `available`;
+    en Fase 7 se recalculará restando reservas confirmadas y holds vigentes.
+  - `upcoming_available` se calcula cuando la fecha consultada no tiene huecos reservables pero
+    existen franjas futuras `available`.
+  - Evidencia correcta: `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests,PublicVenueAvailabilityServiceTests,PublicVenueAvailabilityControllerTests" test`
+    pasó con 27 tests, 0 fallos, 0 errores y 0 omitidos, incluyendo Spotless y Checkstyle.
+  - Evidencia correcta: `mvn -f apps/api/pom.xml spotless:apply`, `npm run backend:conventions:check`,
+    `npm run spanish:text:check` y `git diff --check`.
 
 ## Conversación 80 - Bloqueo manual de franjas y cierre operativo de día
 

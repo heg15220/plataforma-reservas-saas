@@ -45,4 +45,15 @@ public interface VenueOpeningHourDao extends JpaRepository<VenueOpeningHourEntit
       """)
   Optional<VenueOpeningHourEntity> findOwnedByWeekday(
       @Param("ownerUserId") UUID ownerUserId, @Param("weekday") int weekday);
+
+  /** Resuelve el horario semanal público de un local publicado por weekday ISO. */
+  @Query(
+      """
+      select hour from VenueOpeningHourEntity hour
+      where hour.venue.id = :venueId
+        and hour.venue.status = 'published'
+        and hour.weekday = :weekday
+      """)
+  Optional<VenueOpeningHourEntity> findPublishedByVenueIdAndWeekday(
+      @Param("venueId") UUID venueId, @Param("weekday") int weekday);
 }

@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
     assignableTypes = {
       OpeningHoursControllerImpl.class,
       AvailabilityDayControllerImpl.class,
-      TimeSlotControllerImpl.class
+      TimeSlotControllerImpl.class,
+      PublicVenueAvailabilityControllerImpl.class
     })
 public class AvailabilityExceptionHandler {
 

@@ -18105,6 +18105,7 @@ Comandos ejecutados:
 mvn -f apps/api/pom.xml spotless:apply
 mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test
 npm run backend:conventions:check
+npm run spanish:text:check
 git diff --check
 ```
 
@@ -18141,3 +18142,261 @@ Las tareas se cierran porque el backend ya permite bloquear y reabrir manualment
 impide reaperturas incompatibles con cierres diarios y convierte el cierre de día completo en una
 mutación efectiva de disponibilidad sobre las franjas persistidas, con tests focalizados y
 documentación técnica actualizada.
+
+## Iteración 2026-07-09 - Tareas 4.9 y 4.10, estado operativo y disponibilidad pública
+
+### Identificador exacto de las tareas completadas
+
+- `4.9. Implementar cálculo de estado del local`.
+- `4.10. Implementar endpoint de disponibilidad pública por local y fecha`.
+
+### Objetivo técnico
+
+Publicar la primera lectura anónima de disponibilidad real de la Fase 4. La iteración calcula el
+estado operativo de un local publicado para una fecha concreta y devuelve las franjas de esa fecha con
+su capacidad, estado y posibilidad de reserva. Esta capa convierte la gestión privada previa de
+horarios, excepciones y franjas en una frontera pública consumible por la ficha del local y el futuro
+calendario.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-003`: las tarjetas y fichas necesitan estado y disponibilidad resumida.
+- `RF-004`: la ficha pública debe permitir consultar disponibilidad.
+- `RF-005`: el sistema debe mostrar abierto, cerrado, no disponible, completo o próximamente
+  disponible.
+- `RF-006`: el calendario público debe listar franjas con inicio, fin, capacidad total, plazas
+  disponibles y estado.
+- `RF-011`: las franjas ya creadas, bloqueadas o reabiertas alimentan el estado visible.
+- `RF-012`: los cambios privados de disponibilidad se reflejan desde backend.
+- `RNF-001`: el endpoint es anónimo, pero solo lee locales publicados.
+- `RNF-004`: las consultas se acotan por slug publicado, fecha e índices existentes de franjas.
+- `RNF-011`: se mantienen interfaces REST, implementaciones separadas, DTOs explícitos y DAOs con
+  `@Query`.
+
+Decisiones:
+
+- El endpoint público usa `slug`: `GET /api/public/venues/{slug}/availability?date=YYYY-MM-DD`.
+  Aunque el diseño conceptual mencionaba `venueId`, el producto público ya navega por slug y las
+  tarjetas no exponen IDs internos de local.
+- La capacidad disponible coincide temporalmente con `capacity` cuando `TimeSlots.status=available`.
+  Reservas confirmadas y holds se descontarán cuando existan las tablas de Fase 7.
+- El cálculo no depende de cache ni de validaciones frontend.
+- Los labels de estado se localizan en backend para la primera API pública; los catálogos UI podrán
+  mapear los mismos códigos más adelante.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/PublicVenueAvailabilityController.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/PublicVenueAvailabilityControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/PublicTimeSlotAvailabilityResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/PublicVenueAvailabilityResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/PublicVenueAvailabilityService.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/PublicVenueAvailabilityServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/PublicVenueAvailabilityControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/PublicVenueAvailabilityServiceTests.java`.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityExceptionHandler.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/AvailabilityBlockDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicLocaleResolver.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminan archivos y no se añaden migraciones. El contrato usa tablas ya existentes:
+`Venues`, `VenueOpeningHours`, `AvailabilityBlocks` y `TimeSlots`.
+
+### Arquitectura aplicada y razones técnicas
+
+Se introduce un caso de uso público separado dentro del contexto `availability`:
+
+- `PublicVenueAvailabilityController` define el contrato anónimo bajo `/api/public/venues`.
+- `PublicVenueAvailabilityControllerImpl` resuelve idioma con `VenuePublicLocaleResolver` y delega.
+- `PublicVenueAvailabilityServiceImpl` calcula estado y serializa franjas públicas.
+- `TimeSlotDao`, `VenueOpeningHourDao` y `AvailabilityBlockDao` añaden consultas públicas por
+  `venueId` publicado.
+- `VenueDao.findPublishedBySlug` sigue siendo la frontera de publicación: slugs inexistentes,
+  borradores, suspendidos o archivados devuelven 404.
+
+La lógica no se mezcla en `venues` porque el dominio de estado operativo depende de horarios,
+excepciones y franjas. Solo se reutiliza el resolvedor de idioma público de locales, que pasa a ser
+`public` para evitar duplicación.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No hay cambios de esquema.
+
+Datos leídos:
+
+- `Venues.status='published'` para garantizar exposición pública.
+- `VenueOpeningHours.closed` y `VenueOpeningHours.reservationsEnabled`.
+- `AvailabilityBlocks.kind` con `closed_day` y `reservations_disabled`.
+- `TimeSlots.status`, `capacity`, `startsAt`, `endsAt` y `date`.
+
+Consultas añadidas:
+
+- `TimeSlotDao.findPublishedByVenueIdAndDate(venueId, date)`.
+- `TimeSlotDao.existsPublishedAvailableAfter(venueId, date)`.
+- `VenueOpeningHourDao.findPublishedByVenueIdAndWeekday(venueId, weekday)`.
+- `AvailabilityBlockDao.findPublishedDayOverride(venueId, date)`.
+
+Estados calculados:
+
+- `open`: el día admite reservas y hay al menos una franja `available`.
+- `closed`: el horario semanal está cerrado o existe `closed_day`.
+- `unavailable`: reservas desactivadas por horario o excepción, o no hay huecos actuales ni futuros.
+- `full`: hay franjas, pero todas están `full`.
+- `upcoming_available`: no hay huecos reservables en la fecha consultada, pero sí franjas futuras
+  `available`.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint:
+
+- `GET /api/public/venues/{slug}/availability?date=YYYY-MM-DD&locale=es|en`
+  - Anónimo.
+  - Resuelve solo locales publicados.
+  - Negocia idioma por query param o `Accept-Language`.
+
+Respuesta:
+
+- `venueSlug`.
+- `date`.
+- `weekday`.
+- `statusCode`.
+- `statusLabel`.
+- `bookingAvailable`.
+- `closed`.
+- `reservationsEnabled`.
+- `source`.
+- `availableSlotCount`.
+- `slots`.
+
+Cada franja pública incluye:
+
+- `slotId`.
+- `startsAt`.
+- `endsAt`.
+- `capacity`.
+- `availableCapacity`.
+- `status`.
+- `bookingAvailable`.
+
+No se implementan jobs ni componentes UI en esta iteración.
+
+### Flujos de ejecución relevantes
+
+Consulta pública:
+
+1. El cliente llama al endpoint con `slug` y `date`.
+2. El controlador resuelve locale con query param o cabecera.
+3. El servicio valida `slug` y `date`.
+4. `VenueDao.findPublishedBySlug` carga el local publicado o devuelve 404 estable.
+5. Se calcula `weekday` ISO.
+6. Se cargan franjas públicas de la fecha.
+7. Se carga excepción diaria publicada, si existe.
+8. Se carga horario semanal publicado.
+9. Se serializan franjas con disponibilidad booleana por estado.
+10. Se calcula estado operativo del local para la fecha.
+11. Se devuelve una respuesta pública sin propietario, cuenta empresarial ni datos internos de
+    gestión.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- `slug` obligatorio y no blanco.
+- `date` obligatoria.
+- Solo se leen locales con `status='published'`.
+
+Permisos y privacidad:
+
+- Endpoint anónimo sin sesión.
+- Borradores, suspendidos, archivados y slugs inexistentes responden como no encontrados.
+- No se exponen `ownerUserId`, `businessAccountId`, configuración empresarial ni documentos.
+- `slotId` se expone porque será el identificador necesario para holds y reservas públicas en Fase 7.
+
+Internacionalización:
+
+- `statusLabel` se devuelve en ES/EN mediante `SupportedLocale`.
+- Query param `locale` tiene prioridad; si falta, se usa `Accept-Language`; fallback estable a `en`.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores:
+
+- Payload inválido de fecha o slug: `TIME_SLOT_INVALID`.
+- Local no publicado o inexistente: `VENUE_PROFILE_NOT_FOUND` con 404.
+
+Logs:
+
+- No se añaden logs para lecturas públicas normales.
+
+Auditoría:
+
+- No se auditan lecturas anónimas de disponibilidad en esta fase.
+
+Observabilidad:
+
+- No se añaden métricas. La frontera pública queda preparada para métricas de disponibilidad y
+  reservas fallidas en Fase 17.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests añadidos:
+
+- `PublicVenueAvailabilityServiceTests`
+  - Devuelve `open` cuando hay franjas `available`.
+  - Devuelve `closed` cuando existe `closed_day`.
+  - Devuelve `upcoming_available` cuando no hay huecos en la fecha pero sí futuros.
+  - Rechaza fecha nula y local no publicado.
+- `PublicVenueAvailabilityControllerTests`
+  - Verifica contrato REST y resolución de locale por query param.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests,PublicVenueAvailabilityServiceTests,PublicVenueAvailabilityControllerTests" test
+npm run backend:conventions:check
+git diff --check
+```
+
+Resultados:
+
+- Spotless: correcto.
+- Checkstyle: correcto durante la ejecución de tests.
+- Tests focalizados: 27 tests, 0 fallos, 0 errores, 0 omitidos.
+- Convenciones backend: correctas.
+- Validación de español: correcta.
+- Whitespace: correcto.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- `availableCapacity` aún no descuenta reservas ni holds porque todavía no existen en el modelo.
+- `full` depende de `TimeSlots.status='full'`; el cálculo automático de ocupación real llegará con
+  reservas.
+- El endpoint no devuelve matriz mensual de calendario; eso corresponde a `4.11`.
+- El cálculo de estado no usa zona horaria operativa por local ni hora actual; se centra en la fecha
+  consultada y las franjas persistidas. Esa precisión podrá refinarse cuando se diseñen reglas
+  horarias avanzadas.
+- La búsqueda pública aún usa `manualAvailabilityStatus`; podrá consumir este estado real en una
+  iteración posterior.
+
+### Evidencia de verificación
+
+- `mvn -f apps/api/pom.xml spotless:apply`: finalizó con `BUILD SUCCESS`.
+- `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests,PublicVenueAvailabilityServiceTests,PublicVenueAvailabilityControllerTests" test`:
+  finalizó con `BUILD SUCCESS`, 27 tests ejecutados, 0 fallos, 0 errores y 0 omitidos.
+- `npm run backend:conventions:check`: finalizó correctamente con convenciones backend válidas.
+- `npm run spanish:text:check`: finalizó correctamente con validación de español correcta.
+- `git diff --check`: finalizó sin errores de whitespace.
+
+Las tareas se cierran porque existe una lectura pública por slug y fecha que calcula estado operativo
+desde horario, excepciones y franjas reales, devuelve franjas con capacidad y estado, protege la
+frontera de publicación y cuenta con tests focalizados y documentación técnica actualizada.

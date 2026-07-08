@@ -28,6 +28,30 @@ public interface TimeSlotDao extends JpaRepository<TimeSlotEntity, UUID> {
   List<TimeSlotEntity> findAllOwnedByDate(
       @Param("ownerUserId") UUID ownerUserId, @Param("date") LocalDate date);
 
+  /** Lista franjas de un local publicado para el calendario público de una fecha. */
+  @Query(
+      """
+      select slot from TimeSlotEntity slot
+      where slot.venue.id = :venueId
+        and slot.venue.status = 'published'
+        and slot.date = :date
+      order by slot.startsAt, slot.endsAt
+      """)
+  List<TimeSlotEntity> findPublishedByVenueIdAndDate(
+      @Param("venueId") UUID venueId, @Param("date") LocalDate date);
+
+  /** Indica si existen huecos futuros disponibles después de la fecha consultada. */
+  @Query(
+      """
+      select count(slot) > 0 from TimeSlotEntity slot
+      where slot.venue.id = :venueId
+        and slot.venue.status = 'published'
+        and slot.date > :date
+        and slot.status = 'available'
+      """)
+  boolean existsPublishedAvailableAfter(
+      @Param("venueId") UUID venueId, @Param("date") LocalDate date);
+
   /** Detecta solapes antes de crear una franja manual. */
   @Query(
       """
