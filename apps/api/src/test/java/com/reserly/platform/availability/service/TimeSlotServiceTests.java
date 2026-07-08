@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -171,6 +172,52 @@ class TimeSlotServiceTests {
     assertThat(updated.getUpdatedAt()).isNotNull();
     verify(slotDao).findOwnedForUpdate(ownerId, slotId);
     verify(slotDao).saveAndFlush(slot);
+  }
+
+  @Test
+  void blocksAndReopensOwnedSlot() {
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity slot = new TimeSlotEntity();
+    slot.setId(slotId);
+    slot.setDate(LocalDate.of(2026, 7, 13));
+    slot.setStatus("available");
+    when(slotDao.findOwnedForUpdate(ownerId, slotId)).thenReturn(Optional.of(slot));
+    when(slotDao.saveAndFlush(slot)).thenReturn(slot);
+    when(blockDao.existsOwnedDayOverride(ownerId, slot.getDate())).thenReturn(false);
+
+    TimeSlotEntity blocked = service.block(ownerId, slotId);
+    assertThat(blocked.getStatus()).isEqualTo("blocked");
+    TimeSlotEntity reopened = service.reopen(ownerId, slotId);
+    assertThat(reopened.getStatus()).isEqualTo("available");
+    verify(slotDao, times(2)).findOwnedForUpdate(ownerId, slotId);
+    verify(slotDao, times(2)).saveAndFlush(slot);
+  }
+
+  @Test
+  void rejectsReopenWhenSlotIsNotBlocked() {
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity slot = new TimeSlotEntity();
+    slot.setId(slotId);
+    slot.setDate(LocalDate.of(2026, 7, 13));
+    slot.setStatus("available");
+    when(slotDao.findOwnedForUpdate(ownerId, slotId)).thenReturn(Optional.of(slot));
+
+    assertThatThrownBy(() -> service.reopen(ownerId, slotId))
+        .isInstanceOf(TimeSlotInvalidException.class);
+  }
+
+  @Test
+  void rejectsReopenWhenDayHasOverride() {
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity slot = new TimeSlotEntity();
+    slot.setId(slotId);
+    slot.setDate(LocalDate.of(2026, 7, 13));
+    slot.setStatus("blocked");
+    when(slotDao.findOwnedForUpdate(ownerId, slotId)).thenReturn(Optional.of(slot));
+    when(blockDao.existsOwnedDayOverride(ownerId, slot.getDate())).thenReturn(true);
+
+    assertThatThrownBy(() -> service.reopen(ownerId, slotId))
+        .isInstanceOf(TimeSlotInvalidException.class);
   }
 
   @Test

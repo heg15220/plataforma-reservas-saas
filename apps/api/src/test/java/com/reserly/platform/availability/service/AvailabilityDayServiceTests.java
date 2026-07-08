@@ -3,12 +3,14 @@ package com.reserly.platform.availability.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.availability.dto.AvailabilityDayRequest;
 import com.reserly.platform.availability.persistence.AvailabilityBlockDao;
 import com.reserly.platform.availability.persistence.AvailabilityBlockEntity;
+import com.reserly.platform.availability.persistence.TimeSlotDao;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.LocalDate;
@@ -27,6 +29,7 @@ class AvailabilityDayServiceTests {
 
   @Mock private VenueDao venueDao;
   @Mock private AvailabilityBlockDao blockDao;
+  @Mock private TimeSlotDao slotDao;
 
   private AvailabilityDayServiceImpl service;
   private UUID ownerId;
@@ -34,7 +37,7 @@ class AvailabilityDayServiceTests {
 
   @BeforeEach
   void setUp() {
-    service = new AvailabilityDayServiceImpl(venueDao, blockDao);
+    service = new AvailabilityDayServiceImpl(venueDao, blockDao, slotDao);
     ownerId = UUID.randomUUID();
     venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
@@ -59,6 +62,7 @@ class AvailabilityDayServiceTests {
     assertThat(inactive.closed()).isFalse();
     assertThat(inactive.reservationsEnabled()).isFalse();
     assertThat(inactive.reason()).isEqualTo("Equipo interno");
+    verify(slotDao, times(2)).markOwnedDayUnavailable(any(), any(), any());
   }
 
   @Test
@@ -77,6 +81,7 @@ class AvailabilityDayServiceTests {
     assertThat(response.reservationsEnabled()).isTrue();
     assertThat(response.source()).isEqualTo("weekly");
     verify(blockDao).deleteAll(List.of(existing));
+    verify(slotDao).reopenOwnedDayUnavailableSlots(any(), any(), any());
   }
 
   @Test

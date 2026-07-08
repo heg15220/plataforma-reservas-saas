@@ -54,6 +54,16 @@ public class TimeSlotControllerImpl implements TimeSlotController {
         toResponse(timeSlotService.updateCapacity(account.userId(), slotId, request)));
   }
 
+  @Override
+  public ResponseEntity<TimeSlotResponse> block(AuthenticatedAccount account, UUID slotId) {
+    return ResponseEntity.ok(toResponse(timeSlotService.block(account.userId(), slotId)));
+  }
+
+  @Override
+  public ResponseEntity<TimeSlotResponse> reopen(AuthenticatedAccount account, UUID slotId) {
+    return ResponseEntity.ok(toResponse(timeSlotService.reopen(account.userId(), slotId)));
+  }
+
   private TimeSlotResponse toResponse(TimeSlotEntity slot) {
     return new TimeSlotResponse(
         slot.getId(),

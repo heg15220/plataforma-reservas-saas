@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TimeSlotServiceImpl implements TimeSlotService {
 
   private static final String STATUS_AVAILABLE = "available";
+  private static final String STATUS_BLOCKED = "blocked";
 
   private final VenueDao venueDao;
   private final VenueOpeningHourDao openingHourDao;
@@ -124,6 +125,37 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     slot.setCapacity(request.capacity());
     slot.setUpdatedAt(Instant.now());
     return timeSlotDao.saveAndFlush(slot);
+  }
+
+  @Override
+  @Transactional
+  public TimeSlotEntity block(UUID ownerUserId, UUID slotId) {
+    TimeSlotEntity slot = requireOwnedSlotForUpdate(ownerUserId, slotId);
+    slot.setStatus(STATUS_BLOCKED);
+    slot.setUpdatedAt(Instant.now());
+    return timeSlotDao.saveAndFlush(slot);
+  }
+
+  @Override
+  @Transactional
+  public TimeSlotEntity reopen(UUID ownerUserId, UUID slotId) {
+    TimeSlotEntity slot = requireOwnedSlotForUpdate(ownerUserId, slotId);
+    if (!STATUS_BLOCKED.equals(slot.getStatus())
+        || availabilityBlockDao.existsOwnedDayOverride(ownerUserId, slot.getDate())) {
+      throw new TimeSlotInvalidException();
+    }
+    slot.setStatus(STATUS_AVAILABLE);
+    slot.setUpdatedAt(Instant.now());
+    return timeSlotDao.saveAndFlush(slot);
+  }
+
+  private TimeSlotEntity requireOwnedSlotForUpdate(UUID ownerUserId, UUID slotId) {
+    if (slotId == null) {
+      throw new TimeSlotInvalidException();
+    }
+    return timeSlotDao
+        .findOwnedForUpdate(ownerUserId, slotId)
+        .orElseThrow(TimeSlotInvalidException::new);
   }
 
   private VenueEntity requireCurrentVenue(UUID ownerUserId) {

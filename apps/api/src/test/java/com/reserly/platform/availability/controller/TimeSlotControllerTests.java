@@ -96,6 +96,32 @@ class TimeSlotControllerTests {
     verify(timeSlotService).updateCapacity(account.userId(), slotId, capacityRequest);
   }
 
+  @Test
+  void blocksAndReopensSlotsUsingAuthenticatedOwner() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity blocked = slot(date);
+    blocked.setId(slotId);
+    blocked.setStatus("blocked");
+    TimeSlotEntity reopened = slot(date);
+    reopened.setId(slotId);
+    reopened.setStatus("available");
+    when(timeSlotService.block(account.userId(), slotId)).thenReturn(blocked);
+    when(timeSlotService.reopen(account.userId(), slotId)).thenReturn(reopened);
+
+    var blockedResponse = controller.block(account, slotId);
+    var reopenedResponse = controller.reopen(account, slotId);
+
+    assertThat(blockedResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(blockedResponse.getBody()).isNotNull();
+    assertThat(blockedResponse.getBody().status()).isEqualTo("blocked");
+    assertThat(reopenedResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(reopenedResponse.getBody()).isNotNull();
+    assertThat(reopenedResponse.getBody().status()).isEqualTo("available");
+    verify(timeSlotService).block(account.userId(), slotId);
+    verify(timeSlotService).reopen(account.userId(), slotId);
+  }
+
   private TimeSlotEntity slot(LocalDate date) {
     TimeSlotEntity slot = new TimeSlotEntity();
     slot.setId(UUID.randomUUID());

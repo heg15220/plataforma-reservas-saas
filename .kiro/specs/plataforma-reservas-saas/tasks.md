@@ -105,8 +105,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 4.4. Implementar creación manual de franjas.
 - [x] 4.5. Implementar generación automática de franjas por duración.
 - [x] 4.6. Implementar capacidad máxima por franja.
-- [ ] 4.7. Implementar bloqueo y reapertura manual de franjas.
-- [ ] 4.8. Implementar cierre de día completo.
+- [x] 4.7. Implementar bloqueo y reapertura manual de franjas.
+- [x] 4.8. Implementar cierre de día completo.
 - [ ] 4.9. Implementar cálculo de estado del local.
 - [ ] 4.10. Implementar endpoint de disponibilidad pública por local y fecha.
 - [ ] 4.11. Crear calendario público de disponibilidad.

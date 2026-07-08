@@ -11592,6 +11592,7 @@ mvn -f apps/api/pom.xml \
   -Dtest=DatabaseMigrationIntegrationTests,VenueProfileServiceIntegrationTests,VenueProfileControllerTests \
   test
 npm run backend:conventions:check
+npm run spanish:text:check
 git diff --check
 ```
 
@@ -17889,3 +17890,254 @@ Las tareas se cierran porque el backend ya expone contratos privados para genera
 por duración y modificar la capacidad máxima de una franja propia, con validaciones de horario,
 excepciones diarias, solapes, permisos, bloqueo transaccional, tests focalizados y documentación
 técnica actualizada.
+
+## Iteración 2026-07-09 - Tareas 4.7 y 4.8, bloqueo manual de franjas y cierre operativo de día
+
+### Identificador exacto de las tareas completadas
+
+- `4.7. Implementar bloqueo y reapertura manual de franjas`.
+- `4.8. Implementar cierre de día completo`.
+
+### Objetivo técnico
+
+Completar las operaciones privadas que permiten al local retirar disponibilidad ya materializada. La
+iteración añade bloqueo y reapertura manual de una franja concreta, y convierte el cierre de día
+completo en un cambio operativo sobre las franjas persistidas para que no queden huecos con
+`status=available` en días cerrados o con reservas desactivadas.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-006`: el calendario debe distinguir franjas disponibles, cerradas, completas o bloqueadas.
+- `RF-011`: el local debe poder bloquear y reabrir franjas de reserva.
+- `RF-012`: bloquear, reabrir o cerrar disponibilidad debe tener efecto inmediato y no depender de
+  validación frontend.
+- `RNF-001`: las operaciones privadas se acotan siempre al propietario autenticado.
+- `RNF-004`: los cierres de día se aplican con updates bulk por propietario y fecha.
+- `RNF-011`: se mantiene el patrón de controladores en interfaz, DAOs con `@Query` y nombres físicos
+  ya existentes.
+
+Decisiones:
+
+- El bloqueo manual de una franja se representa como `TimeSlots.status='blocked'`.
+- La reapertura manual solo acepta franjas que estén actualmente `blocked`; no convierte estados
+  futuros como `full` o `unavailable` a `available`.
+- Una franja bloqueada no puede reabrirse si su fecha tiene una excepción de día completo
+  (`closed_day` o `reservations_disabled`).
+- El cierre de día y la desactivación de reservas siguen persistiendo `AvailabilityBlocks`, pero ahora
+  también marcan las franjas no bloqueadas de la fecha como `unavailable`.
+- Al eliminar la excepción diaria se restauran solo las franjas `unavailable` de esa fecha a
+  `available`; las franjas `blocked` se preservan.
+
+### Archivos creados, modificados o eliminados
+
+No se crean ni eliminan archivos.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotController.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotService.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/TimeSlotControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/AvailabilityDayServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/TimeSlotServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se añade migración porque `TimeSlots.status` ya admitía `available`, `unavailable`, `full` y
+`blocked` desde `V17`, y `AvailabilityBlocks.kind` ya admitía `closed_day` y
+`reservations_disabled` desde `V18`.
+
+### Arquitectura aplicada y razones técnicas
+
+La implementación mantiene el contexto `availability`:
+
+- `TimeSlotController` expone operaciones privadas de franja bajo `/api/venue/me/time-slots`.
+- `TimeSlotServiceImpl` realiza mutaciones de franja con `TimeSlotDao.findOwnedForUpdate`, evitando
+  cambios concurrentes sobre la misma fila.
+- `AvailabilityDayServiceImpl` conserva la responsabilidad de reemplazar excepciones diarias y añade
+  la propagación a franjas porque el cierre de día es el origen de ese cambio de estado.
+- `TimeSlotDao` añade updates bulk acotados por propietario y fecha para evitar cargar listas de
+  franjas completas cuando se cierra o reabre un día.
+
+Se evita crear filas `AvailabilityBlocks` por cada franja bloqueada porque `TimeSlots` ya contiene el
+estado de disponibilidad y una columna `version` preparada para concurrencia. `AvailabilityBlocks`
+queda como fuente de excepciones transversales de día, local, servicio o recurso.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+Modelo afectado:
+
+- `TimeSlots.status`:
+  - `blocked`: bloqueo manual de franja.
+  - `unavailable`: franja no reservable por cierre o reservas desactivadas de día.
+  - `available`: franja reservable mientras no haya reservas/holds futuros que consuman capacidad.
+- `AvailabilityBlocks.kind`:
+  - `closed_day`: cierre operativo de día completo.
+  - `reservations_disabled`: día abierto en agenda pero no reservable online.
+
+Consultas añadidas:
+
+- `TimeSlotDao.markOwnedDayUnavailable(ownerUserId, date, updatedAt)`:
+  - Actualiza a `unavailable` las franjas de la fecha cuyo estado no sea `blocked`.
+  - Mantiene decisiones manuales de bloqueo aunque el día se cierre.
+- `TimeSlotDao.reopenOwnedDayUnavailableSlots(ownerUserId, date, updatedAt)`:
+  - Restaura a `available` solo franjas `unavailable`.
+  - No reabre franjas `blocked`.
+
+Restricciones:
+
+- `slotId` obligatorio para bloquear o reabrir.
+- La franja debe pertenecer al propietario autenticado y a un local no archivado.
+- La reapertura exige `status=blocked`.
+- La reapertura exige que la fecha no tenga excepción diaria de cierre o reservas desactivadas.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoints nuevos:
+
+- `PATCH /api/venue/me/time-slots/{slotId}/block`
+  - Sin body.
+  - Devuelve `TimeSlotResponse` con `status=blocked`.
+- `PATCH /api/venue/me/time-slots/{slotId}/reopen`
+  - Sin body.
+  - Devuelve `TimeSlotResponse` con `status=available` si la franja estaba bloqueada y el día admite
+    reservas.
+
+Servicios:
+
+- `TimeSlotService.block(UUID ownerUserId, UUID slotId)`.
+- `TimeSlotService.reopen(UUID ownerUserId, UUID slotId)`.
+
+Extensión de servicio existente:
+
+- `AvailabilityDayServiceImpl.replace`:
+  - Al crear `closed_day` o `reservations_disabled`, llama a `markOwnedDayUnavailable`.
+  - Al volver a estado semanal, llama a `reopenOwnedDayUnavailableSlots`.
+
+No se implementan jobs, componentes UI ni endpoints públicos en esta iteración.
+
+### Flujos de ejecución relevantes
+
+Bloqueo manual de franja:
+
+1. El controlador recibe `slotId` y principal autenticado.
+2. El servicio valida que `slotId` no sea nulo.
+3. `TimeSlotDao.findOwnedForUpdate` carga la franja propia con bloqueo pesimista.
+4. El servicio asigna `status=blocked` y actualiza `updatedAt`.
+5. Se persiste con `saveAndFlush`.
+
+Reapertura manual de franja:
+
+1. El controlador recibe `slotId` y principal autenticado.
+2. El servicio carga la franja propia con bloqueo pesimista.
+3. Rechaza si la franja no está `blocked`.
+4. Rechaza si existe excepción diaria para la fecha.
+5. Cambia `status=available`, actualiza `updatedAt` y persiste.
+
+Cierre operativo de día:
+
+1. `AvailabilityDayServiceImpl.replace` valida el payload.
+2. Bloquea o crea la excepción diaria en `AvailabilityBlocks`.
+3. Si el día queda cerrado o con reservas desactivadas, ejecuta update bulk a `unavailable` sobre
+   franjas no bloqueadas.
+4. Si el día vuelve a horario semanal, elimina la excepción y restaura solo franjas `unavailable` a
+   `available`.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Permisos:
+
+- Todos los endpoints son privados y usan el propietario autenticado.
+- No se acepta `venueId`, `ownerUserId` ni `status` arbitrario en payload.
+- Las mutaciones de franja filtran por `venue.ownerUser.id`.
+
+Seguridad y privacidad:
+
+- Se reutiliza `TimeSlotInvalidException` para franja inexistente, ajena, no bloqueada o día cerrado.
+- El error no revela si un `slotId` pertenece a otro local.
+- Las operaciones de franja usan bloqueo pesimista para serializar cambios concurrentes.
+
+Internacionalización:
+
+- No se añaden textos de UI ni catálogos nuevos.
+- Los códigos de error existentes siguen siendo estables para futura traducción.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores:
+
+- `TIME_SLOT_INVALID` cubre reapertura no válida, franja ajena o franja inexistente.
+- `AVAILABILITY_DAY_INVALID` sigue cubriendo payloads incoherentes de cierre diario.
+- `VENUE_PROFILE_NOT_FOUND` mantiene la semántica de ausencia de local vigente.
+
+Auditoría:
+
+- Los cierres diarios conservan `AvailabilityBlocks.createdByUser`.
+- El bloqueo de franja todavía no tiene tabla de auditoría dedicada; esa trazabilidad se ampliará
+  cuando existan reservas afectadas y cancelaciones auditadas.
+
+Observabilidad:
+
+- No se añaden métricas. Los cambios dejan puntos claros para medir bloqueos, reaperturas y cierres
+  diarios en Fase 17.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `TimeSlotServiceTests`
+  - Bloquea una franja propia y la reabre desde `blocked`.
+  - Rechaza reapertura cuando la franja no está bloqueada.
+  - Rechaza reapertura cuando el día tiene excepción diaria.
+- `TimeSlotControllerTests`
+  - Verifica contratos REST de bloqueo y reapertura con propietario autenticado.
+- `AvailabilityDayServiceTests`
+  - Verifica que cerrar o desactivar reservas de un día marca franjas como `unavailable`.
+  - Verifica que volver a horario semanal restaura franjas `unavailable`.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test
+npm run backend:conventions:check
+git diff --check
+```
+
+Resultados:
+
+- Spotless: correcto.
+- Checkstyle: correcto durante la ejecución de tests.
+- Tests focalizados: 22 tests, 0 fallos, 0 errores, 0 omitidos.
+- Convenciones backend: correctas.
+- Validación de español: correcta.
+- Whitespace: correcto.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- No se comprueba todavía si existen reservas futuras afectadas por bloqueo o cierre de día porque el
+  modelo de reservas llega en Fase 7.
+- La reapertura diaria restaura `unavailable` a `available` sin calcular capacidad consumida; ese
+  cálculo llegará con reservas y holds.
+- No hay notificaciones ni auditoría visible para clientes afectados.
+- El endpoint público de disponibilidad todavía no existe; las tareas `4.9` y `4.10` usarán estos
+  estados para calcular disponibilidad visible.
+- La UI privada de horarios y franjas sigue pendiente hasta `4.12`.
+
+### Evidencia de verificación
+
+- `mvn -f apps/api/pom.xml spotless:apply`: finalizó con `BUILD SUCCESS`.
+- `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test`:
+  finalizó con `BUILD SUCCESS`, 22 tests ejecutados, 0 fallos, 0 errores y 0 omitidos.
+- `npm run backend:conventions:check`: finalizó correctamente con convenciones backend válidas.
+- `npm run spanish:text:check`: finalizó correctamente con validación de español correcta.
+- `git diff --check`: finalizó sin errores de whitespace.
+
+Las tareas se cierran porque el backend ya permite bloquear y reabrir manualmente franjas propias,
+impide reaperturas incompatibles con cierres diarios y convierte el cierre de día completo en una
+mutación efectiva de disponibilidad sobre las franjas persistidas, con tests focalizados y
+documentación técnica actualizada.

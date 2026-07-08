@@ -30,4 +30,10 @@ public interface TimeSlotService {
 
   /** Actualiza la capacidad máxima de una franja propia. */
   TimeSlotEntity updateCapacity(UUID ownerUserId, UUID slotId, TimeSlotCapacityRequest request);
+
+  /** Bloquea manualmente una franja propia para impedir nuevas reservas. */
+  TimeSlotEntity block(UUID ownerUserId, UUID slotId);
+
+  /** Reabre una franja bloqueada manualmente si su día no está cerrado. */
+  TimeSlotEntity reopen(UUID ownerUserId, UUID slotId);
 }

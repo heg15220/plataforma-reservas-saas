@@ -54,4 +54,14 @@ public interface TimeSlotController {
       @AuthenticationPrincipal AuthenticatedAccount account,
       @PathVariable("slotId") UUID slotId,
       @Valid @RequestBody TimeSlotCapacityRequest request);
+
+  /** Bloquea manualmente una franja propia. */
+  @PatchMapping(path = "/{slotId}/block")
+  ResponseEntity<TimeSlotResponse> block(
+      @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable("slotId") UUID slotId);
+
+  /** Reabre una franja previamente bloqueada si su día admite reservas. */
+  @PatchMapping(path = "/{slotId}/reopen")
+  ResponseEntity<TimeSlotResponse> reopen(
+      @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable("slotId") UUID slotId);
 }

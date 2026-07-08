@@ -4,6 +4,7 @@ import com.reserly.platform.availability.dto.AvailabilityDayRequest;
 import com.reserly.platform.availability.dto.AvailabilityDayResponse;
 import com.reserly.platform.availability.persistence.AvailabilityBlockDao;
 import com.reserly.platform.availability.persistence.AvailabilityBlockEntity;
+import com.reserly.platform.availability.persistence.TimeSlotDao;
 import com.reserly.platform.identity.persistence.UserEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
@@ -25,10 +26,13 @@ public class AvailabilityDayServiceImpl implements AvailabilityDayService {
 
   private final VenueDao venueDao;
   private final AvailabilityBlockDao availabilityBlockDao;
+  private final TimeSlotDao timeSlotDao;
 
-  public AvailabilityDayServiceImpl(VenueDao venueDao, AvailabilityBlockDao availabilityBlockDao) {
+  public AvailabilityDayServiceImpl(
+      VenueDao venueDao, AvailabilityBlockDao availabilityBlockDao, TimeSlotDao timeSlotDao) {
     this.venueDao = venueDao;
     this.availabilityBlockDao = availabilityBlockDao;
+    this.timeSlotDao = timeSlotDao;
   }
 
   @Override
@@ -68,9 +72,11 @@ public class AvailabilityDayServiceImpl implements AvailabilityDayService {
       if (existing.size() > 1) {
         availabilityBlockDao.deleteAll(existing.subList(1, existing.size()));
       }
+      timeSlotDao.markOwnedDayUnavailable(ownerUserId, request.date(), Instant.now());
       return toResponse(availabilityBlockDao.saveAndFlush(block));
     }
     availabilityBlockDao.deleteAll(existing);
+    timeSlotDao.reopenOwnedDayUnavailableSlots(ownerUserId, request.date(), Instant.now());
     return new AvailabilityDayResponse(request.date(), false, true, "weekly", null, null);
   }
 
