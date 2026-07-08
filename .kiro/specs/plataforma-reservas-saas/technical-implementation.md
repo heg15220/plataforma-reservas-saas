@@ -13933,3 +13933,314 @@ listar, crear, editar, ordenar, activar/desactivar y eliminar pestañas personal
 servicio valida propiedad, orden, i18n y contenido seguro antes de persistir; la entidad JPA encaja
 con la migración V16; y la evidencia automatizada demuestra 15 tests correctos con estilo y
 compilación Maven limpios.
+
+## Iteración 2.16 - Pestañas personalizadas activas en ficha pública
+
+### Identificador de tarea
+
+`2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local`.
+
+### Fecha
+
+2026-07-08.
+
+### Objetivo técnico
+
+El objetivo de esta iteración es exponer en la ficha pública del local las pestañas personalizadas
+que el propietario ya puede gestionar desde `2.15`. La implementación amplía la proyección pública
+existente de `GET /api/public/venues/{slug}` para devolver pestañas activas, ordenadas y localizadas,
+y actualiza la pantalla Next.js `/locales/[slug]` para renderizarlas dentro del bloque principal de
+detalles del local.
+
+La tarea mantiene dos fronteras: solo se devuelven pestañas de perfiles `published` y solo se
+renderiza contenido con `contentFormat = safe_html`, previamente saneado por backend durante el CRUD
+privado. No se implementan todavía tests exhaustivos de permisos/orden/publicación/sanitización/i18n;
+esa red ampliada queda reservada para `2.17`.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-004 Ficha pública del local`: la ficha debe mostrar pestañas personalizadas respetando orden,
+  título, contenido localizado y estado activo.
+- `RF-009 Gestión de perfil público`: los cambios del propietario deben aparecer públicamente según
+  estado activo y locale resuelto.
+- `RF-031 Internacionalización de textos`: título y contenido se resuelven a `es` o `en` antes de
+  serializar.
+- `RNF-001 Seguridad`: el frontend solo renderiza HTML bajo contrato `safe_html`; no acepta formatos
+  arbitrarios.
+- `RNF-002 Privacidad`: la respuesta pública no expone propietario, `venueId`, IDs de pestañas ni
+  documentos JSONB completos.
+- `RNF-004 Rendimiento`: se reutiliza el endpoint de ficha y se consulta por `venueId`, `isActive` y
+  `position`, apoyado por el índice de V16.
+- `RNF-007 Usabilidad`: las pestañas aparecen como secciones escaneables dentro de los detalles del
+  local, junto a descripción, servicios, reglas y galería.
+- `RNF-008 Calidad y mantenibilidad`: se extienden DTOs, DAO, servicio y pruebas focalizadas sin
+  duplicar lógica de saneamiento en la UI.
+- `RNF-009 Internacionalización y localización`: la API pública recibe un locale efectivo y resuelve
+  textos antes de responder.
+- `RNF-011 Convenciones de nomenclatura`: se mantienen DAO con `@Query`, DTOs REST y separación de
+  capas.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenuePublicCustomTabResponse.java`.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenuePublicProfileResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueCustomTabDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicProfileServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicProfileServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicProfileControllerTests.java`.
+- `apps/web/src/features/public-venue/public-venue-api.ts`.
+- `apps/web/src/features/public-venue/public-venue-api.test.ts`.
+- `apps/web/src/features/public-venue/public-venue-profile.tsx`.
+- `apps/web/src/features/public-venue/public-venue-profile.test.tsx`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminaron archivos.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+La solución evita crear un endpoint separado para pestañas públicas porque la ficha ya necesita
+devolver una proyección coherente del local, la galería y los textos localizados en una sola lectura
+SSR. La carga pública queda centralizada en `VenuePublicProfileServiceImpl`, que ya aplicaba
+publicación, idioma y privacidad.
+
+Backend:
+
+- `VenuePublicCustomTabResponse` representa una pestaña pública ya resuelta:
+  - `title`: título visible localizado.
+  - `content`: HTML seguro localizado.
+  - `position`: orden editorial.
+  - `contentFormat`: formato admitido, actualmente `safe_html`.
+- `VenuePublicProfileResponse` añade `customTabs`.
+- `VenueCustomTabDao.findAllPublishedActiveByVenueId` consulta solo pestañas activas de locales
+  publicados y ordena por `position`.
+- `VenuePublicProfileServiceImpl` resuelve `titleI18n` y `contentI18n` con el mismo método usado para
+  categoría, descripción, servicios, reglas y texto público.
+- Se filtran defensivamente pestañas cuyo título o contenido resuelto quede vacío, aunque una pestaña
+  activa válida debería tener ambos idiomas por constraints y reglas de `2.15`.
+
+Frontend:
+
+- `publicVenueProfileSchema` incorpora `customTabs` y exige `contentFormat: "safe_html"`.
+- `PublicVenueProfileView` renderiza cada pestaña como una sección con `h2`, preservando orden del
+  array recibido.
+- `CustomTabSection` usa `dangerouslySetInnerHTML` sobre `tab.content` únicamente bajo el contrato
+  validado por Zod y saneado por backend.
+- El CSS del bloque limita estilos a contenido editorial básico: párrafos, listas, elementos de
+  énfasis y pesos tipográficos.
+
+Esta decisión evita duplicar un saneador HTML en cliente. El cliente valida contrato y renderiza; el
+backend es responsable de normalizar y limpiar contenido antes de persistir y antes de exponerlo.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No hay migraciones nuevas. Se reutiliza `VenueCustomTabs` de V16.
+
+Consulta pública añadida:
+
+```java
+select tab from VenueCustomTabEntity tab
+where tab.venue.id = :venueId
+  and tab.venue.status = 'published'
+  and tab.active = true
+order by tab.position
+```
+
+Restricciones aplicadas:
+
+- `venue.status = 'published'`: un borrador o local archivado no puede filtrar pestañas.
+- `tab.active = true`: las pestañas inactivas quedan fuera de la ficha.
+- `order by tab.position`: respeta el orden configurado por el propietario.
+- `contentFormat` se proyecta y el frontend solo acepta `safe_html`.
+
+Índice relevante ya existente:
+
+- `ixVenueCustomTabsVenueActivePosition` sobre `venueId`, `isActive`, `position`, creado en V16 para
+  este patrón de lectura.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint extendido:
+
+- `GET /api/public/venues/{slug}?locale=es|en`
+  - Antes devolvía datos básicos, textos localizados y galería.
+  - Ahora devuelve además `customTabs`.
+  - Sigue devolviendo 404 para slug inexistente, local no publicado o local archivado.
+
+Contrato nuevo dentro de `VenuePublicProfileResponse`:
+
+```json
+"customTabs": [
+  {
+    "title": "Carta",
+    "content": "<p>Menú degustación</p>",
+    "position": 0,
+    "contentFormat": "safe_html"
+  }
+]
+```
+
+Componente frontend:
+
+- `CustomTabSection` dentro de `public-venue-profile.tsx`.
+
+No se implementan jobs ni nuevos módulos de administración.
+
+### Flujos de ejecución relevantes
+
+#### Lectura pública SSR
+
+1. Next.js resuelve locale efectivo de la petición.
+2. `getPublicVenue(slug, locale)` llama al API interno con `cache: "no-store"`.
+3. El controlador público normaliza `locale` o `Accept-Language`.
+4. `VenuePublicProfileServiceImpl` carga el local por `slug` solo si está `published`.
+5. El servicio carga galería publicada.
+6. El servicio carga pestañas activas publicadas por `venueId`.
+7. El servicio resuelve título y contenido para el locale solicitado, con fallback controlado por
+   `LocalizedText`.
+8. El frontend valida la respuesta con Zod.
+9. `PublicVenueProfileView` renderiza las pestañas en el bloque principal de detalles.
+
+#### Rechazo de contrato alterado
+
+1. Si el API devolviera `contentFormat` distinto de `safe_html`, Zod rechaza el payload.
+2. La UI no intenta renderizar contenido con formato desconocido.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- Backend resuelve solo contenido de pestañas activas.
+- Backend filtra defensivamente pestañas con título o contenido resuelto vacío.
+- Frontend exige `title` y `content` no vacíos.
+- Frontend exige `position` entero no negativo.
+- Frontend exige `contentFormat = safe_html`.
+
+Permisos:
+
+- El endpoint es anónimo, pero se limita a locales `published`.
+- No existe forma de solicitar pestañas por `venueId` desde cliente.
+- La consulta cruza el estado del local en la misma lectura.
+
+Seguridad:
+
+- `content` procede del saneador de `2.15`.
+- El contrato público mantiene `contentFormat`.
+- Zod rechaza formatos no permitidos antes de renderizar.
+- La UI no genera scripts ni atributos; solo inserta el HTML ya saneado.
+
+Privacidad:
+
+- No se expone `id` de pestaña.
+- No se expone `venueId`.
+- No se exponen `titleI18n` ni `contentI18n` completos.
+- No se exponen propietario, cuenta empresarial ni datos fiscales.
+
+Internacionalización:
+
+- El controlador mantiene resolución `locale` explícito, `Accept-Language` y fallback `en`.
+- Título y contenido de pestañas se resuelven en backend con `LocalizedText.resolve`.
+- El frontend no contiene textos hardcodeados nuevos para las pestañas; renderiza contenido del
+  local ya localizado.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden nuevos errores públicos.
+
+- Slug inexistente, borrador o local archivado sigue usando `VenueProfileNotFoundException` y el
+  advice existente devuelve 404.
+- Un contrato público alterado en frontend se rechaza por Zod y se trata como error de carga.
+
+No se añaden logs, métricas ni auditoría. La tarea es de lectura pública y no modifica datos.
+
+### Tests añadidos o modificados
+
+Backend:
+
+- `VenuePublicProfileServiceTests`
+  - Añade mock de `VenueCustomTabDao`.
+  - Verifica que la respuesta pública contiene una pestaña activa localizada al idioma solicitado.
+  - Verifica que la galería mantiene orden y los contactos ocultos siguen sin filtrarse.
+  - Verifica fallback existente sin pestañas.
+- `VenuePublicProfileControllerTests`
+  - Actualiza el constructor de `VenuePublicProfileResponse` con `customTabs`.
+
+Frontend:
+
+- `public-venue-api.test.ts`
+  - Añade `customTabs` al contrato válido.
+  - Mantiene rechazo de contratos alterados.
+- `public-venue-profile.test.tsx`
+  - Verifica que la ficha renderiza una pestaña personalizada y su contenido HTML seguro.
+  - Mantiene comprobaciones de galería, contacto visible y reservas futuras deshabilitadas.
+
+### Comandos usados para verificación
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicProfileServiceTests,VenuePublicProfileControllerTests" test
+```
+
+Resultado:
+
+- `VenuePublicProfileControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicProfileServiceTests`: 3 tests, 0 fallos.
+- Total backend focalizado: 5 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless y Checkstyle: correctos.
+- Build Maven: `BUILD SUCCESS`.
+
+```text
+npm run test --workspace @reserly/web -- public-venue-api.test.ts public-venue-profile.test.tsx
+```
+
+Resultado:
+
+- 2 archivos de test correctos.
+- 5 tests correctos.
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+npm run format:check:web
+npm run typecheck --workspace @reserly/web
+npm run build:web:test
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+- Prettier web: correcto.
+- TypeScript web: correcto.
+- Build Next.js de test: correcto, incluyendo la ruta dinámica `/locales/[slug]`.
+
+Incidencia durante verificación:
+
+- Una ejecución inicial de `npm run test --workspace @reserly/web -- public-venue` agotó el timeout
+  de herramienta sin devolver fallo. Se repitió con los dos archivos exactos de la feature y terminó
+  correctamente.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- `dangerouslySetInnerHTML` depende de que el saneador backend de `2.15` siga siendo la única puerta
+  de persistencia. Si se importan pestañas desde otra fuente, debe reutilizarse o reforzarse ese
+  saneamiento.
+- No se implementa UI de pestañas con navegación horizontal; las pestañas se muestran como secciones
+  escaneables en el detalle. Si el diseño final exige tabs interactivos, deberá añadirse un patrón
+  accesible de navegación por pestañas.
+- No se añaden pruebas de integración con base real para pestañas públicas; `2.17` debe cubrir orden,
+  publicación, sanitización e i18n de extremo a extremo con más profundidad.
+- El contenido sigue limitado a HTML editorial básico. Cartas complejas o listas de precios
+  estructuradas deberían modelarse con JSON específico.
+
+### Criterio de cierre
+
+La tarea se cierra porque la ficha pública ya recibe y renderiza pestañas personalizadas activas,
+localizadas y ordenadas; la API solo las expone para locales publicados; el contrato público mantiene
+la frontera `safe_html`; y la verificación automatizada cubre backend, frontend, convenciones,
+formato, TypeScript y calidad de textos españoles.

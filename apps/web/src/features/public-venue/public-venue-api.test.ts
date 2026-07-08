@@ -18,6 +18,14 @@ const validVenue = {
   publicText: null,
   mainImageUrl: "/api/public/venue-images/id/main",
   gallery: [],
+  customTabs: [
+    {
+      title: "Carta",
+      content: "<p>Menú degustación</p>",
+      position: 0,
+      contentFormat: "safe_html",
+    },
+  ],
   address: "Calle Mayor, 1",
   city: "Madrid",
   province: null,

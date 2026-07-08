@@ -2,8 +2,10 @@ package com.reserly.platform.venues.service;
 
 import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.venues.dto.VenuePublicCustomTabResponse;
 import com.reserly.platform.venues.dto.VenuePublicGalleryImageResponse;
 import com.reserly.platform.venues.dto.VenuePublicProfileResponse;
+import com.reserly.platform.venues.persistence.VenueCustomTabDao;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.persistence.VenueImageDao;
@@ -19,10 +21,13 @@ public class VenuePublicProfileServiceImpl implements VenuePublicProfileService 
 
   private final VenueDao venueDao;
   private final VenueImageDao imageDao;
+  private final VenueCustomTabDao customTabDao;
 
-  public VenuePublicProfileServiceImpl(VenueDao venueDao, VenueImageDao imageDao) {
+  public VenuePublicProfileServiceImpl(
+      VenueDao venueDao, VenueImageDao imageDao, VenueCustomTabDao customTabDao) {
     this.venueDao = venueDao;
     this.imageDao = imageDao;
+    this.customTabDao = customTabDao;
   }
 
   @Override
@@ -37,6 +42,17 @@ public class VenuePublicProfileServiceImpl implements VenuePublicProfileService 
                     new VenuePublicGalleryImageResponse(
                         image.getUrl(), image.getAltText(), image.getPosition()))
             .toList();
+    List<VenuePublicCustomTabResponse> customTabs =
+        customTabDao.findAllPublishedActiveByVenueId(venue.getId()).stream()
+            .map(
+                tab ->
+                    new VenuePublicCustomTabResponse(
+                        resolve(tab.getTitleI18n(), locale, ""),
+                        resolve(tab.getContentI18n(), locale, ""),
+                        tab.getPosition(),
+                        tab.getContentFormat()))
+            .filter(tab -> !tab.title().isBlank() && !tab.content().isBlank())
+            .toList();
 
     return new VenuePublicProfileResponse(
         venue.getSlug(),
@@ -50,6 +66,7 @@ public class VenuePublicProfileServiceImpl implements VenuePublicProfileService 
         resolve(venue.getPublicTextI18n(), locale, null),
         venue.getMainImageUrl(),
         gallery,
+        customTabs,
         venue.getAddress(),
         venue.getCity(),
         venue.getProvince(),

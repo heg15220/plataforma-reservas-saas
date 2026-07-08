@@ -19,6 +19,14 @@ const publicVenueProfileSchema = z.object({
       position: z.number().int().nonnegative(),
     }),
   ),
+  customTabs: z.array(
+    z.object({
+      title: z.string().min(1),
+      content: z.string().min(1),
+      position: z.number().int().nonnegative(),
+      contentFormat: z.literal("safe_html"),
+    }),
+  ),
   address: z.string().min(1),
   city: z.string().min(1),
   province: z.string().nullable(),

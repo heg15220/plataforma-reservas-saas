@@ -18,6 +18,14 @@ const venue: PublicVenueProfile = {
   publicText: null,
   mainImageUrl: "/main",
   gallery: [{ url: "/gallery/1", altText: "Comedor principal", position: 0 }],
+  customTabs: [
+    {
+      title: "Carta",
+      content: "<p>Menú degustación</p><ul><li>Verduras de temporada</li></ul>",
+      position: 0,
+      contentFormat: "safe_html",
+    },
+  ],
   address: "Calle Mayor, 1",
   city: "Madrid",
   province: null,
@@ -45,6 +53,8 @@ describe("PublicVenueProfileView", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Casa Luz" })).toBeVisible();
     expect(screen.getByText("Cocina de temporada")).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "Carta" })).toBeVisible();
+    expect(screen.getByText("Verduras de temporada")).toBeVisible();
     expect(screen.getByRole("img", { name: "Comedor principal" })).toBeVisible();
     expect(screen.getByRole("link", { name: "hola@casaluz.test" })).toHaveAttribute(
       "href",

@@ -82,6 +82,9 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
               {venue.publicText && (
                 <TextSection title={t("sections.additional")} body={venue.publicText} />
               )}
+              {venue.customTabs.map((tab) => (
+                <CustomTabSection key={`${tab.position}-${tab.title}`} tab={tab} />
+              ))}
 
               {venue.gallery.length > 0 && (
                 <Box component="section" aria-labelledby="venue-gallery-title">
@@ -194,6 +197,27 @@ function TextSection({ title, body }: { title: string; body: string }) {
         {title}
       </Typography>
       <Typography sx={{ color: "text.secondary", whiteSpace: "pre-line" }}>{body}</Typography>
+    </Box>
+  );
+}
+
+function CustomTabSection({ tab }: { tab: PublicVenueProfile["customTabs"][number] }) {
+  const titleId = `venue-custom-tab-${tab.position}`;
+  return (
+    <Box component="section" aria-labelledby={titleId}>
+      <Typography component="h2" id={titleId} variant="h2" sx={{ mb: 2 }}>
+        {tab.title}
+      </Typography>
+      <Box
+        sx={{
+          color: "text.secondary",
+          "& p": { mb: 1.5, mt: 0 },
+          "& ul, & ol": { mb: 1.5, mt: 0, pl: 3 },
+          "& li": { mb: 0.75 },
+          "& strong, & b": { color: "text.primary", fontWeight: 700 },
+        }}
+        dangerouslySetInnerHTML={{ __html: tab.content }}
+      />
     </Box>
   );
 }

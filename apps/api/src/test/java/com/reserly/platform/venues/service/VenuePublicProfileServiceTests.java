@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.persistence.CategoryEntity;
+import com.reserly.platform.venues.persistence.VenueCustomTabDao;
+import com.reserly.platform.venues.persistence.VenueCustomTabEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.persistence.VenueImageDao;
@@ -30,12 +32,13 @@ class VenuePublicProfileServiceTests {
 
   @Mock private VenueDao venueDao;
   @Mock private VenueImageDao imageDao;
+  @Mock private VenueCustomTabDao customTabDao;
 
   private VenuePublicProfileServiceImpl service;
 
   @BeforeEach
   void setUp() {
-    service = new VenuePublicProfileServiceImpl(venueDao, imageDao);
+    service = new VenuePublicProfileServiceImpl(venueDao, imageDao, customTabDao);
   }
 
   @Test
@@ -45,6 +48,8 @@ class VenuePublicProfileServiceTests {
     VenueImageEntity first = image(venue, "/images/first", "Primera", 0);
     when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
     when(imageDao.findAllPublishedByVenueId(venue.getId())).thenReturn(List.of(first, second));
+    when(customTabDao.findAllPublishedActiveByVenueId(venue.getId()))
+        .thenReturn(List.of(tab(venue, 0, "Carta", "Menu", "<p>Menú</p>", "<p>Menu</p>")));
 
     var response = service.findBySlug("casa-luz", SupportedLocale.EN);
 
@@ -54,6 +59,8 @@ class VenuePublicProfileServiceTests {
     assertThat(response.phone()).isNull();
     assertThat(response.contactEmail()).isEqualTo("hola@casaluz.test");
     assertThat(response.gallery()).extracting("position").containsExactly(0, 1);
+    assertThat(response.customTabs()).extracting("title").containsExactly("Menu");
+    assertThat(response.customTabs()).extracting("content").containsExactly("<p>Menu</p>");
   }
 
   @Test
@@ -65,6 +72,7 @@ class VenuePublicProfileServiceTests {
     venue.setShowEmail(false);
     when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
     when(imageDao.findAllPublishedByVenueId(venue.getId())).thenReturn(List.of());
+    when(customTabDao.findAllPublishedActiveByVenueId(venue.getId())).thenReturn(List.of());
 
     var response = service.findBySlug("casa-luz", SupportedLocale.ES);
 
@@ -121,5 +129,27 @@ class VenuePublicProfileServiceTests {
     image.setAltText(altText);
     image.setPosition(position);
     return image;
+  }
+
+  private static VenueCustomTabEntity tab(
+      VenueEntity venue,
+      int position,
+      String titleEs,
+      String titleEn,
+      String contentEs,
+      String contentEn) {
+    VenueCustomTabEntity tab = new VenueCustomTabEntity();
+    tab.setVenue(venue);
+    tab.setPosition(position);
+    tab.setActive(true);
+    tab.setContentFormat("safe_html");
+    tab.setTitleI18n(
+        new LocalizedText(
+            SupportedLocale.ES, Map.of(SupportedLocale.ES, titleEs, SupportedLocale.EN, titleEn)));
+    tab.setContentI18n(
+        new LocalizedText(
+            SupportedLocale.ES,
+            Map.of(SupportedLocale.ES, contentEs, SupportedLocale.EN, contentEn)));
+    return tab;
   }
 }

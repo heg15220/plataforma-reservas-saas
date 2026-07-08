@@ -61,6 +61,7 @@ class VenuePublicProfileControllerTests {
         null,
         "/main",
         List.of(),
+        List.of(),
         "Calle Mayor, 1",
         "Madrid",
         null,

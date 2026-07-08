@@ -11,8 +11,8 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-08
-- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22` y `2.1` a `2.15`.
-- Siguiente tarea pendiente recomendada: `2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local.`
+- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22` y `2.1` a `2.16`.
+- Siguiente tarea pendiente recomendada: `2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.`
 - Observación: la Fase 1 queda cerrada con cobertura integrada del recorrido autenticado de
   propietario y del aislamiento horizontal de solicitudes y documentos empresariales.
 
@@ -3123,3 +3123,69 @@ Fuente de verdad del avance:
     correcto con 15 tests, 0 fallos, Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run spanish:text:check` y `npm run backend:conventions:check`
     correctos.
+
+## Conversación 66 - Pestañas personalizadas activas en ficha pública
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se confirmó `2.16` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica.
+  - Se extendió la proyección pública `GET /api/public/venues/{slug}` para incluir únicamente
+    pestañas activas de locales publicados.
+  - Se añadió DTO público localizado de pestañas con `title`, `content`, `position` y
+    `contentFormat`.
+  - Se añadió consulta pública ordenada por `position` sobre `VenueCustomTabs`, filtrando
+    `isActive = true` y `venue.status = 'published'`.
+  - Se actualizó la ficha Next.js `/locales/[slug]` para renderizar las pestañas dentro del bloque
+    principal de detalles, usando el HTML seguro ya saneado por backend.
+  - Se actualizó el esquema Zod público para rechazar contratos alterados y exigir
+    `contentFormat = safe_html`.
+- Archivos modificados:
+  - Backend:
+    - `VenuePublicCustomTabResponse`.
+    - `VenuePublicProfileResponse`.
+    - `VenueCustomTabDao`.
+    - `VenuePublicProfileServiceImpl`.
+    - `VenuePublicProfileServiceTests`.
+    - `VenuePublicProfileControllerTests`.
+  - Frontend:
+    - `public-venue-api.ts`.
+    - `public-venue-api.test.ts`.
+    - `public-venue-profile.tsx`.
+    - `public-venue-profile.test.tsx`.
+  - Documentación:
+    - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+    - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+    - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-007 Usabilidad`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local`.
+  - Prepara `2.17`, que deberá ampliar cobertura de permisos, orden, publicación, sanitización e
+    i18n alrededor de pestañas personalizadas.
+- Tareas completadas:
+  - `2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local`.
+- Siguiente tarea pendiente recomendada:
+  - `2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas`.
+- Decisiones o aclaraciones relevantes:
+  - La respuesta pública no expone IDs de pestañas, `venueId`, propietario ni documentos JSONB
+    completos.
+  - La UI renderiza `safe_html` con `dangerouslySetInnerHTML` solo porque el contenido ya fue saneado
+    por backend en `2.15` y el contrato público exige ese formato.
+  - No se muestran pestañas inactivas ni pestañas de perfiles no publicados.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicProfileServiceTests,VenuePublicProfileControllerTests" test`
+    correcto con 5 tests, 0 fallos, Spotless y Checkstyle correctos.
+  - Evidencia frontend: `npm run test --workspace @reserly/web -- public-venue-api.test.ts public-venue-profile.test.tsx`
+    correcto con 5 tests, 0 fallos.
+  - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check`,
+    `npm run format:check:web` y `npm run typecheck --workspace @reserly/web` correctos.
+  - Evidencia de build UI: `npm run build:web:test` correcto.

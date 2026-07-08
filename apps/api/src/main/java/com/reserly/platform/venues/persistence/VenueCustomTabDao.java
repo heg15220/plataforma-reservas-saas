@@ -31,4 +31,15 @@ public interface VenueCustomTabDao extends JpaRepository<VenueCustomTabEntity, U
       """)
   Optional<VenueCustomTabEntity> findOwnedForUpdate(
       @Param("ownerUserId") UUID ownerUserId, @Param("tabId") UUID tabId);
+
+  /** Devuelve solo pestañas activas de locales publicados para la ficha anónima. */
+  @Query(
+      """
+      select tab from VenueCustomTabEntity tab
+      where tab.venue.id = :venueId
+        and tab.venue.status = 'published'
+        and tab.active = true
+      order by tab.position
+      """)
+  List<VenueCustomTabEntity> findAllPublishedActiveByVenueId(@Param("venueId") UUID venueId);
 }

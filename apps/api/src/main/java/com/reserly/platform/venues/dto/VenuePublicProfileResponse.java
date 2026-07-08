@@ -21,6 +21,7 @@ public record VenuePublicProfileResponse(
     String publicText,
     String mainImageUrl,
     List<VenuePublicGalleryImageResponse> gallery,
+    List<VenuePublicCustomTabResponse> customTabs,
     String address,
     String city,
     String province,
