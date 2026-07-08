@@ -22,10 +22,12 @@ public class VenuePublicSearchControllerImpl implements VenuePublicSearchControl
       String locale,
       String query,
       List<String> categorySlugs,
+      String location,
       int page,
       int size,
       String acceptLanguage) {
     SupportedLocale resolvedLocale = VenuePublicLocaleResolver.resolve(locale, acceptLanguage);
-    return ResponseEntity.ok(service.search(resolvedLocale, query, categorySlugs, page, size));
+    return ResponseEntity.ok(
+        service.search(resolvedLocale, query, categorySlugs, location, page, size));
   }
 }

@@ -15367,3 +15367,301 @@ La tarea se cierra porque `GET /api/public/venues/search` acepta filtros por una
 mediante slugs públicos, los combina correctamente con búsqueda textual, mantiene la frontera de
 locales publicados, conserva la respuesta pública sin datos sensibles y cuenta con pruebas unitarias,
 integración real con PostgreSQL y validaciones transversales correctas.
+
+## Iteración 3.4 - Filtros por ciudad, zona o dirección normalizada
+
+### Identificador exacto de la tarea completada
+
+`3.4. Añadir filtros por ciudad, zona o dirección normalizada`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Permitir que la búsqueda pública de locales publicados se refine por una ubicación textual escrita
+por el usuario. La ubicación puede representar ciudad, zona/provincia, dirección, código postal o
+país. El filtro debe ser tolerante a mayúsculas, minúsculas y tildes, y debe combinarse con los
+filtros ya existentes de texto libre (`q`) y categoría (`category`).
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos relacionados:
+
+- `RF-001 Buscador principal`: el buscador público ya puede recibir texto y ubicación.
+- `RF-002 Filtros avanzados`: se implementa el criterio de aceptación de introducir ciudad, zona o
+  dirección para limitar resultados por esa localización.
+- `RF-003 Resultados de búsqueda`: la respuesta sigue siendo una página de tarjetas públicas.
+- `RF-009 Gestión de perfil público`: las búsquedas por ubicación usan los datos de dirección
+  vigentes del perfil publicado.
+- `RNF-001 Seguridad`: el usuario no controla JPQL ni campos de consulta dinámicos.
+- `RNF-002 Privacidad`: no se persiste ubicación de usuario ni se exponen campos privados nuevos.
+- `RNF-004 Rendimiento`: el filtro se ejecuta en base de datos y se combina con paginación.
+- `RNF-009 Internacionalización y localización`: la comparación tolera tildes, pero no altera textos
+  visibles.
+- `RNF-011 Convenciones de implementación backend y persistencia`: se mantiene separación
+  controlador, servicio, DAO y DTOs.
+
+Decisión de contrato:
+
+```http
+GET /api/public/venues/search?location=madrid
+GET /api/public/venues/search?q=padel&category=pista-de-padel&location=valencia
+```
+
+Se elige `location` como parámetro textual único porque la UI puede enviar tanto ciudad como zona o
+dirección desde un mismo campo. El filtro por radio con coordenadas queda separado para `3.5`.
+
+### Archivos creados, modificados o eliminados
+
+Modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se crean ni eliminan archivos.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+La implementación conserva la misma frontera por capas de la búsqueda pública:
+
+- El controlador declara `location` como parámetro opcional.
+- El adaptador REST resuelve idioma y delega el valor sin lógica adicional.
+- El servicio normaliza el texto de ubicación y decide qué consulta DAO usar.
+- El DAO declara consultas JPQL explícitas con `@Query`.
+- Los DTOs de respuesta no cambian.
+
+El servicio reutiliza la misma normalización técnica que `q`: `trim`, `toLowerCase(Locale.ROOT)`,
+normalización Unicode `NFD`, eliminación de marcas diacríticas y escape de comodines `LIKE`. Así
+`València` puede encontrarse con `valencia` y `Xàtiva` con `xativa`, sin degradar el texto visible de
+la respuesta.
+
+Se mantienen caminos DAO separados para evitar construir JPQL dinámico y para no depender de
+colecciones vacías en `IN`. Los ocho caminos cubiertos son:
+
+1. Sin filtros.
+2. Solo `q`.
+3. Solo `category`.
+4. Solo `location`.
+5. `q` + `category`.
+6. `q` + `location`.
+7. `category` + `location`.
+8. `q` + `category` + `location`.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No hay migraciones nuevas. La tarea reutiliza columnas existentes de `Venues`:
+
+- `address`.
+- `city`.
+- `province`.
+- `postalCode`.
+- `country`.
+- `status`.
+
+El filtro solo consulta locales `published`. No modifica datos ni añade restricciones.
+
+No se añaden índices en esta iteración. El diseño ya documenta índices futuros para ubicación
+textual y punto geográfico. Cuando el catálogo crezca, convendrá sustituir o complementar `LIKE` con
+índices funcionales, trigram o full-text según el patrón definitivo de búsqueda.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint ampliado:
+
+```http
+GET /api/public/venues/search?location=madrid&locale=es&page=0&size=20
+```
+
+Parámetros:
+
+- `location`: opcional. Texto de ciudad, zona/provincia, dirección, código postal o país.
+- `q`: opcional.
+- `category`: opcional y repetible.
+- `locale`: opcional.
+- `page`: opcional.
+- `size`: opcional.
+- `Accept-Language`: opcional si no hay `locale`.
+
+Servicio:
+
+```java
+VenueSearchResponse search(
+    SupportedLocale locale,
+    String query,
+    List<String> categorySlugs,
+    String location,
+    int page,
+    int size);
+```
+
+DAO añadido:
+
+- `findPublishedForSearchByLocation(String locationPattern, Pageable pageable)`.
+- `countPublishedForSearchByLocation(String locationPattern)`.
+- `findPublishedForSearchByCategoriesAndLocation(List<String> categorySlugs, String locationPattern, Pageable pageable)`.
+- `countPublishedForSearchByCategoriesAndLocation(List<String> categorySlugs, String locationPattern)`.
+- `findPublishedMatchingSearchByLocation(String queryPattern, String locationPattern, Pageable pageable)`.
+- `countPublishedMatchingSearchByLocation(String queryPattern, String locationPattern)`.
+- `findPublishedMatchingSearchByCategoriesAndLocation(String queryPattern, List<String> categorySlugs, String locationPattern, Pageable pageable)`.
+- `countPublishedMatchingSearchByCategoriesAndLocation(String queryPattern, List<String> categorySlugs, String locationPattern)`.
+
+No se añaden jobs, componentes frontend ni DTOs nuevos.
+
+### Flujos de ejecución relevantes
+
+Flujo solo ubicación:
+
+1. El controlador recibe `location`.
+2. El servicio normaliza `location` a `locationPattern`.
+3. Si `q` y `category` están ausentes, ejecuta `findPublishedForSearchByLocation`.
+4. Ejecuta `countPublishedForSearchByLocation`.
+5. Devuelve tarjetas públicas localizadas.
+
+Flujo ubicación con categoría:
+
+1. El servicio normaliza slugs y ubicación.
+2. Ejecuta `findPublishedForSearchByCategoriesAndLocation`.
+3. El DAO exige `venue.category.slug in :categorySlugs` y coincidencia de ubicación.
+
+Flujo ubicación con texto:
+
+1. El servicio normaliza `q` y `location`.
+2. Ejecuta `findPublishedMatchingSearchByLocation`.
+3. El DAO exige coincidencia textual general y coincidencia de ubicación.
+
+Flujo ubicación con texto y categoría:
+
+1. El servicio normaliza `q`, categorías y ubicación.
+2. Ejecuta `findPublishedMatchingSearchByCategoriesAndLocation`.
+3. Devuelve solo locales publicados que cumplen los tres filtros.
+
+Campos de ubicación buscados:
+
+- Ciudad.
+- Provincia o zona administrativa.
+- Dirección.
+- Código postal.
+- País.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- `location = null` o en blanco no activa filtro.
+- Se escapan `%`, `_` y `\`.
+- `page`, `size` y `category` mantienen las reglas previas.
+
+Seguridad:
+
+- Endpoint anónimo de solo lectura.
+- El usuario no puede seleccionar columnas ni alterar JPQL.
+- Todos los valores entran como parámetros de consulta.
+- La consulta conserva `venue.status = 'published'`.
+
+Privacidad:
+
+- No se almacena ubicación del usuario.
+- No se solicita latitud/longitud del usuario en esta tarea.
+- No se expone dirección completa en las tarjetas; la respuesta pública sigue limitada a ciudad,
+  provincia, país y coordenadas existentes del local.
+- No se exponen propietario, cuenta empresarial ni datos fiscales.
+
+Internacionalización:
+
+- La comparación normalizada permite buscar sin tildes.
+- Los textos visibles de salida no se normalizan.
+- `locale` y `Accept-Language` siguen resolviendo nombres y descripciones localizadas.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden errores de dominio nuevos.
+
+- Una ubicación sin coincidencias produce página vacía.
+- Una ubicación en blanco se ignora.
+- No se añaden logs ni auditoría porque es una lectura pública sin efectos secundarios.
+- Los errores de tipo de parámetros numéricos siguen bajo Spring MVC.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenuePublicSearchControllerTests`
+  - Verifica que `location` se propaga junto con `locale`, `q`, `category`, `page` y `size`.
+  - Mantiene negociación de idioma con `location = null`.
+- `VenuePublicSearchServiceTests`
+  - Actualiza llamadas al nuevo contrato.
+  - Añade filtro solo por ubicación con `MáDRID`, normalizado a `%madrid%`.
+  - Añade combinación completa de `q`, `category` y `location`.
+- `VenuePublicSearchIntegrationTests`
+  - Crea un restaurante publicado en Madrid y una pista de pádel publicada en València.
+  - Verifica que `location=madrid` devuelve el restaurante.
+  - Verifica que `location=valencia` encuentra `València`.
+  - Verifica que `location=xativa` encuentra la dirección `Carrer de Xàtiva, 5`.
+  - Verifica que `q=padel&category=pista-de-padel&location=valencia` devuelve la pista.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test
+```
+
+Resultado:
+
+- `VenuePublicProfileControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchServiceTests`: 7 tests, 0 fallos.
+- `VenuePublicSearchIntegrationTests`: 1 test, 0 fallos.
+- Total: 12 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Flyway aplicó 16 migraciones sobre PostgreSQL Testcontainers.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Comandos transversales:
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+- Diff sin espacios en blanco problemáticos.
+
+Incidencia durante verificación:
+
+- El primer intento de Maven sin permisos elevados falló por bloqueo de red del sandbox al resolver
+  el parent POM de Spring Boot desde Maven Central. Se repitió con permisos elevados.
+- El segundo intento llegó a Spotless y pidió compactar tres firmas o llamadas; se corrigió
+  manualmente y la repetición terminó correctamente.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- La búsqueda de ubicación textual usa coincidencia parcial con `LIKE`; no calcula distancia ni radio.
+- No se geocodifica texto libre en esta tarea.
+- No se persiste ubicación precisa del usuario.
+- El filtro por radio y coordenadas corresponde a `3.5`.
+- A futuro convendrá revisar índices funcionales o trigram sobre ciudad, provincia, dirección y
+  código postal si el volumen lo requiere.
+- La UI de filtros todavía no está implementada; llegará en `3.10`.
+
+### Criterio de cierre
+
+La tarea se cierra porque `GET /api/public/venues/search` acepta `location`, filtra por ciudad,
+zona/provincia, dirección, código postal o país de locales publicados, compara de forma insensible a
+mayúsculas y tildes, combina correctamente con `q` y `category`, no expone datos privados nuevos y
+cuenta con pruebas unitarias, integración real con PostgreSQL y validaciones transversales correctas.

@@ -20,8 +20,22 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
   String PUBLISHED_SEARCH_COUNT =
       "select count(venue) from VenueEntity venue where venue.status = 'published'";
   String CATEGORY_FILTER = " and venue.category.slug in :categorySlugs";
+  String LOCATION_FILTER =
+      " and (lower(function('unaccent', coalesce(venue.city, ''))) like :locationPattern "
+          + "escape '\\' or lower(function('unaccent', coalesce(venue.province, ''))) "
+          + "like :locationPattern escape '\\' or lower(function('unaccent', "
+          + "coalesce(venue.address, ''))) like :locationPattern escape '\\' or "
+          + "lower(function('unaccent', coalesce(venue.postalCode, ''))) like :locationPattern "
+          + "escape '\\' or lower(function('unaccent', coalesce(venue.country, ''))) "
+          + "like :locationPattern escape '\\')";
   String PUBLISHED_CATEGORY_SEARCH_QUERY = PUBLISHED_SEARCH_QUERY + CATEGORY_FILTER;
   String PUBLISHED_CATEGORY_SEARCH_COUNT = PUBLISHED_SEARCH_COUNT + CATEGORY_FILTER;
+  String PUBLISHED_LOCATION_SEARCH_QUERY = PUBLISHED_SEARCH_QUERY + LOCATION_FILTER;
+  String PUBLISHED_LOCATION_SEARCH_COUNT = PUBLISHED_SEARCH_COUNT + LOCATION_FILTER;
+  String PUBLISHED_CATEGORY_LOCATION_SEARCH_QUERY =
+      PUBLISHED_CATEGORY_SEARCH_QUERY + LOCATION_FILTER;
+  String PUBLISHED_CATEGORY_LOCATION_SEARCH_COUNT =
+      PUBLISHED_CATEGORY_SEARCH_COUNT + LOCATION_FILTER;
   String PUBLISHED_MATCHING_SEARCH_QUERY =
       PUBLISHED_SEARCH_QUERY
           + " and (lower(function('unaccent', venue.name)) like :queryPattern escape '\\' "
@@ -40,6 +54,14 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       PUBLISHED_MATCHING_SEARCH_QUERY + CATEGORY_FILTER;
   String PUBLISHED_MATCHING_CATEGORY_SEARCH_COUNT =
       PUBLISHED_MATCHING_SEARCH_COUNT + CATEGORY_FILTER;
+  String PUBLISHED_MATCHING_LOCATION_SEARCH_QUERY =
+      PUBLISHED_MATCHING_SEARCH_QUERY + LOCATION_FILTER;
+  String PUBLISHED_MATCHING_LOCATION_SEARCH_COUNT =
+      PUBLISHED_MATCHING_SEARCH_COUNT + LOCATION_FILTER;
+  String PUBLISHED_MATCHING_CATEGORY_LOCATION_SEARCH_QUERY =
+      PUBLISHED_MATCHING_CATEGORY_SEARCH_QUERY + LOCATION_FILTER;
+  String PUBLISHED_MATCHING_CATEGORY_LOCATION_SEARCH_COUNT =
+      PUBLISHED_MATCHING_CATEGORY_SEARCH_COUNT + LOCATION_FILTER;
 
   /** Carga el perfil vigente y su categoría para lectura privada. */
   @Query(
@@ -103,6 +125,28 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
   @Query(PUBLISHED_CATEGORY_SEARCH_COUNT)
   long countPublishedForSearchByCategories(@Param("categorySlugs") List<String> categorySlugs);
 
+  /** Lista locales publicados cuya ubicación textual coincide con el patrón normalizado. */
+  @Query(PUBLISHED_LOCATION_SEARCH_QUERY)
+  List<VenueEntity> findPublishedForSearchByLocation(
+      @Param("locationPattern") String locationPattern, Pageable pageable);
+
+  /** Cuenta locales publicados cuya ubicación textual coincide con el patrón normalizado. */
+  @Query(PUBLISHED_LOCATION_SEARCH_COUNT)
+  long countPublishedForSearchByLocation(@Param("locationPattern") String locationPattern);
+
+  /** Lista locales publicados que cruzan categorías públicas y ubicación textual. */
+  @Query(PUBLISHED_CATEGORY_LOCATION_SEARCH_QUERY)
+  List<VenueEntity> findPublishedForSearchByCategoriesAndLocation(
+      @Param("categorySlugs") List<String> categorySlugs,
+      @Param("locationPattern") String locationPattern,
+      Pageable pageable);
+
+  /** Cuenta locales publicados que cruzan categorías públicas y ubicación textual. */
+  @Query(PUBLISHED_CATEGORY_LOCATION_SEARCH_COUNT)
+  long countPublishedForSearchByCategoriesAndLocation(
+      @Param("categorySlugs") List<String> categorySlugs,
+      @Param("locationPattern") String locationPattern);
+
   /** Lista locales publicados que coinciden con el texto normalizado recibido. */
   @Query(PUBLISHED_MATCHING_SEARCH_QUERY)
   List<VenueEntity> findPublishedMatchingSearch(
@@ -124,4 +168,31 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
   long countPublishedMatchingSearchByCategories(
       @Param("queryPattern") String queryPattern,
       @Param("categorySlugs") List<String> categorySlugs);
+
+  /** Lista locales publicados que cruzan búsqueda textual y ubicación textual. */
+  @Query(PUBLISHED_MATCHING_LOCATION_SEARCH_QUERY)
+  List<VenueEntity> findPublishedMatchingSearchByLocation(
+      @Param("queryPattern") String queryPattern,
+      @Param("locationPattern") String locationPattern,
+      Pageable pageable);
+
+  /** Cuenta locales publicados que cruzan búsqueda textual y ubicación textual. */
+  @Query(PUBLISHED_MATCHING_LOCATION_SEARCH_COUNT)
+  long countPublishedMatchingSearchByLocation(
+      @Param("queryPattern") String queryPattern, @Param("locationPattern") String locationPattern);
+
+  /** Lista locales publicados que cruzan texto, categorías públicas y ubicación textual. */
+  @Query(PUBLISHED_MATCHING_CATEGORY_LOCATION_SEARCH_QUERY)
+  List<VenueEntity> findPublishedMatchingSearchByCategoriesAndLocation(
+      @Param("queryPattern") String queryPattern,
+      @Param("categorySlugs") List<String> categorySlugs,
+      @Param("locationPattern") String locationPattern,
+      Pageable pageable);
+
+  /** Cuenta locales publicados que cruzan texto, categorías públicas y ubicación textual. */
+  @Query(PUBLISHED_MATCHING_CATEGORY_LOCATION_SEARCH_COUNT)
+  long countPublishedMatchingSearchByCategoriesAndLocation(
+      @Param("queryPattern") String queryPattern,
+      @Param("categorySlugs") List<String> categorySlugs,
+      @Param("locationPattern") String locationPattern);
 }

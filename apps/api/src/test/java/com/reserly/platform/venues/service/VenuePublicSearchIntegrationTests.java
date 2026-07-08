@@ -48,32 +48,56 @@ class VenuePublicSearchIntegrationTests {
         "Café Central",
         RESTAURANT_CATEGORY_ID,
         "Cocina de mercado con café de especialidad",
-        "Market cuisine with specialty coffee");
+        "Market cuisine with specialty coffee",
+        "Calle Mayor, 1",
+        "Madrid",
+        "Madrid",
+        "28013",
+        new BigDecimal("40.416775"),
+        new BigDecimal("-3.703790"));
     createPublishableVenue(
         padelOwnerId,
         "Pista Norte",
         PADEL_CATEGORY_ID,
         "Pádel cubierto para partidos rápidos",
-        "Indoor padel for quick matches");
+        "Indoor padel for quick matches",
+        "Carrer de Xàtiva, 5",
+        "València",
+        "València",
+        "46002",
+        new BigDecimal("39.469750"),
+        new BigDecimal("-0.377390"));
     venuePublicationService.publish(cafeOwnerId);
     venuePublicationService.publish(padelOwnerId);
     entityManager.flush();
     entityManager.clear();
 
-    var byName = searchService.search(SupportedLocale.ES, "cafe", null, 0, 20);
-    var byKeyword = searchService.search(SupportedLocale.ES, "padel", List.of(), 0, 20);
+    var byName = searchService.search(SupportedLocale.ES, "cafe", null, null, 0, 20);
+    var byKeyword = searchService.search(SupportedLocale.ES, "padel", List.of(), null, 0, 20);
     var byRestaurantCategory =
-        searchService.search(SupportedLocale.ES, null, List.of("restaurante"), 0, 20);
+        searchService.search(SupportedLocale.ES, null, List.of("restaurante"), null, 0, 20);
     var byPadelCategory =
-        searchService.search(SupportedLocale.ES, null, List.of("pista-de-padel"), 0, 20);
+        searchService.search(SupportedLocale.ES, null, List.of("pista-de-padel"), null, 0, 20);
     var byTextAndDifferentCategory =
-        searchService.search(SupportedLocale.ES, "padel", List.of("restaurante"), 0, 20);
+        searchService.search(SupportedLocale.ES, "padel", List.of("restaurante"), null, 0, 20);
+    var byMadrid = searchService.search(SupportedLocale.ES, null, null, "madrid", 0, 20);
+    var byValenciaWithoutAccent =
+        searchService.search(SupportedLocale.ES, null, null, "valencia", 0, 20);
+    var byAddressWithoutAccent =
+        searchService.search(SupportedLocale.ES, null, null, "xativa", 0, 20);
+    var byAllFilters =
+        searchService.search(
+            SupportedLocale.ES, "padel", List.of("pista-de-padel"), "valencia", 0, 20);
 
     assertThat(byName.results()).extracting("name").containsExactly("Café Central");
     assertThat(byKeyword.results()).extracting("name").containsExactly("Pista Norte");
     assertThat(byRestaurantCategory.results()).extracting("name").containsExactly("Café Central");
     assertThat(byPadelCategory.results()).extracting("name").containsExactly("Pista Norte");
     assertThat(byTextAndDifferentCategory.results()).isEmpty();
+    assertThat(byMadrid.results()).extracting("name").containsExactly("Café Central");
+    assertThat(byValenciaWithoutAccent.results()).extracting("name").containsExactly("Pista Norte");
+    assertThat(byAddressWithoutAccent.results()).extracting("name").containsExactly("Pista Norte");
+    assertThat(byAllFilters.results()).extracting("name").containsExactly("Pista Norte");
   }
 
   private VenueEntity createPublishableVenue(
@@ -81,11 +105,27 @@ class VenuePublicSearchIntegrationTests {
       String name,
       UUID categoryId,
       String spanishDescription,
-      String englishDescription) {
+      String englishDescription,
+      String address,
+      String city,
+      String province,
+      String postalCode,
+      BigDecimal latitude,
+      BigDecimal longitude) {
     VenueEntity venue =
         venueProfileService.create(
             ownerUserId,
-            publishableCommand(name, categoryId, spanishDescription, englishDescription));
+            publishableCommand(
+                name,
+                categoryId,
+                spanishDescription,
+                englishDescription,
+                address,
+                city,
+                province,
+                postalCode,
+                latitude,
+                longitude));
     jdbcTemplate.update(
         """
         UPDATE "Venues"
@@ -104,7 +144,16 @@ class VenuePublicSearchIntegrationTests {
   }
 
   private VenueProfileCommand publishableCommand(
-      String name, UUID categoryId, String spanishDescription, String englishDescription) {
+      String name,
+      UUID categoryId,
+      String spanishDescription,
+      String englishDescription,
+      String address,
+      String city,
+      String province,
+      String postalCode,
+      BigDecimal latitude,
+      BigDecimal longitude) {
     return new VenueProfileCommand(
         name,
         categoryId,
@@ -115,13 +164,13 @@ class VenuePublicSearchIntegrationTests {
         "es",
         "contacto@example.invalid",
         null,
-        "Calle Mayor, 1",
-        "Madrid",
-        "Madrid",
+        address,
+        city,
+        province,
         "ES",
-        "28013",
-        new BigDecimal("40.416775"),
-        new BigDecimal("-3.703790"),
+        postalCode,
+        latitude,
+        longitude,
         false,
         true);
   }

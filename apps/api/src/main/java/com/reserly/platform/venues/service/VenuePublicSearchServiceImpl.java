@@ -38,19 +38,26 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
   @Override
   @Transactional(readOnly = true)
   public VenueSearchResponse search(
-      SupportedLocale locale, String query, List<String> categorySlugs, int page, int size) {
+      SupportedLocale locale,
+      String query,
+      List<String> categorySlugs,
+      String location,
+      int page,
+      int size) {
     int normalizedPage = Math.max(page, 0);
     int normalizedSize = normalizeSize(size);
     String queryPattern = toQueryPattern(query);
     List<String> normalizedCategorySlugs = normalizeCategorySlugs(categorySlugs);
+    String locationPattern = toQueryPattern(location);
     PageRequest pageRequest =
         PageRequest.of(
             normalizedPage,
             normalizedSize,
             Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.asc("name")));
     List<VenueEntity> venues =
-        findPublishedVenues(queryPattern, normalizedCategorySlugs, pageRequest);
-    long totalElements = countPublishedVenues(queryPattern, normalizedCategorySlugs);
+        findPublishedVenues(queryPattern, normalizedCategorySlugs, locationPattern, pageRequest);
+    long totalElements =
+        countPublishedVenues(queryPattern, normalizedCategorySlugs, locationPattern);
     int totalPages = (int) Math.ceil((double) totalElements / normalizedSize);
     return new VenueSearchResponse(
         locale.languageTag(),
@@ -63,33 +70,68 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
   }
 
   private List<VenueEntity> findPublishedVenues(
-      String queryPattern, List<String> categorySlugs, PageRequest pageRequest) {
+      String queryPattern,
+      List<String> categorySlugs,
+      String locationPattern,
+      PageRequest pageRequest) {
     boolean hasQuery = queryPattern != null;
     boolean hasCategories = !categorySlugs.isEmpty();
+    boolean hasLocation = locationPattern != null;
+    if (hasQuery && hasCategories && hasLocation) {
+      return venueDao.findPublishedMatchingSearchByCategoriesAndLocation(
+          queryPattern, categorySlugs, locationPattern, pageRequest);
+    }
     if (hasQuery && hasCategories) {
       return venueDao.findPublishedMatchingSearchByCategories(
           queryPattern, categorySlugs, pageRequest);
     }
+    if (hasQuery && hasLocation) {
+      return venueDao.findPublishedMatchingSearchByLocation(
+          queryPattern, locationPattern, pageRequest);
+    }
     if (hasQuery) {
       return venueDao.findPublishedMatchingSearch(queryPattern, pageRequest);
+    }
+    if (hasCategories && hasLocation) {
+      return venueDao.findPublishedForSearchByCategoriesAndLocation(
+          categorySlugs, locationPattern, pageRequest);
     }
     if (hasCategories) {
       return venueDao.findPublishedForSearchByCategories(categorySlugs, pageRequest);
     }
+    if (hasLocation) {
+      return venueDao.findPublishedForSearchByLocation(locationPattern, pageRequest);
+    }
     return venueDao.findPublishedForSearch(pageRequest);
   }
 
-  private long countPublishedVenues(String queryPattern, List<String> categorySlugs) {
+  private long countPublishedVenues(
+      String queryPattern, List<String> categorySlugs, String locationPattern) {
     boolean hasQuery = queryPattern != null;
     boolean hasCategories = !categorySlugs.isEmpty();
+    boolean hasLocation = locationPattern != null;
+    if (hasQuery && hasCategories && hasLocation) {
+      return venueDao.countPublishedMatchingSearchByCategoriesAndLocation(
+          queryPattern, categorySlugs, locationPattern);
+    }
     if (hasQuery && hasCategories) {
       return venueDao.countPublishedMatchingSearchByCategories(queryPattern, categorySlugs);
+    }
+    if (hasQuery && hasLocation) {
+      return venueDao.countPublishedMatchingSearchByLocation(queryPattern, locationPattern);
     }
     if (hasQuery) {
       return venueDao.countPublishedMatchingSearch(queryPattern);
     }
+    if (hasCategories && hasLocation) {
+      return venueDao.countPublishedForSearchByCategoriesAndLocation(
+          categorySlugs, locationPattern);
+    }
     if (hasCategories) {
       return venueDao.countPublishedForSearchByCategories(categorySlugs);
+    }
+    if (hasLocation) {
+      return venueDao.countPublishedForSearchByLocation(locationPattern);
     }
     return venueDao.countPublishedForSearch();
   }

@@ -3350,6 +3350,63 @@ Fuente de verdad del avance:
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
     `git diff --check` correctos.
 
+## Conversación 71 - Filtro público por ubicación textual
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama de fase `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmó `3.4` como primera tarea pendiente tras revisar `tasks.md`, seguimiento e
+    implementación técnica.
+  - Se amplió `GET /api/public/venues/search` con el parámetro opcional `location`.
+  - Se implementó el filtrado por ciudad, zona/provincia, dirección, código postal o país mediante
+    comparación normalizada sin tildes ni mayúsculas.
+  - Se combinó `location` con los filtros previos `q` y `category` usando intersección.
+  - Se añadieron consultas DAO de listado y conteo para ubicación sola, ubicación con categoría,
+    ubicación con texto y ubicación con texto más categoría.
+  - Se añadieron pruebas unitarias y de integración con PostgreSQL Testcontainers para validar
+    Madrid, València sin tilde y dirección `Xàtiva` buscada como `xativa`.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-009 Gestión de perfil público`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `3.4. Añadir filtros por ciudad, zona o dirección normalizada`.
+  - Prepara `3.5`, que añadirá filtro por radio con coordenadas.
+- Tareas completadas:
+  - `3.4. Añadir filtros por ciudad, zona o dirección normalizada`.
+- Siguiente tarea pendiente recomendada:
+  - `3.5. Añadir filtro por radio si hay coordenadas`.
+- Decisiones o aclaraciones relevantes:
+  - El contrato usa `location` como parámetro textual único para ciudad, zona/provincia, dirección,
+    código postal o país.
+  - `location` vacío o en blanco se ignora y conserva el comportamiento previo.
+  - La comparación usa `lower(unaccent(...)) LIKE :locationPattern ESCAPE '\'`.
+  - `location` se cruza con `q` y `category` mediante `AND`; no se mezcla con la búsqueda textual
+    general como palabra clave.
+  - No se persiste ni procesa ubicación precisa de usuario en esta tarea; el radio queda para `3.5`.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
+    correcto con 12 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+  - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check` correctos.
+
 ## Conversación 69 - Búsqueda pública por nombre y palabras clave
 
 - Fecha: 2026-07-08.

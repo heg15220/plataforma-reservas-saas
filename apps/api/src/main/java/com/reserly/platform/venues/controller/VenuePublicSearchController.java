@@ -24,6 +24,7 @@ public interface VenuePublicSearchController {
       @RequestParam(required = false) String locale,
       @RequestParam(name = "q", required = false) String query,
       @RequestParam(name = "category", required = false) List<String> categorySlugs,
+      @RequestParam(name = "location", required = false) String location,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);

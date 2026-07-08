@@ -45,7 +45,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedForSearch()).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.EN, null, null, 0, 20);
+    var response = service.search(SupportedLocale.EN, null, null, null, 0, 20);
 
     assertThat(response.locale()).isEqualTo("en");
     assertThat(response.page()).isZero();
@@ -77,7 +77,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedForSearch()).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "   ", List.of(), -4, 500);
+    var response = service.search(SupportedLocale.ES, "   ", List.of(), "   ", -4, 500);
 
     assertThat(response.page()).isZero();
     assertThat(response.size()).isEqualTo(50);
@@ -96,7 +96,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedMatchingSearch("%cafe%")).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "  Café  ", null, 0, 20);
+    var response = service.search(SupportedLocale.ES, "  Café  ", null, null, 0, 20);
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).name()).isEqualTo("Café Central");
@@ -119,6 +119,7 @@ class VenuePublicSearchServiceTests {
             SupportedLocale.ES,
             null,
             List.of(" Restaurante ", "", "pista-de-padel", "restaurante"),
+            null,
             0,
             20);
 
@@ -138,7 +139,45 @@ class VenuePublicSearchServiceTests {
     when(venueDao.countPublishedMatchingSearchByCategories("%cafe%", List.of("restaurante")))
         .thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "  Café  ", List.of("restaurante"), 0, 20);
+    var response =
+        service.search(SupportedLocale.ES, "  Café  ", List.of("restaurante"), null, 0, 20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).name()).isEqualTo("Café Central");
+    assertThat(response.totalElements()).isEqualTo(1);
+  }
+
+  @Test
+  void filtersByNormalizedLocationWhenNoOtherFilterIsPresent() {
+    VenueEntity venue = venue("casa-luz", "Casa Luz");
+    when(venueDao.findPublishedForSearchByLocation(
+            argThat(pattern -> pattern.equals("%madrid%")),
+            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+        .thenReturn(List.of(venue));
+    when(venueDao.countPublishedForSearchByLocation("%madrid%")).thenReturn(1L);
+
+    var response = service.search(SupportedLocale.ES, null, null, "  MáDRID  ", 0, 20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).city()).isEqualTo("Madrid");
+    assertThat(response.totalElements()).isEqualTo(1);
+  }
+
+  @Test
+  void combinesTextCategoryAndLocationFilters() {
+    VenueEntity venue = venue("cafe-central", "Café Central");
+    when(venueDao.findPublishedMatchingSearchByCategoriesAndLocation(
+            argThat(pattern -> pattern.equals("%cafe%")),
+            argThat(slugs -> slugs.equals(List.of("restaurante"))),
+            argThat(pattern -> pattern.equals("%madrid%")),
+            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+        .thenReturn(List.of(venue));
+    when(venueDao.countPublishedMatchingSearchByCategoriesAndLocation(
+            "%cafe%", List.of("restaurante"), "%madrid%"))
+        .thenReturn(1L);
+
+    var response =
+        service.search(SupportedLocale.ES, "  Café  ", List.of("restaurante"), "Madrid", 0, 20);
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).name()).isEqualTo("Café Central");
@@ -166,6 +205,7 @@ class VenuePublicSearchServiceTests {
                 SupportedLocale.ES, "Cocina de temporada",
                 SupportedLocale.EN, "Seasonal cuisine")));
     venue.setMainImageUrl("/api/public/venue-images/id/main");
+    venue.setAddress("Calle Mayor, 1");
     venue.setCity("Madrid");
     venue.setProvince("Madrid");
     venue.setCountry("ES");
