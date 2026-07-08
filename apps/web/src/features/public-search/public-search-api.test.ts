@@ -65,4 +65,39 @@ describe("searchPublicVenues", () => {
       { cache: "no-store" },
     );
   });
+
+  it("omite filtros vacíos y conserva paginación positiva", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...apiResponse, page: 2 }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await searchPublicVenues("en", {
+      category: "",
+      location: "   ",
+      page: 2,
+      q: "",
+      size: 20,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL("http://internal-api.test/api/public/venues/search?locale=en&page=2&size=20"),
+      { cache: "no-store" },
+    );
+  });
+
+  it("rechaza respuestas no correctas del endpoint público", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+      }),
+    );
+
+    await expect(searchPublicVenues("es", {})).rejects.toThrow(
+      "No se pudo cargar la búsqueda pública (503).",
+    );
+  });
 });

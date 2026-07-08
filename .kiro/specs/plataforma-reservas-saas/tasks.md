@@ -94,8 +94,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 3.10. Crear panel de filtros desktop y móvil.
 - [x] 3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple.
 - [x] 3.12. Crear estado vacío para local no encontrado.
-- [ ] 3.13. Crear tests de búsqueda y filtros.
-- [ ] 3.14. Crear traducciones ES/EN de buscador, filtros, resultados, estados vacíos y tarjetas.
+- [x] 3.13. Crear tests de búsqueda y filtros.
+- [x] 3.14. Crear traducciones ES/EN de buscador, filtros, resultados, estados vacíos y tarjetas.
 
 ## 6. Fase 4 - Horarios, franjas y disponibilidad
 

@@ -12,12 +12,12 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-08
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17` y `3.1` a
-  `3.12`.
-- Siguiente tarea pendiente recomendada: `3.13. Crear tests de búsqueda y filtros.`
+  `3.14`.
+- Siguiente tarea pendiente recomendada: `4.1. Crear migraciones de venue_opening_hours, time_slots y availability_blocks.`
 - Observación: la Fase 3 ya dispone de endpoint público de búsqueda con texto, categoría,
   ubicación, radio, ordenación, estado resumido, pantalla de inicio, pantalla de resultados con
   tarjetas, panel responsive de filtros, carriles iniciales de descubrimiento y estado vacío de local
-  no encontrado.
+  no encontrado. La fase queda cerrada con cobertura focalizada y contrato ES/EN explícito.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -3351,6 +3351,59 @@ Fuente de verdad del avance:
   - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
     correcto con 10 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check` correctos.
+
+## Conversación 76 - Cierre de tests y traducciones de búsqueda pública
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmaron como siguientes tareas pendientes `3.13` y `3.14`.
+  - Se amplió la cobertura del cliente `searchPublicVenues` para filtros vacíos, paginación positiva,
+    `size` y errores HTTP.
+  - Se amplió la cobertura de `PublicSearchResultsView` para vacío genérico sin `q`, vacío específico
+    de local no encontrado, filtros, tarjetas y carriles de descubrimiento vacíos.
+  - Se añadió un test explícito de contrato de traducciones para `HomePage` y `PublicSearch` en ES/EN,
+    cubriendo buscador, filtros, resultados, estados vacíos, tarjetas, categorías, ordenación y
+    carriles.
+  - Se cerró la Fase 3 dejando `4.1` como siguiente tarea recomendada.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-search-api.test.ts`.
+  - `apps/web/src/features/public-search/public-search-results.test.tsx`.
+  - `apps/web/src/features/public-search/public-search-translations.test.ts`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-005 Estado público del local`.
+  - `RF-030 Recomendaciones`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-010 Accesibilidad`.
+- Tareas impactadas:
+  - `3.13. Crear tests de búsqueda y filtros`.
+  - `3.14. Crear traducciones ES/EN de buscador, filtros, resultados, estados vacíos y tarjetas`.
+- Tareas completadas:
+  - `3.13. Crear tests de búsqueda y filtros`.
+  - `3.14. Crear traducciones ES/EN de buscador, filtros, resultados, estados vacíos y tarjetas`.
+- Siguiente tarea pendiente recomendada:
+  - `4.1. Crear migraciones de venue_opening_hours, time_slots y availability_blocks`.
+- Decisiones o aclaraciones relevantes:
+  - Las traducciones de búsqueda quedan verificadas con un test específico, además del validador
+    global de catálogos.
+  - El test de API cubre que filtros en blanco no se envían y que errores HTTP se propagan con un
+    mensaje controlado.
+  - El test de vista cubre que el estado vacío genérico no ofrece registro de local, mientras el vacío
+    con `q` sí lo ofrece.
+  - Evidencia frontend: `npm exec vitest -- run src/features/public-search/public-search-api.test.ts src/features/public-search/public-search-results.test.tsx src/features/public-search/public-search-translations.test.ts --pool=threads --maxWorkers=1 --testTimeout=20000`
+    correcto con 3 ficheros, 9 tests y 0 fallos.
+  - Evidencia build: `npm run build:web:test` correcto.
+  - Evidencia adicional: `npm run typecheck --workspace @reserly/web`, `npm run lint:web`,
+    `npm run i18n:check`, `npm run spanish:text:check`, `npm exec prettier -- --check ...` y
     `git diff --check` correctos.
 
 ## Conversación 75 - Carriles de descubrimiento y vacío de local no encontrado

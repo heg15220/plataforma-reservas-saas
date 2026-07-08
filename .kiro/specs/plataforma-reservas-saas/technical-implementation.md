@@ -16915,3 +16915,216 @@ Las tareas se cierran porque `/explorar` ya muestra carriles iniciales de recome
 cercanos con lógica simple basada en el endpoint público, y porque el vacío de búsquedas por nombre
 sin resultados comunica claramente que el local no aparece y ofrece acciones útiles. Todo queda
 traducido, testeado y compilado.
+
+## Iteración 2026-07-08 - Tareas 3.13 y 3.14, tests y traducciones de búsqueda pública
+
+### Identificador exacto de las tareas completadas
+
+- `3.13. Crear tests de búsqueda y filtros`.
+- `3.14. Crear traducciones ES/EN de buscador, filtros, resultados, estados vacíos y tarjetas`.
+
+### Objetivo técnico
+
+Cerrar la Fase 3 con garantías explícitas:
+
+- Ampliar los tests de búsqueda pública y filtros para cubrir normalización, errores, renderizado,
+  estados vacíos y carriles de descubrimiento.
+- Crear un test de contrato que asegure que los textos ES/EN de buscador, filtros, resultados,
+  estados vacíos, tarjetas, categorías, ordenación y carriles existen y conservan contenido esperado.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos:
+
+- `RF-001`: buscador principal y resultados coincidentes o vacío claro.
+- `RF-002`: filtros por ubicación, categoría y limpieza de filtros.
+- `RF-003`: resultados como tarjetas.
+- `RF-005`: estado público visible y no comunicado solo por color.
+- `RF-030`: carriles simples de descubrimiento.
+- `RF-031`: todos los textos visibles deben estar internacionalizados en español e inglés.
+
+Decisiones:
+
+- No se añade funcionalidad productiva nueva salvo tests; se consolida el comportamiento existente.
+- La cobertura se concentra en la feature `public-search`, que agrupa API, vista y traducciones.
+- El contrato de traducciones se expresa mediante test unitario, además de los validadores globales
+  `i18n:check` y `spanish:text:check`.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/web/src/features/public-search/public-search-translations.test.ts`.
+
+Archivos modificados:
+
+- `apps/web/src/features/public-search/public-search-api.test.ts`.
+- `apps/web/src/features/public-search/public-search-results.test.tsx`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminan archivos.
+
+### Arquitectura aplicada y razones técnicas
+
+La cobertura se organiza por responsabilidad:
+
+- Test de API:
+  - valida construcción de URL;
+  - valida trimming y omisión de filtros en blanco;
+  - valida `page` y `size`;
+  - valida propagación de errores HTTP.
+- Test de vista:
+  - valida filtros y tarjetas;
+  - valida vacío con `q`;
+  - valida vacío sin `q`;
+  - valida carriles con datos y sin datos.
+- Test de traducciones:
+  - valida claves críticas de `HomePage` y `PublicSearch`;
+  - valida categorías y modos de ordenación en ambos locales.
+
+Esta separación evita tests demasiado acoplados a Next.js y permite detectar regresiones de contrato
+sin arrancar el backend.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No hay cambios de datos ni migraciones.
+
+Contratos validados:
+
+- `PublicVenueSearchFilters`: `q`, `location`, `category`, `sort`, `page`, `size`.
+- `PublicSearch` en catálogos ES/EN:
+  - acciones;
+  - categorías;
+  - filtros;
+  - tarjetas;
+  - vacíos;
+  - resultados;
+  - ordenación;
+  - descubrimiento.
+
+### Endpoints, contratos, servicios, componentes y módulos implementados
+
+Endpoint cubierto indirectamente:
+
+- `GET /api/public/venues/search`.
+
+Módulos cubiertos:
+
+- `searchPublicVenues`.
+- `PublicSearchResultsView`.
+- `EmptySearchState`.
+- `DiscoverySections`.
+- `CompactVenueLink`.
+- Catálogos `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+
+### Flujos de ejecución relevantes
+
+Flujo de API validado:
+
+1. Recibe filtros desde Server Component.
+2. Recorta `q` y `location`.
+3. Omite filtros vacíos.
+4. Envía `page` y `size` solo cuando son positivos.
+5. Lanza error controlado si el backend responde con estado no OK.
+
+Flujo de UI validado:
+
+1. Renderiza resultados con tarjetas.
+2. Muestra filtros con valores iniciales.
+3. Muestra carriles de descubrimiento.
+4. Muestra vacío específico de local no encontrado con acción de registro cuando hay `q`.
+5. Muestra vacío genérico sin acción de registro cuando no hay texto de búsqueda.
+
+Flujo de traducciones validado:
+
+1. Importa catálogos ES/EN como JSON.
+2. Verifica textos críticos de buscador, filtros, tarjetas, vacíos y carriles.
+3. Recorre categorías y modos de ordenación requeridos.
+
+### Validaciones, permisos, seguridad, privacidad, accesibilidad e internacionalización
+
+Validaciones:
+
+- Filtros en blanco no llegan a la URL.
+- Paginación positiva se conserva.
+- Errores HTTP no se silencian.
+- Categorías y sort keys requeridas existen en ambos locales.
+
+Seguridad y privacidad:
+
+- No se añaden datos sensibles ni sesiones.
+- Los tests confirman que las llamadas se hacen contra URL interna configurada y sin credenciales.
+
+Accesibilidad:
+
+- Las aserciones usan roles accesibles (`heading`, `link`, `search`, `img`), reforzando que la UI
+  tiene nombres accesibles útiles.
+
+Internacionalización:
+
+- `public-search-translations.test.ts` verifica el contrato específico de `3.14`.
+- `npm run i18n:check` confirma paridad general de claves.
+- `npm run spanish:text:check` confirma calidad de texto español, tildes, signos y UTF-8.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+- Se cubre el error HTTP del cliente público de búsqueda.
+- No se añaden logs ni auditoría porque no hay cambios de runtime productivo.
+- La observabilidad de búsquedas reales queda pendiente para la fase de eventos/interacciones.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `public-search-api.test.ts`
+  - Añade filtros vacíos, `page`, `size` y error HTTP.
+- `public-search-results.test.tsx`
+  - Añade vacío genérico sin registro.
+  - Añade carriles vacíos.
+
+Tests creados:
+
+- `public-search-translations.test.ts`
+  - Cubre contrato ES/EN de buscador, filtros, resultados, vacíos, tarjetas, categorías, ordenación y
+    carriles.
+
+Comandos ejecutados:
+
+```text
+npm exec vitest -- run src/features/public-search/public-search-api.test.ts src/features/public-search/public-search-results.test.tsx src/features/public-search/public-search-translations.test.ts --pool=threads --maxWorkers=1 --testTimeout=20000
+npm run typecheck --workspace @reserly/web
+npm run lint:web
+npm run i18n:check
+npm run spanish:text:check
+npm exec prettier -- --check apps/web/src/features/public-search/public-search-api.test.ts apps/web/src/features/public-search/public-search-results.test.tsx apps/web/src/features/public-search/public-search-translations.test.ts
+git diff --check
+npm run build:web:test
+```
+
+Resultados:
+
+- Vitest focalizado: 3 ficheros, 9 tests, 0 fallos.
+- TypeScript: correcto.
+- ESLint web: correcto.
+- i18n: correcto.
+- Validación de español: correcta.
+- Prettier en archivos afectados: correcto.
+- Whitespace: correcto.
+- Build Next de test: correcto.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- No se ejecuta una suite E2E real con navegador contra backend vivo; queda para fases de QA
+  visual/responsive.
+- El backend de búsqueda ya tiene cobertura previa; esta iteración se centra en cierre frontend e
+  i18n de Fase 3.
+- La siguiente fase (`4.1`) introduce disponibilidad real, que cambiará el significado operativo de
+  algunos estados mostrados actualmente como aproximaciones.
+
+### Criterio de cierre
+
+Las tareas se cierran porque la búsqueda pública cuenta con tests focalizados de API, filtros,
+tarjetas, estados vacíos, carriles e i18n, y porque las traducciones ES/EN de la experiencia pública
+quedan cubiertas por contrato específico, validadores globales, typecheck, lint y build de Next.

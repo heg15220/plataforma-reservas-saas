@@ -122,4 +122,30 @@ describe("PublicSearchResultsView", () => {
       "/locales/registro",
     );
   });
+
+  it("usa estado vacío genérico cuando no hay texto de búsqueda", () => {
+    renderWithIntl(
+      <PublicSearchResultsView
+        filters={{ category: "restaurante" }}
+        response={{ ...response, results: [], totalElements: 0, totalPages: 0 }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "No hay locales que coincidan" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Registrar este local" })).not.toBeInTheDocument();
+  });
+
+  it("muestra el estado vacío de cada carril cuando no hay descubrimiento inicial", () => {
+    renderWithIntl(
+      <PublicSearchResultsView
+        discoverySections={{ featured: [], nearby: [], recommended: [] }}
+        filters={{}}
+        response={response}
+      />,
+    );
+
+    expect(screen.getAllByText("Todavía no hay locales para esta selección.")).toHaveLength(3);
+  });
 });
