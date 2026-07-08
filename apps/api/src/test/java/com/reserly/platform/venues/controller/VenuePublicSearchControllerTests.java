@@ -30,23 +30,25 @@ class VenuePublicSearchControllerTests {
   @Test
   void explicitLocaleTakesPrecedenceAndDelegatesPagination() {
     VenueSearchResponse response = response("es");
-    when(service.search(SupportedLocale.ES, "cafe", 2, 12)).thenReturn(response);
+    when(service.search(SupportedLocale.ES, "cafe", List.of("restaurante"), 2, 12))
+        .thenReturn(response);
 
-    assertThat(controller.search("es", "cafe", 2, 12, "en-US").getBody()).isSameAs(response);
+    assertThat(controller.search("es", "cafe", List.of("restaurante"), 2, 12, "en-US").getBody())
+        .isSameAs(response);
 
-    verify(service).search(SupportedLocale.ES, "cafe", 2, 12);
+    verify(service).search(SupportedLocale.ES, "cafe", List.of("restaurante"), 2, 12);
   }
 
   @Test
   void negotiatesSpanishAndFallsBackToEnglish() {
-    when(service.search(SupportedLocale.ES, null, 0, 20)).thenReturn(response("es"));
-    when(service.search(SupportedLocale.EN, null, 0, 20)).thenReturn(response("en"));
+    when(service.search(SupportedLocale.ES, null, null, 0, 20)).thenReturn(response("es"));
+    when(service.search(SupportedLocale.EN, null, null, 0, 20)).thenReturn(response("en"));
 
-    controller.search(null, null, 0, 20, "es-ES,es;q=0.9");
-    controller.search("fr", null, 0, 20, "es");
+    controller.search(null, null, null, 0, 20, "es-ES,es;q=0.9");
+    controller.search("fr", null, null, 0, 20, "es");
 
-    verify(service).search(SupportedLocale.ES, null, 0, 20);
-    verify(service).search(SupportedLocale.EN, null, 0, 20);
+    verify(service).search(SupportedLocale.ES, null, null, 0, 20);
+    verify(service).search(SupportedLocale.EN, null, null, 0, 20);
   }
 
   private static VenueSearchResponse response(String locale) {

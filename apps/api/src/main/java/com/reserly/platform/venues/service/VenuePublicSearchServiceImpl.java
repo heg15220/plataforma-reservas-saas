@@ -7,8 +7,10 @@ import com.reserly.platform.venues.dto.VenueSearchResponse;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.text.Normalizer;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -17,8 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Construye la primera proyección pública de búsqueda solo con locales publicados.
  *
- * <p>La búsqueda textual, filtros y ordenaciones específicas se añaden en tareas posteriores de la
- * fase 3. Este servicio fija la frontera pública, paginación y localización base del endpoint.
+ * <p>El servicio concentra la frontera pública de búsqueda: estado publicado, texto libre, filtros
+ * estructurados por categoría, paginación y localización de campos visibles.
  */
 @Service
 public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
@@ -35,23 +37,20 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
 
   @Override
   @Transactional(readOnly = true)
-  public VenueSearchResponse search(SupportedLocale locale, String query, int page, int size) {
+  public VenueSearchResponse search(
+      SupportedLocale locale, String query, List<String> categorySlugs, int page, int size) {
     int normalizedPage = Math.max(page, 0);
     int normalizedSize = normalizeSize(size);
     String queryPattern = toQueryPattern(query);
+    List<String> normalizedCategorySlugs = normalizeCategorySlugs(categorySlugs);
     PageRequest pageRequest =
         PageRequest.of(
             normalizedPage,
             normalizedSize,
             Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.asc("name")));
     List<VenueEntity> venues =
-        queryPattern == null
-            ? venueDao.findPublishedForSearch(pageRequest)
-            : venueDao.findPublishedMatchingSearch(queryPattern, pageRequest);
-    long totalElements =
-        queryPattern == null
-            ? venueDao.countPublishedForSearch()
-            : venueDao.countPublishedMatchingSearch(queryPattern);
+        findPublishedVenues(queryPattern, normalizedCategorySlugs, pageRequest);
+    long totalElements = countPublishedVenues(queryPattern, normalizedCategorySlugs);
     int totalPages = (int) Math.ceil((double) totalElements / normalizedSize);
     return new VenueSearchResponse(
         locale.languageTag(),
@@ -61,6 +60,38 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
         totalPages,
         (long) (normalizedPage + 1) * normalizedSize < totalElements,
         venues.stream().map(venue -> toResponse(venue, locale)).toList());
+  }
+
+  private List<VenueEntity> findPublishedVenues(
+      String queryPattern, List<String> categorySlugs, PageRequest pageRequest) {
+    boolean hasQuery = queryPattern != null;
+    boolean hasCategories = !categorySlugs.isEmpty();
+    if (hasQuery && hasCategories) {
+      return venueDao.findPublishedMatchingSearchByCategories(
+          queryPattern, categorySlugs, pageRequest);
+    }
+    if (hasQuery) {
+      return venueDao.findPublishedMatchingSearch(queryPattern, pageRequest);
+    }
+    if (hasCategories) {
+      return venueDao.findPublishedForSearchByCategories(categorySlugs, pageRequest);
+    }
+    return venueDao.findPublishedForSearch(pageRequest);
+  }
+
+  private long countPublishedVenues(String queryPattern, List<String> categorySlugs) {
+    boolean hasQuery = queryPattern != null;
+    boolean hasCategories = !categorySlugs.isEmpty();
+    if (hasQuery && hasCategories) {
+      return venueDao.countPublishedMatchingSearchByCategories(queryPattern, categorySlugs);
+    }
+    if (hasQuery) {
+      return venueDao.countPublishedMatchingSearch(queryPattern);
+    }
+    if (hasCategories) {
+      return venueDao.countPublishedForSearchByCategories(categorySlugs);
+    }
+    return venueDao.countPublishedForSearch();
   }
 
   private static int normalizeSize(int size) {
@@ -78,6 +109,19 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
         Normalizer.normalize(query.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
             .replaceAll("\\p{M}+", "");
     return "%" + escapeLike(normalized) + "%";
+  }
+
+  private static List<String> normalizeCategorySlugs(List<String> categorySlugs) {
+    if (categorySlugs == null || categorySlugs.isEmpty()) {
+      return List.of();
+    }
+    Set<String> normalizedSlugs = new LinkedHashSet<>();
+    for (String categorySlug : categorySlugs) {
+      if (categorySlug != null && !categorySlug.isBlank()) {
+        normalizedSlugs.add(categorySlug.trim().toLowerCase(Locale.ROOT));
+      }
+    }
+    return List.copyOf(normalizedSlugs);
   }
 
   private static String escapeLike(String value) {

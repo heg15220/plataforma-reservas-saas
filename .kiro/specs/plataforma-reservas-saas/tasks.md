@@ -84,7 +84,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 - [x] 3.1. Implementar endpoint `GET /api/public/venues/search`.
 - [x] 3.2. Añadir búsqueda por nombre y palabras clave.
-- [ ] 3.3. Añadir filtros por categoría.
+- [x] 3.3. Añadir filtros por categoría.
 - [ ] 3.4. Añadir filtros por ciudad, zona o dirección normalizada.
 - [ ] 3.5. Añadir filtro por radio si hay coordenadas.
 - [ ] 3.6. Añadir ordenación por relevancia, valoración, cercanía y disponibilidad.

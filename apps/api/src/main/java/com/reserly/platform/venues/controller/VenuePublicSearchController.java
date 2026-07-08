@@ -1,6 +1,7 @@
 package com.reserly.platform.venues.controller;
 
 import com.reserly.platform.venues.dto.VenueSearchResponse;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,7 @@ public interface VenuePublicSearchController {
   ResponseEntity<VenueSearchResponse> search(
       @RequestParam(required = false) String locale,
       @RequestParam(name = "q", required = false) String query,
+      @RequestParam(name = "category", required = false) List<String> categorySlugs,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);

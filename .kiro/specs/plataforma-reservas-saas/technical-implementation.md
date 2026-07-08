@@ -15086,3 +15086,284 @@ La tarea se cierra porque `GET /api/public/venues/search` ya acepta `q`, busca p
 clave públicas sobre locales publicados, compara sin distinguir mayúsculas ni tildes, escapa
 comodines, conserva los textos visibles y cuenta con verificación automatizada focalizada y
 validaciones transversales correctas.
+
+## Iteración 3.3 - Filtros por categoría
+
+### Identificador exacto de la tarea completada
+
+`3.3. Añadir filtros por categoría`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Permitir que la búsqueda pública de locales publicados se refine por una o varias categorías usando
+slugs públicos, sin exponer identificadores internos y sin interferir con la búsqueda textual de
+`3.2`.
+
+La capacidad implementada soporta:
+
+- Listado base filtrado por categoría.
+- Búsqueda textual filtrada por categoría.
+- Varias categorías en la misma petición.
+- Normalización defensiva de slugs recibidos.
+- Conteo coherente para paginación en todos los caminos.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos relacionados:
+
+- `RF-001 Buscador principal`: la búsqueda mantiene resultados cuando el usuario combina texto y
+  refinamientos.
+- `RF-002 Filtros avanzados`: se implementa el criterio de aceptación de seleccionar una o varias
+  categorías y mostrar solo locales compatibles.
+- `RF-003 Resultados de búsqueda`: la respuesta sigue siendo una página de tarjetas públicas.
+- `RNF-001 Seguridad`: el usuario no controla JPQL ni identificadores internos.
+- `RNF-002 Privacidad`: no se añaden campos sensibles a la respuesta.
+- `RNF-004 Rendimiento`: el filtro se ejecuta en base de datos y reutiliza consultas paginadas.
+- `RNF-009 Internacionalización y localización`: los textos visibles siguen resolviéndose por
+  locale; los slugs se tratan como identificadores técnicos públicos.
+- `RNF-011 Convenciones de implementación backend y persistencia`: se mantiene separación entre
+  controlador, servicio, DAO y DTOs.
+
+Decisión de contrato:
+
+- El parámetro se llama `category`.
+- Es opcional y repetible:
+
+```http
+GET /api/public/venues/search?category=restaurante&category=pista-de-padel
+```
+
+La decisión prioriza compatibilidad con filtros facetados de UI y URLs compartibles. No se usan IDs
+porque son internos; el slug público ya existe en `Categories` y aparece en las tarjetas de búsqueda.
+
+### Archivos creados, modificados o eliminados
+
+Modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se crean ni eliminan archivos.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+La implementación conserva la arquitectura modular ya usada en `3.1` y `3.2`:
+
+- `VenuePublicSearchController` define el contrato REST anónimo.
+- `VenuePublicSearchControllerImpl` resuelve idioma y delega al servicio.
+- `VenuePublicSearchService` expone el caso de uso.
+- `VenuePublicSearchServiceImpl` normaliza entrada, decide la consulta y mapea entidades a DTOs.
+- `VenueDao` concentra las consultas declaradas con `@Query`.
+
+El servicio centraliza la normalización de categorías para evitar que cada consulta o controlador
+tenga reglas propias. Esto mantiene al controlador como adaptador fino y deja las invariantes del
+caso de uso en una única capa verificable.
+
+Se añaden cuatro caminos de consulta:
+
+1. Sin `q` ni categorías: listado base existente.
+2. Con `q` y sin categorías: búsqueda textual existente.
+3. Sin `q` y con categorías: filtro por `venue.category.slug`.
+4. Con `q` y con categorías: intersección entre búsqueda textual y slugs.
+
+La intersección usa `AND` porque un filtro de categoría reduce el conjunto de resultados; no actúa
+como palabra clave. La búsqueda textual conserva su propia lógica de `lower(unaccent(...)) LIKE`.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No hay migraciones nuevas. La tarea reutiliza:
+
+- `Venues.categoryId`.
+- Relación JPA `VenueEntity.category`.
+- `Categories.slug`.
+- Estado editorial `Venues.status = 'published'`.
+
+No se añaden índices en esta iteración. El filtro por categoría se apoya en la relación existente y
+queda como base para una posible optimización posterior si el volumen de locales lo exige. La
+ordenación conserva `publishedAt desc, name asc`.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint ampliado:
+
+```http
+GET /api/public/venues/search?category=restaurante&category=pista-de-padel&locale=es&page=0&size=20
+```
+
+Parámetros:
+
+- `category`: opcional y repetible. Slug público de categoría.
+- `q`: opcional. Texto libre de `3.2`.
+- `locale`: opcional.
+- `page`: opcional.
+- `size`: opcional.
+- `Accept-Language`: opcional si no hay `locale`.
+
+Servicio:
+
+```java
+VenueSearchResponse search(
+    SupportedLocale locale, String query, List<String> categorySlugs, int page, int size);
+```
+
+DAO añadido:
+
+- `findPublishedForSearchByCategories(List<String> categorySlugs, Pageable pageable)`.
+- `countPublishedForSearchByCategories(List<String> categorySlugs)`.
+- `findPublishedMatchingSearchByCategories(String queryPattern, List<String> categorySlugs, Pageable pageable)`.
+- `countPublishedMatchingSearchByCategories(String queryPattern, List<String> categorySlugs)`.
+
+No se añaden jobs, componentes frontend ni DTOs nuevos.
+
+### Flujos de ejecución relevantes
+
+Flujo sin filtros:
+
+1. El controlador recibe petición sin `q` ni `category`.
+2. El servicio normaliza `queryPattern = null` y `categorySlugs = []`.
+3. Ejecuta `findPublishedForSearch`.
+4. Ejecuta `countPublishedForSearch`.
+5. Devuelve tarjetas públicas localizadas.
+
+Flujo por categoría:
+
+1. El controlador recibe uno o varios `category`.
+2. El servicio ignora nulos/blancos, aplica `trim`, convierte a minúsculas y deduplica.
+3. Ejecuta `findPublishedForSearchByCategories`.
+4. Ejecuta `countPublishedForSearchByCategories`.
+5. Devuelve solo locales publicados cuya categoría tenga slug incluido.
+
+Flujo por texto y categoría:
+
+1. El servicio normaliza `q` a patrón `LIKE` escapado.
+2. Normaliza las categorías.
+3. Ejecuta `findPublishedMatchingSearchByCategories`.
+4. Ejecuta `countPublishedMatchingSearchByCategories`.
+5. Devuelve la intersección real: coincidencia textual y categoría compatible.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- `category = null` o lista vacía no activa filtro.
+- Elementos nulos, vacíos o en blanco se ignoran.
+- Los slugs se convierten a minúsculas con `Locale.ROOT`.
+- Los duplicados se eliminan conservando el primer orden recibido.
+- `page` y `size` mantienen la normalización previa.
+
+Seguridad:
+
+- Endpoint anónimo de solo lectura.
+- La consulta siempre exige `venue.status = 'published'`.
+- Los slugs se pasan como parámetros de consulta, no se interpolan en JPQL.
+- No se aceptan nombres de columna ni expresiones dinámicas desde el usuario.
+
+Privacidad:
+
+- No se exponen IDs internos de `Venues` ni `Categories`.
+- No se exponen propietario, cuenta empresarial, email, teléfono, datos fiscales ni metadatos de
+  almacenamiento.
+- La respuesta conserva el mismo DTO público de tarjetas.
+
+Internacionalización:
+
+- `category` filtra por slug técnico público, no por nombre traducido.
+- El nombre visible de la categoría sigue resolviéndose con `LocalizedText`.
+- La búsqueda textual conserva tolerancia a tildes mediante `unaccent`.
+- La normalización técnica de slugs no altera textos visibles.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden errores de dominio nuevos.
+
+- Una categoría inexistente produce página vacía, no error.
+- Una lista de categorías en blanco se interpreta como ausencia de filtro.
+- No se añaden logs ni auditoría porque la operación es lectura pública anónima sin efectos
+  secundarios.
+- Los fallos de tipo en parámetros numéricos siguen bajo el manejo estándar de Spring MVC.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenuePublicSearchControllerTests`
+  - Verifica que `category` se propaga al servicio junto con `locale`, `q`, `page` y `size`.
+  - Mantiene la negociación de idioma con `category = null`.
+- `VenuePublicSearchServiceTests`
+  - Actualiza llamadas al contrato con `categorySlugs`.
+  - Añade cobertura de normalización de categorías: espacios, blancos, minúsculas y deduplicación.
+  - Añade cobertura de intersección entre `q` y `category`.
+- `VenuePublicSearchIntegrationTests`
+  - Mantiene búsqueda textual contra PostgreSQL real.
+  - Añade filtro por `restaurante`.
+  - Añade filtro por `pista-de-padel`.
+  - Verifica que `q=padel` combinado con `category=restaurante` no devuelve la pista de pádel.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test
+```
+
+Resultado:
+
+- `VenuePublicProfileControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchServiceTests`: 5 tests, 0 fallos.
+- `VenuePublicSearchIntegrationTests`: 1 test, 0 fallos.
+- Total: 10 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Flyway aplicó 16 migraciones sobre PostgreSQL Testcontainers.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Comandos transversales:
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+- Diff sin espacios en blanco problemáticos.
+
+Incidencia durante verificación:
+
+- El primer intento de Maven sin permisos elevados falló por bloqueo de red del sandbox al resolver
+  el parent POM de Spring Boot desde Maven Central. Se repitió con permisos elevados y terminó
+  correctamente.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- El filtro por categoría se basa en `Categories.slug`; cualquier cambio futuro de slug debe tratarse
+  como cambio de URL pública.
+- No se filtra todavía por ciudad, zona, dirección normalizada ni radio; corresponde a `3.4` y
+  `3.5`.
+- No hay ordenación por relevancia ni facetas agregadas; corresponde a `3.6` y a futuras pantallas.
+- No se añaden índices específicos en esta tarea. Si el catálogo crece, convendrá revisar índices en
+  `Venues.categoryId`, `Venues.status`, `publishedAt` y las columnas textuales de búsqueda.
+- No se implementa aún UI de filtros; el panel desktop/móvil corresponde a `3.10`.
+
+### Criterio de cierre
+
+La tarea se cierra porque `GET /api/public/venues/search` acepta filtros por una o varias categorías
+mediante slugs públicos, los combina correctamente con búsqueda textual, mantiene la frontera de
+locales publicados, conserva la respuesta pública sin datos sensibles y cuenta con pruebas unitarias,
+integración real con PostgreSQL y validaciones transversales correctas.

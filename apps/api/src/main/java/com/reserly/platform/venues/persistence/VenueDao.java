@@ -19,6 +19,9 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
           + "where venue.status = 'published'";
   String PUBLISHED_SEARCH_COUNT =
       "select count(venue) from VenueEntity venue where venue.status = 'published'";
+  String CATEGORY_FILTER = " and venue.category.slug in :categorySlugs";
+  String PUBLISHED_CATEGORY_SEARCH_QUERY = PUBLISHED_SEARCH_QUERY + CATEGORY_FILTER;
+  String PUBLISHED_CATEGORY_SEARCH_COUNT = PUBLISHED_SEARCH_COUNT + CATEGORY_FILTER;
   String PUBLISHED_MATCHING_SEARCH_QUERY =
       PUBLISHED_SEARCH_QUERY
           + " and (lower(function('unaccent', venue.name)) like :queryPattern escape '\\' "
@@ -33,6 +36,10 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
           + "escape '\\' or lower(function('unaccent', venue.category.name)) like :queryPattern "
           + "escape '\\' or lower(function('unaccent', venue.category.slug)) like :queryPattern "
           + "escape '\\')";
+  String PUBLISHED_MATCHING_CATEGORY_SEARCH_QUERY =
+      PUBLISHED_MATCHING_SEARCH_QUERY + CATEGORY_FILTER;
+  String PUBLISHED_MATCHING_CATEGORY_SEARCH_COUNT =
+      PUBLISHED_MATCHING_SEARCH_COUNT + CATEGORY_FILTER;
 
   /** Carga el perfil vigente y su categoría para lectura privada. */
   @Query(
@@ -87,6 +94,15 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
   @Query(PUBLISHED_SEARCH_COUNT)
   long countPublishedForSearch();
 
+  /** Lista locales publicados cuyas categorías coinciden con los slugs públicos recibidos. */
+  @Query(PUBLISHED_CATEGORY_SEARCH_QUERY)
+  List<VenueEntity> findPublishedForSearchByCategories(
+      @Param("categorySlugs") List<String> categorySlugs, Pageable pageable);
+
+  /** Cuenta locales publicados cuyas categorías coinciden con los slugs públicos recibidos. */
+  @Query(PUBLISHED_CATEGORY_SEARCH_COUNT)
+  long countPublishedForSearchByCategories(@Param("categorySlugs") List<String> categorySlugs);
+
   /** Lista locales publicados que coinciden con el texto normalizado recibido. */
   @Query(PUBLISHED_MATCHING_SEARCH_QUERY)
   List<VenueEntity> findPublishedMatchingSearch(
@@ -95,4 +111,17 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
   /** Cuenta locales publicados que coinciden con el texto normalizado recibido. */
   @Query(PUBLISHED_MATCHING_SEARCH_COUNT)
   long countPublishedMatchingSearch(@Param("queryPattern") String queryPattern);
+
+  /** Lista locales publicados que cruzan búsqueda textual y categorías públicas. */
+  @Query(PUBLISHED_MATCHING_CATEGORY_SEARCH_QUERY)
+  List<VenueEntity> findPublishedMatchingSearchByCategories(
+      @Param("queryPattern") String queryPattern,
+      @Param("categorySlugs") List<String> categorySlugs,
+      Pageable pageable);
+
+  /** Cuenta locales publicados que cruzan búsqueda textual y categorías públicas. */
+  @Query(PUBLISHED_MATCHING_CATEGORY_SEARCH_COUNT)
+  long countPublishedMatchingSearchByCategories(
+      @Param("queryPattern") String queryPattern,
+      @Param("categorySlugs") List<String> categorySlugs);
 }

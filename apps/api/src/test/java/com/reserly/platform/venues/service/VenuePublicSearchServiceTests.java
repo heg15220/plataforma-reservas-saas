@@ -45,7 +45,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedForSearch()).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.EN, null, 0, 20);
+    var response = service.search(SupportedLocale.EN, null, null, 0, 20);
 
     assertThat(response.locale()).isEqualTo("en");
     assertThat(response.page()).isZero();
@@ -77,7 +77,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedForSearch()).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "   ", -4, 500);
+    var response = service.search(SupportedLocale.ES, "   ", List.of(), -4, 500);
 
     assertThat(response.page()).isZero();
     assertThat(response.size()).isEqualTo(50);
@@ -96,7 +96,49 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedMatchingSearch("%cafe%")).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "  Café  ", 0, 20);
+    var response = service.search(SupportedLocale.ES, "  Café  ", null, 0, 20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).name()).isEqualTo("Café Central");
+    assertThat(response.totalElements()).isEqualTo(1);
+  }
+
+  @Test
+  void filtersByNormalizedCategorySlugsWhenNoQueryIsPresent() {
+    VenueEntity venue = venue("casa-luz", "Casa Luz");
+    when(venueDao.findPublishedForSearchByCategories(
+            argThat(slugs -> slugs.equals(List.of("restaurante", "pista-de-padel"))),
+            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+        .thenReturn(List.of(venue));
+    when(venueDao.countPublishedForSearchByCategories(
+            argThat(slugs -> slugs.equals(List.of("restaurante", "pista-de-padel")))))
+        .thenReturn(1L);
+
+    var response =
+        service.search(
+            SupportedLocale.ES,
+            null,
+            List.of(" Restaurante ", "", "pista-de-padel", "restaurante"),
+            0,
+            20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).categorySlug()).isEqualTo("restaurante");
+    assertThat(response.totalElements()).isEqualTo(1);
+  }
+
+  @Test
+  void combinesTextQueryWithCategoryFilters() {
+    VenueEntity venue = venue("cafe-central", "Café Central");
+    when(venueDao.findPublishedMatchingSearchByCategories(
+            argThat(pattern -> pattern.equals("%cafe%")),
+            argThat(slugs -> slugs.equals(List.of("restaurante"))),
+            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+        .thenReturn(List.of(venue));
+    when(venueDao.countPublishedMatchingSearchByCategories("%cafe%", List.of("restaurante")))
+        .thenReturn(1L);
+
+    var response = service.search(SupportedLocale.ES, "  Café  ", List.of("restaurante"), 0, 20);
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).name()).isEqualTo("Café Central");

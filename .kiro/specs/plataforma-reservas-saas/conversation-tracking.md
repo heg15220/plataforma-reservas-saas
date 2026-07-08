@@ -3293,6 +3293,63 @@ Fuente de verdad del avance:
   - Evidencia transversal: `npm run backend:conventions:check` y `npm run spanish:text:check`
     correctos.
 
+## Conversación 70 - Filtros públicos por categoría
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama de fase `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmó `3.3` como primera tarea pendiente tras revisar `tasks.md`, seguimiento e
+    implementación técnica.
+  - Se amplió `GET /api/public/venues/search` con el parámetro opcional repetible `category`.
+  - Se implementó el filtrado estructurado por slug público de categoría, independiente del texto
+    libre y combinable con `q`.
+  - Se normalizan los slugs recibidos eliminando blancos, convirtiendo a minúsculas y deduplicando
+    en orden de llegada antes de consultar persistencia.
+  - Se añadieron consultas DAO específicas para listado y conteo con categorías, y para la
+    intersección entre búsqueda textual y categorías.
+  - Se añadieron pruebas unitarias y de integración con PostgreSQL Testcontainers para validar el
+    filtro por `restaurante`, `pista-de-padel` y la combinación `q=padel&category=restaurante`.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `3.3. Añadir filtros por categoría`.
+  - Prepara `3.10`, que añadirá el panel visual de filtros desktop y móvil sobre este contrato.
+- Tareas completadas:
+  - `3.3. Añadir filtros por categoría`.
+- Siguiente tarea pendiente recomendada:
+  - `3.4. Añadir filtros por ciudad, zona o dirección normalizada`.
+- Decisiones o aclaraciones relevantes:
+  - El contrato usa `category` como parámetro repetible por slug público, por ejemplo
+    `/api/public/venues/search?category=restaurante&category=pista-de-padel`.
+  - Los slugs de categoría son identificadores públicos estables; no se exponen IDs internos.
+  - `category` vacío, nulo o solo con blancos se ignora y conserva el comportamiento base.
+  - Cuando hay `q` y `category`, ambos filtros se cruzan con `AND`; no se mezclan como palabras clave.
+  - La respuesta no añade campos nuevos y conserva los textos visibles localizados.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
+    correcto con 10 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+  - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check` correctos.
+
 ## Conversación 69 - Búsqueda pública por nombre y palabras clave
 
 - Fecha: 2026-07-08.

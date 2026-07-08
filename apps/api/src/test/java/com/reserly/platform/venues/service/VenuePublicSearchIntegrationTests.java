@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -59,11 +60,20 @@ class VenuePublicSearchIntegrationTests {
     entityManager.flush();
     entityManager.clear();
 
-    var byName = searchService.search(SupportedLocale.ES, "cafe", 0, 20);
-    var byKeyword = searchService.search(SupportedLocale.ES, "padel", 0, 20);
+    var byName = searchService.search(SupportedLocale.ES, "cafe", null, 0, 20);
+    var byKeyword = searchService.search(SupportedLocale.ES, "padel", List.of(), 0, 20);
+    var byRestaurantCategory =
+        searchService.search(SupportedLocale.ES, null, List.of("restaurante"), 0, 20);
+    var byPadelCategory =
+        searchService.search(SupportedLocale.ES, null, List.of("pista-de-padel"), 0, 20);
+    var byTextAndDifferentCategory =
+        searchService.search(SupportedLocale.ES, "padel", List.of("restaurante"), 0, 20);
 
     assertThat(byName.results()).extracting("name").containsExactly("Café Central");
     assertThat(byKeyword.results()).extracting("name").containsExactly("Pista Norte");
+    assertThat(byRestaurantCategory.results()).extracting("name").containsExactly("Café Central");
+    assertThat(byPadelCategory.results()).extracting("name").containsExactly("Pista Norte");
+    assertThat(byTextAndDifferentCategory.results()).isEmpty();
   }
 
   private VenueEntity createPublishableVenue(
