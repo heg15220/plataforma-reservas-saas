@@ -23,11 +23,25 @@ public class VenuePublicSearchControllerImpl implements VenuePublicSearchControl
       String query,
       List<String> categorySlugs,
       String location,
+      Double latitude,
+      Double longitude,
+      Double radiusKm,
+      String sort,
       int page,
       int size,
       String acceptLanguage) {
     SupportedLocale resolvedLocale = VenuePublicLocaleResolver.resolve(locale, acceptLanguage);
     return ResponseEntity.ok(
-        service.search(resolvedLocale, query, categorySlugs, location, page, size));
+        service.search(
+            resolvedLocale,
+            query,
+            categorySlugs,
+            location,
+            latitude,
+            longitude,
+            radiusKm,
+            sort,
+            page,
+            size));
   }
 }

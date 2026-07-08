@@ -3350,6 +3350,70 @@ Fuente de verdad del avance:
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
     `git diff --check` correctos.
 
+## Conversación 72 - Radio geográfico y ordenación pública
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama de fase `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmaron `3.5` y `3.6` como las dos siguientes tareas pendientes tras revisar `tasks.md`,
+    seguimiento e implementación técnica.
+  - Se amplió `GET /api/public/venues/search` con `latitude`, `longitude`, `radiusKm` y `sort`.
+  - Se implementó filtro por radio usando PostGIS sobre la columna generada `Venues.location` y el
+    índice GiST existente.
+  - Se consolidó la búsqueda pública en un método DAO nativo avanzado con filtros opcionales para
+    texto, categoría, ubicación textual, radio y ordenación controlada.
+  - Se añadieron ordenaciones públicas por `relevance`, `distance`, `availability`, `rating` y
+    `newest`.
+  - Se documentó que `rating` queda como modo contractual con fallback estable hasta que exista el
+    modelo de reseñas; `availability` usa `manualAvailabilityStatus` como señal disponible en el
+    modelo actual hasta que lleguen franjas y disponibilidad real.
+  - Se añadieron pruebas unitarias y de integración con PostgreSQL Testcontainers para radio,
+    ordenación por cercanía y ordenación por disponibilidad manual.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-005 Estado público del local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `3.5. Añadir filtro por radio si hay coordenadas`.
+  - `3.6. Añadir ordenación por relevancia, valoración, cercanía y disponibilidad`.
+  - Prepara `3.7`, que añadirá estado resumido de local en resultados.
+- Tareas completadas:
+  - `3.5. Añadir filtro por radio si hay coordenadas`.
+  - `3.6. Añadir ordenación por relevancia, valoración, cercanía y disponibilidad`.
+- Siguiente tarea pendiente recomendada:
+  - `3.7. Añadir estado resumido de local en resultados`.
+- Decisiones o aclaraciones relevantes:
+  - El filtro por radio solo se activa con `latitude`, `longitude` y `radiusKm` válidos.
+  - El radio se limita a un máximo de 500 km para evitar consultas públicas desproporcionadas.
+  - `sort=distance` ordena por `ST_Distance` cuando hay coordenadas; sin coordenadas cae al orden
+    estable.
+  - `sort=relevance` prioriza coincidencias en nombre, categoría y descripción cuando hay `q`.
+  - `sort=availability` usa `manualAvailabilityStatus` como aproximación inicial hasta implementar
+    disponibilidad por franjas.
+  - `sort=rating` queda aceptado y estable, pero sin ranking real hasta que existan reseñas.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
+    correcto con 12 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+  - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check` correctos.
+
 ## Conversación 71 - Filtro público por ubicación textual
 
 - Fecha: 2026-07-08.

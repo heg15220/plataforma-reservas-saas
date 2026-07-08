@@ -15665,3 +15665,459 @@ La tarea se cierra porque `GET /api/public/venues/search` acepta `location`, fil
 zona/provincia, dirección, código postal o país de locales publicados, compara de forma insensible a
 mayúsculas y tildes, combina correctamente con `q` y `category`, no expone datos privados nuevos y
 cuenta con pruebas unitarias, integración real con PostgreSQL y validaciones transversales correctas.
+
+## Iteración 3.5 - Filtro por radio si hay coordenadas
+
+### Identificador exacto de la tarea completada
+
+`3.5. Añadir filtro por radio si hay coordenadas`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Permitir que la búsqueda pública limite resultados a un radio aproximado cuando el cliente envía
+coordenadas válidas y un radio en kilómetros. La implementación debía apoyarse en la capacidad
+PostGIS preparada desde Fase 2, conservar la frontera de locales publicados y combinarse con los
+filtros ya existentes de texto, categoría y ubicación textual.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos relacionados:
+
+- `RF-002 Filtros avanzados`: el usuario puede limitar resultados por radio si existen coordenadas.
+- `RF-003 Resultados de búsqueda`: las tarjetas se mantienen como respuesta pública paginada.
+- `RNF-002 Privacidad`: no se persiste ubicación precisa del usuario.
+- `RNF-004 Rendimiento`: se usa `ST_DWithin` sobre la columna `location` con índice GiST.
+- `RNF-011 Convenciones de implementación backend y persistencia`: acceso de datos mediante DAO con
+  `@Query` y contrato REST separado.
+
+Decisión de contrato:
+
+```http
+GET /api/public/venues/search?latitude=40.416775&longitude=-3.703790&radiusKm=10
+```
+
+El radio solo se activa si `latitude`, `longitude` y `radiusKm` son válidos. Si faltan coordenadas o
+son inválidas, el filtro se ignora de forma segura y se conserva el listado filtrado por el resto de
+parámetros.
+
+### Archivos creados, modificados o eliminados
+
+Modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se crean ni eliminan archivos.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+El servicio normaliza coordenadas y radio antes de llamar al DAO:
+
+- Coordenadas válidas: `latitude` entre -90 y 90, `longitude` entre -180 y 180.
+- Radio válido: mayor que cero.
+- Límite público máximo: 500 km.
+- Conversión: kilómetros a metros para PostGIS.
+
+El DAO usa una consulta nativa única para búsqueda avanzada. Esta decisión evita multiplicar métodos
+por cada combinación entre `q`, `category`, `location`, radio y ordenación. Aunque la entidad JPA no
+mapea la columna generada `location`, la consulta nativa puede usarla directamente y devolver
+`VenueEntity` con el resto de columnas mapeadas.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No hay migraciones nuevas. Se reutiliza el modelo creado en `V9__create_venue_category_and_image_tables.sql`:
+
+- `Venues.latitude`.
+- `Venues.longitude`.
+- `Venues.location geography(Point, 4326)` generada automáticamente.
+- Índice GiST `ixVenuesLocation` sobre `location`.
+
+No se escriben datos nuevos. La columna `location` se recalcula por PostgreSQL a partir de
+latitud/longitud del local.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint ampliado:
+
+```http
+GET /api/public/venues/search?latitude=40.416775&longitude=-3.703790&radiusKm=10
+```
+
+Parámetros nuevos:
+
+- `latitude`: latitud opcional del punto de referencia.
+- `longitude`: longitud opcional del punto de referencia.
+- `radiusKm`: radio opcional en kilómetros.
+
+Servicio:
+
+```java
+VenueSearchResponse search(
+    SupportedLocale locale,
+    String query,
+    List<String> categorySlugs,
+    String location,
+    Double latitude,
+    Double longitude,
+    Double radiusKm,
+    String sort,
+    int page,
+    int size);
+```
+
+DAO:
+
+- `findPublishedAdvancedSearch(...)`.
+- `countPublishedAdvancedSearch(...)`.
+
+Filtro SQL relevante:
+
+```sql
+ST_DWithin(
+  v."location",
+  CAST(ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326) AS geography),
+  :radiusMeters
+)
+```
+
+### Flujos de ejecución relevantes
+
+Flujo con radio activo:
+
+1. El controlador recibe coordenadas y `radiusKm`.
+2. El servicio valida rango de latitud/longitud.
+3. El servicio limita radio a 500 km y convierte a metros.
+4. El DAO filtra con `ST_DWithin`.
+5. Se devuelven solo locales publicados dentro del radio.
+
+Flujo con radio incompleto:
+
+1. Falta latitud, longitud o radio positivo.
+2. El servicio pasa `radiusMeters = null`.
+3. El DAO no aplica `ST_DWithin`.
+4. La búsqueda conserva el resto de filtros.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- Coordenadas incompletas o fuera de rango no activan radio.
+- `radiusKm <= 0` no activa radio.
+- `radiusKm > 500` se limita a 500.
+- `page` y `size` conservan normalización previa.
+
+Seguridad:
+
+- El usuario no controla SQL ni columnas.
+- Las coordenadas se pasan como parámetros.
+- La consulta conserva `v."status" = 'published'`.
+
+Privacidad:
+
+- No se persisten coordenadas del usuario.
+- No se añaden coordenadas del usuario a logs ni respuesta.
+- Solo se usan coordenadas durante la consulta de lectura.
+
+Internacionalización:
+
+- No se añaden textos visibles.
+- La resolución de locale de tarjetas no cambia.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden errores de dominio nuevos.
+
+- Un radio sin resultados devuelve página vacía.
+- Coordenadas incompletas o inválidas se ignoran para evitar errores públicos innecesarios.
+- No se añade auditoría porque es lectura pública anónima sin efectos secundarios.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenuePublicSearchControllerTests`
+  - Verifica propagación de `latitude`, `longitude` y `radiusKm`.
+- `VenuePublicSearchServiceTests`
+  - Verifica conversión de `radiusKm=5` a `radiusMeters=5000`.
+  - Verifica que el filtro de radio se combina con texto, categoría y ubicación.
+- `VenuePublicSearchIntegrationTests`
+  - Verifica que un radio de 10 km alrededor de Madrid devuelve solo `Café Central`.
+  - Ejecuta la consulta real contra PostgreSQL/PostGIS mediante Testcontainers.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test
+```
+
+Resultado:
+
+- Total: 12 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Flyway aplicó 16 migraciones sobre PostgreSQL Testcontainers.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Comandos transversales:
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+- Diff sin espacios en blanco problemáticos.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- El radio depende de que el local tenga coordenadas publicables.
+- No se geocodifica texto de usuario; eso corresponde a integración futura de mapas/geocoding.
+- No se devuelve todavía distancia en el DTO de tarjeta.
+- La UI que solicite permisos de ubicación llegará en tareas de frontend de Fase 3.
+
+### Criterio de cierre
+
+La tarea se cierra porque el endpoint acepta coordenadas y radio, aplica `ST_DWithin` sobre PostGIS
+cuando los datos son válidos, combina el radio con filtros previos, no persiste ubicación de usuario
+y queda verificado con pruebas unitarias e integración real.
+
+## Iteración 3.6 - Ordenación por relevancia, valoración, cercanía y disponibilidad
+
+### Identificador exacto de la tarea completada
+
+`3.6. Añadir ordenación por relevancia, valoración, cercanía y disponibilidad`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Añadir un contrato público de ordenación para resultados de búsqueda y aplicar los modos que ya
+pueden resolverse con el modelo actual: relevancia textual, cercanía geográfica y disponibilidad
+manual. La valoración queda aceptada como modo estable para no romper el contrato de cliente, pero
+sin ranking real hasta implementar reseñas y agregados.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos relacionados:
+
+- `RF-002 Filtros avanzados`: permite ordenar por valoración y usar cercanía.
+- `RF-003 Resultados de búsqueda`: resultados siguen siendo tarjetas públicas.
+- `RF-005 Estado público del local`: `manualAvailabilityStatus` aporta una señal inicial para
+  disponibilidad.
+- `RNF-004 Rendimiento`: la ordenación se ejecuta en base de datos.
+- `RNF-011 Convenciones de implementación backend y persistencia`: contrato REST y DAO explícitos.
+
+Contrato:
+
+```http
+GET /api/public/venues/search?sort=relevance&q=cafe
+GET /api/public/venues/search?sort=distance&latitude=39.469750&longitude=-0.377390
+GET /api/public/venues/search?sort=availability
+GET /api/public/venues/search?sort=rating
+```
+
+Valores admitidos:
+
+- `relevance`.
+- `rating`.
+- `distance`.
+- `availability`.
+- `newest`.
+
+### Archivos creados, modificados o eliminados
+
+Modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se crean ni eliminan archivos.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+La ordenación se normaliza en servicio y se ejecuta en SQL nativo. El usuario solo puede seleccionar
+valores cerrados; cualquier valor desconocido cae a:
+
+- `relevance` si existe `q`.
+- `newest` si no existe `q`.
+
+La consulta aplica ordenaciones de forma controlada:
+
+- `distance`: `ST_Distance` si hay coordenadas válidas.
+- `relevance`: prioridad por nombre, categoría, slug de categoría y descripción.
+- `availability`: prioridad por `manualAvailabilityStatus = available`, luego `automatic`, luego
+  `unavailable`.
+- `rating`: modo aceptado con fallback a orden estable, porque todavía no existen reseñas ni
+  valoración agregada.
+- `newest`: orden estable por `publishedAt desc, name asc`.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No hay migraciones nuevas.
+
+Datos usados:
+
+- `Venues.location` para cercanía.
+- `Venues.manualAvailabilityStatus` para disponibilidad inicial.
+- `Venues.publishedAt` y `Venues.name` como desempate estable.
+- `Venues.name`, `Venues.description`, `Categories.name` y `Categories.slug` para relevancia.
+
+No existen todavía tablas de reseñas ni disponibilidad por franjas; por eso `rating` y parte de
+`availability` quedan documentados como contrato preparado con fallback.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint ampliado:
+
+```http
+GET /api/public/venues/search?sort=distance&latitude=39.469750&longitude=-0.377390
+```
+
+Parámetro nuevo:
+
+- `sort`: opcional. Valores cerrados `relevance`, `rating`, `distance`, `availability`, `newest`.
+
+No se añaden jobs ni DTOs nuevos.
+
+### Flujos de ejecución relevantes
+
+Flujo relevancia:
+
+1. El usuario envía `q`.
+2. Si no envía `sort`, el servicio usa `relevance`.
+3. SQL prioriza coincidencias en nombre, categoría, slug y descripción.
+4. Desempata por publicación reciente y nombre.
+
+Flujo cercanía:
+
+1. El usuario envía coordenadas y `sort=distance`.
+2. SQL ordena por `ST_Distance`.
+3. Los locales sin coordenadas quedan al final.
+
+Flujo disponibilidad:
+
+1. El usuario envía `sort=availability`.
+2. SQL ordena por `manualAvailabilityStatus`.
+3. Desempata por publicación reciente y nombre.
+
+Flujo valoración:
+
+1. El usuario envía `sort=rating`.
+2. El modo se acepta, pero no hay columna de rating.
+3. SQL aplica el desempate estable actual.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- `sort` se normaliza con `Locale.ROOT`.
+- Valores desconocidos no llegan al SQL; se sustituyen por modo seguro.
+- `distance` sin coordenadas no falla y usa orden estable.
+
+Seguridad:
+
+- No hay `ORDER BY` dinámico con texto del usuario.
+- El modo de orden se pasa como parámetro y se evalúa con `CASE`.
+- Se conserva `status = 'published'`.
+
+Privacidad:
+
+- No se exponen datos internos ni métricas inexistentes.
+- No se persisten coordenadas.
+
+Internacionalización:
+
+- La relevancia usa normalización técnica con `unaccent`.
+- La salida visible conserva locale y tildes.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden errores de dominio nuevos.
+
+- `sort` inválido usa fallback.
+- `sort=distance` sin coordenadas no falla.
+- No se añaden logs ni auditoría por ser lectura pública.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenuePublicSearchControllerTests`
+  - Verifica propagación de `sort`.
+- `VenuePublicSearchServiceTests`
+  - Verifica `sort=relevance` por defecto cuando hay `q`.
+  - Verifica `sort=distance` con coordenadas.
+  - Verifica `sort=availability`.
+- `VenuePublicSearchIntegrationTests`
+  - Verifica que `sort=distance` desde València devuelve primero `Pista Norte`.
+  - Verifica que `sort=availability` prioriza `manualAvailabilityStatus = available`.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test
+```
+
+Resultado:
+
+- Total: 12 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Comandos transversales:
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+- Diff sin espacios en blanco problemáticos.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- `rating` requiere futuras tablas o agregados de reseñas para ordenar realmente por valoración.
+- `availability` usa solo disponibilidad manual; la disponibilidad real por franjas llegará en Fase
+  4.
+- La consulta nativa avanzada concentra muchos filtros; si crece más, convendrá extraer un DAO
+  especializado o una vista/materialización de búsqueda.
+- No se devuelve explicación de relevancia ni distancia calculada en DTO.
+
+### Criterio de cierre
+
+La tarea se cierra porque el endpoint acepta modos de ordenación cerrados, aplica relevancia,
+cercanía y disponibilidad manual en base de datos, acepta valoración con fallback estable hasta que
+existan reseñas, evita SQL dinámico inseguro y queda verificado con pruebas unitarias e integración.

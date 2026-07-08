@@ -1,7 +1,14 @@
 package com.reserly.platform.venues.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.localization.LocalizedText;
@@ -36,16 +43,10 @@ class VenuePublicSearchServiceTests {
   @Test
   void listsOnlyPublishedProjectionProvidedByDaoWithLocalizedCardFields() {
     VenueEntity venue = venue("casa-luz", "Casa Luz");
-    when(venueDao.findPublishedForSearch(
-            argThat(
-                page ->
-                    page.getPageNumber() == 0
-                        && page.getPageSize() == 20
-                        && page.getSort().getOrderFor("publishedAt").isDescending())))
-        .thenReturn(List.of(venue));
-    when(venueDao.countPublishedForSearch()).thenReturn(1L);
+    stubAdvancedSearch(List.of(venue), 1L);
 
-    var response = service.search(SupportedLocale.EN, null, null, null, 0, 20);
+    var response =
+        service.search(SupportedLocale.EN, null, null, null, null, null, null, null, 0, 20);
 
     assertThat(response.locale()).isEqualTo("en");
     assertThat(response.page()).isZero();
@@ -72,12 +73,32 @@ class VenuePublicSearchServiceTests {
                 "Descripción pública con acentos repetida para crear un texto suficientemente "
                     + "largo en español que deba recortarse en una tarjeta de resultados sin "
                     + "romper palabras ni perder los caracteres visibles del idioma.")));
-    when(venueDao.findPublishedForSearch(
-            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 50)))
+    when(venueDao.findPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            anyInt(),
+            nullable(String.class),
+            nullable(Double.class),
+            nullable(Double.class),
+            nullable(Double.class),
+            anyBoolean(),
+            anyString(),
+            eq(50),
+            eq(0L)))
         .thenReturn(List.of(venue));
-    when(venueDao.countPublishedForSearch()).thenReturn(1L);
+    when(venueDao.countPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            anyInt(),
+            nullable(String.class),
+            nullable(Double.class),
+            nullable(Double.class),
+            nullable(Double.class)))
+        .thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "   ", List.of(), "   ", -4, 500);
+    var response =
+        service.search(
+            SupportedLocale.ES, "   ", List.of(), "   ", null, null, null, "unknown", -4, 500);
 
     assertThat(response.page()).isZero();
     assertThat(response.size()).isEqualTo(50);
@@ -90,13 +111,31 @@ class VenuePublicSearchServiceTests {
   @Test
   void searchesByNormalizedNameAndKeywordTextWhenQueryIsPresent() {
     VenueEntity venue = venue("cafe-central", "Café Central");
-    when(venueDao.findPublishedMatchingSearch(
-            argThat(pattern -> pattern.equals("%cafe%")),
-            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+    when(venueDao.findPublishedAdvancedSearch(
+            eq("%cafe%"),
+            anyList(),
+            eq(0),
+            nullable(String.class),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class),
+            eq(false),
+            eq("relevance"),
+            eq(20),
+            eq(0L)))
         .thenReturn(List.of(venue));
-    when(venueDao.countPublishedMatchingSearch("%cafe%")).thenReturn(1L);
+    when(venueDao.countPublishedAdvancedSearch(
+            eq("%cafe%"),
+            anyList(),
+            eq(0),
+            nullable(String.class),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class)))
+        .thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, "  Café  ", null, null, 0, 20);
+    var response =
+        service.search(SupportedLocale.ES, "  Café  ", null, null, null, null, null, null, 0, 20);
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).name()).isEqualTo("Café Central");
@@ -106,12 +145,27 @@ class VenuePublicSearchServiceTests {
   @Test
   void filtersByNormalizedCategorySlugsWhenNoQueryIsPresent() {
     VenueEntity venue = venue("casa-luz", "Casa Luz");
-    when(venueDao.findPublishedForSearchByCategories(
+    when(venueDao.findPublishedAdvancedSearch(
+            nullable(String.class),
             argThat(slugs -> slugs.equals(List.of("restaurante", "pista-de-padel"))),
-            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+            eq(2),
+            nullable(String.class),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class),
+            eq(false),
+            eq("newest"),
+            eq(20),
+            eq(0L)))
         .thenReturn(List.of(venue));
-    when(venueDao.countPublishedForSearchByCategories(
-            argThat(slugs -> slugs.equals(List.of("restaurante", "pista-de-padel")))))
+    when(venueDao.countPublishedAdvancedSearch(
+            nullable(String.class),
+            argThat(slugs -> slugs.equals(List.of("restaurante", "pista-de-padel"))),
+            eq(2),
+            nullable(String.class),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class)))
         .thenReturn(1L);
 
     var response =
@@ -119,6 +173,10 @@ class VenuePublicSearchServiceTests {
             SupportedLocale.ES,
             null,
             List.of(" Restaurante ", "", "pista-de-padel", "restaurante"),
+            null,
+            null,
+            null,
+            null,
             null,
             0,
             20);
@@ -129,34 +187,33 @@ class VenuePublicSearchServiceTests {
   }
 
   @Test
-  void combinesTextQueryWithCategoryFilters() {
-    VenueEntity venue = venue("cafe-central", "Café Central");
-    when(venueDao.findPublishedMatchingSearchByCategories(
-            argThat(pattern -> pattern.equals("%cafe%")),
-            argThat(slugs -> slugs.equals(List.of("restaurante"))),
-            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+  void filtersByNormalizedLocationWhenNoOtherFilterIsPresent() {
+    VenueEntity venue = venue("casa-luz", "Casa Luz");
+    when(venueDao.findPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            eq(0),
+            eq("%madrid%"),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class),
+            eq(false),
+            eq("newest"),
+            eq(20),
+            eq(0L)))
         .thenReturn(List.of(venue));
-    when(venueDao.countPublishedMatchingSearchByCategories("%cafe%", List.of("restaurante")))
+    when(venueDao.countPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            eq(0),
+            eq("%madrid%"),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class)))
         .thenReturn(1L);
 
     var response =
-        service.search(SupportedLocale.ES, "  Café  ", List.of("restaurante"), null, 0, 20);
-
-    assertThat(response.results()).hasSize(1);
-    assertThat(response.results().get(0).name()).isEqualTo("Café Central");
-    assertThat(response.totalElements()).isEqualTo(1);
-  }
-
-  @Test
-  void filtersByNormalizedLocationWhenNoOtherFilterIsPresent() {
-    VenueEntity venue = venue("casa-luz", "Casa Luz");
-    when(venueDao.findPublishedForSearchByLocation(
-            argThat(pattern -> pattern.equals("%madrid%")),
-            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
-        .thenReturn(List.of(venue));
-    when(venueDao.countPublishedForSearchByLocation("%madrid%")).thenReturn(1L);
-
-    var response = service.search(SupportedLocale.ES, null, null, "  MáDRID  ", 0, 20);
+        service.search(SupportedLocale.ES, null, null, "  MáDRID  ", null, null, null, null, 0, 20);
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).city()).isEqualTo("Madrid");
@@ -164,24 +221,106 @@ class VenuePublicSearchServiceTests {
   }
 
   @Test
-  void combinesTextCategoryAndLocationFilters() {
+  void combinesTextCategoryLocationRadiusAndDistanceSort() {
     VenueEntity venue = venue("cafe-central", "Café Central");
-    when(venueDao.findPublishedMatchingSearchByCategoriesAndLocation(
-            argThat(pattern -> pattern.equals("%cafe%")),
+    when(venueDao.findPublishedAdvancedSearch(
+            eq("%cafe%"),
             argThat(slugs -> slugs.equals(List.of("restaurante"))),
-            argThat(pattern -> pattern.equals("%madrid%")),
-            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+            eq(1),
+            eq("%madrid%"),
+            eq(40.416775),
+            eq(-3.703790),
+            eq(5000.0),
+            eq(true),
+            eq("distance"),
+            eq(20),
+            eq(0L)))
         .thenReturn(List.of(venue));
-    when(venueDao.countPublishedMatchingSearchByCategoriesAndLocation(
-            "%cafe%", List.of("restaurante"), "%madrid%"))
+    when(venueDao.countPublishedAdvancedSearch(
+            eq("%cafe%"),
+            argThat(slugs -> slugs.equals(List.of("restaurante"))),
+            eq(1),
+            eq("%madrid%"),
+            eq(40.416775),
+            eq(-3.703790),
+            eq(5000.0)))
         .thenReturn(1L);
 
     var response =
-        service.search(SupportedLocale.ES, "  Café  ", List.of("restaurante"), "Madrid", 0, 20);
+        service.search(
+            SupportedLocale.ES,
+            "  Café  ",
+            List.of("restaurante"),
+            "Madrid",
+            40.416775,
+            -3.703790,
+            5.0,
+            "distance",
+            0,
+            20);
 
     assertThat(response.results()).hasSize(1);
     assertThat(response.results().get(0).name()).isEqualTo("Café Central");
     assertThat(response.totalElements()).isEqualTo(1);
+  }
+
+  @Test
+  void acceptsAvailabilityAndRatingSortModesWithStablePublicFallback() {
+    VenueEntity venue = venue("casa-luz", "Casa Luz");
+    when(venueDao.findPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            eq(0),
+            nullable(String.class),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class),
+            eq(false),
+            eq("availability"),
+            eq(20),
+            eq(0L)))
+        .thenReturn(List.of(venue));
+    when(venueDao.countPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            eq(0),
+            nullable(String.class),
+            eq(0.0),
+            eq(0.0),
+            nullable(Double.class)))
+        .thenReturn(1L);
+
+    var response =
+        service.search(
+            SupportedLocale.ES, null, null, null, null, null, null, "availability", 0, 20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).slug()).isEqualTo("casa-luz");
+  }
+
+  private void stubAdvancedSearch(List<VenueEntity> venues, long totalElements) {
+    when(venueDao.findPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            anyInt(),
+            nullable(String.class),
+            nullable(Double.class),
+            nullable(Double.class),
+            nullable(Double.class),
+            anyBoolean(),
+            anyString(),
+            anyInt(),
+            anyLong()))
+        .thenReturn(venues);
+    when(venueDao.countPublishedAdvancedSearch(
+            nullable(String.class),
+            anyList(),
+            anyInt(),
+            nullable(String.class),
+            nullable(Double.class),
+            nullable(Double.class),
+            nullable(Double.class)))
+        .thenReturn(totalElements);
   }
 
   private static VenueEntity venue(String slug, String name) {

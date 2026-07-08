@@ -69,25 +69,83 @@ class VenuePublicSearchIntegrationTests {
         new BigDecimal("-0.377390"));
     venuePublicationService.publish(cafeOwnerId);
     venuePublicationService.publish(padelOwnerId);
+    jdbcTemplate.update(
+        """
+        UPDATE "Venues"
+        SET "manualAvailabilityStatus" = 'available'
+        WHERE "name" = 'Café Central'
+        """);
+    jdbcTemplate.update(
+        """
+        UPDATE "Venues"
+        SET "manualAvailabilityStatus" = 'unavailable'
+        WHERE "name" = 'Pista Norte'
+        """);
     entityManager.flush();
     entityManager.clear();
 
-    var byName = searchService.search(SupportedLocale.ES, "cafe", null, null, 0, 20);
-    var byKeyword = searchService.search(SupportedLocale.ES, "padel", List.of(), null, 0, 20);
+    var byName =
+        searchService.search(SupportedLocale.ES, "cafe", null, null, null, null, null, null, 0, 20);
+    var byKeyword =
+        searchService.search(
+            SupportedLocale.ES, "padel", List.of(), null, null, null, null, null, 0, 20);
     var byRestaurantCategory =
-        searchService.search(SupportedLocale.ES, null, List.of("restaurante"), null, 0, 20);
+        searchService.search(
+            SupportedLocale.ES, null, List.of("restaurante"), null, null, null, null, null, 0, 20);
     var byPadelCategory =
-        searchService.search(SupportedLocale.ES, null, List.of("pista-de-padel"), null, 0, 20);
+        searchService.search(
+            SupportedLocale.ES,
+            null,
+            List.of("pista-de-padel"),
+            null,
+            null,
+            null,
+            null,
+            null,
+            0,
+            20);
     var byTextAndDifferentCategory =
-        searchService.search(SupportedLocale.ES, "padel", List.of("restaurante"), null, 0, 20);
-    var byMadrid = searchService.search(SupportedLocale.ES, null, null, "madrid", 0, 20);
+        searchService.search(
+            SupportedLocale.ES,
+            "padel",
+            List.of("restaurante"),
+            null,
+            null,
+            null,
+            null,
+            null,
+            0,
+            20);
+    var byMadrid =
+        searchService.search(
+            SupportedLocale.ES, null, null, "madrid", null, null, null, null, 0, 20);
     var byValenciaWithoutAccent =
-        searchService.search(SupportedLocale.ES, null, null, "valencia", 0, 20);
+        searchService.search(
+            SupportedLocale.ES, null, null, "valencia", null, null, null, null, 0, 20);
     var byAddressWithoutAccent =
-        searchService.search(SupportedLocale.ES, null, null, "xativa", 0, 20);
+        searchService.search(
+            SupportedLocale.ES, null, null, "xativa", null, null, null, null, 0, 20);
     var byAllFilters =
         searchService.search(
-            SupportedLocale.ES, "padel", List.of("pista-de-padel"), "valencia", 0, 20);
+            SupportedLocale.ES,
+            "padel",
+            List.of("pista-de-padel"),
+            "valencia",
+            null,
+            null,
+            null,
+            null,
+            0,
+            20);
+    var byMadridRadius =
+        searchService.search(
+            SupportedLocale.ES, null, null, null, 40.416775, -3.703790, 10.0, "distance", 0, 20);
+    var byDistanceFromValencia =
+        searchService.search(
+            SupportedLocale.ES, null, null, null, 39.469750, -0.377390, null, "distance", 0, 20);
+    var byAvailabilitySort =
+        searchService.search(
+            SupportedLocale.ES, null, null, null, null, null, null, "availability", 0, 20);
 
     assertThat(byName.results()).extracting("name").containsExactly("Café Central");
     assertThat(byKeyword.results()).extracting("name").containsExactly("Pista Norte");
@@ -98,6 +156,13 @@ class VenuePublicSearchIntegrationTests {
     assertThat(byValenciaWithoutAccent.results()).extracting("name").containsExactly("Pista Norte");
     assertThat(byAddressWithoutAccent.results()).extracting("name").containsExactly("Pista Norte");
     assertThat(byAllFilters.results()).extracting("name").containsExactly("Pista Norte");
+    assertThat(byMadridRadius.results()).extracting("name").containsExactly("Café Central");
+    assertThat(byDistanceFromValencia.results())
+        .extracting("name")
+        .containsExactly("Pista Norte", "Café Central");
+    assertThat(byAvailabilitySort.results())
+        .extracting("name")
+        .containsExactly("Café Central", "Pista Norte");
   }
 
   private VenueEntity createPublishableVenue(

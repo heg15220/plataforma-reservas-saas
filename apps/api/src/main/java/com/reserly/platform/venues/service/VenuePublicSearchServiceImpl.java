@@ -11,8 +11,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +25,8 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
 
   static final int DEFAULT_PAGE_SIZE = 20;
   static final int MAX_PAGE_SIZE = 50;
+  private static final double MAX_RADIUS_KM = 500.0;
+  private static final String NO_CATEGORY_SENTINEL = "__no-category__";
   private static final int DESCRIPTION_EXCERPT_LENGTH = 180;
 
   private final VenueDao venueDao;
@@ -42,6 +42,10 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
       String query,
       List<String> categorySlugs,
       String location,
+      Double latitude,
+      Double longitude,
+      Double radiusKm,
+      String sort,
       int page,
       int size) {
     int normalizedPage = Math.max(page, 0);
@@ -49,15 +53,32 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
     String queryPattern = toQueryPattern(query);
     List<String> normalizedCategorySlugs = normalizeCategorySlugs(categorySlugs);
     String locationPattern = toQueryPattern(location);
-    PageRequest pageRequest =
-        PageRequest.of(
-            normalizedPage,
-            normalizedSize,
-            Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.asc("name")));
+    GeoSearchFilter geoSearchFilter = normalizeGeoSearch(latitude, longitude, radiusKm);
+    String sortMode = normalizeSort(sort, queryPattern);
+    List<String> categoryParameter =
+        normalizedCategorySlugs.isEmpty() ? List.of(NO_CATEGORY_SENTINEL) : normalizedCategorySlugs;
     List<VenueEntity> venues =
-        findPublishedVenues(queryPattern, normalizedCategorySlugs, locationPattern, pageRequest);
+        venueDao.findPublishedAdvancedSearch(
+            queryPattern,
+            categoryParameter,
+            normalizedCategorySlugs.size(),
+            locationPattern,
+            geoSearchFilter.latitude(),
+            geoSearchFilter.longitude(),
+            geoSearchFilter.radiusMeters(),
+            geoSearchFilter.hasCoordinates(),
+            sortMode,
+            normalizedSize,
+            (long) normalizedPage * normalizedSize);
     long totalElements =
-        countPublishedVenues(queryPattern, normalizedCategorySlugs, locationPattern);
+        venueDao.countPublishedAdvancedSearch(
+            queryPattern,
+            categoryParameter,
+            normalizedCategorySlugs.size(),
+            locationPattern,
+            geoSearchFilter.latitude(),
+            geoSearchFilter.longitude(),
+            geoSearchFilter.radiusMeters());
     int totalPages = (int) Math.ceil((double) totalElements / normalizedSize);
     return new VenueSearchResponse(
         locale.languageTag(),
@@ -67,73 +88,6 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
         totalPages,
         (long) (normalizedPage + 1) * normalizedSize < totalElements,
         venues.stream().map(venue -> toResponse(venue, locale)).toList());
-  }
-
-  private List<VenueEntity> findPublishedVenues(
-      String queryPattern,
-      List<String> categorySlugs,
-      String locationPattern,
-      PageRequest pageRequest) {
-    boolean hasQuery = queryPattern != null;
-    boolean hasCategories = !categorySlugs.isEmpty();
-    boolean hasLocation = locationPattern != null;
-    if (hasQuery && hasCategories && hasLocation) {
-      return venueDao.findPublishedMatchingSearchByCategoriesAndLocation(
-          queryPattern, categorySlugs, locationPattern, pageRequest);
-    }
-    if (hasQuery && hasCategories) {
-      return venueDao.findPublishedMatchingSearchByCategories(
-          queryPattern, categorySlugs, pageRequest);
-    }
-    if (hasQuery && hasLocation) {
-      return venueDao.findPublishedMatchingSearchByLocation(
-          queryPattern, locationPattern, pageRequest);
-    }
-    if (hasQuery) {
-      return venueDao.findPublishedMatchingSearch(queryPattern, pageRequest);
-    }
-    if (hasCategories && hasLocation) {
-      return venueDao.findPublishedForSearchByCategoriesAndLocation(
-          categorySlugs, locationPattern, pageRequest);
-    }
-    if (hasCategories) {
-      return venueDao.findPublishedForSearchByCategories(categorySlugs, pageRequest);
-    }
-    if (hasLocation) {
-      return venueDao.findPublishedForSearchByLocation(locationPattern, pageRequest);
-    }
-    return venueDao.findPublishedForSearch(pageRequest);
-  }
-
-  private long countPublishedVenues(
-      String queryPattern, List<String> categorySlugs, String locationPattern) {
-    boolean hasQuery = queryPattern != null;
-    boolean hasCategories = !categorySlugs.isEmpty();
-    boolean hasLocation = locationPattern != null;
-    if (hasQuery && hasCategories && hasLocation) {
-      return venueDao.countPublishedMatchingSearchByCategoriesAndLocation(
-          queryPattern, categorySlugs, locationPattern);
-    }
-    if (hasQuery && hasCategories) {
-      return venueDao.countPublishedMatchingSearchByCategories(queryPattern, categorySlugs);
-    }
-    if (hasQuery && hasLocation) {
-      return venueDao.countPublishedMatchingSearchByLocation(queryPattern, locationPattern);
-    }
-    if (hasQuery) {
-      return venueDao.countPublishedMatchingSearch(queryPattern);
-    }
-    if (hasCategories && hasLocation) {
-      return venueDao.countPublishedForSearchByCategoriesAndLocation(
-          categorySlugs, locationPattern);
-    }
-    if (hasCategories) {
-      return venueDao.countPublishedForSearchByCategories(categorySlugs);
-    }
-    if (hasLocation) {
-      return venueDao.countPublishedForSearchByLocation(locationPattern);
-    }
-    return venueDao.countPublishedForSearch();
   }
 
   private static int normalizeSize(int size) {
@@ -164,6 +118,38 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
       }
     }
     return List.copyOf(normalizedSlugs);
+  }
+
+  private static GeoSearchFilter normalizeGeoSearch(
+      Double latitude, Double longitude, Double radiusKm) {
+    if (!isValidCoordinatePair(latitude, longitude)) {
+      return new GeoSearchFilter(false, 0.0, 0.0, null);
+    }
+    Double normalizedRadiusMeters = null;
+    if (radiusKm != null && radiusKm > 0) {
+      normalizedRadiusMeters = Math.min(radiusKm, MAX_RADIUS_KM) * 1000;
+    }
+    return new GeoSearchFilter(true, latitude, longitude, normalizedRadiusMeters);
+  }
+
+  private static boolean isValidCoordinatePair(Double latitude, Double longitude) {
+    return latitude != null
+        && longitude != null
+        && latitude >= -90.0
+        && latitude <= 90.0
+        && longitude >= -180.0
+        && longitude <= 180.0;
+  }
+
+  private static String normalizeSort(String sort, String queryPattern) {
+    if (sort == null || sort.isBlank()) {
+      return queryPattern == null ? "newest" : "relevance";
+    }
+    String normalizedSort = sort.trim().toLowerCase(Locale.ROOT);
+    return switch (normalizedSort) {
+      case "relevance", "rating", "distance", "availability", "newest" -> normalizedSort;
+      default -> queryPattern == null ? "newest" : "relevance";
+    };
   }
 
   private static String escapeLike(String value) {
@@ -201,4 +187,7 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
     int end = lastWhitespace > 0 ? lastWhitespace : DESCRIPTION_EXCERPT_LENGTH;
     return value.substring(0, end).stripTrailing() + "...";
   }
+
+  private record GeoSearchFilter(
+      boolean hasCoordinates, Double latitude, Double longitude, Double radiusMeters) {}
 }

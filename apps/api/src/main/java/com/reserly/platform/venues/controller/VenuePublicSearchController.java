@@ -25,6 +25,10 @@ public interface VenuePublicSearchController {
       @RequestParam(name = "q", required = false) String query,
       @RequestParam(name = "category", required = false) List<String> categorySlugs,
       @RequestParam(name = "location", required = false) String location,
+      @RequestParam(name = "latitude", required = false) Double latitude,
+      @RequestParam(name = "longitude", required = false) Double longitude,
+      @RequestParam(name = "radiusKm", required = false) Double radiusKm,
+      @RequestParam(name = "sort", required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);

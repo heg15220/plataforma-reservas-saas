@@ -62,6 +62,105 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       PUBLISHED_MATCHING_CATEGORY_SEARCH_QUERY + LOCATION_FILTER;
   String PUBLISHED_MATCHING_CATEGORY_LOCATION_SEARCH_COUNT =
       PUBLISHED_MATCHING_CATEGORY_SEARCH_COUNT + LOCATION_FILTER;
+  String ADVANCED_SEARCH_QUERY =
+      """
+      select v.*
+      from "Venues" v
+      join "Categories" c on c."id" = v."categoryId"
+      where v."status" = 'published'
+        and (
+          :queryPattern is null
+          or lower(unaccent(v."name")) like :queryPattern escape '\\'
+          or lower(unaccent(coalesce(v."description", ''))) like :queryPattern escape '\\'
+          or lower(unaccent(c."name")) like :queryPattern escape '\\'
+          or lower(unaccent(c."slug")) like :queryPattern escape '\\'
+        )
+        and (:categoryCount = 0 or c."slug" in (:categorySlugs))
+        and (
+          :locationPattern is null
+          or lower(unaccent(coalesce(v."city", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."province", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."address", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."postalCode", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."country", ''))) like :locationPattern escape '\\'
+        )
+        and (
+          :radiusMeters is null
+          or (
+            v."location" is not null
+            and ST_DWithin(
+              v."location",
+              CAST(ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326) AS geography),
+              :radiusMeters
+            )
+          )
+        )
+      order by
+        case
+          when :sortMode = 'distance' and :hasCoordinates = true and v."location" is not null
+          then ST_Distance(
+            v."location",
+            CAST(ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326) AS geography)
+          )
+        end asc nulls last,
+        case
+          when :sortMode = 'relevance' and :queryPattern is not null then
+            case
+              when lower(unaccent(v."name")) like :queryPattern escape '\\' then 0
+              when lower(unaccent(c."name")) like :queryPattern escape '\\' then 1
+              when lower(unaccent(c."slug")) like :queryPattern escape '\\' then 2
+              when lower(unaccent(coalesce(v."description", ''))) like :queryPattern escape '\\'
+                then 3
+              else 4
+            end
+        end asc nulls last,
+        case
+          when :sortMode = 'availability' then
+            case v."manualAvailabilityStatus"
+              when 'available' then 0
+              when 'automatic' then 1
+              else 2
+            end
+        end asc nulls last,
+        v."publishedAt" desc,
+        v."name" asc
+      limit :limit
+      offset :offset
+      """;
+  String ADVANCED_SEARCH_COUNT =
+      """
+      select count(v."id")
+      from "Venues" v
+      join "Categories" c on c."id" = v."categoryId"
+      where v."status" = 'published'
+        and (
+          :queryPattern is null
+          or lower(unaccent(v."name")) like :queryPattern escape '\\'
+          or lower(unaccent(coalesce(v."description", ''))) like :queryPattern escape '\\'
+          or lower(unaccent(c."name")) like :queryPattern escape '\\'
+          or lower(unaccent(c."slug")) like :queryPattern escape '\\'
+        )
+        and (:categoryCount = 0 or c."slug" in (:categorySlugs))
+        and (
+          :locationPattern is null
+          or lower(unaccent(coalesce(v."city", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."province", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."address", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."postalCode", ''))) like :locationPattern escape '\\'
+          or lower(unaccent(coalesce(v."country", ''))) like :locationPattern escape '\\'
+        )
+        and (
+          :radiusMeters is null
+          or (
+            v."location" is not null
+            and ST_DWithin(
+              v."location",
+              CAST(ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326) AS geography),
+              :radiusMeters
+            )
+          )
+        )
+      """;
 
   /** Carga el perfil vigente y su categoría para lectura privada. */
   @Query(
@@ -195,4 +294,30 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       @Param("queryPattern") String queryPattern,
       @Param("categorySlugs") List<String> categorySlugs,
       @Param("locationPattern") String locationPattern);
+
+  /** Ejecuta la búsqueda pública avanzada con filtros opcionales y ordenación controlada. */
+  @Query(value = ADVANCED_SEARCH_QUERY, nativeQuery = true)
+  List<VenueEntity> findPublishedAdvancedSearch(
+      @Param("queryPattern") String queryPattern,
+      @Param("categorySlugs") List<String> categorySlugs,
+      @Param("categoryCount") int categoryCount,
+      @Param("locationPattern") String locationPattern,
+      @Param("latitude") Double latitude,
+      @Param("longitude") Double longitude,
+      @Param("radiusMeters") Double radiusMeters,
+      @Param("hasCoordinates") boolean hasCoordinates,
+      @Param("sortMode") String sortMode,
+      @Param("limit") int limit,
+      @Param("offset") long offset);
+
+  /** Cuenta la búsqueda pública avanzada con los mismos filtros del listado. */
+  @Query(value = ADVANCED_SEARCH_COUNT, nativeQuery = true)
+  long countPublishedAdvancedSearch(
+      @Param("queryPattern") String queryPattern,
+      @Param("categorySlugs") List<String> categorySlugs,
+      @Param("categoryCount") int categoryCount,
+      @Param("locationPattern") String locationPattern,
+      @Param("latitude") Double latitude,
+      @Param("longitude") Double longitude,
+      @Param("radiusMeters") Double radiusMeters);
 }
