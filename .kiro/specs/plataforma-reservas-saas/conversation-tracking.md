@@ -3008,3 +3008,51 @@ Fuente de verdad del avance:
     `BUSINESS_VERIFICATION_NOT_APPROVED`; no se exponen proveedor, identificador fiscal ni evidencia.
   - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicationEligibilityPolicyTests,VenuePublicationEligibilityServiceIntegrationTests,VenueProfileServiceIntegrationTests,VenuePublicationServiceTests" test`
     correcto con 21 tests, 0 fallos, Spotless y Checkstyle correctos dentro del ciclo Maven.
+
+## Conversación 64 - Migración de pestañas personalizadas del local
+
+- Fecha: 2026-07-07.
+- Resumen de la conversación:
+  - Se confirmó `2.14` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica reciente.
+  - Se creó la migración Flyway `V16__create_venue_custom_tabs.sql` con tabla física
+    `VenueCustomTabs`, siguiendo la convención `UpperCamelCase`.
+  - La tabla incorpora `venueId`, `position`, `isActive`, `titleI18n`, `contentI18n`,
+    `contentFormat`, `createdAt` y `updatedAt`.
+  - Se añadieron constraints para pertenencia al local, rango de orden, unicidad diferible por
+    local/posición, estructura i18n, traducciones ES/EN obligatorias en pestañas activas, formato
+    `safe_html`, timestamps coherentes y bloqueo de patrones HTML peligrosos evidentes.
+  - Se amplió `DatabaseMigrationIntegrationTests` para esperar versión Flyway 16, auditar columnas,
+    comprobar índices y validar restricciones de orden, i18n y contenido inseguro.
+  - Se documentó el modelo inicial en `design.md`.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V16__create_venue_custom_tabs.sql`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.14. Crear migración de venue_custom_tabs con orden, estado activo, contenido seguro y campos localizados`.
+  - Prepara `2.15`, `2.16` y `2.17`.
+- Tareas completadas:
+  - `2.14. Crear migración de venue_custom_tabs con orden, estado activo, contenido seguro y campos localizados`.
+- Siguiente tarea pendiente recomendada:
+  - `2.15. Implementar CRUD de pestañas personalizadas del local para propietario`.
+- Decisiones o aclaraciones relevantes:
+  - `venue_custom_tabs` se materializa físicamente como `VenueCustomTabs`.
+  - Se permite borrador inactivo con idioma fuente, pero una pestaña activa exige ES/EN.
+  - `contentFormat` queda fijado a `safe_html`; el saneador profundo se implementará en el CRUD,
+    mientras la base aplica defensa adicional contra patrones peligrosos evidentes.
+  - La unicidad de posición es diferible para permitir reordenaciones atómicas.
+  - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests" test` correcto
+    con 8 tests, 0 fallos, Spotless y Checkstyle correctos.

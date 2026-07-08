@@ -2731,3 +2731,36 @@ La navegación del panel incorpora `Perfil` como entrada principal en desktop y 
 acceso genérico `Más` queda sustituido hasta que existan suficientes secciones privadas para
 justificar un menú secundario. La página expone metadatos `robots: noindex,nofollow` y todos los
 textos de UI viven en catálogos ES/EN.
+
+### Modelo inicial de pestañas personalizadas del local
+
+La ficha pública puede incorporar secciones editoriales creadas por el propietario del local, como
+carta, menú, precios, normas, servicios ampliados o información específica del negocio. La base de
+datos prepara esta capacidad con la tabla física `VenueCustomTabs`, traducción `UpperCamelCase` del
+nombre conceptual histórico `venue_custom_tabs`.
+
+Cada fila pertenece a un `Venue` mediante `venueId` con borrado en cascada, porque las pestañas no
+tienen sentido fuera del perfil del local. El orden se expresa con `position` y una clave única
+diferible `("venueId", "position")`, igual que la galería: el CRUD podrá reordenar varias pestañas
+en una sola transacción sin colisiones intermedias. El rango inicial es `0..15`, suficiente para el
+MVP y estrecho para evitar listas editoriales incontroladas.
+
+El estado público se modela con `isActive`. Una pestaña inactiva puede existir como borrador, pero
+la lectura pública futura solo debe considerar pestañas activas de locales `published`; la consulta
+deberá filtrar por ambos estados. Cuando `isActive = true`, `titleI18n` y `contentI18n` exigen
+traducciones no vacías en `es` y `en`, para que la ficha pública no exponga contenido incompleto en
+ningún locale soportado. En borrador se exige al menos el idioma fuente.
+
+El contenido se almacena en `contentI18n` con `contentFormat = safe_html`. El contrato previsto es
+que el backend de `2.15` reciba texto editorial, lo sanee con una allowlist estricta y solo persista
+HTML seguro. La base añade una defensa de profundidad contra patrones peligrosos evidentes:
+`<script`, URLs `javascript:` y handlers inline `on...=`. Esta restricción no sustituye al saneador
+de aplicación, pero impide que datos claramente inseguros queden persistidos por migraciones,
+scripts manuales o futuros errores de servicio.
+
+Índices:
+
+- `ixVenueCustomTabsVenueActivePosition` optimiza la lectura pública y privada ordenada por local,
+  especialmente el caso de pestañas activas.
+- `ixVenueCustomTabsVenueUpdatedAt` facilita sincronización, auditorías simples y futuras vistas de
+  administración por local.

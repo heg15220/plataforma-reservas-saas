@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("15");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -248,6 +248,18 @@ class DatabaseMigrationIntegrationTests {
             "sizeBytes",
             "width",
             "height"));
+    expectedColumns.put(
+        "VenueCustomTabs",
+        List.of(
+            "id",
+            "venueId",
+            "position",
+            "isActive",
+            "titleI18n",
+            "contentI18n",
+            "contentFormat",
+            "createdAt",
+            "updatedAt"));
 
     expectedColumns.forEach(
         (table, columns) ->
@@ -287,6 +299,26 @@ class DatabaseMigrationIntegrationTests {
             "ixVenuesPublicLocation",
             "uqVenuesOwnerCurrent",
             "uqVenuesSlug");
+  }
+
+  @Test
+  void createsVenueCustomTabIndexes() {
+    List<String> indexes =
+        jdbcTemplate.queryForList(
+            """
+            SELECT "indexname"
+            FROM "pg_indexes"
+            WHERE "schemaname" = current_schema()
+              AND "tablename" = 'VenueCustomTabs'
+            ORDER BY "indexname"
+            """,
+            String.class);
+
+    assertThat(indexes)
+        .contains(
+            "ixVenueCustomTabsVenueActivePosition",
+            "ixVenueCustomTabsVenueUpdatedAt",
+            "uqVenueCustomTabsVenuePosition");
   }
 
   /**
@@ -422,6 +454,57 @@ class DatabaseMigrationIntegrationTests {
                       """,
                       venueId))
           .isInstanceOf(DataIntegrityViolationException.class);
+
+      insertVenueCustomTab(
+          venueId,
+          0,
+          true,
+          "{\"sourceLocale\":\"es\",\"values\":{\"es\":\"Carta\",\"en\":\"Menu\"}}",
+          """
+          {"sourceLocale":"es","values":{"es":"<p>Menú del día</p>","en":"<p>Daily menu</p>"}}
+          """);
+
+      assertThatThrownBy(
+              () ->
+                  insertVenueCustomTab(
+                      venueId,
+                      0,
+                      true,
+                      "{\"sourceLocale\":\"es\",\"values\":{\"es\":\"Precios\",\"en\":\"Prices\"}}",
+                      """
+                      {
+                        "sourceLocale":"es",
+                        "values":{"es":"<p>Desde 10 €</p>","en":"<p>From €10</p>"}
+                      }
+                      """))
+          .isInstanceOf(DataIntegrityViolationException.class);
+
+      assertThatThrownBy(
+              () ->
+                  insertVenueCustomTab(
+                      venueId,
+                      1,
+                      true,
+                      "{\"sourceLocale\":\"es\",\"values\":{\"es\":\"Solo español\"}}",
+                      """
+                      {"sourceLocale":"es","values":{"es":"<p>Contenido válido</p>"}}
+                      """))
+          .isInstanceOf(DataIntegrityViolationException.class);
+
+      assertThatThrownBy(
+              () ->
+                  insertVenueCustomTab(
+                      venueId,
+                      1,
+                      true,
+                      "{\"sourceLocale\":\"es\",\"values\":{\"es\":\"Avisos\",\"en\":\"Notices\"}}",
+                      """
+                      {
+                        "sourceLocale":"es",
+                        "values":{"es":"<script>alert(1)</script>","en":"<p>Safe</p>"}
+                      }
+                      """))
+          .isInstanceOf(DataIntegrityViolationException.class);
     } finally {
       jdbcTemplate.update(
           "DELETE FROM \"Venues\" WHERE \"businessAccountId\" = ?", businessAccountId);
@@ -466,6 +549,21 @@ class DatabaseMigrationIntegrationTests {
         slug,
         latitude,
         longitude);
+  }
+
+  private void insertVenueCustomTab(
+      UUID venueId, int position, boolean active, String titleI18n, String contentI18n) {
+    jdbcTemplate.update(
+        """
+        INSERT INTO "VenueCustomTabs" (
+          "venueId", "position", "isActive", "titleI18n", "contentI18n"
+        ) VALUES (?, ?, ?, ?::jsonb, ?::jsonb)
+        """,
+        venueId,
+        position,
+        active,
+        titleI18n,
+        contentI18n);
   }
 
   private org.assertj.core.data.Offset<Double> withinCoordinateTolerance() {

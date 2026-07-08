@@ -13287,3 +13287,272 @@ La tarea se cierra porque existen tests unitarios e integración que prueban exp
 estados empresariales pendientes o rechazados bloquean la publicación de un perfil completo. La
 suite verifica que el error es cerrado y no sensible, que las constraints reales de base de datos se
 respetan y que no queda mutación parcial de publicación tras el rechazo.
+
+## Iteración 2.14 - Migración de `venue_custom_tabs`
+
+### Identificador de tarea
+
+`2.14. Crear migración de venue_custom_tabs con orden, estado activo, contenido seguro y campos localizados`.
+
+### Fecha
+
+2026-07-07.
+
+### Objetivo técnico
+
+El objetivo de esta iteración es preparar el modelo relacional de pestañas personalizadas de la ficha
+pública del local. La tarea no implementa todavía CRUD, endpoints ni presentación pública; crea la
+base persistente sobre la que se construirán `2.15`, `2.16` y `2.17`.
+
+La migración debe permitir que cada local gestione secciones editoriales ordenadas como carta, menú,
+precios, normas, servicios ampliados o información propia, con campos localizados y una frontera
+mínima de seguridad sobre contenido HTML saneado.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-004 Ficha pública del local`: la ficha debe poder mostrar pestañas personalizadas respetando
+  orden, título, contenido localizado y estado activo.
+- `RF-009 Gestión de perfil público`: el local debe crear, editar, ordenar, activar y desactivar
+  pestañas propias.
+- `RF-031 Internacionalización de textos`: el contenido público configurado por locales debe
+  soportar ES/EN.
+- `RNF-001 Seguridad`: el contenido libre no debe permitir scripts ni patrones HTML peligrosos.
+- `RNF-002 Privacidad`: las pestañas cuelgan del local y se eliminan con él; no contienen datos
+  empresariales sensibles.
+- `RNF-008 Calidad y mantenibilidad`: la migración queda cubierta por tests de esquema e
+  invariantes.
+- `RNF-009 Internacionalización y localización`: una pestaña activa exige traducciones `es` y `en`.
+- `RNF-011 Convenciones de nomenclatura`: la tabla física se llama `VenueCustomTabs`; columnas y
+  atributos usan `lowerCamelCase`.
+
+Decisión clave: aunque la tarea usa el nombre conceptual histórico `venue_custom_tabs`, la
+implementación física sigue la convención del proyecto y crea `VenueCustomTabs`.
+
+### Archivos creados o modificados
+
+- Creado:
+  - `apps/api/src/main/resources/db/migration/V16__create_venue_custom_tabs.sql`.
+- Modificado:
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se han creado entidades JPA, DAOs, servicios, controladores, DTOs ni componentes frontend en esta
+iteración.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+#### Tabla `VenueCustomTabs`
+
+Columnas:
+
+- `id uuid PRIMARY KEY DEFAULT gen_random_uuid()`
+  - Identificador opaco de la pestaña.
+- `venueId uuid NOT NULL`
+  - Local propietario de la pestaña.
+- `position integer NOT NULL`
+  - Posición editorial dentro del local.
+- `isActive boolean NOT NULL DEFAULT false`
+  - Estado de visibilidad futura.
+- `titleI18n jsonb NOT NULL`
+  - Título localizado con forma `{ sourceLocale, values }`.
+- `contentI18n jsonb NOT NULL`
+  - Contenido localizado con forma `{ sourceLocale, values }`.
+- `contentFormat varchar(32) NOT NULL DEFAULT 'safe_html'`
+  - Formato persistido. Queda cerrado a HTML saneado.
+- `createdAt timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP`
+  - Creación en UTC.
+- `updatedAt timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP`
+  - Última actualización en UTC.
+
+#### Relaciones
+
+- `fkVenueCustomTabsVenue`
+  - `FOREIGN KEY ("venueId") REFERENCES "Venues" ("id") ON DELETE CASCADE`.
+  - La cascada es intencional: una pestaña no tiene significado fuera del perfil del local.
+
+#### Restricciones
+
+- `ckVenueCustomTabsPosition`
+  - Limita `position` a `0..15`.
+  - Evita listas excesivas en MVP y fija una capacidad razonable de 16 pestañas por local.
+- `uqVenueCustomTabsVenuePosition`
+  - Única por `("venueId", "position")`.
+  - `DEFERRABLE INITIALLY DEFERRED`, para permitir reordenaciones atómicas en el futuro CRUD.
+- `ckVenueCustomTabsTitleI18n`
+  - Exige objeto JSONB con `sourceLocale` `es` o `en` y objeto `values`.
+  - Exige texto no vacío y longitud máxima de 80 caracteres en el idioma fuente.
+  - Si `isActive = true`, exige títulos no vacíos en `es` y `en`, ambos de máximo 80 caracteres.
+- `ckVenueCustomTabsContentI18n`
+  - Exige objeto JSONB con `sourceLocale` `es` o `en` y objeto `values`.
+  - Exige contenido no vacío y longitud máxima de 20.000 caracteres en el idioma fuente.
+  - Si `isActive = true`, exige contenido no vacío en `es` y `en`, ambos de máximo 20.000
+    caracteres.
+  - Rechaza patrones peligrosos evidentes en cualquier valor localizado: `<script`, `javascript:` y
+    atributos inline tipo `on...=`.
+- `ckVenueCustomTabsContentFormat`
+  - Fija `contentFormat = 'safe_html'`.
+- `ckVenueCustomTabsUpdatedAt`
+  - Exige `updatedAt >= createdAt`.
+
+#### Índices
+
+- `ixVenueCustomTabsVenueActivePosition`
+  - Columnas: `venueId`, `isActive`, `position`.
+  - Optimiza listado privado por local y lectura pública futura filtrada por activo y ordenada.
+- `ixVenueCustomTabsVenueUpdatedAt`
+  - Columnas: `venueId`, `updatedAt`.
+  - Prepara sincronización, auditoría simple y futuras consultas administrativas por local.
+
+### Arquitectura aplicada y razones técnicas
+
+La migración mantiene la separación de responsabilidades:
+
+- La base de datos garantiza invariantes estructurales y de seguridad mínima.
+- El CRUD futuro validará permisos, normalización, reordenación contigua, saneado HTML profundo y
+  reglas de publicación.
+- La lectura pública futura consultará solo pestañas activas de locales publicados.
+
+Se elige `jsonb` para `titleI18n` y `contentI18n` porque el proyecto ya usa el patrón
+`LocalizedText` con `{ sourceLocale, values }` para categorías y textos públicos del perfil. Esto
+evita un modelo especial para pestañas y conserva compatibilidad con resolución `es`/`en` y fallback
+existente.
+
+La columna `contentFormat` se incluye desde el inicio para no acoplar el futuro renderizado a una
+suposición implícita. En esta fase se fija a `safe_html`; si más adelante se decide soportar Markdown
+o texto plano, requerirá una migración y una decisión de diseño explícita.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+No se implementan endpoints, contratos REST, servicios, componentes UI ni jobs.
+
+Contratos preparados para las siguientes tareas:
+
+- CRUD privado de propietario (`2.15`) sobre `VenueCustomTabs`.
+- Lectura pública de pestañas activas dentro de la ficha (`2.16`).
+- Tests de permisos, orden, publicación, sanitización e i18n (`2.17`).
+
+### Flujos de ejecución relevantes
+
+#### Migración desde base vacía
+
+1. Flyway aplica V1-V15.
+2. V16 crea `VenueCustomTabs`.
+3. La tabla queda vinculada a `Venues`.
+4. Se crean constraints e índices.
+5. Hibernate arranca sobre el esquema actualizado.
+
+#### Inserción futura de borrador
+
+1. El servicio de `2.15` insertará una fila con `isActive = false`.
+2. La base exigirá idioma fuente válido en título y contenido.
+3. Las traducciones completas podrán añadirse antes de activar.
+
+#### Activación futura
+
+1. El servicio actualizará `isActive = true`.
+2. La base exigirá título y contenido no vacíos en `es` y `en`.
+3. La base rechazará patrones peligrosos evidentes.
+4. La lectura pública de `2.16` podrá filtrar por `isActive = true`.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- `position` dentro de rango.
+- Unicidad de posición por local.
+- `titleI18n` y `contentI18n` con forma JSONB cerrada.
+- Traducciones ES/EN obligatorias cuando la pestaña está activa.
+- Longitudes máximas para título y contenido.
+- `contentFormat` cerrado a `safe_html`.
+
+Permisos:
+
+- No se implementan permisos en esta tarea.
+- La FK por `venueId` prepara la autorización de `2.15`: el servicio deberá operar siempre por local
+  vigente del propietario autenticado, no por ids arbitrarios.
+
+Seguridad:
+
+- El constraint de contenido bloquea `<script`, `javascript:` y handlers inline `on...=`.
+- Esta defensa no sustituye el saneador de aplicación. El CRUD debe aplicar allowlist HTML antes de
+  persistir.
+
+Privacidad:
+
+- La tabla no guarda propietario directo, identificador fiscal ni datos de verificación.
+- La pertenencia se deriva por `venueId`; al eliminar un local, sus pestañas se eliminan en cascada.
+
+Internacionalización:
+
+- `sourceLocale` se limita a `es` y `en`.
+- Las pestañas activas requieren ambos idiomas soportados.
+- Los borradores pueden conservar solo idioma fuente para permitir edición incremental sin exposición
+  pública.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden logs, auditoría ni observabilidad productiva.
+
+Errores esperados a nivel de persistencia:
+
+- `DataIntegrityViolationException` si se incumplen constraints de orden, i18n, formato, contenido
+  seguro o FK.
+- En `2.15`, el servicio deberá traducir estas condiciones a errores de dominio/REST estables antes
+  de exponerlas a clientes.
+
+### Tests añadidos o modificados
+
+`DatabaseMigrationIntegrationTests`:
+
+- `migratesEmptyPostgisDatabaseToLatestVersion`
+  - Actualizado para esperar versión Flyway `16`.
+- `createsVenueCatalogTablesWithExpectedColumns`
+  - Añadida auditoría de columnas físicas de `VenueCustomTabs`.
+- `createsVenueCustomTabIndexes`
+  - Nuevo test para comprobar índices de pestañas personalizadas.
+- `enforcesVenueOwnershipLocalizationCoordinatesAndImageOrder`
+  - Ampliado para insertar una pestaña válida.
+  - Verifica rechazo de posición duplicada por local.
+  - Verifica rechazo de pestaña activa sin traducción completa.
+  - Verifica rechazo de contenido con `<script>`.
+
+### Comandos usados para verificación
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests" test
+```
+
+Resultado final:
+
+- Spotless Java: correcto.
+- Checkstyle Java: correcto, 0 violaciones.
+- Flyway: 16 migraciones validadas y aplicadas desde base vacía.
+- `DatabaseMigrationIntegrationTests`: 8 tests, 0 fallos, 0 errores.
+- Build Maven: `BUILD SUCCESS`.
+
+Incidencias corregidas durante la iteración:
+
+- Checkstyle detectó líneas largas en fixtures JSON del test; se sustituyeron por bloques de texto.
+- La primera versión de la migración usaba extracción JSON dinámica con `->>(...)`, que PostgreSQL
+  rechazó en el CHECK. Se reemplazó por condiciones explícitas para `sourceLocale = 'es'` y
+  `sourceLocale = 'en'`, más legibles y compatibles.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La defensa SQL contra HTML inseguro es deliberadamente básica. El saneado real debe vivir en el
+  servicio de `2.15` con allowlist de etiquetas y atributos.
+- La tabla no incluye todavía entidad JPA ni DAO; se implementarán con el CRUD.
+- La contigüidad estricta de posiciones no se valida en base de datos. El servicio deberá garantizar
+  permutaciones completas y posiciones `0..n-1`.
+- No hay auditoría de cambios editoriales; si el panel admin exige trazabilidad completa, habrá que
+  añadir una estrategia de auditoría en fases posteriores.
+
+### Criterio de cierre
+
+La tarea se cierra porque la migración V16 crea el modelo físico necesario para pestañas
+personalizadas con pertenencia a local, orden, activación, campos localizados, formato de contenido
+seguro, constraints e índices; y la suite de migraciones demuestra que el esquema aplica desde cero y
+rechaza datos inválidos relevantes.
