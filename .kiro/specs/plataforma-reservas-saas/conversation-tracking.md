@@ -12,11 +12,12 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-08
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17` y `3.1` a
-  `3.10`.
-- Siguiente tarea pendiente recomendada: `3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple.`
+  `3.12`.
+- Siguiente tarea pendiente recomendada: `3.13. Crear tests de búsqueda y filtros.`
 - Observación: la Fase 3 ya dispone de endpoint público de búsqueda con texto, categoría,
   ubicación, radio, ordenación, estado resumido, pantalla de inicio, pantalla de resultados con
-  tarjetas y panel responsive de filtros.
+  tarjetas, panel responsive de filtros, carriles iniciales de descubrimiento y estado vacío de local
+  no encontrado.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -3350,6 +3351,69 @@ Fuente de verdad del avance:
   - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
     correcto con 10 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check` correctos.
+
+## Conversación 75 - Carriles de descubrimiento y vacío de local no encontrado
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmaron como siguientes tareas pendientes `3.11` y `3.12`.
+  - Se amplió `/explorar` para cargar carriles iniciales de descubrimiento mediante llamadas simples
+    al endpoint público: recomendados, destacados y cercanos.
+  - Se añadió `size` al cliente de búsqueda pública para limitar las peticiones auxiliares de
+    carriles.
+  - Se mostró un bloque "También puedes explorar" con tres secciones y enlaces compactos a fichas de
+    local.
+  - Se mejoró el estado vacío para distinguir búsquedas con texto: cuando hay `q` y no hay resultados,
+    la pantalla comunica "No encontramos ese local" y ofrece limpiar filtros o registrar el local.
+  - Se actualizaron traducciones ES/EN y pruebas focalizadas.
+- Archivos modificados:
+  - `apps/web/src/app/explorar/page.tsx`.
+  - `apps/web/src/features/public-search/public-search-api.ts`.
+  - `apps/web/src/features/public-search/public-search-api.test.ts`.
+  - `apps/web/src/features/public-search/public-search-results.tsx`.
+  - `apps/web/src/features/public-search/public-search-results.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-005 Estado público del local`.
+  - `RF-030 Recomendaciones`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-010 Accesibilidad`.
+- Tareas impactadas:
+  - `3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple`.
+  - `3.12. Crear estado vacío para local no encontrado`.
+  - Prepara `3.13`, que consolidará tests de búsqueda y filtros.
+- Tareas completadas:
+  - `3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple`.
+  - `3.12. Crear estado vacío para local no encontrado`.
+- Siguiente tarea pendiente recomendada:
+  - `3.13. Crear tests de búsqueda y filtros`.
+- Decisiones o aclaraciones relevantes:
+  - `recommended` usa `sort=availability` y `size=3`.
+  - `featured` usa `sort=rating` y `size=3`; el backend mantiene fallback estable hasta que existan
+    reseñas o criterio editorial.
+  - `nearby` usa la ubicación textual actual cuando existe; sin ubicación, cae a una selección simple
+    por disponibilidad.
+  - No se solicita geolocalización ni se persiste ubicación del usuario.
+  - El estado vacío específico solo se activa cuando hay texto de búsqueda `q`, para no confundir un
+    vacío por filtros amplios con un local concreto no encontrado.
+  - Evidencia frontend: `npm exec vitest -- run src/features/public-search/public-search-api.test.ts src/features/public-search/public-search-results.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000`
+    correcto con 2 ficheros, 3 tests y 0 fallos.
+  - Evidencia build: `npm run build:web:test` correcto; Next compila `/explorar`.
+  - Evidencia adicional: `npm run typecheck --workspace @reserly/web`, `npm run lint:web`,
+    `npm run i18n:check`, `npm run spanish:text:check`, `npm exec prettier -- --check ...` y
     `git diff --check` correctos.
 
 ## Conversación 74 - Resultados públicos con tarjetas y filtros responsive

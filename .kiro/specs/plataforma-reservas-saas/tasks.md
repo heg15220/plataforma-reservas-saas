@@ -92,8 +92,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 3.8. Crear pantalla de inicio con buscador y mensaje principal.
 - [x] 3.9. Crear pantalla de resultados con tarjetas.
 - [x] 3.10. Crear panel de filtros desktop y móvil.
-- [ ] 3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple.
-- [ ] 3.12. Crear estado vacío para local no encontrado.
+- [x] 3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple.
+- [x] 3.12. Crear estado vacío para local no encontrado.
 - [ ] 3.13. Crear tests de búsqueda y filtros.
 - [ ] 3.14. Crear traducciones ES/EN de buscador, filtros, resultados, estados vacíos y tarjetas.
 

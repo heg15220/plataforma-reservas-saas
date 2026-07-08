@@ -25,9 +25,28 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const locale = await getLocale();
   const filters = normalizeSearchParams(await searchParams);
-  const response = await searchPublicVenues(locale, filters);
+  const [response, recommended, featured, nearby] = await Promise.all([
+    searchPublicVenues(locale, filters),
+    searchPublicVenues(locale, { size: 3, sort: "availability" }),
+    searchPublicVenues(locale, { size: 3, sort: "rating" }),
+    searchPublicVenues(locale, {
+      location: filters.location,
+      size: 3,
+      sort: filters.location ? "newest" : "availability",
+    }),
+  ]);
 
-  return <PublicSearchResultsView filters={filters} response={response} />;
+  return (
+    <PublicSearchResultsView
+      discoverySections={{
+        featured: featured.results,
+        nearby: nearby.results,
+        recommended: recommended.results,
+      }}
+      filters={filters}
+      response={response}
+    />
+  );
 }
 
 function normalizeSearchParams(

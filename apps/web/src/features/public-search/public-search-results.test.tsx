@@ -65,6 +65,11 @@ describe("PublicSearchResultsView", () => {
   it("muestra tarjetas de locales y filtros públicos soportados", () => {
     renderWithIntl(
       <PublicSearchResultsView
+        discoverySections={{
+          featured: [response.results[1]],
+          nearby: [response.results[0]],
+          recommended: [response.results[0]],
+        }}
         filters={{ category: "restaurante", location: "Madrid", q: "cafe", sort: "availability" }}
         response={response}
       />,
@@ -88,6 +93,13 @@ describe("PublicSearchResultsView", () => {
     expect(screen.getAllByRole("search", { name: "Filtros de búsqueda pública" })).toHaveLength(2);
     expect(screen.getAllByLabelText("Qué buscas")[0]).toHaveValue("cafe");
     expect(screen.getAllByLabelText("Ubicación")[0]).toHaveValue("Madrid");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "También puedes explorar" }),
+    ).toBeVisible();
+    expect(screen.getByRole("heading", { level: 3, name: "Recomendados" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 3, name: "Destacados" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 3, name: "Cercanos" })).toBeVisible();
+    expect(screen.getByText("Locales vinculados a Madrid según la búsqueda actual.")).toBeVisible();
   });
 
   it("presenta estado vacío y acción para limpiar filtros", () => {
@@ -99,11 +111,15 @@ describe("PublicSearchResultsView", () => {
     );
 
     expect(
-      screen.getByRole("heading", { level: 2, name: "No hay locales que coincidan" }),
+      screen.getByRole("heading", { level: 2, name: "No encontramos ese local" }),
     ).toBeVisible();
     expect(screen.getAllByRole("link", { name: "Limpiar filtros" })[0]).toHaveAttribute(
       "href",
       "/explorar",
+    );
+    expect(screen.getByRole("link", { name: "Registrar este local" })).toHaveAttribute(
+      "href",
+      "/locales/registro",
     );
   });
 });

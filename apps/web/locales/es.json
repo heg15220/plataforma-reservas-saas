@@ -700,6 +700,7 @@
     "actions": {
       "apply": "Aplicar filtros",
       "clear": "Limpiar filtros",
+      "registerVenue": "Registrar este local",
       "viewVenue": "Ver local"
     },
     "card": {
@@ -719,6 +720,8 @@
     },
     "empty": {
       "description": "Prueba con otra ubicación, cambia la categoría o elimina filtros para ampliar la búsqueda.",
+      "localNotFoundDescription": "No aparece ningún local con ese nombre o esas palabras clave. Puedes limpiar filtros, probar otra zona o registrar el local para que empiece a recibir reservas.",
+      "localNotFoundTitle": "No encontramos ese local",
       "title": "No hay locales que coincidan"
     },
     "eyebrow": "DESCUBRIMIENTO",
@@ -737,6 +740,24 @@
     "metadata": {
       "description": "Resultados públicos de locales y servicios disponibles en Reserly.",
       "title": "Explorar locales"
+    },
+    "discovery": {
+      "description": "Selecciones automáticas basadas en disponibilidad manual, orden estable y ubicación de la búsqueda cuando existe.",
+      "empty": "Todavía no hay locales para esta selección.",
+      "featured": {
+        "description": "Locales con ordenación preparada para valoración y criterios editoriales futuros.",
+        "title": "Destacados"
+      },
+      "nearby": {
+        "description": "Opciones recientes mientras no hayas indicado una ubicación concreta.",
+        "title": "Cercanos",
+        "withLocationDescription": "Locales vinculados a {location} según la búsqueda actual."
+      },
+      "recommended": {
+        "description": "Locales que aceptan reservas manualmente o están más cerca de publicarlas.",
+        "title": "Recomendados"
+      },
+      "title": "También puedes explorar"
     },
     "resultsAria": "Resultados de locales",
     "sort": {

@@ -16680,3 +16680,238 @@ Las tareas se cierran porque `/explorar` ya carga resultados públicos reales de
 presenta tarjetas de local con los datos requeridos disponibles, ofrece filtros desktop y móvil
 compatibles con el contrato existente, está internacionalizada en ES/EN y queda verificada con tests,
 lint, typecheck, build y validaciones de calidad de texto.
+
+## Iteración 2026-07-08 - Tareas 3.11 y 3.12, carriles iniciales y vacío de local no encontrado
+
+### Identificador exacto de las tareas completadas
+
+- `3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple`.
+- `3.12. Crear estado vacío para local no encontrado`.
+
+### Objetivo técnico
+
+Ampliar `/explorar` para que no sea únicamente una lista filtrada:
+
+- Mostrar secciones auxiliares de descubrimiento con lógica simple y verificable.
+- Ofrecer un estado vacío específico cuando la búsqueda parece apuntar a un local concreto que no
+  está disponible en la plataforma.
+- Mantener el alcance dentro de los datos y ordenaciones ya soportados por el backend.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos:
+
+- `RF-001`: si el usuario escribe nombre o palabras clave, debe ver resultados coincidentes o un
+  mensaje claro cuando no existan.
+- `RF-002`: limpiar filtros debe devolver el estado base de búsqueda.
+- `RF-003`: los resultados se presentan como tarjetas.
+- `RF-030`: el sistema puede mostrar recomendados, destacados y cercanos; sin historial se usan
+  criterios simples como popularidad, valoración, disponibilidad y cercanía.
+- `RF-031`: los nuevos textos visibles deben estar en catálogos ES/EN.
+
+Decisiones:
+
+- No se introduce motor de recomendación ni persistencia de interacciones. La lógica inicial usa
+  llamadas al endpoint público con `sort` y `size`.
+- `recommended` se basa en `sort=availability`, ya implementado como aproximación por
+  `manualAvailabilityStatus`.
+- `featured` se basa en `sort=rating`, sabiendo que el backend mantiene fallback estable hasta que
+  existan reseñas.
+- `nearby` usa `location` textual cuando el usuario la ha indicado; sin ubicación cae a una selección
+  conservadora por disponibilidad.
+- El vacío de "local no encontrado" se activa solo cuando hay `q`, porque un vacío sin texto puede
+  deberse a filtros amplios o combinaciones de categoría/ubicación.
+
+### Archivos creados, modificados o eliminados
+
+Archivos modificados:
+
+- `apps/web/src/app/explorar/page.tsx`
+  - Carga resultados principales y tres secciones auxiliares en paralelo.
+- `apps/web/src/features/public-search/public-search-api.ts`
+  - Añade `size` opcional a los filtros permitidos por el cliente.
+- `apps/web/src/features/public-search/public-search-api.test.ts`
+  - Verifica propagación de `size`.
+- `apps/web/src/features/public-search/public-search-results.tsx`
+  - Añade `DiscoverySections`, `CompactVenueLink` y `EmptySearchState`.
+- `apps/web/src/features/public-search/public-search-results.test.tsx`
+  - Verifica carriles de descubrimiento y vacío específico.
+- `apps/web/locales/es.json`.
+- `apps/web/locales/en.json`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se crean migraciones ni archivos backend.
+
+### Arquitectura aplicada y razones técnicas
+
+La arquitectura sigue el módulo `public-search`:
+
+- `ExplorePage` se mantiene como Server Component y usa `Promise.all` para cargar:
+  - resultados principales;
+  - recomendados;
+  - destacados;
+  - cercanos.
+- `PublicSearchResultsView` recibe las secciones ya resueltas como props. Esto evita llamadas desde
+  componentes cliente y facilita tests puros de presentación.
+- `DiscoverySections` es un subcomponente privado de la vista porque su primera implementación está
+  acoplada a la experiencia de resultados.
+- `CompactVenueLink` reutiliza la estructura de tarjeta compacta y mantiene navegación directa a la
+  ficha pública.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No hay cambios de modelo ni migraciones.
+
+Se reutiliza el contrato de `GET /api/public/venues/search`.
+
+Nuevo parámetro enviado por frontend:
+
+- `size`: entero positivo usado para pedir tres elementos por carril.
+
+Restricciones:
+
+- No se expone historial de usuario.
+- No se guarda ubicación.
+- No se deduplican todavía locales entre carriles; la tarea prioriza crear bloques iniciales simples.
+
+### Endpoints, contratos, servicios, componentes y módulos implementados
+
+Endpoint consumido:
+
+- `GET /api/public/venues/search`.
+
+Contratos de carriles:
+
+- Recomendados:
+  - Filtros: `{ sort: "availability", size: 3 }`.
+  - Propósito: mostrar locales con disponibilidad manual más favorable.
+- Destacados:
+  - Filtros: `{ sort: "rating", size: 3 }`.
+  - Propósito: preparar criterio futuro de valoración/destacado con fallback estable.
+- Cercanos:
+  - Filtros con ubicación: `{ location, sort: "newest", size: 3 }`.
+  - Filtros sin ubicación: `{ sort: "availability", size: 3 }`.
+  - Propósito: usar proximidad textual cuando existe, sin solicitar geolocalización.
+
+Componentes:
+
+- `EmptySearchState`
+  - Muestra título genérico sin `q`.
+  - Muestra "No encontramos ese local" con `q`.
+  - Ofrece limpiar filtros siempre.
+  - Ofrece registrar local cuando hay `q`.
+- `DiscoverySections`
+  - Renderiza tres secciones con título, descripción y enlaces compactos.
+- `CompactVenueLink`
+  - Enlace accesible a `/locales/{slug}` con nombre y ubicación.
+
+### Flujos de ejecución relevantes
+
+Flujo de carriles:
+
+1. El usuario abre `/explorar`.
+2. La página normaliza filtros de URL.
+3. Se ejecutan cuatro llamadas server-side en paralelo.
+4. La vista renderiza resultados principales y, debajo, "También puedes explorar".
+5. Cada sección muestra hasta tres locales.
+
+Flujo de local no encontrado:
+
+1. El usuario busca con `q`.
+2. El endpoint devuelve `results = []`.
+3. La vista muestra "No encontramos ese local".
+4. El usuario puede limpiar filtros o ir al registro de locales.
+
+### Validaciones, permisos, seguridad, privacidad, accesibilidad e internacionalización
+
+Validaciones:
+
+- `size` solo se envía si es positivo.
+- `q` en blanco no activa el estado de local no encontrado.
+- Se conservan validaciones Zod de la respuesta.
+
+Seguridad y privacidad:
+
+- No se añaden endpoints ni permisos nuevos.
+- No se reenvían cookies al backend.
+- No se solicita geolocalización del navegador.
+- No se persiste información de búsqueda.
+
+Accesibilidad:
+
+- El estado vacío usa encabezado y acciones claras.
+- Los carriles tienen encabezados jerárquicos (`h2`, `h3`).
+- Los enlaces compactos son elementos navegables con texto visible.
+
+Internacionalización:
+
+- Se añaden claves ES/EN para:
+  - acciones del vacío;
+  - vacío genérico y de local no encontrado;
+  - carriles recomendados, destacados y cercanos;
+  - descripciones de lógica simple.
+- `npm run i18n:check` confirma catálogos completos y sin texto visible hardcodeado.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+- No se añaden logs ni auditoría.
+- Si una llamada auxiliar falla, actualmente fallaría la ruta igual que la llamada principal. En una
+  iteración futura se puede aislar cada carril con degradación parcial.
+- No se añaden eventos de recomendación; los eventos e interacciones quedan para fases post-MVP.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `public-search-api.test.ts`
+  - Verifica que `size=3` se envía en la URL.
+- `public-search-results.test.tsx`
+  - Verifica el bloque "También puedes explorar".
+  - Verifica secciones "Recomendados", "Destacados" y "Cercanos".
+  - Verifica descripción de cercanos con ubicación.
+  - Verifica vacío "No encontramos ese local".
+  - Verifica acción "Registrar este local".
+
+Comandos ejecutados:
+
+```text
+npm exec vitest -- run src/features/public-search/public-search-api.test.ts src/features/public-search/public-search-results.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000
+npm run typecheck --workspace @reserly/web
+npm run lint:web
+npm run i18n:check
+npm run spanish:text:check
+npm exec prettier -- --check apps/web/src/app/explorar/page.tsx apps/web/src/features/public-search/public-search-api.ts apps/web/src/features/public-search/public-search-api.test.ts apps/web/src/features/public-search/public-search-results.tsx apps/web/src/features/public-search/public-search-results.test.tsx apps/web/locales/es.json apps/web/locales/en.json
+git diff --check
+npm run build:web:test
+```
+
+Resultados:
+
+- Vitest focalizado: 2 ficheros, 3 tests, 0 fallos.
+- TypeScript: correcto.
+- ESLint web: correcto.
+- i18n: correcto.
+- Validación de español: correcta.
+- Prettier en archivos afectados: correcto.
+- Whitespace: correcto.
+- Build Next de test: correcto.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- Los carriles pueden repetir locales entre sí porque no existe todavía servicio de recomendación ni
+  deduplicación.
+- `featured` no representa aún destacados comerciales/editoriales reales; queda preparado con
+  fallback por `sort=rating`.
+- `nearby` usa ubicación textual, no distancia geográfica ni geolocalización.
+- La degradación parcial de carriles ante errores queda pendiente.
+- `3.13` deberá ampliar cobertura de búsqueda y filtros; `3.14` cerrará traducciones de toda la
+  fase.
+
+### Criterio de cierre
+
+Las tareas se cierran porque `/explorar` ya muestra carriles iniciales de recomendados, destacados y
+cercanos con lógica simple basada en el endpoint público, y porque el vacío de búsquedas por nombre
+sin resultados comunica claramente que el local no aparece y ofrece acciones útiles. Todo queda
+traducido, testeado y compilado.

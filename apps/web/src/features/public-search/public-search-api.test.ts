@@ -53,13 +53,14 @@ describe("searchPublicVenues", () => {
       category: "restaurante",
       location: " Madrid ",
       q: " cafe ",
+      size: 3,
       sort: "availability",
     });
 
     expect(response.results[0].statusCode).toBe("available");
     expect(fetchMock).toHaveBeenCalledWith(
       new URL(
-        "http://internal-api.test/api/public/venues/search?locale=es&q=cafe&location=Madrid&category=restaurante&sort=availability",
+        "http://internal-api.test/api/public/venues/search?locale=es&q=cafe&location=Madrid&category=restaurante&sort=availability&size=3",
       ),
       { cache: "no-store" },
     );

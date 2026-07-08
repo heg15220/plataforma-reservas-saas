@@ -700,6 +700,7 @@
     "actions": {
       "apply": "Apply filters",
       "clear": "Clear filters",
+      "registerVenue": "Register this venue",
       "viewVenue": "View venue"
     },
     "card": {
@@ -719,6 +720,8 @@
     },
     "empty": {
       "description": "Try another location, change the category or remove filters to widen the search.",
+      "localNotFoundDescription": "No venue appears with that name or those keywords. You can clear filters, try another area or register the venue so it can start receiving bookings.",
+      "localNotFoundTitle": "We could not find that venue",
       "title": "No matching venues"
     },
     "eyebrow": "DISCOVERY",
@@ -737,6 +740,24 @@
     "metadata": {
       "description": "Public results for venues and services available on Reserly.",
       "title": "Explore venues"
+    },
+    "discovery": {
+      "description": "Automatic selections based on manual availability, stable ordering and the search location when present.",
+      "empty": "There are no venues for this selection yet.",
+      "featured": {
+        "description": "Venues with ordering prepared for future reviews and editorial criteria.",
+        "title": "Featured"
+      },
+      "nearby": {
+        "description": "Recent options while you have not entered a specific location.",
+        "title": "Nearby",
+        "withLocationDescription": "Venues linked to {location} according to the current search."
+      },
+      "recommended": {
+        "description": "Venues that manually accept bookings or are closest to publishing availability.",
+        "title": "Recommended"
+      },
+      "title": "You can also explore"
     },
     "resultsAria": "Venue results",
     "sort": {

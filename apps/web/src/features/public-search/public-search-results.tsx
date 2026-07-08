@@ -24,6 +24,7 @@ import {
 
 const EXPLORE_PATH = "/explorar";
 const VENUE_PATH_PREFIX = "/locales/";
+const REGISTRATION_PATH = "/locales/registro";
 
 const categoryOptions = [
   "restaurante",
@@ -37,12 +38,23 @@ const categoryOptions = [
 ] as const;
 
 export interface PublicSearchResultsViewProps {
+  discoverySections?: PublicSearchDiscoverySections;
   filters: PublicVenueSearchFilters;
   response: PublicVenueSearchResponse;
 }
 
+export interface PublicSearchDiscoverySections {
+  featured: PublicVenueSearchItem[];
+  nearby: PublicVenueSearchItem[];
+  recommended: PublicVenueSearchItem[];
+}
+
 /** Pantalla pública de resultados con tarjetas y filtros soportados por el endpoint actual. */
-export function PublicSearchResultsView({ filters, response }: PublicSearchResultsViewProps) {
+export function PublicSearchResultsView({
+  discoverySections,
+  filters,
+  response,
+}: PublicSearchResultsViewProps) {
   const t = useTranslations("PublicSearch");
   const resultCount = t("summary.count", { count: response.totalElements });
 
@@ -78,19 +90,7 @@ export function PublicSearchResultsView({ filters, response }: PublicSearchResul
               </Box>
 
               {response.results.length === 0 ? (
-                <Surface>
-                  <Stack spacing={2}>
-                    <Typography component="h2" variant="h2">
-                      {t("empty.title")}
-                    </Typography>
-                    <Typography sx={{ color: "text.secondary" }}>
-                      {t("empty.description")}
-                    </Typography>
-                    <Button component={NavigationLink} href={EXPLORE_PATH} variant="outlined">
-                      {t("actions.clear")}
-                    </Button>
-                  </Stack>
-                </Surface>
+                <EmptySearchState hasQuery={Boolean(filters.q)} />
               ) : (
                 <Box
                   component="section"
@@ -108,9 +108,143 @@ export function PublicSearchResultsView({ filters, response }: PublicSearchResul
               )}
             </Stack>
           </Box>
+
+          {discoverySections && (
+            <DiscoverySections filters={filters} sections={discoverySections} />
+          )}
         </Stack>
       </PageContainer>
     </PublicShell>
+  );
+}
+
+function EmptySearchState({ hasQuery }: { hasQuery: boolean }) {
+  const t = useTranslations("PublicSearch");
+
+  return (
+    <Surface>
+      <Stack spacing={2.5}>
+        <Typography component="h2" variant="h2">
+          {t(hasQuery ? "empty.localNotFoundTitle" : "empty.title")}
+        </Typography>
+        <Typography sx={{ color: "text.secondary" }}>
+          {t(hasQuery ? "empty.localNotFoundDescription" : "empty.description")}
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <Button component={NavigationLink} href={EXPLORE_PATH} variant="outlined">
+            {t("actions.clear")}
+          </Button>
+          {hasQuery && (
+            <Button component={NavigationLink} href={REGISTRATION_PATH} variant="contained">
+              {t("actions.registerVenue")}
+            </Button>
+          )}
+        </Stack>
+      </Stack>
+    </Surface>
+  );
+}
+
+function DiscoverySections({
+  filters,
+  sections,
+}: {
+  filters: PublicVenueSearchFilters;
+  sections: PublicSearchDiscoverySections;
+}) {
+  const t = useTranslations("PublicSearch");
+  const sectionItems = [
+    {
+      description: t("discovery.recommended.description"),
+      key: "recommended",
+      title: t("discovery.recommended.title"),
+      venues: sections.recommended,
+    },
+    {
+      description: t("discovery.featured.description"),
+      key: "featured",
+      title: t("discovery.featured.title"),
+      venues: sections.featured,
+    },
+    {
+      description: filters.location
+        ? t("discovery.nearby.withLocationDescription", { location: filters.location })
+        : t("discovery.nearby.description"),
+      key: "nearby",
+      title: t("discovery.nearby.title"),
+      venues: sections.nearby,
+    },
+  ] satisfies ReadonlyArray<{
+    description: string;
+    key: "featured" | "nearby" | "recommended";
+    title: string;
+    venues: PublicVenueSearchItem[];
+  }>;
+
+  return (
+    <Box component="section" aria-labelledby="public-search-discovery-title">
+      <Stack spacing={3}>
+        <Stack spacing={1}>
+          <Typography component="h2" id="public-search-discovery-title" variant="h2">
+            {t("discovery.title")}
+          </Typography>
+          <Typography sx={{ color: "text.secondary" }}>{t("discovery.description")}</Typography>
+        </Stack>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 3,
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" },
+          }}
+        >
+          {sectionItems.map((section) => (
+            <Surface component="section" key={section.key}>
+              <Stack spacing={2.5}>
+                <Stack spacing={0.75}>
+                  <Typography component="h3" variant="h3">
+                    {section.title}
+                  </Typography>
+                  <Typography sx={{ color: "text.secondary" }}>{section.description}</Typography>
+                </Stack>
+                <Stack spacing={1.5}>
+                  {section.venues.length > 0 ? (
+                    section.venues.map((venue) => (
+                      <CompactVenueLink key={`${section.key}-${venue.slug}`} venue={venue} />
+                    ))
+                  ) : (
+                    <Typography sx={{ color: "text.secondary" }}>{t("discovery.empty")}</Typography>
+                  )}
+                </Stack>
+              </Stack>
+            </Surface>
+          ))}
+        </Box>
+      </Stack>
+    </Box>
+  );
+}
+
+function CompactVenueLink({ venue }: { venue: PublicVenueSearchItem }) {
+  const location = [venue.city, venue.province].filter(Boolean).join(", ");
+  const venueHref = `${VENUE_PATH_PREFIX}${venue.slug}`;
+
+  return (
+    <Stack
+      component={NavigationLink}
+      href={venueHref}
+      spacing={0.5}
+      sx={{
+        border: 1,
+        borderColor: "divider",
+        borderRadius: `${visualTokens.radius.control}px`,
+        color: "text.primary",
+        p: 2,
+        textDecoration: "none",
+      }}
+    >
+      <Typography sx={{ fontWeight: 700 }}>{venue.name}</Typography>
+      <Typography sx={{ color: "text.secondary" }}>{location}</Typography>
+    </Stack>
   );
 }
 

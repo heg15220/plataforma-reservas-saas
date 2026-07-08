@@ -49,6 +49,7 @@ export interface PublicVenueSearchFilters {
   category?: string;
   sort?: SearchSort;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -69,6 +70,9 @@ export async function searchPublicVenues(
   appendIfPresent(url, "sort", filters.sort);
   if (filters.page && filters.page > 0) {
     url.searchParams.set("page", String(filters.page));
+  }
+  if (filters.size && filters.size > 0) {
+    url.searchParams.set("size", String(filters.size));
   }
 
   const response = await fetch(url, { cache: "no-store" });
