@@ -17128,3 +17128,247 @@ Resultados:
 Las tareas se cierran porque la búsqueda pública cuenta con tests focalizados de API, filtros,
 tarjetas, estados vacíos, carriles e i18n, y porque las traducciones ES/EN de la experiencia pública
 quedan cubiertas por contrato específico, validadores globales, typecheck, lint y build de Next.
+
+## Iteración 2026-07-08 - Tareas 4.1 y 4.2, migraciones y horario semanal
+
+### Identificador exacto de las tareas completadas
+
+- `4.1. Crear migraciones de venue_opening_hours, time_slots y availability_blocks`.
+- `4.2. Implementar configuración de horario semanal`.
+
+### Objetivo técnico
+
+Abrir la Fase 4 con una base de datos consistente para disponibilidad y con el primer caso de uso
+privado de horarios. La iteración persiste horarios semanales por local, prepara franjas reservables
+con capacidad/estado/versión, prepara bloqueos manuales por local, franja, recurso o servicio, y
+permite al propietario consultar y sustituir el horario semanal completo de su local vigente.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-005`: el estado público del local dependerá de horario y disponibilidad.
+- `RF-006`: el calendario público usará días y franjas disponibles, cerrados, completos o bloqueados.
+- `RF-010`: el local debe configurar horario semanal y días cerrados.
+- `RF-011`: las franjas deben tener inicio, fin, capacidad máxima y estado.
+- `RF-012`: los bloqueos de disponibilidad deben tener efecto inmediato y no depender del frontend.
+- `RNF-011`: tablas `UpperCamelCase` y columnas `lowerCamelCase`.
+
+Decisiones:
+
+- La migración física usa `VenueOpeningHours`, `TimeSlots` y `AvailabilityBlocks` aunque el plan
+  conserve nombres conceptuales en `snake_case`.
+- `PUT /api/venue/me/opening-hours` reemplaza los siete días como snapshot completo.
+- El endpoint no acepta `venueId`; el local se resuelve desde `AuthenticatedAccount`.
+- Los días usan numeración ISO-8601: lunes `1`, domingo `7`.
+- `TimeSlots.version` queda preparado para bloqueo optimista o validación de concurrencia.
+- `AvailabilityBlocks` incluye `serviceId` y `employeeResourceId` sin FK hasta que existan esas tablas.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/resources/db/migration/V17__create_availability_schedule_tables.sql`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/OpeningHoursController.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/OpeningHoursControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityExceptionHandler.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/package-info.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/AvailabilityErrorResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHourRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHourResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHoursResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHoursUpdateRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/package-info.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/package-info.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/OpeningHoursInvalidException.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/OpeningHoursService.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/OpeningHoursServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/OpeningHoursControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/package-info.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/OpeningHoursServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/package-info.java`.
+
+Archivos modificados:
+
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminan archivos.
+
+### Arquitectura aplicada y razones técnicas
+
+El módulo `availability` queda separado en capas:
+
+- `controller`: contrato REST privado y traducción de errores.
+- `dto`: payloads y respuestas estables.
+- `service`: reglas de negocio y transacción.
+- `persistence`: entidad JPA y DAO.
+
+La implementación sigue el patrón de perfil y pestañas de local: el controlador recibe
+`AuthenticatedAccount`, el servicio resuelve el local vigente con `VenueDao`, el payload no puede
+elegir propietario ni local, las actualizaciones usan lock pesimista sobre el local y las filas de
+horario existentes, y los errores se devuelven como códigos estables.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+`VenueOpeningHours`:
+
+- `id` UUID con `gen_random_uuid()`.
+- `venueId` FK a `Venues` con `ON DELETE CASCADE`.
+- `weekday` `integer` entre 1 y 7.
+- `isClosed`, `reservationsEnabled`, `opensAt`, `closesAt`.
+- `createdAt`, `updatedAt`.
+- Unicidad `venueId + weekday`.
+- Constraint: si `isClosed=true`, no hay horas y `reservationsEnabled=false`.
+- Constraint: si `isClosed=false`, `opensAt` y `closesAt` son obligatorias y `opensAt < closesAt`.
+
+`TimeSlots`:
+
+- `venueId` FK a `Venues`.
+- `serviceId` nullable preparado para Fase 5.
+- `date`, `weekday`, `startsAt`, `endsAt`.
+- `capacity > 0`.
+- `status` restringido a `available`, `unavailable`, `full`, `blocked`.
+- `createdByRule` para distinguir generación automática futura.
+- `version >= 0` para concurrencia.
+- Índices por `venueId/date/startsAt` y `venueId/status`.
+- Unicidad por local, fecha, inicio y servicio normalizado con `COALESCE`.
+
+`AvailabilityBlocks`:
+
+- `venueId` FK a `Venues`.
+- `timeSlotId` FK opcional a `TimeSlots`.
+- `employeeResourceId` y `serviceId` preparados sin FK hasta crear esas tablas.
+- `scope` restringido a `venue`, `slot`, `employee_resource`, `service`.
+- `date`, rango horario opcional, `reason`, `createdByUserId`.
+- Constraints de coherencia entre `scope` y columnas objetivo.
+- Índices por `venueId/date`, `venueId/scope/date` y `timeSlotId`.
+
+### Endpoints, contratos, servicios, componentes, jobs y módulos implementados
+
+Endpoints:
+
+- `GET /api/venue/me/opening-hours`: devuelve `OpeningHoursResponse` del local autenticado.
+- `PUT /api/venue/me/opening-hours`: sustituye los siete días de horario semanal y devuelve el
+  snapshot ordenado.
+
+Contratos:
+
+- `OpeningHourRequest`: `weekday`, `closed`, `reservationsEnabled`, `opensAt`, `closesAt`.
+- `OpeningHourResponse`: `id`, `weekday`, `closed`, `reservationsEnabled`, `opensAt`, `closesAt`.
+- `OpeningHoursUpdateRequest`: lista `days`.
+- `OpeningHoursResponse`: lista ordenada `days`.
+
+Servicios:
+
+- `OpeningHoursService.list(ownerUserId)`.
+- `OpeningHoursService.replace(ownerUserId, request)`.
+
+No se implementan jobs ni cálculo público de disponibilidad en esta iteración.
+
+### Flujos de ejecución relevantes
+
+Consulta:
+
+1. El controlador recibe el principal autenticado.
+2. `OpeningHoursServiceImpl` valida que existe local vigente.
+3. `VenueOpeningHourDao.findAllOwned` lista solo filas del propietario autenticado.
+4. La respuesta sale ordenada por día.
+
+Sustitución semanal:
+
+1. El controlador recibe `OpeningHoursUpdateRequest`.
+2. El servicio bloquea el local vigente con `findCurrentByOwnerUserIdForUpdate`.
+3. Carga horarios existentes con lock.
+4. Valida exactamente siete días, sin duplicados y con weekdays 1 a 7.
+5. Valida coherencia de cerrado/abierto/horas.
+6. Actualiza filas existentes o crea las que falten.
+7. Guarda con `saveAllAndFlush`.
+8. Devuelve el snapshot ordenado.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- Siete días obligatorios.
+- Weekdays sin duplicados y en rango 1..7.
+- Cerrado implica sin horas y reservas inactivas.
+- Abierto implica horas presentes y `opensAt < closesAt`.
+
+Permisos y privacidad:
+
+- El endpoint está bajo `/api/venue/me`, protegido por el filtro de sesión y rol `venue_owner`.
+- El payload no contiene `venueId` ni `ownerUserId`.
+- Los DAOs filtran por `hour.venue.ownerUser.id`.
+- Los errores no revelan si existen perfiles de terceros.
+
+Internacionalización:
+
+- Esta iteración no añade UI ni textos visibles localizados.
+- Los códigos de error son estables para que la UI pueda traducirlos en fases posteriores.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores:
+
+- `OPENING_HOURS_INVALID` para payload semanal incoherente.
+- `VENUE_PROFILE_NOT_FOUND` si el propietario no tiene local vigente.
+
+Logs, auditoría y observabilidad:
+
+- No se añaden logs ni auditoría específica porque todavía no hay cambios con reservas afectadas.
+- Los índices de franjas y bloqueos preparan consultas eficientes para disponibilidad pública.
+- Las métricas de disponibilidad quedan para fases posteriores de observabilidad.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests creados:
+
+- `OpeningHoursServiceTests`: reemplazo semanal, reutilización de filas, días cerrados, snapshot
+  incompleto, duplicados, rangos inválidos y ausencia de local vigente.
+- `OpeningHoursControllerTests`: uso del `ownerUserId` autenticado, serialización de respuesta y
+  error estable.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests" test
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests" test
+```
+
+Resultados:
+
+- Spotless: correcto.
+- Tests focalizados: 5 tests, 0 fallos, 0 errores, 0 omitidos.
+- Checkstyle: correcto dentro del ciclo Maven focalizado.
+- Convenciones backend: correctas.
+- Validación de español: correcta.
+- Whitespace: correcto.
+- Test de migraciones: ejecución parcial útil. Arrancó Testcontainers, validó 17 migraciones y aplicó
+  Flyway hasta detectar una discrepancia `smallint`/`integer` en `VenueOpeningHours.weekday`. Se
+  corrigió `V17` para usar `integer`. El rerun posterior no pudo completar porque el entorno actual
+  no expuso un Docker válido para Testcontainers.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- Falta repetir `DatabaseMigrationIntegrationTests` después del ajuste de tipo cuando Docker vuelva a
+  estar disponible para Testcontainers.
+- `TimeSlots` y `AvailabilityBlocks` quedan preparados a nivel de esquema, pero sus entidades y casos
+  de uso llegarán en tareas posteriores.
+- No se recalcula todavía disponibilidad pública al cambiar horarios; esa parte pertenece a `4.3` y
+  siguientes.
+- No hay UI privada todavía; el panel se implementará en `4.12`.
+- Los bloqueos por servicio/recurso no tienen FK hasta que existan las tablas de Fase 5.
+
+### Criterio de cierre
+
+Las tareas se cierran porque existe una migración versionada para horarios, franjas y bloqueos, y
+porque el backend ya permite al propietario consultar y sustituir un horario semanal completo con
+validaciones de negocio, aislamiento por propietario, errores estables, tests focalizados y
+validadores transversales correctos.

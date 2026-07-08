@@ -11,13 +11,88 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-08
-- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17` y `3.1` a
-  `3.14`.
-- Siguiente tarea pendiente recomendada: `4.1. Crear migraciones de venue_opening_hours, time_slots y availability_blocks.`
-- Observación: la Fase 3 ya dispone de endpoint público de búsqueda con texto, categoría,
-  ubicación, radio, ordenación, estado resumido, pantalla de inicio, pantalla de resultados con
-  tarjetas, panel responsive de filtros, carriles iniciales de descubrimiento y estado vacío de local
-  no encontrado. La fase queda cerrada con cobertura focalizada y contrato ES/EN explícito.
+- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
+  `3.14` y `4.1` a `4.2`.
+- Siguiente tarea pendiente recomendada: `4.3. Implementar días cerrados y reservas activas/inactivas por día.`
+- Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
+  disponibilidad, además de API privada para consultar y sustituir el horario semanal completo del
+  local autenticado.
+
+## Conversación 77 - Migraciones y horario semanal de disponibilidad
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se inició la rama de fase `phase/4-horarios-franjas-disponibilidad`.
+  - Se confirmaron `4.1` y `4.2` como las dos siguientes tareas pendientes tras revisar `tasks.md`,
+    `requirements.md`, `design.md`, seguimiento e implementación técnica.
+  - Se creó la migración `V17__create_availability_schedule_tables.sql` con las tablas físicas
+    `VenueOpeningHours`, `TimeSlots` y `AvailabilityBlocks`.
+  - Se implementó el módulo backend `availability` para configuración semanal privada del local.
+  - Se añadió `GET /api/venue/me/opening-hours` para consultar el horario vigente.
+  - Se añadió `PUT /api/venue/me/opening-hours` para sustituir de forma transaccional los siete días
+    ISO de la semana.
+  - Se validó que el payload no acepta IDs de local ni propietario y que el alcance procede del
+    principal autenticado.
+  - Se añadieron tests unitarios de servicio y controlador para reemplazo semanal, validaciones,
+    propiedad por principal y errores estables.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V17__create_availability_schedule_tables.sql`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/OpeningHoursController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/OpeningHoursControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityExceptionHandler.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/AvailabilityErrorResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHourRequest.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHourResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHoursResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/OpeningHoursUpdateRequest.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourEntity.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/OpeningHoursInvalidException.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/OpeningHoursService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/OpeningHoursServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/controller/OpeningHoursControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/service/OpeningHoursServiceTests.java`.
+  - `package-info.java` de subpaquetes `availability`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-005 Estado público del local`.
+  - `RF-006 Calendario de disponibilidad`.
+  - `RF-010 Gestión de horarios`.
+  - `RF-011 Gestión de franjas`.
+  - `RF-012 Gestión de disponibilidad en tiempo real`.
+  - `RNF-001 Seguridad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `4.1. Crear migraciones de venue_opening_hours, time_slots y availability_blocks`.
+  - `4.2. Implementar configuración de horario semanal`.
+  - Prepara `4.3`, `4.4`, `4.5`, `4.6`, `4.7`, `4.8`, `4.9` y `4.10`.
+- Tareas completadas:
+  - `4.1. Crear migraciones de venue_opening_hours, time_slots y availability_blocks`.
+  - `4.2. Implementar configuración de horario semanal`.
+- Siguiente tarea pendiente recomendada:
+  - `4.3. Implementar días cerrados y reservas activas/inactivas por día.`
+- Decisiones o aclaraciones relevantes:
+  - La configuración semanal se reemplaza como snapshot completo de siete días para evitar estados
+    parciales ambiguos.
+  - Los días usan numeración ISO-8601: lunes `1`, domingo `7`.
+  - Un día cerrado no puede tener horas ni reservas activas.
+  - Un día abierto exige `opensAt < closesAt`; puede dejar `reservationsEnabled=false` para mantener
+    horario operativo sin permitir reservas.
+  - La migración crea `TimeSlots` y `AvailabilityBlocks` sin FKs a servicios o recursos todavía no
+    existentes; las columnas quedan preparadas para fases posteriores.
+  - Evidencia correcta: `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests" test`
+    pasó con 5 tests, 0 fallos, 0 errores y 0 omitidos, incluyendo Spotless y Checkstyle.
+  - Evidencia correcta: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check`.
+  - Evidencia parcial: `mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests" test`
+    arrancó Testcontainers, validó 17 migraciones y aplicó Flyway hasta detectar una discrepancia de
+    tipo entre SQL y JPA en `VenueOpeningHours.weekday`; se corrigió la migración de `smallint` a
+    `integer`. El rerun posterior con Testcontainers no pudo completar porque el entorno actual no
+    expuso un Docker válido para Testcontainers.
 
 ## Conversación 1 - Creación de especificación base
 

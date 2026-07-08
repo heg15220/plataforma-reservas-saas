@@ -99,8 +99,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 6. Fase 4 - Horarios, franjas y disponibilidad
 
-- [ ] 4.1. Crear migraciones de `venue_opening_hours`, `time_slots` y `availability_blocks`.
-- [ ] 4.2. Implementar configuración de horario semanal.
+- [x] 4.1. Crear migraciones de `venue_opening_hours`, `time_slots` y `availability_blocks`.
+- [x] 4.2. Implementar configuración de horario semanal.
 - [ ] 4.3. Implementar días cerrados y reservas activas/inactivas por día.
 - [ ] 4.4. Implementar creación manual de franjas.
 - [ ] 4.5. Implementar generación automática de franjas por duración.
