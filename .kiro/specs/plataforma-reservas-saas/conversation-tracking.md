@@ -10,9 +10,9 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-01
-- Tareas completadas en `tasks.md`: `0.1` a `0.15` y `1.1` a `1.22`.
-- Siguiente tarea pendiente recomendada: `2.1. Crear migraciones de venues, categories y venue_images.`
+- Fecha de última actualización: 2026-07-08
+- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22` y `2.1` a `2.15`.
+- Siguiente tarea pendiente recomendada: `2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local.`
 - Observación: la Fase 1 queda cerrada con cobertura integrada del recorrido autenticado de
   propietario y del aislamiento horizontal de solicitudes y documentos empresariales.
 
@@ -3056,3 +3056,70 @@ Fuente de verdad del avance:
   - La unicidad de posición es diferible para permitir reordenaciones atómicas.
   - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests" test` correcto
     con 8 tests, 0 fallos, Spotless y Checkstyle correctos.
+
+## Conversación 65 - CRUD privado de pestañas personalizadas
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se confirmó `2.15` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica.
+  - Se implementó el CRUD privado de pestañas personalizadas del local autenticado: listado,
+    creación, edición, reordenación exacta, activación/desactivación y borrado con compactación.
+  - Se añadieron entidad JPA, DAO con consultas explícitas por propietario, servicio transaccional,
+    saneador HTML conservador, DTOs, conversor y controlador REST bajo `/api/venue/me/custom-tabs`.
+  - El servicio deriva siempre el local desde el `ownerUserId` autenticado; no acepta `venueId` desde
+    el cliente y responde como no encontrado ante accesos fuera de propiedad.
+  - Se normalizan títulos a texto plano, se sanea contenido HTML con allowlist sin atributos y se
+    exige ES/EN antes de activar una pestaña.
+  - Se mantienen posiciones contiguas `0..n-1`, límite de 16 pestañas y formato persistido
+    `safe_html`.
+- Archivos modificados:
+  - Nuevos backend:
+    - `VenueCustomTabEntity`, `VenueCustomTabDao`.
+    - `VenueCustomTabService`, `VenueCustomTabServiceImpl`,
+      `VenueCustomTabHtmlSanitizer`, `VenueCustomTabInvalidException`,
+      `VenueCustomTabLimitException`.
+    - `VenueCustomTabController`, `VenueCustomTabControllerImpl`.
+    - `VenueCustomTabConverter`.
+    - DTOs `VenueCustomTabRequest`, `VenueCustomTabResponse`, `VenueCustomTabOrderRequest`,
+      `VenueCustomTabLocalizedTextDto` y `VenueCustomTabCommand`.
+    - Tests `VenueCustomTabServiceTests` y `VenueCustomTabControllerTests`.
+  - Modificados:
+    - `CategoryDao`, ajustado para que la query explícita sea compatible con el validador de
+      convenciones y Checkstyle.
+    - `VenueProfileExceptionHandler`.
+    - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+    - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+    - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.15. Implementar CRUD de pestañas personalizadas del local para propietario`.
+  - Prepara `2.16` porque deja lectura privada, orden, activación y contenido saneado listos para
+    proyectarse en la ficha pública.
+  - Prepara `2.17` porque ya existen pruebas base de permisos, orden, sanitización e i18n del CRUD.
+- Tareas completadas:
+  - `2.15. Implementar CRUD de pestañas personalizadas del local para propietario`.
+- Siguiente tarea pendiente recomendada:
+  - `2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local`.
+- Decisiones o aclaraciones relevantes:
+  - En esta iteración no se implementa lectura pública; queda para `2.16`.
+  - El contenido HTML se sanea de forma conservadora: solo etiquetas editoriales simples sin
+    atributos (`p`, `br`, `ul`, `ol`, `li`, `strong`, `em`, `b`, `i`). Cualquier texto queda
+    escapado.
+  - No se añade dependencia externa de sanitización para evitar ampliar superficie y descargas; si se
+    requieren enlaces, tablas o menús estructurados, deberá definirse allowlist específica.
+  - El error REST de validación es `VENUE_CUSTOM_TAB_INVALID`; el límite usa
+    `VENUE_CUSTOM_TAB_LIMIT_REACHED`.
+  - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,VenueCustomTabServiceTests,VenueCustomTabControllerTests" test`
+    correcto con 15 tests, 0 fallos, Spotless y Checkstyle correctos.
+  - Evidencia transversal: `npm run spanish:text:check` y `npm run backend:conventions:check`
+    correctos.

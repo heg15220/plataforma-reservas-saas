@@ -13556,3 +13556,380 @@ La tarea se cierra porque la migración V16 crea el modelo físico necesario par
 personalizadas con pertenencia a local, orden, activación, campos localizados, formato de contenido
 seguro, constraints e índices; y la suite de migraciones demuestra que el esquema aplica desde cero y
 rechaza datos inválidos relevantes.
+
+## Iteración 2.15 - CRUD privado de pestañas personalizadas del local
+
+### Identificador de tarea
+
+`2.15. Implementar CRUD de pestañas personalizadas del local para propietario`.
+
+### Fecha
+
+2026-07-08.
+
+### Objetivo técnico
+
+El objetivo de esta iteración es convertir el modelo relacional creado en `2.14` en un caso de uso
+privado operable por propietarios de locales. El incremento permite que el local autenticado liste,
+cree, edite, ordene, active, desactive y elimine sus pestañas personalizadas sin exponer `venueId`,
+propietario, identidad empresarial ni detalles de constraints.
+
+La tarea no renderiza aún las pestañas en la ficha pública. Esa exposición queda reservada para
+`2.16`, que deberá reutilizar las pestañas activas y ordenadas ya saneadas por este CRUD.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-004 Ficha pública del local`: prepara título, contenido localizado, orden y estado activo para
+  mostrar pestañas como carta, menú, precios, normas o servicios.
+- `RF-009 Gestión de perfil público`: implementa creación, edición, orden, activación y
+  desactivación de pestañas propias.
+- `RF-031 Internacionalización de textos`: conserva el contrato `{ sourceLocale, values }` con
+  locales `es` y `en`.
+- `RNF-001 Seguridad`: sanea contenido HTML antes de persistir y traduce errores sin filtrar datos
+  internos.
+- `RNF-002 Privacidad`: todas las operaciones se resuelven desde el propietario autenticado y no
+  admiten IDs de local enviados por cliente.
+- `RNF-003 Concurrencia y consistencia`: las mutaciones bloquean el perfil vigente con
+  `PESSIMISTIC_WRITE` y usan la unicidad diferible de posición preparada en V16.
+- `RNF-008 Calidad y mantenibilidad`: se mantiene separación entidad/DAO/servicio/controlador/DTO y
+  cobertura focalizada.
+- `RNF-009 Internacionalización y localización`: una pestaña activa exige contenido visible en ES y
+  EN; los borradores pueden conservar solo idioma fuente.
+- `RNF-011 Convenciones de nomenclatura`: tabla física `VenueCustomTabs`, columnas `lowerCamelCase`,
+  clases Java `UpperCamelCase`, DAO con `@Query`, controladores/servicios por interfaz y DTOs REST.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueCustomTabEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueCustomTabDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueCustomTabLocalizedTextDto.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueCustomTabRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueCustomTabResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueCustomTabOrderRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueCustomTabCommand.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/converter/VenueCustomTabConverter.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCustomTabService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCustomTabServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCustomTabHtmlSanitizer.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCustomTabInvalidException.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenueCustomTabLimitException.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenueCustomTabController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenueCustomTabControllerImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueCustomTabServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenueCustomTabControllerTests.java`.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/CategoryDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenueProfileExceptionHandler.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminaron archivos.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+El incremento sigue el patrón ya usado por perfil, imagen principal y galería:
+
+- `VenueCustomTabEntity` encapsula el mapeo JPA de `VenueCustomTabs` y documenta que el contenido
+  persistido debe llegar saneado.
+- `VenueCustomTabDao` declara consultas HQL explícitas por propietario autenticado, nunca por
+  `venueId` arbitrario.
+- `VenueCustomTabServiceImpl` concentra reglas de negocio, transacciones, bloqueo de perfil vigente,
+  saneamiento, validación i18n, límite y orden.
+- `VenueCustomTabControllerImpl` adapta REST al caso de uso y usa `AuthenticatedAccount.userId()`
+  como única entrada de propiedad.
+- `VenueCustomTabConverter` transforma DTOs en comandos y entidades en respuestas sin autorizar ni
+  sanear; esas responsabilidades permanecen en el servicio.
+- `CategoryDao` se ajusta con strings HQL concatenados para que `@Query` permanezca dentro de la
+  ventana que valida `validate-backend-conventions.mjs` sin superar el límite de longitud de
+  Checkstyle.
+
+Se elige un saneador interno conservador en vez de incorporar una dependencia externa porque el MVP
+solo necesita rich text básico para cartas, normas o información textual. El saneador mantiene una
+allowlist de etiquetas editoriales sin atributos: `p`, `br`, `ul`, `ol`, `li`, `strong`, `em`, `b` e
+`i`. Cualquier texto fuera de etiquetas permitidas se escapa. Los atributos se descartan siempre, de
+modo que `onclick`, `style`, `href`, URLs `javascript:` o HTML desconocido no pueden persistirse como
+superficie ejecutable.
+
+La decisión tiene una limitación explícita: enlaces, tablas, cartas estructuradas y listas de precios
+ricas deberán diseñarse más adelante como JSON estructurado o como una allowlist revisada.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No se añaden migraciones nuevas. Se reutiliza la tabla `VenueCustomTabs` de V16:
+
+- `id`.
+- `venueId`.
+- `position`.
+- `isActive`.
+- `titleI18n`.
+- `contentI18n`.
+- `contentFormat`.
+- `createdAt`.
+- `updatedAt`.
+
+Mapeo JPA:
+
+- `VenueCustomTabEntity` usa `@Table(name = "\"VenueCustomTabs\"")`.
+- `venue` es `@ManyToOne(fetch = LAZY, optional = false)` con `@JoinColumn(name = "\"venueId\"")`.
+- `titleI18n` y `contentI18n` usan `@JdbcTypeCode(SqlTypes.JSON)` y `columnDefinition = "jsonb"`.
+- `active` se mapea a la columna física `"isActive"`.
+
+Restricciones aplicadas por el servicio antes de llegar a base:
+
+- Máximo 16 pestañas por local.
+- Posiciones contiguas generadas por servidor.
+- Reordenación mediante permutación exacta de todos los IDs propios.
+- Títulos localizados de máximo 80 caracteres.
+- Contenidos localizados de máximo 20.000 caracteres.
+- Contenido visible obligatorio en el idioma fuente.
+- Traducciones ES/EN obligatorias al activar.
+- `contentFormat = safe_html` fijo.
+
+Restricciones mantenidas por base:
+
+- FK a `Venues` con borrado en cascada.
+- Rango `position BETWEEN 0 AND 15`.
+- Unicidad diferible `("venueId", "position")`.
+- Estructura JSONB de `titleI18n` y `contentI18n`.
+- Rechazo adicional de `<script`, `javascript:` y handlers inline evidentes.
+- `updatedAt >= createdAt`.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoints privados:
+
+- `GET /api/venue/me/custom-tabs`
+  - Lista pestañas del local vigente del propietario autenticado, ordenadas por `position`.
+- `POST /api/venue/me/custom-tabs`
+  - Crea una pestaña al final de la lista.
+  - Devuelve `201 Created` con `Location: /api/venue/me/custom-tabs/{tabId}`.
+- `PUT /api/venue/me/custom-tabs/{tabId}`
+  - Edita título, contenido y estado `active` de una pestaña propia.
+- `PUT /api/venue/me/custom-tabs/order`
+  - Reordena con el snapshot completo de IDs propios.
+- `DELETE /api/venue/me/custom-tabs/{tabId}`
+  - Elimina una pestaña propia y compacta posiciones restantes.
+
+DTOs:
+
+- `VenueCustomTabRequest`.
+- `VenueCustomTabLocalizedTextDto`.
+- `VenueCustomTabOrderRequest`.
+- `VenueCustomTabResponse`.
+- `VenueCustomTabCommand`.
+
+Servicios y módulos:
+
+- `VenueCustomTabService`.
+- `VenueCustomTabServiceImpl`.
+- `VenueCustomTabHtmlSanitizer`.
+- `VenueCustomTabConverter`.
+- `VenueCustomTabDao`.
+
+No se implementan jobs ni componentes frontend en esta tarea.
+
+### Flujos de ejecución relevantes
+
+#### Listado privado
+
+1. El filtro de sesión autentica al usuario y exige rol `venue_owner` por namespace `/api/venue/me`.
+2. El controlador recibe `AuthenticatedAccount`.
+3. El servicio verifica que existe un local vigente para `ownerUserId`.
+4. El DAO devuelve pestañas propias ordenadas por `position`.
+5. El conversor proyecta DTOs sin local ni propietario.
+
+#### Creación
+
+1. El servicio bloquea el local vigente del propietario con `findCurrentByOwnerUserIdForUpdate`.
+2. Lee pestañas existentes para calcular posición final.
+3. Rechaza si ya hay 16 pestañas.
+4. Normaliza título a texto plano.
+5. Sanea contenido HTML.
+6. Valida idioma fuente, longitudes y traducciones si `active = true`.
+7. Persiste con `contentFormat = safe_html`, `createdAt` y `updatedAt`.
+
+#### Edición y activación
+
+1. El servicio bloquea el local vigente.
+2. Busca la pestaña por `tabId` y `ownerUserId`.
+3. Si no pertenece al actor, devuelve `VenueProfileNotFoundException`.
+4. Reaplica normalización, saneamiento y validación.
+5. Persiste título, contenido, estado y `updatedAt`.
+
+#### Reordenación
+
+1. El servicio bloquea el local vigente.
+2. Carga todas las pestañas propias ordenadas.
+3. Verifica que el request contiene exactamente los mismos IDs, sin duplicados ni omisiones.
+4. Asigna posiciones `0..n-1`.
+5. Guarda todo en la misma transacción.
+
+#### Borrado
+
+1. El servicio bloquea el local vigente.
+2. Localiza la pestaña propia con bloqueo.
+3. Borra la fila y fuerza `flush`.
+4. Recarga pestañas restantes y compacta posiciones.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- Payload validado con Bean Validation en DTOs.
+- `sourceLocale` solo `es` o `en`.
+- Mapa de valores entre 1 y 2 locales soportados.
+- Título fuente no vacío y sin etiquetas.
+- Contenido fuente con texto visible después de retirar etiquetas.
+- Límites de longitud coherentes con V16.
+- Pestaña activa exige título y contenido visibles en ES y EN.
+- Reordenación parcial, duplicada o con IDs ajenos se rechaza.
+
+Permisos:
+
+- Los endpoints viven bajo `/api/venue/me/custom-tabs`, protegido por la configuración existente
+  para `venue_owner`.
+- Ningún endpoint acepta `venueId`.
+- El DAO filtra por `tab.venue.ownerUser.id = :ownerUserId` y `tab.venue.status <> 'archived'`.
+- Un ID de pestaña ajeno se transforma en `VENUE_PROFILE_NOT_FOUND`, sin revelar existencia.
+
+Seguridad:
+
+- El saneador elimina etiquetas no permitidas, descarta atributos y escapa texto.
+- `javascript:` se retira antes de persistir.
+- La base conserva constraints defensivos contra patrones peligrosos evidentes.
+- El advice expone solo códigos estables: `VENUE_CUSTOM_TAB_INVALID` y
+  `VENUE_CUSTOM_TAB_LIMIT_REACHED`.
+
+Privacidad:
+
+- La respuesta no contiene propietario, cuenta empresarial, `venueId`, identificador fiscal ni datos
+  de verificación.
+- Los errores de propiedad cruzada no distinguen entre inexistente y ajeno.
+
+Internacionalización:
+
+- Se reutiliza `LocalizedText` para persistencia.
+- Borradores pueden existir con idioma fuente.
+- Activar obliga ES/EN porque la futura ficha pública debe resolver locale sin mostrar huecos.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores de dominio:
+
+- `VenueCustomTabInvalidException`
+  - Payload, i18n, contenido, orden, longitudes o constraints no válidos.
+  - REST: `400` con `VENUE_CUSTOM_TAB_INVALID`.
+- `VenueCustomTabLimitException`
+  - Máximo de 16 pestañas alcanzado.
+  - REST: `409` con `VENUE_CUSTOM_TAB_LIMIT_REACHED`.
+- `VenueProfileNotFoundException`
+  - No hay local vigente, pestaña inexistente o pestaña ajena.
+  - REST: `404` con `VENUE_PROFILE_NOT_FOUND`.
+
+No se añaden logs productivos ni auditoría persistente. El cambio editorial de pestañas queda
+preparado para futura auditoría administrativa, pero no se implementa en el MVP actual de la tarea.
+
+### Tests añadidos o modificados
+
+`VenueCustomTabServiceTests`:
+
+- Verifica creación al final de la lista.
+- Verifica normalización de título y saneamiento de contenido con tags peligrosos, atributos y
+  `javascript:`.
+- Verifica rechazo de pestaña activa sin traducción ES/EN completa.
+- Verifica rechazo de órdenes parciales o no exactos.
+- Verifica reordenación exacta.
+- Verifica borrado con compactación.
+- Verifica bloqueo de operaciones cuando el propietario autenticado no tiene local editable.
+- Verifica límite de 16 pestañas.
+
+`VenueCustomTabControllerTests`:
+
+- Verifica que listar, crear, editar, reordenar y borrar usan `AuthenticatedAccount.userId()`.
+- Verifica `Location` estable en creación.
+- Verifica que la respuesta no requiere exponer `venueId`.
+- Verifica mapeo REST de errores `VENUE_CUSTOM_TAB_INVALID` y
+  `VENUE_CUSTOM_TAB_LIMIT_REACHED`.
+
+`DatabaseMigrationIntegrationTests`:
+
+- Se ejecuta sin cambios para demostrar que la nueva entidad JPA valida contra V16 y que Flyway
+  aplica las 16 migraciones desde cero.
+
+### Comandos usados para verificación
+
+```text
+mvn -f apps/api/pom.xml "-DskipTests" test
+```
+
+Resultado:
+
+- Spotless Java: correcto.
+- Checkstyle Java: correcto.
+- Compilación main/test: correcta.
+- Tests omitidos por `-DskipTests`.
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenueCustomTabServiceTests,VenueCustomTabControllerTests" test
+```
+
+Resultado:
+
+- `VenueCustomTabServiceTests`: 5 tests, 0 fallos.
+- `VenueCustomTabControllerTests`: 2 tests, 0 fallos.
+- Spotless y Checkstyle: correctos.
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,VenueCustomTabServiceTests,VenueCustomTabControllerTests" test
+```
+
+Resultado final:
+
+- Flyway validó y aplicó 16 migraciones desde base vacía.
+- Hibernate inicializó el contexto con `VenueCustomTabEntity`.
+- `DatabaseMigrationIntegrationTests`: 8 tests, 0 fallos.
+- `VenueCustomTabControllerTests`: 2 tests, 0 fallos.
+- `VenueCustomTabServiceTests`: 5 tests, 0 fallos.
+- Total: 15 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless y Checkstyle: correctos.
+- Build Maven: `BUILD SUCCESS`.
+
+```text
+npm run spanish:text:check
+npm run backend:conventions:check
+```
+
+Resultado transversal:
+
+- Validación de español, UTF-8, mojibake, tildes frecuentes y signos de apertura: correcta.
+- Convenciones backend de Java, JPA, DAOs, capas REST y migraciones: correctas.
+- Incidencia corregida durante el cierre: `CategoryDao` tenía queries explícitas válidas, pero una
+  firma quedaba fuera de la ventana de detección del validador. Se reescribieron las queries con
+  strings concatenados para satisfacer simultáneamente el validador propio y Checkstyle.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- La lectura pública de pestañas activas no está implementada; queda para `2.16`.
+- La UI de gestión de pestañas en panel no forma parte de esta tarea. El backend queda preparado
+  para integrarla posteriormente.
+- El saneador HTML es deliberadamente conservador. No permite atributos, enlaces, tablas ni embeds.
+  Si el producto necesita cartas complejas, convendrá modelarlas como JSON estructurado o revisar
+  una dependencia de sanitización con allowlist auditada.
+- No existe auditoría editorial de cambios de pestañas. Si administración necesita trazabilidad
+  completa, deberá añadirse una tabla o evento de auditoría.
+- No se ejecutó `npm run verify` completo porque esta tarea no modifica frontend y la verificación
+  crítica era backend/JPA/Flyway. La cobertura focalizada incluye compilación, estilo, migraciones y
+  tests del nuevo CRUD.
+
+### Criterio de cierre
+
+La tarea se cierra porque el propietario autenticado ya dispone de contratos REST privados para
+listar, crear, editar, ordenar, activar/desactivar y eliminar pestañas personalizadas propias; el
+servicio valida propiedad, orden, i18n y contenido seguro antes de persistir; la entidad JPA encaja
+con la migración V16; y la evidencia automatizada demuestra 15 tests correctos con estilo y
+compilación Maven limpios.

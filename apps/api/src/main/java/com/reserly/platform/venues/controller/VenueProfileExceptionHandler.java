@@ -5,6 +5,8 @@ import com.reserly.platform.venues.dto.VenueProfileErrorResponse;
 import com.reserly.platform.venues.dto.VenuePublicationErrorResponse;
 import com.reserly.platform.venues.image.VenueImageStorageException;
 import com.reserly.platform.venues.image.VenueImageValidationException;
+import com.reserly.platform.venues.service.VenueCustomTabInvalidException;
+import com.reserly.platform.venues.service.VenueCustomTabLimitException;
 import com.reserly.platform.venues.service.VenueDescriptionTooLongException;
 import com.reserly.platform.venues.service.VenueGalleryLimitException;
 import com.reserly.platform.venues.service.VenueProfileConflictException;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
       VenueProfileControllerImpl.class,
       VenueMainImageControllerImpl.class,
       VenueGalleryControllerImpl.class,
+      VenueCustomTabControllerImpl.class,
       VenuePublicProfileControllerImpl.class
     })
 public class VenueProfileExceptionHandler {
@@ -42,6 +45,18 @@ public class VenueProfileExceptionHandler {
   public ResponseEntity<VenueProfileErrorResponse> handleGalleryLimit() {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(new VenueProfileErrorResponse("VENUE_GALLERY_LIMIT_REACHED"));
+  }
+
+  @ExceptionHandler(VenueCustomTabLimitException.class)
+  public ResponseEntity<VenueProfileErrorResponse> handleCustomTabLimit() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new VenueProfileErrorResponse("VENUE_CUSTOM_TAB_LIMIT_REACHED"));
+  }
+
+  @ExceptionHandler(VenueCustomTabInvalidException.class)
+  public ResponseEntity<VenueProfileErrorResponse> handleInvalidCustomTab() {
+    return ResponseEntity.badRequest()
+        .body(new VenueProfileErrorResponse("VENUE_CUSTOM_TAB_INVALID"));
   }
 
   @ExceptionHandler(VenueImageValidationException.class)
