@@ -2,6 +2,7 @@ package com.reserly.platform.availability.persistence;
 
 import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -33,4 +34,15 @@ public interface VenueOpeningHourDao extends JpaRepository<VenueOpeningHourEntit
       order by hour.weekday
       """)
   List<VenueOpeningHourEntity> findAllOwnedForUpdate(@Param("ownerUserId") UUID ownerUserId);
+
+  /** Resuelve el horario semanal aplicable a una fecha concreta por weekday ISO. */
+  @Query(
+      """
+      select hour from VenueOpeningHourEntity hour
+      where hour.venue.ownerUser.id = :ownerUserId
+        and hour.venue.status <> 'archived'
+        and hour.weekday = :weekday
+      """)
+  Optional<VenueOpeningHourEntity> findOwnedByWeekday(
+      @Param("ownerUserId") UUID ownerUserId, @Param("weekday") int weekday);
 }

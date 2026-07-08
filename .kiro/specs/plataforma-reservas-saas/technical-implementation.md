@@ -17372,3 +17372,253 @@ Las tareas se cierran porque existe una migración versionada para horarios, fra
 porque el backend ya permite al propietario consultar y sustituir un horario semanal completo con
 validaciones de negocio, aislamiento por propietario, errores estables, tests focalizados y
 validadores transversales correctos.
+
+## Iteración 2026-07-08 - Tareas 4.3 y 4.4, excepciones diarias y franjas manuales
+
+### Identificador exacto de las tareas completadas
+
+- `4.3. Implementar días cerrados y reservas activas/inactivas por día`.
+- `4.4. Implementar creación manual de franjas`.
+
+### Objetivo técnico
+
+Extender la base de disponibilidad para permitir excepciones por fecha concreta y creación manual de
+franjas. La iteración permite cerrar un día completo, mantenerlo operativo con reservas inactivas o
+volver al horario semanal, y permite crear franjas manuales reservables cuando la fecha admite
+reservas.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-005`: el estado de local y franja depende de horario, reservas activas y bloqueos.
+- `RF-006`: el calendario necesita distinguir días disponibles, cerrados y sin disponibilidad.
+- `RF-010`: el local puede marcar días cerrados y activar/desactivar reservas por día.
+- `RF-011`: cada franja manual tiene fecha, inicio, fin, capacidad y estado.
+- `RF-012`: un cierre de día completo debe tener efecto inmediato sobre nuevas reservas.
+- `RNF-011`: se preservan tablas `UpperCamelCase`, columnas `lowerCamelCase`, DAOs con `@Query` y
+  contratos REST separados.
+
+Decisiones:
+
+- Las excepciones diarias se modelan sobre `AvailabilityBlocks` para no duplicar conceptos de cierre.
+- Se añade `AvailabilityBlocks.kind` mediante `V18` con valores `manual_block`, `closed_day` y
+  `reservations_disabled`.
+- Un día cerrado y un día con reservas inactivas son bloqueos de día completo (`scope=venue`,
+  `startsAt=null`, `endsAt=null`), pero se diferencian por `kind`.
+- La creación manual de franjas se limita por ahora a `serviceId=null`; servicios y recursos se
+  integrarán en Fase 5.
+- Las franjas manuales nacen `available`, con `createdByRule=false`.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/resources/db/migration/V18__add_availability_block_kind.sql`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityDayController.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityDayControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotController.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/AvailabilityDayRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/AvailabilityDayResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/AvailabilityBlockDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/AvailabilityBlockEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotEntity.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayInvalidException.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayService.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayServiceImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotInvalidException.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotService.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/AvailabilityDayControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/TimeSlotControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/AvailabilityDayServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/TimeSlotServiceTests.java`.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityExceptionHandler.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourDao.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminan archivos.
+
+### Arquitectura aplicada y razones técnicas
+
+Se mantiene el módulo `availability` por capas:
+
+- `AvailabilityDayController` y `TimeSlotController` exponen contratos privados bajo `/api/venue/me`.
+- `AvailabilityDayServiceImpl` transforma la intención de día cerrado o reservas inactivas en
+  bloqueos persistidos.
+- `TimeSlotServiceImpl` valida la creación manual contra horario semanal, bloqueo diario y solapes.
+- `AvailabilityBlockDao` y `TimeSlotDao` acotan siempre por `venue.ownerUser.id`.
+
+La API no acepta `venueId`, estado interno ni banderas de origen. Todas las decisiones de ownership,
+estado inicial y procedencia manual las toma backend.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+Migración `V18`:
+
+- Añade `AvailabilityBlocks.kind varchar(32) NOT NULL DEFAULT 'manual_block'`.
+- Restringe `kind` a `manual_block`, `closed_day`, `reservations_disabled`.
+- Añade índice `ixAvailabilityBlocksVenueDateKind` para resolver excepciones de fecha por local.
+
+Entidades:
+
+- `AvailabilityBlockEntity` mapea bloqueo, alcance, tipo, fecha, rango opcional, razón y usuario
+  creador.
+- `TimeSlotEntity` mapea franja, fecha, weekday, inicio, fin, capacidad, estado, origen por regla,
+  versión y timestamps.
+
+Restricciones funcionales aplicadas en servicio:
+
+- Solo puede haber una intención efectiva de día completo por fecha; si hay duplicados históricos, el
+  servicio conserva uno y elimina sobrantes al reemplazar.
+- Las franjas manuales no pueden solaparse con otras franjas del mismo local y fecha.
+- Las franjas manuales deben estar contenidas en el horario semanal abierto y con reservas activas.
+
+### Endpoints, contratos, servicios, componentes, jobs y módulos implementados
+
+Endpoints:
+
+- `GET /api/venue/me/availability-days?date=YYYY-MM-DD`
+  - Devuelve la excepción configurada o el estado derivado del horario semanal.
+- `PUT /api/venue/me/availability-days`
+  - Reemplaza la excepción de una fecha.
+  - Payload: `date`, `closed`, `reservationsEnabled`, `reason`.
+- `GET /api/venue/me/time-slots?date=YYYY-MM-DD`
+  - Lista franjas privadas de una fecha.
+- `POST /api/venue/me/time-slots`
+  - Crea una franja manual disponible.
+  - Payload: `date`, `startsAt`, `endsAt`, `capacity`.
+
+Servicios:
+
+- `AvailabilityDayService.find`.
+- `AvailabilityDayService.replace`.
+- `TimeSlotService.list`.
+- `TimeSlotService.create`.
+
+No se implementan jobs ni generación automática; eso queda para `4.5`.
+
+### Flujos de ejecución relevantes
+
+Excepción diaria:
+
+1. El controlador recibe principal y fecha o payload.
+2. El servicio valida fecha y flags.
+3. Bloquea el local vigente del propietario.
+4. Carga bloqueos de día completo existentes.
+5. Si `closed=true`, persiste `kind=closed_day`.
+6. Si `closed=false` y `reservationsEnabled=false`, persiste `kind=reservations_disabled`.
+7. Si `closed=false` y `reservationsEnabled=true`, elimina la excepción y vuelve al horario semanal.
+
+Creación manual de franja:
+
+1. El controlador recibe principal y payload sin `venueId`.
+2. El servicio valida fecha, horas y capacidad.
+3. Bloquea el local vigente.
+4. Resuelve el `weekday` ISO desde la fecha.
+5. Carga el horario semanal de ese weekday.
+6. Rechaza si el día semanal está cerrado o sin reservas.
+7. Rechaza si existe excepción de día completo.
+8. Rechaza si la franja queda fuera del horario o se solapa.
+9. Persiste `TimeSlotEntity` con estado `available`.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Validaciones:
+
+- Día cerrado no puede mantener reservas activas.
+- Fecha obligatoria.
+- Franja con `startsAt < endsAt`.
+- Capacidad mínima `1`.
+- Franja dentro de horario semanal.
+- Día no cerrado y reservas activas.
+- Sin solapes.
+
+Permisos y privacidad:
+
+- Endpoints bajo `/api/venue/me`, protegidos por sesión y rol `venue_owner`.
+- Ningún payload acepta `venueId`, `ownerUserId`, `status`, `createdByRule` ni `version`.
+- DAOs filtran por propietario autenticado.
+- Respuestas de error usan códigos estables y no exponen constraints internas.
+
+Internacionalización:
+
+- No se añade UI visible ni catálogo nuevo.
+- Los códigos `AVAILABILITY_DAY_INVALID` y `TIME_SLOT_INVALID` quedan listos para traducción en UI.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores:
+
+- `AVAILABILITY_DAY_INVALID`.
+- `TIME_SLOT_INVALID`.
+- `VENUE_PROFILE_NOT_FOUND`.
+
+Auditoría:
+
+- `AvailabilityBlockEntity.createdByUser` persiste el usuario que crea la excepción diaria.
+- Todavía no se auditan reservas afectadas porque no existen reservas en esta fase.
+
+Observabilidad:
+
+- Índices por fecha y tipo de bloqueo preparan consultas de calendario.
+- No se añaden métricas hasta fases de observabilidad.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests creados:
+
+- `AvailabilityDayServiceTests`.
+- `AvailabilityDayControllerTests`.
+- `TimeSlotServiceTests`.
+- `TimeSlotControllerTests`.
+
+Tests modificados:
+
+- La suite focalizada incluye de nuevo `OpeningHoursServiceTests` y `OpeningHoursControllerTests` para
+  asegurar compatibilidad con `VenueOpeningHourDao`.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests" test
+```
+
+Resultados:
+
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Tests focalizados: 13 tests, 0 fallos, 0 errores, 0 omitidos.
+- Convenciones backend: correctas.
+- Validación de español: correcta.
+- Whitespace: correcto.
+- Test de migraciones: no pudo completar porque Testcontainers no encontró un Docker válido en el
+  entorno actual.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- Falta validar `V18` con `DatabaseMigrationIntegrationTests` cuando Docker esté disponible.
+- La creación manual todavía no edita, bloquea ni reabre franjas; eso corresponde a `4.7`.
+- La capacidad se guarda pero aún no se calcula contra reservas confirmadas o holds; eso llegará en
+  Fase 7.
+- No hay generación automática por duración; queda para `4.5`.
+- No hay endpoint público de disponibilidad; queda para `4.10`.
+
+### Criterio de cierre
+
+Las tareas se cierran porque el backend ya permite configurar excepciones de fecha para cerrar días o
+desactivar reservas y crear franjas manuales disponibles bajo validaciones de horario, bloqueo,
+capacidad y solape, con contratos REST privados, persistencia, tests focalizados y documentación
+técnica actualizada.

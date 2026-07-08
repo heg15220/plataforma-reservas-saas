@@ -12,11 +12,86 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-08
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14` y `4.1` a `4.2`.
-- Siguiente tarea pendiente recomendada: `4.3. Implementar días cerrados y reservas activas/inactivas por día.`
+  `3.14` y `4.1` a `4.4`.
+- Siguiente tarea pendiente recomendada: `4.5. Implementar generación automática de franjas por duración.`
 - Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
-  disponibilidad, además de API privada para consultar y sustituir el horario semanal completo del
-  local autenticado.
+  disponibilidad, API privada de horario semanal, excepciones diarias y creación manual de franjas.
+
+## Conversación 78 - Excepciones diarias y creación manual de franjas
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/4-horarios-franjas-disponibilidad`.
+  - Se confirmaron `4.3` y `4.4` como las dos siguientes tareas pendientes.
+  - Se añadió la migración `V18__add_availability_block_kind.sql` para distinguir bloqueos manuales,
+    días cerrados y días con reservas desactivadas dentro de `AvailabilityBlocks`.
+  - Se implementaron entidades y DAOs para `AvailabilityBlocks` y `TimeSlots`.
+  - Se añadió `GET/PUT /api/venue/me/availability-days` para consultar o sustituir la excepción de una fecha.
+  - Se añadió `GET/POST /api/venue/me/time-slots` para listar y crear franjas manuales.
+  - La creación manual valida local vigente, horario semanal, día no bloqueado, rango horario,
+    capacidad positiva y ausencia de solapes.
+  - Se añadieron tests unitarios de servicio y controlador para días cerrados, reservas inactivas y
+    creación manual de franjas.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V18__add_availability_block_kind.sql`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityDayController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityDayControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/AvailabilityExceptionHandler.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/AvailabilityDayRequest.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/AvailabilityDayResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotRequest.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/AvailabilityBlockDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/AvailabilityBlockEntity.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotEntity.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/VenueOpeningHourDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayInvalidException.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/AvailabilityDayServiceImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotInvalidException.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/controller/AvailabilityDayControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/controller/TimeSlotControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/service/AvailabilityDayServiceTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/service/TimeSlotServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-005 Estado público del local`.
+  - `RF-006 Calendario de disponibilidad`.
+  - `RF-010 Gestión de horarios`.
+  - `RF-011 Gestión de franjas`.
+  - `RF-012 Gestión de disponibilidad en tiempo real`.
+  - `RNF-001 Seguridad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `4.3. Implementar días cerrados y reservas activas/inactivas por día`.
+  - `4.4. Implementar creación manual de franjas`.
+  - Prepara `4.5`, `4.6`, `4.7`, `4.8`, `4.9` y `4.10`.
+- Tareas completadas:
+  - `4.3. Implementar días cerrados y reservas activas/inactivas por día`.
+  - `4.4. Implementar creación manual de franjas`.
+- Siguiente tarea pendiente recomendada:
+  - `4.5. Implementar generación automática de franjas por duración.`
+- Decisiones o aclaraciones relevantes:
+  - Los días cerrados y los días con reservas inactivas se modelan como bloqueos de día completo en
+    `AvailabilityBlocks` con `kind=closed_day` o `kind=reservations_disabled`.
+  - Volver a `closed=false` y `reservationsEnabled=true` elimina la excepción y recupera el horario semanal.
+  - Las franjas manuales nacen con `status=available`, `createdByRule=false`, `serviceId=null` y
+    capacidad positiva.
+  - No se permite crear franjas fuera del horario semanal ni en días cerrados o con reservas inactivas.
+  - Evidencia correcta: `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test`
+    pasó con 13 tests, 0 fallos, 0 errores y 0 omitidos, incluyendo Spotless y Checkstyle.
+  - Evidencia correcta: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check`.
+  - `DatabaseMigrationIntegrationTests` no pudo completar porque Testcontainers no encontró un Docker
+    válido en el entorno actual.
 
 ## Conversación 77 - Migraciones y horario semanal de disponibilidad
 
