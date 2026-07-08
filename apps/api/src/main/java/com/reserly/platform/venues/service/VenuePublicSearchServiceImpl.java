@@ -6,7 +6,9 @@ import com.reserly.platform.venues.dto.VenueSearchItemResponse;
 import com.reserly.platform.venues.dto.VenueSearchResponse;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
+import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -33,16 +35,23 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
 
   @Override
   @Transactional(readOnly = true)
-  public VenueSearchResponse search(SupportedLocale locale, int page, int size) {
+  public VenueSearchResponse search(SupportedLocale locale, String query, int page, int size) {
     int normalizedPage = Math.max(page, 0);
     int normalizedSize = normalizeSize(size);
+    String queryPattern = toQueryPattern(query);
     PageRequest pageRequest =
         PageRequest.of(
             normalizedPage,
             normalizedSize,
             Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.asc("name")));
-    List<VenueEntity> venues = venueDao.findPublishedForSearch(pageRequest);
-    long totalElements = venueDao.countPublishedForSearch();
+    List<VenueEntity> venues =
+        queryPattern == null
+            ? venueDao.findPublishedForSearch(pageRequest)
+            : venueDao.findPublishedMatchingSearch(queryPattern, pageRequest);
+    long totalElements =
+        queryPattern == null
+            ? venueDao.countPublishedForSearch()
+            : venueDao.countPublishedMatchingSearch(queryPattern);
     int totalPages = (int) Math.ceil((double) totalElements / normalizedSize);
     return new VenueSearchResponse(
         locale.languageTag(),
@@ -59,6 +68,20 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
       return DEFAULT_PAGE_SIZE;
     }
     return Math.min(size, MAX_PAGE_SIZE);
+  }
+
+  private static String toQueryPattern(String query) {
+    if (query == null || query.isBlank()) {
+      return null;
+    }
+    String normalized =
+        Normalizer.normalize(query.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "");
+    return "%" + escapeLike(normalized) + "%";
+  }
+
+  private static String escapeLike(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   private static VenueSearchItemResponse toResponse(VenueEntity venue, SupportedLocale locale) {

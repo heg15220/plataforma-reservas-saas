@@ -21,6 +21,7 @@ public interface VenuePublicSearchController {
   @GetMapping("/search")
   ResponseEntity<VenueSearchResponse> search(
       @RequestParam(required = false) String locale,
+      @RequestParam(name = "q", required = false) String query,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);

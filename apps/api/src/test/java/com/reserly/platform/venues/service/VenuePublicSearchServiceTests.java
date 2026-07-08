@@ -45,7 +45,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedForSearch()).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.EN, 0, 20);
+    var response = service.search(SupportedLocale.EN, null, 0, 20);
 
     assertThat(response.locale()).isEqualTo("en");
     assertThat(response.page()).isZero();
@@ -77,7 +77,7 @@ class VenuePublicSearchServiceTests {
         .thenReturn(List.of(venue));
     when(venueDao.countPublishedForSearch()).thenReturn(1L);
 
-    var response = service.search(SupportedLocale.ES, -4, 500);
+    var response = service.search(SupportedLocale.ES, "   ", -4, 500);
 
     assertThat(response.page()).isZero();
     assertThat(response.size()).isEqualTo(50);
@@ -85,6 +85,22 @@ class VenuePublicSearchServiceTests {
         .startsWith("Descripción pública")
         .endsWith("...");
     assertThat(response.results().get(0).descriptionExcerpt()).contains("ñ");
+  }
+
+  @Test
+  void searchesByNormalizedNameAndKeywordTextWhenQueryIsPresent() {
+    VenueEntity venue = venue("cafe-central", "Café Central");
+    when(venueDao.findPublishedMatchingSearch(
+            argThat(pattern -> pattern.equals("%cafe%")),
+            argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 20)))
+        .thenReturn(List.of(venue));
+    when(venueDao.countPublishedMatchingSearch("%cafe%")).thenReturn(1L);
+
+    var response = service.search(SupportedLocale.ES, "  Café  ", 0, 20);
+
+    assertThat(response.results()).hasSize(1);
+    assertThat(response.results().get(0).name()).isEqualTo("Café Central");
+    assertThat(response.totalElements()).isEqualTo(1);
   }
 
   private static VenueEntity venue(String slug, String name) {

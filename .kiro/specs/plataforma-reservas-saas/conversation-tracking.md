@@ -3292,3 +3292,59 @@ Fuente de verdad del avance:
     correcto con 6 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run backend:conventions:check` y `npm run spanish:text:check`
     correctos.
+
+## Conversación 69 - Búsqueda pública por nombre y palabras clave
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se confirmó `3.2` como primera tarea pendiente tras revisar `tasks.md`, seguimiento e
+    implementación técnica.
+  - Se amplió `GET /api/public/venues/search` con el parámetro opcional `q`.
+  - Se añadió búsqueda textual sobre locales publicados por nombre, descripción canónica y categoría
+    como palabras clave públicas.
+  - Se normalizó el término de búsqueda en servicio para comparar sin mayúsculas ni tildes mediante
+    `unaccent`, escapando comodines de `LIKE`.
+  - Se mantuvo intacta la respuesta visible: los textos públicos siguen saliendo con tildes y sin
+    normalización destructiva.
+  - Se añadieron tests unitarios para propagación de `q`, normalización de `Café` a patrón `cafe` y
+    uso de consultas DAO específicas.
+  - Se añadió una prueba de integración con PostgreSQL Testcontainers para validar `unaccent` y la
+    consulta JPA real sobre locales publicados.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `3.2. Añadir búsqueda por nombre y palabras clave`.
+  - Prepara `3.3`, que añadirá filtros por categoría sin mezclarlo con el texto libre.
+- Tareas completadas:
+  - `3.2. Añadir búsqueda por nombre y palabras clave`.
+- Siguiente tarea pendiente recomendada:
+  - `3.3. Añadir filtros por categoría`.
+- Decisiones o aclaraciones relevantes:
+  - `q` vacío o en blanco conserva el listado base de `3.1`.
+  - La búsqueda textual no filtra todavía por ciudad, zona, radio, disponibilidad ni valoración.
+  - La comparación usa `lower(unaccent(...)) LIKE :queryPattern ESCAPE '\'`.
+  - Se escapan `%`, `_` y `\` para evitar que el texto del usuario actúe como comodín no solicitado.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
+    correcto con 8 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+  - Evidencia transversal: `npm run backend:conventions:check` y `npm run spanish:text:check`
+    correctos.

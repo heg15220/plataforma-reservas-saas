@@ -14569,6 +14569,7 @@ Archivos creados:
 - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
 - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
 - `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchIntegrationTests.java`.
 - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
 
 Archivos modificados:
@@ -14823,3 +14824,265 @@ La tarea se cierra porque `GET /api/public/venues/search` existe, devuelve una p
 tarjetas públicas de locales publicados, normaliza paginación, evita datos privados y cuenta con tests
 unitarios de controlador y servicio. La verificación automatizada focalizada, las convenciones backend
 y la validación de textos españoles terminaron correctamente.
+
+## Iteración 3.2 - Búsqueda por nombre y palabras clave
+
+### Identificador exacto de la tarea completada
+
+`3.2. Añadir búsqueda por nombre y palabras clave`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Ampliar el endpoint público `GET /api/public/venues/search` para aceptar texto libre mediante el
+parámetro `q` y devolver solo locales publicados que coincidan con nombre o palabras clave públicas.
+
+La tarea preserva el contrato base de `3.1` y añade una capa de búsqueda textual inicial sin mezclar
+filtros de categoría, ciudad, radio, disponibilidad, valoración ni ordenaciones avanzadas, que tienen
+tareas propias dentro de la Fase 3.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-001 Buscador principal`: cuando el usuario escribe nombre o palabras clave, el sistema debe
+  mostrar resultados coincidentes.
+- `RF-003 Resultados de búsqueda`: los resultados siguen usando tarjetas públicas de local.
+- `RF-031 Internacionalización de textos`: las respuestas visibles conservan el idioma resuelto y las
+  tildes; la normalización se aplica solo a la comparación técnica.
+- `RNF-001 Seguridad`: el parámetro libre se transforma en patrón escapado de `LIKE`; `%`, `_` y `\`
+  no se tratan como comodines aportados por el usuario.
+- `RNF-002 Privacidad`: la búsqueda textual no amplía datos expuestos.
+- `RNF-004 Rendimiento`: se mantiene paginación y consulta filtrada en base de datos.
+- `RNF-008 Calidad y mantenibilidad`: la lógica de normalización vive en el servicio y la búsqueda
+  persistente en DAO con `@Query`.
+- `RNF-009 Internacionalización y localización`: `unaccent` permite búsqueda tolerante a tildes sin
+  modificar el texto visible.
+- `RNF-011 Convenciones de nomenclatura`: se mantienen DAOs explícitos y contratos por capas.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- Ninguno.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Archivos eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+Se conserva la arquitectura de `3.1`:
+
+- `VenuePublicSearchController` añade `@RequestParam(name = "q", required = false) String query`.
+- `VenuePublicSearchControllerImpl` propaga `query` al caso de uso tras resolver el idioma.
+- `VenuePublicSearchService` expone `search(SupportedLocale locale, String query, int page, int size)`.
+- `VenuePublicSearchServiceImpl` decide si usar listado base o búsqueda textual según `q`.
+- `VenueDao` separa consultas base y consultas con coincidencia textual.
+
+La normalización vive en el servicio porque forma parte del contrato de entrada, no del transporte
+HTTP:
+
+1. `null` o texto en blanco se interpreta como ausencia de búsqueda.
+2. Se aplica `trim`.
+3. Se convierte a minúsculas con `Locale.ROOT`.
+4. Se elimina marca diacrítica con `Normalizer` para generar un patrón comparable con `unaccent`.
+5. Se escapan comodines de `LIKE`.
+6. Se envuelve con `%...%` para coincidencia parcial.
+
+La consulta DAO usa `lower(function('unaccent', ...))` para que PostgreSQL aplique la misma tolerancia
+a tildes sobre los campos persistidos, manteniendo intactos los valores visibles.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No se añaden migraciones ni columnas.
+
+La búsqueda textual se apoya en campos ya existentes:
+
+- `Venues.name`.
+- `Venues.description`.
+- `Categories.name`.
+- `Categories.slug`.
+- `Venues.status = 'published'`.
+
+La extensión `unaccent` ya fue activada por la migración inicial de extensiones PostgreSQL, por lo que
+no se necesita migración nueva.
+
+No se crean índices todavía. El diseño de la Fase 3 prevé PostgreSQL full-text search e índices
+trigram, pero esta iteración implementa el primer comportamiento funcional. Índices especializados y
+ranking deberán añadirse al introducir relevancia y filtros más avanzados.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint ampliado:
+
+```http
+GET /api/public/venues/search?q=cafe&locale=es&page=0&size=20
+```
+
+Parámetros:
+
+- `q`: opcional. Texto libre para nombre y palabras clave.
+- `locale`: opcional.
+- `page`: opcional.
+- `size`: opcional.
+- `Accept-Language`: opcional si no hay `locale`.
+
+Contrato de respuesta:
+
+- No cambia respecto a `3.1`.
+- Si `q` no tiene coincidencias, devuelve página vacía con `results = []`.
+- Si `q` está vacío o en blanco, el endpoint se comporta como listado base.
+
+DAO añadido:
+
+- `findPublishedMatchingSearch(String queryPattern, Pageable pageable)`.
+- `countPublishedMatchingSearch(String queryPattern)`.
+
+### Flujos de ejecución relevantes
+
+Flujo con `q` vacío:
+
+1. El controlador recibe `q = null` o en blanco.
+2. El servicio normaliza `queryPattern` a `null`.
+3. Se ejecuta `findPublishedForSearch`.
+4. Se ejecuta `countPublishedForSearch`.
+5. Se devuelve la página base.
+
+Flujo con `q` textual:
+
+1. El controlador recibe `q`.
+2. El servicio genera `queryPattern`.
+3. Se ejecuta `findPublishedMatchingSearch`.
+4. Se ejecuta `countPublishedMatchingSearch`.
+5. La respuesta mantiene los mismos DTOs públicos de tarjeta.
+
+Campos buscados:
+
+- Nombre del local.
+- Descripción canónica del local.
+- Nombre canónico de categoría.
+- Slug de categoría.
+
+Consulta textual:
+
+```text
+lower(function('unaccent', campo)) like :queryPattern escape '\'
+```
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- `q` en blanco no activa búsqueda textual.
+- `page` y `size` mantienen la normalización de `3.1`.
+- `size` sigue limitado a 50.
+
+Seguridad:
+
+- El patrón de búsqueda escapa `\`, `%` y `_`.
+- El usuario no controla el JPQL ni el campo buscado.
+- La consulta conserva `venue.status = 'published'`.
+
+Privacidad:
+
+- No se exponen campos nuevos.
+- No se permite buscar sobre propietario, cuenta empresarial, email, teléfono ni datos fiscales.
+- La respuesta sigue excluyendo IDs internos.
+
+Internacionalización:
+
+- La búsqueda tolera tildes mediante `unaccent`.
+- El texto visible de respuesta no se normaliza.
+- La prueba cubre `Café` como entrada y conserva `Café Central` como salida.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden errores de dominio nuevos.
+
+- Sin coincidencias no es error: respuesta vacía.
+- Parámetros numéricos inválidos siguen bajo validación estándar de Spring MVC.
+- No se añaden logs ni auditoría porque es lectura pública.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenuePublicSearchControllerTests`
+  - Verifica que `q` se propaga al servicio junto a `locale`, `page` y `size`.
+  - Mantiene negociación de idioma.
+- `VenuePublicSearchServiceTests`
+  - Actualiza llamadas al nuevo contrato.
+  - Añade caso de búsqueda textual con `Café`, normalizado a `%cafe%`.
+  - Verifica que la salida visible conserva `Café Central`.
+- `VenuePublicSearchIntegrationTests`
+  - Crea dos locales publicados sobre PostgreSQL real.
+  - Verifica búsqueda por nombre sin tilde (`cafe`) contra `Café Central`.
+  - Verifica búsqueda por palabra clave sin tilde (`padel`) contra una descripción con `Pádel`.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test
+```
+
+Resultado:
+
+- `VenuePublicProfileControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchServiceTests`: 3 tests, 0 fallos.
+- `VenuePublicSearchIntegrationTests`: 1 test, 0 fallos.
+- Total: 8 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Flyway aplicó 16 migraciones sobre PostgreSQL Testcontainers en la prueba de integración.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Comandos transversales:
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+
+Incidencia durante verificación:
+
+- El primer intento de Maven sin permisos elevados falló por bloqueo de red del sandbox al resolver
+  el parent POM de Spring Boot. Se repitió con permisos elevados y terminó correctamente.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- La búsqueda todavía usa coincidencia parcial con `LIKE`; la relevancia y full-text ranking se
+  abordarán en `3.6` o en una mejora técnica asociada.
+- No se buscan todavía campos JSONB localizados como `descriptionI18n`, `servicesI18n` o
+  `publicTextI18n`. La búsqueda inicial cubre campos canónicos ya persistidos.
+- No se filtra por categoría como faceta; `Categories.name` y `slug` actúan solo como palabras clave.
+  El filtro estructurado corresponde a `3.3`.
+- No se filtra por ciudad, zona, dirección ni radio; corresponde a `3.4` y `3.5`.
+- No se añaden índices específicos de búsqueda en esta tarea.
+
+### Criterio de cierre
+
+La tarea se cierra porque `GET /api/public/venues/search` ya acepta `q`, busca por nombre y palabras
+clave públicas sobre locales publicados, compara sin distinguir mayúsculas ni tildes, escapa
+comodines, conserva los textos visibles y cuenta con verificación automatizada focalizada y
+validaciones transversales correctas.

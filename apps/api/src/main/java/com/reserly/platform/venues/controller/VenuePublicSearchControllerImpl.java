@@ -18,8 +18,8 @@ public class VenuePublicSearchControllerImpl implements VenuePublicSearchControl
 
   @Override
   public ResponseEntity<VenueSearchResponse> search(
-      String locale, int page, int size, String acceptLanguage) {
+      String locale, String query, int page, int size, String acceptLanguage) {
     SupportedLocale resolvedLocale = VenuePublicLocaleResolver.resolve(locale, acceptLanguage);
-    return ResponseEntity.ok(service.search(resolvedLocale, page, size));
+    return ResponseEntity.ok(service.search(resolvedLocale, query, page, size));
   }
 }

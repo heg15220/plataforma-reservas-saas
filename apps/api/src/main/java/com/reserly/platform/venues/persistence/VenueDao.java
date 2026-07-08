@@ -13,6 +13,27 @@ import org.springframework.data.repository.query.Param;
 /** Persistencia de perfiles siempre acotada por el propietario autenticado. */
 public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
 
+  String PUBLISHED_SEARCH_QUERY =
+      "select venue from VenueEntity venue "
+          + "join fetch venue.category "
+          + "where venue.status = 'published'";
+  String PUBLISHED_SEARCH_COUNT =
+      "select count(venue) from VenueEntity venue where venue.status = 'published'";
+  String PUBLISHED_MATCHING_SEARCH_QUERY =
+      PUBLISHED_SEARCH_QUERY
+          + " and (lower(function('unaccent', venue.name)) like :queryPattern escape '\\' "
+          + "or lower(function('unaccent', coalesce(venue.description, ''))) like :queryPattern "
+          + "escape '\\' or lower(function('unaccent', venue.category.name)) like :queryPattern "
+          + "escape '\\' or lower(function('unaccent', venue.category.slug)) like :queryPattern "
+          + "escape '\\')";
+  String PUBLISHED_MATCHING_SEARCH_COUNT =
+      PUBLISHED_SEARCH_COUNT
+          + " and (lower(function('unaccent', venue.name)) like :queryPattern escape '\\' "
+          + "or lower(function('unaccent', coalesce(venue.description, ''))) like :queryPattern "
+          + "escape '\\' or lower(function('unaccent', venue.category.name)) like :queryPattern "
+          + "escape '\\' or lower(function('unaccent', venue.category.slug)) like :queryPattern "
+          + "escape '\\')";
+
   /** Carga el perfil vigente y su categoría para lectura privada. */
   @Query(
       """
@@ -59,13 +80,19 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
   Optional<VenueEntity> findPublishedBySlug(@Param("slug") String slug);
 
   /** Lista locales publicados para descubrimiento anónimo con categoría ya cargada. */
-  @Query(
-      "select venue from VenueEntity venue "
-          + "join fetch venue.category "
-          + "where venue.status = 'published'")
+  @Query(PUBLISHED_SEARCH_QUERY)
   List<VenueEntity> findPublishedForSearch(Pageable pageable);
 
   /** Cuenta locales publicados para metadatos de paginación del descubrimiento público. */
-  @Query("select count(venue) from VenueEntity venue where venue.status = 'published'")
+  @Query(PUBLISHED_SEARCH_COUNT)
   long countPublishedForSearch();
+
+  /** Lista locales publicados que coinciden con el texto normalizado recibido. */
+  @Query(PUBLISHED_MATCHING_SEARCH_QUERY)
+  List<VenueEntity> findPublishedMatchingSearch(
+      @Param("queryPattern") String queryPattern, Pageable pageable);
+
+  /** Cuenta locales publicados que coinciden con el texto normalizado recibido. */
+  @Query(PUBLISHED_MATCHING_SEARCH_COUNT)
+  long countPublishedMatchingSearch(@Param("queryPattern") String queryPattern);
 }
