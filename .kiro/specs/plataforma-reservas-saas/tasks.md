@@ -78,7 +78,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 2.14. Crear migración de `venue_custom_tabs` con orden, estado activo, contenido seguro y campos localizados.
 - [x] 2.15. Implementar CRUD de pestañas personalizadas del local para propietario.
 - [x] 2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local.
-- [ ] 2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.
+- [x] 2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.
 
 ## 5. Fase 3 - Búsqueda pública y descubrimiento
 

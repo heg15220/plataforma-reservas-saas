@@ -2,6 +2,7 @@ package com.reserly.platform.venues.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.localization.LocalizedText;
@@ -87,6 +88,8 @@ class VenuePublicProfileServiceTests {
 
     assertThatThrownBy(() -> service.findBySlug("borrador", SupportedLocale.ES))
         .isInstanceOf(VenueProfileNotFoundException.class);
+
+    verifyNoInteractions(customTabDao);
   }
 
   private static VenueEntity publishedVenue() {

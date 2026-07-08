@@ -78,6 +78,15 @@ class VenueCustomTabServiceTests {
         .isInstanceOf(VenueCustomTabInvalidException.class);
     assertThatThrownBy(() -> service.reorder(ownerId, List.of(UUID.randomUUID())))
         .isInstanceOf(VenueCustomTabInvalidException.class);
+
+    VenueCustomTabEntity first = tab(0);
+    VenueCustomTabEntity second = tab(1);
+    when(tabDao.findAllOwned(ownerId)).thenReturn(List.of(first, second));
+
+    assertThatThrownBy(() -> service.reorder(ownerId, List.of(first.getId(), first.getId())))
+        .isInstanceOf(VenueCustomTabInvalidException.class);
+
+    verify(tabDao, never()).saveAllAndFlush(any());
   }
 
   @Test
@@ -117,6 +126,36 @@ class VenueCustomTabServiceTests {
 
     verify(tabDao, never()).saveAndFlush(any());
     verify(tabDao, never()).delete(any());
+  }
+
+  @Test
+  void rejectsUpdatingOrDeletingATabThatDoesNotBelongToTheOwner() {
+    UUID foreignTabId = UUID.randomUUID();
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(tabDao.findOwnedForUpdate(ownerId, foreignTabId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.update(ownerId, foreignTabId, activeCommand()))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+    assertThatThrownBy(() -> service.delete(ownerId, foreignTabId))
+        .isInstanceOf(VenueProfileNotFoundException.class);
+
+    verify(tabDao, never()).saveAndFlush(any());
+    verify(tabDao, never()).delete(any());
+  }
+
+  @Test
+  void rejectsContentThatHasNoVisibleTextAfterSanitization() {
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(tabDao.findAllOwned(ownerId)).thenReturn(List.of());
+
+    VenueCustomTabCommand command =
+        new VenueCustomTabCommand(
+            localized("Carta", "Menu"), localized("<br><p> </p>", "<p>Menu</p>"), true);
+
+    assertThatThrownBy(() -> service.create(ownerId, command))
+        .isInstanceOf(VenueCustomTabInvalidException.class);
+
+    verify(tabDao, never()).saveAndFlush(any());
   }
 
   @Test

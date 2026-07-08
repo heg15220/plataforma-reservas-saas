@@ -3189,3 +3189,48 @@ Fuente de verdad del avance:
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check`,
     `npm run format:check:web` y `npm run typecheck --workspace @reserly/web` correctos.
   - Evidencia de build UI: `npm run build:web:test` correcto.
+
+## Conversación 67 - Tests de pestañas personalizadas
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se confirmó `2.17` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica.
+  - Se ampliaron los tests unitarios del servicio privado de pestañas para cubrir permisos sobre
+    pestañas ajenas, rechazo de reordenaciones no exactas con IDs duplicados y rechazo de contenido
+    HTML sin texto visible tras sanitización.
+  - Se reforzó el test unitario de la ficha pública para comprobar que, si el slug no corresponde a
+    un local publicado, no se consulta el DAO de pestañas.
+  - Se añadió una prueba de integración con Spring Boot, Flyway, JPA y PostgreSQL Testcontainers que
+    crea un propietario, verifica email y cuenta empresarial, crea un local publicable, crea pestañas
+    activas e inactivas, reordena, publica y comprueba la respuesta pública en ES/EN.
+- Archivos modificados:
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenueCustomTabServiceTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicProfileServiceTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenueCustomTabPublicationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Ficha pública del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas`.
+- Tareas completadas:
+  - `2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas`.
+- Siguiente tarea pendiente recomendada:
+  - `3.1. Implementar endpoint GET /api/public/venues/search`.
+- Decisiones o aclaraciones relevantes:
+  - No se modificó código productivo; la iteración se limita a cobertura automatizada y documentación.
+  - La publicación de pestañas se valida desde la ruta pública real, no solo mediante mocks, para
+    cubrir la consulta `findAllPublishedActiveByVenueId` contra el esquema migrado.
+  - La prueba de sanitización pública verifica que el HTML expuesto no conserva `<script>`,
+    `onclick` ni `javascript:` después de persistir contenido creado por el servicio.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenueCustomTabServiceTests,VenuePublicProfileServiceTests,VenueCustomTabPublicationIntegrationTests" test`
+    correcto con 12 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.

@@ -14244,3 +14244,271 @@ La tarea se cierra porque la ficha pública ya recibe y renderiza pestañas pers
 localizadas y ordenadas; la API solo las expone para locales publicados; el contrato público mantiene
 la frontera `safe_html`; y la verificación automatizada cubre backend, frontend, convenciones,
 formato, TypeScript y calidad de textos españoles.
+
+## Iteración 2.17 - Tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas
+
+### Identificador exacto de la tarea completada
+
+`2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Cerrar la Fase 2 con cobertura automatizada específica sobre las garantías introducidas en `2.14`,
+`2.15` y `2.16`: las pestañas personalizadas deben permanecer acotadas al propietario del local,
+mantener un orden exacto y compacto, publicarse solo cuando el local está publicado y la pestaña está
+activa, exponer únicamente HTML seguro y resolver textos localizados en español e inglés.
+
+La tarea no introduce nuevas capacidades productivas. Su objetivo es convertir reglas de negocio ya
+implementadas en pruebas regresivas ejecutables y verificables.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-004 Ficha pública del local`: la ficha pública puede mostrar bloques editoriales configurados
+  por el local, pero solo para perfiles publicados.
+- `RF-009 Gestión de perfil público`: el propietario gestiona sus propios textos, orden y estado de
+  publicación sin poder afectar perfiles ajenos.
+- `RF-031 Internacionalización de textos`: el contenido público debe resolverse en ES/EN usando el
+  locale solicitado y el mecanismo `LocalizedText`.
+- `RNF-001 Seguridad`: el HTML visible procede de la allowlist del saneador backend y conserva el
+  contrato `safe_html`.
+- `RNF-002 Privacidad`: las pruebas confirman que un slug no publicado corta la lectura antes de
+  consultar pestañas públicas.
+- `RNF-008 Calidad y mantenibilidad`: la cobertura se sitúa junto a los servicios que poseen las
+  reglas, con un test de integración para validar persistencia real.
+- `RNF-009 Internacionalización y localización`: la prueba de integración consulta la misma ficha en
+  `SupportedLocale.EN` y `SupportedLocale.ES`.
+- `RNF-011 Convenciones de nomenclatura`: el test de integración se ejecuta sobre migraciones reales
+  con tablas `UpperCamelCase` y columnas `lowerCamelCase`.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueCustomTabPublicationIntegrationTests.java`.
+
+Archivos modificados:
+
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenueCustomTabServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicProfileServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Archivos eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+La cobertura se divide en dos niveles:
+
+- Tests unitarios con Mockito para reglas locales de `VenueCustomTabServiceImpl` y
+  `VenuePublicProfileServiceImpl`.
+- Test de integración con `@SpringBootTest`, Flyway, JPA, `JdbcTemplate` y PostgreSQL Testcontainers
+  para demostrar el comportamiento público real sobre el esquema migrado.
+
+Esta división evita hacer lentas las comprobaciones de reglas simples, pero añade una prueba de alto
+valor para la frontera que los mocks no pueden garantizar: la consulta pública ordenada y filtrada por
+estado real de local y pestaña.
+
+El nuevo test de integración crea datos por los servicios de dominio siempre que la regla pertenece al
+producto:
+
+- `VenueProfileService.create` crea el local.
+- `VenueCustomTabService.create` normaliza y sanea pestañas.
+- `VenueCustomTabService.reorder` aplica el orden compacto.
+- `VenuePublicationService.publish` aplica elegibilidad y transición a `published`.
+- `VenuePublicProfileService.findBySlug` lee la proyección pública final.
+
+`JdbcTemplate` se usa solo para preparar prerequisitos transversales ya probados en tareas anteriores:
+email verificado, verificación empresarial aprobada y metadatos de imagen principal requeridos para
+publicar.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No se añaden migraciones ni se modifica el modelo de datos. La prueba de integración valida el modelo
+existente:
+
+- `Users` con `emailVerifiedAt` y `accountType = 'venue_business'`.
+- `BusinessAccounts` con `businessVerificationStatus = 'verified'`.
+- `Venues` con estado `draft` antes de publicar y `published` tras `VenuePublicationService`.
+- `VenueCustomTabs` con `position`, `isActive`, `titleI18n`, `contentI18n` y `contentFormat`.
+
+La ejecución sobre Flyway verifica que las 16 migraciones existentes pueden levantar desde cero el
+esquema requerido por las pestañas personalizadas.
+
+No se crean índices nuevos. Se ejercita el índice/orden lógico ya definido para lectura pública:
+filtrado por `venueId`, estado publicado del local, `isActive = true` y orden por `position`.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+No se implementan endpoints nuevos.
+
+Servicios cubiertos:
+
+- `VenueCustomTabServiceImpl`
+  - `create`: saneamiento, validación de visibilidad, límite y posición inicial.
+  - `update`: rechazo de pestañas no pertenecientes al propietario.
+  - `reorder`: permutación exacta sin IDs duplicados.
+  - `delete`: rechazo de pestañas no pertenecientes al propietario.
+- `VenuePublicProfileServiceImpl`
+  - `findBySlug`: corte temprano si el local no está publicado.
+  - Resolución de pestañas públicas activas con `title`, `content`, `position` y `contentFormat`.
+
+Módulos de test añadidos o extendidos:
+
+- `VenueCustomTabServiceTests`.
+- `VenuePublicProfileServiceTests`.
+- `VenueCustomTabPublicationIntegrationTests`.
+
+### Flujos de ejecución relevantes
+
+Flujo unitario de permisos:
+
+1. El propietario tiene un local editable.
+2. Se intenta actualizar o borrar un `tabId` que `VenueCustomTabDao.findOwnedForUpdate` no devuelve.
+3. El servicio lanza `VenueProfileNotFoundException`.
+4. Se verifica que no hay `saveAndFlush` ni `delete`.
+
+Flujo unitario de orden:
+
+1. Se cargan dos pestañas del propietario.
+2. Se pide una lista de IDs duplicada.
+3. `isExactPermutation` rechaza la operación.
+4. Se verifica que `saveAllAndFlush` no se invoca.
+
+Flujo unitario de sanitización:
+
+1. Se intenta crear una pestaña activa con contenido `<br><p> </p>` en el idioma origen.
+2. El saneador conserva o normaliza HTML estructural sin texto visible.
+3. `hasVisibleText` no encuentra contenido publicable.
+4. El servicio lanza `VenueCustomTabInvalidException`.
+
+Flujo público unitario:
+
+1. `VenueDao.findPublishedBySlug` devuelve vacío para un slug de borrador o inexistente.
+2. `VenuePublicProfileServiceImpl` lanza `VenueProfileNotFoundException`.
+3. Se verifica que `VenueCustomTabDao` no recibe ninguna llamada.
+
+Flujo de integración:
+
+1. Se crea un usuario de local y su cuenta empresarial.
+2. Se marca email como verificado y cuenta como `verified`.
+3. Se crea un local con traducciones ES/EN, ubicación e imagen principal.
+4. Se crean dos pestañas activas y una inactiva con `VenueCustomTabService`.
+5. Se reordena a `[prices, menu, draft]`.
+6. Se publica el local.
+7. Se consulta la ficha pública en inglés y español.
+8. Se verifica que solo aparecen dos pestañas activas, ordenadas por `position`, con
+   `contentFormat = safe_html`, textos localizados y HTML sin `script`, `onclick` ni `javascript:`.
+9. En otro caso, se crea un local borrador con pestaña activa y se confirma que la ficha pública no
+   existe mientras no se publique.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- Una pestaña activa sigue exigiendo traducciones públicas completas.
+- El contenido debe tener texto visible tras sanitización.
+- El orden debe contener exactamente todos los IDs existentes, sin duplicados ni IDs externos.
+
+Permisos:
+
+- Las operaciones privadas siguen dependiendo del `ownerUserId`.
+- Un `tabId` ajeno se representa como no encontrado para no filtrar existencia.
+
+Seguridad:
+
+- La prueba pública introduce HTML con `onclick`, `<script>` y `javascript:`.
+- El contenido expuesto no conserva esos tokens inseguros.
+- El contrato público mantiene `contentFormat = safe_html`.
+
+Privacidad:
+
+- Si el local no está publicado, el servicio público no consulta pestañas.
+- No se añade ninguna exposición de IDs internos, propietario, cuenta empresarial ni JSONB completo.
+
+Internacionalización:
+
+- El test de integración verifica títulos y contenidos en `SupportedLocale.EN`.
+- El mismo flujo verifica títulos y contenidos en `SupportedLocale.ES`.
+- El locale se resuelve en backend antes de formar la respuesta pública.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores esperados cubiertos:
+
+- `VenueProfileNotFoundException` para operaciones sobre pestaña ajena o local no publicado.
+- `VenueCustomTabInvalidException` para orden inválido y contenido sin valor visible.
+
+No se añaden nuevos logs ni métricas. La iteración solo amplía tests. No se requiere auditoría porque
+no hay nuevos cambios de estado productivos.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `VenueCustomTabServiceTests`
+  - Añade rechazo de reordenación con IDs duplicados.
+  - Añade rechazo de actualización/borrado de pestaña no perteneciente al propietario.
+  - Añade rechazo de HTML sin texto visible tras sanitización.
+- `VenuePublicProfileServiceTests`
+  - Añade verificación de ausencia de interacción con `VenueCustomTabDao` cuando el slug no está
+    publicado.
+
+Tests añadidos:
+
+- `VenueCustomTabPublicationIntegrationTests`
+  - `exposesOnlyActiveTabsFromPublishedVenuesOrderedAndLocalized`.
+  - `doesNotExposeTabsWhenTheVenueIsStillDraft`.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenueCustomTabServiceTests,VenuePublicProfileServiceTests,VenueCustomTabPublicationIntegrationTests" test
+```
+
+Resultado:
+
+- `VenueCustomTabPublicationIntegrationTests`: 2 tests, 0 fallos.
+- `VenueCustomTabServiceTests`: 7 tests, 0 fallos.
+- `VenuePublicProfileServiceTests`: 3 tests, 0 fallos.
+- Total: 12 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Flyway aplicó 16 migraciones sobre PostgreSQL Testcontainers.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Incidencias durante verificación:
+
+- Un primer intento normal de Maven falló por bloqueo de red del sandbox al descargar dependencias.
+  Se repitió con permisos elevados.
+- Una primera versión del caso de sanitización usaba texto dentro de `<script>`; el saneador lo
+  convertía en texto seguro visible. Se corrigió el test para representar HTML estructural vacío,
+  que es el caso real de contenido sin valor visible.
+- Spotless pidió dos ajustes de formato en archivos de test; se corrigieron antes de la verificación
+  final.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- La prueba pública verifica la allowlist actual de saneamiento de forma regresiva, pero no sustituye
+  una batería exhaustiva de fuzzing HTML. Si se amplía el editor con enlaces, tablas o atributos,
+  deberán añadirse casos específicos por etiqueta y atributo.
+- No se añadieron tests frontend nuevos en esta tarea porque `2.16` ya cubrió el contrato Zod y el
+  renderizado de pestañas en la ficha pública. Esta iteración se centró en reglas de dominio,
+  permisos, publicación y persistencia real.
+- El test de integración crea prerequisitos con SQL directo para email/verificación/imagen. Es una
+  decisión consciente para no duplicar flujos ya cubiertos y mantener el foco en pestañas.
+- La siguiente fase debe empezar con búsqueda pública; los tests de pestañas quedan preparados para
+  detectar regresiones si la búsqueda reutiliza proyecciones públicas de locales.
+
+### Criterio de cierre
+
+La tarea se cierra porque existen pruebas automatizadas que cubren permisos privados, orden exacto,
+publicación, filtrado de pestañas activas, no exposición de borradores, sanitización de HTML e i18n
+ES/EN. La verificación focalizada terminó con 12 tests correctos y validaciones de formato Java y
+Checkstyle correctas.
