@@ -12,10 +12,11 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-08
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17` y `3.1` a
-  `3.8`.
-- Siguiente tarea pendiente recomendada: `3.9. Crear pantalla de resultados con tarjetas.`
+  `3.10`.
+- Siguiente tarea pendiente recomendada: `3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple.`
 - Observación: la Fase 3 ya dispone de endpoint público de búsqueda con texto, categoría,
-  ubicación, radio, ordenación, estado resumido y pantalla de inicio con buscador principal.
+  ubicación, radio, ordenación, estado resumido, pantalla de inicio, pantalla de resultados con
+  tarjetas y panel responsive de filtros.
 
 ## Conversación 1 - Creación de especificación base
 
@@ -3349,6 +3350,68 @@ Fuente de verdad del avance:
   - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests,VenuePublicSearchIntegrationTests" test`
     correcto con 10 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check` correctos.
+
+## Conversación 74 - Resultados públicos con tarjetas y filtros responsive
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmaron como siguientes tareas pendientes `3.9` y `3.10`.
+  - Se creó la ruta pública `/explorar` como pantalla server-side de resultados.
+  - Se añadió un cliente de búsqueda pública validado con Zod para consumir
+    `GET /api/public/venues/search` desde Next.js sin reenviar cookies.
+  - Se creó la vista de resultados con tarjetas de local que muestran imagen principal, nombre,
+    categoría, ubicación aproximada, estado, valoración pendiente, descripción breve y disponibilidad
+    resumida.
+  - Se añadió panel de filtros desktop como lateral y panel móvil como bloque desplegable, ambos con
+    filtros soportados por backend: texto, ubicación, categoría y ordenación.
+  - Se añadieron traducciones ES/EN y tests focalizados del cliente API y de la vista.
+- Archivos modificados:
+  - `apps/web/src/app/explorar/page.tsx`.
+  - `apps/web/src/features/public-search/public-search-api.ts`.
+  - `apps/web/src/features/public-search/public-search-api.test.ts`.
+  - `apps/web/src/features/public-search/public-search-results.tsx`.
+  - `apps/web/src/features/public-search/public-search-results.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-005 Estado público del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-010 Accesibilidad`.
+- Tareas impactadas:
+  - `3.9. Crear pantalla de resultados con tarjetas`.
+  - `3.10. Crear panel de filtros desktop y móvil`.
+  - Prepara `3.11`, que añadirá secciones de recomendados, destacados y cercanos.
+- Tareas completadas:
+  - `3.9. Crear pantalla de resultados con tarjetas`.
+  - `3.10. Crear panel de filtros desktop y móvil`.
+- Siguiente tarea pendiente recomendada:
+  - `3.11. Crear secciones iniciales de recomendados, destacados y cercanos con lógica simple`.
+- Decisiones o aclaraciones relevantes:
+  - Se consolida `/explorar` como ruta pública de resultados, coherente con la home ya implementada.
+  - La pantalla usa renderizado server-side y `fetch(..., { cache: "no-store" })` hasta definir
+    invalidación de caché para resultados públicos.
+  - El panel móvil se implementa con `details/summary` para evitar estado cliente y mantener una
+    interacción accesible y ligera.
+  - No se añade filtro por disponibilidad real ni valoración mínima porque el backend todavía no
+    expone contratos para esos filtros; solo se permite ordenar por modos ya soportados.
+  - Las tarjetas comunican valoraciones como próximas para no simular métricas inexistentes.
+  - Evidencia frontend: `npm exec vitest -- run src/features/public-search/public-search-api.test.ts src/features/public-search/public-search-results.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000`
+    correcto con 2 ficheros, 3 tests y 0 fallos.
+  - Evidencia build: `npm run build:web:test` correcto; Next compila `/explorar` como ruta dinámica.
+  - Evidencia adicional: `npm run typecheck --workspace @reserly/web`, `npm run lint:web`,
+    `npm run i18n:check`, `npm run spanish:text:check`, `npm exec prettier -- --check ...` y
     `git diff --check` correctos.
 
 ## Conversación 73 - Estado resumido de resultados e inicio con buscador

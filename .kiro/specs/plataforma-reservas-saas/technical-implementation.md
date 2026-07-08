@@ -16433,3 +16433,250 @@ Las tareas se cierran porque:
 - La implementación queda documentada, traducida y verificada con tests backend, tests frontend
   focalizados, typecheck, i18n, lint, validación de español, convenciones backend y comprobación de
   whitespace.
+
+## Iteración 2026-07-08 - Tareas 3.9 y 3.10, resultados públicos y filtros responsive
+
+### Identificador exacto de las tareas completadas
+
+- `3.9. Crear pantalla de resultados con tarjetas`.
+- `3.10. Crear panel de filtros desktop y móvil`.
+
+### Objetivo técnico
+
+Construir la experiencia pública de descubrimiento posterior a la home:
+
+- Crear una ruta pública de resultados que consuma el endpoint de búsqueda existente.
+- Mostrar locales publicados como tarjetas escaneables y táctiles.
+- Proporcionar filtros visibles en escritorio y accesibles en móvil sin introducir todavía filtros no
+  soportados por backend.
+
+### Requisitos y decisiones de diseño relacionados
+
+Requisitos:
+
+- `RF-001 Buscador principal`: el usuario que busca por texto debe llegar a resultados coincidentes.
+- `RF-002 Filtros avanzados`: debe poder refinar por ubicación, categoría y radio cuando existan
+  datos suficientes. En esta iteración se implementan los filtros ya soportados por UI y backend:
+  texto, ubicación, categoría y ordenación.
+- `RF-003 Resultados de búsqueda`: los resultados deben mostrarse como tarjetas con foto, nombre,
+  categoría, ubicación aproximada, estado, valoración, descripción breve y disponibilidad resumida.
+- `RF-005 Estado público del local`: las tarjetas deben mostrar estado textual, no solo color.
+- `RF-031 Internacionalización de textos`: toda UI visible debe salir de catálogos ES/EN.
+
+Diseño:
+
+- La ruta de resultados queda materializada como `/explorar`, ya usada por la home y navegación
+  pública.
+- El diseño responsive evita tablas y usa tarjetas verticales en móvil.
+- El panel de filtros en escritorio ocupa una columna lateral; en móvil se presenta como bloque
+  plegable `details/summary`.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/web/src/app/explorar/page.tsx`.
+- `apps/web/src/features/public-search/public-search-api.ts`.
+- `apps/web/src/features/public-search/public-search-api.test.ts`.
+- `apps/web/src/features/public-search/public-search-results.tsx`.
+- `apps/web/src/features/public-search/public-search-results.test.tsx`.
+
+Archivos modificados:
+
+- `apps/web/locales/es.json`.
+- `apps/web/locales/en.json`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminan archivos.
+
+### Arquitectura aplicada y razones técnicas
+
+Se aplica separación por feature:
+
+- `public-search-api.ts` contiene el contrato de datos y la llamada server-side al backend.
+- `public-search-results.tsx` contiene la presentación de tarjetas y filtros.
+- `app/explorar/page.tsx` orquesta `searchParams`, locale y carga de datos desde Server Component.
+
+Razones:
+
+- Mantener la página como composición fina facilita testear la vista sin depender del runtime de
+  Next.js.
+- Zod valida la respuesta pública y protege la UI frente a contratos incompletos.
+- `fetch` usa `cache: "no-store"` porque todavía no existe política de invalidación para cambios de
+  disponibilidad, publicación o perfil.
+- Los filtros usan formularios HTML `GET`, sin estado cliente ni JavaScript adicional, y mantienen
+  URLs compartibles.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No hay cambios de base de datos ni migraciones.
+
+El frontend consume el DTO de `GET /api/public/venues/search`:
+
+- Paginación: `locale`, `page`, `size`, `totalElements`, `totalPages`, `hasNext`.
+- Tarjeta: `slug`, `name`, `categorySlug`, `categoryName`, `descriptionExcerpt`, `mainImageUrl`,
+  `city`, `province`, `country`, `statusCode`, `statusLabel`, `availabilitySummary`,
+  `bookingAvailable`, `latitude`, `longitude`.
+
+Restricciones aplicadas en UI:
+
+- `statusCode` se valida como `available`, `unavailable` o `availability_pending`.
+- `sort` solo acepta `relevance`, `rating`, `distance`, `availability` o `newest`.
+- Los filtros vacíos no se envían al backend.
+
+### Endpoints, contratos, servicios, componentes y módulos implementados
+
+Endpoint consumido:
+
+- `GET /api/public/venues/search`.
+
+Parámetros enviados desde `/explorar`:
+
+- `locale`: locale resuelto por `next-intl`.
+- `q`: texto libre.
+- `location`: ciudad, zona o dirección.
+- `category`: slug de categoría.
+- `sort`: modo de ordenación soportado.
+- `page`: solo si es positivo.
+
+Módulos:
+
+- `searchPublicVenues(locale, filters)`
+  - Construye URL interna segura.
+  - Recorta espacios de filtros.
+  - Valida la respuesta con Zod.
+  - No reenvía cookies ni credenciales.
+- `PublicSearchResultsView`
+  - Renderiza `PublicShell`, encabezado, filtros y resultados.
+- `SearchFilters`
+  - Modo desktop: `Surface` lateral.
+  - Modo móvil: `details/summary`.
+- `VenueResultCard`
+  - Renderiza imagen, categoría, estado, ubicación, descripción, valoración pendiente,
+    disponibilidad resumida y enlace a la ficha.
+
+### Flujos de ejecución relevantes
+
+Flujo desde home:
+
+1. El usuario envía el formulario de `/` hacia `/explorar?q=...&location=...`.
+2. `ExplorePage` normaliza `searchParams`.
+3. `searchPublicVenues` llama al backend con los filtros soportados.
+4. `PublicSearchResultsView` muestra resumen de conteo, filtros y tarjetas.
+
+Flujo de filtros:
+
+1. El usuario modifica texto, ubicación, categoría u orden.
+2. El formulario envía `GET /explorar`.
+3. La URL resultante representa el estado de filtros y puede compartirse.
+4. La pantalla se renderiza de nuevo server-side.
+
+Flujo de tarjeta:
+
+1. Si `mainImageUrl` existe, se resuelve con la URL pública del API y se muestra como imagen.
+2. Si no existe, se reserva el mismo ratio visual con estado "Imagen pendiente".
+3. El botón "Ver local" navega a `/locales/{slug}`.
+
+### Validaciones, permisos, seguridad, privacidad, accesibilidad e internacionalización
+
+Validaciones:
+
+- `searchParams` toma solo el primer valor de cada parámetro.
+- Valores en blanco se convierten en `undefined`.
+- `sort` inválido se descarta antes de llamar al backend.
+- Zod valida forma y tipos del JSON de búsqueda.
+
+Seguridad y privacidad:
+
+- La llamada se hace desde servidor usando `RESERLY_API_INTERNAL_URL` cuando existe.
+- No se reenvían cookies de usuario ni sesiones de local.
+- No se pide geolocalización ni se persiste ubicación del usuario.
+- No se muestran datos internos del local, propietario o cuenta empresarial.
+
+Accesibilidad:
+
+- La lista de resultados se marca con `aria-label`.
+- Los filtros usan `role="search"` y etiquetas visibles.
+- En móvil, `summary` ofrece una entrada táctil y semántica para abrir filtros.
+- Los iconos decorativos usan `aria-hidden`.
+- El estado se comunica con texto e icono mediante `StatusChip`, no solo con color.
+
+Internacionalización:
+
+- Se añade namespace `PublicSearch` en `es.json` y `en.json`.
+- Se localizan encabezados, acciones, filtros, categorías, ordenación, tarjetas, estado vacío y
+  metadatos.
+- `npm run i18n:check` valida que no hay texto visible hardcodeado.
+- `npm run spanish:text:check` valida tildes, signos de apertura y UTF-8.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+- La ruta server lanza error si el backend responde con estado no OK. No se introduce todavía una UI
+  específica de error para resultados; se podrá añadir junto a estados vacíos avanzados.
+- No se añaden logs ni auditoría porque la operación es lectura pública.
+- La no persistencia de filtros mantiene bajo el alcance de observabilidad hasta definir eventos de
+  interacción en fases posteriores.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests añadidos:
+
+- `public-search-api.test.ts`
+  - Verifica que `searchPublicVenues` llama a la URL interna con `locale`, `q`, `location`,
+    `category` y `sort`.
+  - Verifica que la respuesta validada conserva `statusCode`.
+- `public-search-results.test.tsx`
+  - Verifica título, conteo, imagen principal, tarjetas, estado, placeholder de imagen, enlace de
+    ficha y filtros.
+  - Verifica estado vacío y acción de limpieza.
+
+Comandos ejecutados:
+
+```text
+npm exec vitest -- run src/features/public-search/public-search-api.test.ts src/features/public-search/public-search-results.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000
+npm run typecheck --workspace @reserly/web
+npm run lint:web
+npm run i18n:check
+npm run spanish:text:check
+npm exec prettier -- --check apps/web/src/app/explorar/page.tsx apps/web/src/features/public-search/public-search-api.ts apps/web/src/features/public-search/public-search-api.test.ts apps/web/src/features/public-search/public-search-results.tsx apps/web/src/features/public-search/public-search-results.test.tsx apps/web/locales/es.json apps/web/locales/en.json
+git diff --check
+npm run build:web:test
+```
+
+Resultados:
+
+- Vitest focalizado: 2 ficheros, 3 tests, 0 fallos.
+- TypeScript: correcto.
+- ESLint web: correcto.
+- i18n: correcto.
+- Validación de español: correcta.
+- Prettier en archivos afectados: correcto.
+- Whitespace: correcto.
+- Build Next de test: correcto; `/explorar` compila como ruta dinámica.
+
+Incidencia de verificación:
+
+- Una primera ejecución de Vitest desde la raíz y en paralelo resolvió `vitest.setup.ts` contra la
+  ruta sandbox y falló antes de cargar tests. Se repitió desde `apps/web`, con la misma configuración
+  funcional que el resto de suites, y pasó correctamente.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- No se implementa paginación visual todavía; el endpoint ya devuelve campos de paginación, pero la
+  UI inicial se centra en la primera página.
+- El filtro por radio no aparece en UI porque requiere coordenadas de usuario o entrada explícita de
+  latitud/longitud; pedir geolocalización se reservará para una iteración con consentimiento claro.
+- No se filtra por disponibilidad real ni valoración mínima porque esas capacidades dependen de
+  horarios, franjas y reseñas futuras.
+- Las categorías del panel son una lista fija alineada con seeds actuales. En el futuro convendrá
+  servir categorías activas desde backend.
+- Las secciones de recomendados, destacados y cercanos quedan para `3.11`.
+
+### Criterio de cierre
+
+Las tareas se cierran porque `/explorar` ya carga resultados públicos reales desde el backend,
+presenta tarjetas de local con los datos requeridos disponibles, ofrece filtros desktop y móvil
+compatibles con el contrato existente, está internacionalizada en ES/EN y queda verificada con tests,
+lint, typecheck, build y validaciones de calidad de texto.

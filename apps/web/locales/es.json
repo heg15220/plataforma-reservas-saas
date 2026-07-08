@@ -695,5 +695,60 @@
       "title": "Preview del panel"
     },
     "venueName": "Vista de demostración"
+  },
+  "PublicSearch": {
+    "actions": {
+      "apply": "Aplicar filtros",
+      "clear": "Limpiar filtros",
+      "viewVenue": "Ver local"
+    },
+    "card": {
+      "imageAlt": "Imagen principal de {name}",
+      "noImage": "Imagen pendiente",
+      "ratingPending": "Valoraciones próximamente"
+    },
+    "categories": {
+      "campo-de-futbol": "Campo de fútbol",
+      "centro-de-estetica": "Centro de estética",
+      "centro-deportivo": "Centro deportivo",
+      "instalacion-municipal": "Instalación municipal",
+      "otros": "Otros",
+      "peluqueria": "Peluquería",
+      "pista-de-padel": "Pista de pádel",
+      "restaurante": "Restaurante"
+    },
+    "empty": {
+      "description": "Prueba con otra ubicación, cambia la categoría o elimina filtros para ampliar la búsqueda.",
+      "title": "No hay locales que coincidan"
+    },
+    "eyebrow": "DESCUBRIMIENTO",
+    "filters": {
+      "anyCategory": "Todas las categorías",
+      "ariaLabel": "Filtros de búsqueda pública",
+      "categoryLabel": "Categoría",
+      "desktopTitle": "Filtros",
+      "locationLabel": "Ubicación",
+      "locationPlaceholder": "Ciudad, zona o dirección",
+      "mobileTitle": "Mostrar filtros",
+      "queryLabel": "Qué buscas",
+      "queryPlaceholder": "Nombre, servicio o categoría",
+      "sortLabel": "Ordenar por"
+    },
+    "metadata": {
+      "description": "Resultados públicos de locales y servicios disponibles en Reserly.",
+      "title": "Explorar locales"
+    },
+    "resultsAria": "Resultados de locales",
+    "sort": {
+      "availability": "Disponibilidad",
+      "distance": "Cercanía",
+      "newest": "Más recientes",
+      "rating": "Valoración",
+      "relevance": "Relevancia"
+    },
+    "summary": {
+      "count": "{count, plural, =0 {Sin resultados} one {# local encontrado} other {# locales encontrados}}"
+    },
+    "title": "Explora locales para reservar"
   }
 }

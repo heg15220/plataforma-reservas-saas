@@ -695,5 +695,60 @@
       "title": "Panel preview"
     },
     "venueName": "Demo view"
+  },
+  "PublicSearch": {
+    "actions": {
+      "apply": "Apply filters",
+      "clear": "Clear filters",
+      "viewVenue": "View venue"
+    },
+    "card": {
+      "imageAlt": "Main image of {name}",
+      "noImage": "Image pending",
+      "ratingPending": "Reviews coming soon"
+    },
+    "categories": {
+      "campo-de-futbol": "Football pitch",
+      "centro-de-estetica": "Beauty centre",
+      "centro-deportivo": "Sports centre",
+      "instalacion-municipal": "Municipal facility",
+      "otros": "Other",
+      "peluqueria": "Hairdresser",
+      "pista-de-padel": "Padel court",
+      "restaurante": "Restaurant"
+    },
+    "empty": {
+      "description": "Try another location, change the category or remove filters to widen the search.",
+      "title": "No matching venues"
+    },
+    "eyebrow": "DISCOVERY",
+    "filters": {
+      "anyCategory": "All categories",
+      "ariaLabel": "Public search filters",
+      "categoryLabel": "Category",
+      "desktopTitle": "Filters",
+      "locationLabel": "Location",
+      "locationPlaceholder": "City, area or address",
+      "mobileTitle": "Show filters",
+      "queryLabel": "What are you looking for?",
+      "queryPlaceholder": "Name, service or category",
+      "sortLabel": "Sort by"
+    },
+    "metadata": {
+      "description": "Public results for venues and services available on Reserly.",
+      "title": "Explore venues"
+    },
+    "resultsAria": "Venue results",
+    "sort": {
+      "availability": "Availability",
+      "distance": "Distance",
+      "newest": "Newest",
+      "rating": "Rating",
+      "relevance": "Relevance"
+    },
+    "summary": {
+      "count": "{count, plural, =0 {No results} one {# venue found} other {# venues found}}"
+    },
+    "title": "Explore venues to book"
   }
 }
