@@ -17622,3 +17622,270 @@ Las tareas se cierran porque el backend ya permite configurar excepciones de fec
 desactivar reservas y crear franjas manuales disponibles bajo validaciones de horario, bloqueo,
 capacidad y solape, con contratos REST privados, persistencia, tests focalizados y documentación
 técnica actualizada.
+
+## Iteración 2026-07-08 - Tareas 4.5 y 4.6, generación automática y capacidad máxima de franjas
+
+### Identificador exacto de las tareas completadas
+
+- `4.5. Implementar generación automática de franjas por duración`.
+- `4.6. Implementar capacidad máxima por franja`.
+
+### Objetivo técnico
+
+Extender la gestión privada de franjas para que un local pueda crear automáticamente las franjas de
+una fecha a partir de una duración fija y definir o modificar la capacidad máxima de cada franja. La
+iteración completa el núcleo operativo mínimo de franjas antes de incorporar bloqueos manuales,
+estado público y disponibilidad pública.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-006`: las franjas generadas alimentarán el calendario de disponibilidad con inicio, fin,
+  capacidad total y estado.
+- `RF-011`: el local puede generar franjas de duración personalizada y modificar la capacidad máxima.
+- `RF-012`: los cambios de disponibilidad y capacidad deben reflejarse desde backend, sin depender de
+  validación frontend.
+- `RNF-001`: las operaciones privadas se acotan al propietario autenticado.
+- `RNF-004`: la generación valida solapes antes de persistir y usa consultas acotadas por local y
+  fecha.
+- `RNF-011`: se mantienen DAOs con `@Query`, contratos REST en interfaz, DTOs dedicados y nombres
+  físicos ya existentes en `UpperCamelCase`.
+
+Decisiones:
+
+- La generación automática es transaccional y atómica desde el punto de vista del caso de uso: si una
+  franja candidata se solapa, no se guarda ninguna franja del lote.
+- La duración permitida se limita a `5..480` minutos para cubrir granularidades habituales y evitar
+  lotes absurdos o entradas accidentales de varios días.
+- La generación usa el horario semanal efectivo como rango completo. Las excepciones de día completo
+  creadas en `AvailabilityBlocks` bloquean la generación de esa fecha.
+- Las franjas automáticas nacen `available`, con `createdByRule=true`, `serviceId=null`, `version=0`
+  y timestamps de creación/actualización comunes para el lote.
+- La actualización de capacidad usa bloqueo pesimista sobre la franja propia. Aunque todavía no
+  existen reservas ni holds, esta decisión deja preparado el punto de control donde se validará que la
+  nueva capacidad no sea inferior a las plazas ya comprometidas.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotCapacityRequest.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotGenerationRequest.java`.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotController.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotService.java`.
+- `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/controller/TimeSlotControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/TimeSlotServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+No se eliminan archivos y no se añaden migraciones porque el modelo `TimeSlots.capacity`,
+`TimeSlots.createdByRule`, `TimeSlots.status` y `TimeSlots.version` ya existía desde `V17`.
+
+### Arquitectura aplicada y razones técnicas
+
+La iteración conserva la arquitectura por capas del contexto `availability`:
+
+- `TimeSlotController` define el contrato REST privado bajo `/api/venue/me/time-slots`.
+- `TimeSlotControllerImpl` adapta el principal autenticado a llamadas de servicio y transforma
+  entidades en `TimeSlotResponse`.
+- `TimeSlotService` publica los casos de uso de listado, creación manual, generación automática y
+  actualización de capacidad.
+- `TimeSlotServiceImpl` concentra validaciones de negocio, control transaccional y construcción de
+  entidades.
+- `TimeSlotDao` encapsula consultas propietarias y añade lectura con bloqueo para mutaciones de
+  capacidad.
+
+No se introduce un generador separado porque la lógica actual es corta, depende directamente de las
+mismas invariantes de creación manual y no hay todavía reglas reutilizables por servicio, recurso o
+plantilla. Esa extracción será más valiosa cuando Fase 5 añada servicios y recursos reservables.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+Modelo afectado:
+
+- `TimeSlotEntity.capacity` representa la capacidad máxima configurada por el local.
+- `TimeSlotEntity.createdByRule` distingue franjas automáticas de franjas manuales.
+- `TimeSlotEntity.version` mantiene control optimista para fases posteriores de reserva.
+
+No hay migración nueva. La tarea usa la tabla física `TimeSlots` existente y sus índices por local,
+fecha y rango horario. La consulta de solape existente sigue siendo la barrera funcional para no
+crear rangos incompatibles en la misma fecha y local.
+
+Restricciones aplicadas en servicio:
+
+- `date` obligatoria.
+- `durationMinutes` entre `5` y `480`.
+- `capacity >= 1`.
+- Horario semanal existente, abierto y con reservas activas.
+- Sin excepción diaria de día completo.
+- Cada candidata debe estar contenida en el horario semanal.
+- Ninguna candidata puede solaparse con franjas existentes del local en esa fecha.
+- La franja cuya capacidad se actualiza debe pertenecer al propietario autenticado y a un local no
+  archivado.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoints nuevos:
+
+- `POST /api/venue/me/time-slots/generate`
+  - Payload: `date`, `durationMinutes`, `capacity`.
+  - Respuesta: lista ordenada de `TimeSlotResponse`.
+  - Crea franjas consecutivas desde `opensAt` hasta `closesAt`; si la duración no encaja
+    exactamente, se descarta el tramo final incompleto.
+- `PATCH /api/venue/me/time-slots/{slotId}/capacity`
+  - Payload: `capacity`.
+  - Respuesta: `TimeSlotResponse`.
+  - Actualiza solo la capacidad máxima de una franja propia.
+
+DTOs:
+
+- `TimeSlotGenerationRequest`: contrato de generación con validación Bean Validation y validación de
+  negocio redundante en servicio.
+- `TimeSlotCapacityRequest`: contrato mínimo para cambios de capacidad.
+
+Servicios:
+
+- `TimeSlotService.generate(UUID ownerUserId, TimeSlotGenerationRequest request)`.
+- `TimeSlotService.updateCapacity(UUID ownerUserId, UUID slotId, TimeSlotCapacityRequest request)`.
+
+DAO:
+
+- `TimeSlotDao.findOwnedForUpdate(ownerUserId, slotId)` usa `PESSIMISTIC_WRITE` para serializar
+  cambios sobre una franja concreta.
+
+No se implementan jobs, caché ni componentes UI en esta iteración.
+
+### Flujos de ejecución relevantes
+
+Generación automática:
+
+1. El controlador recibe el principal autenticado y el payload.
+2. El servicio valida fecha, duración y capacidad.
+3. Se bloquea el local vigente del propietario con `findCurrentByOwnerUserIdForUpdate`.
+4. Se resuelve el weekday ISO desde la fecha.
+5. Se carga el horario semanal propietario para ese weekday.
+6. Se valida que el horario esté abierto, con reservas activas y sin excepción diaria.
+7. Se generan candidatas consecutivas sumando `durationMinutes` desde `opensAt`.
+8. El bucle termina cuando la siguiente franja superaría `closesAt`.
+9. Cada candidata se valida contra solapes existentes.
+10. Se persiste el lote con `saveAllAndFlush`.
+11. La respuesta se ordena por hora de inicio.
+
+Actualización de capacidad:
+
+1. El controlador recibe `slotId`, principal autenticado y payload.
+2. El servicio valida `slotId` y `capacity`.
+3. El DAO busca la franja propia de un local no archivado con bloqueo pesimista.
+4. Si no existe o no pertenece al propietario, se devuelve el error de franja inválida.
+5. Se actualiza `capacity` y `updatedAt`.
+6. Se persiste con `saveAndFlush`.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Permisos:
+
+- Los endpoints permanecen bajo `/api/venue/me`, por lo que usan el alcance del local autenticado.
+- Ningún payload acepta `venueId`, `ownerUserId`, `status`, `createdByRule`, `version` ni timestamps.
+- Las consultas de DAO filtran por `venue.ownerUser.id` y descartan locales archivados cuando se
+  muta una franja concreta.
+
+Seguridad y privacidad:
+
+- Los errores usan `TimeSlotInvalidException` y el handler existente; no se exponen detalles de
+  constraints, IDs de otros locales ni estado interno.
+- La operación de capacidad usa bloqueo de fila para evitar escrituras concurrentes inconsistentes.
+
+Internacionalización:
+
+- No se añade UI ni texto visible nuevo.
+- Los códigos de error existentes se mantienen estables para futura traducción desde catálogos.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Errores:
+
+- Se reutiliza `TIME_SLOT_INVALID` para payload inválido, día no reservable, solape, franja ajena o
+  franja inexistente.
+- `VENUE_PROFILE_NOT_FOUND` sigue identificando ausencia de local vigente para el propietario.
+
+Logs y auditoría:
+
+- No se añaden logs específicos para no duplicar ruido en casos de validación esperados.
+- No existe tabla de auditoría de cambios de franja en esta fase. La auditoría de cambios de
+  disponibilidad con reservas afectadas se abordará cuando existan reservas y reglas de cancelación.
+
+Observabilidad:
+
+- La generación usa consultas de solape acotadas por propietario y fecha.
+- Las métricas de generación, bloqueo, disponibilidad pública y reservas fallidas quedan para Fase
+  17.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests modificados:
+
+- `TimeSlotServiceTests`
+  - Genera ocho franjas de una hora dentro de un horario 09:00-17:00.
+  - Verifica `createdByRule=true`, capacidad aplicada y orden de franjas.
+  - Rechaza duración inferior al mínimo.
+  - Rechaza generación si la primera candidata se solapa.
+  - Actualiza capacidad de una franja propia con bloqueo.
+  - Rechaza capacidad inferior a uno y franja inexistente.
+- `TimeSlotControllerTests`
+  - Verifica que generación y actualización de capacidad delegan con el propietario autenticado y
+    devuelven contratos REST correctos.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultados:
+
+- Spotless: correcto.
+- Checkstyle: correcto durante la ejecución de tests.
+- Tests focalizados: 18 tests, 0 fallos, 0 errores, 0 omitidos.
+- Convenciones backend: correctas.
+- Validación de español: correcta.
+- Whitespace: correcto.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- La actualización de capacidad todavía no compara contra reservas confirmadas ni holds activos
+  porque esas tablas se implementarán en Fase 7. El punto transaccional ya está preparado mediante
+  `findOwnedForUpdate`.
+- La generación no crea plantillas recurrentes ni reglas persistentes; solo materializa franjas para
+  una fecha concreta.
+- La generación no sobrescribe franjas existentes ni hace resolución parcial de conflictos. El local
+  deberá corregir solapes antes de regenerar.
+- No se recalcula disponibilidad pública porque el endpoint público de disponibilidad pertenece a
+  `4.10`.
+- No hay UI privada de horarios y franjas; se implementará en `4.12`.
+- El bloqueo y reapertura manual de franjas queda para `4.7`.
+
+### Evidencia de verificación
+
+La verificación funcional se completó con Maven:
+
+- `mvn -f apps/api/pom.xml spotless:apply`: finalizó con `BUILD SUCCESS`.
+- `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test`:
+  finalizó con `BUILD SUCCESS`, 18 tests ejecutados, 0 fallos, 0 errores y 0 omitidos.
+- `npm run backend:conventions:check`: finalizó correctamente con convenciones backend válidas.
+- `npm run spanish:text:check`: finalizó correctamente con validación de español correcta.
+- `git diff --check`: finalizó sin errores de whitespace.
+
+Las tareas se cierran porque el backend ya expone contratos privados para generar franjas automáticas
+por duración y modificar la capacidad máxima de una franja propia, con validaciones de horario,
+excepciones diarias, solapes, permisos, bloqueo transaccional, tests focalizados y documentación
+técnica actualizada.

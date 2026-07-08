@@ -1,5 +1,7 @@
 package com.reserly.platform.availability.service;
 
+import com.reserly.platform.availability.dto.TimeSlotCapacityRequest;
+import com.reserly.platform.availability.dto.TimeSlotGenerationRequest;
 import com.reserly.platform.availability.dto.TimeSlotRequest;
 import com.reserly.platform.availability.persistence.AvailabilityBlockDao;
 import com.reserly.platform.availability.persistence.TimeSlotDao;
@@ -11,6 +13,9 @@ import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -62,19 +67,62 @@ public class TimeSlotServiceImpl implements TimeSlotService {
       throw new TimeSlotInvalidException();
     }
 
+    return timeSlotDao.saveAndFlush(newSlot(venue, weekday, request, false, Instant.now()));
+  }
+
+  @Override
+  @Transactional
+  public List<TimeSlotEntity> generate(UUID ownerUserId, TimeSlotGenerationRequest request) {
+    validateGenerationRequest(request);
+    VenueEntity venue = requireCurrentVenueForUpdate(ownerUserId);
+    int weekday = request.date().getDayOfWeek().getValue();
+    VenueOpeningHourEntity openingHour =
+        openingHourDao
+            .findOwnedByWeekday(ownerUserId, weekday)
+            .orElseThrow(TimeSlotInvalidException::new);
+    validateReservableDay(
+        ownerUserId,
+        new TimeSlotRequest(
+            request.date(),
+            openingHour.getOpensAt(),
+            openingHour.getClosesAt(),
+            request.capacity()),
+        openingHour);
+
+    List<TimeSlotRequest> candidates = buildGenerationCandidates(request, openingHour);
+    if (candidates.isEmpty()) {
+      throw new TimeSlotInvalidException();
+    }
+    for (TimeSlotRequest candidate : candidates) {
+      if (timeSlotDao.existsOwnedOverlap(
+          ownerUserId, candidate.date(), candidate.startsAt(), candidate.endsAt())) {
+        throw new TimeSlotInvalidException();
+      }
+    }
+
     Instant now = Instant.now();
-    TimeSlotEntity slot = new TimeSlotEntity();
-    slot.setVenue(venue);
-    slot.setDate(request.date());
-    slot.setWeekday(weekday);
-    slot.setStartsAt(request.startsAt());
-    slot.setEndsAt(request.endsAt());
+    List<TimeSlotEntity> slots =
+        candidates.stream()
+            .map(candidate -> newSlot(venue, weekday, candidate, true, now))
+            .toList();
+    return timeSlotDao.saveAllAndFlush(slots).stream()
+        .sorted(Comparator.comparing(TimeSlotEntity::getStartsAt))
+        .toList();
+  }
+
+  @Override
+  @Transactional
+  public TimeSlotEntity updateCapacity(
+      UUID ownerUserId, UUID slotId, TimeSlotCapacityRequest request) {
+    if (slotId == null || request == null || request.capacity() < 1) {
+      throw new TimeSlotInvalidException();
+    }
+    TimeSlotEntity slot =
+        timeSlotDao
+            .findOwnedForUpdate(ownerUserId, slotId)
+            .orElseThrow(TimeSlotInvalidException::new);
     slot.setCapacity(request.capacity());
-    slot.setStatus(STATUS_AVAILABLE);
-    slot.setCreatedByRule(false);
-    slot.setVersion(0);
-    slot.setCreatedAt(now);
-    slot.setUpdatedAt(now);
+    slot.setUpdatedAt(Instant.now());
     return timeSlotDao.saveAndFlush(slot);
   }
 
@@ -103,6 +151,18 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     }
   }
 
+  private void validateGenerationRequest(TimeSlotGenerationRequest request) {
+    if (request == null) {
+      throw new TimeSlotInvalidException();
+    }
+    validateDate(request.date());
+    if (request.durationMinutes() < 5
+        || request.durationMinutes() > 480
+        || request.capacity() < 1) {
+      throw new TimeSlotInvalidException();
+    }
+  }
+
   private void validateDate(LocalDate date) {
     if (date == null) {
       throw new TimeSlotInvalidException();
@@ -118,5 +178,37 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         || request.endsAt().isAfter(openingHour.getClosesAt())) {
       throw new TimeSlotInvalidException();
     }
+  }
+
+  private List<TimeSlotRequest> buildGenerationCandidates(
+      TimeSlotGenerationRequest request, VenueOpeningHourEntity openingHour) {
+    ArrayList<TimeSlotRequest> candidates = new ArrayList<>();
+    LocalTime startsAt = openingHour.getOpensAt();
+    while (true) {
+      LocalTime endsAt = startsAt.plusMinutes(request.durationMinutes());
+      if (endsAt.isAfter(openingHour.getClosesAt())) {
+        break;
+      }
+      candidates.add(new TimeSlotRequest(request.date(), startsAt, endsAt, request.capacity()));
+      startsAt = endsAt;
+    }
+    return candidates;
+  }
+
+  private TimeSlotEntity newSlot(
+      VenueEntity venue, int weekday, TimeSlotRequest request, boolean createdByRule, Instant now) {
+    TimeSlotEntity slot = new TimeSlotEntity();
+    slot.setVenue(venue);
+    slot.setDate(request.date());
+    slot.setWeekday(weekday);
+    slot.setStartsAt(request.startsAt());
+    slot.setEndsAt(request.endsAt());
+    slot.setCapacity(request.capacity());
+    slot.setStatus(STATUS_AVAILABLE);
+    slot.setCreatedByRule(createdByRule);
+    slot.setVersion(0);
+    slot.setCreatedAt(now);
+    slot.setUpdatedAt(now);
+    return slot;
   }
 }

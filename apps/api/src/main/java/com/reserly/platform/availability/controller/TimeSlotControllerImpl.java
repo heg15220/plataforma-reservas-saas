@@ -1,5 +1,7 @@
 package com.reserly.platform.availability.controller;
 
+import com.reserly.platform.availability.dto.TimeSlotCapacityRequest;
+import com.reserly.platform.availability.dto.TimeSlotGenerationRequest;
 import com.reserly.platform.availability.dto.TimeSlotRequest;
 import com.reserly.platform.availability.dto.TimeSlotResponse;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
@@ -8,10 +10,11 @@ import com.reserly.platform.identity.security.AuthenticatedAccount;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Adaptador REST de franjas manuales. */
+/** Adaptador REST de franjas privadas del local. */
 @RestController
 public class TimeSlotControllerImpl implements TimeSlotController {
 
@@ -33,6 +36,22 @@ public class TimeSlotControllerImpl implements TimeSlotController {
     TimeSlotEntity slot = timeSlotService.create(account.userId(), request);
     return ResponseEntity.created(URI.create("/api/venue/me/time-slots/" + slot.getId()))
         .body(toResponse(slot));
+  }
+
+  @Override
+  public ResponseEntity<List<TimeSlotResponse>> generate(
+      AuthenticatedAccount account, TimeSlotGenerationRequest request) {
+    return ResponseEntity.ok(
+        timeSlotService.generate(account.userId(), request).stream()
+            .map(this::toResponse)
+            .toList());
+  }
+
+  @Override
+  public ResponseEntity<TimeSlotResponse> updateCapacity(
+      AuthenticatedAccount account, UUID slotId, TimeSlotCapacityRequest request) {
+    return ResponseEntity.ok(
+        toResponse(timeSlotService.updateCapacity(account.userId(), slotId, request)));
   }
 
   private TimeSlotResponse toResponse(TimeSlotEntity slot) {

@@ -7,6 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.availability.dto.TimeSlotCapacityRequest;
+import com.reserly.platform.availability.dto.TimeSlotGenerationRequest;
 import com.reserly.platform.availability.dto.TimeSlotRequest;
 import com.reserly.platform.availability.persistence.AvailabilityBlockDao;
 import com.reserly.platform.availability.persistence.TimeSlotDao;
@@ -26,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** Cubre creación manual de franjas contra horario, cierres y solapes. */
+/** Cubre creación, generación y capacidad de franjas contra horario, cierres y solapes. */
 @ExtendWith(MockitoExtension.class)
 class TimeSlotServiceTests {
 
@@ -111,6 +113,77 @@ class TimeSlotServiceTests {
     when(slotDao.findAllOwnedByDate(ownerId, date)).thenReturn(List.of(new TimeSlotEntity()));
 
     assertThat(service.list(ownerId, date)).hasSize(1);
+  }
+
+  @Test
+  void generatesSlotsByDurationInsideOpeningHours() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+    TimeSlotGenerationRequest request = new TimeSlotGenerationRequest(date, 60, 5);
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(openingHourDao.findOwnedByWeekday(ownerId, 1)).thenReturn(Optional.of(openingHour()));
+    when(blockDao.existsOwnedDayOverride(ownerId, date)).thenReturn(false);
+    when(slotDao.existsOwnedOverlap(any(), any(), any(), any())).thenReturn(false);
+    when(slotDao.saveAllAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    List<TimeSlotEntity> slots = service.generate(ownerId, request);
+
+    assertThat(slots).hasSize(8);
+    assertThat(slots.get(0).getStartsAt()).isEqualTo(LocalTime.of(9, 0));
+    assertThat(slots.get(0).getEndsAt()).isEqualTo(LocalTime.of(10, 0));
+    assertThat(slots.get(7).getStartsAt()).isEqualTo(LocalTime.of(16, 0));
+    assertThat(slots.get(7).getEndsAt()).isEqualTo(LocalTime.of(17, 0));
+    assertThat(slots).allSatisfy(slot -> assertThat(slot.isCreatedByRule()).isTrue());
+    assertThat(slots).allSatisfy(slot -> assertThat(slot.getCapacity()).isEqualTo(5));
+    verify(slotDao).saveAllAndFlush(any());
+  }
+
+  @Test
+  void rejectsGenerationWhenDurationIsInvalidOrSlotOverlaps() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+    assertThatThrownBy(() -> service.generate(ownerId, new TimeSlotGenerationRequest(date, 4, 5)))
+        .isInstanceOf(TimeSlotInvalidException.class);
+
+    TimeSlotGenerationRequest request = new TimeSlotGenerationRequest(date, 60, 5);
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(openingHourDao.findOwnedByWeekday(ownerId, 1)).thenReturn(Optional.of(openingHour()));
+    when(blockDao.existsOwnedDayOverride(ownerId, date)).thenReturn(false);
+    when(slotDao.existsOwnedOverlap(ownerId, date, LocalTime.of(9, 0), LocalTime.of(10, 0)))
+        .thenReturn(true);
+
+    assertThatThrownBy(() -> service.generate(ownerId, request))
+        .isInstanceOf(TimeSlotInvalidException.class);
+    verify(slotDao, never()).saveAllAndFlush(any());
+  }
+
+  @Test
+  void updatesCapacityOnOwnedSlot() {
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity slot = new TimeSlotEntity();
+    slot.setId(slotId);
+    slot.setCapacity(4);
+    when(slotDao.findOwnedForUpdate(ownerId, slotId)).thenReturn(Optional.of(slot));
+    when(slotDao.saveAndFlush(slot)).thenReturn(slot);
+
+    TimeSlotEntity updated =
+        service.updateCapacity(ownerId, slotId, new TimeSlotCapacityRequest(9));
+
+    assertThat(updated.getCapacity()).isEqualTo(9);
+    assertThat(updated.getUpdatedAt()).isNotNull();
+    verify(slotDao).findOwnedForUpdate(ownerId, slotId);
+    verify(slotDao).saveAndFlush(slot);
+  }
+
+  @Test
+  void rejectsCapacityBelowOneOrMissingSlot() {
+    UUID slotId = UUID.randomUUID();
+    assertThatThrownBy(
+            () -> service.updateCapacity(ownerId, slotId, new TimeSlotCapacityRequest(0)))
+        .isInstanceOf(TimeSlotInvalidException.class);
+
+    when(slotDao.findOwnedForUpdate(ownerId, slotId)).thenReturn(Optional.empty());
+    assertThatThrownBy(
+            () -> service.updateCapacity(ownerId, slotId, new TimeSlotCapacityRequest(2)))
+        .isInstanceOf(TimeSlotInvalidException.class);
   }
 
   private VenueOpeningHourEntity openingHour() {

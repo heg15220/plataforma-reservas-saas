@@ -12,10 +12,70 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-08
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14` y `4.1` a `4.4`.
-- Siguiente tarea pendiente recomendada: `4.5. Implementar generación automática de franjas por duración.`
+  `3.14` y `4.1` a `4.6`.
+- Siguiente tarea pendiente recomendada: `4.7. Implementar bloqueo y reapertura manual de franjas.`
 - Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
-  disponibilidad, API privada de horario semanal, excepciones diarias y creación manual de franjas.
+  disponibilidad, API privada de horario semanal, excepciones diarias, creación manual de franjas,
+  generación automática por duración y actualización de capacidad máxima por franja.
+
+## Conversación 79 - Generación automática y capacidad máxima de franjas
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/4-horarios-franjas-disponibilidad`.
+  - Se confirmaron `4.5` y `4.6` como las dos siguientes tareas pendientes tras revisar el estado de
+    `tasks.md` y los requisitos de gestión de franjas.
+  - Se añadió el contrato privado `POST /api/venue/me/time-slots/generate` para generar franjas
+    consecutivas de una fecha a partir de una duración fija y una capacidad inicial.
+  - Se añadió el contrato privado `PATCH /api/venue/me/time-slots/{slotId}/capacity` para actualizar
+    la capacidad máxima de una franja propia.
+  - La generación valida local vigente, horario semanal abierto, reservas activas, ausencia de
+    excepción diaria, duración entre 5 y 480 minutos, capacidad positiva y ausencia de solapes antes
+    de persistir el lote.
+  - La actualización de capacidad usa bloqueo pesimista sobre la franja propia para dejar preparada
+    la consistencia transaccional que necesitarán reservas y holds.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/controller/TimeSlotControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotCapacityRequest.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/dto/TimeSlotGenerationRequest.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/persistence/TimeSlotDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/service/TimeSlotServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/controller/TimeSlotControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/service/TimeSlotServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-006 Calendario de disponibilidad`.
+  - `RF-011 Gestión de franjas`.
+  - `RF-012 Gestión de disponibilidad en tiempo real`.
+  - `RNF-001 Seguridad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `4.5. Implementar generación automática de franjas por duración`.
+  - `4.6. Implementar capacidad máxima por franja`.
+  - Prepara `4.7`, `4.10` y la validación de capacidad real de Fase 7.
+- Tareas completadas:
+  - `4.5. Implementar generación automática de franjas por duración`.
+  - `4.6. Implementar capacidad máxima por franja`.
+- Siguiente tarea pendiente recomendada:
+  - `4.7. Implementar bloqueo y reapertura manual de franjas.`
+- Decisiones o aclaraciones relevantes:
+  - La generación automática no sobrescribe ni fusiona franjas existentes; si alguna candidata se
+    solapa, se rechaza toda la operación para evitar resultados parciales ambiguos.
+  - Las franjas generadas nacen con `status=available`, `createdByRule=true`, `serviceId=null` y
+    capacidad positiva.
+  - La capacidad solo se valida contra mínimo `1` porque todavía no existen reservas ni holds que
+    consuman plazas; la restricción contra plazas confirmadas se incorporará cuando exista el modelo
+    de reservas.
+  - Evidencia correcta: `mvn -f apps/api/pom.xml "-Dtest=OpeningHoursServiceTests,OpeningHoursControllerTests,AvailabilityDayServiceTests,AvailabilityDayControllerTests,TimeSlotServiceTests,TimeSlotControllerTests" test`
+    pasó con 18 tests, 0 fallos, 0 errores y 0 omitidos, incluyendo Spotless y Checkstyle.
+  - Evidencia correcta: `mvn -f apps/api/pom.xml spotless:apply`.
+  - Evidencia correcta: `npm run backend:conventions:check`, `npm run spanish:text:check` y
+    `git diff --check`.
 
 ## Conversación 78 - Excepciones diarias y creación manual de franjas
 

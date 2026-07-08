@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.availability.dto.TimeSlotCapacityRequest;
+import com.reserly.platform.availability.dto.TimeSlotGenerationRequest;
 import com.reserly.platform.availability.dto.TimeSlotRequest;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.service.TimeSlotService;
@@ -21,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
-/** Verifica el contrato REST de franjas manuales del local autenticado. */
+/** Verifica el contrato REST de franjas del local autenticado. */
 @ExtendWith(MockitoExtension.class)
 class TimeSlotControllerTests {
 
@@ -63,6 +65,35 @@ class TimeSlotControllerTests {
     assertThat(created.getBody().status()).isEqualTo("available");
     verify(timeSlotService).list(account.userId(), date);
     verify(timeSlotService).create(account.userId(), request);
+  }
+
+  @Test
+  void generatesSlotsAndUpdatesCapacityUsingAuthenticatedOwner() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+    UUID slotId = UUID.randomUUID();
+    TimeSlotGenerationRequest generationRequest = new TimeSlotGenerationRequest(date, 60, 5);
+    TimeSlotCapacityRequest capacityRequest = new TimeSlotCapacityRequest(8);
+    TimeSlotEntity generated = slot(date);
+    generated.setCreatedByRule(true);
+    TimeSlotEntity updated = slot(date);
+    updated.setId(slotId);
+    updated.setCapacity(8);
+    when(timeSlotService.generate(account.userId(), generationRequest))
+        .thenReturn(List.of(generated));
+    when(timeSlotService.updateCapacity(account.userId(), slotId, capacityRequest))
+        .thenReturn(updated);
+
+    var generatedResponse = controller.generate(account, generationRequest);
+    var updatedResponse = controller.updateCapacity(account, slotId, capacityRequest);
+
+    assertThat(generatedResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(generatedResponse.getBody()).hasSize(1);
+    assertThat(generatedResponse.getBody().get(0).createdByRule()).isTrue();
+    assertThat(updatedResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(updatedResponse.getBody()).isNotNull();
+    assertThat(updatedResponse.getBody().capacity()).isEqualTo(8);
+    verify(timeSlotService).generate(account.userId(), generationRequest);
+    verify(timeSlotService).updateCapacity(account.userId(), slotId, capacityRequest);
   }
 
   private TimeSlotEntity slot(LocalDate date) {

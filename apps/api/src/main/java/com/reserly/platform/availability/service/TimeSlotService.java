@@ -1,5 +1,7 @@
 package com.reserly.platform.availability.service;
 
+import com.reserly.platform.availability.dto.TimeSlotCapacityRequest;
+import com.reserly.platform.availability.dto.TimeSlotGenerationRequest;
 import com.reserly.platform.availability.dto.TimeSlotRequest;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import java.time.LocalDate;
@@ -18,4 +20,14 @@ public interface TimeSlotService {
    * @throws TimeSlotInvalidException si la fecha no admite reservas o la franja no es válida
    */
   TimeSlotEntity create(UUID ownerUserId, TimeSlotRequest request);
+
+  /**
+   * Genera franjas automáticas para una fecha usando duración fija.
+   *
+   * @throws TimeSlotInvalidException si la fecha no admite reservas o alguna franja se solapa
+   */
+  List<TimeSlotEntity> generate(UUID ownerUserId, TimeSlotGenerationRequest request);
+
+  /** Actualiza la capacidad máxima de una franja propia. */
+  TimeSlotEntity updateCapacity(UUID ownerUserId, UUID slotId, TimeSlotCapacityRequest request);
 }
