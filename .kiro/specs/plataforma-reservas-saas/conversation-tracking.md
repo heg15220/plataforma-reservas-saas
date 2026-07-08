@@ -3234,3 +3234,61 @@ Fuente de verdad del avance:
     `onclick` ni `javascript:` después de persistir contenido creado por el servicio.
   - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenueCustomTabServiceTests,VenuePublicProfileServiceTests,VenueCustomTabPublicationIntegrationTests" test`
     correcto con 12 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+
+## Conversación 68 - Endpoint base de búsqueda pública
+
+- Fecha: 2026-07-08.
+- Resumen de la conversación:
+  - Se continuó en la rama de fase `phase/3-busqueda-publica-descubrimiento`.
+  - Se confirmó `3.1` como primera tarea pendiente tras revisar `tasks.md`, requisitos, diseño,
+    seguimiento e implementación técnica.
+  - Se implementó `GET /api/public/venues/search` como endpoint público base de descubrimiento.
+  - Se añadió una respuesta paginada con tarjetas mínimas de locales publicados: slug, nombre,
+    categoría localizada, descripción breve, imagen principal y ubicación pública.
+  - Se centralizó la resolución de idioma pública para reutilizarla entre ficha y búsqueda.
+  - Se añadieron tests unitarios de servicio y controlador.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicLocaleResolver.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicProfileControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchItemResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Buscador principal`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-004 Ficha pública del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-008 Calidad y mantenibilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de nomenclatura`.
+- Tareas impactadas:
+  - `3.1. Implementar endpoint GET /api/public/venues/search`.
+  - Prepara `3.2`, `3.3`, `3.4`, `3.5`, `3.6` y `3.7`, que ampliarán búsqueda textual,
+    filtros, radio, ordenación y estado resumido.
+- Tareas completadas:
+  - `3.1. Implementar endpoint GET /api/public/venues/search`.
+- Siguiente tarea pendiente recomendada:
+  - `3.2. Añadir búsqueda por nombre y palabras clave`.
+- Decisiones o aclaraciones relevantes:
+  - Esta iteración no implementa aún parámetros `q`, categoría, ciudad, radio ni ordenación por
+    relevancia; esos comportamientos quedan para las tareas específicas de Fase 3.
+  - El endpoint solo devuelve locales con `status = 'published'`.
+  - La respuesta no expone IDs internos, propietario, cuenta empresarial, datos fiscales ni contacto
+    directo.
+  - La paginación pública normaliza `page < 0` a `0`, `size <= 0` a `20` y limita `size` a `50`.
+  - Evidencia backend: `mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests" test`
+    correcto con 6 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
+  - Evidencia transversal: `npm run backend:conventions:check` y `npm run spanish:text:check`
+    correctos.

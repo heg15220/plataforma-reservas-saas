@@ -82,7 +82,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 5. Fase 3 - Búsqueda pública y descubrimiento
 
-- [ ] 3.1. Implementar endpoint `GET /api/public/venues/search`.
+- [x] 3.1. Implementar endpoint `GET /api/public/venues/search`.
 - [ ] 3.2. Añadir búsqueda por nombre y palabras clave.
 - [ ] 3.3. Añadir filtros por categoría.
 - [ ] 3.4. Añadir filtros por ciudad, zona o dirección normalizada.

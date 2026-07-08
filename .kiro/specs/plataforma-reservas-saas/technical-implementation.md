@@ -14512,3 +14512,314 @@ La tarea se cierra porque existen pruebas automatizadas que cubren permisos priv
 publicación, filtrado de pestañas activas, no exposición de borradores, sanitización de HTML e i18n
 ES/EN. La verificación focalizada terminó con 12 tests correctos y validaciones de formato Java y
 Checkstyle correctas.
+
+## Iteración 3.1 - Endpoint base `GET /api/public/venues/search`
+
+### Identificador exacto de la tarea completada
+
+`3.1. Implementar endpoint GET /api/public/venues/search`.
+
+### Fecha de la iteración
+
+2026-07-08.
+
+### Objetivo técnico de la tarea
+
+Abrir la Fase 3 con el primer contrato backend de descubrimiento público: un endpoint anónimo,
+paginado y localizado que liste locales publicados en formato de tarjeta. La tarea crea la frontera
+REST y de servicio sobre la que se añadirán después búsqueda textual, filtros, radio, ordenaciones y
+estado resumido.
+
+El objetivo deliberado es acotado: entregar `GET /api/public/venues/search` sin adelantar todavía las
+tareas `3.2` a `3.7`.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-001 Buscador principal`: el sistema debe poder mostrar resultados cuando el usuario use el
+  buscador público.
+- `RF-003 Resultados de búsqueda`: cada resultado debe poder representarse como tarjeta de local.
+- `RF-004 Ficha pública del local`: los resultados enlazan por `slug` a la ficha pública ya
+  existente.
+- `RF-031 Internacionalización de textos`: categoría y descripción se resuelven en el idioma público
+  solicitado.
+- `RNF-001 Seguridad`: el endpoint es anónimo, de solo lectura y no acepta identificadores internos.
+- `RNF-002 Privacidad`: la respuesta no incluye propietario, cuenta empresarial, datos fiscales,
+  contacto directo ni documentos i18n completos.
+- `RNF-004 Rendimiento`: se introduce paginación, límite máximo de tamaño y consulta explícita.
+- `RNF-008 Calidad y mantenibilidad`: se mantiene patrón de interfaz + implementación para
+  controladores y servicios.
+- `RNF-009 Internacionalización y localización`: se reutiliza la resolución de idioma pública.
+- `RNF-011 Convenciones de nomenclatura`: DAOs con `@Query`, DTOs `Response`, servicios y
+  controladores separados.
+
+Decisión de alcance:
+
+- `q`, palabras clave, filtros por categoría/ciudad/radio, ordenación por relevancia y estado
+  resumido quedan fuera de `3.1` y se implementarán en tareas posteriores de la misma fase.
+
+### Archivos creados, modificados o eliminados
+
+Archivos creados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicLocaleResolver.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchController.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchItemResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchResponse.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchService.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/controller/VenuePublicSearchControllerTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/venues/service/VenuePublicSearchServiceTests.java`.
+
+Archivos modificados:
+
+- `apps/api/src/main/java/com/reserly/platform/venues/controller/VenuePublicProfileControllerImpl.java`.
+- `apps/api/src/main/java/com/reserly/platform/venues/persistence/VenueDao.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Archivos eliminados:
+
+- Ninguno.
+
+### Arquitectura aplicada y razones de las decisiones técnicas
+
+Se mantiene la arquitectura ya usada en Fase 2:
+
+- Interfaz REST `VenuePublicSearchController`.
+- Implementación `VenuePublicSearchControllerImpl`.
+- Interfaz de caso de uso `VenuePublicSearchService`.
+- Implementación transaccional de lectura `VenuePublicSearchServiceImpl`.
+- DAO explícito `VenueDao` con consultas `@Query`.
+- DTOs REST específicos para búsqueda.
+
+La resolución de idioma se extrajo a `VenuePublicLocaleResolver` porque ficha pública y búsqueda
+comparten las mismas reglas:
+
+1. `locale` explícito si es `es` o `en`.
+2. Fallback estable a `en` si el `locale` explícito no está soportado.
+3. Si no hay `locale`, `Accept-Language` que empieza por `es` resuelve a español.
+4. Cualquier otro caso resuelve a inglés.
+
+La paginación se implementa con `PageRequest` y dos consultas DAO explícitas:
+
+- `findPublishedForSearch(Pageable pageable)` devuelve la página de entidades con categoría cargada.
+- `countPublishedForSearch()` devuelve el total de locales publicados.
+
+Se separó consulta y contador para mantener el formato de `@Query` compatible con el validador de
+convenciones del proyecto y con Checkstyle/Spotless.
+
+### Modelo de datos afectado, migraciones, índices y restricciones
+
+No se añaden migraciones ni columnas. El endpoint utiliza el modelo existente:
+
+- `Venues.status` para limitar resultados a `published`.
+- `Venues.slug` como identificador público navegable.
+- `Venues.name`.
+- `Venues.descriptionI18n` y `Venues.description`.
+- `Venues.mainImageUrl`.
+- `Venues.city`, `province`, `country`, `latitude`, `longitude`.
+- Relación `Venues.category`.
+- `Categories.slug`, `nameI18n` y `name`.
+
+No se crean índices en esta tarea. Los índices de búsqueda textual, trigramas, ciudad, categoría,
+coordenadas y PostGIS forman parte del diseño de búsqueda de la fase y deberán introducirse cuando
+se implementen los filtros y ordenaciones correspondientes.
+
+### Endpoints, contratos, servicios, componentes, jobs o módulos implementados
+
+Endpoint:
+
+```http
+GET /api/public/venues/search?locale=es&page=0&size=20
+```
+
+Parámetros:
+
+- `locale`: opcional, soporta `es` y `en`.
+- `page`: opcional, por defecto `0`.
+- `size`: opcional, por defecto `20`.
+- `Accept-Language`: cabecera opcional usada si no hay `locale`.
+
+Respuesta `VenueSearchResponse`:
+
+- `locale`: idioma resuelto.
+- `page`: página normalizada.
+- `size`: tamaño normalizado.
+- `totalElements`: total de locales publicados.
+- `totalPages`: páginas calculadas para el tamaño normalizado.
+- `hasNext`: indica si hay más resultados.
+- `results`: lista de `VenueSearchItemResponse`.
+
+Respuesta `VenueSearchItemResponse`:
+
+- `slug`.
+- `name`.
+- `categorySlug`.
+- `categoryName`.
+- `descriptionExcerpt`.
+- `mainImageUrl`.
+- `city`.
+- `province`.
+- `country`.
+- `latitude`.
+- `longitude`.
+
+Servicios:
+
+- `VenuePublicSearchService.search(SupportedLocale locale, int page, int size)`.
+
+DAO:
+
+- `VenueDao.findPublishedForSearch(Pageable pageable)`.
+- `VenueDao.countPublishedForSearch()`.
+
+No se añaden jobs ni componentes frontend.
+
+### Flujos de ejecución relevantes
+
+Flujo de petición pública:
+
+1. El cliente llama `GET /api/public/venues/search`.
+2. `VenuePublicSearchControllerImpl` resuelve idioma con `VenuePublicLocaleResolver`.
+3. El controlador delega en `VenuePublicSearchService`.
+4. El servicio normaliza paginación:
+   - `page < 0` pasa a `0`.
+   - `size <= 0` pasa a `20`.
+   - `size > 50` pasa a `50`.
+5. El servicio crea `PageRequest` con orden estable:
+   - `publishedAt` descendente.
+   - `name` ascendente.
+6. `VenueDao.findPublishedForSearch` carga locales publicados y categoría.
+7. `VenueDao.countPublishedForSearch` calcula total.
+8. El servicio mapea cada entidad a tarjeta pública localizada.
+9. La respuesta se serializa como JSON sin datos privados.
+
+Flujo de localización:
+
+1. La categoría usa `category.nameI18n.resolve(locale)`.
+2. Si no hay traducción, usa `category.name`.
+3. La descripción usa `venue.descriptionI18n.resolve(locale)`.
+4. Si no hay traducción, usa `venue.description`.
+5. La descripción se recorta a 180 caracteres para tarjeta, respetando texto visible y sin
+   normalizar tildes.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización aplicadas
+
+Validaciones:
+
+- Paginación normalizada en servicio para evitar tamaños abusivos o páginas negativas.
+- Límite máximo público de `size = 50`.
+
+Permisos:
+
+- Endpoint anónimo bajo `/api/public`.
+- Solo lectura.
+- No requiere ni consume principal autenticado.
+
+Seguridad:
+
+- No acepta IDs internos.
+- No permite seleccionar propietario ni estado.
+- El filtro `venue.status = 'published'` vive en DAO, no solo en cliente.
+
+Privacidad:
+
+- No se exponen:
+  - `venue.id`.
+  - `ownerUserId`.
+  - `businessAccountId`.
+  - datos fiscales o de verificación empresarial.
+  - teléfono o email de contacto.
+  - `descriptionI18n` completo.
+  - claves privadas de imagen.
+
+Internacionalización:
+
+- `locale` explícito y `Accept-Language` siguen la misma regla que la ficha pública.
+- Textos visibles conservan UTF-8 y tildes.
+- Las comparaciones técnicas futuras podrán usar campos auxiliares normalizados, pero esta respuesta
+  conserva el texto visible original.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+No se añaden errores de dominio nuevos.
+
+- Si no hay locales publicados, la respuesta es una página vacía con `results = []`.
+- Parámetros numéricos inválidos a nivel de tipo quedan en la gestión estándar de Spring MVC.
+- No se añaden logs ni métricas en esta tarea.
+- No se requiere auditoría porque es lectura pública sin mutaciones.
+
+### Tests añadidos o modificados y comandos usados para verificarlos
+
+Tests añadidos:
+
+- `VenuePublicSearchControllerTests`
+  - Verifica que `locale` explícito gana a `Accept-Language`.
+  - Verifica negociación de español por cabecera y fallback a inglés ante `locale` no soportado.
+  - Verifica delegación de `page` y `size`.
+- `VenuePublicSearchServiceTests`
+  - Verifica proyección pública localizada de tarjeta.
+  - Verifica normalización de paginación.
+  - Verifica recorte de descripción sin perder caracteres españoles.
+
+Tests modificados:
+
+- `VenuePublicProfileControllerImpl` usa ahora `VenuePublicLocaleResolver`; se mantiene cubierto por
+  `VenuePublicProfileControllerTests`.
+
+Comando ejecutado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests,VenuePublicSearchControllerTests,VenuePublicProfileControllerTests" test
+```
+
+Resultado:
+
+- `VenuePublicProfileControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchControllerTests`: 2 tests, 0 fallos.
+- `VenuePublicSearchServiceTests`: 2 tests, 0 fallos.
+- Total: 6 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless: correcto.
+- Checkstyle: correcto.
+- Maven finalizó con `BUILD SUCCESS`.
+
+Comandos transversales:
+
+```text
+npm run backend:conventions:check
+npm run spanish:text:check
+```
+
+Resultado:
+
+- Convenciones backend: correctas.
+- Validación de español/UTF-8/mojibake/tildes/signos de apertura: correcta.
+
+Incidencias durante verificación:
+
+- Maven normal falló inicialmente por bloqueo de red del sandbox al resolver el parent POM.
+- Una solicitud elevada posterior fue rechazada temporalmente por límite de uso de la herramienta.
+- Se reanudó la tarea y se ejecutó Maven con permisos elevados correctamente.
+- El validador de convenciones exigió consultas DAO propias con `@Query` detectable cerca de la
+  firma; se separó la consulta paginada del contador para cumplir esa regla y mantener Checkstyle.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes derivadas
+
+- El endpoint aún no filtra por texto, categoría, ciudad, radio ni disponibilidad. Corresponde a
+  `3.2` a `3.5`.
+- La ordenación actual es estable pero básica (`publishedAt desc`, `name asc`). La relevancia,
+  cercanía, valoración y disponibilidad corresponden a `3.6`.
+- El estado resumido de cada local no se incluye todavía; corresponde a `3.7`.
+- No se crean índices específicos de búsqueda en esta tarea. Deben añadirse cuando se implementen
+  búsqueda textual y filtros reales.
+- `descriptionExcerpt` es un recorte simple a 180 caracteres. Si frontend necesita resaltado,
+  snippets por coincidencia o diferentes longitudes por dispositivo, deberá ampliarse el contrato.
+
+### Criterio de cierre
+
+La tarea se cierra porque `GET /api/public/venues/search` existe, devuelve una página localizada de
+tarjetas públicas de locales publicados, normaliza paginación, evita datos privados y cuenta con tests
+unitarios de controlador y servicio. La verificación automatizada focalizada, las convenciones backend
+y la validación de textos españoles terminaron correctamente.
