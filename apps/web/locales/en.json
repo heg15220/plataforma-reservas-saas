@@ -534,6 +534,25 @@
         "weeklySource": "Weekly schedule",
         "exceptionSource": "Active exception"
       },
+      "internalCalendar": {
+        "title": "Internal calendar view",
+        "description": "Review the operating week with a summary of time slots, blocks and configured capacity.",
+        "previous": "Previous",
+        "next": "Next",
+        "previousWeek": "Show previous week",
+        "nextWeek": "Show next week",
+        "chooseDate": "Choose date",
+        "weekLabel": "Internal weekly calendar",
+        "daySummary": "{available} of {total} time slots available",
+        "weekSummary": "Week summary",
+        "totalSlots": "Total time slots",
+        "availableSlots": "Available time slots",
+        "blockedSlots": "Blocked time slots",
+        "capacity": "Configured capacity",
+        "slotsFor": "Time slots for {date}",
+        "slotCapacity": "Capacity {capacity}",
+        "empty": "There are no time slots configured for this day."
+      },
       "manual": {
         "title": "Create a manual time slot",
         "startsAt": "Start time",

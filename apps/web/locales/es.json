@@ -534,6 +534,25 @@
         "weeklySource": "Horario semanal",
         "exceptionSource": "Excepción activa"
       },
+      "internalCalendar": {
+        "title": "Vista interna de calendario",
+        "description": "Consulta la semana operativa con resumen de franjas, bloqueos y capacidad configurada.",
+        "previous": "Anterior",
+        "next": "Siguiente",
+        "previousWeek": "Mostrar la semana anterior",
+        "nextWeek": "Mostrar la semana siguiente",
+        "chooseDate": "Elegir fecha",
+        "weekLabel": "Calendario interno semanal",
+        "daySummary": "{available} de {total} franjas disponibles",
+        "weekSummary": "Resumen de la semana",
+        "totalSlots": "Franjas totales",
+        "availableSlots": "Franjas disponibles",
+        "blockedSlots": "Franjas bloqueadas",
+        "capacity": "Capacidad configurada",
+        "slotsFor": "Franjas del {date}",
+        "slotCapacity": "Capacidad {capacity}",
+        "empty": "No hay franjas configuradas para este día."
+      },
       "manual": {
         "title": "Crear franja manual",
         "startsAt": "Hora de inicio",

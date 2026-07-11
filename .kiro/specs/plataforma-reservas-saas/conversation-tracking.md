@@ -12,13 +12,54 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-11
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14` y `4.1` a `4.12`.
-- Siguiente tarea pendiente recomendada: `4.13. Crear vista de calendario interno básica.`
+  `3.14` y `4.1` a `4.14`.
+- Siguiente tarea pendiente recomendada: `5.1. Crear migraciones de services, employee_resources,
+  employee_resource_hours y service_employee_resources.`
 - Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
   disponibilidad, API privada de horario semanal, excepciones diarias, creación manual de franjas,
   generación automática por duración, actualización de capacidad máxima por franja, bloqueo y
   reapertura manual de franjas, cierre operativo de día completo, cálculo de estado del local y
   endpoint público de disponibilidad por slug y fecha.
+
+## Conversación 83 - Calendario interno y tests de cálculo de disponibilidad
+
+- Fecha: 2026-07-11.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/4-horarios-franjas-disponibilidad`.
+  - Se completaron `4.13` y `4.14`, cerrando la Fase 4 funcional de horarios, franjas y
+    disponibilidad.
+  - Se creó una vista interna semanal en `/panel/calendario` con navegación por semana, selector de
+    fecha, resumen de capacidad, franjas disponibles, bloqueadas y detalle diario.
+  - Se ampliaron las pruebas del cálculo público de disponibilidad para cubrir cierre semanal,
+    reservas desactivadas por excepción, día completo, ausencia de huecos futuros y fallback de
+    idioma.
+  - Se añadieron traducciones ES/EN y tests UI para la nueva agenda interna.
+- Archivos modificados:
+  - `apps/web/src/features/availability/venue-internal-calendar.tsx`.
+  - `apps/web/src/app/panel/calendario/page.tsx`.
+  - `apps/web/src/features/availability/availability-ui.test.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/service/PublicVenueAvailabilityServiceTests.java`.
+  - Los tres documentos de seguimiento de `.kiro`.
+- Requisitos impactados:
+  - `RF-006`, `RF-010`, `RF-011`, `RF-012`.
+  - `RNF-001`, `RNF-004`, `RNF-007`, `RNF-009`, `RNF-011`, `RNF-012`.
+- Tareas impactadas y completadas:
+  - `4.13. Crear vista de calendario interno básica`.
+  - `4.14. Crear tests de cálculo de disponibilidad`.
+- Siguiente tarea pendiente recomendada:
+  - `5.1. Crear migraciones de services, employee_resources, employee_resource_hours y service_employee_resources`.
+- Decisiones o aclaraciones relevantes:
+  - La vista interna reutiliza `GET /api/venue/me/time-slots` por fecha y consulta siete días en
+    paralelo; no introduce un endpoint de rango hasta que las métricas lo justifiquen.
+  - La agenda interna no envía `venueId`; todo aislamiento depende de la sesión y de los endpoints
+    privados existentes.
+  - El cálculo de capacidad sigue sin descontar reservas ni holds hasta Fase 7.
+  - El navegador integrado se conectó, pero el servidor local no pudo mantenerse escuchando en
+    segundo plano durante la comprobación; responsive y accesibilidad quedaron verificados por
+    componentes, lint, tipos, tests y build.
+  - Evidencia: backend focalizado con 8 tests, frontend focalizado con 6 tests, tipos, lint, i18n,
+    español, build y whitespace correctos.
 
 ## Conversación 82 - Calendario público y panel privado de disponibilidad
 

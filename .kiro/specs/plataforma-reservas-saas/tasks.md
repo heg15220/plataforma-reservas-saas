@@ -111,8 +111,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 4.10. Implementar endpoint de disponibilidad pública por local y fecha.
 - [x] 4.11. Crear calendario público de disponibilidad.
 - [x] 4.12. Crear panel privado de horarios y franjas.
-- [ ] 4.13. Crear vista de calendario interno básica.
-- [ ] 4.14. Crear tests de cálculo de disponibilidad.
+- [x] 4.13. Crear vista de calendario interno básica.
+- [x] 4.14. Crear tests de cálculo de disponibilidad.
 
 ## 7. Fase 5 - Equipo, recursos y servicios MVP
 

@@ -16,6 +16,7 @@ import {
   updateTimeSlotCapacity,
 } from "./availability-api";
 import { PublicAvailabilityCalendar } from "./public-availability-calendar";
+import { VenueInternalCalendar } from "./venue-internal-calendar";
 import { VenueAvailabilityManager } from "./venue-availability-manager";
 
 vi.mock("./availability-api", async (importOriginal) => {
@@ -139,6 +140,25 @@ describe("VenueAvailabilityManager", () => {
 
     await waitFor(() => expect(setTimeSlotBlocked).toHaveBeenCalledWith(slot.id, true));
     expect(await screen.findByText("Bloqueada")).toBeVisible();
+  });
+});
+
+describe("VenueInternalCalendar", () => {
+  it("muestra resumen semanal y detalle de franjas propias", async () => {
+    vi.mocked(fetchTimeSlots).mockImplementation(async (date) =>
+      date === "2026-07-13"
+        ? [slot, { ...slot, id: "10000000-0000-4000-8000-000000000002", status: "blocked" }]
+        : [],
+    );
+
+    renderWithIntl(<VenueInternalCalendar startDate="2026-07-13" />);
+
+    expect(await screen.findByText("Vista interna de calendario")).toBeVisible();
+    expect(fetchTimeSlots).toHaveBeenCalledTimes(7);
+    expect(await screen.findByText("Franjas disponibles")).toBeVisible();
+    expect(screen.getByText("2")).toBeVisible();
+    expect(screen.getAllByText("09:00 – 10:00")).toHaveLength(2);
+    expect(screen.getAllByText("Capacidad 4")).toHaveLength(2);
   });
 });
 

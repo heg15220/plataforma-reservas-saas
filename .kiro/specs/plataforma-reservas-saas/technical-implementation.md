@@ -18596,3 +18596,208 @@ Resultados:
 Se cierran `4.11` y `4.12` porque ambas superficies existen, consumen contratos reales y
 validados, respetan aislamiento, cubren operaciones, incluyen responsive, accesibilidad e i18n,
 pasan pruebas y build, y documentan limitaciones verificables.
+
+## Iteración 2026-07-11 - Tareas 4.13 y 4.14, calendario interno y cobertura del cálculo de disponibilidad
+
+### Identificadores exactos y fecha
+
+- `4.13. Crear vista de calendario interno básica`.
+- `4.14. Crear tests de cálculo de disponibilidad`.
+- Fecha: 2026-07-11.
+
+### Objetivo técnico
+
+Cerrar la Fase 4 con una lectura interna de calendario orientada al trabajo diario del local y con
+cobertura adicional del motor de estado público de disponibilidad. La vista interna permite escanear
+una semana completa sin sustituir el editor operativo de horarios y franjas creado en `4.12`. Los
+tests fijan los estados relevantes del cálculo desde horario semanal, excepciones de día, franjas
+completas, ausencia de disponibilidad futura y fallback de idioma.
+
+### Requisitos y diseño relacionados
+
+- `RF-006`: calendario con días, estados y franjas.
+- `RF-010`: horario semanal y días cerrados como fuente de disponibilidad.
+- `RF-011`: estados de franjas disponibles, bloqueadas, completas o no disponibles.
+- `RF-012`: cambios privados reflejados por backend.
+- `RNF-001`: aislamiento por sesión en endpoints privados.
+- `RNF-004`: consultas acotadas por fecha y reutilización de contratos existentes.
+- `RNF-007`: interfaz responsive y escaneable para panel.
+- `RNF-009` y `RNF-012`: catálogos ES/EN y validación de textos españoles.
+- `RNF-011`: tests Java sobre servicio con DAOs simulados y contratos DTO existentes.
+
+### Archivos afectados
+
+Creados:
+
+- `apps/web/src/features/availability/venue-internal-calendar.tsx`.
+
+Modificados:
+
+- `apps/web/src/app/panel/calendario/page.tsx`.
+- `apps/web/src/features/availability/availability-ui.test.tsx`.
+- `apps/web/locales/es.json`.
+- `apps/web/locales/en.json`.
+- `apps/api/src/test/java/com/reserly/platform/availability/service/PublicVenueAvailabilityServiceTests.java`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Eliminados: ninguno.
+
+### Implementación técnica
+
+`VenueInternalCalendar` es un Client Component montado al inicio de `/panel/calendario`, antes de
+`VenueAvailabilityManager`. Su responsabilidad es ofrecer una agenda semanal de lectura rápida para
+el propietario:
+
+- calcula el lunes de la semana seleccionada usando fechas locales a mediodía para evitar saltos por
+  UTC;
+- construye una ventana de siete fechas ISO;
+- consulta `fetchTimeSlots(date)` para cada fecha en paralelo con `AbortController`;
+- guarda las franjas por fecha en `Record<string, TimeSlot[]>`;
+- deriva el estado de carga desde `loadedWeekStart`, evitando estados sincrónicos dentro de efectos;
+- resume por día franjas totales, disponibles, bloqueadas y capacidad acumulada;
+- resume la semana completa con totales operativos;
+- muestra detalle de la fecha seleccionada con hora, origen manual/automático, estado y capacidad.
+
+La ruta `apps/web/src/app/panel/calendario/page.tsx` conserva el shell privado, metadatos
+`noindex,nofollow` y el encabezado existente. La nueva agenda funciona como capa de lectura; las
+mutaciones permanecen en el panel detallado.
+
+En backend no se modifica la lógica de producción. `PublicVenueAvailabilityServiceTests` se amplía
+para verificar:
+
+- `closed` por horario semanal cerrado;
+- `unavailable` por excepción `reservations_disabled`;
+- `full` cuando todas las franjas de la fecha tienen estado `full`;
+- `unavailable` cuando no hay franjas ni disponibilidad futura;
+- fallback a inglés cuando el locale recibido es `null`.
+
+### Modelo de datos
+
+No se añaden migraciones ni tablas. La vista interna consume `TimeSlots` mediante el contrato privado
+existente y los tests backend simulan entidades ya presentes: `VenueOpeningHours`,
+`AvailabilityBlocks` y `TimeSlots`.
+
+La capacidad mostrada sigue siendo capacidad configurada de franja, no ocupación real. El descuento
+de reservas confirmadas y holds vigentes se mantiene para Fase 7.
+
+### Contratos y APIs
+
+No se crean endpoints nuevos.
+
+Contrato reutilizado por la UI interna:
+
+- `GET /api/venue/me/time-slots?date=YYYY-MM-DD`.
+- Credenciales: cookie HttpOnly con `credentials: include`.
+- Aislamiento: el backend deriva el local desde la sesión; el frontend no envía `venueId`.
+- Errores: `AvailabilityApiError` mapea `401`, `403`, `404`, `409`, `400/422` y errores de red a
+  mensajes localizados.
+
+Contrato reforzado por tests:
+
+- `PublicVenueAvailabilityService.findBySlug(slug, date, locale)`.
+- Respuesta estable con `statusCode`, `statusLabel`, `bookingAvailable`, `closed`,
+  `reservationsEnabled`, `source`, `availableSlotCount` y franjas.
+
+### Seguridad, privacidad e i18n
+
+La agenda interna mantiene las garantías del panel privado:
+
+- no transmite identificadores de local;
+- no persiste tokens en cliente;
+- cancela lecturas obsoletas con `AbortController`;
+- no expone propietario, cuenta empresarial ni datos de otros locales;
+- muestra errores genéricos y localizados.
+
+Los textos nuevos viven bajo `Availability.private.internalCalendar` en `es.json` y `en.json`.
+Fechas y días se formatean con `Intl.DateTimeFormat(locale)`. Los estados usan `StatusChip` con
+texto visible además de color.
+
+### UI y experiencia de usuario
+
+La agenda interna usa:
+
+- cabecera compacta;
+- botones anterior/siguiente con iconos `ChevronLeft` y `ChevronRight`;
+- selector nativo de fecha;
+- rejilla semanal responsive de dos columnas en móvil y siete columnas desde escritorio;
+- botones de día con `aria-pressed`;
+- chip de estado por día;
+- resumen semanal en bloque separado;
+- detalle de franjas del día seleccionado.
+
+La composición evita tablas complejas en móvil y mantiene dimensiones estables de tarjetas de día
+para reducir saltos de layout durante carga o cambios de semana.
+
+### Tests y verificación
+
+Tests añadidos o ampliados:
+
+- `availability-ui.test.tsx`: monta `VenueInternalCalendar`, verifica siete consultas privadas,
+  título, resumen de franjas disponibles, dos franjas con la misma hora y capacidad.
+- `PublicVenueAvailabilityServiceTests`: pasa de 4 a 8 tests para cubrir estados cerrados, no
+  disponibles, completos, futuros y fallback de locale.
+
+Comandos ejecutados:
+
+```text
+npm exec prettier -- --write apps/web/src/features/availability/venue-internal-calendar.tsx apps/web/src/app/panel/calendario/page.tsx apps/web/src/features/availability/availability-ui.test.tsx apps/web/locales/es.json apps/web/locales/en.json
+mvn -f apps/api/pom.xml -Dtest=PublicVenueAvailabilityServiceTests test
+npm exec --workspace @reserly/web vitest -- run src/features/availability/availability-ui.test.tsx src/features/availability/availability-api.test.ts --pool=threads --maxWorkers=1 --testTimeout=20000
+npm run typecheck --workspace @reserly/web
+npm run lint:web
+npm run i18n:check
+npm run spanish:text:check
+npm run build:web:test
+git diff --check
+```
+
+Resultados:
+
+- Backend focalizado: 8 tests, 0 fallos, 0 errores, 0 omitidos; Spotless y Checkstyle correctos.
+- Frontend focalizado: 2 ficheros, 6 tests, 0 fallos.
+- TypeScript: 0 errores.
+- ESLint: 0 errores, 0 warnings.
+- i18n: catálogos completos y sin texto visible hardcodeado.
+- Español: UTF-8, mojibake, tildes y signos correctos.
+- Build Next.js 16.2.9: correcto, 12 rutas, incluida `/panel/calendario`.
+- Whitespace: correcto.
+
+Validación visual:
+
+- Se leyó la skill del navegador integrado y se conectó el browser runtime.
+- `npm run dev --workspace @reserly/web -- --port 3001` arrancó correctamente en primer plano y
+  confirmó `Ready in 4.8s`.
+- Los intentos de mantener el servidor escuchando en segundo plano mediante `Start-Process`,
+  `Start-Job` y `powershell.exe` no permitieron una navegación estable desde el navegador integrado.
+- No se pudo completar una captura interactiva; la validación responsive queda cubierta de forma
+  estructural por componentes, breakpoints, tests, lint, typecheck y build.
+
+### Decisiones técnicas
+
+- Se reutiliza el endpoint privado por fecha en lugar de crear un endpoint de rango. Siete lecturas
+  paralelas son aceptables para una vista básica.
+- La agenda se monta antes del gestor operativo para priorizar lectura y escaneo; las mutaciones
+  permanecen en el panel detallado.
+- No se añade FullCalendar todavía: la tarea pide una vista básica y la dependencia no aporta valor
+  suficiente hasta tener reservas, recursos y agenda de profesionales.
+- Los tests de `4.14` fijan comportamiento sin cambiar el servicio porque la lógica existente ya
+  cubría los estados; faltaba evidencia automatizada.
+
+### Riesgos y deuda técnica
+
+- La agenda interna no muestra reservas reales porque el modelo de reservas empieza en Fase 7.
+- La capacidad agregada es configurada, no ocupación ni disponibilidad neta.
+- Siete llamadas por semana podrán evolucionar a un endpoint privado de rango si aparecen costes de
+  latencia o carga.
+- No hay filtrado por servicio, empleado o recurso hasta Fase 5.
+- No hay inspección visual interactiva persistente por limitación del arranque de servidor en
+  segundo plano dentro del entorno.
+
+### Evidencia de cierre
+
+Se cierran `4.13` y `4.14` porque la vista interna básica existe en `/panel/calendario`, consume
+contratos privados reales, mantiene aislamiento por sesión, muestra semana, estados, resumen y
+detalle diario, dispone de textos ES/EN, cuenta con tests UI, y el cálculo público de disponibilidad
+queda cubierto por tests adicionales para los estados principales de Fase 4.

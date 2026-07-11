@@ -106,6 +106,82 @@ class PublicVenueAvailabilityServiceTests {
   }
 
   @Test
+  void returnsClosedWhenWeeklyScheduleIsClosed() {
+    LocalDate date = LocalDate.of(2026, 7, 14);
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
+        .thenReturn(List.of(slot(date, "available", 2)));
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.empty());
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 2))
+        .thenReturn(Optional.of(openingHour(true, false)));
+
+    var response = service.findBySlug("casa-luz", date, SupportedLocale.ES);
+
+    assertThat(response.statusCode()).isEqualTo("closed");
+    assertThat(response.closed()).isTrue();
+    assertThat(response.reservationsEnabled()).isFalse();
+    assertThat(response.source()).isEqualTo("weekly");
+  }
+
+  @Test
+  void returnsUnavailableWhenReservationsAreDisabledByOverride() {
+    LocalDate date = LocalDate.of(2026, 7, 17);
+    AvailabilityBlockEntity block = new AvailabilityBlockEntity();
+    block.setKind("reservations_disabled");
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
+        .thenReturn(List.of(slot(date, "available", 2)));
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.of(block));
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 5))
+        .thenReturn(Optional.of(openingHour(false, true)));
+
+    var response = service.findBySlug("casa-luz", date, SupportedLocale.ES);
+
+    assertThat(response.statusCode()).isEqualTo("unavailable");
+    assertThat(response.bookingAvailable()).isFalse();
+    assertThat(response.closed()).isFalse();
+    assertThat(response.reservationsEnabled()).isFalse();
+    assertThat(response.source()).isEqualTo("override");
+  }
+
+  @Test
+  void returnsFullWhenEveryConfiguredSlotIsFull() {
+    LocalDate date = LocalDate.of(2026, 7, 18);
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
+        .thenReturn(List.of(slot(date, "full", 1), slot(date, "full", 3)));
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.empty());
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 6))
+        .thenReturn(Optional.of(openingHour(false, true)));
+
+    var response = service.findBySlug("casa-luz", date, SupportedLocale.ES);
+
+    assertThat(response.statusCode()).isEqualTo("full");
+    assertThat(response.statusLabel()).isEqualTo("Completo");
+    assertThat(response.bookingAvailable()).isFalse();
+    assertThat(response.reservationsEnabled()).isTrue();
+    assertThat(response.availableSlotCount()).isZero();
+  }
+
+  @Test
+  void returnsUnavailableWhenThereAreNoSlotsAndNoFutureAvailability() {
+    LocalDate date = LocalDate.of(2026, 7, 19);
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date)).thenReturn(List.of());
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.empty());
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 7))
+        .thenReturn(Optional.of(openingHour(false, true)));
+    when(slotDao.existsPublishedAvailableAfter(venue.getId(), date)).thenReturn(false);
+
+    var response = service.findBySlug("casa-luz", date, null);
+
+    assertThat(response.statusCode()).isEqualTo("unavailable");
+    assertThat(response.statusLabel()).isEqualTo("Unavailable");
+    assertThat(response.source()).isEqualTo("slots");
+    assertThat(response.bookingAvailable()).isFalse();
+  }
+
+  @Test
   void rejectsMissingDateAndUnpublishedVenue() {
     assertThatThrownBy(() -> service.findBySlug("casa-luz", null, SupportedLocale.ES))
         .isInstanceOf(TimeSlotInvalidException.class);
