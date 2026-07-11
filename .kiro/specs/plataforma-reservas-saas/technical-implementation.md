@@ -18400,3 +18400,199 @@ Resultados:
 Las tareas se cierran porque existe una lectura pública por slug y fecha que calcula estado operativo
 desde horario, excepciones y franjas reales, devuelve franjas con capacidad y estado, protege la
 frontera de publicación y cuenta con tests focalizados y documentación técnica actualizada.
+
+## Iteración 2026-07-11 - Tareas 4.11 y 4.12, calendarios público y privado de disponibilidad
+
+### Identificadores exactos y fecha
+
+- `4.11. Crear calendario público de disponibilidad`.
+- `4.12. Crear panel privado de horarios y franjas`.
+- Fecha: 2026-07-11.
+
+### Objetivo técnico
+
+Entregar las dos superficies frontend de disponibilidad sobre los contratos backend de `4.1` a
+`4.10`: consulta pública responsive dentro de la ficha publicada y panel privado operativo para
+configurar horarios, excepciones y franjas. El backend se mantiene como fuente de verdad, la reserva
+no se habilita antes de los holds y todo texto visible dispone de ES/EN.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-004`: integración en la ficha pública.
+- `RF-006`: días, seleccionado, estados, franjas y capacidades.
+- `RF-010`: edición semanal y excepciones.
+- `RF-011`: creación, generación, capacidad, bloqueo y reapertura.
+- `RF-012`: cambios reconciliados desde backend.
+- `RF-031`: catálogos ES/EN.
+- `RNF-001/002`: cookie HttpOnly privada y sin credenciales públicas.
+- `RNF-004`: consultas paralelas y cancelables.
+- `RNF-008/009/010`: TypeScript, Zod, i18n, accesibilidad y responsive.
+
+Se adopta una ventana navegable de siete días porque el API expone disponibilidad por fecha. Los
+estados proceden literalmente del backend. Disponible usa verde, seleccionado azul y los estados no
+reservables neutral. La reserva sigue deshabilitada hasta Fase 7.
+
+### Archivos creados
+
+- `apps/web/src/features/availability/availability-api.ts`.
+- `apps/web/src/features/availability/availability-api.test.ts`.
+- `apps/web/src/features/availability/public-availability-calendar.tsx`.
+- `apps/web/src/features/availability/venue-availability-manager.tsx`.
+- `apps/web/src/features/availability/availability-ui.test.tsx`.
+- `apps/web/src/app/panel/calendario/page.tsx`.
+
+### Archivos modificados o eliminados
+
+Modificados:
+
+- `apps/web/src/features/public-venue/public-venue-profile.tsx`.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+- `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+
+No se eliminaron archivos.
+
+### Arquitectura aplicada y razones
+
+`availability-api.ts` concentra transporte, credenciales, errores y validación Zod de
+disponibilidad pública, franja pública, horario semanal, excepción diaria y franja privada. La
+frontera pública usa `credentials: omit`; la privada, `credentials: include`. Los errores HTTP se
+normalizan sin filtrar detalles internos.
+
+`PublicAvailabilityCalendar` es un Client Component acotado dentro de la ficha Server Component.
+Mantiene inicio semanal, fecha seleccionada, respuestas por fecha, carga y error. Lanza siete
+consultas paralelas, canceladas cuando cambian ventana, slug o locale. Las fechas se calculan a
+mediodía local para evitar saltos UTC. Cada franja muestra inicio, fin, capacidad y estado.
+
+`VenueAvailabilityManager` separa cuatro bloques:
+
+1. snapshot completo de siete días;
+2. excepción efectiva de fecha;
+3. creación manual y generación automática;
+4. listado, capacidad, bloqueo y reapertura.
+
+El horario se guarda como reemplazo completo. Cerrar un día desactiva reservas y serializa horas
+nulas. Tras crear o generar se vuelve a listar; capacidad y estado usan la respuesta backend.
+
+Responsive:
+
+- calendario: dos columnas móvil, cuatro tablet y siete escritorio;
+- franjas: bloque vertical móvil y fila desde tablet;
+- horario: tarjetas móvil y rejilla densa escritorio;
+- formularios: una columna y dos en escritorio amplio;
+- `VenueShell` conserva navegación inferior y sidebar.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+No hay cambios de modelo ni migraciones. Se consumen `VenueOpeningHours`,
+`AvailabilityBlocks` y `TimeSlots`. Unicidad semanal, no solape, capacidad positiva, estados y
+aislamiento siguen validados por backend.
+
+### Endpoints y contratos consumidos
+
+Público:
+
+- `GET /api/public/venues/{slug}/availability?date=YYYY-MM-DD&locale=es|en`.
+
+Privados:
+
+- `GET/PUT /api/venue/me/opening-hours`.
+- `GET/PUT /api/venue/me/availability-days`.
+- `GET/POST /api/venue/me/time-slots`.
+- `POST /api/venue/me/time-slots/generate`.
+- `PATCH /api/venue/me/time-slots/{slotId}/capacity`.
+- `PATCH /api/venue/me/time-slots/{slotId}/block`.
+- `PATCH /api/venue/me/time-slots/{slotId}/reopen`.
+
+No se añaden endpoints, servicios ni jobs backend.
+
+### Flujos de ejecución relevantes
+
+Público:
+
+1. La ficha entrega el slug.
+2. Se construyen siete fechas.
+3. Se consultan en paralelo con locale.
+4. Zod valida cada respuesta.
+5. La selección muestra franjas autorizadas por backend.
+6. Cambiar de semana cancela lecturas anteriores.
+7. Reservar continúa inactivo.
+
+Privado:
+
+1. Carga el horario semanal.
+2. Carga excepción y franjas de fecha en paralelo.
+3. Guarda siete días en un `PUT`.
+4. Guarda cierres o reservas desactivadas.
+5. Crea o genera franjas.
+6. Modifica capacidad o bloquea/reabre.
+7. Reconcilia y presenta éxito o error localizado.
+
+### Validaciones, permisos, seguridad y privacidad
+
+El cliente ofrece fecha/hora nativas, capacidad mínima, duración soportada, cerrado implica reservas
+desactivadas y horas nulas. Backend conserva la validación de solape, propiedad, rango, capacidad y
+cierre.
+
+Las rutas privadas no envían `venueId`, usan cookie HttpOnly y no almacenan tokens. La lectura
+pública omite credenciales. No se exponen propietario, cuenta empresarial ni otros locales. Estados
+`400/422`, `401`, `403`, `404`, `409` y errores de red se traducen a categorías seguras.
+
+### Internacionalización y accesibilidad
+
+- Namespace `Availability` simétrico ES/EN.
+- Fechas mediante `Intl.DateTimeFormat(locale)`.
+- Sin texto visible hardcodeado.
+- `StatusChip` combina texto, icono y color.
+- Botones de fecha con `aria-pressed`.
+- Regiones con heading, carga con `role=status`, iconos decorativos ocultos.
+- Labels visibles en fecha, hora, capacidad y motivo.
+- Breakpoints MUI para móvil, tablet y escritorio.
+
+### Errores, logs, auditoría y observabilidad
+
+Errores y éxitos se muestran con `Alert` localizado. No se añaden logs, auditoría ni métricas
+frontend. La auditoría de cambios con reservas afectadas queda pendiente de las fases de reservas.
+
+### Tests y comandos de verificación
+
+`availability-api.test.ts` verifica query pública, omisión de credenciales y snapshot privado.
+`availability-ui.test.tsx` verifica siete consultas, capacidad, reserva protegida, guardado semanal
+y bloqueo reconciliado. La ficha pública existente se ejecuta como regresión.
+
+```text
+npm exec prettier -- --write <archivos afectados>
+npm run typecheck --workspace @reserly/web
+npm exec --workspace @reserly/web vitest -- run src/features/availability/availability-api.test.ts src/features/availability/availability-ui.test.tsx src/features/public-venue/public-venue-profile.test.tsx --pool=threads --maxWorkers=1 --testTimeout=20000
+npm run lint:web
+npm run i18n:check
+npm run spanish:text:check
+npm run build:web:test
+git diff --check
+```
+
+Resultados:
+
+- Prettier correcto.
+- TypeScript: 0 errores.
+- Vitest: 3 ficheros, 7 tests, 0 fallos.
+- ESLint: 0 errores y 0 warnings.
+- i18n y español correctos.
+- Next.js 16.2.9 compiló tipos y 12 rutas, incluida `/panel/calendario`.
+- Whitespace correcto.
+
+### Riesgos, limitaciones, deuda y tareas derivadas
+
+- `availableCapacity` aún no descuenta reservas ni holds.
+- Reservar permanece deshabilitado hasta Fase 7.
+- Siete peticiones por ventana podrán sustituirse por API de rango si las métricas lo exigen.
+- No existe borrado individual de franja en el contrato actual.
+- La UI ofrece 30, 60 y 90 minutos; backend admite duración personalizada.
+- `4.13` debe añadir calendario interno y `4.14` ampliar cálculo backend.
+- No se pudo hacer inspección visual interactiva por indisponibilidad del navegador integrado. El
+  responsive se verificó estructuralmente, con tests, lint, tipos y build.
+
+### Evidencia de cierre
+
+Se cierran `4.11` y `4.12` porque ambas superficies existen, consumen contratos reales y
+validados, respetan aislamiento, cubren operaciones, incluyen responsive, accesibilidad e i18n,
+pasan pruebas y build, y documentan limitaciones verificables.

@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
+import { PublicAvailabilityCalendar } from "@/features/availability/public-availability-calendar";
 
 import { type PublicVenueProfile, resolvePublicAssetUrl } from "./public-venue-api";
 
@@ -82,6 +83,8 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
               {venue.publicText && (
                 <TextSection title={t("sections.additional")} body={venue.publicText} />
               )}
+              <PublicAvailabilityCalendar venueSlug={venue.slug} />
+
               {venue.customTabs.map((tab) => (
                 <CustomTabSection key={`${tab.position}-${tab.title}`} tab={tab} />
               ))}

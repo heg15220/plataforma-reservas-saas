@@ -10,15 +10,53 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-09
+- Fecha de última actualización: 2026-07-11
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14` y `4.1` a `4.10`.
-- Siguiente tarea pendiente recomendada: `4.11. Crear calendario público de disponibilidad.`
+  `3.14` y `4.1` a `4.12`.
+- Siguiente tarea pendiente recomendada: `4.13. Crear vista de calendario interno básica.`
 - Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
   disponibilidad, API privada de horario semanal, excepciones diarias, creación manual de franjas,
   generación automática por duración, actualización de capacidad máxima por franja, bloqueo y
   reapertura manual de franjas, cierre operativo de día completo, cálculo de estado del local y
   endpoint público de disponibilidad por slug y fecha.
+
+## Conversación 82 - Calendario público y panel privado de disponibilidad
+
+- Fecha: 2026-07-11.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/4-horarios-franjas-disponibilidad`.
+  - Se completaron `4.11` y `4.12` como las dos primeras tareas pendientes.
+  - La ficha pública incorpora una ventana responsive de siete días, navegación, selector de fecha,
+    estados localizados, leyenda y franjas con capacidad.
+  - Se creó `/panel/calendario` para gestionar horario semanal, excepciones, creación manual y
+    automática de franjas, capacidad, bloqueo y reapertura.
+  - Se añadió un cliente Zod, catálogos ES/EN y pruebas de UI y transporte HTTP.
+- Archivos modificados:
+  - `apps/web/src/features/availability/availability-api.ts`.
+  - `apps/web/src/features/availability/availability-api.test.ts`.
+  - `apps/web/src/features/availability/public-availability-calendar.tsx`.
+  - `apps/web/src/features/availability/venue-availability-manager.tsx`.
+  - `apps/web/src/features/availability/availability-ui.test.tsx`.
+  - `apps/web/src/app/panel/calendario/page.tsx`.
+  - `apps/web/src/features/public-venue/public-venue-profile.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Los tres documentos de seguimiento de `.kiro`.
+- Requisitos impactados:
+  - `RF-004`, `RF-006`, `RF-010`, `RF-011`, `RF-012`, `RF-031`.
+  - `RNF-001`, `RNF-002`, `RNF-004`, `RNF-008`, `RNF-009`, `RNF-010`.
+- Tareas impactadas y completadas:
+  - `4.11. Crear calendario público de disponibilidad`.
+  - `4.12. Crear panel privado de horarios y franjas`.
+- Siguiente tarea pendiente recomendada:
+  - `4.13. Crear vista de calendario interno básica`.
+- Decisiones o aclaraciones relevantes:
+  - Se usa una ventana de siete días porque el contrato backend consulta una fecha.
+  - Las siete consultas son paralelas y cancelables con `AbortController`.
+  - Reservar permanece deshabilitado hasta los holds de Fase 7.
+  - El panel no envía IDs de local y usa la cookie HttpOnly.
+  - El navegador integrado no estuvo disponible; responsive y accesibilidad se verificaron con
+    componentes, lint, tipos y build.
+  - Evidencia: 3 ficheros, 7 tests, 0 fallos; tipos, lint, i18n, español, build y whitespace correctos.
 
 ## Conversación 81 - Estado operativo y disponibilidad pública por fecha
 

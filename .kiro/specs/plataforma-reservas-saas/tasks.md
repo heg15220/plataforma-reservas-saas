@@ -109,8 +109,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 4.8. Implementar cierre de día completo.
 - [x] 4.9. Implementar cálculo de estado del local.
 - [x] 4.10. Implementar endpoint de disponibilidad pública por local y fecha.
-- [ ] 4.11. Crear calendario público de disponibilidad.
-- [ ] 4.12. Crear panel privado de horarios y franjas.
+- [x] 4.11. Crear calendario público de disponibilidad.
+- [x] 4.12. Crear panel privado de horarios y franjas.
 - [ ] 4.13. Crear vista de calendario interno básica.
 - [ ] 4.14. Crear tests de cálculo de disponibilidad.
 

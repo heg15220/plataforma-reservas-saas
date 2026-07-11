@@ -471,6 +471,124 @@
       "reservations": "Reservas"
     }
   },
+  "Availability": {
+    "public": {
+      "title": "Disponibilidad",
+      "description": "Consulta los próximos días y selecciona una fecha para ver sus franjas.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "previousWeek": "Mostrar la semana anterior",
+      "nextWeek": "Mostrar la semana siguiente",
+      "chooseDate": "Elegir una fecha",
+      "loading": "Cargando disponibilidad",
+      "error": "No se ha podido cargar la disponibilidad. Inténtalo de nuevo.",
+      "daysLabel": "Días de disponibilidad",
+      "unavailable": "Sin disponibilidad",
+      "slotsFor": "Franjas para {date}",
+      "empty": "No hay franjas configuradas para esta fecha.",
+      "capacity": "{available} de {total} plazas disponibles",
+      "slotAvailable": "Disponible",
+      "slotUnavailable": "No disponible",
+      "bookingPending": "Reserva próximamente",
+      "legend": {
+        "available": "Con plazas",
+        "unavailable": "Cerrado, completo o bloqueado",
+        "selected": "Día seleccionado"
+      }
+    },
+    "private": {
+      "metadata": {
+        "title": "Horarios y franjas",
+        "description": "Gestiona el horario semanal y la disponibilidad del local."
+      },
+      "hero": {
+        "eyebrow": "Disponibilidad",
+        "title": "Horarios y franjas",
+        "summary": "Configura cuándo abre el local, aplica excepciones por fecha y gestiona cada franja."
+      },
+      "loading": "Cargando disponibilidad",
+      "weekdays": {
+        "1": "Lunes",
+        "2": "Martes",
+        "3": "Miércoles",
+        "4": "Jueves",
+        "5": "Viernes",
+        "6": "Sábado",
+        "7": "Domingo"
+      },
+      "schedule": {
+        "title": "Horario semanal",
+        "description": "Los cambios afectan a la disponibilidad futura, pero nunca cancelan reservas existentes automáticamente.",
+        "closed": "Cerrado",
+        "reservations": "Admite reservas",
+        "opensAt": "Apertura",
+        "closesAt": "Cierre"
+      },
+      "day": {
+        "title": "Excepción por fecha",
+        "description": "Cierra un día, desactiva nuevas reservas o recupera el horario semanal.",
+        "date": "Fecha",
+        "closed": "Día cerrado",
+        "reservations": "Admite nuevas reservas",
+        "reason": "Motivo interno opcional",
+        "weeklySource": "Horario semanal",
+        "exceptionSource": "Excepción activa"
+      },
+      "manual": {
+        "title": "Crear franja manual",
+        "startsAt": "Hora de inicio",
+        "endsAt": "Hora de fin"
+      },
+      "automatic": {
+        "title": "Generar franjas",
+        "duration": "Duración",
+        "minutes30": "30 minutos",
+        "minutes60": "1 hora",
+        "minutes90": "1 hora y 30 minutos"
+      },
+      "capacity": "Capacidad máxima",
+      "slots": {
+        "title": "Franjas del día",
+        "description": "Disponibilidad configurada para {date}.",
+        "empty": "Todavía no hay franjas para esta fecha.",
+        "automatic": "Generada automáticamente",
+        "manual": "Creada manualmente"
+      },
+      "slotStatus": {
+        "available": "Disponible",
+        "blocked": "Bloqueada",
+        "unavailable": "No disponible"
+      },
+      "actions": {
+        "saving": "Guardando",
+        "saveSchedule": "Guardar horario semanal",
+        "saveDay": "Guardar excepci?n",
+        "createSlot": "Crear franja",
+        "generateSlots": "Generar franjas",
+        "refresh": "Actualizar",
+        "saveCapacity": "Guardar capacidad",
+        "block": "Bloquear",
+        "reopen": "Reabrir"
+      },
+      "notices": {
+        "scheduleSaved": "El horario semanal se ha guardado.",
+        "daySaved": "La configuración del día se ha guardado.",
+        "slotCreated": "La franja se ha creado.",
+        "slotsGenerated": "Las franjas se han generado.",
+        "capacitySaved": "La capacidad se ha actualizado.",
+        "slotBlocked": "La franja se ha bloqueado.",
+        "slotReopened": "La franja vuelve a estar disponible."
+      },
+      "errors": {
+        "unauthenticated": "Tu sesión ha caducado. Accede de nuevo para gestionar la disponibilidad.",
+        "forbidden": "Tu cuenta no tiene permiso para gestionar este local.",
+        "notFound": "No existe un perfil de local activo para esta cuenta.",
+        "conflict": "La operación entra en conflicto con otra franja o con un cambio reciente.",
+        "invalid": "La configuración no es válida. Revisa horarios, capacidad y estado del día.",
+        "unavailable": "No podemos conectar con el servicio de disponibilidad en este momento."
+      }
+    }
+  },
   "VenuePublicProfile": {
     "booking": {
       "action": "Reservas próximamente",

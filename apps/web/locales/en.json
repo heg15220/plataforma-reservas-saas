@@ -471,6 +471,124 @@
       "reservations": "Bookings"
     }
   },
+  "Availability": {
+    "public": {
+      "title": "Availability",
+      "description": "Browse the next few days and select a date to see its time slots.",
+      "previous": "Previous",
+      "next": "Next",
+      "previousWeek": "Show previous week",
+      "nextWeek": "Show next week",
+      "chooseDate": "Choose a date",
+      "loading": "Loading availability",
+      "error": "Availability could not be loaded. Try again.",
+      "daysLabel": "Availability days",
+      "unavailable": "Unavailable",
+      "slotsFor": "Time slots for {date}",
+      "empty": "There are no time slots configured for this date.",
+      "capacity": "{available} of {total} places available",
+      "slotAvailable": "Available",
+      "slotUnavailable": "Unavailable",
+      "bookingPending": "Booking coming soon",
+      "legend": {
+        "available": "Places available",
+        "unavailable": "Closed, full or blocked",
+        "selected": "Selected day"
+      }
+    },
+    "private": {
+      "metadata": {
+        "title": "Schedule and time slots",
+        "description": "Manage the venue's weekly schedule and availability."
+      },
+      "hero": {
+        "eyebrow": "Availability",
+        "title": "Schedule and time slots",
+        "summary": "Set opening times, apply date exceptions and manage each time slot."
+      },
+      "loading": "Loading availability",
+      "weekdays": {
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday",
+        "7": "Sunday"
+      },
+      "schedule": {
+        "title": "Weekly schedule",
+        "description": "Changes affect future availability but never cancel existing bookings automatically.",
+        "closed": "Closed",
+        "reservations": "Accepts bookings",
+        "opensAt": "Opening time",
+        "closesAt": "Closing time"
+      },
+      "day": {
+        "title": "Date exception",
+        "description": "Close a day, stop new bookings or return to the weekly schedule.",
+        "date": "Date",
+        "closed": "Day closed",
+        "reservations": "Accepts new bookings",
+        "reason": "Optional internal reason",
+        "weeklySource": "Weekly schedule",
+        "exceptionSource": "Active exception"
+      },
+      "manual": {
+        "title": "Create a manual time slot",
+        "startsAt": "Start time",
+        "endsAt": "End time"
+      },
+      "automatic": {
+        "title": "Generate time slots",
+        "duration": "Duration",
+        "minutes30": "30 minutes",
+        "minutes60": "1 hour",
+        "minutes90": "1 hour 30 minutes"
+      },
+      "capacity": "Maximum capacity",
+      "slots": {
+        "title": "Day time slots",
+        "description": "Availability configured for {date}.",
+        "empty": "There are no time slots for this date yet.",
+        "automatic": "Generated automatically",
+        "manual": "Created manually"
+      },
+      "slotStatus": {
+        "available": "Available",
+        "blocked": "Blocked",
+        "unavailable": "Unavailable"
+      },
+      "actions": {
+        "saving": "Saving",
+        "saveSchedule": "Save weekly schedule",
+        "saveDay": "Save exception",
+        "createSlot": "Create time slot",
+        "generateSlots": "Generate time slots",
+        "refresh": "Refresh",
+        "saveCapacity": "Save capacity",
+        "block": "Block",
+        "reopen": "Reopen"
+      },
+      "notices": {
+        "scheduleSaved": "The weekly schedule has been saved.",
+        "daySaved": "The day settings have been saved.",
+        "slotCreated": "The time slot has been created.",
+        "slotsGenerated": "The time slots have been generated.",
+        "capacitySaved": "Capacity has been updated.",
+        "slotBlocked": "The time slot has been blocked.",
+        "slotReopened": "The time slot is available again."
+      },
+      "errors": {
+        "unauthenticated": "Your session has expired. Sign in again to manage availability.",
+        "forbidden": "Your account cannot manage this venue.",
+        "notFound": "There is no active venue profile for this account.",
+        "conflict": "The operation conflicts with another time slot or a recent change.",
+        "invalid": "The settings are invalid. Review times, capacity and day status.",
+        "unavailable": "The availability service cannot be reached right now."
+      }
+    }
+  },
   "VenuePublicProfile": {
     "booking": {
       "action": "Bookings coming soon",
