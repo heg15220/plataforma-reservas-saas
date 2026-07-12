@@ -10,16 +10,55 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-11
+- Fecha de última actualización: 2026-07-12
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14` y `4.1` a `4.14`.
-- Siguiente tarea pendiente recomendada: `5.1. Crear migraciones de services, employee_resources,
-  employee_resource_hours y service_employee_resources.`
-- Observación: la Fase 4 ya dispone de migración base para horarios, franjas y bloqueos de
-  disponibilidad, API privada de horario semanal, excepciones diarias, creación manual de franjas,
-  generación automática por duración, actualización de capacidad máxima por franja, bloqueo y
-  reapertura manual de franjas, cierre operativo de día completo, cálculo de estado del local y
-  endpoint público de disponibilidad por slug y fecha.
+  `3.14`, `4.1` a `4.14`, `5.1` y `5.2`.
+- Siguiente tarea pendiente recomendada: `5.3. Implementar CRUD de empleados o recursos`.
+- Observación: la Fase 5 ya dispone de migración base V19 para servicios, equipo/recursos,
+  horarios semanales de recurso y asociación servicio-recurso. También existe CRUD privado básico
+  de servicios bajo `/api/venue/me/services`, siempre acotado por propietario autenticado.
+
+## Conversación 84 - Migración de recursos y CRUD básico de servicios
+
+- Fecha: 2026-07-12.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/5-team-resources-MVP-services`.
+  - Se completaron en paralelo funcional `5.1` y `5.2`.
+  - Se creó la migración `V19__create_team_resource_and_service_tables.sql` con tablas físicas
+    `Services`, `EmployeeResources`, `EmployeeResourceHours` y `ServiceEmployeeResources`.
+  - Se conectaron `TimeSlots.serviceId`, `AvailabilityBlocks.serviceId` y
+    `AvailabilityBlocks.employeeResourceId` con claves foráneas hacia el nuevo modelo.
+  - Se implementó el CRUD privado básico de servicios: listado, creación y edición bajo
+    `/api/venue/me/services`.
+  - Se añadieron entidad JPA, DAO, DTOs, conversor, servicio transaccional, controlador REST,
+    errores estables y tests enfocados.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V19__create_team_resource_and_service_tables.sql`.
+  - `apps/api/src/main/java/com/reserly/platform/services/**`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/services/**`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-006`, `RF-007`, `RF-008`, `RF-010`, `RF-031`.
+  - `RNF-001`, `RNF-004`, `RNF-007`, `RNF-009`, `RNF-011`, `RNF-012`.
+- Tareas impactadas y completadas:
+  - `5.1. Crear migraciones de services, employee_resources, employee_resource_hours y service_employee_resources`.
+  - `5.2. Implementar CRUD de servicios básicos`.
+- Siguiente tarea pendiente recomendada:
+  - `5.3. Implementar CRUD de empleados o recursos`.
+- Decisiones o aclaraciones relevantes:
+  - Los nombres físicos mantienen el patrón existente: tablas UpperCamelCase y columnas
+    lowerCamelCase entrecomilladas.
+  - El CRUD no acepta `venueId`; el local se resuelve desde `AuthenticatedAccount.userId` y
+    `VenueDao`.
+  - `PATCH /api/venue/me/services/{serviceId}` funciona como edición de campos básicos editables
+    para mantener un contrato simple hasta que lleguen asociaciones y recursos.
+  - Los campos localizados `nameI18n` y `descriptionI18n` quedan modelados como JSONB opcional para
+    alinear el CRUD con el diseño multidioma.
+  - Evidencia: Maven focalizado con 16 tests, 0 fallos, Spotless y Checkstyle incluidos.
 
 ## Conversación 83 - Calendario interno y tests de cálculo de disponibilidad
 

@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("19");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -319,6 +319,197 @@ class DatabaseMigrationIntegrationTests {
             "ixVenueCustomTabsVenueActivePosition",
             "ixVenueCustomTabsVenueUpdatedAt",
             "uqVenueCustomTabsVenuePosition");
+  }
+
+  /** Protege el contrato fisico de servicios y recursos creado en la Fase 5. */
+  @Test
+  void createsServiceAndTeamResourceTablesWithExpectedColumnsAndIndexes() {
+    Map<String, List<String>> expectedColumns = new LinkedHashMap<>();
+    expectedColumns.put(
+        "Services",
+        List.of(
+            "id",
+            "venueId",
+            "name",
+            "nameI18n",
+            "description",
+            "descriptionI18n",
+            "durationMinutes",
+            "capacityRequired",
+            "isActive",
+            "createdAt",
+            "updatedAt"));
+    expectedColumns.put(
+        "EmployeeResources",
+        List.of(
+            "id",
+            "venueId",
+            "type",
+            "firstName",
+            "lastName",
+            "publicAlias",
+            "photoUrl",
+            "specialty",
+            "description",
+            "status",
+            "publicVisibility",
+            "internalNotes",
+            "createdAt",
+            "updatedAt"));
+    expectedColumns.put(
+        "EmployeeResourceHours",
+        List.of(
+            "id",
+            "employeeResourceId",
+            "weekday",
+            "isAvailable",
+            "startsAt",
+            "endsAt",
+            "createdAt",
+            "updatedAt"));
+    expectedColumns.put(
+        "ServiceEmployeeResources", List.of("serviceId", "employeeResourceId", "createdAt"));
+
+    expectedColumns.forEach(
+        (table, columns) ->
+            assertThat(
+                    jdbcTemplate.queryForList(
+                        """
+                        SELECT "column_name"
+                        FROM "information_schema"."columns"
+                        WHERE "table_schema" = current_schema()
+                          AND "table_name" = ?
+                        ORDER BY "ordinal_position"
+                        """,
+                        String.class,
+                        table))
+                .as("columnas fisicas de %s", table)
+                .containsExactlyElementsOf(columns));
+
+    List<String> serviceIndexes =
+        jdbcTemplate.queryForList(
+            """
+            SELECT "indexname"
+            FROM "pg_indexes"
+            WHERE "schemaname" = current_schema()
+              AND "tablename" = 'Services'
+            ORDER BY "indexname"
+            """,
+            String.class);
+    assertThat(serviceIndexes).contains("ixServicesVenueActive");
+  }
+
+  @Test
+  void enforcesServiceAndTeamResourceConstraints() {
+    UUID ownerUserId = UUID.randomUUID();
+    UUID businessAccountId = UUID.randomUUID();
+    UUID categoryId = UUID.randomUUID();
+    UUID venueId = UUID.randomUUID();
+    UUID serviceId = UUID.randomUUID();
+    UUID resourceId = UUID.randomUUID();
+
+    try {
+      insertVenueOwner(ownerUserId, "services-owner-" + ownerUserId + "@example.invalid");
+      jdbcTemplate.update(
+          """
+          INSERT INTO "BusinessAccounts" (
+            "id", "ownerUserId", "taxCountry", "businessLegalName",
+            "businessTaxIdentifier", "businessTaxIdentifierNormalized"
+          ) VALUES (?, ?, 'ES', 'Negocio servicios', ?, ?)
+          """,
+          businessAccountId,
+          ownerUserId,
+          "B" + ownerUserId.toString().substring(0, 8),
+          "B" + ownerUserId.toString().substring(0, 8));
+      jdbcTemplate.update(
+          """
+          INSERT INTO "Categories" ("id", "name", "nameI18n", "slug")
+          VALUES (
+            ?,
+            'Servicios',
+            '{"sourceLocale":"es","values":{"es":"Servicios","en":"Services"}}'::jsonb,
+            ?
+          )
+          """,
+          categoryId,
+          "services-" + categoryId);
+      insertVenue(
+          venueId, ownerUserId, businessAccountId, categoryId, "services-" + venueId, null, null);
+
+      assertThatThrownBy(
+              () ->
+                  jdbcTemplate.update(
+                      """
+                      INSERT INTO "Services" ("venueId", "name", "durationMinutes")
+                      VALUES (?, 'Corte', 0)
+                      """,
+                      venueId))
+          .isInstanceOf(DataIntegrityViolationException.class);
+
+      jdbcTemplate.update(
+          """
+          INSERT INTO "Services" (
+            "id", "venueId", "name", "durationMinutes", "capacityRequired"
+          ) VALUES (?, ?, 'Corte', 45, 1)
+          """,
+          serviceId,
+          venueId);
+
+      assertThatThrownBy(
+              () ->
+                  jdbcTemplate.update(
+                      """
+                      INSERT INTO "EmployeeResources" ("venueId", "type", "status")
+                      VALUES (?, 'employee', 'active')
+                      """,
+                      venueId))
+          .isInstanceOf(DataIntegrityViolationException.class);
+
+      jdbcTemplate.update(
+          """
+          INSERT INTO "EmployeeResources" (
+            "id", "venueId", "type", "firstName", "status"
+          ) VALUES (?, ?, 'employee', 'Ana', 'active')
+          """,
+          resourceId,
+          venueId);
+
+      assertThatThrownBy(
+              () ->
+                  jdbcTemplate.update(
+                      """
+                      INSERT INTO "EmployeeResourceHours" (
+                        "employeeResourceId", "weekday", "isAvailable", "startsAt", "endsAt"
+                      ) VALUES (?, 8, true, '09:00', '17:00')
+                      """,
+                      resourceId))
+          .isInstanceOf(DataIntegrityViolationException.class);
+
+      jdbcTemplate.update(
+          """
+          INSERT INTO "ServiceEmployeeResources" ("serviceId", "employeeResourceId")
+          VALUES (?, ?)
+          """,
+          serviceId,
+          resourceId);
+
+      Integer assignments =
+          jdbcTemplate.queryForObject(
+              """
+              SELECT COUNT(*)
+              FROM "ServiceEmployeeResources"
+              WHERE "serviceId" = ? AND "employeeResourceId" = ?
+              """,
+              Integer.class,
+              serviceId,
+              resourceId);
+      assertThat(assignments).isOne();
+    } finally {
+      jdbcTemplate.update("DELETE FROM \"Venues\" WHERE \"id\" = ?", venueId);
+      jdbcTemplate.update("DELETE FROM \"Categories\" WHERE \"id\" = ?", categoryId);
+      jdbcTemplate.update("DELETE FROM \"BusinessAccounts\" WHERE \"id\" = ?", businessAccountId);
+      jdbcTemplate.update("DELETE FROM \"Users\" WHERE \"id\" = ?", ownerUserId);
+    }
   }
 
   /**

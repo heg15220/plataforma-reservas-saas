@@ -18801,3 +18801,314 @@ Se cierran `4.13` y `4.14` porque la vista interna básica existe en `/panel/cal
 contratos privados reales, mantiene aislamiento por sesión, muestra semana, estados, resumen y
 detalle diario, dispone de textos ES/EN, cuenta con tests UI, y el cálculo público de disponibilidad
 queda cubierto por tests adicionales para los estados principales de Fase 4.
+
+## Iteración 5.1 - Migraciones de servicios, equipo y recursos
+
+### Identificador y fecha
+
+- Tarea completada: `5.1. Crear migraciones de services, employee_resources, employee_resource_hours y service_employee_resources`.
+- Fecha: 2026-07-12.
+
+### Objetivo técnico
+
+Crear el modelo físico mínimo de Fase 5 para servicios reservables, profesionales/recursos,
+horarios semanales por recurso y asociación entre servicios y recursos, dejando preparado el modelo
+de disponibilidad para filtrar por servicio y recurso en tareas posteriores.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-006`: el modelo enlaza servicios con franjas y bloqueos de disponibilidad.
+- `RF-007`: el modelo permite horarios semanales por recurso y estados de equipo.
+- `RF-008`: los servicios incluyen duración y capacidad requerida.
+- `RF-010`: las claves foráneas preparan reservas/bloqueos por servicio y recurso.
+- `RF-031`: se soportan campos localizados JSONB para textos visibles de servicios.
+- `RNF-001`, `RNF-004`, `RNF-007`, `RNF-009`, `RNF-011`, `RNF-012`: integridad, trazabilidad,
+  aislamiento por local, validación en base de datos, DTOs futuros y verificación automatizada.
+
+### Archivos creados, modificados o eliminados
+
+- Creado `apps/api/src/main/resources/db/migration/V19__create_team_resource_and_service_tables.sql`.
+- Modificado `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+- Actualizados `.kiro/specs/plataforma-reservas-saas/tasks.md`,
+  `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`,
+  `.kiro/specs/plataforma-reservas-saas/design.md` y
+  `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+`Services`:
+
+- `id uuid primary key default gen_random_uuid()`.
+- `venueId uuid not null` con FK `fkServicesVenue` a `Venues(id)` y borrado en cascada.
+- `name varchar(160) not null` con `ckServicesName`.
+- `nameI18n jsonb` y `descriptionI18n jsonb` opcionales para textos localizados.
+- `description varchar(2000)` con rechazo de cadena en blanco cuando no es nula.
+- `durationMinutes integer not null` con `ckServicesDuration` entre 1 y 1440.
+- `capacityRequired integer not null default 1` con `ckServicesCapacity`.
+- `isActive boolean not null default true`.
+- `createdAt` y `updatedAt` con `ckServicesUpdatedAt`.
+- Índice `ixServicesVenueActive(venueId, isActive, name)` para listados privados y filtrado por
+  estado.
+
+`EmployeeResources`:
+
+- `id`, `venueId`, `type`, datos públicos (`firstName`, `lastName`, `publicAlias`, `photoUrl`,
+  `specialty`, `description`), datos operativos (`status`, `publicVisibility`, `internalNotes`) y
+  timestamps.
+- `type` queda restringido a `employee`, `professional`, `room`, `court`, `table`, `equipment` y
+  `other`.
+- `status` queda restringido a `active`, `inactive`, `vacation`, `temporary_leave`,
+  `internal_only` y `archived`.
+- `ckEmployeeResourcesIdentity` exige `publicAlias` o `firstName` visible.
+- Índice `ixEmployeeResourcesVenueStatus(venueId, status)`.
+
+`EmployeeResourceHours`:
+
+- Horario semanal básico por recurso.
+- `weekday` restringido a 1..7.
+- `ckEmployeeResourceHoursRange` diferencia días disponibles con rango `startsAt < endsAt` y días
+  no disponibles sin horas.
+- `uqEmployeeResourceHoursResourceWeekday` evita duplicados por día y recurso.
+
+`ServiceEmployeeResources`:
+
+- Tabla puente con PK compuesta `(serviceId, employeeResourceId)`.
+- Cascada desde servicio o recurso.
+- Índice inverso `ixServiceEmployeeResourcesResource(employeeResourceId, serviceId)`.
+
+Integración con disponibilidad:
+
+- `TimeSlots.serviceId` obtiene FK `fkTimeSlotsService` hacia `Services(id)` con `ON DELETE
+  RESTRICT`.
+- `AvailabilityBlocks.serviceId` obtiene FK `fkAvailabilityBlocksService` con `ON DELETE CASCADE`.
+- `AvailabilityBlocks.employeeResourceId` obtiene FK `fkAvailabilityBlocksEmployeeResource` con
+  `ON DELETE CASCADE`.
+
+### Arquitectura aplicada
+
+La migración sigue el estilo consolidado por fases anteriores: nombres físicos UpperCamelCase para
+tablas y lowerCamelCase entrecomillado para columnas. Se eligió no poblar datos seed porque los
+servicios y recursos son configuración propia de cada local. Los campos localizados se crean desde
+el inicio para evitar una migración correctiva cuando el CRUD empiece a exponer contenido público
+multidioma.
+
+Las claves foráneas hacia `TimeSlots` y `AvailabilityBlocks` no cambian comportamiento funcional de
+Fase 4 porque las columnas ya eran opcionales. Su objetivo es impedir referencias huérfanas cuando
+Fase 5 y Fase 7 empiecen a consumirlas.
+
+### Validaciones, seguridad, privacidad e internacionalización
+
+El modelo mantiene aislamiento por `venueId` y delega la autorización en los servicios privados que
+resuelven el local desde sesión. `internalNotes` queda separado de campos públicos y no forma parte
+del CRUD básico de servicios. `nameI18n` y `descriptionI18n` usan JSONB compatible con el value
+object `LocalizedText`.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+La tarea es de migración; los errores se controlan mediante constraints PostgreSQL y validación
+Flyway. No se añaden logs ni auditoría específica. La observabilidad queda en el historial Flyway y
+en los tests de migración.
+
+### Tests añadidos y verificación
+
+Se amplió `DatabaseMigrationIntegrationTests`:
+
+- versión Flyway esperada `19`;
+- test de columnas físicas e índice principal de servicios;
+- test de constraints para duración inválida, identidad obligatoria de recurso, weekday inválido y
+  asociación servicio-recurso persistida.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,ServiceCatalogServiceTests,ServiceControllerTests" test
+```
+
+Resultado:
+
+- `DatabaseMigrationIntegrationTests`: 10 tests, 0 fallos, 0 errores.
+- Maven focalizado completo: 16 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless y Checkstyle se ejecutaron dentro de Maven sin violaciones.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes
+
+- No existe todavía CRUD de recursos: queda en `5.3`.
+- No existe todavía asociación funcional desde API entre servicios y recursos: queda en `5.6`.
+- El cálculo público de disponibilidad aún no exige recurso disponible: queda en `5.7`.
+- Las reservas reales y el descuento de ocupación siguen pendientes de fases posteriores.
+
+### Evidencia de cierre
+
+La tarea se cierra porque la migración V19 se aplica sobre PostgreSQL/PostGIS efímero hasta versión
+19, Hibernate valida el esquema, los tests verifican columnas, índices y constraints críticas, y
+las referencias desde disponibilidad quedan protegidas por claves foráneas.
+
+## Iteración 5.2 - CRUD privado básico de servicios
+
+### Identificador y fecha
+
+- Tarea completada: `5.2. Implementar CRUD de servicios básicos`.
+- Fecha: 2026-07-12.
+
+### Objetivo técnico
+
+Implementar el primer caso de uso de Fase 5 sobre el modelo `Services`: listar, crear y editar
+servicios propios de un local autenticado, con validación de duración/capacidad/textos, aislamiento
+por propietario y respuesta REST estable.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-008`: gestión de servicios con nombre, descripción, duración, capacidad y estado activo.
+- `RF-031`: soporte de textos localizados `nameI18n` y `descriptionI18n`.
+- `RNF-001`: operaciones transaccionales con locks en escritura.
+- `RNF-004`: validación y errores estables sin filtrar constraints.
+- `RNF-007`: aislamiento multi-tenant por cuenta autenticada, sin `venueId` en payload.
+- `RNF-011`: separación de DTOs, comandos, conversores, servicio y persistencia.
+
+### Archivos creados, modificados o eliminados
+
+Se creó el módulo `com.reserly.platform.services`:
+
+- `package-info.java`.
+- `persistence/ServiceEntity.java`.
+- `persistence/ServiceDao.java`.
+- `dto/ServiceLocalizedTextDto.java`.
+- `dto/ServiceRequest.java`.
+- `dto/ServiceCommand.java`.
+- `dto/ServiceResponse.java`.
+- `dto/ServiceErrorResponse.java`.
+- `converter/ServiceConverter.java`.
+- `service/ServiceCatalogService.java`.
+- `service/ServiceCatalogServiceImpl.java`.
+- `service/ServiceInvalidException.java`.
+- `service/ServiceNotFoundException.java`.
+- `controller/ServiceController.java`.
+- `controller/ServiceControllerImpl.java`.
+- `controller/ServiceExceptionHandler.java`.
+- `package-info.java` por subpaquete.
+
+Tests:
+
+- `apps/api/src/test/java/com/reserly/platform/services/service/ServiceCatalogServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/services/controller/ServiceControllerTests.java`.
+
+### Arquitectura aplicada
+
+El CRUD sigue el patrón ya usado por perfil y pestañas:
+
+- Controlador de interfaz con anotaciones Spring MVC y `@AuthenticationPrincipal`.
+- Implementación REST fina que delega en conversor y servicio.
+- Conversor REST que transforma DTOs externos en `ServiceCommand` interno.
+- Servicio transaccional con `@Transactional(readOnly = true)` para listados y `@Transactional`
+  para mutaciones.
+- DAO JPA con consultas explícitas por `venue.ownerUser.id` y `venue.status <> 'archived'`.
+- Lock pesimista para actualización mediante `findOwnedForUpdate`.
+
+La API no expone delete todavía porque el diseño inicial solo declara `GET`, `POST` y `PATCH`; la
+desactivación se realiza con `active=false`.
+
+### Endpoints, contratos y módulos implementados
+
+Endpoints privados:
+
+- `GET /api/venue/me/services`.
+- `POST /api/venue/me/services`.
+- `PATCH /api/venue/me/services/{serviceId}`.
+
+Payload editable:
+
+- `name`: obligatorio, máximo 160.
+- `nameI18n`: opcional, `sourceLocale` `es|en` y hasta dos valores.
+- `description`: opcional, máximo 2000 y no blanco.
+- `descriptionI18n`: opcional.
+- `durationMinutes`: 1..1440.
+- `capacityRequired`: mínimo 1.
+- `active`: boolean.
+
+Respuesta:
+
+- `id`, campos editables, timestamps y estado `active`.
+- No expone `venueId`, `ownerUserId` ni datos de cuenta empresarial.
+
+Errores:
+
+- `SERVICE_INVALID` con HTTP 400 para validación Bean Validation, comandos inválidos o constraints.
+- `SERVICE_NOT_FOUND` con HTTP 404 para local vigente inexistente o servicio ajeno/no existente.
+
+### Flujos de ejecución relevantes
+
+Listado:
+
+1. El controlador recibe `AuthenticatedAccount`.
+2. `ServiceCatalogService.list` verifica que existe local vigente para `ownerUserId`.
+3. `ServiceDao.findAllOwned` lista servicios del propietario ordenados por nombre.
+4. El conversor proyecta DTOs sin identificadores internos de propiedad.
+
+Creación:
+
+1. El controlador convierte `ServiceRequest` en `ServiceCommand`.
+2. El servicio bloquea el local vigente con `findCurrentByOwnerUserIdForUpdate`.
+3. Normaliza nombre y descripción, valida duración/capacidad y asigna timestamps.
+4. Persiste con `saveAndFlush` y traduce `DataIntegrityViolationException` a `SERVICE_INVALID`.
+
+Edición:
+
+1. El servicio vuelve a bloquear el local vigente.
+2. Carga el servicio con `findOwnedForUpdate(ownerUserId, serviceId)`.
+3. Aplica campos editables y actualiza `updatedAt`.
+4. Persiste y devuelve proyección privada.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+La seguridad de ruta sigue dependiendo de la configuración existente para `/api/venue/me/**`. El
+CRUD no acepta identificadores de local ni propietario desde cliente. Todas las consultas cruzan
+`ServiceEntity -> VenueEntity -> ownerUser` para impedir acceso horizontal entre locales.
+
+Los textos localizados reutilizan `LocalizedText`, admiten solo `es` y `en`, y siguen el patrón
+JSONB de fases anteriores. Un servicio puede guardarse sin traducciones completas para no bloquear
+borradores.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+El controlador usa `ServiceExceptionHandler` con códigos estables y sin detalles internos:
+`SERVICE_INVALID` y `SERVICE_NOT_FOUND`. No se añaden logs nuevos porque no hay integración externa
+ni proceso asíncrono. La auditoría de cambios de servicios queda pendiente para fases de panel y
+reservas si se requiere historial operativo.
+
+### Tests añadidos y comandos de verificación
+
+Tests añadidos:
+
+- `ServiceCatalogServiceTests`: listado, creación, update, normalización, i18n, rechazo de nombre
+  vacío, duración/capacidad inválidas, local inexistente y servicio ajeno.
+- `ServiceControllerTests`: `Location` en creación, listado/update con propietario autenticado,
+  serialización de i18n y errores `SERVICE_INVALID`/`SERVICE_NOT_FOUND`.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,ServiceCatalogServiceTests,ServiceControllerTests" test
+```
+
+Resultado:
+
+- Maven focalizado: 16 tests, 0 fallos, 0 errores, 0 omitidos.
+- Compilación backend correcta.
+- Spotless y Checkstyle correctos.
+
+### Riesgos, limitaciones, deuda técnica y tareas pendientes
+
+- No se implementa borrado físico ni archivado de servicios; `active=false` cubre el MVP básico.
+- La asociación con recursos queda pendiente de `5.6`.
+- El CRUD de recursos y horarios de recurso queda pendiente de `5.3`, `5.4` y `5.5`.
+- La disponibilidad por servicio/recurso queda pendiente de `5.7` y posteriores.
+- No hay UI todavía para el catálogo de servicios; se abordará cuando el panel de equipo avance.
+
+### Evidencia de cierre
+
+La tarea se cierra porque los endpoints privados existen, compilan, usan el principal autenticado
+como frontera de propiedad, persisten contra `Services`, validan los campos principales, devuelven
+errores estables y cuentan con tests unitarios de servicio/controlador más verificación de
+migración integrada.

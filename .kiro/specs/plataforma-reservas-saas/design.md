@@ -1127,6 +1127,19 @@ Post-MVP para vacaciones, bajas y cambios puntuales.
 - `employee_resource_id`
 - `created_at`
 
+Implementación inicial en Fase 5:
+
+- `V19__create_team_resource_and_service_tables.sql` materializa el modelo como `Services`,
+  `EmployeeResources`, `EmployeeResourceHours` y `ServiceEmployeeResources`, manteniendo el patrón
+  físico existente de tablas UpperCamelCase y columnas lowerCamelCase.
+- `Services` incluye `nameI18n` y `descriptionI18n` como JSONB opcionales para guardar
+  traducciones sin bloquear borradores monolingües.
+- `TimeSlots.serviceId`, `AvailabilityBlocks.serviceId` y `AvailabilityBlocks.employeeResourceId`
+  quedan protegidos por claves foráneas hacia `Services` y `EmployeeResources`.
+- El CRUD privado inicial de servicios expone `GET`, `POST` y `PATCH` bajo
+  `/api/venue/me/services`; no acepta `venueId` de cliente y resuelve siempre el local desde la
+  sesión autenticada.
+
 #### reservations
 
 - `id`

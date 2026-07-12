@@ -116,8 +116,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 7. Fase 5 - Equipo, recursos y servicios MVP
 
-- [ ] 5.1. Crear migraciones de `services`, `employee_resources`, `employee_resource_hours` y `service_employee_resources`.
-- [ ] 5.2. Implementar CRUD de servicios básicos.
+- [x] 5.1. Crear migraciones de `services`, `employee_resources`, `employee_resource_hours` y `service_employee_resources`.
+- [x] 5.2. Implementar CRUD de servicios básicos.
 - [ ] 5.3. Implementar CRUD de empleados o recursos.
 - [ ] 5.4. Implementar estados activo, inactivo, solo interno y archivado.
 - [ ] 5.5. Implementar horario semanal básico por empleado o recurso.
