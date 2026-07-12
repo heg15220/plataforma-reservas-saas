@@ -1139,6 +1139,12 @@ Implementación inicial en Fase 5:
 - El CRUD privado inicial de servicios expone `GET`, `POST` y `PATCH` bajo
   `/api/venue/me/services`; no acepta `venueId` de cliente y resuelve siempre el local desde la
   sesión autenticada.
+- El CRUD privado inicial de equipo expone `GET`, `POST` y `PATCH` bajo `/api/venue/me/team`.
+  Lista solo recursos no archivados, permite crear y editar recursos propios y considera
+  `archived` un estado terminal para el MVP.
+- Los estados editables en el MVP son `active`, `inactive`, `internal_only` y `archived`. Los
+  estados `internal_only` y `archived` fuerzan `publicVisibility=false` para no publicar personal o
+  recursos que el local declare internos o retirados.
 
 #### reservations
 

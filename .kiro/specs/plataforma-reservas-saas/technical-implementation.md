@@ -19112,3 +19112,234 @@ La tarea se cierra porque los endpoints privados existen, compilan, usan el prin
 como frontera de propiedad, persisten contra `Services`, validan los campos principales, devuelven
 errores estables y cuentan con tests unitarios de servicio/controlador más verificación de
 migración integrada.
+
+## Iteración 5.3 - CRUD privado de empleados y recursos
+
+### Identificador y fecha
+
+- Tarea completada: `5.3. Implementar CRUD de empleados o recursos`.
+- Fecha: 2026-07-12.
+
+### Objetivo técnico
+
+Implementar el caso de uso privado que permite a un local gestionar empleados, profesionales,
+salas, pistas, mesas, equipamiento u otras unidades reservables sobre el modelo físico
+`EmployeeResources` creado en V19.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007`: gestión de equipo, empleados, recursos o unidades reservables.
+- `RF-008`: preparación para servicios compatibles con recursos.
+- `RF-010`: futura disponibilidad con equipo o recursos.
+- `RNF-001`: validación en backend y endpoints protegidos.
+- `RNF-002`: visibilidad pública controlada de información de personal.
+- `RNF-007`: aislamiento por local autenticado.
+- `RNF-011`: DAO, entidad, servicio, controlador, DTOs y conversor explícitos.
+
+### Archivos creados, modificados o eliminados
+
+Se creó el módulo `com.reserly.platform.resources`:
+
+- `persistence/EmployeeResourceEntity.java`.
+- `persistence/EmployeeResourceDao.java`.
+- `dto/EmployeeResourceRequest.java`.
+- `dto/EmployeeResourceCommand.java`.
+- `dto/EmployeeResourceResponse.java`.
+- `dto/EmployeeResourceErrorResponse.java`.
+- `converter/EmployeeResourceConverter.java`.
+- `service/EmployeeResourceCatalogService.java`.
+- `service/EmployeeResourceCatalogServiceImpl.java`.
+- `service/EmployeeResourceInvalidException.java`.
+- `service/EmployeeResourceNotFoundException.java`.
+- `controller/EmployeeResourceController.java`.
+- `controller/EmployeeResourceControllerImpl.java`.
+- `controller/EmployeeResourceExceptionHandler.java`.
+- `package-info.java` por subpaquete.
+
+Tests:
+
+- `apps/api/src/test/java/com/reserly/platform/resources/service/EmployeeResourceCatalogServiceTests.java`.
+- `apps/api/src/test/java/com/reserly/platform/resources/controller/EmployeeResourceControllerTests.java`.
+
+### Implementación técnica
+
+El CRUD sigue el patrón de servicios y pestañas personalizadas:
+
+- `EmployeeResourceController` define el contrato REST.
+- `EmployeeResourceControllerImpl` adapta la petición HTTP al caso de uso y deriva el propietario
+  desde `AuthenticatedAccount`.
+- `EmployeeResourceConverter` transforma `EmployeeResourceRequest` en `EmployeeResourceCommand` y
+  entidad en `EmployeeResourceResponse`.
+- `EmployeeResourceCatalogServiceImpl` contiene la lógica transaccional y de validación.
+- `EmployeeResourceDao` usa consultas JPQL explícitas con filtro por `venue.ownerUser.id`.
+- `findOwnedForUpdate` usa lock pesimista para serializar ediciones de un mismo recurso.
+
+El listado filtra `resource.status <> 'archived'` para tratar el archivado como retirada del
+catálogo privado activo. La edición también requiere recurso no archivado; así el MVP evita
+reabrir recursos archivados sin una tarea explícita de restauración.
+
+### Modelo de datos
+
+No se añade una nueva migración porque `EmployeeResources` ya existe desde V19. El mapeo JPA cubre:
+
+- `type`.
+- `firstName`.
+- `lastName`.
+- `publicAlias`.
+- `photoUrl`.
+- `specialty`.
+- `description`.
+- `status`.
+- `publicVisibility`.
+- `internalNotes`.
+- `createdAt`.
+- `updatedAt`.
+
+La identidad visible exige `firstName` o `publicAlias`, replicando en servicio la defensa de
+profundidad de `ckEmployeeResourcesIdentity`.
+
+### Contratos y APIs
+
+Endpoints privados:
+
+- `GET /api/venue/me/team`.
+- `POST /api/venue/me/team`.
+- `PATCH /api/venue/me/team/{resourceId}`.
+
+Payload editable:
+
+- `type`: `employee`, `professional`, `room`, `court`, `table`, `equipment` u `other`.
+- `firstName`: opcional, máximo 120.
+- `lastName`: opcional, máximo 160.
+- `publicAlias`: opcional, máximo 160.
+- `photoUrl`: opcional, máximo 2048.
+- `specialty`: opcional, máximo 240.
+- `description`: opcional, máximo 2000.
+- `status`: uno de los estados MVP documentados en `5.4`.
+- `publicVisibility`: boolean.
+- `internalNotes`: opcional, máximo 2000.
+
+Errores:
+
+- `TEAM_RESOURCE_INVALID` con HTTP 400 para payload, catálogo o invariantes de negocio inválidas.
+- `TEAM_RESOURCE_NOT_FOUND` con HTTP 404 para local vigente inexistente o recurso ajeno/no
+  editable.
+
+### Seguridad, privacidad e i18n
+
+El endpoint queda bajo `/api/venue/me/**` y hereda la autorización de propietario de local. El
+payload no contiene `venueId`; el servicio resuelve el local vigente desde `ownerUserId`. La
+respuesta no expone propietario, cuenta empresarial ni identificadores de otros módulos.
+
+`internalNotes` se incluye solo en el contrato privado. No existe todavía lectura pública de equipo;
+cuando se añada, deberá excluir notas internas y respetar `publicVisibility` y `status`.
+
+### Tests y verificación
+
+Tests añadidos:
+
+- Listado, creación y edición de recursos propios.
+- Normalización de blancos.
+- Rechazo de identidad vacía.
+- Rechazo de tipo o estado no soportado.
+- Rechazo de campos opcionales en blanco.
+- Local inexistente y recurso ajeno/no encontrado.
+- Controlador con `Location`, listado/update y errores estables.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,ServiceCatalogServiceTests,ServiceControllerTests,EmployeeResourceCatalogServiceTests,EmployeeResourceControllerTests" test
+```
+
+Resultado:
+
+- Maven focalizado: 23 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless y Checkstyle correctos.
+
+### Riesgos y deuda técnica
+
+- No hay todavía horario semanal por recurso; queda en `5.5`.
+- No hay asociación servicio-recurso desde API; queda en `5.6`.
+- No hay lectura pública del equipo ni selector de profesional; queda para tareas posteriores.
+- `photoUrl` se modela como URL textual provisional; una carga segura de foto de recurso requerirá
+  pipeline de almacenamiento similar a imágenes de local.
+
+## Iteración 5.4 - Estados activo, inactivo, solo interno y archivado
+
+### Identificador y fecha
+
+- Tarea completada: `5.4. Implementar estados activo, inactivo, solo interno y archivado`.
+- Fecha: 2026-07-12.
+
+### Objetivo técnico
+
+Cerrar el catálogo mínimo de estados operativos del equipo en el CRUD MVP para diferenciar recursos
+usables, recursos pausados, recursos internos y recursos retirados.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-007`: el local puede gestionar estado de empleados o recursos.
+- `RF-010`: la disponibilidad futura podrá considerar estado compatible.
+- `RNF-002`: la información del personal solo debe mostrarse si el local la configura como pública.
+- `RNF-004`: validación backend y errores estables.
+
+### Implementación técnica
+
+El estado se valida en `EmployeeResourceRequest` mediante Bean Validation y en
+`EmployeeResourceCatalogServiceImpl` mediante catálogo cerrado. Para el MVP se aceptan:
+
+- `active`.
+- `inactive`.
+- `internal_only`.
+- `archived`.
+
+La migración V19 conserva además `vacation` y `temporary_leave`, pero el CRUD básico no los acepta
+todavía porque pertenecen a una gestión de ausencias más rica. Esta diferencia queda documentada
+para evitar que el frontend o futuros integradores asuman que todo valor físico es editable desde
+el MVP.
+
+Reglas aplicadas:
+
+- `active`: puede ser público o privado según `publicVisibility`.
+- `inactive`: puede permanecer visible si el local quiere mostrarlo sin hacerlo reservable en
+  futuras fases.
+- `internal_only`: fuerza `publicVisibility=false`.
+- `archived`: fuerza `publicVisibility=false`, se excluye del listado y no se reabre desde el CRUD.
+
+### Seguridad, privacidad e i18n
+
+`internal_only` y `archived` protegen la exposición accidental de personal o recursos retirados. La
+respuesta privada conserva `status` para que el panel pueda mostrar el estado real al propietario.
+No se añadieron textos visibles de UI ni catálogos i18n en esta tarea porque solo se implementó API
+backend.
+
+### Tests y verificación
+
+`EmployeeResourceCatalogServiceTests` cubre:
+
+- creación `active` visible;
+- actualización `inactive`;
+- `internal_only` con ocultación automática;
+- `archived` con ocultación automática;
+- rechazo de estado no MVP (`vacation`) aunque la base lo permita para fases posteriores.
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,ServiceCatalogServiceTests,ServiceControllerTests,EmployeeResourceCatalogServiceTests,EmployeeResourceControllerTests" test
+```
+
+Resultado:
+
+- Maven focalizado: 23 tests, 0 fallos, 0 errores, 0 omitidos.
+- Spotless y Checkstyle correctos.
+
+### Riesgos y deuda técnica
+
+- `vacation` y `temporary_leave` siguen disponibles a nivel de constraint física pero no en el CRUD
+  MVP. Se activarán cuando se implemente gestión de ausencias o estados temporales.
+- La disponibilidad real aún no consume el estado del recurso; queda para `5.7`.
+- No hay auditoría de cambios de estado todavía; deberá revisarse al entrar en reservas reales.

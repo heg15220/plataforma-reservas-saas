@@ -118,8 +118,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 - [x] 5.1. Crear migraciones de `services`, `employee_resources`, `employee_resource_hours` y `service_employee_resources`.
 - [x] 5.2. Implementar CRUD de servicios básicos.
-- [ ] 5.3. Implementar CRUD de empleados o recursos.
-- [ ] 5.4. Implementar estados activo, inactivo, solo interno y archivado.
+- [x] 5.3. Implementar CRUD de empleados o recursos.
+- [x] 5.4. Implementar estados activo, inactivo, solo interno y archivado.
 - [ ] 5.5. Implementar horario semanal básico por empleado o recurso.
 - [ ] 5.6. Implementar asociación entre servicios y empleados o recursos.
 - [ ] 5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique.

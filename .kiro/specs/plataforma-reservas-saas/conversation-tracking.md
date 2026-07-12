@@ -12,11 +12,47 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-12
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1` y `5.2`.
-- Siguiente tarea pendiente recomendada: `5.3. Implementar CRUD de empleados o recursos`.
+  `3.14`, `4.1` a `4.14`, `5.1`, `5.2`, `5.3` y `5.4`.
+- Siguiente tarea pendiente recomendada: `5.5. Implementar horario semanal básico por empleado o recurso`.
 - Observación: la Fase 5 ya dispone de migración base V19 para servicios, equipo/recursos,
   horarios semanales de recurso y asociación servicio-recurso. También existe CRUD privado básico
-  de servicios bajo `/api/venue/me/services`, siempre acotado por propietario autenticado.
+  de servicios bajo `/api/venue/me/services` y CRUD privado de equipo bajo `/api/venue/me/team`,
+  siempre acotados por propietario autenticado.
+
+## Conversación 85 - CRUD de equipo y estados MVP
+
+- Fecha: 2026-07-12.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/5-team-resources-MVP-services`.
+  - Se completaron `5.3` y `5.4` como las dos siguientes tareas pendientes.
+  - Se implementó el módulo backend `resources` sobre la tabla `EmployeeResources`.
+  - Se creó el CRUD privado de empleados, profesionales y recursos reservables bajo
+    `/api/venue/me/team`.
+  - Se implementaron los estados MVP `active`, `inactive`, `internal_only` y `archived`.
+  - El estado `internal_only` y el archivado fuerzan `publicVisibility=false`; `archived` se trata
+    como estado terminal que desaparece del listado y no se reabre desde este CRUD básico.
+  - Se añadieron tests unitarios de servicio y controlador.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/resources/**`.
+  - `apps/api/src/test/java/com/reserly/platform/resources/**`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007`, `RF-008`, `RF-010`.
+  - `RNF-001`, `RNF-002`, `RNF-004`, `RNF-007`, `RNF-011`, `RNF-012`.
+- Tareas impactadas y completadas:
+  - `5.3. Implementar CRUD de empleados o recursos`.
+  - `5.4. Implementar estados activo, inactivo, solo interno y archivado`.
+- Siguiente tarea pendiente recomendada:
+  - `5.5. Implementar horario semanal básico por empleado o recurso`.
+- Decisiones o aclaraciones relevantes:
+  - El contrato MVP usa `GET`, `POST` y `PATCH` en `/api/venue/me/team`, coherente con el diseño.
+  - No se acepta `venueId`; el local se resuelve desde `AuthenticatedAccount.userId`.
+  - El CRUD restringe la entrada a los cuatro estados MVP aunque la migración conserve valores
+    futuros (`vacation`, `temporary_leave`) para iteraciones posteriores.
+  - Evidencia: Maven focalizado con 23 tests, 0 fallos, Spotless y Checkstyle incluidos.
 
 ## Conversación 84 - Migración de recursos y CRUD básico de servicios
 
