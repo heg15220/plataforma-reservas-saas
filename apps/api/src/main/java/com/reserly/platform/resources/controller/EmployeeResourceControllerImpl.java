@@ -2,9 +2,12 @@ package com.reserly.platform.resources.controller;
 
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.resources.converter.EmployeeResourceConverter;
+import com.reserly.platform.resources.dto.EmployeeResourceHourResponse;
 import com.reserly.platform.resources.dto.EmployeeResourceRequest;
 import com.reserly.platform.resources.dto.EmployeeResourceResponse;
+import com.reserly.platform.resources.dto.EmployeeResourceWeeklyHoursRequest;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourEntity;
 import com.reserly.platform.resources.service.EmployeeResourceCatalogService;
 import java.net.URI;
 import java.util.List;
@@ -48,7 +51,27 @@ public class EmployeeResourceControllerImpl implements EmployeeResourceControlle
                 account.userId(), resourceId, converter.toCommand(request))));
   }
 
+  @Override
+  public ResponseEntity<List<EmployeeResourceHourResponse>> listWeeklyHours(
+      AuthenticatedAccount account, UUID resourceId) {
+    return ResponseEntity.ok(
+        toHourResponses(resourceCatalogService.listWeeklyHours(account.userId(), resourceId)));
+  }
+
+  @Override
+  public ResponseEntity<List<EmployeeResourceHourResponse>> replaceWeeklyHours(
+      AuthenticatedAccount account, UUID resourceId, EmployeeResourceWeeklyHoursRequest request) {
+    return ResponseEntity.ok(
+        toHourResponses(
+            resourceCatalogService.replaceWeeklyHours(account.userId(), resourceId, request)));
+  }
+
   private List<EmployeeResourceResponse> toResponses(List<EmployeeResourceEntity> resources) {
     return resources.stream().map(converter::toResponse).toList();
+  }
+
+  private List<EmployeeResourceHourResponse> toHourResponses(
+      List<EmployeeResourceHourEntity> hours) {
+    return hours.stream().map(converter::toHourResponse).toList();
   }
 }

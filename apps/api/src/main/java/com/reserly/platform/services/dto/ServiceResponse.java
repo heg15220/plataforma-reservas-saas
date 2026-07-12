@@ -1,6 +1,7 @@
 package com.reserly.platform.services.dto;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /** Proyeccion privada de un servicio sin exponer IDs de propietario ni local. */
@@ -13,5 +14,6 @@ public record ServiceResponse(
     int durationMinutes,
     int capacityRequired,
     boolean active,
+    List<UUID> employeeResourceIds,
     Instant createdAt,
     Instant updatedAt) {}

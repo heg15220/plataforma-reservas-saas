@@ -11,6 +11,7 @@ import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.services.converter.ServiceConverter;
 import com.reserly.platform.services.dto.ServiceLocalizedTextDto;
 import com.reserly.platform.services.dto.ServiceRequest;
+import com.reserly.platform.services.dto.ServiceResourceAssignmentRequest;
 import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.services.service.ServiceCatalogService;
 import java.time.Instant;
@@ -88,6 +89,23 @@ class ServiceControllerTests {
 
     verify(serviceCatalogService)
         .create(account.userId(), new ServiceConverter().toCommand(request));
+  }
+
+  @Test
+  void replacesCompatibleResourcesForAuthenticatedOwner() {
+    ServiceEntity service = serviceEntity();
+    UUID resourceId = UUID.randomUUID();
+    ServiceResourceAssignmentRequest request =
+        new ServiceResourceAssignmentRequest(Set.of(resourceId));
+    when(serviceCatalogService.replaceCompatibleResources(
+            account.userId(), service.getId(), request))
+        .thenReturn(service);
+
+    var response = controller.replaceCompatibleResources(account, service.getId(), request);
+
+    assertThat(response.getBody().id()).isEqualTo(service.getId());
+    verify(serviceCatalogService)
+        .replaceCompatibleResources(account.userId(), service.getId(), request);
   }
 
   private ServiceRequest request() {

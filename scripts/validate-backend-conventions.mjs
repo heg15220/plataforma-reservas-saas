@@ -131,7 +131,7 @@ function validateJpaRelationsOnGetters(relativePath, source, errors) {
       continue;
     }
 
-    const nextLine = readNextNonAnnotationCodeLine(lines, index + 1);
+    const nextLine = readNextNonJpaAnnotationCodeLine(lines, index + 1);
 
     if (!nextLine || !/\bget[A-Z][A-Za-z0-9]*\s*\(/.test(nextLine.text)) {
       errors.push(
@@ -434,24 +434,37 @@ function readRelationAnnotation(line) {
   return annotation && relationAnnotations.has(annotation) ? annotation : undefined;
 }
 
-function readNextNonAnnotationCodeLine(lines, startIndex) {
+function readNextNonJpaAnnotationCodeLine(lines, startIndex) {
+  let annotationDepth = 0;
+
   for (let index = startIndex; index < lines.length; index += 1) {
     const text = lines[index].trim();
 
-    if (
-      text.length > 0 &&
-      !text.startsWith("@") &&
-      !text.startsWith("//") &&
-      !text.startsWith("*")
-    ) {
-      return {
-        lineNumber: index + 1,
-        text,
-      };
+    if (!text || text.startsWith("//") || text.startsWith("*")) {
+      continue;
     }
+
+    if (annotationDepth > 0) {
+      annotationDepth += countChar(text, "(") - countChar(text, ")");
+      continue;
+    }
+
+    if (text.startsWith("@")) {
+      annotationDepth = Math.max(0, countChar(text, "(") - countChar(text, ")"));
+      continue;
+    }
+
+    return {
+      lineNumber: index + 1,
+      text,
+    };
   }
 
   return undefined;
+}
+
+function countChar(value, char) {
+  return [...value].filter((current) => current === char).length;
 }
 
 function isDaoMethodDeclaration(line) {

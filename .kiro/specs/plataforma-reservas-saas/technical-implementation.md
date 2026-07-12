@@ -7,8 +7,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas y cerradas: `0.1` a `0.15` y `1.1` a `1.22`.
-- Siguiente tarea pendiente recomendada: `2.1. Crear migraciones de venues, categories y venue_images.`
+- Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
+  `3.1` a `3.14`, `4.1` a `4.14` y `5.1` a `5.6`.
+- Siguiente tarea pendiente recomendada: `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -19343,3 +19344,360 @@ Resultado:
   MVP. Se activarán cuando se implemente gestión de ausencias o estados temporales.
 - La disponibilidad real aún no consume el estado del recurso; queda para `5.7`.
 - No hay auditoría de cambios de estado todavía; deberá revisarse al entrar en reservas reales.
+
+## Iteración 5.5 - Horario semanal básico por empleado o recurso
+
+### Identificador y fecha
+
+- Tarea completada: `5.5. Implementar horario semanal básico por empleado o recurso`.
+- Fecha: 2026-07-12.
+
+### Objetivo técnico
+
+Permitir que el local autenticado defina una disponibilidad semanal básica para cada empleado,
+profesional, sala, pista, mesa, equipamiento u otro recurso reservable. La tarea prepara el dato
+mínimo que `5.7` necesitará para decidir si una franja pública puede reservarse cuando el local
+active equipo o recursos.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-008`: el panel privado del local debe permitir administrar datos propios.
+- `RF-010`: la disponibilidad con equipo exige considerar empleado o recurso disponible cuando
+  aplique.
+- `RNF-001`: validación backend obligatoria y endpoints privados protegidos.
+- `RNF-003`: datos de disponibilidad persistentes y transaccionales.
+- `RNF-011`: entidad JPA, DAO, DTOs, conversor, servicio y controlador separados.
+
+### Archivos creados, modificados o eliminados
+
+- Creados:
+  - `EmployeeResourceHourEntity`.
+  - `EmployeeResourceHourDao`.
+  - `EmployeeResourceHourRequest`.
+  - `EmployeeResourceWeeklyHoursRequest`.
+  - `EmployeeResourceHourResponse`.
+- Modificados:
+  - `EmployeeResourceDao`.
+  - `EmployeeResourceConverter`.
+  - `EmployeeResourceCatalogService`.
+  - `EmployeeResourceCatalogServiceImpl`.
+  - `EmployeeResourceController`.
+  - `EmployeeResourceControllerImpl`.
+  - `EmployeeResourceCatalogServiceTests`.
+  - `EmployeeResourceControllerTests`.
+  - `scripts/validate-backend-conventions.mjs`.
+  - Documentos `.kiro`.
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+Se añadió `EmployeeResourceHourEntity` como mapeo JPA de la tabla física `EmployeeResourceHours`
+creada en V19. La entidad usa acceso por getters/setters, tabla `UpperCamelCase` entrecomillada y
+columnas `lowerCamelCase` entrecomilladas. La relación `ManyToOne` hacia `EmployeeResourceEntity`
+se declara en `getEmployeeResource()` y documenta que el recurso propietario se deriva de ruta y
+sesión.
+
+`EmployeeResourceHourDao` incorpora dos consultas JPQL explícitas:
+
+- `findWeeklyHours(ownerUserId, resourceId)`: lectura ordenada por `weekday`, filtrando propietario,
+  local no archivado y recurso no archivado.
+- `findWeeklyHoursForUpdate(ownerUserId, resourceId)`: misma frontera de propiedad, pero con lock
+  pesimista para serializar reemplazos completos.
+
+`EmployeeResourceCatalogServiceImpl` concentra la operación:
+
+1. Resuelve y valida el local vigente desde `ownerUserId`.
+2. Carga el recurso propio no archivado; en escritura usa `findOwnedForUpdate`.
+3. Bloquea las filas de horario existentes del recurso.
+4. Elimina el horario anterior con `deleteAll` y `flush`.
+5. Valida y materializa el nuevo horario semanal.
+6. Persiste con `saveAllAndFlush` y devuelve la lista persistida.
+
+Se eligió reemplazo completo del horario semanal en lugar de alta/baja parcial porque el contrato es
+idempotente, facilita sincronización desde UI y evita estados intermedios entre varios días. El
+payload admite hasta siete entradas, una por día ISO `1..7`.
+
+### Modelo de datos
+
+No se creó una nueva migración porque V19 ya contenía:
+
+- Tabla `EmployeeResourceHours`.
+- FK `employeeResourceId -> EmployeeResources(id)` con `ON DELETE CASCADE`.
+- `weekday` entre 1 y 7.
+- `isAvailable`.
+- `startsAt` y `endsAt`.
+- Constraint `uqEmployeeResourceHoursResourceWeekday`.
+- Constraint de rango que exige horas nulas cuando `isAvailable=false` y `startsAt < endsAt`
+  cuando `isAvailable=true`.
+
+La capa de servicio replica las reglas principales antes de llegar a base de datos para devolver
+errores controlados y evitar depender de mensajes de PostgreSQL.
+
+### Contratos y APIs
+
+Endpoints privados:
+
+- `GET /api/venue/me/team/{resourceId}/weekly-hours`.
+- `PUT /api/venue/me/team/{resourceId}/weekly-hours`.
+
+Payload de reemplazo:
+
+- `hours`: lista máxima de 7 elementos.
+- Cada elemento incluye `weekday`, `available`, `startsAt` y `endsAt`.
+- Si `available=false`, `startsAt` y `endsAt` deben ser `null`.
+- Si `available=true`, `startsAt` y `endsAt` son obligatorios y `startsAt` debe ser anterior a
+  `endsAt`.
+
+Respuesta:
+
+- `id`, `weekday`, `available`, `startsAt`, `endsAt`, `createdAt` y `updatedAt`.
+- No expone `venueId`, `ownerUserId` ni cuenta empresarial.
+
+Errores:
+
+- `TEAM_RESOURCE_INVALID` para payload inválido, días duplicados o rangos incoherentes.
+- `TEAM_RESOURCE_NOT_FOUND` para local inexistente, recurso ajeno, recurso archivado o recurso de
+  local archivado.
+
+### Seguridad, privacidad e i18n
+
+La autorización sigue el patrón `/api/venue/me/**`: el controlador recibe `AuthenticatedAccount` y
+el servicio deriva el propietario desde `account.userId()`. No se acepta `venueId` ni propietario
+desde el cliente. La lectura y escritura filtran siempre por `resource.venue.ownerUser.id`.
+
+El horario no contiene texto visible ni datos personales adicionales; no requiere catálogo i18n. La
+información de personal sigue protegida por `publicVisibility` y `status`, y esta tarea no añade
+lectura pública.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Se reutilizan excepciones estables del módulo `resources`:
+
+- `EmployeeResourceInvalidException`.
+- `EmployeeResourceNotFoundException`.
+
+No se añadieron logs ni auditoría porque el módulo aún es configuración privada básica. Cuando el
+horario afecte reservas confirmadas, una tarea posterior deberá decidir si los cambios generan
+avisos, auditoría o reconciliación operativa.
+
+### Tests añadidos o modificados
+
+`EmployeeResourceCatalogServiceTests` cubre:
+
+- Listado de horario semanal propio.
+- Reemplazo completo de horario para recurso propio.
+- Día disponible con rango válido.
+- Día no disponible sin horas.
+- Rechazo de `startsAt >= endsAt`.
+- Rechazo de día no disponible con horas.
+- Rechazo de día duplicado.
+
+`EmployeeResourceControllerTests` cubre:
+
+- Delegación con `account.userId()`.
+- Proyección REST de horario sin local ni propietario.
+
+### Evidencia de verificación
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=ServiceCatalogServiceTests,ServiceControllerTests,EmployeeResourceCatalogServiceTests,EmployeeResourceControllerTests" test
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,ServiceCatalogServiceTests,ServiceControllerTests,EmployeeResourceCatalogServiceTests,EmployeeResourceControllerTests" test
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultado resumido:
+
+- Suite focalizada: 19 tests, 0 fallos, 0 errores.
+- Suite con migraciones: 29 tests, 0 fallos, 0 errores.
+- Flyway aplicó 19 migraciones desde cero y Hibernate validó el contexto JPA.
+- Spotless y Checkstyle correctos dentro de Maven.
+- Convenciones backend, validación de español y whitespace correctos.
+
+### Decisiones técnicas
+
+- Se usa `PUT` porque el horario semanal se reemplaza por completo.
+- Se valida antes de persistir para devolver errores de dominio estables.
+- Se mantiene un único tramo horario por día en MVP; múltiples turnos por recurso quedan fuera del
+  alcance inmediato.
+
+### Riesgos y deuda técnica
+
+- Un recurso solo puede tener un tramo por día. Negocios con turnos partidos necesitarán una
+  ampliación del modelo.
+- No se propagan cambios de horario a reservas existentes porque las reservas reales aún no están en
+  Fase 5.
+- `5.7` debe integrar este horario en el cálculo de disponibilidad pública y privada.
+
+## Iteración 5.6 - Asociación entre servicios y empleados o recursos
+
+### Identificador y fecha
+
+- Tarea completada: `5.6. Implementar asociación entre servicios y empleados o recursos`.
+- Fecha: 2026-07-12.
+
+### Objetivo técnico
+
+Permitir que un local autenticado declare qué empleados, profesionales o recursos pueden prestar un
+servicio concreto. Esta relación es la base para filtrar disponibilidad por servicio y para ofrecer
+selector de profesional o recurso en tareas posteriores.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-008`: el panel privado debe gestionar servicios y equipo propios.
+- `RF-010`: disponibilidad con equipo o recursos requiere compatibilidad servicio-recurso.
+- `RNF-001`: validación backend y protección contra acceso horizontal.
+- `RNF-003`: relación persistente transaccional.
+- `RNF-011`: mapeo JPA por getters, DAO con `@Query`, DTOs y servicios separados.
+
+### Archivos creados, modificados o eliminados
+
+- Creados:
+  - `ServiceResourceAssignmentRequest`.
+- Modificados:
+  - `ServiceEntity`.
+  - `ServiceDao`.
+  - `ServiceResponse`.
+  - `ServiceConverter`.
+  - `ServiceCatalogService`.
+  - `ServiceCatalogServiceImpl`.
+  - `ServiceController`.
+  - `ServiceControllerImpl`.
+  - `EmployeeResourceDao`.
+  - `ServiceCatalogServiceTests`.
+  - `ServiceControllerTests`.
+  - `scripts/validate-backend-conventions.mjs`.
+  - Documentos `.kiro`.
+- Eliminados:
+  - Ninguno.
+
+### Implementación técnica
+
+`ServiceEntity` incorpora `compatibleResources` como `Set<EmployeeResourceEntity>` con `@ManyToMany`
+y `@JoinTable` sobre la tabla existente `ServiceEmployeeResources`. La relación se declara en
+`getCompatibleResources()` y el setter crea una copia defensiva para evitar aliasing de colecciones.
+
+`ServiceDao` añade `findOwnedWithResourcesForUpdate(ownerUserId, serviceId)`, con `left join fetch`
+para cargar la colección de recursos compatibles bajo lock pesimista. Así el reemplazo de la
+colección se ejecuta dentro de una transacción consistente.
+
+`EmployeeResourceDao` añade:
+
+- `findOwned(ownerUserId, resourceId)`, usado por horarios.
+- `findAllOwnedAssignable(ownerUserId, resourceIds)`, usado por asociación de servicios.
+
+`ServiceCatalogServiceImpl.replaceCompatibleResources` ejecuta:
+
+1. Resuelve el local vigente del propietario bajo lock.
+2. Carga el servicio propio con recursos compatibles bajo lock.
+3. Normaliza el conjunto de IDs solicitado y rechaza `null`.
+4. Carga todos los recursos no archivados del mismo propietario.
+5. Compara cardinalidad para detectar IDs ajenos, inexistentes o archivados.
+6. Reemplaza la colección completa y actualiza `updatedAt`.
+7. Persiste con `saveAndFlush`.
+
+### Modelo de datos
+
+No se añade migración porque V19 ya creó:
+
+- Tabla `ServiceEmployeeResources`.
+- PK compuesta `(serviceId, employeeResourceId)`.
+- FK `serviceId -> Services(id)` con `ON DELETE CASCADE`.
+- FK `employeeResourceId -> EmployeeResources(id)` con `ON DELETE CASCADE`.
+- Índice inverso `ixServiceEmployeeResourcesResource(employeeResourceId, serviceId)`.
+
+La capa de aplicación añade la restricción de negocio multi-tenant: todos los recursos asignados
+deben pertenecer al local vigente del propietario autenticado y no estar archivados.
+
+### Contratos y APIs
+
+Endpoint privado:
+
+- `PUT /api/venue/me/services/{serviceId}/resources`.
+
+Payload:
+
+- `resourceIds`: conjunto obligatorio de UUIDs, máximo 100.
+- Un conjunto vacío desasocia todos los recursos compatibles del servicio.
+
+Respuesta:
+
+- `ServiceResponse` mantiene los datos del servicio y añade `employeeResourceIds` ordenados.
+- No expone `venueId`, propietario, estado empresarial ni datos internos del recurso.
+
+Errores:
+
+- `SERVICE_INVALID` para IDs nulos, recursos ajenos, inexistentes o archivados.
+- `SERVICE_NOT_FOUND` para servicio inexistente o ajeno, o local vigente no disponible.
+
+### Seguridad, privacidad e i18n
+
+El endpoint usa `AuthenticatedAccount` y no acepta `venueId`. Tanto la carga del servicio como la de
+recursos cruzan por `venue.ownerUser.id`, lo que impide asociar un servicio de un local con recursos
+de otro. `internalNotes` de recursos no aparece en la respuesta del servicio. No se añaden textos
+visibles ni catálogos i18n.
+
+### Estrategia de errores, logs, auditoría y observabilidad
+
+Se reutilizan `ServiceInvalidException` y `ServiceNotFoundException` con el `ServiceExceptionHandler`
+existente. No se añaden logs porque no hay integración externa ni job. La auditoría de cambios de
+compatibilidad queda pendiente para una futura capa de operación si afecta reservas activas.
+
+### Tests añadidos o modificados
+
+`ServiceCatalogServiceTests` cubre:
+
+- Reemplazo de recursos compatibles con recursos propios.
+- Rechazo cuando el conjunto solicitado incluye un recurso ajeno o inexistente.
+
+`ServiceControllerTests` cubre:
+
+- Delegación del endpoint con `account.userId()`.
+- Respuesta `ServiceResponse` tras reemplazo.
+
+Además, los tests de migración verifican que V19 sigue aplicando desde cero y que el contexto JPA
+arranca con el nuevo `@ManyToMany`.
+
+### Evidencia de verificación
+
+Comandos ejecutados:
+
+```text
+mvn -f apps/api/pom.xml spotless:apply
+mvn -f apps/api/pom.xml "-Dtest=ServiceCatalogServiceTests,ServiceControllerTests,EmployeeResourceCatalogServiceTests,EmployeeResourceControllerTests" test
+mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,ServiceCatalogServiceTests,ServiceControllerTests,EmployeeResourceCatalogServiceTests,EmployeeResourceControllerTests" test
+npm run backend:conventions:check
+npm run spanish:text:check
+git diff --check
+```
+
+Resultado resumido:
+
+- Suite focalizada: 19 tests, 0 fallos, 0 errores.
+- Suite con migraciones: 29 tests, 0 fallos, 0 errores.
+- Spotless y Checkstyle correctos.
+- Convenciones backend, validación de español y whitespace correctos.
+
+### Decisiones técnicas
+
+- La asociación usa reemplazo completo por `PUT` para mantener idempotencia.
+- Se permite conjunto vacío para dejar un servicio sin recursos específicos, compatible con la
+  futura opción "cualquier profesional disponible".
+- Se rechazan recursos archivados, pero no se impide asociar recursos inactivos o internos porque
+  la disponibilidad real decidirá su uso en `5.7`.
+- Se ajustó `scripts/validate-backend-conventions.mjs` para que el chequeo de relaciones JPA salte
+  anotaciones multilínea como `@JoinTable` antes del getter. El cambio mantiene la regla original:
+  las relaciones deben declararse sobre métodos `get*`.
+
+### Riesgos y deuda técnica
+
+- La disponibilidad todavía no consume `compatibleResources`; queda explícitamente para `5.7`.
+- No hay UI de asignación todavía; se expondrá en `5.10` cuando se cree la sección de equipo y
+  disponibilidad.
+- No se audita el cambio de compatibilidad. Puede ser necesario cuando existan reservas confirmadas
+  o reasignaciones.

@@ -7,10 +7,14 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.identity.AccountType;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.resources.converter.EmployeeResourceConverter;
+import com.reserly.platform.resources.dto.EmployeeResourceHourRequest;
 import com.reserly.platform.resources.dto.EmployeeResourceRequest;
+import com.reserly.platform.resources.dto.EmployeeResourceWeeklyHoursRequest;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourEntity;
 import com.reserly.platform.resources.service.EmployeeResourceCatalogService;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -88,6 +92,27 @@ class EmployeeResourceControllerTests {
         .create(account.userId(), new EmployeeResourceConverter().toCommand(request));
   }
 
+  @Test
+  void listsAndReplacesWeeklyHoursForAuthenticatedOwner() {
+    UUID resourceId = UUID.randomUUID();
+    EmployeeResourceHourEntity hour = hour(resourceId);
+    EmployeeResourceWeeklyHoursRequest request =
+        new EmployeeResourceWeeklyHoursRequest(
+            List.of(
+                new EmployeeResourceHourRequest(1, true, LocalTime.of(9, 0), LocalTime.of(17, 0))));
+    when(resourceCatalogService.listWeeklyHours(account.userId(), resourceId))
+        .thenReturn(List.of(hour));
+    when(resourceCatalogService.replaceWeeklyHours(account.userId(), resourceId, request))
+        .thenReturn(List.of(hour));
+
+    var listed = controller.listWeeklyHours(account, resourceId);
+    var replaced = controller.replaceWeeklyHours(account, resourceId, request);
+
+    assertThat(listed.getBody()).hasSize(1);
+    assertThat(listed.getBody().get(0).weekday()).isEqualTo(1);
+    assertThat(replaced.getBody().get(0).startsAt()).isEqualTo(LocalTime.of(9, 0));
+  }
+
   private EmployeeResourceRequest request(String status, boolean publicVisibility) {
     return new EmployeeResourceRequest(
         "employee",
@@ -118,5 +143,20 @@ class EmployeeResourceControllerTests {
     entity.setCreatedAt(Instant.now());
     entity.setUpdatedAt(Instant.now());
     return entity;
+  }
+
+  private EmployeeResourceHourEntity hour(UUID resourceId) {
+    EmployeeResourceEntity resource = new EmployeeResourceEntity();
+    resource.setId(resourceId);
+    EmployeeResourceHourEntity hour = new EmployeeResourceHourEntity();
+    hour.setId(UUID.randomUUID());
+    hour.setEmployeeResource(resource);
+    hour.setWeekday(1);
+    hour.setAvailable(true);
+    hour.setStartsAt(LocalTime.of(9, 0));
+    hour.setEndsAt(LocalTime.of(17, 0));
+    hour.setCreatedAt(Instant.now());
+    hour.setUpdatedAt(Instant.now());
+    return hour;
   }
 }

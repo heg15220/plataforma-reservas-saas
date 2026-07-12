@@ -1,9 +1,11 @@
 package com.reserly.platform.resources.converter;
 
 import com.reserly.platform.resources.dto.EmployeeResourceCommand;
+import com.reserly.platform.resources.dto.EmployeeResourceHourResponse;
 import com.reserly.platform.resources.dto.EmployeeResourceRequest;
 import com.reserly.platform.resources.dto.EmployeeResourceResponse;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourEntity;
 import org.springframework.stereotype.Component;
 
 /** Convierte recursos de equipo sin aplicar permisos ni transacciones. */
@@ -41,5 +43,17 @@ public class EmployeeResourceConverter {
         resource.getInternalNotes(),
         resource.getCreatedAt(),
         resource.getUpdatedAt());
+  }
+
+  /** Proyecta un dia de horario sin exponer el recurso ni el local propietario. */
+  public EmployeeResourceHourResponse toHourResponse(EmployeeResourceHourEntity hour) {
+    return new EmployeeResourceHourResponse(
+        hour.getId(),
+        hour.getWeekday(),
+        hour.isAvailable(),
+        hour.getStartsAt(),
+        hour.getEndsAt(),
+        hour.getCreatedAt(),
+        hour.getUpdatedAt());
   }
 }

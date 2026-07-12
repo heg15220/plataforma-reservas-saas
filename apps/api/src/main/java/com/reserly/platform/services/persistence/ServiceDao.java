@@ -31,4 +31,16 @@ public interface ServiceDao extends JpaRepository<ServiceEntity, UUID> {
       """)
   Optional<ServiceEntity> findOwnedForUpdate(
       @Param("ownerUserId") UUID ownerUserId, @Param("serviceId") UUID serviceId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select service from ServiceEntity service
+      left join fetch service.compatibleResources
+      where service.id = :serviceId
+        and service.venue.ownerUser.id = :ownerUserId
+        and service.venue.status <> 'archived'
+      """)
+  Optional<ServiceEntity> findOwnedWithResourcesForUpdate(
+      @Param("ownerUserId") UUID ownerUserId, @Param("serviceId") UUID serviceId);
 }

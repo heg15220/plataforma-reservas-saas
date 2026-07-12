@@ -2,6 +2,7 @@ package com.reserly.platform.services.controller;
 
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.services.dto.ServiceRequest;
+import com.reserly.platform.services.dto.ServiceResourceAssignmentRequest;
 import com.reserly.platform.services.dto.ServiceResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 /** Contrato privado para administrar los servicios del local autenticado. */
@@ -30,4 +32,10 @@ public interface ServiceController {
       @AuthenticationPrincipal AuthenticatedAccount account,
       @PathVariable UUID serviceId,
       @Valid @RequestBody ServiceRequest request);
+
+  @PutMapping(path = "/api/venue/me/services/{serviceId}/resources")
+  ResponseEntity<ServiceResponse> replaceCompatibleResources(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID serviceId,
+      @Valid @RequestBody ServiceResourceAssignmentRequest request);
 }

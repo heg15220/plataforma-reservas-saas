@@ -7,7 +7,10 @@ import com.reserly.platform.services.dto.ServiceRequest;
 import com.reserly.platform.services.dto.ServiceResponse;
 import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.services.service.ServiceInvalidException;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /** Convierte contratos de servicios sin resolver permisos ni transacciones. */
@@ -37,8 +40,16 @@ public class ServiceConverter {
         service.getDurationMinutes(),
         service.getCapacityRequired(),
         service.isActive(),
+        compatibleResourceIds(service),
         service.getCreatedAt(),
         service.getUpdatedAt());
+  }
+
+  private List<UUID> compatibleResourceIds(ServiceEntity service) {
+    return service.getCompatibleResources().stream()
+        .map(resource -> resource.getId())
+        .sorted(Comparator.naturalOrder())
+        .toList();
   }
 
   private LocalizedText toLocalizedText(ServiceLocalizedTextDto value) {

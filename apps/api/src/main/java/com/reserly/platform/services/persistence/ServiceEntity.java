@@ -1,6 +1,7 @@
 package com.reserly.platform.services.persistence;
 
 import com.reserly.platform.localization.LocalizedText;
+import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,9 +10,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -29,6 +34,7 @@ public class ServiceEntity {
   private int durationMinutes;
   private int capacityRequired;
   private boolean active;
+  private Set<EmployeeResourceEntity> compatibleResources = new HashSet<>();
   private Instant createdAt;
   private Instant updatedAt;
 
@@ -119,6 +125,21 @@ public class ServiceEntity {
 
   public void setActive(boolean active) {
     this.active = active;
+  }
+
+  /** Recursos compatibles con este servicio; solo se gestionan desde endpoints privados. */
+  @ManyToMany
+  @JoinTable(
+      name = "\"ServiceEmployeeResources\"",
+      joinColumns = @JoinColumn(name = "\"serviceId\""),
+      inverseJoinColumns = @JoinColumn(name = "\"employeeResourceId\""))
+  public Set<EmployeeResourceEntity> getCompatibleResources() {
+    return compatibleResources;
+  }
+
+  public void setCompatibleResources(Set<EmployeeResourceEntity> compatibleResources) {
+    this.compatibleResources =
+        compatibleResources == null ? new HashSet<>() : new HashSet<>(compatibleResources);
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

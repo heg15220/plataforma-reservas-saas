@@ -8,10 +8,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.resources.dto.EmployeeResourceCommand;
+import com.reserly.platform.resources.dto.EmployeeResourceHourRequest;
+import com.reserly.platform.resources.dto.EmployeeResourceWeeklyHoursRequest;
 import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +33,7 @@ class EmployeeResourceCatalogServiceTests {
 
   @Mock private VenueDao venueDao;
   @Mock private EmployeeResourceDao resourceDao;
+  @Mock private EmployeeResourceHourDao hourDao;
 
   private EmployeeResourceCatalogServiceImpl service;
   private UUID ownerId;
@@ -34,7 +41,7 @@ class EmployeeResourceCatalogServiceTests {
 
   @BeforeEach
   void setUp() {
-    service = new EmployeeResourceCatalogServiceImpl(venueDao, resourceDao);
+    service = new EmployeeResourceCatalogServiceImpl(venueDao, resourceDao, hourDao);
     ownerId = UUID.randomUUID();
     venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
@@ -143,6 +150,82 @@ class EmployeeResourceCatalogServiceTests {
     verify(resourceDao, never()).saveAndFlush(any());
   }
 
+  @Test
+  void listsAndReplacesWeeklyHoursForOwnedResource() {
+    EmployeeResourceEntity resource = resource("employee", "Ana", "active", true);
+    UUID resourceId = resource.getId();
+    EmployeeResourceHourEntity monday = hour(resource, 1, true, "09:00", "17:00");
+    when(venueDao.findCurrentByOwnerUserId(ownerId)).thenReturn(Optional.of(venue));
+    when(resourceDao.findOwned(ownerId, resourceId)).thenReturn(Optional.of(resource));
+    when(hourDao.findWeeklyHours(ownerId, resourceId)).thenReturn(List.of(monday));
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(resourceDao.findOwnedForUpdate(ownerId, resourceId)).thenReturn(Optional.of(resource));
+    when(hourDao.findWeeklyHoursForUpdate(ownerId, resourceId)).thenReturn(new ArrayList<>());
+    when(hourDao.saveAllAndFlush(any()))
+        .thenAnswer(invocation -> List.copyOf(invocation.getArgument(0)));
+
+    List<EmployeeResourceHourEntity> listed = service.listWeeklyHours(ownerId, resourceId);
+    List<EmployeeResourceHourEntity> replaced =
+        service.replaceWeeklyHours(
+            ownerId,
+            resourceId,
+            new EmployeeResourceWeeklyHoursRequest(
+                List.of(
+                    new EmployeeResourceHourRequest(
+                        1, true, LocalTime.of(9, 0), LocalTime.of(17, 0)),
+                    new EmployeeResourceHourRequest(7, false, null, null))));
+
+    assertThat(listed).containsExactly(monday);
+    assertThat(replaced).hasSize(2);
+    assertThat(replaced.get(0).getEmployeeResource()).isSameAs(resource);
+    assertThat(replaced.get(0).getStartsAt()).isEqualTo(LocalTime.of(9, 0));
+    assertThat(replaced.get(1).isAvailable()).isFalse();
+    assertThat(replaced.get(1).getStartsAt()).isNull();
+  }
+
+  @Test
+  void rejectsInvalidWeeklyHoursBeforePersisting() {
+    EmployeeResourceEntity resource = resource("employee", "Ana", "active", true);
+    UUID resourceId = resource.getId();
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(resourceDao.findOwnedForUpdate(ownerId, resourceId)).thenReturn(Optional.of(resource));
+    when(hourDao.findWeeklyHoursForUpdate(ownerId, resourceId)).thenReturn(List.of());
+
+    assertThatThrownBy(
+            () ->
+                service.replaceWeeklyHours(
+                    ownerId,
+                    resourceId,
+                    new EmployeeResourceWeeklyHoursRequest(
+                        List.of(
+                            new EmployeeResourceHourRequest(
+                                1, true, LocalTime.of(10, 0), LocalTime.of(9, 0))))))
+        .isInstanceOf(EmployeeResourceInvalidException.class);
+    assertThatThrownBy(
+            () ->
+                service.replaceWeeklyHours(
+                    ownerId,
+                    resourceId,
+                    new EmployeeResourceWeeklyHoursRequest(
+                        List.of(
+                            new EmployeeResourceHourRequest(2, false, LocalTime.of(9, 0), null)))))
+        .isInstanceOf(EmployeeResourceInvalidException.class);
+    assertThatThrownBy(
+            () ->
+                service.replaceWeeklyHours(
+                    ownerId,
+                    resourceId,
+                    new EmployeeResourceWeeklyHoursRequest(
+                        List.of(
+                            new EmployeeResourceHourRequest(
+                                3, true, LocalTime.of(9, 0), LocalTime.of(12, 0)),
+                            new EmployeeResourceHourRequest(
+                                3, true, LocalTime.of(13, 0), LocalTime.of(17, 0))))))
+        .isInstanceOf(EmployeeResourceInvalidException.class);
+
+    verify(hourDao, never()).saveAllAndFlush(any());
+  }
+
   private EmployeeResourceCommand command(
       String type,
       String firstName,
@@ -172,6 +255,22 @@ class EmployeeResourceCatalogServiceTests {
     entity.setFirstName(firstName);
     entity.setStatus(status);
     entity.setPublicVisibility(publicVisibility);
+    return entity;
+  }
+
+  private EmployeeResourceHourEntity hour(
+      EmployeeResourceEntity resource,
+      int weekday,
+      boolean available,
+      String startsAt,
+      String endsAt) {
+    EmployeeResourceHourEntity entity = new EmployeeResourceHourEntity();
+    entity.setId(UUID.randomUUID());
+    entity.setEmployeeResource(resource);
+    entity.setWeekday(weekday);
+    entity.setAvailable(available);
+    entity.setStartsAt(startsAt == null ? null : LocalTime.parse(startsAt));
+    entity.setEndsAt(endsAt == null ? null : LocalTime.parse(endsAt));
     return entity;
   }
 }

@@ -12,12 +12,55 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-12
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1`, `5.2`, `5.3` y `5.4`.
-- Siguiente tarea pendiente recomendada: `5.5. Implementar horario semanal básico por empleado o recurso`.
+  `3.14`, `4.1` a `4.14`, `5.1`, `5.2`, `5.3`, `5.4`, `5.5` y `5.6`.
+- Siguiente tarea pendiente recomendada: `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
 - Observación: la Fase 5 ya dispone de migración base V19 para servicios, equipo/recursos,
   horarios semanales de recurso y asociación servicio-recurso. También existe CRUD privado básico
-  de servicios bajo `/api/venue/me/services` y CRUD privado de equipo bajo `/api/venue/me/team`,
-  siempre acotados por propietario autenticado.
+  de servicios bajo `/api/venue/me/services`, CRUD privado de equipo bajo `/api/venue/me/team`,
+  horario semanal básico de recursos y asociación servicio-recurso, siempre acotados por
+  propietario autenticado.
+
+## Conversación 86 - Horarios semanales de recursos y asociación servicio-recurso
+
+- Fecha: 2026-07-12.
+- Resumen de la conversación:
+  - Se continuó en la rama `phase/5-team-resources-MVP-services`.
+  - Se completaron `5.5` y `5.6` como las dos siguientes tareas pendientes.
+  - Se implementó el modelo JPA y DAO de `EmployeeResourceHours` sobre la tabla ya creada en V19.
+  - Se añadieron endpoints privados para consultar y reemplazar el horario semanal básico de un
+    empleado, profesional o recurso bajo `/api/venue/me/team/{resourceId}/weekly-hours`.
+  - Se implementó la asociación reemplazable entre servicios y recursos compatibles mediante la
+    tabla `ServiceEmployeeResources`, con endpoint privado
+    `PUT /api/venue/me/services/{serviceId}/resources`.
+  - Se ajustó el validador de convenciones backend para reconocer anotaciones JPA multilínea entre
+    una relación y su getter, como `@ManyToMany` seguido de `@JoinTable`.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/resources/**`.
+  - `apps/api/src/main/java/com/reserly/platform/services/**`.
+  - `apps/api/src/test/java/com/reserly/platform/resources/**`.
+  - `apps/api/src/test/java/com/reserly/platform/services/**`.
+  - `scripts/validate-backend-conventions.mjs`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008`, `RF-010`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-007`, `RNF-011`.
+- Tareas impactadas y completadas:
+  - `5.5. Implementar horario semanal básico por empleado o recurso`.
+  - `5.6. Implementar asociación entre servicios y empleados o recursos`.
+- Siguiente tarea pendiente recomendada:
+  - `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
+- Decisiones o aclaraciones relevantes:
+  - El horario semanal se reemplaza de forma completa para mantener una operación idempotente,
+    ordenada y fácil de sincronizar desde el futuro panel.
+  - Un día no disponible debe enviarse sin horas; un día disponible exige `startsAt < endsAt`.
+  - La asociación servicio-recurso también se reemplaza de forma completa y solo acepta recursos no
+    archivados del mismo propietario autenticado.
+  - No se añade migración nueva porque V19 ya contenía `EmployeeResourceHours` y
+    `ServiceEmployeeResources`.
+  - Evidencia: Maven focalizado con migraciones, 29 tests, 0 fallos, Spotless y Checkstyle incluidos;
+    convenciones backend, validación de español y `git diff --check` correctos.
 
 ## Conversación 85 - CRUD de equipo y estados MVP
 

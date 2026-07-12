@@ -120,8 +120,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 5.2. Implementar CRUD de servicios básicos.
 - [x] 5.3. Implementar CRUD de empleados o recursos.
 - [x] 5.4. Implementar estados activo, inactivo, solo interno y archivado.
-- [ ] 5.5. Implementar horario semanal básico por empleado o recurso.
-- [ ] 5.6. Implementar asociación entre servicios y empleados o recursos.
+- [x] 5.5. Implementar horario semanal básico por empleado o recurso.
+- [x] 5.6. Implementar asociación entre servicios y empleados o recursos.
 - [ ] 5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique.
 - [ ] 5.8. Implementar opción "cualquier profesional disponible".
 - [ ] 5.9. Implementar asignación automática simple por primera disponibilidad.

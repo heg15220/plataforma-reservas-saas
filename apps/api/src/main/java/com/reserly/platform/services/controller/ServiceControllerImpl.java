@@ -3,6 +3,7 @@ package com.reserly.platform.services.controller;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.services.converter.ServiceConverter;
 import com.reserly.platform.services.dto.ServiceRequest;
+import com.reserly.platform.services.dto.ServiceResourceAssignmentRequest;
 import com.reserly.platform.services.dto.ServiceResponse;
 import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.services.service.ServiceCatalogService;
@@ -46,6 +47,15 @@ public class ServiceControllerImpl implements ServiceController {
         converter.toResponse(
             serviceCatalogService.update(
                 account.userId(), serviceId, converter.toCommand(request))));
+  }
+
+  @Override
+  public ResponseEntity<ServiceResponse> replaceCompatibleResources(
+      AuthenticatedAccount account, UUID serviceId, ServiceResourceAssignmentRequest request) {
+    return ResponseEntity.ok(
+        converter.toResponse(
+            serviceCatalogService.replaceCompatibleResources(
+                account.userId(), serviceId, request)));
   }
 
   private List<ServiceResponse> toResponses(List<ServiceEntity> services) {

@@ -1,11 +1,18 @@
 package com.reserly.platform.resources.service;
 
 import com.reserly.platform.resources.dto.EmployeeResourceCommand;
+import com.reserly.platform.resources.dto.EmployeeResourceHourRequest;
+import com.reserly.platform.resources.dto.EmployeeResourceWeeklyHoursRequest;
 import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceHourEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.Instant;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -31,10 +38,13 @@ public class EmployeeResourceCatalogServiceImpl implements EmployeeResourceCatal
 
   private final VenueDao venueDao;
   private final EmployeeResourceDao resourceDao;
+  private final EmployeeResourceHourDao hourDao;
 
-  public EmployeeResourceCatalogServiceImpl(VenueDao venueDao, EmployeeResourceDao resourceDao) {
+  public EmployeeResourceCatalogServiceImpl(
+      VenueDao venueDao, EmployeeResourceDao resourceDao, EmployeeResourceHourDao hourDao) {
     this.venueDao = venueDao;
     this.resourceDao = resourceDao;
+    this.hourDao = hourDao;
   }
 
   @Override
@@ -67,6 +77,30 @@ public class EmployeeResourceCatalogServiceImpl implements EmployeeResourceCatal
             .orElseThrow(EmployeeResourceNotFoundException::new);
     applyEditableFields(resource, command, Instant.now());
     return save(resource);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<EmployeeResourceHourEntity> listWeeklyHours(UUID ownerUserId, UUID resourceId) {
+    requireVenue(ownerUserId, false);
+    requireOwnedResource(ownerUserId, resourceId);
+    return List.copyOf(hourDao.findWeeklyHours(ownerUserId, resourceId));
+  }
+
+  @Override
+  @Transactional
+  public List<EmployeeResourceHourEntity> replaceWeeklyHours(
+      UUID ownerUserId, UUID resourceId, EmployeeResourceWeeklyHoursRequest request) {
+    requireVenue(ownerUserId, true);
+    EmployeeResourceEntity resource = requireOwnedResourceForUpdate(ownerUserId, resourceId);
+    List<EmployeeResourceHourEntity> existing =
+        hourDao.findWeeklyHoursForUpdate(ownerUserId, resourceId);
+    hourDao.deleteAll(existing);
+    hourDao.flush();
+
+    Instant now = Instant.now();
+    List<EmployeeResourceHourEntity> replacement = toWeeklyHours(resource, request, now);
+    return List.copyOf(hourDao.saveAllAndFlush(replacement));
   }
 
   private void applyEditableFields(
@@ -122,6 +156,65 @@ public class EmployeeResourceCatalogServiceImpl implements EmployeeResourceCatal
             ? venueDao.findCurrentByOwnerUserIdForUpdate(ownerUserId)
             : venueDao.findCurrentByOwnerUserId(ownerUserId))
         .orElseThrow(EmployeeResourceNotFoundException::new);
+  }
+
+  private EmployeeResourceEntity requireOwnedResource(UUID ownerUserId, UUID resourceId) {
+    return resourceDao
+        .findOwned(ownerUserId, resourceId)
+        .orElseThrow(EmployeeResourceNotFoundException::new);
+  }
+
+  private EmployeeResourceEntity requireOwnedResourceForUpdate(UUID ownerUserId, UUID resourceId) {
+    return resourceDao
+        .findOwnedForUpdate(ownerUserId, resourceId)
+        .orElseThrow(EmployeeResourceNotFoundException::new);
+  }
+
+  private List<EmployeeResourceHourEntity> toWeeklyHours(
+      EmployeeResourceEntity resource, EmployeeResourceWeeklyHoursRequest request, Instant now) {
+    if (request == null || request.hours() == null) {
+      throw new EmployeeResourceInvalidException();
+    }
+    Set<Integer> seenWeekdays = new HashSet<>();
+    List<EmployeeResourceHourEntity> hours = new ArrayList<>();
+    for (EmployeeResourceHourRequest day : request.hours()) {
+      if (day == null || !seenWeekdays.add(day.weekday())) {
+        throw new EmployeeResourceInvalidException();
+      }
+      hours.add(toWeeklyHour(resource, day, now));
+    }
+    return hours;
+  }
+
+  private EmployeeResourceHourEntity toWeeklyHour(
+      EmployeeResourceEntity resource, EmployeeResourceHourRequest day, Instant now) {
+    validateWeeklyHour(day);
+    EmployeeResourceHourEntity hour = new EmployeeResourceHourEntity();
+    hour.setEmployeeResource(resource);
+    hour.setWeekday(day.weekday());
+    hour.setAvailable(day.available());
+    hour.setStartsAt(day.available() ? day.startsAt() : null);
+    hour.setEndsAt(day.available() ? day.endsAt() : null);
+    hour.setCreatedAt(now);
+    hour.setUpdatedAt(now);
+    return hour;
+  }
+
+  private void validateWeeklyHour(EmployeeResourceHourRequest day) {
+    if (day.weekday() < 1 || day.weekday() > 7) {
+      throw new EmployeeResourceInvalidException();
+    }
+    LocalTime startsAt = day.startsAt();
+    LocalTime endsAt = day.endsAt();
+    if (!day.available()) {
+      if (startsAt != null || endsAt != null) {
+        throw new EmployeeResourceInvalidException();
+      }
+      return;
+    }
+    if (startsAt == null || endsAt == null || !startsAt.isBefore(endsAt)) {
+      throw new EmployeeResourceInvalidException();
+    }
   }
 
   private EmployeeResourceEntity save(EmployeeResourceEntity resource) {

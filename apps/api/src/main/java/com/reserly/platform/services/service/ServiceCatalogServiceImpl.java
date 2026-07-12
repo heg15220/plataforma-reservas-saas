@@ -1,12 +1,17 @@
 package com.reserly.platform.services.service;
 
+import com.reserly.platform.resources.persistence.EmployeeResourceDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import com.reserly.platform.services.dto.ServiceCommand;
+import com.reserly.platform.services.dto.ServiceResourceAssignmentRequest;
 import com.reserly.platform.services.persistence.ServiceDao;
 import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -23,10 +28,13 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
 
   private final VenueDao venueDao;
   private final ServiceDao serviceDao;
+  private final EmployeeResourceDao resourceDao;
 
-  public ServiceCatalogServiceImpl(VenueDao venueDao, ServiceDao serviceDao) {
+  public ServiceCatalogServiceImpl(
+      VenueDao venueDao, ServiceDao serviceDao, EmployeeResourceDao resourceDao) {
     this.venueDao = venueDao;
     this.serviceDao = serviceDao;
+    this.resourceDao = resourceDao;
   }
 
   @Override
@@ -57,6 +65,28 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
             .findOwnedForUpdate(ownerUserId, serviceId)
             .orElseThrow(ServiceNotFoundException::new);
     applyEditableFields(service, command, Instant.now());
+    return save(service);
+  }
+
+  @Override
+  @Transactional
+  public ServiceEntity replaceCompatibleResources(
+      UUID ownerUserId, UUID serviceId, ServiceResourceAssignmentRequest request) {
+    requireVenue(ownerUserId, true);
+    ServiceEntity service =
+        serviceDao
+            .findOwnedWithResourcesForUpdate(ownerUserId, serviceId)
+            .orElseThrow(ServiceNotFoundException::new);
+    Set<UUID> requestedIds = normalizeRequestedResourceIds(request);
+    List<EmployeeResourceEntity> resources =
+        requestedIds.isEmpty()
+            ? List.of()
+            : resourceDao.findAllOwnedAssignable(ownerUserId, requestedIds);
+    if (resources.size() != requestedIds.size()) {
+      throw new ServiceInvalidException();
+    }
+    service.setCompatibleResources(new HashSet<>(resources));
+    service.setUpdatedAt(Instant.now());
     return save(service);
   }
 
@@ -111,6 +141,16 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
             ? venueDao.findCurrentByOwnerUserIdForUpdate(ownerUserId)
             : venueDao.findCurrentByOwnerUserId(ownerUserId))
         .orElseThrow(ServiceNotFoundException::new);
+  }
+
+  private Set<UUID> normalizeRequestedResourceIds(ServiceResourceAssignmentRequest request) {
+    if (request == null || request.resourceIds() == null) {
+      throw new ServiceInvalidException();
+    }
+    if (request.resourceIds().stream().anyMatch(id -> id == null)) {
+      throw new ServiceInvalidException();
+    }
+    return Set.copyOf(request.resourceIds());
   }
 
   private ServiceEntity save(ServiceEntity service) {
