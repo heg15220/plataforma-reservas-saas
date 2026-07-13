@@ -4352,3 +4352,35 @@ Fuente de verdad del avance:
     correcto con 8 tests, 0 fallos, 0 errores y 0 omitidos; Spotless y Checkstyle correctos.
   - Evidencia transversal: `npm run backend:conventions:check` y `npm run spanish:text:check`
     correctos.
+
+## Conversación 70 - Asignación automática y panel de equipo
+
+- Fecha: 2026-07-13.
+- Resumen de la conversación:
+  - Se implementó la política interna de asignación por primera disponibilidad para el futuro hold.
+  - Se creó `/panel/equipo` para recursos, horarios, servicios, asociaciones y opción delegada.
+  - Se añadieron contratos Zod, estados de error y traducciones ES/EN.
+  - La validación se limitó expresamente a los módulos de esta conversación.
+- Archivos modificados:
+  - Servicios y tests de asignación en el módulo backend de disponibilidad.
+  - `apps/web/src/app/panel/equipo/page.tsx`.
+  - `apps/web/src/features/team/team-api.ts`, gestor y sus tests.
+  - `apps/web/src/components/layout/venue-shell.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Los tres documentos de seguimiento de `.kiro`.
+- Requisitos impactados:
+  - `RF-026`, `RF-027`, `RB-010`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-008` y `RNF-009`.
+- Tareas impactadas y completadas:
+  - `5.9. Implementar asignación automática simple por primera disponibilidad`.
+  - `5.10. Crear sección "Equipo y disponibilidad" en panel`.
+- Siguiente tarea pendiente recomendada:
+  - `5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure`.
+- Decisiones o aclaraciones relevantes:
+  - No se inventó persistencia: la política se integrará en el futuro hold.
+  - La primera disponibilidad toma el primer candidato del orden estable y recalcula elegibilidad.
+  - El panel usa exclusivamente endpoints privados `/api/venue/me/...`.
+  - Evidencia backend: 5 tests correctos de asignación.
+  - Evidencia frontend: 4 tests correctos y ESLint focalizado correcto.
+  - No hubo validación completa, typecheck/build global, migraciones, suite visual ni comprobaciones
+    transversales por instrucción expresa del usuario.

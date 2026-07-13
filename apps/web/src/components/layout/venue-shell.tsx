@@ -4,7 +4,14 @@ import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import { CalendarDays, Grid2X2, NotebookTabs, Store, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  Grid2X2,
+  NotebookTabs,
+  Store,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -19,10 +26,11 @@ const venueNavigation = [
   { href: "/panel/perfil", icon: Store, labelKey: "profile" },
   { href: "/panel/reservas", icon: NotebookTabs, labelKey: "reservations" },
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
+  { href: "/panel/equipo", icon: UsersRound, labelKey: "team" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey: "home" | "profile" | "reservations" | "calendar";
+  labelKey: "home" | "profile" | "reservations" | "calendar" | "team";
 }>;
 
 export interface VenueShellProps {
@@ -127,7 +135,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         sx={{
           bottom: 0,
           display: { xs: "grid", md: "none" },
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
           left: 0,
           position: "fixed",
           right: 0,

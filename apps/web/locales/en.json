@@ -468,7 +468,8 @@
       "calendar": "Calendar",
       "home": "Home",
       "profile": "Profile",
-      "reservations": "Bookings"
+      "reservations": "Bookings",
+      "team": "Team"
     }
   },
   "Availability": {
@@ -908,5 +909,116 @@
       "count": "{count, plural, =0 {No results} one {# venue found} other {# venues found}}"
     },
     "title": "Explore venues to book"
+  },
+  "Team": {
+    "metadata": {
+      "title": "Team and availability",
+      "description": "Manage venue professionals, resources, schedules, and services."
+    },
+    "hero": {
+      "eyebrow": "Operations",
+      "title": "Team and availability",
+      "summary": "Configure who provides each service and when they are available."
+    },
+    "tabs": {
+      "label": "Team management",
+      "resources": "Team",
+      "services": "Services"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "addResource": "Add resource",
+      "addService": "Add service",
+      "schedule": "Schedule",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "saving": "Saving",
+      "save": "Save",
+      "saveSchedule": "Save schedule"
+    },
+    "loading": "Loading team and services",
+    "errors": {
+      "unauthenticated": "Your session has expired. Sign in again.",
+      "forbidden": "You do not have permission to manage this venue.",
+      "notFound": "The requested resource no longer exists.",
+      "conflict": "The data conflicts with the current configuration.",
+      "invalid": "Review the entered data.",
+      "unavailable": "The operation could not be completed. Try again."
+    },
+    "notices": {
+      "resourceSaved": "The resource has been saved.",
+      "scheduleSaved": "The weekly schedule has been saved.",
+      "serviceSaved": "The service and its compatibility settings have been saved."
+    },
+    "resources": {
+      "title": "Venue resources",
+      "empty": "No professionals or resources have been configured yet."
+    },
+    "services": {
+      "title": "Services and assignment",
+      "empty": "No services have been configured yet.",
+      "duration": "{minutes} min",
+      "resources": "{count, plural, =0 {No linked resources} one {# linked resource} other {# linked resources}}",
+      "anyAvailable": "Supports first availability",
+      "active": "Active",
+      "inactive": "Inactive",
+      "noResources": "No compatible resources"
+    },
+    "types": {
+      "employee": "Employee",
+      "professional": "Professional",
+      "room": "Room",
+      "court": "Court",
+      "table": "Table",
+      "equipment": "Equipment",
+      "other": "Other"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "internal_only": "Internal only",
+      "archived": "Archived"
+    },
+    "resourceForm": {
+      "editTitle": "Edit resource",
+      "createTitle": "New resource",
+      "type": "Type",
+      "status": "Status",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "publicAlias": "Public alias",
+      "specialty": "Specialty",
+      "photoUrl": "Photo URL",
+      "publicVisibility": "Publicly visible",
+      "description": "Public description",
+      "internalNotes": "Internal notes"
+    },
+    "schedule": {
+      "title": "Weekly schedule for {name}",
+      "available": "Available",
+      "startsAt": "From",
+      "endsAt": "To"
+    },
+    "weekdays": {
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday"
+    },
+    "serviceForm": {
+      "editTitle": "Edit service",
+      "createTitle": "New service",
+      "name": "Name",
+      "description": "Description",
+      "duration": "Duration (minutes)",
+      "capacity": "Required capacity",
+      "active": "Active service",
+      "anyAvailable": "Allow any available resource",
+      "resources": "Compatible resources",
+      "resourcesEmpty": "Add a team resource first."
+    }
   }
 }

@@ -468,7 +468,8 @@
       "calendar": "Calendario",
       "home": "Inicio",
       "profile": "Perfil",
-      "reservations": "Reservas"
+      "reservations": "Reservas",
+      "team": "Equipo"
     }
   },
   "Availability": {
@@ -908,5 +909,116 @@
       "count": "{count, plural, =0 {Sin resultados} one {# local encontrado} other {# locales encontrados}}"
     },
     "title": "Explora locales para reservar"
+  },
+  "Team": {
+    "metadata": {
+      "title": "Equipo y disponibilidad",
+      "description": "Gestiona profesionales, recursos, horarios y servicios del local."
+    },
+    "hero": {
+      "eyebrow": "Operaciones",
+      "title": "Equipo y disponibilidad",
+      "summary": "Configura quién presta cada servicio y cuándo está disponible."
+    },
+    "tabs": {
+      "label": "Gestión de equipo",
+      "resources": "Equipo",
+      "services": "Servicios"
+    },
+    "actions": {
+      "refresh": "Actualizar",
+      "addResource": "Añadir recurso",
+      "addService": "Añadir servicio",
+      "schedule": "Horario",
+      "edit": "Editar",
+      "cancel": "Cancelar",
+      "saving": "Guardando",
+      "save": "Guardar",
+      "saveSchedule": "Guardar horario"
+    },
+    "loading": "Cargando equipo y servicios",
+    "errors": {
+      "unauthenticated": "La sesión ha caducado. Vuelve a iniciar sesión.",
+      "forbidden": "No tienes permisos para gestionar este local.",
+      "notFound": "El recurso solicitado ya no existe.",
+      "conflict": "Los datos entran en conflicto con la configuración actual.",
+      "invalid": "Revisa los datos introducidos.",
+      "unavailable": "No se ha podido completar la operación. Inténtalo de nuevo."
+    },
+    "notices": {
+      "resourceSaved": "El recurso se ha guardado.",
+      "scheduleSaved": "El horario semanal se ha guardado.",
+      "serviceSaved": "El servicio y sus compatibilidades se han guardado."
+    },
+    "resources": {
+      "title": "Recursos del local",
+      "empty": "Todavía no hay profesionales ni recursos configurados."
+    },
+    "services": {
+      "title": "Servicios y asignación",
+      "empty": "Todavía no hay servicios configurados.",
+      "duration": "{minutes} min",
+      "resources": "{count, plural, =0 {Sin recursos asociados} one {# recurso asociado} other {# recursos asociados}}",
+      "anyAvailable": "Admite primera disponibilidad",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "noResources": "Sin recursos compatibles"
+    },
+    "types": {
+      "employee": "Empleado",
+      "professional": "Profesional",
+      "room": "Sala",
+      "court": "Pista",
+      "table": "Mesa",
+      "equipment": "Equipo",
+      "other": "Otro"
+    },
+    "statuses": {
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "internal_only": "Solo interno",
+      "archived": "Archivado"
+    },
+    "resourceForm": {
+      "editTitle": "Editar recurso",
+      "createTitle": "Nuevo recurso",
+      "type": "Tipo",
+      "status": "Estado",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "publicAlias": "Alias público",
+      "specialty": "Especialidad",
+      "photoUrl": "URL de la foto",
+      "publicVisibility": "Visible públicamente",
+      "description": "Descripción pública",
+      "internalNotes": "Notas internas"
+    },
+    "schedule": {
+      "title": "Horario semanal de {name}",
+      "available": "Disponible",
+      "startsAt": "Desde",
+      "endsAt": "Hasta"
+    },
+    "weekdays": {
+      "1": "Lunes",
+      "2": "Martes",
+      "3": "Miércoles",
+      "4": "Jueves",
+      "5": "Viernes",
+      "6": "Sábado",
+      "7": "Domingo"
+    },
+    "serviceForm": {
+      "editTitle": "Editar servicio",
+      "createTitle": "Nuevo servicio",
+      "name": "Nombre",
+      "description": "Descripción",
+      "duration": "Duración (minutos)",
+      "capacity": "Capacidad requerida",
+      "active": "Servicio activo",
+      "anyAvailable": "Permitir cualquier recurso disponible",
+      "resources": "Recursos compatibles",
+      "resourcesEmpty": "Añade primero un recurso al equipo."
+    }
   }
 }

@@ -124,8 +124,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 5.6. Implementar asociación entre servicios y empleados o recursos.
 - [x] 5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique.
 - [x] 5.8. Implementar opción "cualquier profesional disponible".
-- [ ] 5.9. Implementar asignación automática simple por primera disponibilidad.
-- [ ] 5.10. Crear sección "Equipo y disponibilidad" en panel.
+- [x] 5.9. Implementar asignación automática simple por primera disponibilidad.
+- [x] 5.10. Crear sección "Equipo y disponibilidad" en panel.
 - [ ] 5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure.
 - [ ] 5.12. Crear tests de disponibilidad con empleados, recursos y servicios.
 

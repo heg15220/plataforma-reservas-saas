@@ -19979,3 +19979,160 @@ profesional disponible" cuando el tipo y contexto correspondan.
 La tarea se cierra porque existe configuración persistente y editable por servicio, la respuesta
 privada la conserva, la disponibilidad pública solo ofrece delegación cuando la política y los
 candidatos lo permiten, V20 se aplica sobre PostgreSQL/PostGIS y toda la cobertura ejecutada pasa.
+
+## Iteración 5.9 - Asignación automática simple por primera disponibilidad
+
+### Identificador, fecha y objetivo
+
+- Tarea: `5.9. Implementar asignación automática simple por primera disponibilidad`.
+- Fecha: 2026-07-13.
+- Objetivo: proporcionar una política de aplicación reutilizable que, justo antes del futuro hold,
+  recalcule recursos elegibles y convierta `ANY_AVAILABLE` en un UUID concreto.
+
+### Requisitos y decisiones de diseño
+
+- `RF-026` exige ligar la reserva confirmada al recurso elegido o asignado.
+- `RF-027` limita candidatos a recursos compatibles con el servicio.
+- `RB-010` mantiene las restricciones de estado y horario.
+- El diseño del futuro hold ya contempla `employeeResourceId` y
+  `assignmentPreference=any_available`.
+- Todavía no existe agregado, tabla ni endpoint de reservas/holds. Se implementa la política en la
+  capa de aplicación sin inventar persistencia; el futuro hold deberá invocarla y guardar el UUID
+  dentro de su transacción.
+
+### Archivos y arquitectura
+
+Se crean `ResourceAssignmentPreference`, `EmployeeResourceAssignmentService`,
+`EmployeeResourceAssignmentServiceImpl`, `EmployeeResourceAssignmentException` y
+`EmployeeResourceAssignmentServiceTests` en el módulo de disponibilidad. No hay migraciones,
+índices, tablas ni contratos HTTP nuevos.
+
+`assign` recibe `venueId`, día ISO 1-7, franja, preferencia y UUID específico opcional. Recalcula una
+sola franja mediante `EmployeeResourceAvailabilityService.resolve`, por lo que no confía en la lista
+que el cliente pudo consultar antes. Devuelve vacío cuando la franja no requiere recurso, el UUID
+validado para `SPECIFIC` o el primer candidato para `ANY_AVAILABLE`.
+
+La primera disponibilidad reutiliza el orden estable del catálogo compatible. No introduce azar,
+rotación ni balanceo: la decisión determinista simplifica idempotencia y diagnóstico en el MVP.
+
+### Flujo, validaciones, seguridad y errores
+
+1. Valida local, franja y día.
+2. Recalcula estado, asociación, visibilidad y cobertura horaria.
+3. Sin requisito de recurso solo acepta ausencia de preferencia y UUID.
+4. Rechaza una franja cuyos requisitos ya no se satisfacen.
+5. `ANY_AVAILABLE` exige permiso del servicio y prohíbe UUID simultáneo.
+6. `SPECIFIC` exige que el UUID siga presente en los candidatos.
+7. Las combinaciones inválidas lanzan `EmployeeResourceAssignmentException`.
+
+Solo se devuelve un UUID ya elegible; no se exponen apellidos, notas internas ni recursos ocultos.
+La política no escribe logs ni auditoría. La garantía fuerte de concurrencia dependerá del futuro
+hold transaccional, que deberá volver a comprobar capacidad y auditar preferencia y recurso resuelto.
+La traducción HTTP de la excepción también queda para ese endpoint.
+
+### Tests, evidencia, riesgos y cierre
+
+`EmployeeResourceAssignmentServiceTests` cubre primer candidato, selección específica válida e
+inválida, opción delegada deshabilitada, ausencia de candidatos y franja sin requisito de recurso.
+
+Comando focalizado:
+`mvn -f apps/api/pom.xml "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" "-Dtest=EmployeeResourceAssignmentServiceTests" test`.
+
+Resultado: 5 tests, 0 fallos, 0 errores y 0 omitidos. No se ejecutaron suite backend completa,
+migraciones, validación transversal ni Spotless global. Maven compiló el módulo para ejecutar la
+clase seleccionada.
+
+Limitaciones: no reserva capacidad, no garantiza reparto equitativo, conserva la granularidad semanal
+actual y aún no posee adaptación HTTP. La tarea se cierra porque existe una política inyectable,
+documentada y probada que recalcula candidatos y resuelve una asignación concreta sin adelantar el
+dominio de reservas.
+
+## Iteración 5.10 - Sección Equipo y disponibilidad del panel
+
+### Identificador, fecha y objetivo
+
+- Tarea: `5.10. Crear sección "Equipo y disponibilidad" en panel`.
+- Fecha: 2026-07-13.
+- Objetivo: permitir que el propietario gestione recursos, horarios semanales, servicios,
+  compatibilidades y primera disponibilidad desde una superficie privada responsive.
+
+### Requisitos y diseño
+
+- `RF-026`: alta, edición, estado y horario de empleados/recursos.
+- `RF-027`: servicios compatibles y opción de cualquier recurso disponible.
+- `RNF-001` y `RNF-002`: peticiones autenticadas sin enviar local o propietario desde UI.
+- `RNF-003`: navegación y formularios responsive.
+- `RNF-008`: fronteras Zod, errores tipados y responsabilidades separadas.
+- `RNF-009`: textos visibles completos en español e inglés.
+
+### Archivos y componentes
+
+Se crean:
+
+- `apps/web/src/app/panel/equipo/page.tsx`.
+- `apps/web/src/features/team/team-api.ts` y `team-api.test.ts`.
+- `apps/web/src/features/team/team-availability-manager.tsx` y su test.
+
+Se modifican `venue-shell.tsx` y `locales/es.json`/`en.json`. No cambia el modelo de datos.
+
+La ruta `/panel/equipo` es privada, no indexable y localizada. `VenueShell` incorpora `UsersRound`
+en escritorio y una quinta columna estable en la barra inferior móvil. El gestor usa tabs de Equipo
+y Servicios. Equipo permite catálogo, alta/edición y horario. Servicios permite catálogo,
+alta/edición, duración, capacidad, estado, asociaciones y toggle de primera disponibilidad.
+
+Los formularios se presentan en diálogos responsive; los grids pasan a una columna en móvil. Los
+comandos emplean iconos Lucide, el refresco tiene tooltip y nombre accesible, y las listas usan filas
+delimitadas sin tarjetas anidadas.
+
+### Contratos y flujo de datos
+
+`team-api.ts` valida con Zod recursos, horas y servicios. Todas las llamadas usan
+`credentials: include`, cabecera JSON y `NEXT_PUBLIC_API_BASE_URL`:
+
+- `GET/POST /api/venue/me/team`.
+- `PATCH /api/venue/me/team/{id}`.
+- `GET/PUT /api/venue/me/team/{id}/weekly-hours`.
+- `GET/POST /api/venue/me/services`.
+- `PATCH /api/venue/me/services/{id}`.
+- `PUT /api/venue/me/services/{id}/resources`.
+
+Las asociaciones se reemplazan con PUT idempotente. Tras cada mutación, el estado se reconcilia con
+la respuesta validada. Los días no disponibles envían límites nulos; los disponibles exigen inicio y
+fin. Archivar retira el recurso del catálogo y los estados internos/archivados fuerzan visibilidad
+pública falsa.
+
+### Estados, errores, privacidad, i18n y accesibilidad
+
+La carga inicial de equipo y servicios es concurrente y cancelable con `AbortController`.
+`queueMicrotask` evita estado síncrono dentro del efecto y comprueba desmontaje. Hay estados
+separados para catálogo, horario, mutación, error y confirmación.
+
+`TeamApiError` normaliza `unauthenticated`, `forbidden`, `notFound`, `conflict`, `invalid` y
+`unavailable`. Los formularios validan identidad mínima, nombre y números positivos. Tabs,
+diálogos, switches, campos horarios, botones y carga conservan roles y nombres accesibles.
+
+El namespace `Team` existe en ES/EN con metadatos, acciones, días, tipos, estados, errores, éxitos y
+plurales ICU. La UI consume exclusivamente rutas `/me`; notas internas permanecen en la superficie
+privada y no se registran datos personales en logs de cliente.
+
+### Tests, evidencia, riesgos y cierre
+
+`team-api.test.ts` verifica credenciales, URL, parsing y cuerpo idempotente de asociaciones.
+`team-availability-manager.test.tsx` verifica carga de recursos, horario bajo demanda, servicios,
+asociaciones y señal de primera disponibilidad.
+
+Evidencia focalizada:
+
+- `vitest run src/features/team/team-api.test.ts src/features/team/team-availability-manager.test.tsx`:
+  2 archivos, 4 tests correctos.
+- `eslint src/features/team src/app/panel/equipo/page.tsx src/components/layout/venue-shell.tsx --max-warnings=0`:
+  0 errores y 0 warnings.
+
+No se ejecutaron `npm test`, lint global, typecheck global, build, suite visual ni validaciones de
+otros módulos. Riesgos: la escritura de servicio y asociaciones usa dos llamadas y podría
+atomizarse en backend; la foto se configura por URL; la navegación móvil deberá reevaluarse si crece;
+el selector público corresponde a 5.11 y la matriz visual a fase 15.
+
+La tarea se cierra porque el panel gestiona recursos, horarios, servicios, compatibilidades y la
+política de primera disponibilidad mediante contratos privados, UI responsive, i18n ES/EN y pruebas
+focalizadas correctas.
