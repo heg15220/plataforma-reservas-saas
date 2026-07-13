@@ -14,5 +14,12 @@ public interface ReservationFormFieldService {
   ReservationFormFieldEntity update(
       UUID ownerUserId, UUID fieldId, ReservationFormFieldCommand command);
 
+  /**
+   * Reemplaza el orden completo de campos activos en una sola transacción.
+   *
+   * @throws ReservationFormFieldInvalidException si faltan, sobran o se repiten identificadores
+   */
+  List<ReservationFormFieldEntity> reorder(UUID ownerUserId, List<UUID> fieldIds);
+
   void delete(UUID ownerUserId, UUID fieldId);
 }

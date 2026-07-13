@@ -13,6 +13,7 @@ import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.persistence.ReservationFormFieldType;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** Verifica CRUD, tipos y aislamiento del formulario sin ejecutar otros modulos. */
+/** Verifica CRUD, tipos, obligatoriedad, orden y opciones sin ejecutar otros módulos. */
 @ExtendWith(MockitoExtension.class)
 class ReservationFormFieldServiceTests {
 
@@ -60,20 +61,24 @@ class ReservationFormFieldServiceTests {
 
     assertThat(service.list(ownerId)).containsExactly(existing);
     ReservationFormFieldEntity created =
-        service.create(ownerId, command(" Preferencia ", "preference", "short_text"));
+        service.create(
+            ownerId, command(" Preferencia ", "preference", "short_text", true, null));
 
     assertThat(created.getVenue()).isSameAs(venue);
     assertThat(created.getLabel()).isEqualTo("Preferencia");
     assertThat(created.getPosition()).isEqualTo(5);
-    assertThat(created.isRequired()).isFalse();
+    assertThat(created.isRequired()).isTrue();
     assertThat(created.isActive()).isTrue();
 
     when(fieldDao.findOwnedForUpdate(ownerId, created.getId())).thenReturn(Optional.of(created));
     ReservationFormFieldEntity updated =
-        service.update(ownerId, created.getId(), command("Opciones", "options", "select"));
+        service.update(
+            ownerId,
+            created.getId(),
+            command("Opciones", "options", "select", false, List.of(" Primera ", "Segunda")));
 
     assertThat(updated.getType()).isEqualTo(ReservationFormFieldType.SELECT);
-    assertThat(updated.getOptions()).isEmpty();
+    assertThat(updated.getOptions()).containsExactly("Primera", "Segunda");
     assertThat(updated.getPosition()).isEqualTo(5);
     assertThat(updated.isRequired()).isFalse();
 
@@ -84,7 +89,7 @@ class ReservationFormFieldServiceTests {
   }
 
   @Test
-  void supportsExactlyTheEightFieldTypesAndMaintainsSelectOptionsInvariant() {
+  void supportsExactlyTheEightFieldTypes() {
     when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(fieldDao.findLastActivePosition(venue.getId())).thenReturn(-1);
     when(fieldDao.saveAndFlush(any(ReservationFormFieldEntity.class)))
@@ -102,34 +107,112 @@ class ReservationFormFieldServiceTests {
             "email");
 
     for (String code : codes) {
+      List<String> options = code.equals("select") ? List.of("Opción") : null;
       ReservationFormFieldEntity created =
-          service.create(ownerId, command("Campo " + code, "field_" + code, code));
+          service.create(
+              ownerId, command("Campo " + code, "field_" + code, code, false, options));
       assertThat(created.getType().code()).isEqualTo(code);
       if (code.equals("select")) {
-        assertThat(created.getOptions()).isEmpty();
+        assertThat(created.getOptions()).containsExactly("Opción");
       } else {
         assertThat(created.getOptions()).isNull();
       }
     }
 
     assertThatThrownBy(
-            () -> service.create(ownerId, command("Desconocido", "unknown", "currency")))
+            () ->
+                service.create(
+                    ownerId, command("Desconocido", "unknown", "currency", false, null)))
         .isInstanceOf(ReservationFormFieldInvalidException.class);
   }
 
   @Test
-  void clearsSelectOptionsWhenChangingToAnotherType() {
+  void validatesSelectorOptionsAndClearsThemForAnotherType() {
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(fieldDao.findLastActivePosition(venue.getId())).thenReturn(-1);
+
+    assertThatThrownBy(
+            () -> service.create(ownerId, command("Selector", "choice", "select", false, null)))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    ownerId,
+                    command("Selector", "choice", "select", false, List.of("Uno", " uno "))))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    ownerId,
+                    command("Texto", "text", "short_text", false, List.of("No permitida"))))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+
+    List<String> tooMany = new ArrayList<>();
+    for (int index = 0; index < 51; index++) {
+      tooMany.add("Opción " + index);
+    }
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    ownerId, command("Selector", "choice", "select", false, tooMany)))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+
     ReservationFormFieldEntity select = field("choice", ReservationFormFieldType.SELECT);
     select.setOptions(List.of("A", "B"));
-    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(fieldDao.findOwnedForUpdate(ownerId, select.getId())).thenReturn(Optional.of(select));
     when(fieldDao.saveAndFlush(select)).thenReturn(select);
 
     ReservationFormFieldEntity updated =
-        service.update(ownerId, select.getId(), command("Comentario", "comment", "long_text"));
+        service.update(
+            ownerId,
+            select.getId(),
+            command("Comentario", "comment", "long_text", true, null));
 
     assertThat(updated.getOptions()).isNull();
     assertThat(updated.getType()).isEqualTo(ReservationFormFieldType.LONG_TEXT);
+    assertThat(updated.isRequired()).isTrue();
+  }
+
+  @Test
+  void reordersACompleteOwnedPermutationAtomically() {
+    ReservationFormFieldEntity first = field("first", ReservationFormFieldType.SHORT_TEXT);
+    ReservationFormFieldEntity second = field("second", ReservationFormFieldType.EMAIL);
+    ReservationFormFieldEntity third = field("third", ReservationFormFieldType.DATE);
+    second.setPosition(1);
+    third.setPosition(2);
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(fieldDao.findAllOwnedForUpdate(ownerId))
+        .thenReturn(List.of(first, second, third));
+    when(fieldDao.saveAllAndFlush(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    List<ReservationFormFieldEntity> reordered =
+        service.reorder(ownerId, List.of(third.getId(), first.getId(), second.getId()));
+
+    assertThat(reordered).containsExactly(third, first, second);
+    assertThat(third.getPosition()).isZero();
+    assertThat(first.getPosition()).isEqualTo(1);
+    assertThat(second.getPosition()).isEqualTo(2);
+    assertThat(reordered)
+        .extracting(ReservationFormFieldEntity::getUpdatedAt)
+        .containsOnly(third.getUpdatedAt());
+  }
+
+  @Test
+  void rejectsPartialDuplicateOrForeignOrdersBeforeWriting() {
+    ReservationFormFieldEntity first = field("first", ReservationFormFieldType.SHORT_TEXT);
+    ReservationFormFieldEntity second = field("second", ReservationFormFieldType.EMAIL);
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(fieldDao.findAllOwnedForUpdate(ownerId)).thenReturn(List.of(first, second));
+
+    assertThatThrownBy(() -> service.reorder(ownerId, List.of(first.getId())))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+    assertThatThrownBy(() -> service.reorder(ownerId, List.of(first.getId(), first.getId())))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+    assertThatThrownBy(() -> service.reorder(ownerId, List.of(first.getId(), UUID.randomUUID())))
+        .isInstanceOf(ReservationFormFieldInvalidException.class);
+
+    verify(fieldDao, never()).saveAllAndFlush(any());
   }
 
   @Test
@@ -143,17 +226,25 @@ class ReservationFormFieldServiceTests {
 
     assertThatThrownBy(() -> service.list(foreignOwner))
         .isInstanceOf(ReservationFormFieldNotFoundException.class);
-    assertThatThrownBy(() -> service.create(ownerId, command("Campo", "Invalid-Key", "email")))
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    ownerId, command("Campo", "Invalid-Key", "email", false, null)))
         .isInstanceOf(ReservationFormFieldInvalidException.class);
     assertThatThrownBy(
-            () -> service.update(ownerId, foreignField, command("Campo", "field", "email")))
+            () ->
+                service.update(
+                    ownerId,
+                    foreignField,
+                    command("Campo", "field", "email", false, null)))
         .isInstanceOf(ReservationFormFieldNotFoundException.class);
 
     verify(fieldDao, never()).delete(any());
   }
 
-  private ReservationFormFieldCommand command(String label, String key, String type) {
-    return new ReservationFormFieldCommand(label, key, type);
+  private ReservationFormFieldCommand command(
+      String label, String key, String type, boolean required, List<String> options) {
+    return new ReservationFormFieldCommand(label, key, type, required, options);
   }
 
   private ReservationFormFieldEntity field(String key, ReservationFormFieldType type) {

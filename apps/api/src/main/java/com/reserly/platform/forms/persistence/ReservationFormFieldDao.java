@@ -22,6 +22,21 @@ public interface ReservationFormFieldDao extends JpaRepository<ReservationFormFi
       """)
   List<ReservationFormFieldEntity> findAllOwned(@Param("ownerUserId") UUID ownerUserId);
 
+  /**
+   * Bloquea el conjunto completo para que la reordenación valide y escriba una permutación atómica.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select field from ReservationFormFieldEntity field
+      where field.venue.ownerUser.id = :ownerUserId
+        and field.venue.status <> 'archived'
+        and field.active = true
+      order by field.position, field.id
+      """)
+  List<ReservationFormFieldEntity> findAllOwnedForUpdate(
+      @Param("ownerUserId") UUID ownerUserId);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       """

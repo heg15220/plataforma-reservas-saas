@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.forms.converter.ReservationFormFieldConverter;
+import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.persistence.ReservationFormFieldType;
@@ -22,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
-/** Verifica el contrato HTTP privado del CRUD de campos personalizados. */
+/** Verifica el contrato HTTP privado del CRUD y orden de campos personalizados. */
 @ExtendWith(MockitoExtension.class)
 class ReservationFormFieldControllerTests {
 
@@ -46,27 +47,37 @@ class ReservationFormFieldControllerTests {
   }
 
   @Test
-  void createsListsUpdatesAndDeletesUsingAuthenticatedOwner() {
+  void createsListsUpdatesReordersAndDeletesUsingAuthenticatedOwner() {
     ReservationFormFieldRequest request =
-        new ReservationFormFieldRequest("Alergias", "allergies", "long_text");
+        new ReservationFormFieldRequest(
+            "Preferencia", "preference", "select", true, List.of("Interior", "Terraza"));
     ReservationFormFieldEntity field = field();
     when(fieldService.create(account.userId(), converter.toCommand(request))).thenReturn(field);
     when(fieldService.list(account.userId())).thenReturn(List.of(field));
     when(fieldService.update(account.userId(), field.getId(), converter.toCommand(request)))
         .thenReturn(field);
+    when(fieldService.reorder(account.userId(), List.of(field.getId())))
+        .thenReturn(List.of(field));
 
     var created = controller.create(account, request);
     var listed = controller.list(account);
     var updated = controller.update(account, field.getId(), request);
+    var reordered =
+        controller.reorder(account, new ReservationFormFieldOrderRequest(List.of(field.getId())));
     var deleted = controller.delete(account, field.getId());
 
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(created.getHeaders().getLocation())
         .hasToString("/api/venue/me/reservation-form/fields/" + field.getId());
-    assertThat(created.getBody().type()).isEqualTo("long_text");
+    assertThat(created.getBody().type()).isEqualTo("select");
+    assertThat(created.getBody().required()).isTrue();
+    assertThat(created.getBody().options()).containsExactly("Interior", "Terraza");
     assertThat(listed.getBody()).hasSize(1);
-    assertThat(updated.getBody().key()).isEqualTo("allergies");
+    assertThat(updated.getBody().key()).isEqualTo("preference");
+    assertThat(reordered.getBody()).extracting(response -> response.id())
+        .containsExactly(field.getId());
     assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(fieldService).reorder(account.userId(), List.of(field.getId()));
     verify(fieldService).delete(account.userId(), field.getId());
   }
 
@@ -84,10 +95,11 @@ class ReservationFormFieldControllerTests {
     Instant now = Instant.now();
     ReservationFormFieldEntity field = new ReservationFormFieldEntity();
     field.setId(UUID.randomUUID());
-    field.setLabel("Alergias");
-    field.setKey("allergies");
-    field.setType(ReservationFormFieldType.LONG_TEXT);
-    field.setRequired(false);
+    field.setLabel("Preferencia");
+    field.setKey("preference");
+    field.setType(ReservationFormFieldType.SELECT);
+    field.setRequired(true);
+    field.setOptions(List.of("Interior", "Terraza"));
     field.setPosition(0);
     field.setActive(true);
     field.setCreatedAt(now);

@@ -4452,3 +4452,44 @@ Fuente de verdad del avance:
   - Spotless se aplicó solo a forms; sus gates globales y Checkstyle global se omitieron porque
     detectaron deuda previa fuera del alcance.
   - No se ejecutaron suite completa, build, typecheck, migraciones ni validaciones transversales.
+
+## Conversación 88 - Obligatoriedad, orden y opciones de formulario
+
+- Fecha: 2026-07-13.
+- Resumen de la conversación:
+  - Se añadió obligatoriedad editable a los campos personalizados.
+  - Se implementó reordenación completa y transaccional del formulario propio.
+  - Se implementaron opciones normalizadas y validadas para campos selector.
+  - La validación se limitó al módulo forms.
+- Archivos modificados:
+  - DTOs ReservationFormFieldRequest, ReservationFormFieldCommand y nuevo
+    ReservationFormFieldOrderRequest.
+  - ReservationFormFieldConverter.
+  - ReservationFormFieldDao.
+  - ReservationFormFieldService y ReservationFormFieldServiceImpl.
+  - ReservationFormFieldController y ReservationFormFieldControllerImpl.
+  - ReservationFormFieldServiceTests y ReservationFormFieldControllerTests.
+  - tasks.md, conversation-tracking.md y technical-implementation.md.
+- Requisitos impactados:
+  - RF-013 Formulario de reserva configurable.
+  - RNF-001 Seguridad, RNF-002 Privacidad, RNF-003 Integridad y
+    RNF-008 Calidad y mantenibilidad.
+- Tareas impactadas:
+  - 6.5. Implementar obligatoriedad y orden.
+  - 6.6. Implementar opciones para campos selector.
+- Tareas completadas:
+  - 6.5 y 6.6.
+- Siguiente tarea pendiente recomendada:
+  - 6.7. Implementar previsualización del formulario.
+- Decisiones o aclaraciones relevantes:
+  - El orden se reemplaza mediante PUT /api/venue/me/reservation-form/fields/order.
+  - La petición debe ser una permutación completa de los campos activos propios.
+  - La reordenación bloquea el local y el conjunto de campos antes de validar y escribir.
+  - required se configura solo en campos custom; los cinco campos base siguen siendo obligatorios.
+  - Un select exige de 1 a 50 opciones únicas sin distinguir caja, de hasta 160 caracteres.
+  - Otros tipos persisten optionsJson nulo y rechazan opciones no vacías.
+  - optionsI18nJson continúa reservado para 6.11.
+  - Evidencia: 8 tests focalizados correctos, 0 fallos, 0 errores y 0 omitidos.
+  - Spotless se aplicó únicamente a forms; los gates globales se omitieron.
+  - No se ejecutaron suite completa, migraciones, build independiente, typecheck ni validaciones
+    transversales.

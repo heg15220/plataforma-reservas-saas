@@ -1,6 +1,7 @@
 package com.reserly.platform.forms.controller;
 
 import com.reserly.platform.forms.converter.ReservationFormFieldConverter;
+import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldResponse;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
@@ -28,8 +29,7 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
 
   @Override
   public ResponseEntity<List<ReservationFormFieldResponse>> list(AuthenticatedAccount account) {
-    return ResponseEntity.ok(
-        fieldService.list(account.userId()).stream().map(converter::toResponse).toList());
+    return ResponseEntity.ok(toResponses(fieldService.list(account.userId())));
   }
 
   @Override
@@ -50,8 +50,20 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
   }
 
   @Override
+  public ResponseEntity<List<ReservationFormFieldResponse>> reorder(
+      AuthenticatedAccount account, ReservationFormFieldOrderRequest request) {
+    return ResponseEntity.ok(
+        toResponses(fieldService.reorder(account.userId(), request.fieldIds())));
+  }
+
+  @Override
   public ResponseEntity<Void> delete(AuthenticatedAccount account, UUID fieldId) {
     fieldService.delete(account.userId(), fieldId);
     return ResponseEntity.noContent().build();
+  }
+
+  private List<ReservationFormFieldResponse> toResponses(
+      List<ReservationFormFieldEntity> fields) {
+    return fields.stream().map(converter::toResponse).toList();
   }
 }

@@ -20398,3 +20398,113 @@ La tarea no implementa widgets frontend ni validación semántica de respuestas 
 fecha o número: esa validación corresponde a 6.8 cuando exista el payload de respuestas. Tampoco
 permite configurar opciones de selector, responsabilidad de 6.6. La siguiente tarea recomendada es
 6.5. Implementar obligatoriedad y orden.
+
+## Iteración 6.5 - Obligatoriedad y orden de campos personalizados
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 6.5. Implementar obligatoriedad y orden.
+- Fecha: 2026-07-13.
+- Objetivo: permitir que el propietario configure si un campo adicional será obligatorio y reemplace
+  el orden completo de sus campos activos en una operación transaccional.
+- Requisitos relacionados: RF-013, especialmente edición, orden y obligatoriedad; RNF-001,
+  RNF-002, RNF-003 y RNF-008.
+- Diseño relacionado: ReservationFormFields.isRequired, position e índice
+  ixReservationFormFieldsVenueActivePosition creados por V21.
+
+### Archivos, contratos y arquitectura
+
+Se modificaron ReservationFormFieldRequest, ReservationFormFieldCommand,
+ReservationFormFieldConverter, ReservationFormFieldService y su implementación, el DAO, la interfaz
+REST, el controlador y las pruebas de servicio/controlador. Se creó
+ReservationFormFieldOrderRequest.
+
+El payload de alta/edición incorpora required. El servicio lo escribe en isRequired tanto al crear
+como al editar, sin afectar a los cinco campos base: estos continúan fuera de
+ReservationFormFields, siempre obligatorios y no editables.
+
+Se añadió el contrato privado:
+
+- PUT /api/venue/me/reservation-form/fields/order
+- Body: fieldIds con la secuencia completa deseada.
+- Respuesta: 200 con la colección proyectada en el nuevo orden.
+- Error: 400 RESERVATION_FORM_FIELD_INVALID si el conjunto es parcial, contiene duplicados, IDs
+  ajenos, IDs inexistentes o nulos.
+
+El endpoint permanece bajo /api/venue/me/** y por tanto exige ROLE_VENUE_OWNER. El local se deriva
+solo de AuthenticatedAccount.userId(); no se acepta venueId. La consulta
+findAllOwnedForUpdate filtra propietario, local no archivado y campo activo, ordena de forma estable
+y aplica PESSIMISTIC_WRITE al conjunto. Antes de escribir, el servicio exige igualdad exacta entre
+los IDs propios bloqueados y los recibidos. Esto evita órdenes parciales ambiguos y que una carrera
+de alta, edición o borrado mezcle estados del mismo formulario.
+
+Tras validar, se asignan posiciones contiguas 0..n-1 y un mismo updatedAt a todas las filas. La
+persistencia usa saveAllAndFlush en la misma transacción y traduce violaciones de integridad al error
+estable. No se requirió migración: position, su check no negativo y el índice ya existían en V21.
+La tabla no impone unique por posición, por lo que la actualización conjunta no necesita posiciones
+temporales y no sufre colisiones intermedias.
+
+### Validación, seguridad, observabilidad y evidencia
+
+ReservationFormFieldServiceTests verifica required en alta y edición, preservación del orden durante
+una edición normal, permutación completa, posiciones contiguas, timestamp común y rechazo previo de
+órdenes parciales, duplicados o con IDs extraños. ReservationFormFieldControllerTests verifica el
+contrato de reordenación y que siempre se usa la cuenta autenticada.
+
+La operación no trata datos personales, no crea logs ni eventos de auditoría y no añade integración
+externa. La auditoría transversal de cambios editoriales sigue pendiente de la fase 16. El orden de
+campos base no se mezcla todavía con custom; la composición visible corresponde a 6.7.
+
+Comando focalizado final:
+mvn "-Dtest=ReservationFormFieldServiceTests,ReservationFormFieldControllerTests"
+"-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test.
+
+Resultado conjunto 6.5/6.6: 8 tests, 0 fallos, 0 errores y 0 omitidos. Spotless se aplicó solo al
+módulo forms. No se ejecutaron suite completa, migraciones, build independiente, typecheck ni
+validaciones transversales.
+
+## Iteración 6.6 - Opciones para campos selector
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 6.6. Implementar opciones para campos selector.
+- Fecha: 2026-07-13.
+- Objetivo: permitir configurar opciones canónicas seguras en campos select y mantener las invariantes de optionsJson para todos los cambios de tipo.
+- Requisitos relacionados: RF-013 y RNF-003/RNF-008.
+- Diseño relacionado: ReservationFormFields.type, optionsJson y
+  ckReservationFormFieldsOptions de V21.
+
+### Contrato, validaciones y flujo
+
+ReservationFormFieldRequest y ReservationFormFieldCommand incorporan options. El request limita la
+colección a 50 elementos y cada texto a 160 caracteres mediante Bean Validation. El servicio repite
+las invariantes para que también protejan llamadas internas:
+
+- Un select exige entre 1 y 50 opciones.
+- Cada opción se recorta, debe ser no vacía y no superar 160 caracteres.
+- Las opciones deben ser únicas sin distinguir mayúsculas y minúsculas después de normalizar
+  espacios exteriores.
+- Un tipo distinto de select acepta null o lista vacía y persiste optionsJson como null.
+- Un tipo distinto de select con opciones no vacías se rechaza.
+- Cambiar de select a otro tipo elimina las opciones; cambiar a select exige aportar una lista válida.
+
+La entidad ya mapeaba optionsJson como List<String> JSONB y el conversor de respuesta devuelve una
+copia inmutable. No se modificó el esquema: V21 ya exige optionsJson no nulo para select y nulo para
+los demás tipos. La validación de aplicación endurece ese mínimo impidiendo select vacíos, mientras
+PostgreSQL conserva la defensa final frente a estados incompatibles.
+
+La configuración se realiza por POST/PATCH del CRUD existente. Se mantienen 201/200, códigos
+RESERVATION_FORM_FIELD_INVALID y aislamiento por propietario. Las opciones son labels canónicas
+sin HTML; no se interpretan ni ejecutan. optionsI18nJson queda sin editar porque la localización
+ES/EN pertenece a 6.11 y el bloqueo de publicación a 6.12.
+
+### Tests, riesgos y pendientes
+
+Las pruebas cubren los ocho tipos, persistencia de opciones normalizadas, exposición REST, rechazo de
+select sin opciones, duplicados por diferencia de caja, más de 50 valores y opciones aplicadas a
+short_text. También verifican la limpieza al convertir un select a long_text.
+
+La evidencia es el mismo comando focalizado de 6.5: 8 tests correctos. No se ejecutó validación
+completa. Límites pendientes: 6.7 compondrá previsualización; 6.8 validará respuestas contra las
+opciones vigentes; 6.11 añadirá labels y opciones localizadas. La siguiente tarea recomendada es
+6.7. Implementar previsualización del formulario.

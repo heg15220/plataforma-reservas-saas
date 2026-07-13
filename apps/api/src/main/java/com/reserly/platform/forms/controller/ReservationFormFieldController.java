@@ -1,5 +1,6 @@
 package com.reserly.platform.forms.controller;
 
+import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldResponse;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 /** Contrato privado para administrar los campos personalizados del local autenticado. */
@@ -32,6 +34,11 @@ public interface ReservationFormFieldController {
       @AuthenticationPrincipal AuthenticatedAccount account,
       @PathVariable UUID fieldId,
       @Valid @RequestBody ReservationFormFieldRequest request);
+
+  @PutMapping(path = "/api/venue/me/reservation-form/fields/order")
+  ResponseEntity<List<ReservationFormFieldResponse>> reorder(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @Valid @RequestBody ReservationFormFieldOrderRequest request);
 
   @DeleteMapping(path = "/api/venue/me/reservation-form/fields/{fieldId}")
   ResponseEntity<Void> delete(

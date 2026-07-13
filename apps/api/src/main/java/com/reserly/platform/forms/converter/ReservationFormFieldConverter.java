@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 public class ReservationFormFieldConverter {
 
   public ReservationFormFieldCommand toCommand(ReservationFormFieldRequest request) {
-    return new ReservationFormFieldCommand(request.label(), request.key(), request.type());
+    return new ReservationFormFieldCommand(
+        request.label(), request.key(), request.type(), request.required(), request.options());
   }
 
   public ReservationFormFieldResponse toResponse(ReservationFormFieldEntity field) {

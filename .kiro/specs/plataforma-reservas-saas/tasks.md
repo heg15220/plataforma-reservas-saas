@@ -135,8 +135,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 6.2. Implementar campos base obligatorios del sistema.
 - [x] 6.3. Implementar CRUD de campos personalizados.
 - [x] 6.4. Implementar tipos: texto corto, texto largo, número, selector, checkbox, fecha, teléfono y email.
-- [ ] 6.5. Implementar obligatoriedad y orden.
-- [ ] 6.6. Implementar opciones para campos selector.
+- [x] 6.5. Implementar obligatoriedad y orden.
+- [x] 6.6. Implementar opciones para campos selector.
 - [ ] 6.7. Implementar previsualización del formulario.
 - [ ] 6.8. Implementar validación backend de respuestas.
 - [ ] 6.9. Crear UI de configuración del formulario.
