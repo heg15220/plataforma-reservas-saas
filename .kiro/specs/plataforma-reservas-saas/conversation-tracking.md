@@ -4493,3 +4493,45 @@ Fuente de verdad del avance:
   - Spotless se aplicó únicamente a forms; los gates globales se omitieron.
   - No se ejecutaron suite completa, migraciones, build independiente, typecheck ni validaciones
     transversales.
+## Conversación 89 - Preview y validación backend del formulario
+
+- Fecha: 2026-07-13.
+- Resumen de la conversación:
+  - Se implementó la previsualización privada del formulario completo.
+  - Se combinaron campos base inmutables y campos custom activos en un esquema ordenado.
+  - Se implementó validación y normalización backend de respuestas por tipo.
+  - La validación ejecutada se limitó al módulo forms.
+- Archivos modificados:
+  - ReservationFormFieldController, implementación y prueba.
+  - Nuevos DTOs ReservationFormPreviewFieldResponse y ReservationFormPreviewResponse.
+  - Nuevos servicios ReservationFormPreviewService y ReservationFormPreviewServiceImpl.
+  - Nuevos DTOs ReservationFormAnswerCommand y ValidatedReservationFormAnswer.
+  - Nuevos servicios y errores ReservationFormResponseValidator,
+    ReservationFormResponseValidatorImpl, ReservationFormResponseInvalidException y
+    ReservationFormResponseViolation.
+  - Nuevas pruebas ReservationFormPreviewServiceTests y
+    ReservationFormResponseValidatorTests.
+  - tasks.md, conversation-tracking.md y technical-implementation.md.
+- Requisitos impactados:
+  - RF-013 Formulario de reserva configurable.
+  - RNF-001 Seguridad, RNF-002 Privacidad, RNF-003 Integridad,
+    RNF-008 Calidad y mantenibilidad y RNF-009 Internacionalización.
+- Tareas impactadas:
+  - 6.7. Implementar previsualización del formulario.
+  - 6.8. Implementar validación backend de respuestas.
+- Tareas completadas:
+  - 6.7 y 6.8.
+- Siguiente tarea pendiente recomendada:
+  - 6.9. Crear UI de configuración del formulario.
+- Decisiones o aclaraciones relevantes:
+  - GET /api/venue/me/reservation-form/preview deriva el local de la cuenta autenticada.
+  - El preview coloca primero cinco campos base y después los custom en orden contiguo.
+  - Los campos base usan labelKey i18n; los custom conservan label canónico hasta 6.11.
+  - El validador es un servicio interno reutilizable y no adelanta endpoints de reserva.
+  - Se rechazan claves desconocidas/duplicadas, obligatorios ausentes y valores incompatibles.
+  - La salida normalizada conserva snapshots y tipos JSON para la futura persistencia de fase 7.
+  - Evidencia final: 10 tests focalizados correctos, 0 fallos, 0 errores y 0 omitidos.
+  - La primera ejecución tuvo un único fallo de expectativa en un fixture de label; se corrigió.
+  - Spotless se aplicó exclusivamente a forms; los gates globales se omitieron.
+  - No se ejecutaron suite completa, migraciones, build independiente, typecheck ni validaciones
+    transversales.

@@ -20508,3 +20508,131 @@ La evidencia es el mismo comando focalizado de 6.5: 8 tests correctos. No se eje
 completa. Límites pendientes: 6.7 compondrá previsualización; 6.8 validará respuestas contra las
 opciones vigentes; 6.11 añadirá labels y opciones localizadas. La siguiente tarea recomendada es
 6.7. Implementar previsualización del formulario.
+## Iteración 6.7 - Previsualización del formulario
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 6.7. Implementar previsualización del formulario.
+- Fecha: 2026-07-13.
+- Objetivo: exponer al propietario un esquema renderizable que represente el formulario vigente,
+  combinando los cinco campos base inmutables con los campos personalizados activos en su orden real.
+- Requisitos relacionados: RF-013, RNF-001, RNF-002, RNF-008 y RNF-009.
+- Diseño relacionado: ReservationFormFields y el catálogo base definido en 6.2.
+
+### Archivos, arquitectura y contrato
+
+Se crearon ReservationFormPreviewFieldResponse, ReservationFormPreviewResponse,
+ReservationFormPreviewService y ReservationFormPreviewServiceImpl. Se ampliaron
+ReservationFormFieldController, su implementación y su prueba.
+
+El nuevo contrato privado es:
+
+- GET /api/venue/me/reservation-form/preview.
+- Autorización: ROLE_VENUE_OWNER mediante la política existente de /api/venue/me/**.
+- Respuesta 200: lista inmutable de campos en orden final.
+- Error 404 RESERVATION_FORM_FIELD_NOT_FOUND cuando la cuenta no tiene un local vigente.
+
+Cada campo de preview incluye id opcional, source, key, type, label, labelKey, required, editable,
+options y position. La representación distingue dos fuentes sin inventar filas persistidas:
+
+- base: id y label nulos, labelKey i18n presente, required=true y editable=false;
+- custom: id y label persistidos, labelKey nulo, required configurable y editable=true.
+
+ReservationFormPreviewServiceImpl usa ReservationBaseFieldCatalog como única fuente de los cinco
+campos obligatorios y ReservationFormFieldService.list para cargar únicamente campos activos del
+local autenticado, ya ordenados y aislados por propietario. Los base ocupan 0..4. Los custom se
+añaden en el orden persistido y reciben posiciones de preview contiguas desde 5, aunque una
+eliminación histórica haya dejado huecos internos en position. El DTO copia listas de campos y
+opciones para impedir que el consumidor altere el snapshot después de construirlo.
+
+No se añadió UI: la pantalla de configuración corresponde a 6.9. Tampoco se creó un endpoint público;
+el criterio de 6.7 es la previsualización del local y la futura reserva pública se integrará con el
+flujo de holds. No hay migraciones, escritura, jobs ni integración externa.
+
+### Seguridad, i18n, errores y evidencia
+
+El endpoint no acepta venueId ni otro selector de propiedad; deriva ownerUserId de
+AuthenticatedAccount. No expone cuenta, local, timestamps ni claves de almacenamiento. Los campos
+base entregan claves i18n para resolución por el canal y los custom mantienen temporalmente el label
+canónico hasta que 6.11 incorpore ES/EN. Las opciones se copian sin interpretarlas como HTML.
+
+ReservationFormPreviewServiceTests verifica orden exacto, precedencia base, flags inmutables,
+posiciones finales, labels/opciones custom y propagación segura de local inexistente.
+ReservationFormFieldControllerTests verifica el endpoint y el uso exclusivo del usuario autenticado.
+
+Comando focalizado:
+mvn "-Dtest=ReservationFormFieldControllerTests,ReservationFormPreviewServiceTests,ReservationFormResponseValidatorTests"
+"-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test.
+
+Resultado conjunto 6.7/6.8: 10 tests, 0 fallos, 0 errores y 0 omitidos. Spotless se aplicó solo a
+forms. No se ejecutaron suite completa, migraciones, build independiente, typecheck ni validaciones
+transversales.
+
+## Iteración 6.8 - Validación backend de respuestas
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 6.8. Implementar validación backend de respuestas.
+- Fecha: 2026-07-13.
+- Objetivo: validar y normalizar respuestas contra un snapshot explícito del esquema vigente sin
+  confiar en controles frontend y sin adelantar el agregado Reservation de fase 7.
+- Requisitos relacionados: RF-013, RNF-001, RNF-002, RNF-003 y RNF-008.
+- Diseño relacionado: ReservationFormResponses conserva fieldId, fieldKey, fieldLabel y valueJson.
+
+### Contratos y flujo de validación
+
+Se crearon ReservationFormAnswerCommand, ValidatedReservationFormAnswer,
+ReservationFormResponseValidator y su implementación, ReservationFormResponseInvalidException y
+ReservationFormResponseViolation.
+
+El validador recibe ReservationFormPreviewResponse más una lista de respuestas key/value JsonNode.
+Primero indexa y verifica el esquema; después procesa respuestas y finalmente recorre el formulario
+en su orden canónico. El flujo aplica estas invariantes:
+
+- claves de esquema no vacías y únicas, tipo soportado, label o labelKey disponible y opciones
+  presentes para select;
+- rechazo de respuestas con key nula, vacía, duplicada o desconocida;
+- presencia obligatoria de todos los campos required;
+- omisión segura de opcionales ausentes o con JSON null;
+- salida ordenada según el formulario, no según el orden enviado por el cliente.
+
+La validación por tipo es:
+
+- short_text: JSON string no vacío, trim y máximo 255 caracteres;
+- long_text: JSON string no vacío, trim y máximo 4000 caracteres;
+- number: nodo numérico; party_size exige entero positivo representable como int;
+- select: string que coincide exactamente con una opción vigente;
+- checkbox: boolean JSON, donde false es una respuesta válida;
+- date: fecha ISO-8601 parseable por LocalDate;
+- phone: string de hasta 32 caracteres con formato telefónico conservador;
+- email: string de hasta 254 caracteres con estructura local@dominio;
+- time_slot: UUID textual válido para el campo base del sistema.
+
+Los valores textuales se devuelven recortados; números y booleanos conservan su tipo JSON. La salida
+ValidatedReservationFormAnswer realiza copia defensiva y añade fieldId, fieldKey, snapshot de label,
+type y value. Para base, el snapshot usa labelKey; para custom usa el label visible. Este contrato
+prepara la persistencia histórica de fase 7 sin crear aún Reservations ni escribir
+ReservationFormResponses.
+
+### Errores, seguridad, privacidad y observabilidad
+
+ReservationFormResponseInvalidException contiene una categoría estable y fieldKey:
+INVALID_SCHEMA, UNKNOWN_FIELD, DUPLICATE_FIELD, MISSING_REQUIRED, INVALID_TYPE o INVALID_VALUE.
+No incluye el valor recibido ni detalles internos, evitando filtrar datos personales en futuros
+logs o respuestas públicas. Todavía no existe endpoint de confirmación: la fase 7 decidirá la
+traducción HTTP y debe reutilizar este servicio antes de persistir.
+
+La validación es determinista, sin I/O, logs, métricas, datos almacenados ni servicios externos. La
+normalización de email no sustituye la normalización de identidad/reserva futura; solo verifica forma
+y trim. La validación semántica entre fecha, franja, disponibilidad y capacidad corresponde a los
+holds de fase 7.
+
+ReservationFormResponseValidatorTests cubre los tipos soportados, campos base, orden de salida,
+snapshots, trim, opcionales, obligatorios, duplicados, desconocidos, tipos JSON incorrectos, formatos
+inválidos, selector fuera de opciones, party_size no positivo, límites de texto y esquema duplicado.
+La primera ejecución detectó una expectativa incorrecta del fixture de label; se corrigió contra el
+snapshot real; la ejecución final, tras endurecer también esquemas opcionales, terminó con 10
+tests correctos.
+
+No se ejecutó validación completa. La siguiente tarea recomendada es
+6.9. Crear UI de configuración del formulario.

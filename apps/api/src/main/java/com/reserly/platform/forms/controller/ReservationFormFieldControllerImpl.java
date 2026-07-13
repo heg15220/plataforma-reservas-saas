@@ -4,8 +4,10 @@ import com.reserly.platform.forms.converter.ReservationFormFieldConverter;
 import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldResponse;
+import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.service.ReservationFormFieldService;
+import com.reserly.platform.forms.service.ReservationFormPreviewService;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import java.net.URI;
 import java.util.List;
@@ -19,17 +21,26 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
   private static final String COLLECTION_PATH = "/api/venue/me/reservation-form/fields";
 
   private final ReservationFormFieldService fieldService;
+  private final ReservationFormPreviewService previewService;
   private final ReservationFormFieldConverter converter;
 
   public ReservationFormFieldControllerImpl(
-      ReservationFormFieldService fieldService, ReservationFormFieldConverter converter) {
+      ReservationFormFieldService fieldService,
+      ReservationFormPreviewService previewService,
+      ReservationFormFieldConverter converter) {
     this.fieldService = fieldService;
+    this.previewService = previewService;
     this.converter = converter;
   }
 
   @Override
   public ResponseEntity<List<ReservationFormFieldResponse>> list(AuthenticatedAccount account) {
     return ResponseEntity.ok(toResponses(fieldService.list(account.userId())));
+  }
+
+  @Override
+  public ResponseEntity<ReservationFormPreviewResponse> preview(AuthenticatedAccount account) {
+    return ResponseEntity.ok(previewService.preview(account.userId()));
   }
 
   @Override

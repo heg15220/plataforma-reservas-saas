@@ -3,6 +3,7 @@ package com.reserly.platform.forms.controller;
 import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldResponse;
+import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -17,11 +18,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-/** Contrato privado para administrar los campos personalizados del local autenticado. */
+/** Contrato privado para administrar y previsualizar el formulario del local autenticado. */
 public interface ReservationFormFieldController {
 
   @GetMapping(path = "/api/venue/me/reservation-form/fields")
   ResponseEntity<List<ReservationFormFieldResponse>> list(
+      @AuthenticationPrincipal AuthenticatedAccount account);
+
+  @GetMapping(path = "/api/venue/me/reservation-form/preview")
+  ResponseEntity<ReservationFormPreviewResponse> preview(
       @AuthenticationPrincipal AuthenticatedAccount account);
 
   @PostMapping(path = "/api/venue/me/reservation-form/fields")

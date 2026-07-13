@@ -7,9 +7,12 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.forms.converter.ReservationFormFieldConverter;
 import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
+import com.reserly.platform.forms.dto.ReservationFormPreviewFieldResponse;
+import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.persistence.ReservationFormFieldType;
 import com.reserly.platform.forms.service.ReservationFormFieldService;
+import com.reserly.platform.forms.service.ReservationFormPreviewService;
 import com.reserly.platform.identity.AccountType;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import java.time.Instant;
@@ -23,11 +26,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
-/** Verifica el contrato HTTP privado del CRUD y orden de campos personalizados. */
+/** Verifica el contrato HTTP privado del CRUD, orden y previsualización. */
 @ExtendWith(MockitoExtension.class)
 class ReservationFormFieldControllerTests {
 
   @Mock private ReservationFormFieldService fieldService;
+  @Mock private ReservationFormPreviewService previewService;
 
   private ReservationFormFieldControllerImpl controller;
   private ReservationFormFieldConverter converter;
@@ -36,7 +40,8 @@ class ReservationFormFieldControllerTests {
   @BeforeEach
   void setUp() {
     converter = new ReservationFormFieldConverter();
-    controller = new ReservationFormFieldControllerImpl(fieldService, converter);
+    controller =
+        new ReservationFormFieldControllerImpl(fieldService, previewService, converter);
     account =
         new AuthenticatedAccount(
             UUID.randomUUID(),
@@ -47,23 +52,26 @@ class ReservationFormFieldControllerTests {
   }
 
   @Test
-  void createsListsUpdatesReordersAndDeletesUsingAuthenticatedOwner() {
+  void createsListsUpdatesReordersPreviewsAndDeletesUsingAuthenticatedOwner() {
     ReservationFormFieldRequest request =
         new ReservationFormFieldRequest(
             "Preferencia", "preference", "select", true, List.of("Interior", "Terraza"));
     ReservationFormFieldEntity field = field();
+    ReservationFormPreviewResponse preview = preview(field);
     when(fieldService.create(account.userId(), converter.toCommand(request))).thenReturn(field);
     when(fieldService.list(account.userId())).thenReturn(List.of(field));
     when(fieldService.update(account.userId(), field.getId(), converter.toCommand(request)))
         .thenReturn(field);
     when(fieldService.reorder(account.userId(), List.of(field.getId())))
         .thenReturn(List.of(field));
+    when(previewService.preview(account.userId())).thenReturn(preview);
 
     var created = controller.create(account, request);
     var listed = controller.list(account);
     var updated = controller.update(account, field.getId(), request);
     var reordered =
         controller.reorder(account, new ReservationFormFieldOrderRequest(List.of(field.getId())));
+    var previewed = controller.preview(account);
     var deleted = controller.delete(account, field.getId());
 
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -76,7 +84,9 @@ class ReservationFormFieldControllerTests {
     assertThat(updated.getBody().key()).isEqualTo("preference");
     assertThat(reordered.getBody()).extracting(response -> response.id())
         .containsExactly(field.getId());
+    assertThat(previewed.getBody().fields()).hasSize(1);
     assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(previewService).preview(account.userId());
     verify(fieldService).reorder(account.userId(), List.of(field.getId()));
     verify(fieldService).delete(account.userId(), field.getId());
   }
@@ -89,6 +99,22 @@ class ReservationFormFieldControllerTests {
         .isEqualTo("RESERVATION_FORM_FIELD_INVALID");
     assertThat(handler.handleNotFound().getBody().code())
         .isEqualTo("RESERVATION_FORM_FIELD_NOT_FOUND");
+  }
+
+  private ReservationFormPreviewResponse preview(ReservationFormFieldEntity field) {
+    return new ReservationFormPreviewResponse(
+        List.of(
+            new ReservationFormPreviewFieldResponse(
+                field.getId(),
+                "custom",
+                field.getKey(),
+                field.getType().code(),
+                field.getLabel(),
+                null,
+                field.isRequired(),
+                true,
+                field.getOptions(),
+                5)));
   }
 
   private ReservationFormFieldEntity field() {
