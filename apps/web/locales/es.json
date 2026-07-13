@@ -469,7 +469,8 @@
       "home": "Inicio",
       "profile": "Perfil",
       "reservations": "Reservas",
-      "team": "Equipo"
+      "team": "Equipo",
+      "form": "Formulario"
     }
   },
   "Availability": {
@@ -1027,6 +1028,88 @@
       "anyAvailable": "Permitir cualquier recurso disponible",
       "resources": "Recursos compatibles",
       "resourcesEmpty": "Añade primero un recurso al equipo."
+    }
+  },
+  "FormBuilder": {
+    "metadata": {
+      "title": "Formulario de reserva | Reserly",
+      "description": "Configuraci?n privada del formulario de reserva del local."
+    },
+    "hero": {
+      "eyebrow": "Reservas",
+      "title": "Formulario de reserva",
+      "summary": "Configura los campos que completar?n tus clientes y revisa el resultado final."
+    },
+    "actions": {
+      "refresh": "Actualizar",
+      "add": "A?adir campo",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "moveUp": "Mover arriba",
+      "moveDown": "Mover abajo",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "addOption": "A?adir opci?n",
+      "removeOption": "Eliminar opci?n",
+      "confirmDelete": "Eliminar campo"
+    },
+    "loading": "Cargando formulario",
+    "errors": {
+      "forbidden": "No tienes permisos para configurar este formulario.",
+      "load": "No se pudo cargar el formulario.",
+      "save": "No se pudo guardar el campo.",
+      "delete": "No se pudo eliminar el campo.",
+      "reorder": "No se pudo actualizar el orden."
+    },
+    "notices": {
+      "saved": "Campo guardado.",
+      "deleted": "Campo eliminado.",
+      "reordered": "Orden actualizado."
+    },
+    "catalog": {
+      "title": "Campos personalizados",
+      "empty": "Todav?a no hay campos personalizados."
+    },
+    "preview": {
+      "title": "Vista previa",
+      "empty": "No hay campos disponibles."
+    },
+    "field": {
+      "required": "Obligatorio"
+    },
+    "types": {
+      "short_text": "Texto corto",
+      "long_text": "Texto largo",
+      "select": "Selecci?n",
+      "checkbox": "Casilla",
+      "date": "Fecha",
+      "number": "N?mero",
+      "email": "Correo",
+      "phone": "Tel?fono",
+      "time_slot": "Franja horaria"
+    },
+    "base": {
+      "customer_name": "Nombre",
+      "customer_email": "Correo electr?nico",
+      "party_size": "N?mero de personas",
+      "reservation_date": "Fecha",
+      "time_slot": "Franja horaria"
+    },
+    "form": {
+      "createTitle": "Nuevo campo",
+      "editTitle": "Editar campo",
+      "label": "Etiqueta",
+      "key": "Clave t?cnica",
+      "type": "Tipo de campo",
+      "required": "Campo obligatorio",
+      "option": "Opci?n {number}",
+      "keyInvalid": "Usa min?sculas, n?meros y guiones bajos; debe comenzar por una letra.",
+      "optionsInvalid": "A?ade opciones ?nicas y no vac?as."
+    },
+    "delete": {
+      "title": "Eliminar campo",
+      "body": "Se eliminar? ?{label}? del formulario de reserva."
     }
   }
 }

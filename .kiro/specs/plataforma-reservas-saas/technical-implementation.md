@@ -20636,3 +20636,113 @@ tests correctos.
 
 No se ejecutó validación completa. La siguiente tarea recomendada es
 6.9. Crear UI de configuración del formulario.
+## Iteraci?n 6.9 - UI de configuraci?n del formulario
+
+### Identificador, fecha y objetivo t?cnico
+
+- Tarea completada: 6.9. Crear UI de configuraci?n del formulario.
+- Fecha: 2026-07-13.
+- Objetivo: ofrecer al propietario una pantalla privada y operativa para crear, editar, eliminar,
+  ordenar y previsualizar los campos personalizados junto a los cinco campos base obligatorios.
+- Requisitos relacionados: RF-013, RNF-001, RNF-002, RNF-003, RNF-008 y RNF-009.
+- Dise?o relacionado: panel privado React/MUI, estado local con contratos Zod y endpoint
+  /api/venue/me/reservation-form.
+
+### Archivos, arquitectura y contratos
+
+Se crearon:
+
+- apps/web/src/app/panel/formulario/page.tsx.
+- apps/web/src/features/reservation-form/reservation-form-api.ts.
+- apps/web/src/features/reservation-form/reservation-form-manager.tsx.
+
+Se modificaron VenueShell y los cat?logos apps/web/locales/es.json y en.json. La nueva ruta
+/panel/formulario genera metadata no indexable, reutiliza PageHeading y VenueShell y queda accesible
+desde sidebar y navegaci?n m?vil mediante ListChecks. La navegaci?n m?vil pasa a seis tracks estables,
+reduce tipograf?a y permite corte de palabras para conservar legibilidad en anchos peque?os.
+
+reservation-form-api.ts centraliza el contrato privado. Todas las peticiones incluyen cookies con
+credentials=include, normalizan NEXT_PUBLIC_API_BASE_URL y validan respuestas antes de exponerlas al
+componente. Los esquemas Zod reflejan el DTO backend real: campos personalizados con position,
+active y timestamps; preview como objeto { fields }, campos base con labelKey y campos custom con
+label. Los errores HTTP se encapsulan en ReservationFormApiError y una respuesta inv?lida se
+clasifica como error 502 local, sin confiar en JSON no validado.
+
+ReservationFormManager mantiene cat?logo, preview, carga, mutaci?n, avisos, errores y di?logos en
+estado React local. La carga inicial y cada mutaci?n reconcilian en paralelo cat?logo y preview para
+evitar que la pantalla muestre una configuraci?n confirmada con una previsualizaci?n obsoleta. Crear
+y editar usan el mismo borrador; eliminar exige confirmaci?n; reordenar env?a la permutaci?n completa
+de UUID para respetar la atomicidad del backend. Durante mutaciones se bloquean controles
+conflictivos y los fallos conservan la pantalla para reintento.
+
+### Validaci?n, UI, accesibilidad e internacionalizaci?n
+
+La validaci?n cliente reproduce los l?mites p?blicos del backend: label no vac?o de hasta 160
+caracteres; key de hasta 80 con patr?n
+^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$; select con opciones no vac?as, ?nicas sin distinguir caja y de
+hasta 160 caracteres. Antes de enviar se recortan label, key y opciones; los tipos no select env?an
+options=null. Esta defensa mejora feedback, pero no sustituye la validaci?n autoritativa de 6.8.
+
+El layout usa dos superficies hermanas: cat?logo editable y formulario final. En escritorio forman
+dos columnas con m?nimos estables; en m?vil se apilan. Los controles de orden, edici?n, eliminaci?n,
+recarga y opciones usan iconos Lucide, tooltips y nombres accesibles espec?ficos por campo. Los
+di?logos tienen t?tulos, labels asociados, confirmaci?n expl?cita y estados disabled. La preview
+renderiza TextField, select, Checkbox, date, number, email y phone seg?n type; time_slot se representa
+como texto inactivo. Los campos base se resuelven por key con textos ES/EN y los personalizados
+conservan su label can?nico hasta 6.11.
+
+No se a?adieron migraciones, persistencia frontend, analytics, logs con respuestas personales,
+integraciones externas ni endpoint p?blico. La autorizaci?n contin?a en ROLE_VENUE_OWNER y el
+cliente nunca env?a venueId. Riesgos pendientes: 6.11 localizar? labels/opciones custom y 6.12
+aplicar? la pol?tica de publicaci?n/fallback.
+
+## Iteraci?n 6.10 - Tests de validaci?n de formularios
+
+### Identificador, fecha y objetivo t?cnico
+
+- Tarea completada: 6.10. Crear tests de validaci?n de formularios.
+- Fecha: 2026-07-13.
+- Objetivo: cubrir los contratos de transporte y los flujos cr?ticos del configurador, manteniendo
+  como defensa backend la suite ReservationFormResponseValidatorTests creada en 6.8.
+- Requisitos relacionados: RF-013, RNF-003 y RNF-008.
+- Dise?o relacionado: validaci?n por capas Zod, reglas del borrador UI y validador backend por tipo.
+
+### Cobertura implementada
+
+Se crearon reservation-form-api.test.ts y reservation-form-manager.test.tsx. El primer archivo cubre:
+
+- carga autenticada de cat?logo y preview;
+- deserializaci?n de { fields } y validaci?n Zod;
+- serializaci?n exacta de creaci?n y permutaci?n completa de orden;
+- rechazo con ReservationFormApiError 502 de tipos no reconocidos.
+
+El segundo archivo a?sla el componente mediante mocks del cliente y cubre:
+
+- render conjunto de campos base y personalizados;
+- bloqueo de guardado para borradores vac?os o keys inv?lidas;
+- trim y payload normalizado al crear;
+- reordenaci?n con todos los identificadores;
+- di?logo de confirmaci?n antes de eliminar.
+
+Los fixtures reproducen position, active, timestamps, label/labelKey, editable y dem?s campos del
+DTO real. Las pruebas existentes ReservationFormResponseValidatorTests siguen cubriendo tipos JSON,
+obligatorios, opcionales, duplicados, desconocidos, formatos, l?mites, select, party_size y snapshots,
+sin duplicar esa l?gica en el navegador.
+
+### Evidencia y l?mites
+
+Por indicaci?n del usuario no se ejecut? validaci?n completa. Se intent? ?nicamente:
+
+- npx vitest run src/features/reservation-form/reservation-form-api.test.ts
+  src/features/reservation-form/reservation-form-manager.test.tsx --reporter=dot.
+
+El proceso no produjo salida en 30 segundos y fue terminado por timeout; no se reintent? ni se
+ejecutaron Maven, build, typecheck, suite global o validaciones transversales. Como comprobaci?n r?pida
+se ejecutaron git diff --check sin errores, parseo JSON de ambos cat?logos con resultado locales-ok,
+y comparaci?n manual de los esquemas Zod con ReservationFormFieldResponse,
+ReservationFormPreviewFieldResponse, ReservationFormPreviewResponse,
+ReservationFormFieldRequest y ReservationFormFieldOrderRequest.
+
+Limitaci?n conocida: los siete tests frontend quedan implementados pero su ejecuci?n no pudo
+confirmarse en esta iteraci?n por el timeout del runner. La siguiente tarea recomendada es
+6.11. Permitir labels y opciones de campos personalizados en espa?ol e ingl?s.

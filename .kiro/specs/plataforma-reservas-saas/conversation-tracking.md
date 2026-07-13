@@ -4535,3 +4535,40 @@ Fuente de verdad del avance:
   - Spotless se aplicó exclusivamente a forms; los gates globales se omitieron.
   - No se ejecutaron suite completa, migraciones, build independiente, typecheck ni validaciones
     transversales.
+## Conversaci?n 90 - Configurador y tests frontend del formulario
+
+- Fecha: 2026-07-13.
+- Resumen de la conversaci?n:
+  - Se implement? la ruta privada /panel/formulario.
+  - Se a?adi? un configurador responsive con CRUD, orden, opciones y preview combinado.
+  - Se a?adi? un cliente Zod ajustado a los DTO backend reales.
+  - Se crearon tests focalizados de contrato API y flujos de validaci?n UI.
+  - A petici?n del usuario se sustituy? la validaci?n lenta por comprobaciones r?pidas.
+- Archivos modificados:
+  - Nuevos page.tsx, reservation-form-api.ts y reservation-form-manager.tsx.
+  - Nuevos reservation-form-api.test.ts y reservation-form-manager.test.tsx.
+  - VenueShell y cat?logos locales/es.json y locales/en.json.
+  - tasks.md, conversation-tracking.md y technical-implementation.md.
+- Requisitos impactados:
+  - RF-013 Formulario de reserva configurable.
+  - RNF-001 Seguridad, RNF-002 Privacidad, RNF-003 Integridad,
+    RNF-008 Calidad y mantenibilidad y RNF-009 Internacionalizaci?n.
+- Tareas impactadas:
+  - 6.9. Crear UI de configuraci?n del formulario.
+  - 6.10. Crear tests de validaci?n de formularios.
+- Tareas completadas:
+  - 6.9 y 6.10.
+- Siguiente tarea pendiente recomendada:
+  - 6.11. Permitir labels y opciones de campos personalizados en espa?ol e ingl?s.
+- Decisiones o aclaraciones relevantes:
+  - El editor reconcilia cat?logo y preview despu?s de toda mutaci?n confirmada.
+  - La reordenaci?n env?a la permutaci?n completa exigida por el backend.
+  - La regex, l?mites y normalizaci?n del borrador replican el contrato de escritura.
+  - Los campos base siguen siendo obligatorios e inmutables; solo aparecen en preview.
+  - La navegaci?n privada incorpora Formulario en escritorio y m?vil.
+  - Los textos de interfaz y campos base est?n disponibles en espa?ol e ingl?s.
+  - Los labels/opciones custom contin?an can?nicos hasta 6.11.
+  - El intento Vitest focalizado agot? 30 segundos sin salida y se termin?; no se reintent?.
+  - Evidencia r?pida: git diff --check correcto, cat?logos JSON v?lidos y contratos cotejados con
+    los records Java.
+  - No se ejecutaron Maven, suite completa, build, typecheck ni validaciones transversales.

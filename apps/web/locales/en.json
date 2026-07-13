@@ -469,7 +469,8 @@
       "home": "Home",
       "profile": "Profile",
       "reservations": "Bookings",
-      "team": "Team"
+      "team": "Team",
+      "form": "Form"
     }
   },
   "Availability": {
@@ -1027,6 +1028,88 @@
       "anyAvailable": "Allow any available resource",
       "resources": "Compatible resources",
       "resourcesEmpty": "Add a team resource first."
+    }
+  },
+  "FormBuilder": {
+    "metadata": {
+      "title": "Booking form | Reserly",
+      "description": "Private configuration for the venue booking form."
+    },
+    "hero": {
+      "eyebrow": "Bookings",
+      "title": "Booking form",
+      "summary": "Configure the fields your customers will complete and review the final result."
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "add": "Add field",
+      "edit": "Edit",
+      "delete": "Delete",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "addOption": "Add option",
+      "removeOption": "Remove option",
+      "confirmDelete": "Delete field"
+    },
+    "loading": "Loading form",
+    "errors": {
+      "forbidden": "You do not have permission to configure this form.",
+      "load": "The form could not be loaded.",
+      "save": "The field could not be saved.",
+      "delete": "The field could not be deleted.",
+      "reorder": "The order could not be updated."
+    },
+    "notices": {
+      "saved": "Field saved.",
+      "deleted": "Field deleted.",
+      "reordered": "Order updated."
+    },
+    "catalog": {
+      "title": "Custom fields",
+      "empty": "There are no custom fields yet."
+    },
+    "preview": {
+      "title": "Preview",
+      "empty": "There are no available fields."
+    },
+    "field": {
+      "required": "Required"
+    },
+    "types": {
+      "short_text": "Short text",
+      "long_text": "Long text",
+      "select": "Selection",
+      "checkbox": "Checkbox",
+      "date": "Date",
+      "number": "Number",
+      "email": "Email",
+      "phone": "Phone",
+      "time_slot": "Time slot"
+    },
+    "base": {
+      "customer_name": "Name",
+      "customer_email": "Email address",
+      "party_size": "Party size",
+      "reservation_date": "Date",
+      "time_slot": "Time slot"
+    },
+    "form": {
+      "createTitle": "New field",
+      "editTitle": "Edit field",
+      "label": "Label",
+      "key": "Technical key",
+      "type": "Field type",
+      "required": "Required field",
+      "option": "Option {number}",
+      "keyInvalid": "Use lowercase letters, numbers and underscores; start with a letter.",
+      "optionsInvalid": "Add unique, non-empty options."
+    },
+    "delete": {
+      "title": "Delete field",
+      "body": "?{label}? will be removed from the booking form."
     }
   }
 }

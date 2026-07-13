@@ -7,6 +7,7 @@ import Typography from "@mui/material/Typography";
 import {
   CalendarDays,
   Grid2X2,
+  ListChecks,
   NotebookTabs,
   Store,
   UsersRound,
@@ -27,10 +28,11 @@ const venueNavigation = [
   { href: "/panel/reservas", icon: NotebookTabs, labelKey: "reservations" },
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
   { href: "/panel/equipo", icon: UsersRound, labelKey: "team" },
+  { href: "/panel/formulario", icon: ListChecks, labelKey: "form" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey: "home" | "profile" | "reservations" | "calendar" | "team";
+  labelKey: "home" | "profile" | "reservations" | "calendar" | "team" | "form";
 }>;
 
 export interface VenueShellProps {
@@ -135,7 +137,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         sx={{
           bottom: 0,
           display: { xs: "grid", md: "none" },
-          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
           left: 0,
           position: "fixed",
           right: 0,
