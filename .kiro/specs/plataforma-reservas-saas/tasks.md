@@ -141,8 +141,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 6.8. Implementar validación backend de respuestas.
 - [x] 6.9. Crear UI de configuración del formulario.
 - [x] 6.10. Crear tests de validación de formularios.
-- [ ] 6.11. Permitir labels y opciones de campos personalizados en español e inglés.
-- [ ] 6.12. Bloquear publicación de formularios con textos públicos sin traducción obligatoria o fallback aprobado.
+- [x] 6.11. Permitir labels y opciones de campos personalizados en español e inglés.
+- [x] 6.12. Bloquear publicación de formularios con textos públicos sin traducción obligatoria o fallback aprobado.
 
 ## 9. Fase 7 - Reservas, holds y concurrencia
 
