@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("19");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("20");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -338,7 +338,8 @@ class DatabaseMigrationIntegrationTests {
             "capacityRequired",
             "isActive",
             "createdAt",
-            "updatedAt"));
+            "updatedAt",
+            "allowsAnyAvailableResource"));
     expectedColumns.put(
         "EmployeeResources",
         List.of(
@@ -454,6 +455,13 @@ class DatabaseMigrationIntegrationTests {
           """,
           serviceId,
           venueId);
+
+      Boolean allowsAnyAvailableResource =
+          jdbcTemplate.queryForObject(
+              "SELECT \"allowsAnyAvailableResource\" FROM \"Services\" WHERE \"id\" = ?",
+              Boolean.class,
+              serviceId);
+      assertThat(allowsAnyAvailableResource).isTrue();
 
       assertThatThrownBy(
               () ->

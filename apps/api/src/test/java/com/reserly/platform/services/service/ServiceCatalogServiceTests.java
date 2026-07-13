@@ -70,14 +70,16 @@ class ServiceCatalogServiceTests {
     assertThat(created.getName()).isEqualTo("Corte");
     assertThat(created.getDescription()).isEqualTo("Corte clasico");
     assertThat(created.getNameI18n().resolve(SupportedLocale.EN)).contains("Cut");
+    assertThat(created.isAnyAvailableResourceAllowed()).isTrue();
 
     when(serviceDao.findOwnedForUpdate(ownerId, created.getId())).thenReturn(Optional.of(created));
     ServiceEntity updated =
-        service.update(ownerId, created.getId(), command("Barba", null, 30, 1, false));
+        service.update(ownerId, created.getId(), command("Barba", null, 30, 1, false, false));
 
     assertThat(updated.getName()).isEqualTo("Barba");
     assertThat(updated.getDescription()).isNull();
     assertThat(updated.isActive()).isFalse();
+    assertThat(updated.isAnyAvailableResourceAllowed()).isFalse();
   }
 
   @Test
@@ -165,7 +167,26 @@ class ServiceCatalogServiceTests {
         description == null ? null : localized(description, "Classic cut"),
         durationMinutes,
         capacityRequired,
-        active);
+        active,
+        true);
+  }
+
+  private ServiceCommand command(
+      String name,
+      String description,
+      int durationMinutes,
+      int capacityRequired,
+      boolean active,
+      boolean allowsAnyAvailableResource) {
+    return new ServiceCommand(
+        name,
+        localized("Corte", "Cut"),
+        description,
+        description == null ? null : localized(description, "Classic cut"),
+        durationMinutes,
+        capacityRequired,
+        active,
+        allowsAnyAvailableResource);
   }
 
   private LocalizedText localized(String es, String en) {

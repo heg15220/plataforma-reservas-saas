@@ -14,6 +14,7 @@ public record ServiceResponse(
     int durationMinutes,
     int capacityRequired,
     boolean active,
+    boolean allowsAnyAvailableResource,
     List<UUID> employeeResourceIds,
     Instant createdAt,
     Instant updatedAt) {}

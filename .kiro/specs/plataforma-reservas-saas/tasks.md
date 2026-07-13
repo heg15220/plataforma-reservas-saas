@@ -122,8 +122,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 5.4. Implementar estados activo, inactivo, solo interno y archivado.
 - [x] 5.5. Implementar horario semanal básico por empleado o recurso.
 - [x] 5.6. Implementar asociación entre servicios y empleados o recursos.
-- [ ] 5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique.
-- [ ] 5.8. Implementar opción "cualquier profesional disponible".
+- [x] 5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique.
+- [x] 5.8. Implementar opción "cualquier profesional disponible".
 - [ ] 5.9. Implementar asignación automática simple por primera disponibilidad.
 - [ ] 5.10. Crear sección "Equipo y disponibilidad" en panel.
 - [ ] 5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure.

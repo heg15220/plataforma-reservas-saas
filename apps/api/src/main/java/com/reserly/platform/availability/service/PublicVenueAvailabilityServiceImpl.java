@@ -25,6 +25,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
 
   private static final String STATUS_AVAILABLE = "available";
   private static final String STATUS_FULL = "full";
+  private static final String STATUS_UNAVAILABLE = "unavailable";
   private static final String KIND_CLOSED_DAY = "closed_day";
   private static final String KIND_RESERVATIONS_DISABLED = "reservations_disabled";
 
@@ -32,16 +33,19 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
   private final VenueOpeningHourDao openingHourDao;
   private final AvailabilityBlockDao blockDao;
   private final TimeSlotDao timeSlotDao;
+  private final EmployeeResourceAvailabilityService employeeResourceAvailabilityService;
 
   public PublicVenueAvailabilityServiceImpl(
       VenueDao venueDao,
       VenueOpeningHourDao openingHourDao,
       AvailabilityBlockDao blockDao,
-      TimeSlotDao timeSlotDao) {
+      TimeSlotDao timeSlotDao,
+      EmployeeResourceAvailabilityService employeeResourceAvailabilityService) {
     this.venueDao = venueDao;
     this.openingHourDao = openingHourDao;
     this.blockDao = blockDao;
     this.timeSlotDao = timeSlotDao;
+    this.employeeResourceAvailabilityService = employeeResourceAvailabilityService;
   }
 
   @Override
@@ -56,8 +60,17 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         venueDao.findPublishedBySlug(slug.strip()).orElseThrow(VenueProfileNotFoundException::new);
     int weekday = date.getDayOfWeek().getValue();
     List<TimeSlotEntity> slots = timeSlotDao.findPublishedByVenueIdAndDate(venue.getId(), date);
+    var resourceAvailability =
+        employeeResourceAvailabilityService.resolve(venue.getId(), weekday, slots);
     List<PublicTimeSlotAvailabilityResponse> publicSlots =
-        slots.stream().map(this::toSlotResponse).toList();
+        slots.stream()
+            .map(
+                slot ->
+                    toSlotResponse(
+                        slot,
+                        resourceAvailability.getOrDefault(
+                            slot.getId(), EmployeeResourceSlotAvailability.unrestricted())))
+            .toList();
     long availableSlotCount =
         publicSlots.stream().filter(PublicTimeSlotAvailabilityResponse::bookingAvailable).count();
 
@@ -88,16 +101,24 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         publicSlots);
   }
 
-  private PublicTimeSlotAvailabilityResponse toSlotResponse(TimeSlotEntity slot) {
-    boolean bookingAvailable = STATUS_AVAILABLE.equals(slot.getStatus());
+  private PublicTimeSlotAvailabilityResponse toSlotResponse(
+      TimeSlotEntity slot, EmployeeResourceSlotAvailability resourceAvailability) {
+    boolean slotAvailable = STATUS_AVAILABLE.equals(slot.getStatus());
+    boolean bookingAvailable = slotAvailable && resourceAvailability.requirementsSatisfied();
+    String effectiveStatus =
+        bookingAvailable || !slotAvailable ? slot.getStatus() : STATUS_UNAVAILABLE;
     return new PublicTimeSlotAvailabilityResponse(
         slot.getId(),
+        slot.getServiceId(),
         slot.getStartsAt(),
         slot.getEndsAt(),
         slot.getCapacity(),
         bookingAvailable ? slot.getCapacity() : 0,
-        slot.getStatus(),
-        bookingAvailable);
+        effectiveStatus,
+        bookingAvailable,
+        resourceAvailability.employeeResourceRequired(),
+        resourceAvailability.anyAvailableResourceAllowed(),
+        resourceAvailability.availableEmployeeResources());
   }
 
   private StatusSummary summarizeStatus(
@@ -128,6 +149,9 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
     }
     if (!slots.isEmpty() && slots.stream().allMatch(slot -> STATUS_FULL.equals(slot.getStatus()))) {
       return full(spanish);
+    }
+    if (!slots.isEmpty()) {
+      return unavailable(spanish, "slots");
     }
     if (timeSlotDao.existsPublishedAvailableAfter(venueId, date)) {
       return upcoming(spanish);

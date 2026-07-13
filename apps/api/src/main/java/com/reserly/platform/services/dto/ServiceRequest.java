@@ -14,4 +14,5 @@ public record ServiceRequest(
     @Valid ServiceLocalizedTextDto descriptionI18n,
     @Min(1) @Max(1440) int durationMinutes,
     @Min(1) int capacityRequired,
-    boolean active) {}
+    boolean active,
+    Boolean allowsAnyAvailableResource) {}

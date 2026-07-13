@@ -1055,6 +1055,7 @@ Scopes:
 - `duration_minutes`
 - `capacity_required`
 - `is_active`
+- `allows_any_available_resource`
 - `created_at`
 - `updated_at`
 
@@ -1145,6 +1146,14 @@ Implementación inicial en Fase 5:
 - Los estados editables en el MVP son `active`, `inactive`, `internal_only` y `archived`. Los
   estados `internal_only` y `archived` fuerzan `publicVisibility=false` para no publicar personal o
   recursos que el local declare internos o retirados.
+- `V20__allow_any_available_resource_by_service.sql` añade a cada servicio la configuración
+  `allowsAnyAvailableResource`, con valor inicial `true` para preservar el comportamiento previsto
+  para servicios existentes.
+- La disponibilidad pública cruza el servicio activo de cada franja con sus recursos compatibles y
+  con `EmployeeResourceHours`. Un recurso solo es elegible si está `active`, es público y su tramo
+  semanal cubre por completo la franja.
+- Cada franja pública expone `employeeResourceRequired`, `anyAvailableResourceAllowed` y la lista
+  mínima de recursos disponibles. No se publican notas internas, apellidos ni estado administrativo.
 
 #### reservations
 

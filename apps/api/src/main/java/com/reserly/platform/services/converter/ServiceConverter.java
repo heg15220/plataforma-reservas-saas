@@ -26,7 +26,8 @@ public class ServiceConverter {
         toLocalizedText(request.descriptionI18n()),
         request.durationMinutes(),
         request.capacityRequired(),
-        request.active());
+        request.active(),
+        request.allowsAnyAvailableResource());
   }
 
   /** Proyecta un servicio propio ocultando el local y el propietario. */
@@ -40,6 +41,7 @@ public class ServiceConverter {
         service.getDurationMinutes(),
         service.getCapacityRequired(),
         service.isActive(),
+        service.isAnyAvailableResourceAllowed(),
         compatibleResourceIds(service),
         service.getCreatedAt(),
         service.getUpdatedAt());

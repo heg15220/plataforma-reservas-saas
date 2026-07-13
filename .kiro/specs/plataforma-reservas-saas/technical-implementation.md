@@ -8,8 +8,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
-  `3.1` a `3.14`, `4.1` a `4.14` y `5.1` a `5.6`.
-- Siguiente tarea pendiente recomendada: `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
+  `3.1` a `3.14`, `4.1` a `4.14` y `5.1` a `5.8`.
+- Siguiente tarea pendiente recomendada: `5.9. Implementar asignación automática simple por primera disponibilidad`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -19701,3 +19701,281 @@ Resultado resumido:
   disponibilidad.
 - No se audita el cambio de compatibilidad. Puede ser necesario cuando existan reservas confirmadas
   o reasignaciones.
+## Iteración 5.7 - Disponibilidad que exige recurso cuando aplica
+
+### Identificador y fecha
+
+- Tarea completada: `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
+- Fecha: 2026-07-13.
+
+### Objetivo técnico
+
+Integrar el catálogo de servicios, las asociaciones de Fase 5 y los horarios semanales de recursos
+en el cálculo anónimo de disponibilidad. Una franja marcada físicamente como `available` deja de
+ser reservable si referencia un servicio inexistente/inactivo o si el servicio tiene recursos
+compatibles pero ninguno puede cubrir el intervalo completo.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-006`: el calendario solo debe presentar como reservables las franjas realmente elegibles.
+- `RF-010` y `RF-026`: si una reserva requiere personal o recurso debe existir al menos uno
+  disponible.
+- `RF-027`: un servicio asociado solo admite sus recursos compatibles y debe estar activo.
+- `RB-010`: la decisión combina local publicado, franja activa, servicio compatible, recurso
+  disponible y ausencia de cierre manual.
+- `RNF-001`, `RNF-002` y `RNF-011`: cálculo backend, proyección pública mínima y separación entre
+  persistencia, resolución de dominio y composición REST.
+
+### Archivos creados, modificados o eliminados
+
+- Creados:
+  - `availability/service/EmployeeResourceAvailabilityService.java`.
+  - `availability/service/EmployeeResourceAvailabilityServiceImpl.java`.
+  - `availability/service/EmployeeResourceSlotAvailability.java`.
+  - `availability/dto/PublicEmployeeResourceAvailabilityResponse.java`.
+  - `availability/service/EmployeeResourceAvailabilityServiceTests.java` en tests.
+- Modificados:
+  - `availability/service/PublicVenueAvailabilityServiceImpl.java`.
+  - `availability/dto/PublicTimeSlotAvailabilityResponse.java`.
+  - `availability/persistence/TimeSlotDao.java`.
+  - `resources/persistence/EmployeeResourceHourDao.java`.
+  - `services/persistence/ServiceDao.java`.
+  - `availability/service/PublicVenueAvailabilityServiceTests.java`.
+- No se eliminan archivos.
+
+### Arquitectura aplicada y razones
+
+`EmployeeResourceAvailabilityService` encapsula la intersección de servicio y recurso para que el
+agregador público no conozca detalles JPA ni replique reglas. La resolución trabaja por lote: extrae
+los `serviceId` de todas las franjas de la fecha, carga servicios activos con asociaciones en una
+consulta y horarios públicos del día semanal en otra. Después produce un mapa inmutable por
+`slotId`; se evita así un patrón N+1 al aumentar el número de franjas.
+
+La frontera de disponibilidad distingue el estado físico de la franja del estado efectivo. Solo una
+franja física `available` cuyos requisitos estén satisfechos mantiene capacidad y
+`bookingAvailable=true`. Si falla servicio/recurso, la proyección pública devuelve estado efectivo
+`unavailable` y capacidad disponible cero sin mutar `TimeSlots`.
+
+### Modelo de datos, consultas e invariantes
+
+No se añade migración para 5.7: consume `TimeSlots.serviceId`, `Services`,
+`ServiceEmployeeResources`, `EmployeeResources` y `EmployeeResourceHours` ya existentes.
+
+Invariantes aplicadas:
+
+- `serviceId=null`: la franja no exige recurso y conserva el comportamiento previo.
+- Servicio no nulo inexistente, inactivo o de otro local publicado: requisitos no satisfechos.
+- Servicio sin asociaciones: no aplica requisito de recurso.
+- Servicio con asociaciones: exige al menos un recurso compatible elegible.
+- Recurso elegible: `status='active'`, `publicVisibility=true`, día semanal disponible y
+  `startsAt <= slot.startsAt` junto con `endsAt >= slot.endsAt`.
+- Los recursos internos, inactivos, archivados o con cobertura parcial no son candidatos.
+
+`TimeSlotDao.existsPublishedAvailableAfter` replica estas condiciones mediante subconsultas
+correlacionadas. El estado `upcoming_available` ya no se obtiene de una franja futura que carezca de
+servicio activo o recurso compatible con horario suficiente.
+
+### Endpoint y contrato público
+
+Se mantiene el endpoint compatible:
+
+```http
+GET /api/public/venues/{slug}/availability?date=YYYY-MM-DD
+```
+
+Cada elemento de `slots` añade:
+
+- `serviceId`: servicio de la franja o `null`.
+- `employeeResourceRequired`: indica si una asociación no vacía activa el requisito.
+- `anyAvailableResourceAllowed`: capacidad de delegar selección, completada en 5.8.
+- `availableEmployeeResources`: candidatos públicos válidos para esa fecha e intervalo.
+
+Cada candidato solo incluye `employeeResourceId`, `type`, `displayName` y `specialty`.
+
+### Flujo de ejecución
+
+1. Se valida slug/fecha y se obtiene exclusivamente un local publicado.
+2. Se cargan franjas, cierre diario y horario semanal del local.
+3. Se agrupan los servicios referenciados y se cargan activos con sus recursos compatibles.
+4. Se cargan los horarios semanales de recursos activos y públicos para el weekday consultado.
+5. Para cada franja se filtran candidatos compatibles cuya ventana contiene todo el intervalo.
+6. El agregador calcula estado efectivo, capacidad pública y conteo de franjas reservables.
+7. El resumen del día usa el resultado efectivo; la búsqueda futura usa las mismas reglas.
+
+### Validaciones, permisos, seguridad, privacidad e i18n
+
+- El endpoint continúa siendo anónimo, pero solo parte de `VenueDao.findPublishedBySlug` y consultas
+  que exigen `venue.status='published'`.
+- La asociación se cruza dentro del mismo `venueId`; no se aceptan IDs de propietario desde cliente.
+- No se devuelven apellidos, notas internas, estado administrativo, usuario propietario ni ID de
+  local. Se prefiere `publicAlias`; el fallback es nombre de pila.
+- Los estados agregados siguen resolviendo etiqueta ES/EN con `SupportedLocale`.
+- Los nuevos campos booleanos e IDs son independientes del locale; especialidad y alias conservan
+  por ahora el texto configurado por el local.
+
+### Errores, logs, auditoría y observabilidad
+
+- Entradas inválidas mantienen `TimeSlotInvalidException`; local no publicado mantiene
+  `VenueProfileNotFoundException` y sus respuestas estables.
+- Falta de servicio/recurso no es error HTTP: es un estado de negocio `unavailable` por franja.
+- No se escriben logs por candidato para evitar volumen y exposición de identidad.
+- El cálculo es de solo lectura y no genera auditoría; la configuración privada que lo alimenta
+  conserva sus límites de propietario.
+- `availableSlotCount`, estado del día y las franjas efectivas siguen siendo señales observables del
+  contrato existente.
+
+### Tests y evidencia de verificación
+
+- `EmployeeResourceAvailabilityServiceTests`: cobertura completa/parcial, recurso ausente, servicio
+  inactivo, franja sin servicio y diferencia entre opción concreta/cualquiera.
+- `PublicVenueAvailabilityServiceTests`: una franja física disponible pasa a no reservable y capacidad
+  cero si falla el requisito de recurso.
+- `DatabaseMigrationIntegrationTests`: el arranque de Spring/Hibernate valida también las consultas
+  HQL nuevas al crear los repositorios.
+- Comandos ejecutados:
+  - `mvn -f apps/api/pom.xml spotless:apply`.
+  - `mvn -f apps/api/pom.xml "-Dtest=EmployeeResourceAvailabilityServiceTests,PublicVenueAvailabilityServiceTests,PublicVenueAvailabilityControllerTests,ServiceCatalogServiceTests,ServiceControllerTests" test`.
+  - `mvn -f apps/api/pom.xml "-Dtest=DatabaseMigrationIntegrationTests,EmployeeResourceAvailabilityServiceTests,PublicVenueAvailabilityServiceTests,PublicVenueAvailabilityControllerTests,ServiceCatalogServiceTests,ServiceControllerTests" test`.
+- Resultado focalizado: 23 tests, 0 fallos, 0 errores, 0 omitidos.
+- Resultado con PostgreSQL/PostGIS: 33 tests, 0 fallos, 0 errores, 0 omitidos; Flyway v20,
+  Hibernate, Spotless y Checkstyle correctos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Aún no existen reservas/holds con recurso asignado; por tanto no se descuenta ocupación individual.
+- Solo se soporta un tramo semanal por día y no hay excepciones de vacaciones o baja por fecha.
+- Los servicios sin asociaciones se interpretan como servicios que no requieren recurso.
+- La prueba exhaustiva matricial de 5.12 sigue pendiente; esta tarea incluye la cobertura focalizada
+  necesaria para cerrar el comportamiento implementado.
+
+### Evidencia de cierre
+
+La tarea se cierra porque toda franja con servicio asociado exige ahora un candidato compatible,
+activo, público y con cobertura horaria completa; la respuesta y el resumen diario usan el estado
+efectivo, las consultas se validan con Hibernate y las regresiones focalizadas e integradas pasan.
+
+## Iteración 5.8 - Opción cualquier profesional disponible
+
+### Identificador y fecha
+
+- Tarea completada: `5.8. Implementar opción "cualquier profesional disponible"`.
+- Fecha: 2026-07-13.
+
+### Objetivo técnico
+
+Permitir que el local decida por servicio si el usuario puede delegar la elección en cualquier
+empleado o recurso compatible disponible. El cálculo debe publicar esta opción solo cuando está
+habilitada y existe al menos un candidato real para la franja, manteniendo a la vez las opciones
+concretas para selección manual.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-026`: el usuario puede elegir cualquier profesional disponible si el local lo permite.
+- `RF-027`: la opción nunca amplía el conjunto más allá de los recursos compatibles del servicio.
+- `RB-010`: la delegación no evita las reglas de estado, horario o visibilidad.
+- El diseño de hold ya define `assignmentPreference="any_available"`; 5.8 materializa su
+  configuración y descubrimiento, mientras 5.9 realizará la elección automática efectiva.
+
+### Archivos creados, modificados o eliminados
+
+- Creado:
+  - `db/migration/V20__allow_any_available_resource_by_service.sql`.
+- Modificados:
+  - `services/persistence/ServiceEntity.java` y `ServiceDao.java`.
+  - `services/dto/ServiceRequest.java`, `ServiceCommand.java` y `ServiceResponse.java`.
+  - `services/converter/ServiceConverter.java`.
+  - `services/service/ServiceCatalogServiceImpl.java`.
+  - `availability/dto/PublicTimeSlotAvailabilityResponse.java`.
+  - `availability/service/EmployeeResourceAvailabilityServiceImpl.java`.
+  - tests de catálogo/controlador de servicios, disponibilidad y migraciones.
+- No se eliminan archivos.
+
+### Modelo de datos y migración
+
+V20 ejecuta:
+
+```sql
+ALTER TABLE "Services"
+  ADD COLUMN "allowsAnyAvailableResource" boolean NOT NULL DEFAULT true;
+```
+
+El valor `true` preserva para servicios existentes la opción prevista en el MVP y evita nulos. No se
+requiere índice: el campo se lee junto con el servicio localizado por clave primaria y `venueId`, no
+se usa como filtro cardinal de catálogo. Se añade comentario físico de columna para documentar su
+semántica operativa.
+
+`ServiceEntity` inicializa también el booleano a `true` para que altas JPA nuevas tengan el mismo
+valor incluso antes del `INSERT`. El getter `isAnyAvailableResourceAllowed` mantiene convención Java
+y mapea explícitamente la columna física.
+
+### Contratos privados y compatibilidad
+
+Los contratos de `POST/PATCH /api/venue/me/services` incorporan
+`allowsAnyAvailableResource`. En `ServiceRequest`/`ServiceCommand` se usa `Boolean` deliberadamente:
+
+- valor `true` o `false`: reemplaza la configuración;
+- valor ausente/null: conserva el valor actual en edición y usa el inicial `true` en creación.
+
+`ServiceResponse` siempre devuelve un booleano no nulo. La frontera de propiedad no cambia: el
+servicio se obtiene mediante el usuario autenticado y un local vigente; el cliente no envía
+`venueId` ni propietario.
+
+### Contrato público y semántica de la opción
+
+Para una franja que exige recurso:
+
+- `availableEmployeeResources` contiene todas las opciones concretas elegibles;
+- `anyAvailableResourceAllowed=true` solo si el servicio lo permite y la lista no está vacía;
+- con configuración `false`, la lista concreta permanece disponible y el booleano es `false`;
+- sin candidatos, la franja completa queda no reservable y la opción también es `false`.
+
+La API utiliza el nombre neutral "resource" porque el mismo mecanismo cubre profesionales, salas,
+pistas, mesas y equipamiento. La UI de 5.11 podrá presentar el texto localizado "Cualquier
+profesional disponible" cuando el tipo y contexto correspondan.
+
+### Flujo de ejecución y asignación futura
+
+1. El local crea o actualiza un servicio y decide la política de selección.
+2. La configuración se persiste transaccionalmente con los demás campos editables.
+3. Al consultar disponibilidad, 5.7 calcula los candidatos efectivos.
+4. 5.8 combina la política persistida y la existencia de candidatos para publicar `any_available`.
+5. La futura tarea 5.9 recibirá esa preferencia y seleccionará de forma determinista el primer
+   recurso disponible; esta tarea no afirma ni persiste todavía una asignación.
+
+### Seguridad, privacidad, i18n, errores y observabilidad
+
+- Solo el propietario autenticado puede cambiar la política mediante los endpoints privados ya
+  protegidos.
+- La opción no permite elegir recursos internos, inactivos, de otro local o no asociados.
+- La respuesta pública no expone campos privados adicionales por activar `any_available`.
+- El texto final de UI queda para i18n frontend; el contrato usa un booleano estable no localizado.
+- Validaciones de servicio siguen devolviendo `SERVICE_INVALID` y ausencias `SERVICE_NOT_FOUND` sin
+  filtrar detalles de persistencia.
+- El cambio no añade logs ni auditoría específica. Cuando existan reservas reales deberá auditarse
+  la política y el recurso finalmente asignado.
+
+### Tests y evidencia de verificación
+
+- `ServiceCatalogServiceTests` verifica persistencia de `true` y actualización explícita a `false`.
+- `ServiceControllerTests` verifica conversión request/response de la configuración.
+- `EmployeeResourceAvailabilityServiceTests` demuestra que `false` mantiene candidatos concretos y
+  que `true` habilita `any_available` solo con candidato elegible.
+- `DatabaseMigrationIntegrationTests` espera Flyway v20, valida la columna física, el valor por
+  defecto `true` y el esquema completo mediante Hibernate.
+- Se usaron los mismos comandos Maven y resultados de 5.7: 23 tests focalizados y 33 con migración,
+  todos correctos; Spotless y Checkstyle sin incidencias.
+
+### Riesgos, limitaciones y deuda técnica
+
+- 5.8 descubre y autoriza la preferencia, pero no asigna un recurso: queda para 5.9.
+- Todavía no hay UI privada para editar la política ni selector público; corresponden a 5.10/5.11.
+- No hay traducción específica por tipo de recurso; el frontend deberá adaptar "profesional",
+  "sala", "pista" u otro término a partir de `type`.
+- Los servicios existentes quedan permisivos por defecto. El local podrá desactivarlo mediante API y
+  futura UI.
+
+### Evidencia de cierre
+
+La tarea se cierra porque existe configuración persistente y editable por servicio, la respuesta
+privada la conserva, la disponibilidad pública solo ofrece delegación cuando la política y los
+candidatos lo permiten, V20 se aplica sobre PostgreSQL/PostGIS y toda la cobertura ejecutada pasa.

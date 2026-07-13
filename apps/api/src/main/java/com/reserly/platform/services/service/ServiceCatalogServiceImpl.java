@@ -105,6 +105,9 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
     service.setDurationMinutes(command.durationMinutes());
     service.setCapacityRequired(command.capacityRequired());
     service.setActive(command.active());
+    if (command.allowsAnyAvailableResource() != null) {
+      service.setAnyAvailableResourceAllowed(command.allowsAnyAvailableResource());
+    }
     service.setUpdatedAt(updatedAt);
   }
 

@@ -34,6 +34,7 @@ public class ServiceEntity {
   private int durationMinutes;
   private int capacityRequired;
   private boolean active;
+  private boolean allowsAnyAvailableResource = true;
   private Set<EmployeeResourceEntity> compatibleResources = new HashSet<>();
   private Instant createdAt;
   private Instant updatedAt;
@@ -125,6 +126,16 @@ public class ServiceEntity {
 
   public void setActive(boolean active) {
     this.active = active;
+  }
+
+  /** Indica si el canal publico puede ofrecer asignacion a cualquier recurso compatible. */
+  @Column(name = "\"allowsAnyAvailableResource\"", nullable = false)
+  public boolean isAnyAvailableResourceAllowed() {
+    return allowsAnyAvailableResource;
+  }
+
+  public void setAnyAvailableResourceAllowed(boolean allowsAnyAvailableResource) {
+    this.allowsAnyAvailableResource = allowsAnyAvailableResource;
   }
 
   /** Recursos compatibles con este servicio; solo se gestionan desde endpoints privados. */

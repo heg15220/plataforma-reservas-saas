@@ -1,6 +1,7 @@
 package com.reserly.platform.availability.dto;
 
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -11,9 +12,13 @@ import java.util.UUID;
  */
 public record PublicTimeSlotAvailabilityResponse(
     UUID slotId,
+    UUID serviceId,
     LocalTime startsAt,
     LocalTime endsAt,
     int capacity,
     int availableCapacity,
     String status,
-    boolean bookingAvailable) {}
+    boolean bookingAvailable,
+    boolean employeeResourceRequired,
+    boolean anyAvailableResourceAllowed,
+    List<PublicEmployeeResourceAvailabilityResponse> availableEmployeeResources) {}

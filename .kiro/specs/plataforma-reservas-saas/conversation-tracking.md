@@ -10,16 +10,57 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-12
+- Fecha de última actualización: 2026-07-13
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1`, `5.2`, `5.3`, `5.4`, `5.5` y `5.6`.
-- Siguiente tarea pendiente recomendada: `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
-- Observación: la Fase 5 ya dispone de migración base V19 para servicios, equipo/recursos,
-  horarios semanales de recurso y asociación servicio-recurso. También existe CRUD privado básico
-  de servicios bajo `/api/venue/me/services`, CRUD privado de equipo bajo `/api/venue/me/team`,
-  horario semanal básico de recursos y asociación servicio-recurso, siempre acotados por
-  propietario autenticado.
+  `3.14`, `4.1` a `4.14` y `5.1` a `5.8`.
+- Siguiente tarea pendiente recomendada: `5.9. Implementar asignación automática simple por primera disponibilidad`.
+- Observación: la Fase 5 dispone del catálogo privado de servicios y equipo, horarios semanales,
+  asociaciones servicio-recurso y cálculo público de recursos elegibles. V20 permite configurar por
+  servicio la opción `any_available`; el siguiente paso es materializar la asignación automática.
 
+## Conversación 87 - Disponibilidad por recurso y cualquier profesional disponible
+
+- Fecha: 2026-07-13.
+- Resumen de la conversación:
+  - Se completaron conjuntamente `5.7` y `5.8` como las dos primeras tareas pendientes.
+  - El cálculo público cruza ahora cada franja con su servicio activo, asociaciones compatibles,
+    estado y visibilidad del recurso y cobertura completa del horario semanal.
+  - Una franja con servicio y recursos asociados queda no reservable si ninguno es elegible.
+  - Se añadió configuración por servicio para permitir o impedir `any_available` y se publican las
+    opciones concretas disponibles por franja para preparar el selector de reserva.
+  - La consulta de disponibilidad futura aplica las mismas reglas para evitar falsos estados de
+    "próximamente disponible".
+  - V20 añade `Services.allowsAnyAvailableResource` con `NOT NULL DEFAULT true`.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V20__allow_any_available_resource_by_service.sql`.
+  - `apps/api/src/main/java/com/reserly/platform/availability/**`.
+  - `apps/api/src/main/java/com/reserly/platform/resources/persistence/EmployeeResourceHourDao.java`.
+  - `apps/api/src/main/java/com/reserly/platform/services/**`.
+  - `apps/api/src/test/java/com/reserly/platform/availability/**`.
+  - `apps/api/src/test/java/com/reserly/platform/services/**`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-006`, `RF-010`, `RF-026`, `RF-027` y `RB-010`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-007` y `RNF-011`.
+- Tareas impactadas y completadas:
+  - `5.7. Actualizar cálculo de disponibilidad para exigir recurso disponible cuando aplique`.
+  - `5.8. Implementar opción "cualquier profesional disponible"`.
+- Siguiente tarea pendiente recomendada:
+  - `5.9. Implementar asignación automática simple por primera disponibilidad`.
+- Decisiones o aclaraciones relevantes:
+  - Un servicio sin asociaciones no exige recurso; una asociación no vacía activa el requisito.
+  - Solo son elegibles recursos `active`, públicos y con horario que contenga toda la franja.
+  - `allowsAnyAvailableResource=false` conserva las opciones concretas, pero oculta la delegación
+    `any_available`.
+  - La respuesta pública expone alias o nombre de pila, tipo y especialidad; no expone apellidos,
+    notas internas, estados administrativos ni IDs de propietario/local.
+  - La asignación efectiva queda para `5.9`; esta iteración calcula y publica candidatos.
+  - Evidencia: suite focalizada 23/23; suite con migraciones 33/33; Flyway v20, Hibernate, Spotless y
+    Checkstyle correctos.
 ## Conversación 86 - Horarios semanales de recursos y asociación servicio-recurso
 
 - Fecha: 2026-07-12.

@@ -35,4 +35,22 @@ public interface EmployeeResourceHourDao extends JpaRepository<EmployeeResourceH
       """)
   List<EmployeeResourceHourEntity> findWeeklyHoursForUpdate(
       @Param("ownerUserId") UUID ownerUserId, @Param("resourceId") UUID resourceId);
+
+  /**
+   * Carga horarios utilizables en el canal publico para un local publicado y un dia semanal.
+   * Recursos internos, inactivos o no visibles quedan excluidos antes de proyectar la respuesta.
+   */
+  @Query(
+      """
+      select hour from EmployeeResourceHourEntity hour
+      join fetch hour.employeeResource resource
+      where resource.venue.id = :venueId
+        and resource.venue.status = 'published'
+        and resource.status = 'active'
+        and resource.publicVisibility = true
+        and hour.weekday = :weekday
+        and hour.available = true
+      """)
+  List<EmployeeResourceHourEntity> findPublishedAvailableHours(
+      @Param("venueId") UUID venueId, @Param("weekday") int weekday);
 }

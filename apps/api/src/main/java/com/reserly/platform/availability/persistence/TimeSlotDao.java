@@ -40,7 +40,10 @@ public interface TimeSlotDao extends JpaRepository<TimeSlotEntity, UUID> {
   List<TimeSlotEntity> findPublishedByVenueIdAndDate(
       @Param("venueId") UUID venueId, @Param("date") LocalDate date);
 
-  /** Indica si existen huecos futuros disponibles después de la fecha consultada. */
+  /**
+   * Indica si existe un hueco futuro realmente reservable, incluyendo servicio y recurso. La
+   * consulta evita publicar proximidad cuando ningun horario compatible cubre la franja.
+   */
   @Query(
       """
       select count(slot) > 0 from TimeSlotEntity slot
@@ -48,6 +51,28 @@ public interface TimeSlotDao extends JpaRepository<TimeSlotEntity, UUID> {
         and slot.venue.status = 'published'
         and slot.date > :date
         and slot.status = 'available'
+        and (
+          slot.serviceId is null
+          or exists (
+            select service.id from ServiceEntity service
+            where service.id = slot.serviceId
+              and service.venue.id = :venueId
+              and service.active = true
+              and (
+                service.compatibleResources is empty
+                or exists (
+                  select hour.id from EmployeeResourceHourEntity hour
+                  where hour.employeeResource member of service.compatibleResources
+                    and hour.employeeResource.status = 'active'
+                    and hour.employeeResource.publicVisibility = true
+                    and hour.weekday = slot.weekday
+                    and hour.available = true
+                    and hour.startsAt <= slot.startsAt
+                    and hour.endsAt >= slot.endsAt
+                )
+              )
+          )
+        )
       """)
   boolean existsPublishedAvailableAfter(
       @Param("venueId") UUID venueId, @Param("date") LocalDate date);

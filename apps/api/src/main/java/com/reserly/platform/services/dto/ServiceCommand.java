@@ -10,4 +10,5 @@ public record ServiceCommand(
     LocalizedText descriptionI18n,
     int durationMinutes,
     int capacityRequired,
-    boolean active) {}
+    boolean active,
+    Boolean allowsAnyAvailableResource) {}

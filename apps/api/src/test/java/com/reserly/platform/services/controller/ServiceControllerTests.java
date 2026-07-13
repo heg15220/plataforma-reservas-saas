@@ -66,6 +66,7 @@ class ServiceControllerTests {
         .hasToString("/api/venue/me/services/" + service.getId());
     assertThat(created.getBody().name()).isEqualTo("Corte");
     assertThat(created.getBody().nameI18n().values()).containsEntry("en", "Cut");
+    assertThat(created.getBody().allowsAnyAvailableResource()).isFalse();
     assertThat(listed.getBody()).hasSize(1);
     assertThat(updated.getBody().durationMinutes()).isEqualTo(45);
   }
@@ -113,7 +114,8 @@ class ServiceControllerTests {
         new ServiceLocalizedTextDto("es", Map.of("es", "Corte", "en", "Cut"));
     ServiceLocalizedTextDto descriptionI18n =
         new ServiceLocalizedTextDto("es", Map.of("es", "Corte clasico", "en", "Classic cut"));
-    return new ServiceRequest("Corte", nameI18n, "Corte clasico", descriptionI18n, 45, 1, true);
+    return new ServiceRequest(
+        "Corte", nameI18n, "Corte clasico", descriptionI18n, 45, 1, true, false);
   }
 
   private ServiceEntity serviceEntity() {
@@ -131,6 +133,7 @@ class ServiceControllerTests {
     service.setDurationMinutes(45);
     service.setCapacityRequired(1);
     service.setActive(true);
+    service.setAnyAvailableResourceAllowed(false);
     service.setCreatedAt(Instant.now());
     service.setUpdatedAt(Instant.now());
     return service;

@@ -39,7 +39,18 @@ class PublicVenueAvailabilityServiceTests {
 
   @BeforeEach
   void setUp() {
-    service = new PublicVenueAvailabilityServiceImpl(venueDao, openingHourDao, blockDao, slotDao);
+    service =
+        new PublicVenueAvailabilityServiceImpl(
+            venueDao,
+            openingHourDao,
+            blockDao,
+            slotDao,
+            (venueId, weekday, slots) ->
+                slots.stream()
+                    .collect(
+                        java.util.stream.Collectors.toMap(
+                            TimeSlotEntity::getId,
+                            slot -> EmployeeResourceSlotAvailability.unrestricted())));
     venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
     venue.setSlug("casa-luz");
@@ -179,6 +190,38 @@ class PublicVenueAvailabilityServiceTests {
     assertThat(response.statusLabel()).isEqualTo("Unavailable");
     assertThat(response.source()).isEqualTo("slots");
     assertThat(response.bookingAvailable()).isFalse();
+  }
+
+  @Test
+  void disablesAvailableSlotWhenItsResourceRequirementCannotBeSatisfied() {
+    LocalDate date = LocalDate.of(2026, 7, 20);
+    TimeSlotEntity resourceSlot = slot(date, "available", 2);
+    resourceSlot.setServiceId(UUID.randomUUID());
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
+        .thenReturn(List.of(resourceSlot));
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.empty());
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 1))
+        .thenReturn(Optional.of(openingHour(false, true)));
+    service =
+        new PublicVenueAvailabilityServiceImpl(
+            venueDao,
+            openingHourDao,
+            blockDao,
+            slotDao,
+            (venueId, weekday, slots) ->
+                java.util.Map.of(
+                    resourceSlot.getId(),
+                    new EmployeeResourceSlotAvailability(false, true, false, List.of())));
+
+    var response = service.findBySlug("casa-luz", date, SupportedLocale.ES);
+
+    assertThat(response.bookingAvailable()).isFalse();
+    assertThat(response.statusCode()).isEqualTo("unavailable");
+    assertThat(response.availableSlotCount()).isZero();
+    assertThat(response.slots().getFirst().status()).isEqualTo("unavailable");
+    assertThat(response.slots().getFirst().availableCapacity()).isZero();
+    assertThat(response.slots().getFirst().employeeResourceRequired()).isTrue();
   }
 
   @Test
