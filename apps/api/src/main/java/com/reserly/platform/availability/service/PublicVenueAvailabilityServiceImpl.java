@@ -9,11 +9,19 @@ import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.services.persistence.ServiceDao;
+import com.reserly.platform.services.persistence.ServiceEntity;
+import com.reserly.platform.services.persistence.ServiceDao;
+import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +41,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
   private final VenueOpeningHourDao openingHourDao;
   private final AvailabilityBlockDao blockDao;
   private final TimeSlotDao timeSlotDao;
+  private final ServiceDao serviceDao;
   private final EmployeeResourceAvailabilityService employeeResourceAvailabilityService;
 
   public PublicVenueAvailabilityServiceImpl(
@@ -40,11 +49,13 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
       VenueOpeningHourDao openingHourDao,
       AvailabilityBlockDao blockDao,
       TimeSlotDao timeSlotDao,
+      ServiceDao serviceDao,
       EmployeeResourceAvailabilityService employeeResourceAvailabilityService) {
     this.venueDao = venueDao;
     this.openingHourDao = openingHourDao;
     this.blockDao = blockDao;
     this.timeSlotDao = timeSlotDao;
+    this.serviceDao = serviceDao;
     this.employeeResourceAvailabilityService = employeeResourceAvailabilityService;
   }
 
@@ -60,6 +71,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         venueDao.findPublishedBySlug(slug.strip()).orElseThrow(VenueProfileNotFoundException::new);
     int weekday = date.getDayOfWeek().getValue();
     List<TimeSlotEntity> slots = timeSlotDao.findPublishedByVenueIdAndDate(venue.getId(), date);
+    Map<UUID, String> serviceNames = loadServiceNames(venue.getId(), slots, resolvedLocale);
     var resourceAvailability =
         employeeResourceAvailabilityService.resolve(venue.getId(), weekday, slots);
     List<PublicTimeSlotAvailabilityResponse> publicSlots =
@@ -68,6 +80,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
                 slot ->
                     toSlotResponse(
                         slot,
+                        serviceNames.get(slot.getServiceId()),
                         resourceAvailability.getOrDefault(
                             slot.getId(), EmployeeResourceSlotAvailability.unrestricted())))
             .toList();
@@ -101,8 +114,35 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         publicSlots);
   }
 
+  private Map<UUID, String> loadServiceNames(
+      UUID venueId, List<TimeSlotEntity> slots, SupportedLocale locale) {
+    Set<UUID> serviceIds =
+        slots.stream()
+            .map(TimeSlotEntity::getServiceId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toUnmodifiableSet());
+    if (serviceIds.isEmpty()) {
+      return Map.of();
+    }
+    return serviceDao.findPublishedActiveByVenueIdAndIds(venueId, serviceIds).stream()
+        .collect(
+            Collectors.toUnmodifiableMap(
+                ServiceEntity::getId,
+                configured -> resolveServiceName(configured, locale),
+                (first, ignored) -> first));
+  }
+
+  private String resolveServiceName(ServiceEntity service, SupportedLocale locale) {
+    if (service.getNameI18n() == null) {
+      return service.getName();
+    }
+    return service.getNameI18n().resolve(locale).orElse(service.getName());
+  }
+
   private PublicTimeSlotAvailabilityResponse toSlotResponse(
-      TimeSlotEntity slot, EmployeeResourceSlotAvailability resourceAvailability) {
+      TimeSlotEntity slot,
+      String serviceName,
+      EmployeeResourceSlotAvailability resourceAvailability) {
     boolean slotAvailable = STATUS_AVAILABLE.equals(slot.getStatus());
     boolean bookingAvailable = slotAvailable && resourceAvailability.requirementsSatisfied();
     String effectiveStatus =
@@ -110,6 +150,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
     return new PublicTimeSlotAvailabilityResponse(
         slot.getId(),
         slot.getServiceId(),
+        serviceName,
         slot.getStartsAt(),
         slot.getEndsAt(),
         slot.getCapacity(),

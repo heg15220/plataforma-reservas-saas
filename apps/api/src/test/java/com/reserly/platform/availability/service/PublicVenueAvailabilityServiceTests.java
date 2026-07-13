@@ -10,14 +10,19 @@ import com.reserly.platform.availability.persistence.TimeSlotDao;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
+import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.services.persistence.ServiceDao;
+import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +38,7 @@ class PublicVenueAvailabilityServiceTests {
   @Mock private VenueOpeningHourDao openingHourDao;
   @Mock private AvailabilityBlockDao blockDao;
   @Mock private TimeSlotDao slotDao;
+  @Mock private ServiceDao serviceDao;
 
   private PublicVenueAvailabilityServiceImpl service;
   private VenueEntity venue;
@@ -45,6 +51,7 @@ class PublicVenueAvailabilityServiceTests {
             openingHourDao,
             blockDao,
             slotDao,
+            serviceDao,
             (venueId, weekday, slots) ->
                 slots.stream()
                     .collect(
@@ -209,6 +216,7 @@ class PublicVenueAvailabilityServiceTests {
             openingHourDao,
             blockDao,
             slotDao,
+            serviceDao,
             (venueId, weekday, slots) ->
                 java.util.Map.of(
                     resourceSlot.getId(),
@@ -222,6 +230,33 @@ class PublicVenueAvailabilityServiceTests {
     assertThat(response.slots().getFirst().status()).isEqualTo("unavailable");
     assertThat(response.slots().getFirst().availableCapacity()).isZero();
     assertThat(response.slots().getFirst().employeeResourceRequired()).isTrue();
+  }
+
+  @Test
+  void exposesTheLocalizedServiceNameForBookingSelection() {
+    LocalDate date = LocalDate.of(2026, 7, 20);
+    TimeSlotEntity serviceSlot = slot(date, "available", 2);
+    serviceSlot.setServiceId(UUID.randomUUID());
+    ServiceEntity configuredService = new ServiceEntity();
+    configuredService.setId(serviceSlot.getServiceId());
+    configuredService.setName("Corte");
+    configuredService.setNameI18n(
+        LocalizedText.fromLanguageTagValues(
+            "es", Map.of("es", "Corte", "en", "Haircut")));
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
+        .thenReturn(List.of(serviceSlot));
+    when(serviceDao.findPublishedActiveByVenueIdAndIds(
+            venue.getId(), Set.of(serviceSlot.getServiceId())))
+        .thenReturn(List.of(configuredService));
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.empty());
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 1))
+        .thenReturn(Optional.of(openingHour(false, true)));
+
+    var response = service.findBySlug("casa-luz", date, SupportedLocale.EN);
+
+    assertThat(response.slots().getFirst().serviceId()).isEqualTo(serviceSlot.getServiceId());
+    assertThat(response.slots().getFirst().serviceName()).isEqualTo("Haircut");
   }
 
   @Test

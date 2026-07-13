@@ -495,7 +495,15 @@
         "available": "Places available",
         "unavailable": "Closed, full or blocked",
         "selected": "Selected day"
-      }
+      },
+      "serviceFilter": "Service",
+      "selectedService": "Service: {name}",
+      "slotService": "Service: {name}",
+      "resourceLabel": "Professional or resource",
+      "chooseResource": "Select an option",
+      "anyAvailableResource": "Any available professional or resource",
+      "resourceWithSpecialty": "{name} · {specialty}",
+      "resourceNotRequired": "No assigned resource"
     },
     "private": {
       "metadata": {

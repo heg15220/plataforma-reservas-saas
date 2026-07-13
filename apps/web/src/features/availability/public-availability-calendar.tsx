@@ -4,7 +4,9 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -38,6 +40,8 @@ export function PublicAvailabilityCalendar({
   const [days, setDays] = useState<Record<string, PublicAvailability>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [resourceSelections, setResourceSelections] = useState<Record<string, string>>({});
   const dates = useMemo(() => createDateRange(rangeStart, 7), [rangeStart]);
 
   useEffect(() => {
@@ -63,6 +67,23 @@ export function PublicAvailabilityCalendar({
   }, [dates, locale, venueSlug]);
 
   const selected = days[selectedDate];
+  const serviceOptions = useMemo(() => {
+    const uniqueServices = new Map<string, string>();
+    for (const slot of selected?.slots ?? []) {
+      if (slot.serviceId && slot.serviceName) {
+        uniqueServices.set(slot.serviceId, slot.serviceName);
+      }
+    }
+    return Array.from(uniqueServices, ([id, name]) => ({ id, name }));
+  }, [selected]);
+  const effectiveServiceId =
+    serviceOptions.some((service) => service.id === selectedServiceId)
+      ? selectedServiceId
+      : (serviceOptions[0]?.id ?? null);
+  const visibleSlots =
+    effectiveServiceId === null
+      ? (selected?.slots ?? [])
+      : (selected?.slots.filter((slot) => slot.serviceId === effectiveServiceId) ?? []);
 
   return (
     <Box component="section" aria-labelledby="public-availability-title">
@@ -198,11 +219,30 @@ export function PublicAvailabilityCalendar({
                     />
                   </Stack>
 
-                  {selected.slots.length === 0 ? (
+                  {serviceOptions.length > 1 ? (
+                    <TextField
+                      label={t("serviceFilter")}
+                      onChange={(event) => setSelectedServiceId(event.target.value)}
+                      select
+                      value={effectiveServiceId ?? ""}
+                    >
+                      {serviceOptions.map((service) => (
+                        <MenuItem key={service.id} value={service.id}>
+                          {service.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ) : serviceOptions.length === 1 ? (
+                    <Typography color="text.secondary">
+                      {t("selectedService", { name: serviceOptions[0].name })}
+                    </Typography>
+                  ) : null}
+
+                  {visibleSlots.length === 0 ? (
                     <Typography color="text.secondary">{t("empty")}</Typography>
                   ) : (
                     <Stack spacing={1.5}>
-                      {selected.slots.map((slot) => (
+                      {visibleSlots.map((slot) => (
                         <Box
                           key={slot.slotId}
                           sx={{
@@ -212,7 +252,9 @@ export function PublicAvailabilityCalendar({
                             borderRadius: 2,
                             display: "grid",
                             gap: 2,
-                            gridTemplateColumns: { sm: "1fr 1fr auto" },
+                            gridTemplateColumns: {
+                              md: "minmax(0, 1fr) minmax(220px, 0.85fr) auto auto",
+                            },
                             p: 2,
                           }}
                         >
@@ -226,7 +268,51 @@ export function PublicAvailabilityCalendar({
                                 total: slot.capacity,
                               })}
                             </Typography>
+                            {slot.serviceName && (
+                              <Typography color="text.secondary" variant="body2">
+                                {t("slotService", { name: slot.serviceName })}
+                              </Typography>
+                            )}
                           </Box>
+                          {slot.bookingAvailable && slot.employeeResourceRequired ? (
+                            <TextField
+                              label={t("resourceLabel")}
+                              onChange={(event) =>
+                                setResourceSelections((current) => ({
+                                  ...current,
+                                  [slot.slotId]: event.target.value,
+                                }))
+                              }
+                              select
+                              value={resourceSelections[slot.slotId] ?? ""}
+                            >
+                              <MenuItem disabled value="">
+                                {t("chooseResource")}
+                              </MenuItem>
+                              {slot.anyAvailableResourceAllowed && (
+                                <MenuItem value="any_available">
+                                  {t("anyAvailableResource")}
+                                </MenuItem>
+                              )}
+                              {slot.availableEmployeeResources.map((resource) => (
+                                <MenuItem
+                                  key={resource.employeeResourceId}
+                                  value={resource.employeeResourceId}
+                                >
+                                  {resource.specialty
+                                    ? t("resourceWithSpecialty", {
+                                        name: resource.displayName,
+                                        specialty: resource.specialty,
+                                      })
+                                    : resource.displayName}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          ) : (
+                            <Typography color="text.secondary" variant="body2">
+                              {t("resourceNotRequired")}
+                            </Typography>
+                          )}
                           <StatusChip
                             label={
                               slot.bookingAvailable ? t("slotAvailable") : t("slotUnavailable")

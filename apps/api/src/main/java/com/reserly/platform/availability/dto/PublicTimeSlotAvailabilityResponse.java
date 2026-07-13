@@ -13,6 +13,7 @@ import java.util.UUID;
 public record PublicTimeSlotAvailabilityResponse(
     UUID slotId,
     UUID serviceId,
+    String serviceName,
     LocalTime startsAt,
     LocalTime endsAt,
     int capacity,

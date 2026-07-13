@@ -66,12 +66,24 @@ beforeEach(() => {
         ? [
             {
               slotId: slot.id,
+              serviceId: "20000000-0000-4000-8000-000000000001",
+              serviceName: "Corte",
               startsAt: slot.startsAt,
               endsAt: slot.endsAt,
               capacity: slot.capacity,
               availableCapacity: 3,
               status: "available",
               bookingAvailable: true,
+              employeeResourceRequired: true,
+              anyAvailableResourceAllowed: true,
+              availableEmployeeResources: [
+                {
+                  employeeResourceId: "30000000-0000-4000-8000-000000000001",
+                  type: "professional",
+                  displayName: "Ana",
+                  specialty: "Estilismo",
+                },
+              ],
             },
           ]
         : [],
@@ -118,6 +130,76 @@ describe("PublicAvailabilityCalendar", () => {
     expect(fetchPublicAvailability).toHaveBeenCalledTimes(7);
     expect(screen.getByRole("button", { name: /Reserva/ })).toBeDisabled();
     expect(screen.getByText("Con plazas")).toBeVisible();
+    expect(screen.getAllByText("Servicio: Corte")).toHaveLength(2);
+
+    const resourceSelector = screen.getByRole("combobox", {
+      name: "Profesional o recurso",
+    });
+    fireEvent.mouseDown(resourceSelector);
+    expect(
+      await screen.findByRole("option", {
+        name: "Cualquier profesional o recurso disponible",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("option", { name: /Ana/ })).toBeVisible();
+  });
+
+  it("muestra selector de servicio cuando una fecha ofrece varias alternativas", async () => {
+    vi.mocked(fetchPublicAvailability).mockImplementation(async (_slug, date) => ({
+      venueSlug: "casa-luz",
+      date,
+      weekday: 1,
+      statusCode: "open",
+      statusLabel: "Abierto",
+      bookingAvailable: true,
+      closed: false,
+      reservationsEnabled: true,
+      source: "weekly_schedule",
+      availableSlotCount: date === "2026-07-13" ? 2 : 0,
+      slots:
+        date === "2026-07-13"
+          ? [
+              {
+                slotId: "10000000-0000-4000-8000-000000000001",
+                serviceId: "20000000-0000-4000-8000-000000000001",
+                serviceName: "Corte",
+                startsAt: "09:00:00",
+                endsAt: "10:00:00",
+                capacity: 2,
+                availableCapacity: 2,
+                status: "available",
+                bookingAvailable: true,
+                employeeResourceRequired: false,
+                anyAvailableResourceAllowed: false,
+                availableEmployeeResources: [],
+              },
+              {
+                slotId: "10000000-0000-4000-8000-000000000002",
+                serviceId: "20000000-0000-4000-8000-000000000002",
+                serviceName: "Masaje",
+                startsAt: "11:00:00",
+                endsAt: "12:00:00",
+                capacity: 1,
+                availableCapacity: 1,
+                status: "available",
+                bookingAvailable: true,
+                employeeResourceRequired: false,
+                anyAvailableResourceAllowed: false,
+                availableEmployeeResources: [],
+              },
+            ]
+          : [],
+    }));
+
+    renderWithIntl(<PublicAvailabilityCalendar startDate="2026-07-13" venueSlug="casa-luz" />);
+
+    const serviceSelector = await screen.findByRole("combobox", { name: "Servicio" });
+    fireEvent.mouseDown(serviceSelector);
+    fireEvent.click(await screen.findByRole("option", { name: "Masaje" }));
+
+    expect(
+      await screen.findByText("11:00 " + String.fromCharCode(8211) + " 12:00"),
+    ).toBeVisible();
   });
 });
 

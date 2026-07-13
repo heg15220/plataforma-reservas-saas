@@ -57,4 +57,16 @@ public interface ServiceDao extends JpaRepository<ServiceEntity, UUID> {
       """)
   List<ServiceEntity> findPublishedActiveWithResources(
       @Param("venueId") UUID venueId, @Param("serviceIds") Set<UUID> serviceIds);
+
+  /** Carga los servicios publicos necesarios para resolver sus nombres localizados. */
+  @Query(
+      """
+      select service from ServiceEntity service
+      where service.venue.id = :venueId
+        and service.venue.status = 'published'
+        and service.id in :serviceIds
+        and service.active = true
+      """)
+  List<ServiceEntity> findPublishedActiveByVenueIdAndIds(
+      @Param("venueId") UUID venueId, @Param("serviceIds") Set<UUID> serviceIds);
 }

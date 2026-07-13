@@ -3,14 +3,26 @@ import { z } from "zod";
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const localTimeSchema = z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/);
 
+const publicEmployeeResourceSchema = z.object({
+  employeeResourceId: z.uuid(),
+  type: z.enum(["employee", "professional", "room", "court", "table", "equipment", "other"]),
+  displayName: z.string().min(1),
+  specialty: z.string().nullable(),
+});
+
 const publicSlotSchema = z.object({
   slotId: z.uuid(),
+  serviceId: z.uuid().nullable(),
+  serviceName: z.string().min(1).nullable(),
   startsAt: localTimeSchema,
   endsAt: localTimeSchema,
   capacity: z.number().int().positive(),
   availableCapacity: z.number().int().nonnegative(),
   status: z.string().min(1),
   bookingAvailable: z.boolean(),
+  employeeResourceRequired: z.boolean(),
+  anyAvailableResourceAllowed: z.boolean(),
+  availableEmployeeResources: z.array(publicEmployeeResourceSchema),
 });
 
 const publicAvailabilitySchema = z.object({
