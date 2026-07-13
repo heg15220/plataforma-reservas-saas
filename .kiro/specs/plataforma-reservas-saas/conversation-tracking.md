@@ -4384,3 +4384,33 @@ Fuente de verdad del avance:
   - Evidencia frontend: 4 tests correctos y ESLint focalizado correcto.
   - No hubo validación completa, typecheck/build global, migraciones, suite visual ni comprobaciones
     transversales por instrucción expresa del usuario.
+
+## Conversación 71 - Cierre de fase 5 e inicio de formularios
+
+- Fecha: 2026-07-13.
+- Resumen de la conversación:
+  - Se cerraron los selectores públicos y la matriz de disponibilidad de 5.11/5.12.
+  - La verificación focalizada descubrió y corrigió un NPE en franjas sin servicio.
+  - Se creó V21 con campos personalizados y snapshots de respuestas.
+  - Se implementó el catálogo inmutable de cinco campos base obligatorios.
+- Archivos modificados:
+  - `PublicVenueAvailabilityServiceImpl.java`.
+  - `V21__create_reservation_form_tables.sql`.
+  - `ReservationBaseFieldDefinition.java` y `ReservationBaseFieldCatalog.java`.
+  - `ReservationBaseFieldCatalogTests.java` y `ReservationFormMigrationIntegrationTests.java`.
+  - `DatabaseMigrationIntegrationTests.java`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-006`, `RF-013`, `RF-026`, `RF-027` y `RB-010`.
+  - `RNF-001`, `RNF-002`, `RNF-008` y `RNF-009`.
+- Tareas impactadas y completadas:
+  - `5.11`, `5.12`, `6.1` y `6.2`.
+- Siguiente tarea pendiente recomendada:
+  - `6.3. Implementar CRUD de campos personalizados`.
+- Decisiones o aclaraciones:
+  - La FK de `reservationId` se difiere hasta crear Reservations en fase 7.
+  - `fieldId` usa SET NULL y se guardan key/label para conservar histórico.
+  - Los cinco campos base no son configuración editable ni filas custom.
+  - Evidencia 5.11/5.12: 14 tests backend focalizados, 7 frontend y ESLint focalizado.
+  - Evidencia 6.1/6.2: 6 tests focalizados, Flyway V21 y PostgreSQL/PostGIS correctos.
+  - No se ejecutaron suites completas, build, typecheck ni validaciones transversales.

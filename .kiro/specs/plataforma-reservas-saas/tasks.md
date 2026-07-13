@@ -126,13 +126,13 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 5.8. Implementar opción "cualquier profesional disponible".
 - [x] 5.9. Implementar asignación automática simple por primera disponibilidad.
 - [x] 5.10. Crear sección "Equipo y disponibilidad" en panel.
-- [ ] 5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure.
-- [ ] 5.12. Crear tests de disponibilidad con empleados, recursos y servicios.
+- [x] 5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure.
+- [x] 5.12. Crear tests de disponibilidad con empleados, recursos y servicios.
 
 ## 8. Fase 6 - Formularios personalizados
 
-- [ ] 6.1. Crear migraciones de `reservation_form_fields` y `reservation_form_responses`.
-- [ ] 6.2. Implementar campos base obligatorios del sistema.
+- [x] 6.1. Crear migraciones de `reservation_form_fields` y `reservation_form_responses`.
+- [x] 6.2. Implementar campos base obligatorios del sistema.
 - [ ] 6.3. Implementar CRUD de campos personalizados.
 - [ ] 6.4. Implementar tipos: texto corto, texto largo, número, selector, checkbox, fecha, teléfono y email.
 - [ ] 6.5. Implementar obligatoriedad y orden.

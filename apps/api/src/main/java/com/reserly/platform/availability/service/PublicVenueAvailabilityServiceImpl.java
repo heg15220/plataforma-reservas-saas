@@ -80,7 +80,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
                 slot ->
                     toSlotResponse(
                         slot,
-                        serviceNames.get(slot.getServiceId()),
+                        slot.getServiceId() == null ? null : serviceNames.get(slot.getServiceId()),
                         resourceAvailability.getOrDefault(
                             slot.getId(), EmployeeResourceSlotAvailability.unrestricted())))
             .toList();

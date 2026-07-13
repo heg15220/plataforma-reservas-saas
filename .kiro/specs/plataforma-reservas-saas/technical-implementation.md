@@ -20136,3 +20136,144 @@ el selector público corresponde a 5.11 y la matriz visual a fase 15.
 La tarea se cierra porque el panel gestiona recursos, horarios, servicios, compatibilidades y la
 política de primera disponibilidad mediante contratos privados, UI responsive, i18n ES/EN y pruebas
 focalizadas correctas.
+
+## Iteración 5.11 - Selector público de servicio y profesional
+
+### Identificador, fecha y objetivo
+
+- Tarea completada: `5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure`.
+- Fecha de cierre: 2026-07-13.
+- Objetivo: reflejar en la reserva pública el servicio y los recursos elegibles sin adelantar la
+  creación de holds de la fase 7.
+
+### Contrato, arquitectura y flujo
+
+`PublicTimeSlotAvailabilityResponse` publica `serviceName` localizado junto a `serviceId`. El
+servicio público carga en lote los servicios activos/publicados mediante
+`ServiceDao.findPublishedActiveByVenueIdAndIds`, resuelve `nameI18n` con fallback canónico y evita
+N+1. La identidad de recurso permanece minimizada a UUID, tipo, nombre público y especialidad.
+
+`availability-api.ts` valida servicio, requisito de recurso, permiso `any_available` y candidatos con
+Zod. `PublicAvailabilityCalendar` deriva servicios únicos por fecha, muestra selector cuando hay
+varios, filtra franjas y presenta selector de recurso solo cuando la franja lo exige. La opción
+delegada aparece únicamente si backend la autoriza. El botón final continúa deshabilitado hasta que
+exista el hold transaccional.
+
+La UI usa MUI, labels accesibles, menú nativo del design system y grid responsive. Todos los textos
+se añadieron a ES/EN. No se almacenan selecciones ni datos personales; el estado es efímero.
+
+### Errores, corrección y evidencia
+
+La verificación focalizada detectó que una franja sin servicio evaluaba `Map.of().get(null)`. Se
+corrigió evitando consultar el mapa cuando `serviceId` es nulo, manteniendo `serviceName=null`.
+
+Evidencia:
+
+- Vitest focalizado de disponibilidad: 2 archivos, 7 tests correctos.
+- ESLint focalizado de API/calendario/tests: 0 incidencias.
+- `PublicVenueAvailabilityServiceTests`: 10 tests correctos tras la corrección.
+- No se ejecutó suite completa, build, typecheck global ni validación transversal.
+
+La tarea se cierra porque servicio, profesional específico y opción delegada se muestran según el
+contrato real y las franjas sin servicio conservan su comportamiento.
+
+## Iteración 5.12 - Tests de disponibilidad con equipo y servicios
+
+### Identificador, alcance y arquitectura de prueba
+
+- Tarea completada: `5.12. Crear tests de disponibilidad con empleados, recursos y servicios`.
+- Fecha de cierre: 2026-07-13.
+
+`EmployeeResourceAvailabilityMatrixTests` construye una matriz unitaria que separa candidatos entre
+servicios y cubre profesional, sala, equipamiento y pista. Verifica orden/identidad pública,
+`any_available` permitido o prohibido, límites horarios exactos, intervalos parcialmente cubiertos y
+servicios sin asociaciones.
+
+La matriz usa DAOs simulados y no depende de reservas futuras. Se complementa con
+`PublicVenueAvailabilityServiceTests` para probar estado efectivo y nombre localizado del servicio.
+
+### Seguridad, limitaciones y evidencia
+
+Los tests demuestran que un recurso nunca cruza la compatibilidad de otro servicio y que solo se
+publican candidatos devueltos por las consultas acotadas a local, estado y visibilidad. No cubren
+ocupación por reservas porque ese agregado no existe todavía.
+
+Comando focalizado:
+`mvn -f apps/api/pom.xml "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" "-Dtest=EmployeeResourceAvailabilityMatrixTests,PublicVenueAvailabilityServiceTests" test`.
+
+Resultado final: 14 tests, 0 fallos, 0 errores y 0 omitidos. La tarea se cierra con matriz específica
+y regresión pública verificadas, sin ejecutar el resto del backend.
+
+## Iteración 6.1 - Migraciones de formularios y respuestas
+
+### Identificador, fecha y objetivo
+
+- Tarea completada: `6.1. Crear migraciones de reservation_form_fields y reservation_form_responses`.
+- Fecha: 2026-07-13.
+- Migración: `V21__create_reservation_form_tables.sql`.
+
+### Modelo de datos, índices y restricciones
+
+`ReservationFormFields` contiene UUID, `venueId`, label canónico/localizado, key, tipo, obligatoriedad,
+opciones JSON/localizadas, posición, estado y timestamps. La FK a `Venues` usa cascada; la clave es
+única por local. Checks protegen label no vacío, key snake_case, ocho tipos permitidos, posición no
+negativa, coherencia de opciones para select y monotonicidad de timestamps. El índice
+`ixReservationFormFieldsVenueActivePosition` soporta catálogo ordenado por local.
+
+`ReservationFormResponses` almacena `reservationId`, `fieldId` nullable, snapshots `fieldKey` y
+`fieldLabel`, `valueJson` y fecha. La FK de campo usa `ON DELETE SET NULL` para conservar histórico;
+una unique impide dos respuestas con la misma clave por reserva. Hay índices por reserva y campo.
+
+`Reservations` llega en fase 7, por lo que `reservationId` es referencia lógica temporal sin FK. La
+migración lo documenta expresamente; la migración que cree Reservations deberá añadir la FK tras
+validar datos. Esta decisión evita crear una tabla de reserva parcial fuera de su fase.
+
+No se implementan endpoints, logs ni auditoría en 6.1. Los datos quedan aislados por la FK de local y
+preparados para que los futuros servicios deriven el local autenticado, nunca desde payload.
+
+### Verificación y riesgos
+
+`ReservationFormMigrationIntegrationTests` arranca PostgreSQL/PostGIS, aplica las 21 migraciones y
+verifica columnas, constraints, índices y ausencia deliberada de FK de reserva. La expectativa del
+test global de migraciones se actualiza a V21.
+
+Resultado focalizado conjunto de 6.1/6.2: 6 tests correctos, 0 fallos, 0 errores. Riesgo pendiente:
+la integridad referencial de `reservationId` debe cerrarse obligatoriamente en fase 7.
+
+## Iteración 6.2 - Campos base obligatorios del sistema
+
+### Identificador, fecha y objetivo
+
+- Tarea completada: `6.2. Implementar campos base obligatorios del sistema`.
+- Fecha: 2026-07-13.
+
+### Diseño y contrato
+
+`ReservationBaseFieldDefinition` define key, tipo de entrada, clave i18n y posición. Sus invariantes
+rechazan valores vacíos y posiciones negativas; `required()` siempre devuelve true y `editable()`
+siempre false.
+
+`ReservationBaseFieldCatalog` expone una lista inmutable y estable:
+
+1. `customer_name` / `short_text`.
+2. `customer_email` / `email`.
+3. `party_size` / `number`.
+4. `reservation_date` / `date`.
+5. `time_slot` / `time_slot`.
+
+Los campos base son propiedad del agregado Reservation futuro y no filas editables de
+`ReservationFormFields`. Así un local no puede borrarlos, desactivarlos ni convertirlos en
+opcionales; la tabla V21 queda dedicada a campos adicionales. Las labels son claves i18n y no texto
+persistido, de modo que el canal podrá resolver ES/EN sin mezclar configuración del local.
+
+No hay endpoint todavía: 6.3 combinará este catálogo con el CRUD personalizado. `time_slot` es un
+tipo exclusivo del sistema, no amplía los ocho tipos custom que implementará 6.4.
+
+### Tests y evidencia
+
+`ReservationBaseFieldCatalogTests` valida claves/tipos/orden exactos, obligatoriedad, no edición,
+unicidad, inmutabilidad y rechazo de definiciones incompletas. Son 4 tests correctos. Junto con los 2
+tests de migración, el comando focalizado terminó con 6 tests correctos y Flyway V21.
+
+Limitaciones: aún no se combinan campos base/custom ni se validan respuestas; corresponden a
+6.3-6.8. La siguiente tarea recomendada es 6.3.
