@@ -24,8 +24,8 @@ class ReservationFormMigrationIntegrationTests {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
-  void createsFormTablesAtVersionTwentyOneWithStableColumns() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("21");
+  void createsLocalizedFormContractAtVersionTwentyTwo() {
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("22");
     assertThat(columns("ReservationFormFields"))
         .containsExactly(
             "id",
@@ -41,6 +41,11 @@ class ReservationFormMigrationIntegrationTests {
             "isActive",
             "createdAt",
             "updatedAt");
+    assertThat(columns("Venues"))
+        .contains(
+            "reservationFormPublished",
+            "reservationFormFallbackApproved",
+            "reservationFormPublishedAt");
     assertThat(columns("ReservationFormResponses"))
         .containsExactly(
             "id",
@@ -60,7 +65,9 @@ class ReservationFormMigrationIntegrationTests {
             "uqReservationFormFieldsVenueKey",
             "ckReservationFormFieldsKey",
             "ckReservationFormFieldsType",
-            "ckReservationFormFieldsOptions");
+            "ckReservationFormFieldsOptions",
+            "ckReservationFormFieldsLabelI18nObject",
+            "ckReservationFormFieldsOptionsI18nArray");
     assertThat(constraints("ReservationFormResponses"))
         .contains(
             "fkReservationFormResponsesField",

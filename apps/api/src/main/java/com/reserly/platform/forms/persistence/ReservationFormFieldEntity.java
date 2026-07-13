@@ -1,5 +1,6 @@
 package com.reserly.platform.forms.persistence;
 
+import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -25,10 +26,12 @@ public class ReservationFormFieldEntity {
   private UUID id;
   private VenueEntity venue;
   private String label;
+  private LocalizedText labelI18n;
   private String key;
   private ReservationFormFieldType type;
   private boolean required;
   private List<String> options;
+  private List<LocalizedText> optionsI18n;
   private int position;
   private boolean active;
   private Instant createdAt;
@@ -63,6 +66,17 @@ public class ReservationFormFieldEntity {
 
   public void setLabel(String label) {
     this.label = label;
+  }
+
+  /** Label p?blico con idioma origen y valores ES/EN. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"labelI18n\"", columnDefinition = "jsonb")
+  public LocalizedText getLabelI18n() {
+    return labelI18n;
+  }
+
+  public void setLabelI18n(LocalizedText labelI18n) {
+    this.labelI18n = labelI18n;
   }
 
   @Column(name = "\"key\"", nullable = false, length = 80)
@@ -102,6 +116,17 @@ public class ReservationFormFieldEntity {
 
   public void setOptions(List<String> options) {
     this.options = options == null ? null : new ArrayList<>(options);
+  }
+
+  /** Opciones localizadas alineadas por ?ndice con optionsJson. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "\"optionsI18nJson\"", columnDefinition = "jsonb")
+  public List<LocalizedText> getOptionsI18n() {
+    return optionsI18n;
+  }
+
+  public void setOptionsI18n(List<LocalizedText> optionsI18n) {
+    this.optionsI18n = optionsI18n == null ? null : new ArrayList<>(optionsI18n);
   }
 
   @Column(name = "\"position\"", nullable = false)

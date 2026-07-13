@@ -4,6 +4,8 @@ import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldResponse;
 import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
+import com.reserly.platform.forms.dto.ReservationFormPublicationRequest;
+import com.reserly.platform.forms.dto.ReservationFormPublicationResponse;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-/** Contrato privado para administrar y previsualizar el formulario del local autenticado. */
+/** Contrato privado para administrar, previsualizar y publicar el formulario propio. */
 public interface ReservationFormFieldController {
 
   @GetMapping(path = "/api/venue/me/reservation-form/fields")
@@ -28,6 +30,15 @@ public interface ReservationFormFieldController {
   @GetMapping(path = "/api/venue/me/reservation-form/preview")
   ResponseEntity<ReservationFormPreviewResponse> preview(
       @AuthenticationPrincipal AuthenticatedAccount account);
+
+  @GetMapping(path = "/api/venue/me/reservation-form/publication")
+  ResponseEntity<ReservationFormPublicationResponse> publication(
+      @AuthenticationPrincipal AuthenticatedAccount account);
+
+  @PutMapping(path = "/api/venue/me/reservation-form/publication")
+  ResponseEntity<ReservationFormPublicationResponse> updatePublication(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @Valid @RequestBody ReservationFormPublicationRequest request);
 
   @PostMapping(path = "/api/venue/me/reservation-form/fields")
   ResponseEntity<ReservationFormFieldResponse> create(

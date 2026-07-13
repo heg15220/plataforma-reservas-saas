@@ -1052,7 +1052,9 @@
       "saving": "Saving...",
       "addOption": "Add option",
       "removeOption": "Remove option",
-      "confirmDelete": "Delete field"
+      "confirmDelete": "Delete field",
+      "publish": "Publish",
+      "unpublish": "Unpublish"
     },
     "loading": "Loading form",
     "errors": {
@@ -1060,12 +1062,16 @@
       "load": "The form could not be loaded.",
       "save": "The field could not be saved.",
       "delete": "The field could not be deleted.",
-      "reorder": "The order could not be updated."
+      "reorder": "The order could not be updated.",
+      "publication": "Publication could not be changed.",
+      "publicationBlocked": "Complete the translations or approve fallback before publishing."
     },
     "notices": {
       "saved": "Field saved.",
       "deleted": "Field deleted.",
-      "reordered": "Order updated."
+      "reordered": "Order updated.",
+      "published": "Form published.",
+      "unpublished": "Form unpublished."
     },
     "catalog": {
       "title": "Custom fields",
@@ -1105,11 +1111,26 @@
       "required": "Required field",
       "option": "Option {number}",
       "keyInvalid": "Use lowercase letters, numbers and underscores; start with a letter.",
-      "optionsInvalid": "Add unique, non-empty options."
+      "optionsInvalid": "Add unique, non-empty options.",
+      "labelEs": "Label in Spanish",
+      "labelEn": "Label in English",
+      "optionEs": "Option {number} in Spanish",
+      "optionEn": "Option {number} in English"
     },
     "delete": {
       "title": "Delete field",
       "body": "?{label}? will be removed from the booking form."
+    },
+    "publication": {
+      "title": "Publication",
+      "published": "Published",
+      "draft": "Draft",
+      "complete": "Public text is complete in Spanish and English.",
+      "pending": "There are {count} pending translations.",
+      "confirmTitle": "Publish form",
+      "confirmComplete": "The form is complete in Spanish and English.",
+      "confirmPending": "There are {count} missing translations. You can publish using the source language as fallback.",
+      "approveFallback": "Approve fallback to the source language"
     }
   }
 }

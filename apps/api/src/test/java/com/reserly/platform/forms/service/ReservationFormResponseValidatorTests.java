@@ -220,9 +220,11 @@ class ReservationFormResponseValidatorTests {
         type,
         Character.toUpperCase(key.charAt(0)) + key.substring(1),
         null,
+        null,
         required,
         true,
         options,
+        null,
         position);
   }
 

@@ -4,6 +4,8 @@ import com.reserly.platform.forms.dto.ReservationFormFieldCommand;
 import com.reserly.platform.forms.persistence.ReservationFormFieldDao;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.persistence.ReservationFormFieldType;
+import com.reserly.platform.localization.LocalizedText;
+import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.Instant;
@@ -19,7 +21,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Implementación transaccional del CRUD de campos personalizados. */
+/** Implementación transaccional del CRUD de campos personalizados localizados. */
 @Service
 public class ReservationFormFieldServiceImpl implements ReservationFormFieldService {
   private static final int MAX_LABEL_LENGTH = 160;
@@ -60,6 +62,7 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
     field.setActive(true);
     field.setCreatedAt(now);
     applyEditableFields(field, command, now);
+    invalidatePublication(venue);
     return save(field);
   }
 
@@ -67,19 +70,20 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
   @Transactional
   public ReservationFormFieldEntity update(
       UUID ownerUserId, UUID fieldId, ReservationFormFieldCommand command) {
-    requireVenue(ownerUserId, true);
+    VenueEntity venue = requireVenue(ownerUserId, true);
     ReservationFormFieldEntity field =
         fieldDao
             .findOwnedForUpdate(ownerUserId, fieldId)
             .orElseThrow(ReservationFormFieldNotFoundException::new);
     applyEditableFields(field, command, Instant.now());
+    invalidatePublication(venue);
     return save(field);
   }
 
   @Override
   @Transactional
   public List<ReservationFormFieldEntity> reorder(UUID ownerUserId, List<UUID> fieldIds) {
-    requireVenue(ownerUserId, true);
+    VenueEntity venue = requireVenue(ownerUserId, true);
     List<ReservationFormFieldEntity> fields = fieldDao.findAllOwnedForUpdate(ownerUserId);
     validateCompleteOrder(fields, fieldIds);
 
@@ -93,13 +97,14 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
       field.setUpdatedAt(now);
       ordered.add(field);
     }
+    invalidatePublication(venue);
     return saveAll(ordered);
   }
 
   @Override
   @Transactional
   public void delete(UUID ownerUserId, UUID fieldId) {
-    requireVenue(ownerUserId, true);
+    VenueEntity venue = requireVenue(ownerUserId, true);
     ReservationFormFieldEntity field =
         fieldDao
             .findOwnedForUpdate(ownerUserId, fieldId)
@@ -107,21 +112,21 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
     try {
       fieldDao.delete(field);
       fieldDao.flush();
+      invalidatePublication(venue);
     } catch (DataIntegrityViolationException exception) {
       throw new ReservationFormFieldInvalidException(exception);
     }
   }
 
   /**
-   * Actualiza los atributos configurables y mantiene la coherencia entre tipo y optionsJson antes de
-   * llegar a los constraints de V21.
+   * Deriva los valores canónicos desde el idioma origen y mantiene alineados los documentos i18n.
    */
   private void applyEditableFields(
       ReservationFormFieldEntity field, ReservationFormFieldCommand command, Instant updatedAt) {
     if (command == null) {
       throw new ReservationFormFieldInvalidException();
     }
-    String label = normalizeRequired(command.label(), MAX_LABEL_LENGTH);
+    LocalizedText labelI18n = normalizeLocalized(command.labelI18n(), MAX_LABEL_LENGTH);
     String key = normalizeRequired(command.key(), MAX_KEY_LENGTH);
     if (!key.matches(KEY_PATTERN)) {
       throw new ReservationFormFieldInvalidException();
@@ -129,21 +134,24 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
     ReservationFormFieldType type =
         ReservationFormFieldType.fromCode(command.type())
             .orElseThrow(ReservationFormFieldInvalidException::new);
+    List<LocalizedText> optionsI18n =
+        normalizeOptions(type, labelI18n.sourceLocale(), command.optionsI18n());
 
-    field.setLabel(label);
+    field.setLabel(sourceValue(labelI18n));
+    field.setLabelI18n(labelI18n);
     field.setKey(key);
     field.setType(type);
     field.setRequired(command.required());
-    field.setOptions(normalizeOptions(type, command.options()));
+    field.setOptions(
+        optionsI18n == null ? null : optionsI18n.stream().map(this::sourceValue).toList());
+    field.setOptionsI18n(optionsI18n);
     field.setUpdatedAt(updatedAt);
   }
 
-  /**
-   * Un selector activo necesita opciones utilizables. Otros tipos no pueden conservar opciones
-   * ocultas que contradigan su contrato o reaparezcan al cambiar de tipo.
-   */
-  private List<String> normalizeOptions(
-      ReservationFormFieldType type, List<String> requestedOptions) {
+  private List<LocalizedText> normalizeOptions(
+      ReservationFormFieldType type,
+      SupportedLocale sourceLocale,
+      List<LocalizedText> requestedOptions) {
     if (type != ReservationFormFieldType.SELECT) {
       if (requestedOptions != null && !requestedOptions.isEmpty()) {
         throw new ReservationFormFieldInvalidException();
@@ -156,16 +164,41 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
       throw new ReservationFormFieldInvalidException();
     }
 
-    List<String> normalizedOptions = new ArrayList<>(requestedOptions.size());
-    Set<String> normalizedKeys = new HashSet<>();
-    for (String option : requestedOptions) {
-      String normalized = normalizeRequired(option, MAX_OPTION_LENGTH);
-      if (!normalizedKeys.add(normalized.toLowerCase(Locale.ROOT))) {
+    List<LocalizedText> normalized = new ArrayList<>(requestedOptions.size());
+    Map<SupportedLocale, Set<String>> seenByLocale = new HashMap<>();
+    for (LocalizedText option : requestedOptions) {
+      LocalizedText value = normalizeLocalized(option, MAX_OPTION_LENGTH);
+      if (value.sourceLocale() != sourceLocale) {
         throw new ReservationFormFieldInvalidException();
       }
-      normalizedOptions.add(normalized);
+      for (Map.Entry<SupportedLocale, String> entry : value.values().entrySet()) {
+        if (!seenByLocale
+            .computeIfAbsent(entry.getKey(), ignored -> new HashSet<>())
+            .add(entry.getValue().toLowerCase(Locale.ROOT))) {
+          throw new ReservationFormFieldInvalidException();
+        }
+      }
+      normalized.add(value);
     }
-    return List.copyOf(normalizedOptions);
+    return List.copyOf(normalized);
+  }
+
+  private LocalizedText normalizeLocalized(LocalizedText value, int maxLength) {
+    if (value == null) {
+      throw new ReservationFormFieldInvalidException();
+    }
+    for (String text : value.values().values()) {
+      normalizeRequired(text, maxLength);
+    }
+    try {
+      return new LocalizedText(value.sourceLocale(), value.values());
+    } catch (IllegalArgumentException exception) {
+      throw new ReservationFormFieldInvalidException(exception);
+    }
+  }
+
+  private String sourceValue(LocalizedText value) {
+    return value.values().get(value.sourceLocale());
   }
 
   private void validateCompleteOrder(
@@ -201,6 +234,13 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
         .orElseThrow(ReservationFormFieldNotFoundException::new);
   }
 
+  /** Cualquier cambio exige una nueva decisión editorial para evitar publicar un snapshot obsoleto. */
+  private void invalidatePublication(VenueEntity venue) {
+    venue.setReservationFormPublished(false);
+    venue.setReservationFormFallbackApproved(false);
+    venue.setReservationFormPublishedAt(null);
+  }
+
   private ReservationFormFieldEntity save(ReservationFormFieldEntity field) {
     try {
       return fieldDao.saveAndFlush(field);
@@ -209,8 +249,7 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
     }
   }
 
-  private List<ReservationFormFieldEntity> saveAll(
-      List<ReservationFormFieldEntity> fields) {
+  private List<ReservationFormFieldEntity> saveAll(List<ReservationFormFieldEntity> fields) {
     try {
       return List.copyOf(fieldDao.saveAllAndFlush(fields));
     } catch (DataIntegrityViolationException exception) {

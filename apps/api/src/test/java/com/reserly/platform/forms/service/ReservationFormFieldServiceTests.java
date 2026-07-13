@@ -11,10 +11,13 @@ import com.reserly.platform.forms.dto.ReservationFormFieldCommand;
 import com.reserly.platform.forms.persistence.ReservationFormFieldDao;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.persistence.ReservationFormFieldType;
+import com.reserly.platform.localization.LocalizedText;
+import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -244,7 +247,16 @@ class ReservationFormFieldServiceTests {
 
   private ReservationFormFieldCommand command(
       String label, String key, String type, boolean required, List<String> options) {
-    return new ReservationFormFieldCommand(label, key, type, required, options);
+    LocalizedText localizedLabel = localized(label);
+    List<LocalizedText> localizedOptions =
+        options == null ? null : options.stream().map(this::localized).toList();
+    return new ReservationFormFieldCommand(
+        localizedLabel, key, type, required, localizedOptions);
+  }
+
+  private LocalizedText localized(String value) {
+    return new LocalizedText(
+        SupportedLocale.ES, Map.of(SupportedLocale.ES, value, SupportedLocale.EN, value));
   }
 
   private ReservationFormFieldEntity field(String key, ReservationFormFieldType type) {
@@ -252,6 +264,7 @@ class ReservationFormFieldServiceTests {
     field.setId(UUID.randomUUID());
     field.setVenue(venue);
     field.setLabel("Campo");
+    field.setLabelI18n(localized("Campo"));
     field.setKey(key);
     field.setType(type);
     field.setPosition(0);

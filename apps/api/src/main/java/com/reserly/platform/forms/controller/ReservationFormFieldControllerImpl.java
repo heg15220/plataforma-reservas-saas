@@ -5,9 +5,12 @@ import com.reserly.platform.forms.dto.ReservationFormFieldOrderRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldRequest;
 import com.reserly.platform.forms.dto.ReservationFormFieldResponse;
 import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
+import com.reserly.platform.forms.dto.ReservationFormPublicationRequest;
+import com.reserly.platform.forms.dto.ReservationFormPublicationResponse;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
 import com.reserly.platform.forms.service.ReservationFormFieldService;
 import com.reserly.platform.forms.service.ReservationFormPreviewService;
+import com.reserly.platform.forms.service.ReservationFormPublicationService;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import java.net.URI;
 import java.util.List;
@@ -22,14 +25,17 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
 
   private final ReservationFormFieldService fieldService;
   private final ReservationFormPreviewService previewService;
+  private final ReservationFormPublicationService publicationService;
   private final ReservationFormFieldConverter converter;
 
   public ReservationFormFieldControllerImpl(
       ReservationFormFieldService fieldService,
       ReservationFormPreviewService previewService,
+      ReservationFormPublicationService publicationService,
       ReservationFormFieldConverter converter) {
     this.fieldService = fieldService;
     this.previewService = previewService;
+    this.publicationService = publicationService;
     this.converter = converter;
   }
 
@@ -41,6 +47,20 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
   @Override
   public ResponseEntity<ReservationFormPreviewResponse> preview(AuthenticatedAccount account) {
     return ResponseEntity.ok(previewService.preview(account.userId()));
+  }
+
+  @Override
+  public ResponseEntity<ReservationFormPublicationResponse> publication(
+      AuthenticatedAccount account) {
+    return ResponseEntity.ok(publicationService.status(account.userId()));
+  }
+
+  @Override
+  public ResponseEntity<ReservationFormPublicationResponse> updatePublication(
+      AuthenticatedAccount account, ReservationFormPublicationRequest request) {
+    return ResponseEntity.ok(
+        publicationService.update(
+            account.userId(), request.published(), request.fallbackApproved()));
   }
 
   @Override
@@ -63,8 +83,7 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
   @Override
   public ResponseEntity<List<ReservationFormFieldResponse>> reorder(
       AuthenticatedAccount account, ReservationFormFieldOrderRequest request) {
-    return ResponseEntity.ok(
-        toResponses(fieldService.reorder(account.userId(), request.fieldIds())));
+    return ResponseEntity.ok(toResponses(fieldService.reorder(account.userId(), request.fieldIds())));
   }
 
   @Override

@@ -2,6 +2,7 @@ package com.reserly.platform.forms.service;
 
 import com.reserly.platform.forms.ReservationBaseFieldCatalog;
 import com.reserly.platform.forms.ReservationBaseFieldDefinition;
+import com.reserly.platform.forms.converter.ReservationFormFieldConverter;
 import com.reserly.platform.forms.dto.ReservationFormPreviewFieldResponse;
 import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
 import com.reserly.platform.forms.persistence.ReservationFormFieldEntity;
@@ -10,16 +11,19 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
-/** Implementación que antepone el catálogo base inmutable al orden custom persistido. */
+/** Implementación que antepone campos base y conserva localizaciones custom completas. */
 @Service
 public class ReservationFormPreviewServiceImpl implements ReservationFormPreviewService {
   private static final String BASE_SOURCE = "base";
   private static final String CUSTOM_SOURCE = "custom";
 
   private final ReservationFormFieldService fieldService;
+  private final ReservationFormFieldConverter converter;
 
-  public ReservationFormPreviewServiceImpl(ReservationFormFieldService fieldService) {
+  public ReservationFormPreviewServiceImpl(
+      ReservationFormFieldService fieldService, ReservationFormFieldConverter converter) {
     this.fieldService = fieldService;
+    this.converter = converter;
   }
 
   @Override
@@ -36,8 +40,7 @@ public class ReservationFormPreviewServiceImpl implements ReservationFormPreview
     return new ReservationFormPreviewResponse(preview);
   }
 
-  private ReservationFormPreviewFieldResponse toBasePreview(
-      ReservationBaseFieldDefinition field) {
+  private ReservationFormPreviewFieldResponse toBasePreview(ReservationBaseFieldDefinition field) {
     return new ReservationFormPreviewFieldResponse(
         null,
         BASE_SOURCE,
@@ -45,8 +48,10 @@ public class ReservationFormPreviewServiceImpl implements ReservationFormPreview
         field.inputType(),
         null,
         field.labelKey(),
+        null,
         field.required(),
         field.editable(),
+        null,
         null,
         field.position());
   }
@@ -60,9 +65,11 @@ public class ReservationFormPreviewServiceImpl implements ReservationFormPreview
         field.getType().code(),
         field.getLabel(),
         null,
+        converter.toDto(field.getLabelI18n()),
         field.isRequired(),
         true,
         field.getOptions(),
+        converter.toDtos(field.getOptionsI18n()),
         previewPosition);
   }
 }

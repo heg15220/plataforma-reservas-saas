@@ -4538,37 +4538,43 @@ Fuente de verdad del avance:
 ## Conversaci?n 90 - Configurador y tests frontend del formulario
 
 - Fecha: 2026-07-13.
+- Resumen: se implement? /panel/formulario con CRUD, orden, preview, navegaci?n e i18n ES/EN.
+- Archivos modificados: ruta, cliente API, manager, tests, VenueShell, cat?logos y documentos .kiro.
+- Requisitos impactados: RF-013, RNF-001, RNF-002, RNF-003, RNF-008 y RNF-009.
+- Tareas completadas: 6.9 y 6.10.
+- Siguiente tarea recomendada: 6.11.
+- Decisiones:
+  - El editor reconcilia cat?logo y preview despu?s de cada mutaci?n.
+  - Los campos base son obligatorios e inmutables.
+  - Vitest focalizado agot? 30 segundos; no se ejecut? validaci?n completa.
+
+## Conversaci?n 91 - Localizaci?n y publicaci?n del formulario
+
+- Fecha: 2026-07-13.
 - Resumen de la conversaci?n:
-  - Se implement? la ruta privada /panel/formulario.
-  - Se a?adi? un configurador responsive con CRUD, orden, opciones y preview combinado.
-  - Se a?adi? un cliente Zod ajustado a los DTO backend reales.
-  - Se crearon tests focalizados de contrato API y flujos de validaci?n UI.
-  - A petici?n del usuario se sustituy? la validaci?n lenta por comprobaciones r?pidas.
+  - Se implementaron labels y opciones custom con idioma origen y valores ES/EN.
+  - Se a?adi? publicaci?n transaccional con bloqueo por traducciones incompletas.
+  - Se a?adi? aprobaci?n expl?cita de fallback y despublicaci?n autom?tica al editar.
+  - Se adapt? el editor, preview, cat?logos y tests focalizados.
+  - La validaci?n final se interrumpi? por petici?n expresa del usuario para proceder al commit.
 - Archivos modificados:
-  - Nuevos page.tsx, reservation-form-api.ts y reservation-form-manager.tsx.
-  - Nuevos reservation-form-api.test.ts y reservation-form-manager.test.tsx.
-  - VenueShell y cat?logos locales/es.json y locales/en.json.
+  - V22__localize_and_publish_reservation_forms.sql.
+  - Entidades VenueEntity y ReservationFormFieldEntity.
+  - DTOs, conversor, servicios, controlador y handler del m?dulo forms.
+  - Tests forms backend y tests del configurador frontend.
+  - reservation-form-api.ts, reservation-form-manager.tsx y cat?logos ES/EN.
   - tasks.md, conversation-tracking.md y technical-implementation.md.
 - Requisitos impactados:
-  - RF-013 Formulario de reserva configurable.
-  - RNF-001 Seguridad, RNF-002 Privacidad, RNF-003 Integridad,
-    RNF-008 Calidad y mantenibilidad y RNF-009 Internacionalizaci?n.
-- Tareas impactadas:
-  - 6.9. Crear UI de configuraci?n del formulario.
-  - 6.10. Crear tests de validaci?n de formularios.
-- Tareas completadas:
-  - 6.9 y 6.10.
+  - RF-013, RNF-001, RNF-003, RNF-009 y RNF-012.
+- Tareas impactadas y completadas:
+  - 6.11 y 6.12.
 - Siguiente tarea pendiente recomendada:
-  - 6.11. Permitir labels y opciones de campos personalizados en espa?ol e ingl?s.
+  - 7.1. Crear migraci?n de reservations.
 - Decisiones o aclaraciones relevantes:
-  - El editor reconcilia cat?logo y preview despu?s de toda mutaci?n confirmada.
-  - La reordenaci?n env?a la permutaci?n completa exigida por el backend.
-  - La regex, l?mites y normalizaci?n del borrador replican el contrato de escritura.
-  - Los campos base siguen siendo obligatorios e inmutables; solo aparecen en preview.
-  - La navegaci?n privada incorpora Formulario en escritorio y m?vil.
-  - Los textos de interfaz y campos base est?n disponibles en espa?ol e ingl?s.
-  - Los labels/opciones custom contin?an can?nicos hasta 6.11.
-  - El intento Vitest focalizado agot? 30 segundos sin salida y se termin?; no se reintent?.
-  - Evidencia r?pida: git diff --check correcto, cat?logos JSON v?lidos y contratos cotejados con
-    los records Java.
-  - No se ejecutaron Maven, suite completa, build, typecheck ni validaciones transversales.
+  - Los can?nicos se derivan del idioma origen; los JSONB conservan ES/EN.
+  - Cada opci?n localizada se alinea por ?ndice con optionsJson.
+  - La publicaci?n exige traducciones completas o fallback aprobado expl?citamente.
+  - Cualquier mutaci?n del formulario invalida su publicaci?n.
+  - La API devuelve 409 estable cuando la publicaci?n est? bloqueada.
+  - Evidencia parcial: 3 tests del cliente API correctos; el import Surface detectado se corrigi?.
+  - La ejecuci?n final fue interrumpida y no se hicieron m?s validaciones por orden del usuario.

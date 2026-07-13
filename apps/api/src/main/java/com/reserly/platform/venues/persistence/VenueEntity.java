@@ -60,6 +60,9 @@ public class VenueEntity {
   private boolean showPhone;
   private boolean showEmail;
   private Instant publishedAt;
+  private boolean reservationFormPublished;
+  private boolean reservationFormFallbackApproved;
+  private Instant reservationFormPublishedAt;
   private Instant createdAt;
   private Instant updatedAt;
 
@@ -368,6 +371,33 @@ public class VenueEntity {
 
   public void setPublishedAt(Instant publishedAt) {
     this.publishedAt = publishedAt;
+  }
+
+  @Column(name = "\"reservationFormPublished\"", nullable = false)
+  public boolean isReservationFormPublished() {
+    return reservationFormPublished;
+  }
+
+  public void setReservationFormPublished(boolean reservationFormPublished) {
+    this.reservationFormPublished = reservationFormPublished;
+  }
+
+  @Column(name = "\"reservationFormFallbackApproved\"", nullable = false)
+  public boolean isReservationFormFallbackApproved() {
+    return reservationFormFallbackApproved;
+  }
+
+  public void setReservationFormFallbackApproved(boolean approved) {
+    this.reservationFormFallbackApproved = approved;
+  }
+
+  @Column(name = "\"reservationFormPublishedAt\"")
+  public Instant getReservationFormPublishedAt() {
+    return reservationFormPublishedAt;
+  }
+
+  public void setReservationFormPublishedAt(Instant publishedAt) {
+    this.reservationFormPublishedAt = publishedAt;
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

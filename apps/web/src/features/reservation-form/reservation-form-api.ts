@@ -8,15 +8,23 @@ export const reservationFormFieldTypeSchema = z.enum([
   "short_text", "long_text", "select", "checkbox", "date", "number", "email", "phone",
 ]);
 
+export const localizedTextSchema = z.object({
+  sourceLocale: z.enum(["es", "en"]),
+  values: z.object({ es: z.string().optional(), en: z.string().optional() }),
+});
+
 export type ReservationFormFieldType = z.infer<typeof reservationFormFieldTypeSchema>;
+export type ReservationFormLocalizedText = z.infer<typeof localizedTextSchema>;
 
 export const reservationFormFieldSchema = z.object({
   id: z.string().uuid(),
   label: z.string(),
+  labelI18n: localizedTextSchema,
   key: z.string(),
   type: reservationFormFieldTypeSchema,
   required: z.boolean(),
   options: z.array(z.string()).nullable(),
+  optionsI18n: z.array(localizedTextSchema).nullable(),
   position: z.number().int(),
   active: z.boolean(),
   createdAt: z.string().datetime(),
@@ -28,6 +36,7 @@ export const reservationFormPreviewFieldSchema = z.object({
   source: z.enum(["base", "custom"]),
   label: z.string().nullable(),
   labelKey: z.string().nullable(),
+  labelI18n: localizedTextSchema.nullable(),
   key: z.string(),
   type: z.enum([
     "short_text", "long_text", "select", "checkbox", "date", "number", "email", "phone", "time_slot",
@@ -35,21 +44,33 @@ export const reservationFormPreviewFieldSchema = z.object({
   required: z.boolean(),
   editable: z.boolean(),
   options: z.array(z.string()).nullable(),
+  optionsI18n: z.array(localizedTextSchema).nullable(),
   position: z.number().int(),
 });
 
+export const reservationFormPublicationSchema = z.object({
+  published: z.boolean(),
+  fallbackApproved: z.boolean(),
+  fullyTranslated: z.boolean(),
+  missingTranslations: z.array(z.string()),
+  publishedAt: z.string().datetime().nullable(),
+});
+
 const fieldsSchema = z.array(reservationFormFieldSchema);
-const previewSchema = z.object({ fields: z.array(reservationFormPreviewFieldSchema) }).transform((value) => value.fields);
+const previewSchema = z
+  .object({ fields: z.array(reservationFormPreviewFieldSchema) })
+  .transform((value) => value.fields);
 
 export type ReservationFormField = z.infer<typeof reservationFormFieldSchema>;
 export type ReservationFormPreviewField = z.infer<typeof reservationFormPreviewFieldSchema>;
+export type ReservationFormPublication = z.infer<typeof reservationFormPublicationSchema>;
 
 export interface ReservationFormFieldInput {
-  label: string;
+  labelI18n: ReservationFormLocalizedText;
   key: string;
   type: ReservationFormFieldType;
   required: boolean;
-  options: string[] | null;
+  optionsI18n: ReservationFormLocalizedText[] | null;
 }
 
 export class ReservationFormApiError extends Error {
@@ -81,6 +102,25 @@ export function fetchReservationFormFields(signal?: AbortSignal) {
 
 export function fetchReservationFormPreview(signal?: AbortSignal) {
   return request("/api/venue/me/reservation-form/preview", { method: "GET", signal }, previewSchema);
+}
+
+export function fetchReservationFormPublication(signal?: AbortSignal) {
+  return request(
+    "/api/venue/me/reservation-form/publication",
+    { method: "GET", signal },
+    reservationFormPublicationSchema,
+  );
+}
+
+export function updateReservationFormPublication(
+  published: boolean,
+  fallbackApproved: boolean,
+) {
+  return request(
+    "/api/venue/me/reservation-form/publication",
+    { method: "PUT", body: JSON.stringify({ published, fallbackApproved }) },
+    reservationFormPublicationSchema,
+  );
 }
 
 export function createReservationFormField(input: ReservationFormFieldInput) {

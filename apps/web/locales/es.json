@@ -1052,7 +1052,9 @@
       "saving": "Guardando...",
       "addOption": "A?adir opci?n",
       "removeOption": "Eliminar opci?n",
-      "confirmDelete": "Eliminar campo"
+      "confirmDelete": "Eliminar campo",
+      "publish": "Publicar",
+      "unpublish": "Despublicar"
     },
     "loading": "Cargando formulario",
     "errors": {
@@ -1060,12 +1062,16 @@
       "load": "No se pudo cargar el formulario.",
       "save": "No se pudo guardar el campo.",
       "delete": "No se pudo eliminar el campo.",
-      "reorder": "No se pudo actualizar el orden."
+      "reorder": "No se pudo actualizar el orden.",
+      "publication": "No se pudo cambiar la publicaci?n.",
+      "publicationBlocked": "Completa las traducciones o aprueba el fallback antes de publicar."
     },
     "notices": {
       "saved": "Campo guardado.",
       "deleted": "Campo eliminado.",
-      "reordered": "Orden actualizado."
+      "reordered": "Orden actualizado.",
+      "published": "Formulario publicado.",
+      "unpublished": "Formulario despublicado."
     },
     "catalog": {
       "title": "Campos personalizados",
@@ -1105,11 +1111,26 @@
       "required": "Campo obligatorio",
       "option": "Opci?n {number}",
       "keyInvalid": "Usa min?sculas, n?meros y guiones bajos; debe comenzar por una letra.",
-      "optionsInvalid": "A?ade opciones ?nicas y no vac?as."
+      "optionsInvalid": "A?ade opciones ?nicas y no vac?as.",
+      "labelEs": "Etiqueta en espa?ol",
+      "labelEn": "Etiqueta en ingl?s",
+      "optionEs": "Opci?n {number} en espa?ol",
+      "optionEn": "Opci?n {number} en ingl?s"
     },
     "delete": {
       "title": "Eliminar campo",
       "body": "Se eliminar? ?{label}? del formulario de reserva."
+    },
+    "publication": {
+      "title": "Publicaci?n",
+      "published": "Publicado",
+      "draft": "Borrador",
+      "complete": "Los textos p?blicos est?n completos en espa?ol e ingl?s.",
+      "pending": "Hay {count} traducciones pendientes.",
+      "confirmTitle": "Publicar formulario",
+      "confirmComplete": "El formulario est? completo en espa?ol e ingl?s.",
+      "confirmPending": "Faltan {count} traducciones. Puedes publicar usando el idioma origen como fallback.",
+      "approveFallback": "Aprobar el fallback al idioma origen"
     }
   }
 }
