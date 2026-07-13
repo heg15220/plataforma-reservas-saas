@@ -4414,3 +4414,41 @@ Fuente de verdad del avance:
   - Evidencia 5.11/5.12: 14 tests backend focalizados, 7 frontend y ESLint focalizado.
   - Evidencia 6.1/6.2: 6 tests focalizados, Flyway V21 y PostgreSQL/PostGIS correctos.
   - No se ejecutaron suites completas, build, typecheck ni validaciones transversales.
+
+## Conversación 72 - CRUD y tipos de campos personalizados
+
+- Fecha: 2026-07-13.
+- Resumen de la conversación:
+  - Se implementó el CRUD privado de campos personalizados para el local autenticado.
+  - Se modelaron los ocho tipos de RF-013 con códigos estables en REST, Java y PostgreSQL.
+  - Se mantuvo la coherencia de optionsJson al entrar o salir del tipo selector.
+  - La validación se limitó expresamente a las pruebas del módulo forms.
+- Archivos modificados:
+  - Nuevos paquetes controller, converter, dto, persistence y service bajo
+    apps/api/src/main/java/com/reserly/platform/forms.
+  - ReservationFormFieldServiceTests.java y ReservationFormFieldControllerTests.java.
+  - Normalización de formato final en los Java existentes del mismo módulo forms.
+  - tasks.md, conversation-tracking.md y technical-implementation.md.
+- Requisitos impactados:
+  - RF-013 Formulario de reserva personalizado.
+  - RNF-001 Seguridad, RNF-002 Privacidad, RNF-003 Integridad,
+    RNF-008 Calidad y mantenibilidad, RNF-009 Internacionalización y localización.
+- Tareas impactadas:
+  - 6.3. Implementar CRUD de campos personalizados.
+  - 6.4. Implementar tipos: texto corto, texto largo, número, selector, checkbox, fecha,
+    teléfono y email.
+- Tareas completadas:
+  - 6.3 y 6.4.
+- Siguiente tarea pendiente recomendada:
+  - 6.5. Implementar obligatoriedad y orden.
+- Decisiones o aclaraciones relevantes:
+  - Los endpoints usan /api/venue/me/reservation-form/fields y derivan el local solo de
+    AuthenticatedAccount.
+  - Creación, edición y eliminación usan bloqueos de escritura y consultas acotadas a propiedad.
+  - La edición de 6.3 no permite aún alterar obligatoriedad, posición ni opciones.
+  - Los select nacen con opciones vacías; su configuración se difiere a 6.6.
+  - La eliminación es física y el histórico futuro se preserva mediante snapshots y SET NULL.
+  - Evidencia: 6 tests focalizados correctos, sin fallos, errores ni omitidos.
+  - Spotless se aplicó solo a forms; sus gates globales y Checkstyle global se omitieron porque
+    detectaron deuda previa fuera del alcance.
+  - No se ejecutaron suite completa, build, typecheck, migraciones ni validaciones transversales.

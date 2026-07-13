@@ -133,8 +133,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 - [x] 6.1. Crear migraciones de `reservation_form_fields` y `reservation_form_responses`.
 - [x] 6.2. Implementar campos base obligatorios del sistema.
-- [ ] 6.3. Implementar CRUD de campos personalizados.
-- [ ] 6.4. Implementar tipos: texto corto, texto largo, número, selector, checkbox, fecha, teléfono y email.
+- [x] 6.3. Implementar CRUD de campos personalizados.
+- [x] 6.4. Implementar tipos: texto corto, texto largo, número, selector, checkbox, fecha, teléfono y email.
 - [ ] 6.5. Implementar obligatoriedad y orden.
 - [ ] 6.6. Implementar opciones para campos selector.
 - [ ] 6.7. Implementar previsualización del formulario.

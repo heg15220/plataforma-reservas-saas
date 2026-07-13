@@ -20277,3 +20277,124 @@ tests de migración, el comando focalizado terminó con 6 tests correctos y Flyw
 
 Limitaciones: aún no se combinan campos base/custom ni se validan respuestas; corresponden a
 6.3-6.8. La siguiente tarea recomendada es 6.3.
+
+## Iteración 6.3 - CRUD de campos personalizados
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 6.3. Implementar CRUD de campos personalizados.
+- Fecha: 2026-07-13.
+- Objetivo: permitir que el propietario autenticado liste, cree, edite y elimine campos adicionales
+  de su formulario sin exponer ni aceptar venueId, y sin hacer editables los cinco campos base.
+- Requisitos y diseño relacionados: RF-013, RNF-001, RNF-002, RNF-003, RNF-008, RNF-009 y la
+  entidad ReservationFormFields definida en diseño y creada por V21.
+
+### Archivos, arquitectura y contratos
+
+Se creó el módulo Java com.reserly.platform.forms con estas piezas:
+
+- Persistencia: ReservationFormFieldEntity, ReservationFormFieldDao, ReservationFormFieldType y su
+  conversor JPA.
+- Aplicación: ReservationFormFieldService, implementación transaccional y excepciones
+  Invalid/NotFound.
+- Transporte: request, command, response, error response, conversor, interfaz de controlador,
+  implementación REST y advice de errores.
+- Pruebas: ReservationFormFieldServiceTests y ReservationFormFieldControllerTests.
+
+La API privada queda formada por:
+
+- GET /api/venue/me/reservation-form/fields: devuelve campos activos ordenados por position,id.
+- POST /api/venue/me/reservation-form/fields: crea al final del formulario y responde 201 con
+  Location.
+- PATCH /api/venue/me/reservation-form/fields/{fieldId}: modifica label, key y type.
+- DELETE /api/venue/me/reservation-form/fields/{fieldId}: elimina y responde 204.
+
+Todos los casos de uso reciben AuthenticatedAccount.userId(). El DAO cruza campo, local, propietario
+y estado no archivado; nunca se acepta identidad de local en el body. Las escrituras bloquean primero
+el local vigente con PESSIMISTIC_WRITE, y edición/eliminación bloquean también el campo propio. Esto
+serializa la asignación de posición y evita carreras entre operaciones del mismo formulario. Los
+campos ajenos e inexistentes comparten 404 RESERVATION_FORM_FIELD_NOT_FOUND, de modo que no se filtra
+existencia. Bean Validation, JSON ilegible, tipo o invariantes inválidas producen
+400 RESERVATION_FORM_FIELD_INVALID sin exponer constraints.
+
+### Persistencia, flujos e invariantes
+
+El mapeo usa la tabla V21 ReservationFormFields: UUID generado, FK venueId, label, key, type,
+isRequired, optionsJson, position, isActive y timestamps. labelI18n y optionsI18nJson permanecen sin
+edición hasta 6.11 y 6.6. La creación normaliza espacios, valida label no vacío de hasta 160
+caracteres y key snake_case de hasta 80. La unique (venueId,key) y el resto de checks de V21 se
+traducen mediante saveAndFlush a error estable.
+
+Los campos nuevos nacen activos, no obligatorios y en max(position)+1. La edición preserva position,
+isRequired, estado y fecha de creación para no adelantar 6.5. La eliminación es física: la FK de
+respuestas usa ON DELETE SET NULL y sus snapshots fieldKey/fieldLabel preservan el histórico; además
+permite reutilizar una key eliminada. Los campos base siguen fuera de esta tabla, por lo que no pueden
+borrarse a través de este CRUD.
+
+No se añadieron migraciones, jobs, integraciones externas, datos personales, logs ni auditoría. El
+endpoint ya queda protegido por la regla existente ROLE_VENUE_OWNER para /api/venue/me/**. Los
+contratos y métodos con invariantes tienen JavaDoc o comentarios técnicos no triviales.
+
+### Tests, evidencia, riesgos y pendientes
+
+ReservationFormFieldServiceTests cubre listado, alta, edición, eliminación, posición inicial,
+preservación de atributos de 6.5, aislamiento por propietario, payload inválido y transiciones de
+opciones. ReservationFormFieldControllerTests cubre 201/200/204, Location, proyección del tipo, uso
+exclusivo del propietario autenticado y códigos de error.
+
+Comando focalizado final:
+mvn "-Dtest=ReservationFormFieldServiceTests,ReservationFormFieldControllerTests"
+"-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test.
+
+Resultado: 6 tests, 0 fallos, 0 errores y 0 omitidos. Se omitieron Spotless y Checkstyle globales
+porque detectan deuda previa en módulos ajenos; se aplicó Spotless únicamente a forms. No se ejecutó
+suite completa, build, typecheck, migraciones ni validaciones transversales, por instrucción expresa
+del usuario.
+
+Riesgos pendientes: 6.5 debe exponer obligatoriedad y reordenación atómica; 6.6 debe validar y
+localizar opciones; 6.7 combinará base y custom en previsualización; 6.8 validará respuestas.
+
+## Iteración 6.4 - Ocho tipos de campo personalizado
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 6.4. Implementar tipos: texto corto, texto largo, número, selector, checkbox,
+  fecha, teléfono y email.
+- Fecha: 2026-07-13.
+- Objetivo: representar los ocho tipos de RF-013 con códigos estables compartidos por REST, dominio
+  y PostgreSQL, y mantener las restricciones de opciones de V21 en cada transición.
+
+### Contrato tipado y decisiones
+
+ReservationFormFieldType define exactamente:
+
+- short_text, long_text, number, select.
+- checkbox, date, phone, email.
+
+El request recibe el código público y el servicio lo resuelve con coincidencia exacta; valores
+desconocidos se rechazan antes de persistir. ReservationFormFieldTypeConverter evita almacenar los
+nombres Java del enum y conserva los códigos snake_case esperados por el check
+ckReservationFormFieldsType. La respuesta devuelve el mismo código, por lo que no existe una segunda
+nomenclatura entre API y base de datos.
+
+optionsJson se mapea como List<String> JSONB. Un select nuevo o una transición desde otro tipo recibe
+una lista vacía no nula, satisfaciendo ckReservationFormFieldsOptions hasta que 6.6 permita editar
+opciones. Un cambio desde select a cualquier otro tipo limpia optionsJson; si continúa siendo select,
+conserva las opciones existentes. La lógica evita estados intermedios inválidos y es compatible con
+la futura gestión de opciones.
+
+### Seguridad, validación, pruebas y limitaciones
+
+Los tipos no alteran permisos: solo el propietario del local puede crear o cambiar un campo. El
+backend valida tipo y key aunque el cliente haya superado Bean Validation, y PostgreSQL mantiene una
+última barrera. Los errores no incluyen valores internos ni nombres de constraints.
+
+La prueba parametrizada por iteración crea los ocho códigos, confirma su round-trip y verifica
+optionsJson vacío solo para select; también rechaza currency. Otra prueba cambia un selector con
+opciones a long_text y confirma su limpieza. Estas comprobaciones forman parte de los 6 tests
+focalizados descritos en 6.3.
+
+La tarea no implementa widgets frontend ni validación semántica de respuestas de teléfono, email,
+fecha o número: esa validación corresponde a 6.8 cuando exista el payload de respuestas. Tampoco
+permite configurar opciones de selector, responsabilidad de 6.6. La siguiente tarea recomendada es
+6.5. Implementar obligatoriedad y orden.
