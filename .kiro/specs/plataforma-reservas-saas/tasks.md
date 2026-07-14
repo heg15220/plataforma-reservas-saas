@@ -146,8 +146,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 9. Fase 7 - Reservas, holds y concurrencia
 
-- [ ] 7.1. Crear migración de `reservations`.
-- [ ] 7.2. Implementar endpoint `POST /api/public/reservations/holds`.
+- [x] 7.1. Crear migración de `reservations`.
+- [x] 7.2. Implementar endpoint `POST /api/public/reservations/holds`.
 - [ ] 7.3. Implementar hold temporal de 5 minutos.
 - [ ] 7.4. Implementar transacción con bloqueo de franja o control optimista.
 - [ ] 7.5. Implementar cálculo de capacidad con reservas confirmadas y holds vigentes.

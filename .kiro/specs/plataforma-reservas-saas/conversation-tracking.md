@@ -4578,3 +4578,61 @@ Fuente de verdad del avance:
   - La API devuelve 409 estable cuando la publicaci?n est? bloqueada.
   - Evidencia parcial: 3 tests del cliente API correctos; el import Surface detectado se corrigi?.
   - La ejecuci?n final fue interrumpida y no se hicieron m?s validaciones por orden del usuario.
+## Conversación 92 - Migración de reservas y endpoint público de holds
+
+- Fecha: 2026-07-14.
+- Resumen de la conversación:
+  - Se implementaron conjuntamente las tareas 7.1 y 7.2 en la rama
+    `phase/7-reservations-holds-concurrency`.
+  - Se creó la migración Flyway V23 con el agregado `Reservations`, sus relaciones, restricciones,
+    índices y la FK física desde `ReservationFormResponses`.
+  - Se implementó `POST /api/public/reservations/holds` con contrato DTO, separación
+    controlador/interfaz, servicio/interfaz, DAO JPA y consulta pública específica de franja.
+  - El hold inicial guarda snapshots de franja, asignación de recurso y únicamente el hash SHA-256
+    del token opaco; no recopila todavía datos personales.
+  - La validación se limitó a los módulos de reservas y migraciones directamente afectados.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V23__create_reservations.sql`.
+  - Paquetes `controller`, `dto`, `persistence` y `service` bajo
+    `apps/api/src/main/java/com/reserly/platform/reservations`.
+  - Tests focalizados bajo `apps/api/src/test/java/com/reserly/platform/reservations`.
+  - `apps/api/src/test/java/com/reserly/platform/forms/ReservationFormMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-014 Bloqueo temporal de reserva`.
+  - `RF-015 Confirmación de reserva`, como preparación del agregado y token de proceso.
+  - `RNF-001 Seguridad`, `RNF-002 Privacidad`, `RNF-003 Concurrencia y consistencia`.
+  - `RNF-006 Disponibilidad operativa`, `RNF-008 Observabilidad` y
+    `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RB-003 Capacidad de franja`, `RB-004 Bloqueo temporal`, `RB-005 Prioridad de reserva` y
+    `RB-010 Disponibilidad con equipo o recursos`.
+- Tareas impactadas:
+  - `7.1. Crear migración de reservations`.
+  - `7.2. Implementar endpoint POST /api/public/reservations/holds`.
+  - Prepara `7.3`, `7.4` y `7.5`, sin cerrar sus garantías.
+- Tareas completadas:
+  - `7.1. Crear migración de reservations`.
+  - `7.2. Implementar endpoint POST /api/public/reservations/holds`.
+- Siguiente tarea pendiente recomendada:
+  - `7.3. Implementar hold temporal de 5 minutos`.
+- Decisiones o aclaraciones relevantes:
+  - `Reservations` usa nombre físico UpperCamelCase y columnas lowerCamelCase.
+  - La migración prepara todos los estados y campos futuros de confirmación, gestión, cancelación y
+    asistencia, aunque la entidad JPA inicial solo mapea lo necesario para crear el hold.
+  - El endpoint devuelve HTTP 201, `reservationId`, `holdToken`, `expiresAt` y
+    `remainingSeconds`; el token original solo se entrega una vez.
+  - Se reutiliza `OneTimeTokenService` para CSPRNG de 256 bits y SHA-256.
+  - El endpoint exige local publicado, franja disponible y futura, coincidencia de servicio,
+    capacidad bruta suficiente y asignación válida de recurso.
+  - El bloqueo pesimista de franja, el descuento de reservas/holds vigentes y la prioridad
+    transaccional quedan expresamente para 7.4 y 7.5.
+  - La vigencia inicial se materializa con una expiración de cinco minutos para respetar el contrato,
+    pero 7.3 permanece pendiente hasta aplicar esa política en todos los flujos que consumen holds.
+  - Evidencia final:
+    `mvn -f apps/api/pom.xml "-Dtest=ReservationHoldServiceTests,ReservationHoldControllerTests,ReservationMigrationIntegrationTests,ReservationFormMigrationIntegrationTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`:
+    8 tests correctos, 0 fallos, 0 errores y 0 omitidos.
+  - Spotless focalizado sobre reservations y el test de formularios afectado: correcto.
+  - No se ejecutaron suite completa, frontend, build global, tests de concurrencia ni validaciones
+    transversales.

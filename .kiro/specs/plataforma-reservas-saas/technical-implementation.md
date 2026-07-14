@@ -20748,3 +20748,147 @@ build, typecheck ni validaciones transversales.
 
 Riesgo residual: la compilaci?n final y los tests backend/frontend corregidos quedan pendientes de CI
 por la interrupci?n solicitada. La siguiente tarea recomendada es 7.1. Crear migraci?n de reservations.
+## Iteración 7.1 - Migración de reservations
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.1. Crear migración de `reservations`.
+- Fecha: 2026-07-14.
+- Objetivo técnico: introducir el agregado transaccional que representa holds y reservas durante
+  todo su ciclo de vida, preservando snapshots de la franja y preparando confirmación, cancelación,
+  asistencia, enlaces seguros y respuestas históricas.
+- Requisitos relacionados: RF-014, RF-015, RNF-001, RNF-002, RNF-003, RNF-006, RNF-011,
+  RB-003, RB-004 y RB-005.
+- Diseño relacionado: secciones 3.5, 4 `reservations`, 5.1-5.5 y 8.1 de `design.md`.
+
+### Archivos y modelo de datos
+
+Se creó `V23__create_reservations.sql`. El nombre conceptual histórico `reservations` se traduce
+a la tabla física `Reservations`; sus columnas usan lowerCamelCase. La tabla contiene:
+
+- Identidad y propiedad: `id`, `venueId`, `timeSlotId`, `serviceId` y
+  `employeeResourceId`.
+- Identidad futura del cliente: `customerName`, `customerEmail` y
+  `customerEmailNormalized`, opcionales durante el hold.
+- Snapshot operativo: `partySize`, `date`, `startsAt` y `endsAt`.
+- Estado y vigencia: `status`, `holdExpiresAt` y `holdTokenHash`.
+- Gestión futura: `secureTokenHash` y `secureTokenExpiresAt`.
+- Cancelación y asistencia: `cancelledAt`, `cancelledBy`, `cancellationReason` y
+  `attendanceMarkedAt`.
+- Auditoría temporal: `createdAt` y `updatedAt`.
+
+Las FK hacia `Venues`, `TimeSlots`, `Services` y `EmployeeResources` usan `ON DELETE
+RESTRICT` para impedir eliminar dependencias con histórico. V23 añade además
+`fkReservationFormResponsesReservation` con `ON DELETE CASCADE`: las respuestas son parte del
+agregado y no deben sobrevivir a una eliminación administrativa futura de la reserva. La FK
+`fieldId` existente conserva `ON DELETE SET NULL`, por lo que el snapshot de respuesta sigue
+siendo legible si cambia el formulario.
+
+### Restricciones, índices y seguridad
+
+Las restricciones garantizan partySize positivo, rango horario válido, catálogo cerrado de estados,
+timestamps coherentes y consistencia entre estado hold, expiración y token. Los hashes de proceso y
+gestión, cuando existen, deben ser SHA-256 hexadecimal en minúsculas. El token seguro y su expiración
+forman una pareja atómica. La identidad del cliente debe estar completamente ausente o contener los
+tres valores no vacíos. La cancelación exige actor, fecha y motivo consistentes.
+
+Índices implementados:
+
+- `ixReservationsVenueDate` para panel y calendario por local.
+- `ixReservationsCustomerEmailNormalized` parcial para futuros paneles, incidencias y reseñas.
+- `ixReservationsStatusHoldExpiresAt` parcial para expiración de holds.
+- `ixReservationsTimeSlotStatus` para capacidad por franja y estado.
+- `uqReservationsHoldTokenHash` y `uqReservationsSecureTokenHash`, únicos y parciales.
+
+No se almacenan secretos en claro ni datos personales durante la creación del hold. Los snapshots
+evitan que editar una franja reescriba el significado histórico de una reserva.
+
+### Tests, evidencia, riesgos y límites
+
+Se creó `ReservationMigrationIntegrationTests` y se actualizó
+`ReservationFormMigrationIntegrationTests`. Ambos arrancan PostgreSQL/PostGIS efímero, aplican
+Flyway hasta V23 y verifican columnas, índices, constraints y la nueva FK de respuestas.
+
+Evidencia conjunta final: 8 tests focalizados correctos, incluidos 4 tests de migración, con 0
+fallos, 0 errores y 0 omitidos. Hibernate validó el esquema V23. No se ejecutó la suite global.
+
+La entidad JPA inicial mapea únicamente los campos necesarios para holds; las columnas futuras se
+mapearán junto a sus casos de uso para evitar dominio inerte. V23 no implementa limpieza, retención
+ni jobs. El cálculo concurrente y la protección de última plaza quedan para 7.4 y 7.5.
+
+## Iteración 7.2 - Endpoint POST /api/public/reservations/holds
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.2. Implementar endpoint `POST /api/public/reservations/holds`.
+- Fecha: 2026-07-14.
+- Objetivo técnico: ofrecer un caso de uso público y transaccional que valide una selección mínima,
+  asigne un recurso compatible cuando corresponda, cree la reserva inicial sin datos personales y
+  entregue un secreto de proceso de una sola exposición.
+- Requisitos relacionados: RF-014, RNF-001, RNF-002, RNF-003, RNF-006, RNF-011, RB-003,
+  RB-004, RB-005 y RB-010.
+- Diseño relacionado: flujo 5.2, contrato 8.1 y evento futuro `ReservationHoldCreated`.
+
+### Arquitectura, contratos y flujo
+
+El módulo `reservations` incorpora capas separadas:
+
+- `ReservationHoldController` define el contrato REST y
+  `ReservationHoldControllerImpl` adapta HTTP.
+- `ReservationHoldService` define el caso de uso y `ReservationHoldServiceImpl` contiene la
+  transacción y las invariantes.
+- `ReservationDao` persiste `ReservationEntity` mediante Spring Data JPA.
+- `ReservationTimeSlotDao` declara con `@Query` la consulta mínima que devuelve una franja solo
+  cuando coincide `venueId` y el local permanece publicado.
+- DTOs separados modelan request, respuesta y error público.
+
+Request: `venueId`, `timeSlotId`, `serviceId` opcional, `employeeResourceId` opcional,
+`assignmentPreference` opcional (`any_available` o `specific`) y `partySize` positivo.
+Respuesta HTTP 201: `reservationId`, `holdToken`, `expiresAt` y `remainingSeconds`. La
+cabecera `Location` apunta a `/api/public/reservations/{reservationId}`.
+
+El servicio abre una transacción, carga la franja pública, rechaza franjas no disponibles o pasadas,
+valida que el servicio solicitado coincida con la franja y que partySize no exceda su capacidad
+bruta. Reutiliza `EmployeeResourceAssignmentService`: una franja sin recurso no admite selección;
+una franja con recurso respeta preferencia específica o primera disponibilidad. Después genera un
+token CSPRNG Base64 URL-safe de 256 bits mediante `OneTimeTokenService`, persiste únicamente su
+SHA-256 y devuelve el secreto original una sola vez.
+
+La reserva guarda local, franja, servicio, recurso asignado, partySize, snapshot de fecha/horas,
+estado `hold`, expiración inicial, hash y timestamps UTC. No se aceptan desde el cliente estado,
+hash, timestamps, identidad de cliente ni campos de cancelación.
+
+### Validaciones, permisos, privacidad, errores y observabilidad
+
+El namespace `/api/public/**` ya está permitido anónimamente por la política central. Bean
+Validation rechaza UUID obligatorios ausentes, partySize menor que uno y preferencias desconocidas.
+Los rechazos estructurales y de dominio se traducen a HTTP 400 con
+`RESERVATION_HOLD_INVALID`; no distinguen entre local inexistente, franja ajena, servicio
+incompatible o recurso no elegible, evitando enumeración.
+
+No se registran payloads, tokens, UUID de recurso ni datos personales. No se añadió rate limiting
+porque corresponde al endurecimiento 16.6. El evento `ReservationHoldCreated`, logs estructurados
+y métricas se difieren a observabilidad; esta iteración no introduce integraciones externas.
+
+### Tests, evidencia, riesgos y tareas derivadas
+
+`ReservationHoldServiceTests` cubre creación, snapshot, asignación, hash, expiración devuelta,
+capacidad bruta y servicio incoherente. `ReservationHoldControllerTests` cubre HTTP 201,
+`Location`, body y delegación. Los tests de migración cubren persistencia física y arranque JPA.
+
+Comando final focalizado:
+`mvn -f apps/api/pom.xml "-Dtest=ReservationHoldServiceTests,ReservationHoldControllerTests,ReservationMigrationIntegrationTests,ReservationFormMigrationIntegrationTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`.
+
+Resultado: 8 tests, 0 fallos, 0 errores y 0 omitidos. Spotless focalizado sobre el módulo y el test
+afectado también terminó correctamente. No se ejecutaron suite completa, frontend, build global,
+tests visuales, tests de concurrencia ni validaciones transversales.
+
+Limitaciones deliberadas:
+
+- Todavía no existe bloqueo pesimista de `TimeSlots`; corresponde a 7.4.
+- Todavía no se descuentan reservas confirmadas ni holds vigentes; corresponde a 7.5.
+- La expiración inicial a cinco minutos permite cumplir el contrato de respuesta, pero 7.3 debe
+  centralizar y aplicar la política de vigencia al consultar, confirmar y expirar holds.
+- La comparación de franja futura usa el reloj UTC actual porque el modelo de local aún no persiste
+  una zona horaria propia.
+- No hay idempotency key ni rate limiting en esta iteración.

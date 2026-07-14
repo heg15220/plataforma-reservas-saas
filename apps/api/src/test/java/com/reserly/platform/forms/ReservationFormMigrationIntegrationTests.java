@@ -13,8 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 /**
  * Verifica exclusivamente el contrato fisico de formularios sobre PostgreSQL/PostGIS efimero.
  *
- * <p>No presupone la tabla Reservations: comprueba que la referencia logica quede preparada y que
- * la respuesta preserve su snapshot cuando se elimine una configuracion de campo.
+ * <p>V23 conserva el snapshot y convierte reservationId en una referencia física protegida.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -24,8 +23,8 @@ class ReservationFormMigrationIntegrationTests {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
-  void createsLocalizedFormContractAtVersionTwentyTwo() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("22");
+  void createsLocalizedFormContractAtVersionTwentyThree() {
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("23");
     assertThat(columns("ReservationFormFields"))
         .containsExactly(
             "id",
@@ -71,6 +70,7 @@ class ReservationFormMigrationIntegrationTests {
     assertThat(constraints("ReservationFormResponses"))
         .contains(
             "fkReservationFormResponsesField",
+            "fkReservationFormResponsesReservation",
             "uqReservationFormResponsesReservationKey",
             "ckReservationFormResponsesFieldKey",
             "ckReservationFormResponsesFieldLabel");
@@ -93,7 +93,7 @@ class ReservationFormMigrationIntegrationTests {
               AND key_column."column_name" = 'reservationId'
             """,
             Integer.class);
-    assertThat(reservationForeignKeys).isZero();
+    assertThat(reservationForeignKeys).isOne();
   }
 
   private List<String> columns(String table) {
