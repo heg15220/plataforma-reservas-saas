@@ -11,7 +11,6 @@ import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.reservations.persistence.ReservationTimeSlotDao;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -27,21 +26,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReservationHoldServiceImpl implements ReservationHoldService {
 
-  private static final Duration INITIAL_HOLD_DURATION = Duration.ofMinutes(5);
-
   private final ReservationTimeSlotDao timeSlotDao;
   private final ReservationDao reservationDao;
   private final EmployeeResourceAssignmentService assignmentService;
   private final OneTimeTokenService tokenService;
   private final Clock clock;
+  private final ReservationHoldExpirationPolicy expirationPolicy;
 
   @Autowired
   public ReservationHoldServiceImpl(
       ReservationTimeSlotDao timeSlotDao,
       ReservationDao reservationDao,
       EmployeeResourceAssignmentService assignmentService,
-      OneTimeTokenService tokenService) {
-    this(timeSlotDao, reservationDao, assignmentService, tokenService, Clock.systemUTC());
+      OneTimeTokenService tokenService,
+      ReservationHoldExpirationPolicy expirationPolicy) {
+    this(
+        timeSlotDao,
+        reservationDao,
+        assignmentService,
+        tokenService,
+        expirationPolicy,
+        Clock.systemUTC());
   }
 
   ReservationHoldServiceImpl(
@@ -49,17 +54,19 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
       ReservationDao reservationDao,
       EmployeeResourceAssignmentService assignmentService,
       OneTimeTokenService tokenService,
+      ReservationHoldExpirationPolicy expirationPolicy,
       Clock clock) {
     this.timeSlotDao = timeSlotDao;
     this.reservationDao = reservationDao;
     this.assignmentService = assignmentService;
     this.tokenService = tokenService;
+    this.expirationPolicy = expirationPolicy;
     this.clock = clock;
   }
 
   /**
-   * Mantiene una única transacción y persiste un secreto hasheado. El bloqueo pesimista y el
-   * descuento de otros holds corresponden expresamente a 7.4 y 7.5.
+   * Bloquea la franja dentro de la transacción y persiste un secreto hasheado. El descuento de
+   * reservas y otros holds corresponde expresamente a 7.5.
    */
   @Override
   @Transactional
@@ -69,7 +76,7 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
     }
     TimeSlotEntity slot =
         timeSlotDao
-            .findPublished(request.venueId(), request.timeSlotId())
+            .findPublishedForUpdate(request.venueId(), request.timeSlotId())
             .orElseThrow(ReservationHoldInvalidException::new);
     validateSlot(request, slot);
 
@@ -87,7 +94,7 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
     }
 
     Instant now = clock.instant();
-    Instant expiresAt = now.plus(INITIAL_HOLD_DURATION);
+    Instant expiresAt = expirationPolicy.expiresAt(now);
     String rawToken = tokenService.generate();
     ReservationEntity reservation = new ReservationEntity();
     reservation.setVenue(slot.getVenue());
@@ -106,7 +113,10 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
     ReservationEntity saved = reservationDao.save(reservation);
 
     return new ReservationHoldResponse(
-        saved.getId(), rawToken, expiresAt, INITIAL_HOLD_DURATION.toSeconds());
+        saved.getId(),
+        rawToken,
+        expiresAt,
+        expirationPolicy.remainingSeconds(expiresAt, now));
   }
 
   private void validateSlot(ReservationHoldRequest request, TimeSlotEntity slot) {

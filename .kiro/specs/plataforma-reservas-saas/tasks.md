@@ -148,8 +148,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 - [x] 7.1. Crear migración de `reservations`.
 - [x] 7.2. Implementar endpoint `POST /api/public/reservations/holds`.
-- [ ] 7.3. Implementar hold temporal de 5 minutos.
-- [ ] 7.4. Implementar transacción con bloqueo de franja o control optimista.
+- [x] 7.3. Implementar hold temporal de 5 minutos.
+- [x] 7.4. Implementar transacción con bloqueo de franja o control optimista.
 - [ ] 7.5. Implementar cálculo de capacidad con reservas confirmadas y holds vigentes.
 - [ ] 7.6. Implementar endpoint `POST /api/public/reservations/{id}/confirm`.
 - [ ] 7.7. Validar hold vigente antes de confirmar.

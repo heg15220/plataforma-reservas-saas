@@ -30,7 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** Cubre únicamente la creación inicial de holds, sin adelantar concurrencia ni capacidad agregada. */
+/** Cubre la creación inicial de holds sin adelantar la capacidad agregada de la tarea 7.5. */
 @ExtendWith(MockitoExtension.class)
 class ReservationHoldServiceTests {
 
@@ -53,6 +53,7 @@ class ReservationHoldServiceTests {
             reservationDao,
             assignmentService,
             tokenService,
+            new ReservationHoldExpirationPolicyImpl(),
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -66,8 +67,13 @@ class ReservationHoldServiceTests {
     ReservationHoldRequest request =
         new ReservationHoldRequest(
             venueId, slotId, serviceId, null, "any_available", 2);
-    when(timeSlotDao.findPublished(venueId, slotId)).thenReturn(Optional.of(slot));
-    when(assignmentService.assign(venueId, 2, slot, com.reserly.platform.availability.service.ResourceAssignmentPreference.ANY_AVAILABLE, null))
+    when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(assignmentService.assign(
+            venueId,
+            2,
+            slot,
+            com.reserly.platform.availability.service.ResourceAssignmentPreference.ANY_AVAILABLE,
+            null))
         .thenReturn(Optional.of(resourceId));
     when(tokenService.generate()).thenReturn(TOKEN);
     when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
@@ -99,7 +105,7 @@ class ReservationHoldServiceTests {
     UUID venueId = UUID.randomUUID();
     UUID slotId = UUID.randomUUID();
     TimeSlotEntity slot = slot(venueId, slotId, null, 1);
-    when(timeSlotDao.findPublished(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
 
     assertThatThrownBy(
             () ->
@@ -114,7 +120,7 @@ class ReservationHoldServiceTests {
     UUID venueId = UUID.randomUUID();
     UUID slotId = UUID.randomUUID();
     TimeSlotEntity slot = slot(venueId, slotId, UUID.randomUUID(), 3);
-    when(timeSlotDao.findPublished(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
 
     assertThatThrownBy(
             () ->

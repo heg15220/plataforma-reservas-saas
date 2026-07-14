@@ -20892,3 +20892,157 @@ Limitaciones deliberadas:
 - La comparación de franja futura usa el reloj UTC actual porque el modelo de local aún no persiste
   una zona horaria propia.
 - No hay idempotency key ni rate limiting en esta iteración.
+
+## Iteración 7.3 - Hold temporal de cinco minutos
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.3. Implementar hold temporal de 5 minutos.
+- Fecha: 2026-07-14.
+- Objetivo técnico: convertir la expiración inicial ya persistida por el endpoint en una política
+  explícita, única y reutilizable que defina cuándo un hold está vigente y cómo se comunica su
+  tiempo restante.
+- Requisitos relacionados: RF-014, RB-004 y RNF-003.
+- Diseño relacionado: secciones 5.2, 5.4 y 8.1; creación con `expiresAt = now + 5 minutos` y
+  exclusión de holds expirados en los consumidores posteriores.
+
+### Archivos, arquitectura y decisiones
+
+Se crearon `ReservationHoldExpirationPolicy` y `ReservationHoldExpirationPolicyImpl` bajo el
+servicio de reservas. La interfaz expone tres operaciones documentadas: calcular la expiración
+desde el instante de creación, decidir si una expiración sigue vigente y obtener los segundos
+restantes. La implementación Spring mantiene una única constante privada
+`Duration.ofMinutes(5)` y rechaza argumentos nulos para que los errores de programación no se
+conviertan en decisiones de disponibilidad silenciosas.
+
+`ReservationHoldServiceImpl` recibe la política por inyección de dependencias. El reloj continúa
+inyectable para pruebas deterministas; el constructor público usa `Clock.systemUTC()`. En la
+creación, un único `now` sirve para timestamps, cálculo de expiración y segundos restantes. Esto
+evita divergencias causadas por varias lecturas del reloj cerca del límite temporal.
+
+La semántica de vigencia es de intervalo semiabierto: un hold está activo si y solo si
+`now.isBefore(expiresAt)`. Por tanto, el instante exacto `expiresAt` ya es reutilizable y satisface
+RB-004 sin un segundo adicional implícito. `remainingSeconds` usa `Duration.between` y acota el
+resultado inferior a cero, de modo que una respuesta o métrica nunca publica tiempo negativo.
+
+### Modelo de datos, contratos y flujo de ejecución
+
+No se añadieron migraciones, columnas, índices ni restricciones. La columna `Reservations.expiresAt`
+creada en V23 conserva su contrato. Tampoco cambió el endpoint
+`POST /api/public/reservations/holds`: sigue devolviendo `expiresAt` y `remainingSeconds`; cambia la
+fuente de la regla para que ambos valores procedan de la política canónica.
+
+Flujo relevante:
+
+1. El servicio captura `now` mediante el reloj UTC.
+2. Tras validar la franja y la selección, la política calcula exactamente `now + 5 minutos`.
+3. La entidad persiste ese `expiresAt` junto al estado `hold`.
+4. La respuesta calcula los segundos restantes contra el mismo `now`, por lo que una creación
+   normal devuelve 300 segundos.
+5. Los futuros cálculos de capacidad, confirmación y expiración podrán consumir `isActive` sin
+   duplicar comparaciones de límite.
+
+### Validación, seguridad, errores y observabilidad
+
+La política no amplía permisos ni recopila datos. Opera solo con instantes y no registra tokens,
+identificadores ni datos personales. Mantenerla independiente de HTTP y persistencia facilita que
+jobs y servicios internos apliquen la misma invariante. Los nulos generan `NullPointerException`
+con nombre de parámetro mediante `Objects.requireNonNull`; no constituyen un error público porque
+los instantes los proporciona el servidor.
+
+No se añadieron logs ni métricas en esta tarea. La duración centralizada ofrece un punto estable
+para instrumentación futura sin dispersar valores mágicos. El job que materializa expiraciones
+continúa reservado para 7.12; la vigencia lógica ya es correcta aunque el estado almacenado siga
+siendo `hold` hasta que ese job actúe.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationHoldExpirationPolicyTests` verifica la suma exacta de cinco minutos, el límite
+exclusivo antes/en/después de `expiresAt`, los 300 segundos iniciales y la saturación a cero tras la
+expiración. `ReservationHoldServiceTests` usa la implementación real con reloj fijo y conserva la
+comprobación de expiración y respuesta.
+
+Comando focalizado compartido con 7.4:
+`mvn -f apps/api/pom.xml compiler:compile compiler:testCompile surefire:test
+"-Dtest=ReservationHoldExpirationPolicyTests,ReservationTimeSlotDaoLockTests,ReservationHoldServiceTests"`.
+
+Resultado conjunto: 8 tests, 0 fallos, 0 errores y 0 omitidos; compilación de 481 fuentes main y
+104 fuentes de test correcta. Spotless se aplicó solo a rutas Java del módulo `reservations`.
+
+Riesgos y limitaciones deliberadas:
+
+- 7.5 debe usar esta política para excluir holds vencidos del cálculo de capacidad.
+- 7.12 debe actualizar de forma asíncrona el estado persistido de holds expirados.
+- 7.6 y 7.7 deberán rechazar confirmaciones cuyo límite ya haya vencido.
+- La duración todavía es fija por regla de negocio; no existe configuración por tenant.
+
+## Iteración 7.4 - Transacción con bloqueo pesimista de franja
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.4. Implementar transacción con bloqueo de franja o control optimista.
+- Fecha: 2026-07-14.
+- Objetivo técnico: serializar las creaciones de holds que compiten por una misma franja para que
+  la comprobación de disponibilidad y la escritura posterior formen una unidad indivisible.
+- Requisitos relacionados: RF-014, RNF-003 y RB-005.
+- Diseño relacionado: sección 5.2, que prescribe transacción y `SELECT FOR UPDATE`, y sección 5.5,
+  que admite bloqueo pesimista por franja como estrategia de consistencia.
+
+### Archivos, arquitectura y control de concurrencia
+
+`ReservationTimeSlotDao` renombra su operación pública a `findPublishedForUpdate` y la anota con
+`@Lock(LockModeType.PESSIMISTIC_WRITE)`. Conserva la consulta JPQL que restringe por `timeSlotId`,
+`venueId` y local publicado, pero Hibernate solicita ahora un bloqueo de escritura sobre la fila
+`TimeSlots` recuperada.
+
+`ReservationHoldServiceImpl.create` ya delimitaba el caso de uso completo con `@Transactional` y
+ahora invoca la operación bloqueante como primera lectura de dominio. La conexión mantiene el lock
+desde esa consulta hasta commit o rollback. Dentro de ese intervalo se validan estado y horario de
+franja, servicio, capacidad bruta y recurso; después se genera el secreto y se inserta la reserva.
+Dos transacciones contra franjas distintas pueden progresar en paralelo, mientras que dos
+transacciones contra la misma franja se ordenan por adquisición del lock.
+
+Se eligió bloqueo pesimista frente a una columna de versión porque el flujo necesita releer y
+sumar filas de reservas antes de decidir capacidad. La fila estable de `TimeSlots` funciona como
+punto de exclusión común sin reintentos optimistas ni cambios de esquema. El orden de adquisición
+es único —primero la franja y después las reservas dependientes—, reduciendo el riesgo de ciclos.
+
+### Datos, contratos, permisos y flujo de errores
+
+No hubo migraciones ni cambios en el contrato REST. El bloqueo es una propiedad de ejecución, no
+un dato persistido. La consulta sigue ocultando locales inexistentes, ajenos o no publicados tras
+el mismo error público `RESERVATION_HOLD_INVALID`; no introduce un canal nuevo de enumeración.
+
+Si una validación falla o la persistencia lanza una excepción, Spring marca rollback y la base de
+datos libera el lock sin conservar una reserva parcial. No se captura una excepción de timeout de
+lock en esta iteración: seguirá la estrategia global de error y podrá especializarse cuando se
+definan timeouts operativos. No se registran payloads ni tokens durante la espera.
+
+La protección completa de última plaza se compone de dos piezas: esta tarea aporta la exclusión
+mutua y 7.5 añadirá, dentro del mismo lock, la suma de reservas confirmadas y holds todavía vigentes.
+Por esa separación, el servicio mantiene temporalmente la comprobación de capacidad bruta y no
+afirma todavía que descuente ocupación agregada.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationTimeSlotDaoLockTests` inspecciona el contrato del repositorio, exige
+`LockModeType.PESSIMISTIC_WRITE` sobre `findPublishedForUpdate` y comprueba que `create` conserva
+`@Transactional`. `ReservationHoldServiceTests`
+verifica que los flujos de éxito y rechazo consumen esa operación renombrada dentro del servicio.
+La prueba real con dos transacciones y la última plaza se reserva deliberadamente para 7.15, una
+vez implementado el cálculo de 7.5; anticiparla ahora validaría una garantía todavía incompleta.
+
+Comando y resultado focalizados: el mismo comando documentado en 7.3 ejecutó únicamente tres
+clases, con 8 tests correctos, 0 fallos, 0 errores y 0 omitidos. `git diff --check` se usa como
+comprobación final de whitespace. No se ejecutaron suite completa, frontend, Testcontainers,
+validaciones visuales ni módulos ajenos.
+
+Riesgos y limitaciones deliberadas:
+
+- 7.5 debe efectuar el cálculo agregado después de adquirir este lock y antes de insertar el hold.
+- La política de timeout y traducción específica de errores de adquisición queda pendiente de las
+  métricas de carga y requisitos operativos.
+- PostgreSQL es la referencia funcional del lock; el test unitario valida el metadato JPA y 7.15
+  aportará evidencia concurrente sobre la base real.
+- El lock serializa por franja y puede aumentar la latencia bajo alta contención; evita, a cambio,
+  sobreventa y bucles de reintento optimista.

@@ -4636,3 +4636,54 @@ Fuente de verdad del avance:
   - Spotless focalizado sobre reservations y el test de formularios afectado: correcto.
   - No se ejecutaron suite completa, frontend, build global, tests de concurrencia ni validaciones
     transversales.
+
+## Conversación 93 - Vigencia de holds y bloqueo pesimista de franjas
+
+- Fecha: 2026-07-14.
+- Resumen de la conversación:
+  - Se implementaron conjuntamente las tareas 7.3 y 7.4 en la rama
+    `phase/7-reservations-holds-concurrency`.
+  - Se centralizó la vigencia de los holds en una política de dominio con duración exacta de cinco
+    minutos, límite superior exclusivo y segundos restantes nunca negativos.
+  - La creación del hold consume esa política tanto para persistir `expiresAt` como para responder
+    `remainingSeconds`, evitando duplicar reglas temporales.
+  - La lectura de la franja pasó a adquirir `PESSIMISTIC_WRITE`; el servicio la invoca dentro de la
+    misma transacción que valida, asigna recurso y persiste la reserva.
+  - La verificación se limitó al módulo `reservations` y a tres clases de tests relacionadas.
+- Archivos modificados:
+  - `ReservationHoldExpirationPolicy.java` y `ReservationHoldExpirationPolicyImpl.java`.
+  - `ReservationHoldServiceImpl.java`.
+  - `ReservationTimeSlotDao.java`.
+  - `ReservationHoldExpirationPolicyTests.java`.
+  - `ReservationTimeSlotDaoLockTests.java`.
+  - `ReservationHoldServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-014 Bloqueo temporal de reserva`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RB-004 Bloqueo temporal` y `RB-005 Prioridad de reserva`.
+- Tareas impactadas:
+  - `7.3. Implementar hold temporal de 5 minutos`.
+  - `7.4. Implementar transacción con bloqueo de franja o control optimista`.
+  - Se prepara `7.5`, sin implementar aún el cálculo agregado de capacidad.
+- Tareas completadas:
+  - `7.3. Implementar hold temporal de 5 minutos`.
+  - `7.4. Implementar transacción con bloqueo de franja o control optimista`.
+- Siguiente tarea pendiente recomendada:
+  - `7.5. Implementar cálculo de capacidad con reservas confirmadas y holds vigentes`.
+- Decisiones o aclaraciones relevantes:
+  - Un hold está vigente solo cuando `now < expiresAt`; en el instante exacto de expiración deja de
+    estarlo.
+  - La duración canónica es `Duration.ofMinutes(5)` y el cálculo usa `Instant` UTC inyectable.
+  - Se eligió bloqueo pesimista de escritura sobre `TimeSlots`, conforme al flujo 5.2 del diseño.
+  - El bloqueo se mantiene hasta el commit porque la consulta se ejecuta desde un método
+    `@Transactional`; no se abre una transacción independiente en el DAO.
+  - La exclusión serializa competidores por franja, pero el descuento de reservas confirmadas y
+    holds vigentes corresponde a 7.5 y la prueba concurrente de última plaza a 7.15.
+  - Evidencia final: compilación de main y tests más ejecución exclusiva de
+    `ReservationHoldExpirationPolicyTests`, `ReservationTimeSlotDaoLockTests` y
+    `ReservationHoldServiceTests`: 8 tests correctos, 0 fallos, 0 errores y 0 omitidos.
+  - Spotless se aplicó exclusivamente al módulo `reservations`; no se ejecutaron la suite completa,
+    frontend, integraciones, tests de concurrencia ni validaciones transversales.
