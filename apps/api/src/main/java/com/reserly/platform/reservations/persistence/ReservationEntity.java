@@ -26,6 +26,9 @@ import java.util.UUID;
 @Table(name = "\"Reservations\"")
 public class ReservationEntity {
 
+  private String customerName;
+  private String customerEmail;
+  private String customerEmailNormalized;
   private UUID id;
   private VenueEntity venue;
   private TimeSlotEntity timeSlot;
@@ -90,6 +93,36 @@ public class ReservationEntity {
 
   public void setEmployeeResourceId(UUID employeeResourceId) {
     this.employeeResourceId = employeeResourceId;
+  }
+
+  /** Nombre confirmado del cliente; permanece nulo durante el hold anónimo. */
+  @Column(name = "\"customerName\"", length = 160)
+  public String getCustomerName() {
+    return customerName;
+  }
+
+  public void setCustomerName(String customerName) {
+    this.customerName = customerName;
+  }
+
+  /** Email mostrado al cliente y al local una vez confirmada la reserva. */
+  @Column(name = "\"customerEmail\"", length = 320)
+  public String getCustomerEmail() {
+    return customerEmail;
+  }
+
+  public void setCustomerEmail(String customerEmail) {
+    this.customerEmail = customerEmail;
+  }
+
+  /** Email canónico en minúsculas para penalizaciones, búsqueda y unicidad futura. */
+  @Column(name = "\"customerEmailNormalized\"", length = 320)
+  public String getCustomerEmailNormalized() {
+    return customerEmailNormalized;
+  }
+
+  public void setCustomerEmailNormalized(String customerEmailNormalized) {
+    this.customerEmailNormalized = customerEmailNormalized;
   }
 
   @Column(name = "\"partySize\"", nullable = false)

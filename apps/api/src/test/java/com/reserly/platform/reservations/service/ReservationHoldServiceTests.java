@@ -30,7 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** Cubre la creación inicial de holds sin adelantar la capacidad agregada de la tarea 7.5. */
+/** Cubre creación de holds y rechazo cuando la ocupación agregada agotaría la franja. */
 @ExtendWith(MockitoExtension.class)
 class ReservationHoldServiceTests {
 
@@ -68,6 +68,7 @@ class ReservationHoldServiceTests {
         new ReservationHoldRequest(
             venueId, slotId, serviceId, null, "any_available", 2);
     when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(reservationDao.sumOccupiedCapacity(slotId, NOW)).thenReturn(1L);
     when(assignmentService.assign(
             venueId,
             2,
@@ -112,6 +113,25 @@ class ReservationHoldServiceTests {
                 service.create(
                     new ReservationHoldRequest(venueId, slotId, null, null, null, 2)))
         .isInstanceOf(ReservationHoldInvalidException.class);
+    verify(reservationDao, never()).save(any());
+  }
+
+  @Test
+  void rejectsWhenConfirmedReservationsAndActiveHoldsExhaustCapacity() {
+    UUID venueId = UUID.randomUUID();
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity slot = slot(venueId, slotId, null, 4);
+    when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(reservationDao.sumOccupiedCapacity(slotId, NOW)).thenReturn(3L);
+
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    new ReservationHoldRequest(
+                        venueId, slotId, null, null, null, 2)))
+        .isInstanceOf(ReservationHoldInvalidException.class);
+
+    verify(assignmentService, never()).assign(any(), anyInt(), any(), any(), any());
     verify(reservationDao, never()).save(any());
   }
 

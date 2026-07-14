@@ -21046,3 +21046,190 @@ Riesgos y limitaciones deliberadas:
   aportará evidencia concurrente sobre la base real.
 - El lock serializa por franja y puede aumentar la latencia bajo alta contención; evita, a cambio,
   sobreventa y bucles de reintento optimista.
+
+## Iteración 7.5 - Capacidad con reservas confirmadas y holds vigentes
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.5. Implementar cálculo de capacidad con reservas confirmadas y holds
+  vigentes.
+- Fecha: 2026-07-14.
+- Objetivo técnico: sustituir la comparación contra capacidad bruta por una decisión transaccional
+  basada en la ocupación efectiva persistida, manteniendo la prioridad del primer lock adquirido.
+- Requisitos relacionados: RF-014, RF-015, RNF-003, RB-003, RB-004 y RB-005.
+- Diseño relacionado: flujo 5.2, pasos 3 a 6, y estrategia pesimista de 5.5.
+
+### Archivos, arquitectura y consulta de ocupación
+
+`ReservationDao` incorpora `sumOccupiedCapacity(timeSlotId, now)` mediante `@Query` JPQL explícita.
+La suma usa `coalesce` para devolver cero cuando la franja todavía no tiene reservas. Consume
+capacidad una reserva en `confirmed`, `attended`, `no_show` o `reported`: los tres últimos son
+estados posteriores de una confirmación y mantienen la ocupación histórica de esa cita. No se
+incluyen `cancelled_by_user`, `cancelled_by_venue` ni `expired`.
+
+Los holds solo entran en la suma cuando `status = 'hold' AND holdExpiresAt > :now`. El operador es
+estrictamente mayor para aplicar la política de intervalo semiabierto de 7.3: en el instante exacto
+de expiración la plaza vuelve a estar disponible, aunque el job de 7.12 todavía no haya cambiado el
+estado persistido a `expired`.
+
+La consulta no adquiere locks de todas las reservas, porque el punto de exclusión estable es la fila
+de `TimeSlots`. Su documentación exige que el llamador haya bloqueado primero esa franja. Así,
+todas las creaciones competidoras se serializan sobre la misma fila, releen la suma después de
+esperar y deciden con datos confirmados por la transacción anterior.
+
+### Flujo transaccional, datos e invariantes
+
+`ReservationHoldServiceImpl.create` mantiene `@Transactional` y ejecuta ahora:
+
+1. Carga y bloquea la franja publicada con `PESSIMISTIC_WRITE`.
+2. Captura una única vez el `Instant now` desde el reloj UTC inyectable.
+3. Valida estado, horario, servicio y capacidad bruta.
+4. Suma ocupación efectiva para la franja y ese mismo instante.
+5. Rechaza si `occupiedCapacity + partySize > slot.capacity`.
+6. Solo después intenta asignar empleado/recurso, genera token y persiste el hold.
+
+El orden evita trabajo y generación de secretos cuando ya no quedan plazas. Usar el mismo `now`
+para vigencia agregada y expiración del nuevo hold evita que dos lecturas del reloj produzcan una
+frontera temporal incoherente. La suma se representa como `long` para no desbordar al agregar filas
+`integer`; `partySize` continúa siendo positivo por Bean Validation y defensa de servicio.
+
+No hubo migraciones. Los índices de V23 ya cubren `timeSlotId/status` y `status/holdExpiresAt`.
+Tampoco cambia el contrato de creación: una sobrecapacidad conserva el error genérico
+`RESERVATION_HOLD_INVALID`, sin revelar cuántas plazas u otros usuarios existen.
+
+### Seguridad, errores, observabilidad y rendimiento
+
+La decisión no depende del frontend ni de cache. PostgreSQL/JPA es la fuente autoritativa y el lock
+se libera por commit o rollback. Si la suma o el insert fallan, no queda hold parcial. No se registran
+IDs de reserva, tokens ni datos personales. La consulta es por una franja concreta y aprovecha el
+índice `ixReservationsTimeSlotStatus`; el índice parcial de holds apoya las tareas posteriores de
+expiración.
+
+No se añadieron métricas en esta iteración. Serán útiles latencia de lock, rechazos por capacidad y
+ocupación calculada, siempre sin etiquetas de alta cardinalidad. La contención se limita por franja,
+por lo que reservas de franjas distintas continúan en paralelo.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationCapacityDaoTests` protege que el JPQL incluya el ciclo confirmado, holds con `>` y no
+`>=`. `ReservationHoldServiceTests` prueba creación con ocupación previa y rechazo cuando tres
+plazas ocupadas más dos solicitadas superan una capacidad de cuatro, verificando que no se asigna
+recurso ni se persiste reserva.
+
+Comando focalizado compartido con 7.6:
+`mvn -f apps/api/pom.xml compiler:compile compiler:testCompile surefire:test
+"-Dtest=ReservationCapacityDaoTests,ReservationHoldServiceTests,ReservationConfirmationServiceTests,ReservationConfirmationControllerTests,ReservationTimeSlotDaoLockTests"`.
+
+Resultado conjunto: 11 tests, 0 fallos, 0 errores y 0 omitidos. Se compilaron las fuentes backend
+para asegurar contratos, pero Surefire ejecutó exclusivamente cinco clases de `reservations`.
+Spotless se limitó a rutas main/test del mismo módulo.
+
+Limitaciones deliberadas:
+
+- La prueba de dos transacciones reales sobre la última plaza corresponde a 7.15.
+- 7.8 debe completar y probar el recálculo específico durante confirmación y cambios de capacidad.
+- El cálculo de disponibilidad pública de fase 4 no se modifica todavía; esta garantía pertenece al
+  flujo autoritativo de escritura.
+
+## Iteración 7.6 - Endpoint público de confirmación
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.6. Implementar endpoint
+  `POST /api/public/reservations/{id}/confirm`.
+- Fecha: 2026-07-14.
+- Objetivo técnico: exponer el contrato HTTP de confirmación y una transición mínima, atómica y no
+  enumerable que convierta el hold anónimo poseído por el cliente en reserva confirmada.
+- Requisitos relacionados: RF-015, RNF-001, RNF-002, RNF-003 y RB-003.
+- Diseño relacionado: flujo 5.3, listado 7.1 y contrato 8.2.
+
+### Contratos, componentes y archivos
+
+Se añadieron DTOs separados:
+
+- `ReservationConfirmRequest`: token, nombre, email, partySize, lista de respuestas y dos
+  consentimientos obligatorios. Bean Validation limita token a 43 caracteres Base64 URL-safe,
+  nombre a 160, email a 320 y partySize a valores positivos.
+- `ReservationConfirmFormResponse`: fieldId UUID y valor JSON no nulos. Es un sobre de transporte;
+  la validación y persistencia del contenido corresponden expresamente a 7.9.
+- `ReservationConfirmResponse`: estado, reservationId, email objetivo de gestión, nombre del local,
+  fecha, inicio, fin y partySize según el contrato 8.2.
+
+`ReservationConfirmationController` declara
+`POST /api/public/reservations/{reservationId}/confirm`; su implementación solo delega y devuelve
+HTTP 200. Se separa del controlador de holds para mantener responsabilidades y traducción de errores
+independientes. `ReservationConfirmationExceptionHandler` unifica errores de Bean Validation y de
+dominio como HTTP 400 con `RESERVATION_CONFIRMATION_INVALID`, evitando distinguir ID inexistente,
+token incorrecto o transición no permitida.
+
+`ReservationConfirmationService` define el caso de uso y documenta su excepción.
+`ReservationConfirmationServiceImpl` implementa la transacción. `ReservationEntity` mapea ahora
+`customerName`, `customerEmail` y `customerEmailNormalized`, columnas ya creadas por V23; no hubo
+migración nueva.
+
+### Flujo de ejecución, locks y secretos
+
+El servicio realiza el siguiente flujo:
+
+1. Aplica defensas equivalentes a Bean Validation para llamadas internas y exige consentimientos.
+2. Rechaza listas de respuestas personalizadas no vacías en vez de ignorarlas hasta implementar
+   7.9.
+3. Bloquea exclusivamente la reserva por ID mediante `ReservationDao.findByIdForUpdate`.
+4. Exige estado `hold`, formato correcto de token, hash coincidente y partySize inmutable.
+5. Como defensa anticipada, comprueba que el límite temporal aún sea futuro.
+6. Bloquea la franja vinculada y relee su ocupación; rechaza una inconsistencia sobre capacidad.
+7. Normaliza nombre con `strip` y email con `strip` más minúsculas `Locale.ROOT` para la columna
+   canónica.
+8. Cambia a `confirmed`, elimina `holdTokenHash` y `holdExpiresAt`, actualiza `updatedAt` y guarda.
+9. Devuelve exclusivamente el snapshot público previsto.
+
+La propiedad del hold no se decide con igualdad directa del token. Se valida el formato antes de
+hashear, se calcula SHA-256 mediante `OneTimeTokenService` y se comparan los 64 bytes ASCII
+hexadecimales con `MessageDigest.isEqual`. Tras confirmar, el hash se elimina y el estado impide
+repetir la transición: no se persiste ni se registra el secreto original.
+
+El orden de lock sigue el diseño de confirmación: primero reserva y después franja. La creación de
+holds bloquea franja y luego inserta una fila nueva, por lo que no forma un ciclo de dos locks sobre
+una reserva ya existente. Rollback libera ambos locks y conserva el hold si cualquier validación o
+escritura falla.
+
+### Privacidad, validaciones y alcance diferido
+
+Durante el hold no había datos personales. La confirmación persiste nombre, email mostrado y email
+normalizado solo después de consentimientos explícitos. El error público no expone existencia,
+estado, expiración, capacidad ni coincidencia del secreto. El endpoint es anónimo porque la
+autorización se basa en posesión del token opaco.
+
+La respuesta conserva `manageUrlSentTo` del contrato de diseño como dirección objetivo; no afirma
+que exista todavía un enlace operativo. El token seguro de gestión se implementará en 7.10 y el
+email se encolará en 7.11. No se emiten logs ni eventos con PII en esta tarea.
+
+Las comprobaciones defensivas iniciales de expiración y ocupación evitan publicar una transición
+obviamente insegura, pero no cierran tareas posteriores: 7.7 debe definir y probar exhaustivamente
+la semántica de hold vencido; 7.8, el recálculo real y sus errores; 7.9, validar y persistir todas las
+respuestas; 7.10, crear el token de gestión. Hasta 7.9, cualquier respuesta personalizada no vacía
+se rechaza explícitamente.
+
+### Tests, evidencia, riesgos y tareas derivadas
+
+`ReservationConfirmationControllerTests` verifica HTTP 200, body y delegación.
+`ReservationConfirmationServiceTests` cubre transición válida, normalización, consumo del secreto,
+rechazo de token ajeno en tiempo constante y rechazo de respuestas aún no soportadas. Los tests de
+DAO/locks compartidos protegen la infraestructura transaccional.
+
+El comando focalizado y resultado son los documentados en 7.5: 11 tests correctos, sin fallos,
+errores ni omitidos. No se ejecutaron frontend, suite backend completa, Testcontainers, tests de
+concurrencia ni módulos ajenos. `git diff --check` forma parte de la revisión final.
+La consulta inicial evita `join fetch` para que `PESSIMISTIC_WRITE` no pueda ampliar el lock a
+`TimeSlots` o `Venues` según el dialecto. Las relaciones lazy se resuelven dentro de la transacción;
+la franja se adquiere después mediante su operación de lock dedicada.
+
+
+Riesgos y limitaciones deliberadas:
+
+- Los locales con respuestas personalizadas todavía no pueden completar el flujo; 7.9 elimina este
+  bloqueo de forma segura.
+- No se consulta aún penalización por email; corresponde a 10.8 según el plan.
+- No hay token de gestión, evento ni email hasta 7.10 y 7.11.
+- Los contratos especializados para expiración y capacidad durante confirmación siguen abiertos en
+  7.7 y 7.8 aunque existan defensas básicas.

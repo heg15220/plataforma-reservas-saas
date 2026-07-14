@@ -65,8 +65,8 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
   }
 
   /**
-   * Bloquea la franja dentro de la transacción y persiste un secreto hasheado. El descuento de
-   * reservas y otros holds corresponde expresamente a 7.5.
+   * Bloquea la franja, descuenta ocupación efectiva y persiste el secreto exclusivamente como
+   * hash. La suma se ejecuta después de adquirir el lock y antes de asignar recursos.
    */
   @Override
   @Transactional
@@ -78,7 +78,12 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
         timeSlotDao
             .findPublishedForUpdate(request.venueId(), request.timeSlotId())
             .orElseThrow(ReservationHoldInvalidException::new);
-    validateSlot(request, slot);
+    Instant now = clock.instant();
+    validateSlot(request, slot, now);
+    long occupiedCapacity = reservationDao.sumOccupiedCapacity(slot.getId(), now);
+    if (occupiedCapacity + request.partySize() > slot.getCapacity()) {
+      throw new ReservationHoldInvalidException();
+    }
 
     Optional<UUID> assignedResource;
     try {
@@ -93,7 +98,6 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
       throw new ReservationHoldInvalidException();
     }
 
-    Instant now = clock.instant();
     Instant expiresAt = expirationPolicy.expiresAt(now);
     String rawToken = tokenService.generate();
     ReservationEntity reservation = new ReservationEntity();
@@ -119,8 +123,7 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
         expirationPolicy.remainingSeconds(expiresAt, now));
   }
 
-  private void validateSlot(ReservationHoldRequest request, TimeSlotEntity slot) {
-    Instant now = clock.instant();
+  private void validateSlot(ReservationHoldRequest request, TimeSlotEntity slot, Instant now) {
     LocalDate today = now.atZone(clock.getZone()).toLocalDate();
     LocalTime currentTime = now.atZone(clock.getZone()).toLocalTime();
     boolean past =

@@ -4687,3 +4687,55 @@ Fuente de verdad del avance:
     `ReservationHoldServiceTests`: 8 tests correctos, 0 fallos, 0 errores y 0 omitidos.
   - Spotless se aplicó exclusivamente al módulo `reservations`; no se ejecutaron la suite completa,
     frontend, integraciones, tests de concurrencia ni validaciones transversales.
+
+## Conversación 94 - Capacidad efectiva y endpoint de confirmación
+
+- Fecha: 2026-07-14.
+- Resumen de la conversación:
+  - Se implementaron conjuntamente 7.5 y 7.6 en
+    `phase/7-reservations-holds-concurrency`.
+  - La creación de holds calcula ocupación después de bloquear la franja y antes de asignar
+    recursos: suma reservas confirmadas del ciclo de vida y holds con expiración estrictamente
+    posterior al reloj transaccional.
+  - Se añadió `POST /api/public/reservations/{reservationId}/confirm` con DTOs validados,
+    controlador separado, servicio transaccional y error público no enumerable.
+  - La confirmación bloquea reserva y franja, verifica propiedad mediante hash de token en tiempo
+    constante, conserva `partySize`, normaliza identidad y consume el secreto del hold.
+  - Las respuestas personalizadas no se ignoran: hasta 7.9, una lista no vacía se rechaza.
+- Archivos modificados:
+  - `ReservationDao.java`, `ReservationTimeSlotDao.java` y `ReservationEntity.java`.
+  - `ReservationHoldServiceImpl.java` y `ReservationHoldServiceTests.java`.
+  - DTOs `ReservationConfirmRequest`, `ReservationConfirmFormResponse` y
+    `ReservationConfirmResponse`.
+  - `ReservationConfirmationController`, implementación y manejador de errores.
+  - `ReservationConfirmationService`, implementación y excepción de dominio.
+  - `ReservationCapacityDaoTests`, `ReservationConfirmationServiceTests` y
+    `ReservationConfirmationControllerTests`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - RF-014 y RF-015.
+  - RNF-001, RNF-002 y RNF-003.
+  - RB-003, RB-004 y RB-005.
+- Tareas impactadas:
+  - 7.5 y 7.6.
+  - Se preparan 7.7, 7.8, 7.9 y 7.10 sin marcarlas como completadas.
+- Tareas completadas:
+  - `7.5. Implementar cálculo de capacidad con reservas confirmadas y holds vigentes`.
+  - `7.6. Implementar endpoint POST /api/public/reservations/{id}/confirm`.
+- Siguiente tarea pendiente recomendada:
+  - `7.7. Validar hold vigente antes de confirmar`.
+- Decisiones o aclaraciones relevantes:
+  - Consumen capacidad `confirmed`, `attended`, `no_show` y `reported`; las canceladas y expiradas
+    no consumen plazas.
+  - Un hold consume capacidad solo con `holdExpiresAt > now`; el límite exacto ya está libre.
+  - La consulta agregada no bloquea por sí sola: su contrato exige que el servicio posea antes el
+    lock de `TimeSlots`.
+  - La confirmación inicial incluye comprobaciones defensivas de estado, expiración y ocupación,
+    pero 7.7 y 7.8 permanecen abiertas hasta completar sus contratos de error y tests específicos.
+  - No se genera aún token de gestión ni se encolan emails; corresponden a 7.10 y 7.11.
+  - Evidencia focalizada: 11 tests, 0 fallos, 0 errores y 0 omitidos en cinco clases exclusivas de
+    `reservations`; Spotless se aplicó solo a ese módulo.
+  - No se ejecutaron suite completa, frontend, Testcontainers, tests de concurrencia ni módulos
+    ajenos.

@@ -24,4 +24,14 @@ public interface ReservationTimeSlotDao extends Repository<TimeSlotEntity, UUID>
       """)
   Optional<TimeSlotEntity> findPublishedForUpdate(
       @Param("venueId") UUID venueId, @Param("timeSlotId") UUID timeSlotId);
+
+  /** Bloquea una franja ya vinculada a una reserva, sin depender de su estado de publicación. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select slot from TimeSlotEntity slot
+      where slot.id = :timeSlotId
+      """)
+  Optional<TimeSlotEntity> findByIdForUpdate(
+      @Param("timeSlotId") UUID timeSlotId);
 }
