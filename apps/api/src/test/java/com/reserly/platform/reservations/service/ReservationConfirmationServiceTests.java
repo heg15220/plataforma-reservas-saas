@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** Cubre propiedad del hold, transición mínima e identidad normalizada de la confirmación. */
+/** Cubre propiedad, vigencia y capacidad real antes de la transición confirmada. */
 @ExtendWith(MockitoExtension.class)
 class ReservationConfirmationServiceTests {
 
@@ -49,6 +49,7 @@ class ReservationConfirmationServiceTests {
             reservationDao,
             timeSlotDao,
             tokenService,
+            new ReservationHoldExpirationPolicyImpl(),
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -62,7 +63,8 @@ class ReservationConfirmationServiceTests {
     when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
     when(timeSlotDao.findByIdForUpdate(reservation.getTimeSlot().getId()))
         .thenReturn(Optional.of(reservation.getTimeSlot()));
-    when(reservationDao.sumOccupiedCapacity(reservation.getTimeSlot().getId(), NOW))
+    when(reservationDao.sumOccupiedCapacityExcluding(
+            reservation.getTimeSlot().getId(), reservationId, NOW))
         .thenReturn(2L);
     when(reservationDao.save(reservation)).thenReturn(reservation);
 
@@ -94,6 +96,57 @@ class ReservationConfirmationServiceTests {
 
     verify(timeSlotDao, never()).findByIdForUpdate(any());
     verify(reservationDao, never()).save(any());
+  }
+
+  @Test
+  void rejectsHoldAtItsExclusiveExpirationBoundary() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    reservation.setHoldExpiresAt(NOW);
+    when(reservationDao.findByIdForUpdate(reservationId))
+        .thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
+
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
+        .isInstanceOf(ReservationHoldExpiredException.class);
+
+    verify(timeSlotDao, never()).findByIdForUpdate(any());
+    verify(reservationDao, never()).save(any());
+  }
+
+  @Test
+  void rejectsWhenOtherOccupantsNoLongerLeaveEnoughCapacity() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    when(reservationDao.findByIdForUpdate(reservationId))
+        .thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
+    when(timeSlotDao.findByIdForUpdate(reservation.getTimeSlot().getId()))
+        .thenReturn(Optional.of(reservation.getTimeSlot()));
+    when(reservationDao.sumOccupiedCapacityExcluding(
+            reservation.getTimeSlot().getId(), reservationId, NOW))
+        .thenReturn(3L);
+
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
+        .isInstanceOf(ReservationCapacityUnavailableException.class);
+
+    verify(reservationDao, never()).save(any());
+  }
+
+  @Test
+  void invalidTokenDoesNotRevealThatHoldIsExpired() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    reservation.setHoldExpiresAt(NOW.minusSeconds(1));
+    when(reservationDao.findByIdForUpdate(reservationId))
+        .thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn("b".repeat(64));
+
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
+        .isInstanceOf(ReservationConfirmationInvalidException.class);
   }
 
   @Test

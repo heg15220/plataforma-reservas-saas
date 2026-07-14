@@ -4739,3 +4739,53 @@ Fuente de verdad del avance:
     `reservations`; Spotless se aplicó solo a ese módulo.
   - No se ejecutaron suite completa, frontend, Testcontainers, tests de concurrencia ni módulos
     ajenos.
+
+## Conversación 95 - Vigencia y capacidad real durante confirmación
+
+- Fecha: 2026-07-14.
+- Resumen de la conversación:
+  - Se completaron conjuntamente 7.7 y 7.8 en
+    `phase/7-reservations-holds-concurrency`.
+  - La confirmación reutiliza `ReservationHoldExpirationPolicy` y considera vencido el hold en el
+    instante exacto `holdExpiresAt`.
+  - Estado, token y partySize se acreditan antes de devolver una causa específica, evitando revelar
+    la expiración de reservas ajenas.
+  - Tras bloquear la franja, la capacidad se recalcula excluyendo explícitamente el propio hold y
+    exige que ocupación ajena más partySize quepan en la capacidad actual.
+  - Hold expirado y capacidad insuficiente se traducen a HTTP 409 con códigos estables y sin datos
+    internos.
+- Archivos modificados:
+  - `ReservationConfirmationService.java` y `ReservationConfirmationServiceImpl.java`.
+  - `ReservationHoldExpiredException.java`.
+  - `ReservationCapacityUnavailableException.java`.
+  - `ReservationConfirmationExceptionHandler.java`.
+  - `ReservationDao.java`.
+  - `ReservationConfirmationServiceTests.java`.
+  - `ReservationCapacityDaoTests.java`.
+  - `ReservationConfirmationExceptionHandlerTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - RF-014 y RF-015.
+  - RNF-003.
+  - RB-003, RB-004 y RB-005.
+- Tareas impactadas:
+  - 7.7 y 7.8.
+  - Se prepara 7.16 con cobertura unitaria del límite, sin cerrar su prueba específica posterior.
+- Tareas completadas:
+  - `7.7. Validar hold vigente antes de confirmar`.
+  - `7.8. Validar capacidad real antes de confirmar`.
+- Siguiente tarea pendiente recomendada:
+  - `7.9. Validar respuestas del formulario`.
+- Decisiones o aclaraciones relevantes:
+  - Vigencia significa `now < holdExpiresAt`; igualdad y fechas posteriores se rechazan.
+  - Un token inválido conserva `RESERVATION_CONFIRMATION_INVALID` aunque el hold esté vencido.
+  - Solo el poseedor acreditado recibe `RESERVATION_HOLD_EXPIRED`.
+  - La capacidad de confirmación se expresa como
+    `occupiedByOthers <= slotCapacity - reservationPartySize` para evitar contar dos veces el hold.
+  - El estado no cambia a `expired` en el camino de error; la materialización periódica sigue siendo
+    responsabilidad de 7.12.
+  - Evidencia focalizada: 15 tests, 0 fallos, 0 errores y 0 omitidos en cinco clases de
+    `reservations`; Spotless se limitó a ese módulo.
+  - No se ejecutaron suite global, frontend, Testcontainers, tests concurrentes ni módulos ajenos.

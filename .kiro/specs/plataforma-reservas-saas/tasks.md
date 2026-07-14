@@ -152,8 +152,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 7.4. Implementar transacción con bloqueo de franja o control optimista.
 - [x] 7.5. Implementar cálculo de capacidad con reservas confirmadas y holds vigentes.
 - [x] 7.6. Implementar endpoint `POST /api/public/reservations/{id}/confirm`.
-- [ ] 7.7. Validar hold vigente antes de confirmar.
-- [ ] 7.8. Validar capacidad real antes de confirmar.
+- [x] 7.7. Validar hold vigente antes de confirmar.
+- [x] 7.8. Validar capacidad real antes de confirmar.
 - [ ] 7.9. Validar respuestas del formulario.
 - [ ] 7.10. Generar token seguro de gestión de reserva.
 - [ ] 7.11. Encolar emails de confirmación.

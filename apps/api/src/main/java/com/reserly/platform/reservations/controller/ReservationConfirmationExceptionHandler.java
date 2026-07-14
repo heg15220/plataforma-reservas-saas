@@ -1,7 +1,10 @@
 package com.reserly.platform.reservations.controller;
 
 import com.reserly.platform.reservations.dto.ReservationErrorResponse;
+import com.reserly.platform.reservations.service.ReservationCapacityUnavailableException;
 import com.reserly.platform.reservations.service.ReservationConfirmationInvalidException;
+import com.reserly.platform.reservations.service.ReservationHoldExpiredException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,5 +22,19 @@ public class ReservationConfirmationExceptionHandler {
   public ResponseEntity<ReservationErrorResponse> handleInvalidConfirmation() {
     return ResponseEntity.badRequest()
         .body(new ReservationErrorResponse("RESERVATION_CONFIRMATION_INVALID"));
+  }
+
+  /** El cliente acreditó el hold, por lo que puede recibir una causa recuperable específica. */
+  @ExceptionHandler(ReservationHoldExpiredException.class)
+  public ResponseEntity<ReservationErrorResponse> handleExpiredHold() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ReservationErrorResponse("RESERVATION_HOLD_EXPIRED"));
+  }
+
+  /** La capacidad cambió tras crear el hold y exige reiniciar la selección de franja. */
+  @ExceptionHandler(ReservationCapacityUnavailableException.class)
+  public ResponseEntity<ReservationErrorResponse> handleUnavailableCapacity() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ReservationErrorResponse("RESERVATION_CAPACITY_UNAVAILABLE"));
   }
 }

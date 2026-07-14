@@ -28,30 +28,34 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
   private final ReservationDao reservationDao;
   private final ReservationTimeSlotDao timeSlotDao;
   private final OneTimeTokenService tokenService;
+  private final ReservationHoldExpirationPolicy expirationPolicy;
   private final Clock clock;
 
   @Autowired
   public ReservationConfirmationServiceImpl(
       ReservationDao reservationDao,
       ReservationTimeSlotDao timeSlotDao,
-      OneTimeTokenService tokenService) {
-    this(reservationDao, timeSlotDao, tokenService, Clock.systemUTC());
+      OneTimeTokenService tokenService,
+      ReservationHoldExpirationPolicy expirationPolicy) {
+    this(reservationDao, timeSlotDao, tokenService, expirationPolicy, Clock.systemUTC());
   }
 
   ReservationConfirmationServiceImpl(
       ReservationDao reservationDao,
       ReservationTimeSlotDao timeSlotDao,
       OneTimeTokenService tokenService,
+      ReservationHoldExpirationPolicy expirationPolicy,
       Clock clock) {
     this.reservationDao = reservationDao;
     this.timeSlotDao = timeSlotDao;
     this.tokenService = tokenService;
+    this.expirationPolicy = expirationPolicy;
     this.clock = clock;
   }
 
   /**
-   * Adquiere primero el lock del agregado y después el de su franja. Las tareas 7.7 a 7.10
-   * ampliarán las políticas específicas de expiración, capacidad, formulario y token de gestión.
+   * Acredita el token antes de revelar expiración, bloquea después la franja y confirma únicamente
+   * si la ocupación ajena más el partySize retenido cabe en su capacidad actual.
    */
   @Override
   @Transactional
@@ -65,19 +69,24 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     Instant now = clock.instant();
     if (!"hold".equals(reservation.getStatus())
         || !tokenMatches(request.holdToken(), reservation.getHoldTokenHash())
-        || reservation.getHoldExpiresAt() == null
-        || !now.isBefore(reservation.getHoldExpiresAt())
         || request.partySize() != reservation.getPartySize()) {
       throw new ReservationConfirmationInvalidException();
     }
 
+    if (reservation.getHoldExpiresAt() == null
+        || !expirationPolicy.isActive(reservation.getHoldExpiresAt(), now)) {
+      throw new ReservationHoldExpiredException();
+    }
     TimeSlotEntity slot =
         timeSlotDao
             .findByIdForUpdate(reservation.getTimeSlot().getId())
             .orElseThrow(ReservationConfirmationInvalidException::new);
-    long occupiedCapacity = reservationDao.sumOccupiedCapacity(slot.getId(), now);
-    if (occupiedCapacity > slot.getCapacity()) {
-      throw new ReservationConfirmationInvalidException();
+    long occupiedByOthers =
+        reservationDao.sumOccupiedCapacityExcluding(
+            slot.getId(), reservation.getId(), now);
+    long capacityForOthers = (long) slot.getCapacity() - reservation.getPartySize();
+    if (occupiedByOthers > capacityForOthers) {
+      throw new ReservationCapacityUnavailableException();
     }
 
     String customerName = request.customerName().strip();

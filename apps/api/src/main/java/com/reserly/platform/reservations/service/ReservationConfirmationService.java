@@ -12,6 +12,9 @@ public interface ReservationConfirmationService {
    *
    * @throws ReservationConfirmationInvalidException si el agregado, el secreto, los
    *     consentimientos o los datos mínimos no permiten la transición
+   * @throws ReservationHoldExpiredException si el token acredita el hold pero su límite temporal
+   *     exclusivo ya venció
+   * @throws ReservationCapacityUnavailableException si la capacidad real bajo lock es insuficiente
    */
   ReservationConfirmResponse confirm(
       UUID reservationId, ReservationConfirmRequest request);

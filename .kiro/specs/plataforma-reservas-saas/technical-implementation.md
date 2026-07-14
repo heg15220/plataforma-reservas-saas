@@ -21233,3 +21233,155 @@ Riesgos y limitaciones deliberadas:
 - No hay token de gestión, evento ni email hasta 7.10 y 7.11.
 - Los contratos especializados para expiración y capacidad durante confirmación siguen abiertos en
   7.7 y 7.8 aunque existan defensas básicas.
+
+## Iteración 7.7 - Validación de hold vigente antes de confirmar
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.7. Validar hold vigente antes de confirmar.
+- Fecha: 2026-07-14.
+- Objetivo técnico: impedir de forma determinista que una reserva abandone `hold` cuando su límite
+  exclusivo ya venció, sin convertir la respuesta de error en un canal de enumeración.
+- Requisitos relacionados: RF-014, RF-015, RNF-003 y RB-004.
+- Diseño relacionado: flujo 5.3, pasos 3 y 4, y expiración lógica de 5.4.
+
+### Arquitectura, política temporal y orden de validación
+
+`ReservationConfirmationServiceImpl` recibe ahora la interfaz
+`ReservationHoldExpirationPolicy`, ya usada en la creación. No duplica comparaciones de instantes:
+invoca `isActive(holdExpiresAt, now)`, cuya invariante autoritativa es `now < holdExpiresAt`. El
+reloj continúa inyectable y se lee una sola vez después de bloquear la reserva, por lo que estado,
+vigencia y consulta de capacidad comparten el mismo instante transaccional.
+
+El orden de comprobaciones es deliberado:
+
+1. Se validan estructura y consentimientos sin acceder al agregado.
+2. Se bloquea exclusivamente `Reservations` por ID.
+3. Se exige estado `hold`, token coincidente en tiempo constante y partySize inmutable.
+4. Solo después se consulta la vigencia.
+5. Si falta `holdExpiresAt`, es igual a `now` o está en el pasado, se rechaza.
+6. Únicamente un hold acreditado y vigente continúa hacia el lock de franja.
+
+Este orden impide que quien prueba IDs y tokens ajenos distinga un hold vencido de uno inexistente,
+confirmado o poseído por otro cliente. Un token incorrecto mantiene
+`ReservationConfirmationInvalidException`, aunque la fila encontrada esté expirada.
+
+### Contratos de error, seguridad y privacidad
+
+Se creó `ReservationHoldExpiredException` como señal de dominio documentada por
+`ReservationConfirmationService`. `ReservationConfirmationExceptionHandler` la transforma en HTTP
+409 con `{ "code": "RESERVATION_HOLD_EXPIRED" }`. El conflicto indica al cliente legítimo que debe
+reiniciar el proceso, sin publicar hora de expiración, capacidad, identidad, estado interno ni
+existencia de otras reservas.
+
+Los errores previos de formato, propiedad del token o partySize continúan como HTTP 400
+`RESERVATION_CONFIRMATION_INVALID`. No se registra el token ni su hash. La comparación constante de
+SHA-256 implementada en 7.6 permanece antes de la decisión temporal específica.
+
+El rechazo lanza una excepción y provoca rollback. No cambia el estado a `expired`: intentar
+persistirlo dentro de la misma transacción y lanzar después desharía la mutación; forzar un commit
+parcial mezclaría validación pública y mantenimiento. El job coordinado de 7.12 será responsable de
+materializar estados expirados. La capacidad lógica ya se libera porque las consultas ignoran
+holds con `holdExpiresAt <= now`.
+
+### Datos, observabilidad y efectos laterales
+
+No hubo migraciones, índices ni cambios de columnas. No se generan eventos, emails ni tokens de
+gestión. El camino expirado termina antes de bloquear `TimeSlots`, reduciendo contención para una
+operación que nunca puede confirmar.
+
+Una futura métrica puede contar `RESERVATION_HOLD_EXPIRED` sin reservationId, email ni token. No se
+añadió en esta tarea para no ampliar observabilidad antes de definir sus cardinalidades.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationConfirmationServiceTests` añade:
+
+- rechazo en el instante exacto `holdExpiresAt`, verificando que no se bloquea la franja ni se
+  guarda;
+- comprobación de que un token inválido sobre un hold ya vencido sigue produciendo el error genérico;
+- conservación del camino válido para un hold futuro.
+
+`ReservationHoldExpirationPolicyTests` ya protege antes, igualdad y después del límite.
+`ReservationConfirmationExceptionHandlerTests` exige HTTP 409 y el código estable sin payload
+adicional.
+
+Comando focalizado compartido con 7.8:
+`mvn -f apps/api/pom.xml compiler:compile compiler:testCompile surefire:test
+"-Dtest=ReservationConfirmationServiceTests,ReservationCapacityDaoTests,ReservationConfirmationExceptionHandlerTests,ReservationHoldExpirationPolicyTests,ReservationTimeSlotDaoLockTests"`.
+
+Resultado conjunto: 15 tests, 0 fallos, 0 errores y 0 omitidos. Surefire ejecutó solo cinco clases
+de `reservations`; Spotless se aplicó exclusivamente a main/test de ese módulo.
+
+Riesgos y tareas derivadas:
+
+- 7.12 materializará el estado `expired` de forma periódica y coordinada.
+- 7.16 conserva la responsabilidad de la prueba específica completa del contrato de confirmación
+  expirada, aunque esta iteración aporte cobertura unitaria necesaria para cerrar la regla.
+- No se expone `restrictedUntil` ni información personal en este error.
+
+## Iteración 7.8 - Validación de capacidad real antes de confirmar
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: 7.8. Validar capacidad real antes de confirmar.
+- Fecha: 2026-07-14.
+- Objetivo técnico: recalcular bajo bloqueo la ocupación que compite con el hold confirmado y
+  rechazar la transición si un cambio posterior de capacidad vuelve insuficiente la franja.
+- Requisitos relacionados: RF-014, RF-015, RNF-003, RB-003 y RB-005.
+- Diseño relacionado: flujo 5.3, pasos 6 y 7, y estrategia 5.5 contra sobreventa.
+
+### Consulta, fórmula e invariantes transaccionales
+
+`ReservationDao` incorpora `sumOccupiedCapacityExcluding(timeSlotId, excludedReservationId, now)`.
+Su JPQL reproduce la semántica de 7.5 —ciclo confirmado y holds estrictamente vigentes— y añade
+`reservation.id <> :excludedReservationId`. La exclusión expresa de forma independiente la
+ocupación ajena y evita depender de que el hold propio aparezca en la suma por estado y fecha.
+
+Después de validar vigencia, el servicio bloquea la franja con `PESSIMISTIC_WRITE` y ejecuta esa
+consulta. La regla se formula como:
+
+`occupiedByOthers <= (long) slotCapacity - reservationPartySize`
+
+La resta usa `long` antes de comparar. También rechaza correctamente si la capacidad actual es
+menor que el partySize retenido, porque el lado derecho pasa a ser negativo. La petición no puede
+cambiar partySize: 7.6 ya exige igualdad con el snapshot del hold.
+
+La exclusión es necesaria para razonar claramente en el límite. Con capacidad cuatro, partySize dos
+y otras dos plazas ocupadas, la confirmación es válida. Con tres plazas ajenas, se rechaza. El hold
+propio deja de existir como ocupación temporal al cambiar a `confirmed`, pero conserva exactamente
+el mismo partySize; la transición no incrementa la ocupación total cuando la capacidad no cambió.
+
+### Locks, errores, datos y rendimiento
+
+El orden permanece: lock de reserva, acreditación/vigencia, lock de franja, suma y escritura. Una
+creación competidora necesita el mismo lock de franja, por lo que no puede insertar un hold entre el
+recálculo y el commit. Las franjas distintas progresan en paralelo.
+
+Se creó `ReservationCapacityUnavailableException`, documentada en la interfaz. El handler devuelve
+HTTP 409 con `{ "code": "RESERVATION_CAPACITY_UNAVAILABLE" }`. No expone capacidad total, plazas
+ocupadas, IDs o partySize de terceros. El rollback conserva el hold mientras siga vigente, aunque el
+cliente debe volver a consultar disponibilidad porque la capacidad actual no lo admite.
+
+No hubo migración. Se reutilizan `ixReservationsTimeSlotStatus` y la columna de capacidad de
+`TimeSlots`. La consulta agregada queda limitada a una franja. No se añadió cache: la base de datos
+es fuente autoritativa para confirmar.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationCapacityDaoTests` verifica por reflexión que la consulta excluya exactamente
+`:excludedReservationId` y mantenga estados confirmados y holds con `holdExpiresAt > :now`.
+`ReservationConfirmationServiceTests` cubre el límite válido con dos plazas ajenas más partySize dos
+en capacidad cuatro y el rechazo con tres plazas ajenas. Verifica además que el rechazo no guarde la
+reserva. El handler tiene cobertura específica de código y HTTP 409.
+
+El comando y resultado focalizados son los documentados en 7.7: 15 tests correctos, sin fallos,
+errores ni omitidos. No se ejecutaron suite global, frontend, Testcontainers, tests visuales ni
+módulos ajenos. `git diff --check` se usa en la revisión final.
+
+Riesgos y limitaciones deliberadas:
+
+- 7.15 aportará la prueba concurrente sobre PostgreSQL real para la última plaza.
+- Un cambio administrativo de capacidad puede invalidar un hold ya emitido; el conflicto explícito
+  fuerza a recalcular selección en vez de sobrepasar el nuevo límite.
+- La validación de respuestas, token de gestión y emails permanece en 7.9–7.11.

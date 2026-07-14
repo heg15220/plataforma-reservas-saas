@@ -26,6 +26,25 @@ class ReservationCapacityDaoTests {
         .doesNotContain("reservation.holdExpiresAt >= :now");
   }
 
+  @Test
+  void confirmationCapacityExcludesOnlyTheOwnedHold()
+      throws NoSuchMethodException {
+    var method =
+        ReservationDao.class.getMethod(
+            "sumOccupiedCapacityExcluding",
+            UUID.class,
+            UUID.class,
+            Instant.class);
+    Query query = method.getAnnotation(Query.class);
+
+    assertThat(query).isNotNull();
+    assertThat(normalize(query.value()))
+        .contains("reservation.id <> :excludedReservationId")
+        .contains("reservation.status in ('confirmed', 'attended', 'no_show', 'reported')")
+        .contains("reservation.status = 'hold'")
+        .contains("reservation.holdExpiresAt > :now");
+  }
+
   private String normalize(String query) {
     return query.replaceAll("\\s+", " ").trim();
   }
