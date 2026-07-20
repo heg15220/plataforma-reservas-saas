@@ -3,6 +3,7 @@ package com.reserly.platform.reservations.controller;
 import com.reserly.platform.reservations.dto.ReservationErrorResponse;
 import com.reserly.platform.reservations.service.ReservationCapacityUnavailableException;
 import com.reserly.platform.reservations.service.ReservationConfirmationInvalidException;
+import com.reserly.platform.reservations.service.ReservationFormAnswersInvalidException;
 import com.reserly.platform.reservations.service.ReservationHoldExpiredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,13 @@ public class ReservationConfirmationExceptionHandler {
   public ResponseEntity<ReservationErrorResponse> handleInvalidConfirmation() {
     return ResponseEntity.badRequest()
         .body(new ReservationErrorResponse("RESERVATION_CONFIRMATION_INVALID"));
+  }
+
+  /** Expone un error estable sin revelar claves, etiquetas ni reglas internas del formulario. */
+  @ExceptionHandler(ReservationFormAnswersInvalidException.class)
+  public ResponseEntity<ReservationErrorResponse> handleInvalidFormAnswers() {
+    return ResponseEntity.badRequest()
+        .body(new ReservationErrorResponse("RESERVATION_FORM_INVALID"));
   }
 
   /** El cliente acreditó el hold, por lo que puede recibir una causa recuperable específica. */

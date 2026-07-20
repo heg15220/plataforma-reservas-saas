@@ -36,6 +36,8 @@ public class ReservationEntity {
   private UUID employeeResourceId;
   private int partySize;
   private LocalDate date;
+  private String secureTokenHash;
+  private Instant secureTokenExpiresAt;
   private LocalTime startsAt;
   private LocalTime endsAt;
   private String status;
@@ -188,6 +190,26 @@ public class ReservationEntity {
 
   public void setHoldTokenHash(String holdTokenHash) {
     this.holdTokenHash = holdTokenHash;
+  }
+
+  /** SHA-256 del enlace de gestión; el secreto original solo viaja en el trabajo de email. */
+  @Column(name = "\"secureTokenHash\"", length = 64)
+  public String getSecureTokenHash() {
+    return secureTokenHash;
+  }
+
+  public void setSecureTokenHash(String secureTokenHash) {
+    this.secureTokenHash = secureTokenHash;
+  }
+
+  /** Caducidad absoluta del enlace de gestión y pareja obligatoria del hash. */
+  @Column(name = "\"secureTokenExpiresAt\"")
+  public Instant getSecureTokenExpiresAt() {
+    return secureTokenExpiresAt;
+  }
+
+  public void setSecureTokenExpiresAt(Instant secureTokenExpiresAt) {
+    this.secureTokenExpiresAt = secureTokenExpiresAt;
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

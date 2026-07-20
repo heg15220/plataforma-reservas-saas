@@ -7,8 +7,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
+import com.reserly.platform.forms.dto.ValidatedReservationFormAnswer;
+import com.reserly.platform.forms.service.ReservationFormConfirmationService;
+import com.reserly.platform.forms.service.ReservationFormResponseInvalidException;
+import com.reserly.platform.forms.service.ReservationFormResponseViolation;
+import com.reserly.platform.identity.persistence.UserEntity;
 import com.reserly.platform.identity.service.OneTimeTokenService;
+import com.reserly.platform.reservations.dto.ReservationConfirmFormResponse;
 import com.reserly.platform.reservations.dto.ReservationConfirmRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
@@ -25,21 +32,28 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
-/** Cubre propiedad, vigencia y capacidad real antes de la transición confirmada. */
+/** Cubre la confirmación atómica, el formulario y la emisión segura del trabajo de correo. */
 @ExtendWith(MockitoExtension.class)
 class ReservationConfirmationServiceTests {
 
   private static final Instant NOW = Instant.parse("2026-07-14T10:00:00Z");
+  private static final Instant MANAGE_EXPIRY = Instant.parse("2026-08-14T12:00:00Z");
   private static final String TOKEN = "A".repeat(43);
   private static final String TOKEN_HASH = "a".repeat(64);
+  private static final String MANAGE_TOKEN = "B".repeat(43);
+  private static final String MANAGE_HASH = "b".repeat(64);
 
   @Mock private ReservationDao reservationDao;
   @Mock private ReservationTimeSlotDao timeSlotDao;
   @Mock private OneTimeTokenService tokenService;
-
+  @Mock private ReservationFormConfirmationService formConfirmationService;
+  @Mock private ReservationManagementTokenPolicy managementTokenPolicy;
+  @Mock private ApplicationEventPublisher eventPublisher;
   private ReservationConfirmationServiceImpl service;
 
   @BeforeEach
@@ -50,52 +64,81 @@ class ReservationConfirmationServiceTests {
             timeSlotDao,
             tokenService,
             new ReservationHoldExpirationPolicyImpl(),
+            formConfirmationService,
+            managementTokenPolicy,
+            eventPublisher,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
-  void confirmsOwnedHoldAndConsumesItsOneTimeSecret() {
+  void confirmsOwnedHoldPersistsManagementHashAndPublishesEmailWork() {
     UUID reservationId = UUID.randomUUID();
     ReservationEntity reservation = reservation(reservationId);
-    when(reservationDao.findByIdForUpdate(reservationId))
-        .thenReturn(Optional.of(reservation));
-    when(tokenService.isValid(TOKEN)).thenReturn(true);
-    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
-    when(timeSlotDao.findByIdForUpdate(reservation.getTimeSlot().getId()))
-        .thenReturn(Optional.of(reservation.getTimeSlot()));
-    when(reservationDao.sumOccupiedCapacityExcluding(
-            reservation.getTimeSlot().getId(), reservationId, NOW))
-        .thenReturn(2L);
+    arrangeValidHold(reservation);
+    UUID fieldId = UUID.randomUUID();
+    var validated =
+        new ValidatedReservationFormAnswer(
+            fieldId, "allergies", "Alergias", "short_text", TextNode.valueOf("Sin gluten"));
+    when(formConfirmationService.validateAndPersist(any(), any(), any(), any()))
+        .thenReturn(List.of(validated));
+    when(tokenService.generate()).thenReturn(MANAGE_TOKEN);
+    when(tokenService.hash(MANAGE_TOKEN)).thenReturn(MANAGE_HASH);
+    when(managementTokenPolicy.expiresAt(any(), any(), any())).thenReturn(MANAGE_EXPIRY);
     when(reservationDao.save(reservation)).thenReturn(reservation);
 
-    var response = service.confirm(reservationId, request(TOKEN));
+    var response =
+        service.confirm(
+            reservationId,
+            request(
+                TOKEN,
+                List.of(
+                    new ReservationConfirmFormResponse(fieldId, TextNode.valueOf("Sin gluten")))));
 
     assertThat(response.status()).isEqualTo("confirmed");
-    assertThat(response.reservationId()).isEqualTo(reservationId);
-    assertThat(response.manageUrlSentTo()).isEqualTo("Maria@Example.COM");
-    assertThat(response.venueName()).isEqualTo("Local de prueba");
-    assertThat(reservation.getCustomerName()).isEqualTo("María López");
-    assertThat(reservation.getCustomerEmailNormalized()).isEqualTo("maria@example.com");
+    assertThat(reservation.getSecureTokenHash()).isEqualTo(MANAGE_HASH);
+    assertThat(reservation.getSecureTokenExpiresAt()).isEqualTo(MANAGE_EXPIRY);
     assertThat(reservation.getHoldTokenHash()).isNull();
-    assertThat(reservation.getHoldExpiresAt()).isNull();
-    assertThat(reservation.getUpdatedAt()).isEqualTo(NOW);
-    verify(reservationDao).save(reservation);
+    ArgumentCaptor<ReservationConfirmationEmailRequestedEvent> event =
+        ArgumentCaptor.forClass(ReservationConfirmationEmailRequestedEvent.class);
+    verify(eventPublisher).publishEvent(event.capture());
+    assertThat(event.getValue().manageToken()).isEqualTo(MANAGE_TOKEN);
+    assertThat(event.getValue().customerEmail()).isEqualTo("Maria@Example.COM");
+    assertThat(event.getValue().venueEmail()).isEqualTo("owner@example.com");
+    assertThat(event.getValue().formResponses())
+        .singleElement()
+        .extracting(ReservationConfirmationEmailAnswer::valueJson)
+        .isEqualTo("\"Sin gluten\"");
   }
 
   @Test
-  void rejectsTokenThatDoesNotOwnTheHold() {
+  void invalidFormRollsBackBeforeGeneratingCredentialOrPublishingWork() {
     UUID reservationId = UUID.randomUUID();
     ReservationEntity reservation = reservation(reservationId);
-    when(reservationDao.findByIdForUpdate(reservationId))
-        .thenReturn(Optional.of(reservation));
-    when(tokenService.isValid(TOKEN)).thenReturn(true);
-    when(tokenService.hash(TOKEN)).thenReturn("b".repeat(64));
+    arrangeValidHold(reservation);
+    when(formConfirmationService.validateAndPersist(any(), any(), any(), any()))
+        .thenThrow(
+            new ReservationFormResponseInvalidException(
+                ReservationFormResponseViolation.MISSING_REQUIRED, "allergies"));
 
-    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
-        .isInstanceOf(ReservationConfirmationInvalidException.class);
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
+        .isInstanceOf(ReservationFormAnswersInvalidException.class);
 
-    verify(timeSlotDao, never()).findByIdForUpdate(any());
+    verify(tokenService, never()).generate();
     verify(reservationDao, never()).save(any());
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void rejectsTokenThatDoesNotOwnTheHoldBeforeLockingSlot() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    when(reservationDao.findByIdForUpdate(reservationId)).thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn("c".repeat(64));
+
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
+        .isInstanceOf(ReservationConfirmationInvalidException.class);
+    verify(timeSlotDao, never()).findByIdForUpdate(any());
   }
 
   @Test
@@ -103,36 +146,16 @@ class ReservationConfirmationServiceTests {
     UUID reservationId = UUID.randomUUID();
     ReservationEntity reservation = reservation(reservationId);
     reservation.setHoldExpiresAt(NOW);
-    when(reservationDao.findByIdForUpdate(reservationId))
-        .thenReturn(Optional.of(reservation));
+    when(reservationDao.findByIdForUpdate(reservationId)).thenReturn(Optional.of(reservation));
     when(tokenService.isValid(TOKEN)).thenReturn(true);
     when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
 
-    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ReservationHoldExpiredException.class);
 
     verify(timeSlotDao, never()).findByIdForUpdate(any());
-    verify(reservationDao, never()).save(any());
-  }
-
-  @Test
-  void rejectsWhenOtherOccupantsNoLongerLeaveEnoughCapacity() {
-    UUID reservationId = UUID.randomUUID();
-    ReservationEntity reservation = reservation(reservationId);
-    when(reservationDao.findByIdForUpdate(reservationId))
-        .thenReturn(Optional.of(reservation));
-    when(tokenService.isValid(TOKEN)).thenReturn(true);
-    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
-    when(timeSlotDao.findByIdForUpdate(reservation.getTimeSlot().getId()))
-        .thenReturn(Optional.of(reservation.getTimeSlot()));
-    when(reservationDao.sumOccupiedCapacityExcluding(
-            reservation.getTimeSlot().getId(), reservationId, NOW))
-        .thenReturn(3L);
-
-    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
-        .isInstanceOf(ReservationCapacityUnavailableException.class);
-
-    verify(reservationDao, never()).save(any());
+    verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test
@@ -140,51 +163,59 @@ class ReservationConfirmationServiceTests {
     UUID reservationId = UUID.randomUUID();
     ReservationEntity reservation = reservation(reservationId);
     reservation.setHoldExpiresAt(NOW.minusSeconds(1));
-    when(reservationDao.findByIdForUpdate(reservationId))
-        .thenReturn(Optional.of(reservation));
+    when(reservationDao.findByIdForUpdate(reservationId)).thenReturn(Optional.of(reservation));
     when(tokenService.isValid(TOKEN)).thenReturn(true);
-    when(tokenService.hash(TOKEN)).thenReturn("b".repeat(64));
+    when(tokenService.hash(TOKEN)).thenReturn("c".repeat(64));
 
-    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN)))
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ReservationConfirmationInvalidException.class);
+
+    verify(timeSlotDao, never()).findByIdForUpdate(any());
+    verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test
-  void rejectsUnimplementedCustomResponsesInsteadOfIgnoringThem() {
-    ReservationConfirmRequest request =
-        new ReservationConfirmRequest(
-            TOKEN,
-            "María López",
-            "maria@example.com",
-            2,
-            List.of(
-                new com.reserly.platform.reservations.dto.ReservationConfirmFormResponse(
-                    UUID.randomUUID(),
-                    com.fasterxml.jackson.databind.node.TextNode.valueOf("Sin gluten"))),
-            true,
-            true);
+  void rejectsWhenOtherOccupantsNoLongerLeaveEnoughCapacity() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    arrangeValidHold(reservation);
+    when(reservationDao.sumOccupiedCapacityExcluding(
+            reservation.getTimeSlot().getId(), reservationId, NOW))
+        .thenReturn(3L);
 
-    assertThatThrownBy(() -> service.confirm(UUID.randomUUID(), request))
-        .isInstanceOf(ReservationConfirmationInvalidException.class);
-
-    verify(reservationDao, never()).findByIdForUpdate(any());
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
+        .isInstanceOf(ReservationCapacityUnavailableException.class);
+    verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
   }
 
-  private ReservationConfirmRequest request(String token) {
+  private void arrangeValidHold(ReservationEntity reservation) {
+    when(reservationDao.findByIdForUpdate(reservation.getId()))
+        .thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
+    when(timeSlotDao.findByIdForUpdate(reservation.getTimeSlot().getId()))
+        .thenReturn(Optional.of(reservation.getTimeSlot()));
+    when(reservationDao.sumOccupiedCapacityExcluding(
+            reservation.getTimeSlot().getId(), reservation.getId(), NOW))
+        .thenReturn(2L);
+  }
+
+  private ReservationConfirmRequest request(
+      String token, List<ReservationConfirmFormResponse> responses) {
     return new ReservationConfirmRequest(
-        token,
-        "  María López  ",
-        "  Maria@Example.COM  ",
-        2,
-        List.of(),
-        true,
-        true);
+        token, "  María López  ", "  Maria@Example.COM  ", 2, responses, true, true);
   }
 
   private ReservationEntity reservation(UUID reservationId) {
     VenueEntity venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
     venue.setName("Local de prueba");
+    venue.setDefaultLocale("es");
+    UserEntity owner = new UserEntity();
+    owner.setEmail("owner@example.com");
+    venue.setOwnerUser(owner);
+    venue.setAddress("Calle Mayor 1");
     TimeSlotEntity slot = new TimeSlotEntity();
     slot.setId(UUID.randomUUID());
     slot.setVenue(venue);
@@ -192,7 +223,6 @@ class ReservationConfirmationServiceTests {
     slot.setDate(LocalDate.of(2026, 7, 15));
     slot.setStartsAt(LocalTime.of(11, 0));
     slot.setEndsAt(LocalTime.of(12, 0));
-
     ReservationEntity reservation = new ReservationEntity();
     reservation.setId(reservationId);
     reservation.setVenue(venue);

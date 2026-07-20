@@ -34,8 +34,7 @@ public interface ReservationFormFieldDao extends JpaRepository<ReservationFormFi
         and field.active = true
       order by field.position, field.id
       """)
-  List<ReservationFormFieldEntity> findAllOwnedForUpdate(
-      @Param("ownerUserId") UUID ownerUserId);
+  List<ReservationFormFieldEntity> findAllOwnedForUpdate(@Param("ownerUserId") UUID ownerUserId);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
@@ -55,4 +54,15 @@ public interface ReservationFormFieldDao extends JpaRepository<ReservationFormFi
       where field.venue.id = :venueId and field.active = true
       """)
   int findLastActivePosition(@Param("venueId") UUID venueId);
+
+  /** Devuelve el esquema custom que el cliente público puede contestar para un local publicado. */
+  @Query(
+      """
+      select field from ReservationFormFieldEntity field
+      where field.venue.id = :venueId
+        and field.venue.reservationFormPublished = true
+        and field.active = true
+      order by field.position, field.id
+      """)
+  List<ReservationFormFieldEntity> findAllPublishedByVenue(@Param("venueId") UUID venueId);
 }

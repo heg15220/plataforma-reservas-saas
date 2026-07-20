@@ -4789,3 +4789,72 @@ Fuente de verdad del avance:
   - Evidencia focalizada: 15 tests, 0 fallos, 0 errores y 0 omitidos en cinco clases de
     `reservations`; Spotless se limitó a ese módulo.
   - No se ejecutaron suite global, frontend, Testcontainers, tests concurrentes ni módulos ajenos.
+
+## Conversación 96 - Formulario, credencial de gestión y trabajo de confirmación
+
+- Fecha: 2026-07-20.
+- Resumen de la conversación:
+  - Se completaron conjuntamente las tareas 7.9, 7.10 y 7.11 en la rama
+    `phase/7-reservations-holds-concurrency`.
+  - La confirmación valida las respuestas contra el formulario publicado vigente, persiste snapshots
+    históricos en la misma transacción y devuelve un error público estable sin revelar el esquema.
+  - Cada reserva confirmada recibe un secreto de gestión CSPRNG; PostgreSQL conserva solo su hash
+    SHA-256 y su caducidad, mientras el secreto original se limita al trabajo de correo.
+  - La confirmación publica un evento dentro de la transacción y un relay `AFTER_COMMIT` lo convierte
+    en un mensaje JSON persistente de RabbitMQ con routing key y cola versionadas.
+  - El aviso del local usa el email operativo no vacío y, si falta, el email de la cuenta propietaria.
+  - Las validaciones se limitaron a cinco clases de formularios, reservas y mensajería.
+- Archivos modificados:
+  - `ReservationFormFieldDao.java`, `ReservationFormFieldAnswer.java`,
+    `ReservationFormResponseDao.java` y `ReservationFormResponseEntity.java`.
+  - `ReservationFormConfirmationService.java` y `ReservationFormConfirmationServiceImpl.java`.
+  - `ReservationConfirmRequest.java`, `ReservationEntity.java` y
+    `ReservationConfirmationServiceImpl.java`.
+  - `ReservationFormAnswersInvalidException.java` y
+    `ReservationConfirmationExceptionHandler.java`.
+  - `ReservationManagementTokenPolicy.java` y `ReservationManagementTokenPolicyImpl.java`.
+  - `ReservationConfirmationEmailAnswer.java`,
+    `ReservationConfirmationEmailRequestedEvent.java` y el paquete
+    `reservations/messaging` con topología, configuración y relay.
+  - Tests dirigidos de formularios, confirmación, token, handler y mensajería.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-013 Formulario de reserva configurable`.
+  - `RF-015 Confirmación de reserva`.
+  - `RF-016 Emails de reserva`.
+  - `RF-017 Consulta y cancelación por enlace seguro`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-003 Concurrencia y consistencia` y
+    `RNF-008 Observabilidad`.
+- Tareas impactadas:
+  - `7.9. Validar respuestas del formulario`.
+  - `7.10. Generar token seguro de gestión de reserva`.
+  - `7.11. Encolar emails de confirmación`.
+  - Se preparan 8.3, 8.4, 8.7, 8.8 y 8.9 sin completarlas.
+- Tareas completadas:
+  - `7.9. Validar respuestas del formulario`.
+  - `7.10. Generar token seguro de gestión de reserva`.
+  - `7.11. Encolar emails de confirmación`.
+- Siguiente tarea pendiente recomendada:
+  - `7.12. Implementar job de expiración de holds`.
+- Decisiones o aclaraciones relevantes:
+  - Solo se aceptan IDs pertenecientes al esquema custom activo de un formulario publicado; se
+    rechazan duplicados, campos desconocidos, valores inválidos y ausencias obligatorias.
+  - `formResponses` tiene límite HTTP de 100 elementos y el adaptador rechaza listas mayores que el
+    esquema publicado antes de construir comandos de validación.
+  - Las respuestas conservan snapshots de clave, label y JSON normalizado para no depender de
+    futuras ediciones o eliminaciones del campo.
+  - El token de gestión no se devuelve por HTTP ni se almacena en claro en PostgreSQL. La caducidad
+    inicial se fija treinta días después del final de la cita.
+  - El evento se publica tras commit para impedir emails de transacciones revertidas. El mensaje es
+    durable y usa DLQ compartida, pero el outbox, reintento, registro persistente de fallos y
+    consumidor idempotente siguen en 8.7 y 8.8.
+  - El payload RabbitMQ contiene PII y el token necesario para crear el enlace; no debe registrarse.
+    TLS, ACL, retención e idempotencia por destinatario quedan como requisitos operativos de fase 8.
+  - Evidencia focalizada final:
+    `mvn '-Dtest=ReservationFormConfirmationServiceTests,ReservationManagementTokenPolicyTests,ReservationConfirmationServiceTests,ReservationConfirmationExceptionHandlerTests,ReservationConfirmationEmailEventRelayTests' '-Dspotless.check.skip=true' '-Dcheckstyle.skip=true' test`:
+    14 tests correctos, 0 fallos, 0 errores y 0 omitidos.
+  - No se ejecutaron suite completa, frontend, Testcontainers, tests de concurrencia, validaciones
+    visuales ni chequeos globales de estilo. El chequeo global existente está bloqueado por 47
+    archivos ajenos a estas tareas y se omitió deliberadamente en la evidencia final.

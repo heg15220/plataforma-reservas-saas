@@ -154,9 +154,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 7.6. Implementar endpoint `POST /api/public/reservations/{id}/confirm`.
 - [x] 7.7. Validar hold vigente antes de confirmar.
 - [x] 7.8. Validar capacidad real antes de confirmar.
-- [ ] 7.9. Validar respuestas del formulario.
-- [ ] 7.10. Generar token seguro de gestión de reserva.
-- [ ] 7.11. Encolar emails de confirmación.
+- [x] 7.9. Validar respuestas del formulario.
+- [x] 7.10. Generar token seguro de gestión de reserva.
+- [x] 7.11. Encolar emails de confirmación.
 - [ ] 7.12. Implementar job de expiración de holds.
 - [ ] 7.13. Crear formulario público de reserva con contador visible.
 - [ ] 7.14. Crear pantalla de confirmación.

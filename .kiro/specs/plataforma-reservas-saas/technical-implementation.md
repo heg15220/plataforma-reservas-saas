@@ -21385,3 +21385,192 @@ Riesgos y limitaciones deliberadas:
 - Un cambio administrativo de capacidad puede invalidar un hold ya emitido; el conflicto explícito
   fuerza a recalcular selección en vez de sobrepasar el nuevo límite.
 - La validación de respuestas, token de gestión y emails permanece en 7.9–7.11.
+
+## Iteración 7.9 - Validación y persistencia de respuestas del formulario
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `7.9. Validar respuestas del formulario`.
+- Fecha: 2026-07-20.
+- Objetivo técnico: sustituir el rechazo provisional de respuestas custom por una validación
+  autoritativa contra el formulario publicado del local y persistir el resultado atómicamente con la
+  reserva confirmada.
+- Requisitos relacionados: RF-013, RF-015, RNF-001, RNF-002 y RNF-003.
+- Diseño relacionado: módulos 3.5 y 3.6, flujo transaccional de confirmación y convenciones JPA/DAO.
+
+### Archivos, contratos y arquitectura
+
+Se añadieron `ReservationFormFieldAnswer`, `ReservationFormResponseEntity`,
+`ReservationFormResponseDao`, `ReservationFormConfirmationService` y su implementación. El DAO de
+campos incorpora `findAllPublishedByVenue`, consulta JPQL documentada que selecciona únicamente
+campos activos cuando `venue.reservationFormPublished = true` y preserva orden por posición e ID.
+
+`ReservationConfirmRequest.formResponses` continúa siendo obligatorio y sus elementos exigen
+`fieldId` y JSON no nulos. Se añadió un máximo de 100 respuestas para acotar el payload público.
+`ReservationConfirmationServiceImpl` convierte cada DTO HTTP a un comando del módulo de formularios;
+no duplica reglas de tipo, selector, checkbox, teléfono, email, fecha o número, sino que reutiliza
+`ReservationFormResponseValidator` implementado en fase 6.
+
+El adaptador indexa el esquema por UUID, rechaza esquemas corruptos, IDs nulos, duplicados, campos
+ajenos/inactivos/no publicados y listas mayores que el esquema. Después reconstruye el snapshot de
+formulario esperado por el validador, exige los obligatorios y normaliza valores. Las respuestas
+opcionales no contestadas no producen filas.
+
+### Persistencia, transacción e invariantes
+
+`ReservationFormConfirmationServiceImpl.validateAndPersist` usa
+`@Transactional(propagation = MANDATORY)`: nunca puede confirmar respuestas en una transacción
+independiente. Se invoca después de acreditar hold, vigencia y capacidad, pero antes de generar la
+credencial de gestión o cambiar el estado. Una excepción revierte tanto `ReservationFormResponses`
+como la transición de `Reservations`.
+
+No se creó migración nueva. Se reutilizó la tabla `ReservationFormResponses` de V21 y la FK añadida
+por V23. Cada fila conserva `reservationId`, `fieldId` nullable, `fieldKey`, `fieldLabel`, `valueJson`
+y `createdAt`. `fieldKey` y `fieldLabel` son snapshots históricos; `fieldId` puede quedar nulo por
+`ON DELETE SET NULL`. La restricción única por reserva y clave impide duplicados persistentes.
+`valueJson` usa `jsonb` y se copia defensivamente al entrar y salir del DTO validado.
+
+### Validación, errores, seguridad e i18n
+
+Las infracciones internas se traducen a `ReservationFormAnswersInvalidException`. El handler público
+responde HTTP 400 con `RESERVATION_FORM_INVALID` sin exponer clave, label, obligatoriedad, opciones ni
+existencia de campos. Los campos base permanecen validados por Bean Validation y por las defensas del
+servicio de confirmación.
+
+El snapshot usa el label canónico publicado del campo. La resolución localizada de labels y opciones
+para plantillas puede evolucionar en fase 8; el valor histórico no depende de futuras ediciones. El
+servicio no registra respuestas ni PII. No se añadió sanitización HTML porque los valores se guardan
+como JSON tipado y aún no se renderizan; cualquier plantilla o UI consumidora deberá escapar por
+contexto.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationFormConfirmationServiceTests` verifica normalización y snapshot persistido, rechazo de
+obligatorio ausente y rechazo de un ID cuando no existe esquema publicado. Los tests previos de
+`ReservationFormResponseValidatorTests` cubren los tipos y opciones reutilizados, pero no se ejecutó
+esa suite adicional para mantener la validación limitada a los módulos directamente integrados.
+
+Comando focalizado compartido con 7.10 y 7.11:
+`mvn '-Dtest=ReservationFormConfirmationServiceTests,ReservationManagementTokenPolicyTests,ReservationConfirmationServiceTests,ReservationConfirmationExceptionHandlerTests,ReservationConfirmationEmailEventRelayTests' '-Dspotless.check.skip=true' '-Dcheckstyle.skip=true' test`.
+Resultado: 14 tests, 0 fallos, 0 errores y 0 omitidos.
+
+Riesgos pendientes: falta una prueba PostgreSQL real de JSONB/FK/rollback, prevista para una
+iteración de integración; los snapshots localizados por locale del destinatario deben definirse con
+las plantillas de fase 8; y la UI pública que produce `formResponses` corresponde a 7.13.
+
+## Iteración 7.10 - Token seguro de gestión de reserva
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `7.10. Generar token seguro de gestión de reserva`.
+- Fecha: 2026-07-20.
+- Objetivo técnico: emitir una credencial opaca de alta entropía al confirmar, almacenar solo una
+  huella verificable y entregarla exclusivamente al canal que construirá el enlace de gestión.
+- Requisitos relacionados: RF-015, RF-016, RF-017, RNF-002 y RB-001.
+- Diseño relacionado: responsabilidad de tokens del módulo 3.5 y esquema `Reservations` de V23.
+
+### Generación, datos y flujo de ejecución
+
+Se crearon `ReservationManagementTokenPolicy` y `ReservationManagementTokenPolicyImpl`. La
+confirmación reutiliza `OneTimeTokenService`: genera 32 bytes con CSPRNG, codifica Base64 URL-safe sin
+padding en 43 caracteres y calcula SHA-256 hexadecimal. La entidad `ReservationEntity` mapea
+`secureTokenHash` y `secureTokenExpiresAt`, columnas ya creadas por V23 con longitud, pareja obligatoria,
+formato hexadecimal e índice único parcial.
+
+El orden transaccional es: validar respuestas, generar secreto, calcular expiración, completar
+identidad, cambiar a `confirmed`, consumir el token de hold, persistir hash/caducidad y publicar el
+evento que conserva temporalmente el secreto. El secreto no forma parte de
+`ReservationConfirmResponse` y nunca se asigna a una entidad JPA. Una excepción anterior evita su
+generación; una excepción transaccional posterior revierte el hash.
+
+La política inicial mantiene el enlace hasta treinta días después del final de la cita. Recibe fecha,
+hora final y zona explícita para ser determinista y testeable. El servicio usa actualmente la zona
+del `Clock` productivo, UTC, porque el modelo del local aún no persiste zona horaria. Añadir zona IANA
+por local es deuda necesaria antes de operar horarios internacionales; el desfase de una o dos horas
+no acorta el acceso antes de la cita, pero debe resolverse antes del despliegue multizona.
+
+### Seguridad, privacidad, revocación y contratos
+
+PostgreSQL solo recibe SHA-256. El token original vive en memoria hasta serializar el trabajo de
+correo; no aparece en logs, errores ni respuesta HTTP. El índice único protege colisiones de hash.
+La comparación futura del endpoint 8.9 deberá validar formato antes de consultar y usar comparación
+en tiempo constante, además de comprobar caducidad y estado.
+
+V23 permite el par seguro en estados distintos para preparar cancelación y revocación. La semántica
+exacta de rotación/revocación y la relación estricta entre estado y credencial se definirá con RF-017;
+no se añadió una migración incompatible sin ese contrato. El payload AMQP que transporta el secreto
+es sensible y exige TLS, ACL restringidas, retención controlada y prohibición de logging del cuerpo.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationManagementTokenPolicyTests` fija la caducidad posterior a cita en `Europe/Madrid`.
+`ReservationConfirmationServiceTests` exige generación solo después de validaciones, persistencia del
+hash y caducidad, consumo del hold, ausencia del secreto en la respuesta y presencia exacta del
+secreto solo en el evento de entrega. También verifica que un formulario inválido no genere token.
+
+La evidencia conjunta son los 14 tests dirigidos documentados en 7.9. No se ejecutaron migraciones
+reales, suite global ni endpoint de gestión. Pendientes: prueba de integración de unicidad/rollback,
+modelado de zona horaria del local, contrato de revocación/rotación y endpoints 8.9-8.11.
+
+## Iteración 7.11 - Encolado de emails de confirmación
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `7.11. Encolar emails de confirmación`.
+- Fecha: 2026-07-20.
+- Objetivo técnico: desacoplar la confirmación transaccional de la entrega de correo y producir un
+  trabajo durable únicamente después de confirmar PostgreSQL.
+- Requisitos relacionados: RF-015, RF-016, RF-017, RNF-002 y RNF-008.
+- Diseño relacionado: RabbitMQ para jobs, eventos internos y flujo de confirmación posterior al commit.
+
+### Evento, topología y contratos
+
+Se añadieron `ReservationConfirmationEmailRequestedEvent` y
+`ReservationConfirmationEmailAnswer` como snapshots inmutables. El evento incluye `eventId`, reserva,
+cliente, email, local, destinatario operativo, dirección, locale, fecha, franja, personas, reglas de
+reserva, token y caducidad, además de las respuestas normalizadas. La lista se copia defensivamente.
+El aviso usa `contactEmail` no vacío y hace fallback al email de la cuenta propietaria, que es
+obligatoria para un local persistido y debe estar verificada antes de publicar.
+
+`ReservationConfirmationMessagingTopology` define cola
+`reserly.reservations.confirmation-email.v1` y routing key
+`reservations.confirmation-email.requested.v1`. `ReservationConfirmationMessagingConfiguration`
+declara una cola durable enlazada al exchange compartido `reserly.jobs.v1`, con dead-letter exchange
+y routing key compartidos. No se creó infraestructura paralela ni nombres no versionados.
+
+`ReservationConfirmationEmailEventRelay` escucha con
+`@TransactionalEventListener(phase = AFTER_COMMIT)`. Serializa JSON con el `ObjectMapper` común,
+asigna `messageId = eventId`, marca entrega persistente y publica mediante `RabbitTemplate`. Una
+transacción revertida no dispara el listener. La confirmación no espera al proveedor de email.
+
+### Errores, observabilidad, idempotencia y privacidad
+
+El relay captura errores de serialización y AMQP y registra solo `eventId`, nunca email, respuestas o
+token. Esta iteración garantiza el intento de encolado tras commit, no entrega final. Si el broker
+falla en esa ventana, todavía no existe outbox transaccional ni reintento persistente: 8.7 debe añadir
+cola de reintentos/consumidor idempotente y 8.8 almacenamiento de fallos. La reserva no se duplica
+porque el agregado ya está confirmado y el futuro consumidor deberá usar `eventId` más tipo de
+destinatario como clave de idempotencia.
+
+El trabajo contiene datos para dos emails y un token que solo necesita el cliente. El consumidor de
+fase 8 deberá separar las entregas, impedir que el token aparezca en el email del local, escapar todas
+las respuestas, no loguear el payload y aplicar TLS, ACL y retención limitada en RabbitMQ. Las
+plantillas ES/EN y el proveedor pertenecen a 8.1, 8.3 y 8.4.
+
+### Tests, evidencia, riesgos y pendientes
+
+`ReservationConfirmationEmailEventRelayTests` verifica exchange, routing key, `messageId`, JSON,
+modo persistente y conservación del secreto necesario. `ReservationConfirmationServiceTests`
+verifica publicación del evento en el camino confirmado, ausencia de publicación ante formulario
+inválido y fallback del destinatario del local. El handler de formulario inválido conserva cobertura
+pública segura.
+
+La evidencia conjunta son 14 tests dirigidos, sin fallos, errores ni omitidos. Spotless y Checkstyle
+globales se omitieron para no validar ni modificar 47 archivos ajenos señalados por el estado previo.
+No se ejecutaron RabbitMQ real, proveedor de email, consumidor, frontend, suite completa ni tests de
+concurrencia.
+
+Pendientes explícitos: prueba con sincronización transaccional real de commit/rollback, prueba de
+topología Spring, outbox/reintentos 8.7, persistencia de fallos 8.8, plantillas y proveedor 8.1-8.4,
+y endpoint seguro 8.9. Estas limitaciones no cambian el alcance de 7.11: el trabajo durable queda
+definido y el intento de encolado ocurre solo después del commit.
