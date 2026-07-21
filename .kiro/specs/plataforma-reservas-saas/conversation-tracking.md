@@ -10,13 +10,43 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-13
+- Fecha de última actualización: 2026-07-21
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14` y `5.1` a `5.8`.
-- Siguiente tarea pendiente recomendada: `5.9. Implementar asignación automática simple por primera disponibilidad`.
-- Observación: la Fase 5 dispone del catálogo privado de servicios y equipo, horarios semanales,
-  asociaciones servicio-recurso y cálculo público de recursos elegibles. V20 permite configurar por
-  servicio la opción `any_available`; el siguiente paso es materializar la asignación automática.
+  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12` y `7.1` a `7.16`.
+- Siguiente tarea pendiente recomendada: `8.1. Configurar proveedor de email transaccional`.
+- Observación: la Fase 7 queda cerrada con holds, confirmación, expiración, flujo público y
+  cobertura focalizada para última plaza y hold expirado.
+
+## Conversación 98 - Tests de última plaza y hold expirado
+
+- Fecha: 2026-07-21.
+- Resumen de la conversación:
+  - Se completaron conjuntamente `7.15` y `7.16`.
+  - Se añadió cobertura al servicio de holds para proteger la última plaza: el primer competidor
+    persiste un hold de capacidad 1 y el segundo se rechaza tras recomputar ocupación bajo el lock de
+    franja.
+  - Se añadió cobertura explícita al servicio de confirmación para un hold ya vencido, sin bloqueo de
+    franja, consulta de capacidad, validación de formulario, guardado ni evento de email.
+  - La validación se limitó a las dos clases de servicio modificadas.
+- Archivos modificados:
+  - `apps/api/src/test/java/com/reserly/platform/reservations/service/ReservationHoldServiceTests.java`.
+  - `apps/api/src/test/java/com/reserly/platform/reservations/service/ReservationConfirmationServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-014`, `RF-015`, `RNF-003`, `RB-003`, `RB-004` y `RB-005`.
+- Tareas impactadas y completadas:
+  - `7.15. Crear tests de concurrencia para última plaza`.
+  - `7.16. Crear tests de confirmación de hold expirado`.
+- Siguiente tarea pendiente recomendada:
+  - `8.1. Configurar proveedor de email transaccional`.
+- Decisiones o aclaraciones relevantes:
+  - La prueba de última plaza es unitaria y determinista: modela la serialización que proporciona
+    `PESSIMISTIC_WRITE` y protege la recomputación de capacidad que evita sobreventa.
+  - Evidencia: `mvn -f apps/api/pom.xml "-Dtest=ReservationHoldServiceTests,ReservationConfirmationServiceTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`: 12 tests correctos, 0 fallos, 0 errores y 0 omitidos.
+  - No se ejecutaron suite completa, frontend, build global, tests de integración ni validaciones
+    transversales.
 
 ## Conversación 87 - Disponibilidad por recurso y cualquier profesional disponible
 

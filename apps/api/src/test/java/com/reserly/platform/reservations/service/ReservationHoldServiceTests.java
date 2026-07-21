@@ -23,6 +23,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -133,6 +134,38 @@ class ReservationHoldServiceTests {
 
     verify(assignmentService, never()).assign(any(), anyInt(), any(), any(), any());
     verify(reservationDao, never()).save(any());
+  }
+
+  @Test
+  void rejectsSecondCompetitorForLastSeatAfterLockedCapacityIsRecomputed() {
+    UUID venueId = UUID.randomUUID();
+    UUID slotId = UUID.randomUUID();
+    TimeSlotEntity slot = slot(venueId, slotId, null, 1);
+    ReservationHoldRequest request =
+        new ReservationHoldRequest(venueId, slotId, null, null, null, 1);
+    AtomicLong occupiedCapacity = new AtomicLong(0);
+    when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(reservationDao.sumOccupiedCapacity(slotId, NOW))
+        .thenAnswer(invocation -> occupiedCapacity.get());
+    when(assignmentService.assign(venueId, slot.getWeekday(), slot, null, null))
+        .thenReturn(Optional.empty());
+    when(tokenService.generate()).thenReturn(TOKEN);
+    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
+    when(reservationDao.save(any(ReservationEntity.class)))
+        .thenAnswer(
+            invocation -> {
+              ReservationEntity entity = invocation.getArgument(0);
+              entity.setId(UUID.randomUUID());
+              occupiedCapacity.addAndGet(entity.getPartySize());
+              return entity;
+            });
+
+    var firstHold = service.create(request);
+
+    assertThat(firstHold.reservationId()).isNotNull();
+    assertThatThrownBy(() -> service.create(request))
+        .isInstanceOf(ReservationHoldInvalidException.class);
+    verify(reservationDao).save(any(ReservationEntity.class));
   }
 
   @Test

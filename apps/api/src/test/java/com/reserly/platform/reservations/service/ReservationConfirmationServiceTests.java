@@ -159,6 +159,25 @@ class ReservationConfirmationServiceTests {
   }
 
   @Test
+  void rejectsExpiredHoldBeforeConfirmingOrConsumingCapacity() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    reservation.setHoldExpiresAt(NOW.minusSeconds(1));
+    when(reservationDao.findByIdForUpdate(reservationId)).thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
+
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
+        .isInstanceOf(ReservationHoldExpiredException.class);
+
+    verify(timeSlotDao, never()).findByIdForUpdate(any());
+    verify(reservationDao, never()).sumOccupiedCapacityExcluding(any(), any(), any());
+    verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
+    verify(reservationDao, never()).save(any());
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
   void invalidTokenDoesNotRevealThatHoldIsExpired() {
     UUID reservationId = UUID.randomUUID();
     ReservationEntity reservation = reservation(reservationId);

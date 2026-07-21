@@ -21650,3 +21650,63 @@ Archivos afectados: `app/reservas/[id]/confirmacion/page.tsx`, `public-reservati
 El test focalizado verifica el resumen confirmado y el estado seguro cuando falta sesión. Sus 2 casos pasaron junto con los 2 tests del cliente API en la tanda focalizada de tres archivos. Sumados a la repetición final del formulario, la evidencia web final comprende 6 tests distintos correctos. Se evitó deliberadamente toda validación global.
 
 Limitación aceptada: refrescar conserva la sesión, pero otra pestaña/dispositivo no puede reconstruir el resumen; el email de RF-016 es el canal persistente. Una futura consulta requerirá el enlace seguro de RF-017, no el UUID de la reserva.
+
+## Iteración 7.15 y 7.16 - Tests de concurrencia de última plaza y hold expirado
+
+### Identificador, fecha, objetivo y alcance
+
+- Tareas completadas: `7.15. Crear tests de concurrencia para última plaza` y
+  `7.16. Crear tests de confirmación de hold expirado`.
+- Fecha: 2026-07-21.
+- Objetivo técnico: cerrar la fase de reservas con pruebas dirigidas sobre los dos riesgos críticos
+  que quedaban abiertos: sobreventa de la última plaza y confirmación de un hold fuera de vigencia.
+- Requisitos y diseño relacionados: RF-014, RF-015, RNF-003, RB-003, RB-004 y RB-005.
+
+No se añadieron endpoints, migraciones, entidades ni cambios de contrato. La iteración modifica solo
+tests del módulo `reservations` y la documentación de seguimiento. La lógica protegida ya vive en
+`ReservationHoldServiceImpl`, `ReservationConfirmationServiceImpl`, `ReservationTimeSlotDao` y
+`ReservationDao`: la franja se adquiere con `PESSIMISTIC_WRITE`, la ocupación se calcula después de
+obtener el lock y los holds solo son vigentes si `now < holdExpiresAt`.
+
+### Cobertura de última plaza
+
+`ReservationHoldServiceTests.rejectsSecondCompetitorForLastSeatAfterLockedCapacityIsRecomputed`
+modela una franja publicada de capacidad 1 y dos intentos sucesivos sobre la misma plaza. El test
+mantiene una ocupación efectiva mutable que se incrementa únicamente cuando `reservationDao.save`
+persiste el primer hold. En la segunda llamada el servicio vuelve a consultar
+`sumOccupiedCapacity(slotId, now)` después de adquirir la franja y rechaza la reserva porque
+`occupiedCapacity + partySize > slot.capacity`.
+
+La prueba verifica tres invariantes de concurrencia sin levantar infraestructura externa: solo el
+primer intento obtiene `reservationId`, el segundo lanza `ReservationHoldInvalidException` y el DAO de
+reservas recibe una única persistencia. La serialización real se apoya en la prueba existente del DAO
+que fija `@Lock(PESSIMISTIC_WRITE)` y en el contrato transaccional de `create`; esta prueba nueva
+protege el comportamiento de negocio que depende de esa serialización.
+
+### Cobertura de hold expirado
+
+`ReservationConfirmationServiceTests.rejectsExpiredHoldBeforeConfirmingOrConsumingCapacity` crea un
+hold propio con `holdExpiresAt = now - 1s` y token correcto. La confirmación debe fallar con
+`ReservationHoldExpiredException` antes de bloquear la franja, consultar capacidad, validar
+respuestas, guardar cambios o publicar el evento de email. El test complementa el caso existente de
+límite exclusivo exacto y deja explícito el camino solicitado por la tarea `7.16`.
+
+Esta decisión evita efectos secundarios sobre reservas vencidas y conserva el contrato de privacidad:
+solo un token válido para la reserva recibe el error específico de expiración; tokens ajenos o
+inválidos siguen recibiendo el error genérico de confirmación inválida.
+
+### Validación, evidencia, riesgos y pendientes
+
+Comando ejecutado:
+`mvn -f apps/api/pom.xml "-Dtest=ReservationHoldServiceTests,ReservationConfirmationServiceTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`.
+
+Resultado: 12 tests correctos, 0 fallos, 0 errores y 0 omitidos. Maven necesitó acceso de red para
+resolver el parent de Spring Boot tras el bloqueo inicial del sandbox; la ejecución final mantuvo el
+alcance limitado a las dos clases del módulo `reservations`. No se ejecutaron suite completa,
+frontend, build global, tests de integración ni validaciones transversales.
+
+Riesgo pendiente aceptado: no se añadió una prueba concurrente real con dos hilos y PostgreSQL porque
+habría activado arranque de aplicación, Flyway y Testcontainers, aumentando coste y duración fuera
+del objetivo indicado para esta conversación. La combinación de prueba de lock DAO, transacción de
+servicio y recomputación de capacidad cubre el contrato implementado de la fase 7; una prueba
+end-to-end concurrente queda como candidata para QA de aceptación `19.16`.

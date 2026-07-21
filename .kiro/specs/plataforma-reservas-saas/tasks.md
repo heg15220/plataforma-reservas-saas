@@ -160,8 +160,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 7.12. Implementar job de expiración de holds.
 - [x] 7.13. Crear formulario público de reserva con contador visible.
 - [x] 7.14. Crear pantalla de confirmación.
-- [ ] 7.15. Crear tests de concurrencia para última plaza.
-- [ ] 7.16. Crear tests de confirmación de hold expirado.
+- [x] 7.15. Crear tests de concurrencia para última plaza.
+- [x] 7.16. Crear tests de confirmación de hold expirado.
 
 ## 10. Fase 8 - Emails y enlace seguro de gestión
 
