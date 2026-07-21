@@ -10,6 +10,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Surface } from "@/components/layout";
@@ -319,9 +320,7 @@ export function PublicAvailabilityCalendar({
                             }
                             tone={slot.bookingAvailable ? "success" : "neutral"}
                           />
-                          <Button disabled variant="contained">
-                            {t("bookingPending")}
-                          </Button>
+                          <Button component={Link} href={bookingHref(slot)} variant="contained">{t("bookingPending")}</Button>
                         </Box>
                       ))}
                     </Stack>
@@ -340,6 +339,15 @@ export function PublicAvailabilityCalendar({
       </Stack>
     </Box>
   );
+
+  function bookingHref(slot: PublicAvailability["slots"][number]) {
+    const selectedResource = resourceSelections[slot.slotId];
+    const query = new URLSearchParams({ slotId: slot.slotId });
+    if (slot.serviceId) query.set("serviceId", slot.serviceId);
+    if (selectedResource === "any_available") query.set("assignmentPreference", "any_available");
+    else if (selectedResource) { query.set("assignmentPreference", "specific"); query.set("employeeResourceId", selectedResource); }
+    return `/locales/${encodeURIComponent(venueSlug)}/reservar?${query.toString()}`;
+  }
 
   function shiftRange(daysToAdd: number) {
     const next = addDays(rangeStart, daysToAdd);

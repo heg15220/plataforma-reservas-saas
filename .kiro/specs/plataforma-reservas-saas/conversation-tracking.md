@@ -4858,3 +4858,36 @@ Fuente de verdad del avance:
   - No se ejecutaron suite completa, frontend, Testcontainers, tests de concurrencia, validaciones
     visuales ni chequeos globales de estilo. El chequeo global existente está bloqueado por 47
     archivos ajenos a estas tareas y se omitió deliberadamente en la evidencia final.
+## Conversación 97 - Expiración de holds y cierre del flujo público de reserva
+
+- Fecha: 2026-07-21.
+- Resumen de la conversación:
+  - Se completaron en paralelo las tareas 7.12, 7.13 y 7.14 en la rama `phase/7-reservations-holds-concurrency`.
+  - Se añadió un job transaccional, idempotente y configurable que materializa como `expired` los holds vencidos cada minuto mediante una única actualización masiva.
+  - El calendario público enlaza las franjas reservables con un formulario que obtiene únicamente el esquema publicado, fija el número de personas antes de crear el hold y muestra su cuenta atrás real.
+  - Tras confirmar, el navegador conserva temporalmente el resumen validado en `sessionStorage` y presenta una pantalla responsive sin volver a exponer el token del hold ni consultar datos personales por UUID.
+- Archivos modificados:
+  - `ReserlyApplication.java`, `ReservationDao.java` y `ReservationHoldExpirationJob.java`.
+  - `PublicReservationFormController.java`, `PublicReservationFormControllerImpl.java`, `PublicReservationFormResponse.java`, `PublicReservationFormService.java` y `PublicReservationFormServiceImpl.java`.
+  - `public-availability-calendar.tsx`, la ruta `locales/[slug]/reservar`, el módulo `features/public-reservation` y sus tests.
+  - La ruta `reservas/[id]/confirmacion`, el módulo `features/reservation-booking` y su test.
+  - `apps/web/locales/es.json`, `apps/web/locales/en.json` y tests focalizados del job.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-013 Formulario de reserva configurable`, `RF-014 Hold temporal`, `RF-015 Confirmación de reserva` y `RF-016 Emails de reserva`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-003 Concurrencia y consistencia`, `RNF-004 Responsive`, `RNF-007 Internacionalización` y `RNF-008 Observabilidad`.
+- Tareas impactadas:
+  - 7.12, 7.13 y 7.14.
+- Tareas completadas:
+  - `7.12. Implementar job de expiración de holds`.
+  - `7.13. Crear formulario público de reserva con contador visible`.
+  - `7.14. Crear pantalla de confirmación`.
+- Siguiente tarea pendiente recomendada:
+  - `7.15. Crear tests de concurrencia para última plaza`.
+- Decisiones o aclaraciones relevantes:
+  - La expiración materializada usa la frontera estricta `holdExpiresAt < now`; el job no reabre estados y puede repetirse sin efectos laterales.
+  - El aforo se elige antes de crear el hold y queda bloqueado después para que hold y confirmación compartan el mismo valor.
+  - Los campos custom opcionales vacíos se omiten; los obligatorios y consentimientos siguen validándose en servidor.
+  - La confirmación se transporta solo dentro de la sesión de la pestaña. Si falta o no valida, se muestra un estado neutro sin consultar por UUID.
+  - Evidencia focalizada API: 3 tests, 0 fallos, 0 errores y 0 omitidos; compilación de 511 fuentes y Checkstyle correctos.
+  - Evidencia focalizada web: 6 tests distintos correctos en los tres archivos nuevos; se usó un único worker y no se ejecutaron suite global, lint, build ni typecheck global.

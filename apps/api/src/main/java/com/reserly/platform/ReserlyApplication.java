@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Punto de entrada del monolito modular de Reserly.
@@ -14,6 +15,7 @@ import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoCon
  */
 @SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 @ConfigurationPropertiesScan
+@EnableScheduling
 public class ReserlyApplication {
 
   /**

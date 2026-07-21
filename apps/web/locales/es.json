@@ -1132,5 +1132,54 @@
       "confirmPending": "Faltan {count} traducciones. Puedes publicar usando el idioma origen como fallback.",
       "approveFallback": "Aprobar el fallback al idioma origen"
     }
+  },
+  "ReservationBooking": {
+    "form": {
+      "title": "Completa tu reserva",
+      "loading": "Preparando tu reserva",
+      "expired": "El tiempo de reserva ha terminado. Vuelve a elegir una franja.",
+      "remaining": "Tiempo para completar: {time}",
+      "start": "Empezar reserva",
+      "submit": "Confirmar reserva",
+      "error": "No hemos podido preparar la reserva.",
+      "name": "Nombre",
+      "email": "Correo electrónico",
+      "party": "Número de personas",
+      "date": "Fecha",
+      "timeSlot": "Franja horaria",
+      "privacy": "Acepto la política de privacidad",
+      "rules": "Acepto las normas de reserva"
+    },
+    "confirmation": {
+      "loading": "Cargando confirmación",
+      "eyebrow": "Reserva confirmada",
+      "title": "Tu reserva está lista",
+      "description": "Hemos enviado los detalles a {email}.",
+      "details": {
+        "title": "Resumen",
+        "venue": "Local",
+        "date": "Fecha",
+        "time": "Hora",
+        "partySize": "Personas",
+        "people": "{count} personas"
+      },
+      "emailNotice": "Revisa {email} para gestionar la reserva.",
+      "privacyNotice": "Por privacidad, el enlace de gestión solo se envía por email.",
+      "steps": {
+        "ariaLabel": "Progreso de la reserva",
+        "select": "Seleccionar",
+        "form": "Formulario",
+        "confirmation": "Confirmación"
+      },
+      "actions": {
+        "explore": "Explorar más locales",
+        "home": "Volver al inicio"
+      },
+      "missing": {
+        "title": "Confirmación no disponible",
+        "description": "No encontramos los datos de esta confirmación.",
+        "action": "Buscar locales"
+      }
+    }
   }
 }

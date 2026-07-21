@@ -1132,5 +1132,54 @@
       "confirmPending": "There are {count} missing translations. You can publish using the source language as fallback.",
       "approveFallback": "Approve fallback to the source language"
     }
+  },
+  "ReservationBooking": {
+    "form": {
+      "title": "Complete your booking",
+      "loading": "Preparing your booking",
+      "expired": "Your booking time has expired. Please choose a slot again.",
+      "remaining": "Time remaining: {time}",
+      "start": "Start booking",
+      "submit": "Confirm booking",
+      "error": "We could not prepare the booking.",
+      "name": "Name",
+      "email": "Email address",
+      "party": "Party size",
+      "date": "Date",
+      "timeSlot": "Time slot",
+      "privacy": "I accept the privacy policy",
+      "rules": "I accept the booking rules"
+    },
+    "confirmation": {
+      "loading": "Loading confirmation",
+      "eyebrow": "Booking confirmed",
+      "title": "Your booking is ready",
+      "description": "We sent the details to {email}.",
+      "details": {
+        "title": "Summary",
+        "venue": "Venue",
+        "date": "Date",
+        "time": "Time",
+        "partySize": "Party size",
+        "people": "{count} people"
+      },
+      "emailNotice": "Check {email} to manage your booking.",
+      "privacyNotice": "For privacy, the management link is only sent by email.",
+      "steps": {
+        "ariaLabel": "Booking progress",
+        "select": "Select",
+        "form": "Form",
+        "confirmation": "Confirmation"
+      },
+      "actions": {
+        "explore": "Explore more venues",
+        "home": "Back to home"
+      },
+      "missing": {
+        "title": "Confirmation unavailable",
+        "description": "We could not find this confirmation in your current session.",
+        "action": "Find venues"
+      }
+    }
   }
 }

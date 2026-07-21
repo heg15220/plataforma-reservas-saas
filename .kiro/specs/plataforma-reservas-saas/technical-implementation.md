@@ -21574,3 +21574,79 @@ Pendientes explícitos: prueba con sincronización transaccional real de commit/
 topología Spring, outbox/reintentos 8.7, persistencia de fallos 8.8, plantillas y proveedor 8.1-8.4,
 y endpoint seguro 8.9. Estas limitaciones no cambian el alcance de 7.11: el trabajo durable queda
 definido y el intento de encolado ocurre solo después del commit.
+## Iteración 7.12 - Job de expiración de holds
+
+### Identificador, fecha, objetivo y diseño
+
+- Tarea completada: `7.12. Implementar job de expiración de holds`.
+- Fecha: 2026-07-21.
+- Objetivo técnico: liberar de forma periódica la capacidad retenida por holds cuya vigencia terminó, sin depender de una petición de confirmación.
+- Requisitos y diseño relacionados: RF-014, RNF-003 y RNF-008; job de ejecución cada minuto y estado terminal `expired` definido en el diseño de reservas.
+
+Se habilitó scheduling en `ReserlyApplication` y se creó `ReservationHoldExpirationJob`. El job usa `Clock.systemUTC()` en producción, admite un reloj controlado en tests, captura una única frontera temporal por ciclo y ejecuta dentro de transacción. Tanto `fixedDelay` como `initialDelay` son configurables mediante propiedades y tienen `1m` como valor por defecto.
+
+`ReservationDao.expireHoldsBefore(Instant)` realiza una actualización masiva condicionada por `status = hold` y `holdExpiresAt < now`, asigna `expired` y actualiza `updatedAt`. No se añadieron tablas, columnas, migraciones ni índices: se reutilizan el estado y el índice de expiración ya introducidos en la fase. La condición de estado vuelve la operación idempotente y limita el efecto de ejecuciones simultáneas; una fila ya confirmada, cancelada o expirada nunca se sobrescribe.
+
+### Flujo, seguridad, errores y observabilidad
+
+Cada ciclo obtiene UTC, delega una única sentencia al DAO y registra a nivel INFO solo el número de filas y la frontera cuando existe trabajo. No registra tokens, clientes ni datos de reserva. Los errores de base de datos se propagan para permitir observación y reintento en el siguiente ciclo; no se ocultan ni se ejecutan reintentos internos que puedan solaparse. La frontera es estricta: la igualdad ya no es confirmable por la regla de vigencia y será materializada en una ejecución posterior.
+
+Archivos afectados: `ReserlyApplication.java`, `ReservationDao.java`, `ReservationHoldExpirationJob.java`, `ReservationHoldExpirationJobTests.java` y `ReservationHoldExpirationDaoTests.java`.
+
+### Tests, evidencia, riesgos y pendientes
+
+El test del job verifica frontera UTC, delegación, resultado y caso sin trabajo. El test DAO verifica que únicamente los holds anteriores a la frontera cambian, preservando holds futuros y otros estados. Comando focalizado: `mvn '-Dtest=ReservationHoldExpirationJobTests,ReservationHoldExpirationDaoTests' '-Dspotless.check.skip=true' '-Dcheckstyle.skip=true' test`. Resultado: 3 tests correctos, compilación de 511 fuentes y 113 fuentes de test, Checkstyle correcto y BUILD SUCCESS. Spotless se omitió deliberadamente para no inspeccionar ni modificar módulos ajenos. Pendiente operativo: métricas persistentes y coordinación distribuida si se desplegaran múltiples nodos; la sentencia condicional ya conserva corrección e idempotencia.
+
+## Iteración 7.13 - Formulario público de reserva con contador
+
+### Identificador, fecha, objetivo y contratos
+
+- Tarea completada: `7.13. Crear formulario público de reserva con contador visible`.
+- Fecha: 2026-07-21.
+- Objetivo técnico: convertir una franja pública en un hold coherente y permitir completar el formulario publicado dentro de su vigencia visible.
+- Requisitos y diseño relacionados: RF-013, RF-014, RF-015, RNF-002, RNF-003, RNF-004 y RNF-007.
+
+Se añadió `GET /api/public/venues/{slug}/reservation-form`. `PublicReservationFormService` resuelve exclusivamente locales publicados y exige también `reservationFormPublished`; combina el catálogo base obligatorio con campos custom activos/publicados en orden estable. `PublicReservationFormResponse` expone `venueId`, slug y esquema necesario, pero no configuración privada, respuestas ni borradores. No hubo cambios de modelo, migraciones o índices.
+
+En web se añadió la ruta locale-aware `/locales/[slug]/reservar` y `PublicReservationFormView`. El calendario genera el enlace con `slotId`, servicio y selección de recurso/asignación. La ruta rechaza peticiones sin slot. El cliente valida con Zod las respuestas del formulario, hold y confirmación antes de usarlas.
+
+### Flujo, invariantes, UI e internacionalización
+
+Primero se carga el esquema y se solicita el número de personas. Solo al pulsar “Empezar reserva” se crea el hold, de modo que el aforo reservado coincide con el que después se confirma. Tras crearlo, ese valor se presenta deshabilitado y comienza una cuenta atrás calculada desde `expiresAt`, no desde una duración local. El timer se actualiza cada segundo, cambia de severidad cerca del final y deshabilita confirmación al expirar.
+
+Los controles se derivan del tipo publicado: texto corto/largo, email, teléfono, número, fecha, select y checkbox. Los labels base usan catálogos ES/EN y los custom el valor localizado con fallback. Los campos obligatorios y ambos consentimientos usan validación nativa, mientras el backend conserva la autoridad final. Las respuestas custom opcionales vacías se omiten y los checkbox se envían como booleanos. La UI usa MUI responsive, encabezado semántico, estado de carga, `role=timer` y controles etiquetados.
+
+Errores HTTP o de contrato llevan a un mensaje público genérico sin filtrar detalles internos. Los `AbortController` cancelan la carga al desmontar. El hold token permanece solo en memoria hasta confirmar y nunca entra en la URL ni en logs. Tras éxito se guarda exclusivamente el DTO público de confirmación y se navega a la pantalla final.
+
+Archivos afectados: paquete backend `forms/controller`, `forms/dto/PublicReservationFormResponse.java`, `forms/service/PublicReservationForm*`; `public-availability-calendar.tsx`; ruta `locales/[slug]/reservar`; `features/public-reservation/*`; y catálogos `es.json`/`en.json`.
+
+### Tests, evidencia, riesgos y pendientes
+
+`public-reservation-api.test.ts` cubre paths, payloads y validación de contrato. `public-reservation-form.test.tsx` cubre creación explícita del hold, render del esquema, contador y bloqueo tras expiración. Los dos tests del formulario terminaron correctos en la ejecución final focalizada con un worker. Los 4 tests de API y confirmación también quedaron correctos en la tanda focalizada previa. El backend nuevo compiló dentro del BUILD SUCCESS de 7.12 y pasó Checkstyle.
+
+No se ejecutaron build, lint, typecheck o suite web global. Riesgos pendientes: recuperación explícita tras fallo de red y cancelación anticipada de un hold abandonado; el job de 7.12 garantiza su liberación. La prueba concurrente de última plaza corresponde a 7.15.
+
+## Iteración 7.14 - Pantalla pública de confirmación
+
+### Identificador, fecha, objetivo y arquitectura
+
+- Tarea completada: `7.14. Crear pantalla de confirmación`.
+- Fecha: 2026-07-21.
+- Objetivo técnico: cerrar el recorrido público con un resumen comprensible y seguro de la reserva confirmada.
+- Requisitos y diseño relacionados: RF-015, RF-016, RNF-002, RNF-004 y RNF-007.
+
+Se añadió la ruta `/reservas/[id]/confirmacion`, el componente `PublicReservationConfirmation` y `reservation-confirmation-storage`. No se modificaron entidades, migraciones, endpoints ni contratos backend. El almacenamiento recibe el mismo `ReservationConfirmation` validado por Zod tras el POST de confirmación y lo serializa en una clave namespaced por UUID dentro de `sessionStorage`.
+
+### Flujo, privacidad, accesibilidad y errores
+
+La pantalla lee una sola vez el estado de la sesión, vuelve a validarlo y comprueba que el UUID almacenado coincide con el de la ruta. Muestra local, fecha localizada, franja, número de personas, aviso del email de gestión y progreso selección/formulario/confirmación. Los detalles usan iconos decorativos ocultos, lista semántica, jerarquía de títulos y layout adaptable de una a varias columnas.
+
+La decisión de no recuperar automáticamente por UUID evita convertir un identificador predecible en acceso a PII. El token de hold y la credencial de gestión nunca se guardan aquí. `sessionStorage` limita el resumen a la pestaña; al abrir un enlace nuevo o ante JSON inválido se presenta un estado “no encontrado” seguro con enlace de vuelta, sin error técnico ni petición adicional. Los textos y formatos existen en ES/EN.
+
+Archivos afectados: `app/reservas/[id]/confirmacion/page.tsx`, `public-reservation-confirmation.tsx`, `reservation-confirmation-storage.ts`, `public-reservation-confirmation.test.tsx` y los catálogos de mensajes.
+
+### Tests, evidencia, riesgos y pendientes
+
+El test focalizado verifica el resumen confirmado y el estado seguro cuando falta sesión. Sus 2 casos pasaron junto con los 2 tests del cliente API en la tanda focalizada de tres archivos. Sumados a la repetición final del formulario, la evidencia web final comprende 6 tests distintos correctos. Se evitó deliberadamente toda validación global.
+
+Limitación aceptada: refrescar conserva la sesión, pero otra pestaña/dispositivo no puede reconstruir el resumen; el email de RF-016 es el canal persistente. Una futura consulta requerirá el enlace seguro de RF-017, no el UUID de la reserva.

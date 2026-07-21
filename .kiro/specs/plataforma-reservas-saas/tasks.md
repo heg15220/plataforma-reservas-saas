@@ -157,9 +157,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 7.9. Validar respuestas del formulario.
 - [x] 7.10. Generar token seguro de gestión de reserva.
 - [x] 7.11. Encolar emails de confirmación.
-- [ ] 7.12. Implementar job de expiración de holds.
-- [ ] 7.13. Crear formulario público de reserva con contador visible.
-- [ ] 7.14. Crear pantalla de confirmación.
+- [x] 7.12. Implementar job de expiración de holds.
+- [x] 7.13. Crear formulario público de reserva con contador visible.
+- [x] 7.14. Crear pantalla de confirmación.
 - [ ] 7.15. Crear tests de concurrencia para última plaza.
 - [ ] 7.16. Crear tests de confirmación de hold expirado.
 

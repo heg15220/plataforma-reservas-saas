@@ -6,11 +6,30 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** DAO del agregado con lecturas explícitas para capacidad y confirmación transaccional. */
 public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
+
+  /**
+   * Expira en una sola sentencia los holds cuyo plazo terminó estrictamente antes del instante
+   * recibido. La condición de estado hace la operación idempotente y evita sobrescribir una
+   * confirmación concurrente.
+   *
+   * @param now instante UTC que se usa tanto como frontera como fecha de actualización
+   * @return número de holds que cambiaron a {@code expired}
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
+      update ReservationEntity reservation
+      set reservation.status = 'expired', reservation.updatedAt = :now
+      where reservation.status = 'hold'
+        and reservation.holdExpiresAt < :now
+      """)
+  int expireHoldsBefore(@Param("now") Instant now);
 
   /**
    * Suma ocupación efectiva: reservas confirmadas en cualquier estado posterior y holds vigentes.
