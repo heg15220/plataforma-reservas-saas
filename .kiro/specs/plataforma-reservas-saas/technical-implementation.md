@@ -21866,3 +21866,40 @@ Pendientes explícitos: plantilla de aviso al local 8.4, cancelaciones 8.5/8.6, 
 reintentos 8.7, fallos persistidos 8.8, endpoint de gestión 8.9 y prueba de idioma por destinatario
 8.14. Antes de producción conviene transportar la zona IANA del local para expresar expiraciones en
 hora local además de UTC.
+
+
+## Iteración 8.4 - Plantillas ES/EN de aviso de nueva reserva para local
+
+- Fecha de la iteración: 2026-07-22.
+- Tarea completada: `8.4. Crear plantillas ES/EN de aviso de nueva reserva para local`.
+- Objetivo técnico, requisitos y diseño: implementar el aviso de `RF-016` con ES/EN y fallback de `RF-031`/`RNF-009`, privacidad `RNF-002` y compatibilidad `RNF-006`. Reutiliza el renderer de 8.1-8.3; cola, reintentos e idempotencia permanecen en 8.7.
+
+### Archivos, arquitectura, flujo y validaciones
+
+Se creó `VenueReservationNotificationTemplateData`, record inmutable que valida local, cliente, email, fecha, franja y aforo positivo, con copia defensiva de respuestas `Answer(label, value)`. Se añadieron `VENUE_RESERVATION_NOTIFICATION`, `renderVenueReservationNotification` y asunto/texto/HTML en ambos catálogos. El futuro consumidor elegirá locale, construirá el DTO y obtendrá `RenderedEmailTemplate`. Fecha/hora se localizan; local, cliente, email y respuestas se escapan en HTML; todos los marcadores son obligatorios. El contrato excluye token, URL de gestión y motivo.
+
+No hay modelo persistente, migración, índice, endpoint, job, permiso ni log con PII. Los tests cubren ES/EN, agenda, respuestas, escape y ausencia de token. Spotless verificó 18 archivos y esta cobertura forma parte de 7 tests focalizados correctos. Riesgos y deuda: el evento real debe transportar locale/zona fiables; observabilidad, almacenamiento de errores y reintentos limitados quedan en 8.7/8.8.
+
+## Iteración 8.5 - Plantillas ES/EN de cancelación por usuario
+
+- Fecha de la iteración: 2026-07-22.
+- Tarea completada: `8.5. Crear plantillas ES/EN de cancelación por usuario`.
+- Objetivo técnico, requisitos y diseño: informar al local de la reserva ya inactiva conforme a `RF-016`, `RF-031`, `RNF-002`, `RNF-006` y `RNF-009`, sin acoplar el render a HTTP, RabbitMQ o SMTP.
+
+### Contrato, flujo, seguridad y errores
+
+`ReservationCancelledByUserTemplateData` valida local, cliente, email, agenda y aforo. Se añadieron `USER_CANCELLATION_NOTICE`, `renderUserCancellationNotice` y catálogos ES/EN, compartiendo el formateo localizado. El caso de uso deberá autorizar y confirmar el estado antes de publicar; aquí no cambian tablas, migraciones, estados, endpoints, permisos ni jobs. El DTO excluye token, enlace y motivo: minimiza datos y no inventa explicaciones. Campos vacíos o agenda inválida fallan antes del render, los valores HTML se escapan y locale desconocido cae a inglés. No se registran PII ni cuerpos.
+
+Los tests validan ambos idiomas, reserva inactiva, resumen y ausencia de token dentro de 7 tests sin fallos. Quedan para 8.7/8.8 deduplicación, selección del email operativo, reintentos, métricas y persistencia de errores.
+
+## Iteración 8.6 - Plantillas ES/EN de cancelación por local
+
+- Fecha de la iteración: 2026-07-22.
+- Tarea completada: `8.6. Crear plantillas ES/EN de cancelación por local`.
+- Objetivo técnico, requisitos y diseño: comunicar al usuario una cancelación del local con motivo obligatorio según `RF-023` y `RF-016`, respetando `RF-031`, `RNF-002`, `RNF-006` y `RNF-009`. El dominio seguirá siendo responsable de persistir y auditar el motivo.
+
+### Flujo, auditoría, seguridad y evidencia
+
+`ReservationCancelledByVenueTemplateData` valida local, dirección, agenda, aforo y `reason` no vacío. Se añadieron `VENUE_CANCELLATION_NOTICE`, `renderVenueCancellationNotice` y catálogos ES/EN. Flujo previsto: cancelación autorizada y auditada, publicación tras commit, DTO y render localizado. No hay migración, índice, endpoint, permiso, estado, job ni listener nuevo.
+
+Dirección, local y motivo se escapan en HTML; el texto conserva accesibilidad. La redacción identifica al local como actor, sin atribuir no-show o penalización al usuario, y no incluye token. El motivo no se duplica en logs. Los tests cubren ES/EN, motivo, escape HTML, mensaje profesional y rechazo de motivo vacío. Evidencia: Spotless sobre 18 archivos y `mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dspotless.check.skip=true -Dtest=ReservationLifecycleEmailTemplateTests,LocalizedEmailTemplateServiceTests test`: 7 tests, 0 fallos, 0 errores y 0 omitidos. Checkstyle global detectó 44 incidencias previas fuera del alcance. Pendientes: autorización/auditoría del caso de uso, publicación, consumidor idempotente, reintentos y observabilidad 8.7/8.8.

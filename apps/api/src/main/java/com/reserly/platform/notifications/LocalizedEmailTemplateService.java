@@ -15,4 +15,16 @@ public interface LocalizedEmailTemplateService {
   /** Renderiza todos los detalles que el usuario necesita para gestionar su reserva. */
   RenderedEmailTemplate renderReservationConfirmation(
       String locale, ReservationConfirmationTemplateData data);
+
+  /** Renderiza para el local los datos operativos de una reserva recién confirmada. */
+  RenderedEmailTemplate renderVenueReservationNotification(
+      String locale, VenueReservationNotificationTemplateData data);
+
+  /** Renderiza el aviso al local cuando el titular cancela su reserva. */
+  RenderedEmailTemplate renderUserCancellationNotice(
+      String locale, ReservationCancelledByUserTemplateData data);
+
+  /** Renderiza el aviso al usuario con el motivo auditado de cancelación del local. */
+  RenderedEmailTemplate renderVenueCancellationNotice(
+      String locale, ReservationCancelledByVenueTemplateData data);
 }

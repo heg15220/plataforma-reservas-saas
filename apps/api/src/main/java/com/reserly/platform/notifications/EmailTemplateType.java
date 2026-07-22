@@ -4,7 +4,10 @@ package com.reserly.platform.notifications;
 public enum EmailTemplateType {
   EMAIL_VERIFICATION("emailVerification"),
   PASSWORD_RESET("passwordReset"),
-  RESERVATION_CONFIRMATION("reservationConfirmation");
+  RESERVATION_CONFIRMATION("reservationConfirmation"),
+  VENUE_RESERVATION_NOTIFICATION("venueReservationNotification"),
+  USER_CANCELLATION_NOTICE("userCancellationNotice"),
+  VENUE_CANCELLATION_NOTICE("venueCancellationNotice");
 
   private final String catalogKey;
 

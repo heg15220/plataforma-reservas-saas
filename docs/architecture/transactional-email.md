@@ -36,6 +36,9 @@ Los catálogos versionados viven en `src/main/resources/email-templates/es.prope
 - recuperación de contraseña: enlace de un solo uso, caducidad y aviso para solicitudes ajenas;
 - confirmación de reserva: local, dirección, fecha, franja, personas, respuestas, reglas de
   cancelación/no asistencia, enlace seguro de gestión y su caducidad.
+- aviso de nueva reserva al local: cliente, email, agenda, personas y respuestas, sin token;
+- cancelación por usuario al local: cliente y reserva inactiva, sin motivo inventado ni token;
+- cancelación por local al usuario: resumen y motivo obligatorio auditado, sin atribuirle no-show.
 
 `LocalizedEmailTemplateService` es la API tipada. Solo acepta los locales base `es` y `en`;
 cualquier valor ausente o no soportado usa fallback `en`. Fechas y horas se formatean con el locale

@@ -7,6 +7,8 @@ import java.io.Reader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -80,6 +82,73 @@ public class LocalizedEmailTemplateServiceImpl implements LocalizedEmailTemplate
     return render(EmailTemplateType.RESERVATION_CONFIRMATION, resolved, textValues, htmlValues);
   }
 
+  @Override
+  public RenderedEmailTemplate renderVenueReservationNotification(
+      String locale, VenueReservationNotificationTemplateData data) {
+    SupportedLocale resolved = resolve(locale);
+    Map<String, String> textValues =
+        reservationScheduleValues(
+            resolved, data.date(), data.startsAt(), data.endsAt(), data.partySize());
+    textValues.put("venueName", data.venueName());
+    textValues.put("customerName", data.customerName());
+    textValues.put("customerEmail", data.customerEmail());
+    textValues.put("responses", textVenueResponses(resolved, data));
+
+    Map<String, String> htmlValues = escapedValues(textValues);
+    htmlValues.put("responses", htmlVenueResponses(resolved, data));
+    return render(
+        EmailTemplateType.VENUE_RESERVATION_NOTIFICATION, resolved, textValues, htmlValues);
+  }
+
+  @Override
+  public RenderedEmailTemplate renderUserCancellationNotice(
+      String locale, ReservationCancelledByUserTemplateData data) {
+    SupportedLocale resolved = resolve(locale);
+    Map<String, String> textValues =
+        reservationScheduleValues(
+            resolved, data.date(), data.startsAt(), data.endsAt(), data.partySize());
+    textValues.put("venueName", data.venueName());
+    textValues.put("customerName", data.customerName());
+    textValues.put("customerEmail", data.customerEmail());
+    return render(
+        EmailTemplateType.USER_CANCELLATION_NOTICE,
+        resolved,
+        textValues,
+        escapedValues(textValues));
+  }
+
+  @Override
+  public RenderedEmailTemplate renderVenueCancellationNotice(
+      String locale, ReservationCancelledByVenueTemplateData data) {
+    SupportedLocale resolved = resolve(locale);
+    Map<String, String> textValues =
+        reservationScheduleValues(
+            resolved, data.date(), data.startsAt(), data.endsAt(), data.partySize());
+    textValues.put("venueName", data.venueName());
+    textValues.put("venueAddress", data.venueAddress());
+    textValues.put("cancellationReason", data.cancellationReason());
+    return render(
+        EmailTemplateType.VENUE_CANCELLATION_NOTICE,
+        resolved,
+        textValues,
+        escapedValues(textValues));
+  }
+
+  private static Map<String, String> reservationScheduleValues(
+      SupportedLocale locale, LocalDate date, LocalTime startsAt, LocalTime endsAt, int partySize) {
+    Locale javaLocale = JAVA_LOCALES.get(locale);
+    DateTimeFormatter dateFormatter =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(javaLocale);
+    DateTimeFormatter timeFormatter =
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(javaLocale);
+    Map<String, String> values = new LinkedHashMap<>();
+    values.put("reservationDate", dateFormatter.format(date));
+    values.put(
+        "reservationTime", timeFormatter.format(startsAt) + " – " + timeFormatter.format(endsAt));
+    values.put("partySize", Integer.toString(partySize));
+    return values;
+  }
+
   private RenderedEmailTemplate renderAction(
       EmailTemplateType type, String locale, URI actionUrl, Instant expiresAt) {
     SupportedLocale resolved = resolve(locale);
@@ -127,6 +196,41 @@ public class LocalizedEmailTemplateServiceImpl implements LocalizedEmailTemplate
     }
     StringBuilder result = new StringBuilder("<ul>");
     for (ReservationConfirmationTemplateData.Answer answer : data.answers()) {
+      result
+          .append("<li><strong>")
+          .append(HtmlUtils.htmlEscape(answer.label(), "UTF-8"))
+          .append(":</strong> ")
+          .append(HtmlUtils.htmlEscape(answer.value(), "UTF-8"))
+          .append("</li>");
+    }
+    return result.append("</ul>").toString();
+  }
+
+  private String textVenueResponses(
+      SupportedLocale locale, VenueReservationNotificationTemplateData data) {
+    if (data.answers().isEmpty()) {
+      return required(catalogs.get(locale), "venueReservationNotification.noResponses");
+    }
+    StringBuilder result = new StringBuilder();
+    for (VenueReservationNotificationTemplateData.Answer answer : data.answers()) {
+      if (!result.isEmpty()) {
+        result.append(System.lineSeparator());
+      }
+      result.append("- ").append(answer.label()).append(": ").append(answer.value());
+    }
+    return result.toString();
+  }
+
+  private String htmlVenueResponses(
+      SupportedLocale locale, VenueReservationNotificationTemplateData data) {
+    if (data.answers().isEmpty()) {
+      return "<p>"
+          + HtmlUtils.htmlEscape(
+              required(catalogs.get(locale), "venueReservationNotification.noResponses"), "UTF-8")
+          + "</p>";
+    }
+    StringBuilder result = new StringBuilder("<ul>");
+    for (VenueReservationNotificationTemplateData.Answer answer : data.answers()) {
       result
           .append("<li><strong>")
           .append(HtmlUtils.htmlEscape(answer.label(), "UTF-8"))

@@ -168,9 +168,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 8.1. Configurar proveedor de email transaccional.
 - [x] 8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña.
 - [x] 8.3. Crear plantillas ES/EN de confirmación para usuario.
-- [ ] 8.4. Crear plantillas ES/EN de aviso de nueva reserva para local.
-- [ ] 8.5. Crear plantillas ES/EN de cancelación por usuario.
-- [ ] 8.6. Crear plantillas ES/EN de cancelación por local.
+- [x] 8.4. Crear plantillas ES/EN de aviso de nueva reserva para local.
+- [x] 8.5. Crear plantillas ES/EN de cancelación por usuario.
+- [x] 8.6. Crear plantillas ES/EN de cancelación por local.
 - [ ] 8.7. Implementar cola de envío con reintentos.
 - [ ] 8.8. Implementar almacenamiento de errores de envío.
 - [ ] 8.9. Implementar endpoint `GET /api/public/reservations/manage/{token}`.

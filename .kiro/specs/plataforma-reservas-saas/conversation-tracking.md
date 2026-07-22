@@ -12,10 +12,31 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-22
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16` y `8.1` a `8.3`.
-- Siguiente tarea pendiente recomendada: `8.4. Crear plantillas ES/EN de aviso de nueva reserva para local`.
-- Observación: proveedor y plantillas dirigidas al usuario están listos; consumidor y reintentos
-  permanecen en `8.7`.
+  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16` y `8.1` a `8.6`.
+- Siguiente tarea pendiente recomendada: `8.7. Implementar cola de envío con reintentos`.
+- Observación: las plantillas ES/EN del ciclo de reserva están completas; consumidor, reintentos y
+  persistencia de fallos siguen pendientes.
+
+## Conversación 100 - Avisos al local y cancelaciones ES/EN
+
+- Fecha: 2026-07-22.
+- Resumen de la conversación:
+  - Se completaron 8.4, 8.5 y 8.6 en `phase/8-emails-management`.
+  - Se añadieron contratos tipados y plantillas ES/EN para nueva reserva al local, cancelación por usuario al local y cancelación por local al usuario.
+  - Cada familia ofrece asunto, texto y HTML, localiza agenda, escapa datos y usa fallback inglés.
+  - La validación se limitó al paquete de notificaciones y dos clases de prueba.
+- Archivos modificados:
+  - `EmailTemplateType.java`, `LocalizedEmailTemplateService.java`, `LocalizedEmailTemplateServiceImpl.java` y tres records de datos.
+  - Catálogos ES/EN, `ReservationLifecycleEmailTemplateTests.java`, documentación arquitectónica y los tres documentos de especificación.
+  - Se preservó fuera del commit el cambio previo de `apps/web/next-env.d.ts`.
+- Requisitos impactados: `RF-016`, `RF-023`, `RF-031`, `RNF-002`, `RNF-006` y `RNF-009`.
+- Tareas impactadas y completadas: `8.4`, `8.5` y `8.6`.
+- Siguiente tarea pendiente recomendada: `8.7. Implementar cola de envío con reintentos`.
+- Decisiones o aclaraciones relevantes:
+  - El local recibe datos operativos, nunca el token de gestión.
+  - La cancelación del usuario no inventa motivo; la del local exige uno no vacío que el caso de uso deberá persistir y auditar. La redacción no atribuye no-show ni penalización al usuario.
+  - Spotless comprobó 18 archivos; 7 tests focalizados pasaron sin fallos.
+  - Checkstyle global encontró 44 incidencias preexistentes ajenas y no se usó como evidencia. No se ejecutaron suite completa, frontend, RabbitMQ, Mailpit, Brevo ni build global.
 
 ## Conversación 99 - Proveedor transaccional y primeras plantillas ES/EN
 
@@ -45,7 +66,7 @@ Fuente de verdad del avance:
   - `8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña`.
   - `8.3. Crear plantillas ES/EN de confirmación para usuario`.
 - Siguiente tarea pendiente recomendada:
-  - `8.4. Crear plantillas ES/EN de aviso de nueva reserva para local`.
+  - `8.7. Implementar cola de envío con reintentos`.
 - Decisiones o aclaraciones relevantes:
   - El proveedor conserva una frontera sustituible; Brevo se usa por SMTP autenticado sobre
     SSL/TLS 465 y Mailpit solo escucha en loopback local.
