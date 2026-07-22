@@ -67,3 +67,10 @@ Para comprobar localmente la representación:
 
 Las pruebas unitarias no conectan a ninguno de los proveedores. Validan el sobre MIME, identidad del
 remitente, configuración, locale/fallback, contenido obligatorio, UTF-8 y escape de HTML.
+
+
+## Entrega, fallos y consulta segura
+
+El consumidor de confirmaciones procesa cliente y local como entregas idempotentes independientes. Aplica tres intentos totales con backoff de 1 y 2 segundos; un payload inválido o un fallo agotado se rechaza sin reencolar y RabbitMQ lo dirige a la DLQ. `EmailDeliveries` conserva únicamente evento, reserva, clase de destinatario, estado, intentos, código cerrado y fechas: nunca dirección, cuerpo o token.
+
+`GET /api/public/reservations/manage/{token}` valida el formato opaco antes de calcular SHA-256. Solo una huella vigente devuelve la proyección mínima de esa reserva. Enlaces inválidos, expirados o revocados comparten un 404 estable, y el secreto no aparece en respuestas ni logs.

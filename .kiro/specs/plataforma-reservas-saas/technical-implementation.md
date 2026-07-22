@@ -21903,3 +21903,34 @@ Los tests validan ambos idiomas, reserva inactiva, resumen y ausencia de token d
 `ReservationCancelledByVenueTemplateData` valida local, dirección, agenda, aforo y `reason` no vacío. Se añadieron `VENUE_CANCELLATION_NOTICE`, `renderVenueCancellationNotice` y catálogos ES/EN. Flujo previsto: cancelación autorizada y auditada, publicación tras commit, DTO y render localizado. No hay migración, índice, endpoint, permiso, estado, job ni listener nuevo.
 
 Dirección, local y motivo se escapan en HTML; el texto conserva accesibilidad. La redacción identifica al local como actor, sin atribuir no-show o penalización al usuario, y no incluye token. El motivo no se duplica en logs. Los tests cubren ES/EN, motivo, escape HTML, mensaje profesional y rechazo de motivo vacío. Evidencia: Spotless sobre 18 archivos y `mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dspotless.check.skip=true -Dtest=ReservationLifecycleEmailTemplateTests,LocalizedEmailTemplateServiceTests test`: 7 tests, 0 fallos, 0 errores y 0 omitidos. Checkstyle global detectó 44 incidencias previas fuera del alcance. Pendientes: autorización/auditoría del caso de uso, publicación, consumidor idempotente, reintentos y observabilidad 8.7/8.8.
+
+
+## Iteración 8.7 - Cola de envío con reintentos
+
+- Fecha: 2026-07-22.
+- Tarea: `8.7. Implementar cola de envío con reintentos`.
+- Objetivo y requisitos: consumir el trabajo durable de confirmación de `RF-016` sin bloquear la transacción, con backoff, idempotencia por evento y DLQ según diseño, `RNF-002` y `RNF-008`.
+
+`ReservationConfirmationEmailConsumer` deserializa el mensaje JSON sin registrarlo, renderiza la confirmación del cliente y el aviso del local y entrega mediante `TransactionalEmailProvider`. Cada destinatario se procesa contra `EmailDeliveryDao`; un estado `delivered` se omite en reentregas. Los fallos del proveedor realizan como máximo tres intentos con esperas de 1 y 2 segundos. Tras agotarlos se lanza `AmqpRejectAndDontRequeueException`, que usa la configuración existente de dead lettering; payloads inválidos se rechazan inmediatamente. Interrupciones conservan el flag y también aparcan el mensaje.
+
+No hay endpoint, migración adicional ni log de payload. El token solo se usa para construir el enlace del cliente y nunca llega al local. La prueba del consumidor cubre dos entregas, deduplicación y agotamiento limitado. Comando focalizado: `mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dspotless.check.skip=true -Dtest=ReservationManagementServiceTests,ReservationManagementControllerTests,ReservationConfirmationEmailConsumerTests test`: 8 tests, 0 fallos, 0 errores y 0 omitidos. Riesgo residual: SMTP no ofrece atomicidad entre aceptación y marcado `delivered`; un crash exacto en esa ventana puede duplicar un correo. Un proveedor con idempotency key sería una mejora futura.
+
+## Iteración 8.8 - Almacenamiento de errores de envío
+
+- Fecha: 2026-07-22.
+- Tarea: `8.8. Implementar almacenamiento de errores de envío`.
+- Objetivo y requisitos: conservar evidencia operativa mínima de entregas y fallos para `RNF-008`, sin ampliar exposición de `RF-016` ni vulnerar `RNF-002`.
+
+V24 crea `EmailDeliveries` con UUID, eventId, reservationId opcional, recipientKind, estado, contador, código de error, timestamps y deliveredAt. La restricción única `eventId + recipientKind` sustenta idempotencia; checks limitan estados e intentos, FK usa `ON DELETE SET NULL` e índice `status + updatedAt` permite operación. `EmailDeliveryEntity` usa acceso JPA por getters/setters y `EmailDeliveryDao` expone la consulta derivada exacta.
+
+Antes de enviar se persiste `pending` e incrementa el intento; éxito limpia error y fija `deliveredAt`; fallo guarda `failed/PROVIDER_REJECTED` y se propaga. No se almacenan email, asunto, cuerpos, token, excepción ni mensaje remoto. La observabilidad agregada podrá consultar estados sin PII. La prueba del consumidor verifica escrituras independientes, omisión de entregados y persistencia tras los tres rechazos. Comando focalizado: `mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dspotless.check.skip=true -Dtest=ReservationManagementServiceTests,ReservationManagementControllerTests,ReservationConfirmationEmailConsumerTests test`: 8 tests, 0 fallos, 0 errores y 0 omitidos.
+
+## Iteración 8.9 - Endpoint de consulta por token seguro
+
+- Fecha: 2026-07-22.
+- Tarea: `8.9. Implementar endpoint GET /api/public/reservations/manage/{token}`.
+- Objetivo y requisitos: permitir a un usuario sin cuenta consultar únicamente su reserva conforme a `RF-017`, usando la credencial ya creada en 7.10 y minimización de `RNF-002`.
+
+Se añadieron `ManagedReservationResponse`, interfaz/implementación de servicio y controlador, excepción y advice. El servicio valida primero el formato CSPRNG con `OneTimeTokenService`, calcula SHA-256 y usa `ReservationDao.findBySecureTokenHash` con fetch del local. Exige caducidad estrictamente posterior al reloj. La respuesta contiene ID, nombre/dirección del local, fecha, horas, aforo y estado; excluye identidad del cliente, hash, expiración y reglas internas.
+
+Token malformado no toca PostgreSQL. Token inexistente, expirado o revocado devuelve el mismo `404 RESERVATION_MANAGEMENT_LINK_INVALID`, evitando enumeración. La consulta es read-only y no renueva credenciales. No hay migración nueva porque V23 ya incluye hash único y expiración. Tres tests de servicio cubren éxito, formato y frontera de expiración; dos de controlador verifican delegación y error opaco. Comando focalizado: `mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dspotless.check.skip=true -Dtest=ReservationManagementServiceTests,ReservationManagementControllerTests,ReservationConfirmationEmailConsumerTests test`: 8 tests, 0 fallos, 0 errores y 0 omitidos. Cancelación, plazo y UI permanecen en 8.10-8.12.

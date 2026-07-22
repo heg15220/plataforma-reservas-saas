@@ -12,11 +12,33 @@ Fuente de verdad del avance:
 
 - Fecha de última actualización: 2026-07-22
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16` y `8.1` a `8.6`.
-- Siguiente tarea pendiente recomendada: `8.7. Implementar cola de envío con reintentos`.
-- Observación: las plantillas ES/EN del ciclo de reserva están completas; consumidor, reintentos y
-  persistencia de fallos siguen pendientes.
+  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16` y `8.1` a `8.9`.
+- Siguiente tarea pendiente recomendada: `8.10. Implementar cancelación por token seguro`.
+- Observación: la entrega reintentable, el registro mínimo de fallos y la consulta por token están
+  implementados; la cancelación segura permanece en `8.10`.
 
+## Conversación 101 - Entrega reintentable, errores persistidos y consulta por token
+
+- Fecha: 2026-07-22.
+- Resumen de la conversación:
+  - Se completaron 8.7, 8.8 y 8.9 en `phase/8-emails-management`.
+  - El consumidor transforma cada confirmación en emails de cliente y local, con idempotencia separada, tres intentos con backoff de 1/2 segundos y rechazo final a la DLQ existente.
+  - Se creó `EmailDeliveries` para resultado mínimo, intentos y código técnico, sin destinatario, cuerpo ni token.
+  - Se añadió `GET /api/public/reservations/manage/{token}`, que valida formato, consulta SHA-256 y devuelve solo la reserva asociada.
+- Archivos modificados:
+  - Migración V24, entidad/DAO de entrega, consumidor y pruebas de mensajería.
+  - DAO de reservas, servicio/controlador/DTO/handler de gestión y pruebas focalizadas.
+  - `tasks.md`, `conversation-tracking.md`, `technical-implementation.md` y documentación arquitectónica.
+  - Se preservó fuera del commit `apps/web/next-env.d.ts`.
+- Requisitos impactados: `RF-016`, `RF-017`, `RNF-002`, `RNF-008` y `RNF-009`.
+- Tareas impactadas y completadas: `8.7`, `8.8` y `8.9`.
+- Siguiente tarea pendiente recomendada: `8.10. Implementar cancelación por token seguro`.
+- Decisiones:
+  - Cada destinatario se deduplica por `eventId + recipientKind`; un local fallido no reenvía al cliente ya entregado.
+  - El backoff es deliberadamente finito y los payloads inválidos no se reintentan.
+  - Los errores persistidos usan códigos cerrados y nunca almacenan PII, contenido o secretos.
+  - Token inválido, ausente, expirado o revocado produce el mismo 404 y no consulta por token en claro.
+  - Evidencia focalizada final: 8 tests correctos, 0 fallos, 0 errores y 0 omitidos, incluido el agotamiento de tres intentos. No se ejecutaron suites globales, frontend ni servicios reales.
 ## Conversación 100 - Avisos al local y cancelaciones ES/EN
 
 - Fecha: 2026-07-22.

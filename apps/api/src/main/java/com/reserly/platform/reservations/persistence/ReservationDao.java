@@ -77,4 +77,10 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       """)
   Optional<ReservationEntity> findByIdForUpdate(
       @Param("reservationId") UUID reservationId);
+  /** Resuelve únicamente la huella de gestión y carga el local para la proyección pública. */
+  @Query(
+      "select reservation from ReservationEntity reservation join fetch reservation.venue "
+          + "where reservation.secureTokenHash = :tokenHash")
+  Optional<ReservationEntity> findBySecureTokenHash(
+      @Param("tokenHash") String tokenHash);
 }

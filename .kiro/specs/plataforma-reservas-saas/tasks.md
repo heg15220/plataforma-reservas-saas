@@ -171,9 +171,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 8.4. Crear plantillas ES/EN de aviso de nueva reserva para local.
 - [x] 8.5. Crear plantillas ES/EN de cancelación por usuario.
 - [x] 8.6. Crear plantillas ES/EN de cancelación por local.
-- [ ] 8.7. Implementar cola de envío con reintentos.
-- [ ] 8.8. Implementar almacenamiento de errores de envío.
-- [ ] 8.9. Implementar endpoint `GET /api/public/reservations/manage/{token}`.
+- [x] 8.7. Implementar cola de envío con reintentos.
+- [x] 8.8. Implementar almacenamiento de errores de envío.
+- [x] 8.9. Implementar endpoint `GET /api/public/reservations/manage/{token}`.
 - [ ] 8.10. Implementar cancelación por token seguro.
 - [ ] 8.11. Validar plazo de cancelación configurado por local.
 - [ ] 8.12. Crear pantalla pública de consulta/cancelación.
