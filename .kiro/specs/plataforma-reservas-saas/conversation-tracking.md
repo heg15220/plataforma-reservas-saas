@@ -10,12 +10,53 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-21
+- Fecha de última actualización: 2026-07-22
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12` y `7.1` a `7.16`.
-- Siguiente tarea pendiente recomendada: `8.1. Configurar proveedor de email transaccional`.
-- Observación: la Fase 7 queda cerrada con holds, confirmación, expiración, flujo público y
-  cobertura focalizada para última plaza y hold expirado.
+  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16` y `8.1` a `8.3`.
+- Siguiente tarea pendiente recomendada: `8.4. Crear plantillas ES/EN de aviso de nueva reserva para local`.
+- Observación: proveedor y plantillas dirigidas al usuario están listos; consumidor y reintentos
+  permanecen en `8.7`.
+
+## Conversación 99 - Proveedor transaccional y primeras plantillas ES/EN
+
+- Fecha: 2026-07-22.
+- Resumen de la conversación:
+  - Se completaron conjuntamente las tareas 8.1, 8.2 y 8.3 en la rama `phase/8-emails-management`.
+  - Se configuró un puerto de proveedor transaccional con adaptador SMTP: Mailpit local y Brevo
+    cifrado en staging/producción, con credenciales externas, timeouts limitados y mensajes
+    multipart/alternative UTF-8.
+  - Se añadieron catálogos versionados ES/EN para verificación de email, recuperación de contraseña
+    y confirmación de reserva, con fallback inglés, formatos localizados y escape estricto de HTML.
+  - La validación se limitó a tres clases nuevas del módulo `notifications`.
+- Archivos modificados:
+  - `apps/api/pom.xml`, `apps/api/src/main/resources/application.yaml` y los tres ejemplos
+    `.env.*.example`.
+  - `infrastructure/compose.yaml` y `docs/architecture/transactional-email.md`.
+  - El paquete `apps/api/src/main/java/com/reserly/platform/notifications`.
+  - `apps/api/src/main/resources/email-templates/es.properties` y `en.properties`.
+  - Tres clases de test bajo `apps/api/src/test/java/com/reserly/platform/notifications`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó sin incluir en el commit el cambio previo de `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-007`, `RF-008`, `RF-016`, `RF-031`, `RNF-002`, `RNF-005`, `RNF-006`,
+    `RNF-009` y `RNF-012`.
+- Tareas impactadas y completadas:
+  - `8.1. Configurar proveedor de email transaccional`.
+  - `8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña`.
+  - `8.3. Crear plantillas ES/EN de confirmación para usuario`.
+- Siguiente tarea pendiente recomendada:
+  - `8.4. Crear plantillas ES/EN de aviso de nueva reserva para local`.
+- Decisiones o aclaraciones relevantes:
+  - El proveedor conserva una frontera sustituible; Brevo se usa por SMTP autenticado sobre
+    SSL/TLS 465 y Mailpit solo escucha en loopback local.
+  - El adaptador hace un intento y no implementa reintentos internos. Consumidores, idempotencia y
+    reintentos persistentes permanecen en 8.7; errores persistidos en 8.8.
+  - Las plantillas se mantienen en el repositorio, ofrecen texto y HTML y fallan si queda un
+    marcador sin resolver. Todos los datos dinámicos HTML se escapan.
+  - Evidencia final: 7 tests correctos, 0 fallos, 0 errores y 0 omitidos mediante
+    `mvn -f apps/api/pom.xml "-Dtest=LocalizedEmailTemplateServiceTests,SmtpTransactionalEmailProviderTests,TransactionalEmailPropertiesTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`.
+  - No se ejecutaron suite global, frontend, Testcontainers, RabbitMQ, Mailpit real, Brevo real,
+    build global ni validaciones visuales.
 
 ## Conversación 98 - Tests de última plaza y hold expirado
 

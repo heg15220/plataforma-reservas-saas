@@ -21710,3 +21710,159 @@ habría activado arranque de aplicación, Flyway y Testcontainers, aumentando co
 del objetivo indicado para esta conversación. La combinación de prueba de lock DAO, transacción de
 servicio y recomputación de capacidad cubre el contrato implementado de la fase 7; una prueba
 end-to-end concurrente queda como candidata para QA de aceptación `19.16`.
+
+## Iteración 8.1 - Proveedor de email transaccional
+
+### Identificador, fecha, objetivo, requisitos y diseño
+
+- Tarea completada: `8.1. Configurar proveedor de email transaccional`.
+- Fecha: 2026-07-22.
+- Objetivo técnico: disponer de una frontera de entrega sustituible y de configuración segura para
+  Mailpit en local y Brevo en staging/producción, sin introducir llamadas síncronas en los flujos de
+  identidad o reserva.
+- Requisitos relacionados: RF-007, RF-008, RF-016, RF-031, RNF-002, RNF-005, RNF-006, RNF-008 y
+  RNF-009.
+- Decisiones de diseño: monolito modular, RabbitMQ para trabajos asíncronos, Brevo como proveedor
+  inicial y Spring Mail solo como adaptador de infraestructura.
+
+### Archivos, arquitectura y configuración
+
+Se añadió `spring-boot-starter-mail` al módulo API. `TransactionalEmailProvider` define el puerto
+interno y `SmtpTransactionalEmailProvider` implementa un único intento SMTP. El contrato
+`TransactionalEmailMessage` transporta un solo destinatario, asunto, texto plano y HTML; no admite
+CC/BCC, reduciendo el riesgo de exposición entre destinatarios. `EmailDeliveryException` presenta
+un error técnico opaco para que el futuro consumidor decida reintentos sin interpretar contenido.
+
+`TransactionalEmailProperties` tipa y valida `enabled`, proveedor, remitente y nombre visible.
+Host, puerto, usuario y contraseña permanecen bajo `spring.mail`; las credenciales solo se
+inyectan desde variables de entorno. `application.yaml` configura timeouts acotados de 3 s para
+conexión y 5 s para lectura/escritura, desactiva la conexión durante arranque y permite elegir
+autenticación, STARTTLS o SSL según entorno.
+
+Mailpit `v1.30.0` se añadió a `infrastructure/compose.yaml`, expuesto exclusivamente en
+`127.0.0.1:1025` para SMTP y `127.0.0.1:8025` para UI. Staging y producción apuntan a
+`smtp-relay.brevo.com:465` con autenticación y SSL/TLS. Los remitentes de ejemplo deben sustituirse
+por identidades verificadas antes del despliegue. No se crearon migraciones, tablas, índices,
+endpoints, jobs ni cambios del modelo de datos.
+
+### Flujo, seguridad, errores y observabilidad
+
+El adaptador crea `MimeMessage` multipart/alternative UTF-8, fija un remitente validado, un único
+destinatario y ambos cuerpos. No registra destinatario, asunto, contenido ni enlaces. Si la entrega
+está desactivada falla cerrado. Errores Jakarta Mail o Spring Mail se convierten en
+`EmailDeliveryException`; no hay bucles ni sleeps internos y se respeta el límite temporal del
+socket.
+
+Esta tarea no consume las colas ya publicadas por identidad y reservas. La reserva o creación del
+token continúa confirmándose antes del trabajo de email. Reintentos, consumidor idempotente y dead
+letters pertenecen a 8.7; almacenamiento de fallos a 8.8; métricas de proveedor a 17.5. La
+aceptación SMTP no se interpreta como entrega final. No se almacenan respuestas de Brevo ni secretos
+nuevos.
+
+### Tests, evidencia, riesgos y pendientes
+
+`SmtpTransactionalEmailProviderTests` verifica remitente, destinatario, asunto Unicode, MIME
+multipart y bloqueo cuando la entrega está desactivada sin conectarse a red.
+`TransactionalEmailPropertiesTests` cubre configuraciones válidas de Mailpit/Brevo y rechazo de
+proveedor, email y nombre inválidos.
+
+El comando focalizado conjunto fue:
+`mvn -f apps/api/pom.xml "-Dtest=LocalizedEmailTemplateServiceTests,SmtpTransactionalEmailProviderTests,TransactionalEmailPropertiesTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`.
+Resultado final: 7 tests correctos, 0 fallos, 0 errores y 0 omitidos; compilación de 521 fuentes y 116
+fuentes de test. No se ejecutó conexión real a Mailpit o Brevo para evitar efectos externos y
+validaciones interminables. Riesgos pendientes: verificación de remitente/DNS, rebotes y quejas en el
+entorno real, consumidor de cola e idempotencia persistente.
+
+## Iteración 8.2 - Plantillas ES/EN de verificación y recuperación
+
+### Identificador, fecha, objetivo, requisitos y diseño
+
+- Tarea completada: `8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña`.
+- Fecha: 2026-07-22.
+- Objetivo técnico: producir mensajes equivalentes en español e inglés para los desafíos de
+  identidad existentes, sin filtrar estado de cuenta y sin registrar ni persistir tokens en claro.
+- Requisitos relacionados: RF-007, RF-008, RF-031, RNF-002, RNF-009 y RNF-012.
+- Decisiones de diseño: catálogos UTF-8 versionados, locale base `es`/`en`, fallback controlado a
+  inglés y enlaces de un solo uso generados fuera de la plantilla.
+
+### Archivos, contratos y flujo
+
+Los catálogos `email-templates/es.properties` y `en.properties` incorporan asunto, cuerpo de
+texto y HTML para `emailVerification` y `passwordReset`. La verificación incluye bienvenida,
+acción, caducidad y aviso para altas ajenas. La recuperación incluye acción, caducidad y aviso para
+solicitudes no iniciadas por el destinatario. No se incluye contraseña, estado de cuenta ni dato
+empresarial.
+
+`LocalizedEmailTemplateService` expone métodos tipados que reciben locale, URI absoluta e instante
+de caducidad. `LocalizedEmailTemplateServiceImpl` carga ambos catálogos con
+`InputStreamReader UTF-8`, resuelve solo `es` y `en`, usa inglés como fallback y muestra la
+caducidad localizada con sufijo UTC explícito. El motor sustituye únicamente marcadores declarados y
+falla si falta cualquiera, evitando enviar claves técnicas o plantillas parciales.
+
+### Seguridad, privacidad, i18n, errores y observabilidad
+
+La URL se transforma a ASCII para conservar transporte seguro; el HTML se escapa antes de insertar
+valores dinámicos. El token solo aparece como parte de la URL destinada al titular. El servicio no
+loguea URLs, tokens, emails ni cuerpos y no realiza I/O externo. Los textos españoles conservan
+tildes, eñes y UTF-8; cada mensaje tiene alternativa de texto para accesibilidad y clientes sin HTML.
+
+Los eventos `EmailVerificationRequestedEvent` y `PasswordResetRequestedEvent` ya transportaban
+locale, token y expiración después del commit. Esta iteración no modifica su contrato ni conecta aún
+los listeners Rabbit, evitando adelantar 8.7. Errores de catálogo son de configuración y fallan antes
+de llamar al proveedor.
+
+### Tests, evidencia, riesgos y pendientes
+
+`LocalizedEmailTemplateServiceTests` comprueba verificación española, recuperación inglesa,
+fallback desde `fr-FR`, enlaces, expiración UTC, atributo `lang`, ausencia de marcadores y textos
+Unicode. Forma parte de la ejecución focalizada de 7 tests descrita en 8.1, todos correctos. No se
+ejecutaron endpoints de identidad, broker ni servidor SMTP real. Pendientes: consumidor que convierta
+los eventos en mensajes y pruebas de selección de locale del destinatario en 8.14.
+
+## Iteración 8.3 - Plantillas ES/EN de confirmación para usuario
+
+### Identificador, fecha, objetivo, requisitos y diseño
+
+- Tarea completada: `8.3. Crear plantillas ES/EN de confirmación para usuario`.
+- Fecha: 2026-07-22.
+- Objetivo técnico: renderizar una confirmación completa y segura a partir del snapshot ya emitido
+  tras confirmar la reserva.
+- Requisitos relacionados: RF-015, RF-016, RF-017, RF-031, RNF-002, RNF-006, RNF-009 y RNF-012.
+- Decisiones de diseño: plantilla propia del usuario, alternativa texto/HTML, respuestas dinámicas
+  escapadas y token de gestión presente únicamente en su enlace.
+
+### Archivos, contrato y modelo afectado
+
+`ReservationConfirmationTemplateData` contiene nombre y dirección del local, fecha y franja local,
+personas, reglas visibles, URI segura de gestión, expiración y una copia inmutable de respuestas
+etiquetadas. Valida no nulos y capacidad positiva. No es entidad JPA, no altera
+`Reservations`, no crea migración y no persiste el token.
+
+Los catálogos ES/EN añaden asunto y cuerpos con local, dirección, fecha, hora, personas, respuestas,
+política de cancelación/no asistencia, enlace seguro y caducidad. Existe texto localizado para el
+caso sin respuestas adicionales. Fechas y horas usan `DateTimeFormatter` del locale resuelto; la
+expiración se muestra en UTC porque el evento actual no incluye zona IANA del destinatario.
+
+### Flujo, validación, seguridad, privacidad e internacionalización
+
+El futuro consumidor construirá la URI de gestión desde la URL pública y el token transportado por
+`ReservationConfirmationEmailRequestedEvent`, convertirá respuestas autorizadas y solicitará el
+render. Esta tarea no implementa dicho consumidor. Nombre, dirección, reglas, etiquetas y valores se
+escapan con `HtmlUtils`; la lista HTML se construye elemento a elemento y no admite markup del
+usuario. La versión de texto conserva legibilidad sin etiquetas.
+
+El token no aparece en asunto ni fuera del enlace dirigido al cliente. No se usa el email del local
+ni se comparte el token con el aviso al local de 8.4. Catálogo incompleto o marcador sin valor falla
+antes de entregar. No hay logs de reserva, respuestas o token.
+
+### Tests, evidencia, riesgos y pendientes
+
+Los tests cubren confirmación española completa con caracteres acentuados, fecha/hora localizada,
+personas, reglas, enlace secreto, respuestas y escape de `<`, `>` y `&`; también cubren
+confirmación inglesa sin respuestas y ausencia de marcadores. La evidencia conjunta es la ejecución
+focalizada de 7 tests correcta, sin pruebas globales ni servicios externos.
+
+Pendientes explícitos: plantilla de aviso al local 8.4, cancelaciones 8.5/8.6, consumidor y
+reintentos 8.7, fallos persistidos 8.8, endpoint de gestión 8.9 y prueba de idioma por destinatario
+8.14. Antes de producción conviene transportar la zona IANA del local para expresar expiraciones en
+hora local además de UTC.

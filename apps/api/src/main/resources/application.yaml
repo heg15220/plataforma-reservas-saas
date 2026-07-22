@@ -56,6 +56,24 @@ spring:
         maxAttempts: 3
         maxInterval: 5s
         multiplier: 2
+  mail:
+    host: ${RESERLY_EMAIL_SMTP_HOST:localhost}
+    port: ${RESERLY_EMAIL_SMTP_PORT:1025}
+    username: ${RESERLY_EMAIL_SMTP_USERNAME:}
+    password: ${RESERLY_EMAIL_SMTP_PASSWORD:}
+    testConnection: false
+    properties:
+      mail:
+        smtp:
+          auth: ${RESERLY_EMAIL_SMTP_AUTH:false}
+          connectiontimeout: ${RESERLY_EMAIL_SMTP_CONNECTION_TIMEOUT_MS:3000}
+          timeout: ${RESERLY_EMAIL_SMTP_READ_TIMEOUT_MS:5000}
+          writetimeout: ${RESERLY_EMAIL_SMTP_WRITE_TIMEOUT_MS:5000}
+          starttls:
+            enable: ${RESERLY_EMAIL_SMTP_STARTTLS:false}
+            required: ${RESERLY_EMAIL_SMTP_STARTTLS_REQUIRED:false}
+          ssl:
+            enable: ${RESERLY_EMAIL_SMTP_SSL:false}
 
 reserly:
   environment: ${RESERLY_ENVIRONMENT}
@@ -91,6 +109,12 @@ reserly:
       tokenLifetime: ${RESERLY_EMAIL_VERIFICATION_TOKEN_LIFETIME:24h}
     passwordReset:
       tokenLifetime: ${RESERLY_PASSWORD_RESET_TOKEN_LIFETIME:30m}
+  notifications:
+    email:
+      enabled: ${RESERLY_EMAIL_ENABLED:true}
+      provider: ${RESERLY_EMAIL_PROVIDER:mailpit}
+      fromAddress: ${RESERLY_EMAIL_FROM_ADDRESS:no-reply@reserly.local}
+      fromName: ${RESERLY_EMAIL_FROM_NAME:Reserly}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
   venues:

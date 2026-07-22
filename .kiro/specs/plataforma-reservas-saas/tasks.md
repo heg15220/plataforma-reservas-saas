@@ -165,9 +165,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 10. Fase 8 - Emails y enlace seguro de gestión
 
-- [ ] 8.1. Configurar proveedor de email transaccional.
-- [ ] 8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña.
-- [ ] 8.3. Crear plantillas ES/EN de confirmación para usuario.
+- [x] 8.1. Configurar proveedor de email transaccional.
+- [x] 8.2. Crear plantillas ES/EN de verificación de email y recuperación de contraseña.
+- [x] 8.3. Crear plantillas ES/EN de confirmación para usuario.
 - [ ] 8.4. Crear plantillas ES/EN de aviso de nueva reserva para local.
 - [ ] 8.5. Crear plantillas ES/EN de cancelación por usuario.
 - [ ] 8.6. Crear plantillas ES/EN de cancelación por local.
