@@ -21,6 +21,6 @@ export function fetchPublicReservationForm(slug: string, signal?: AbortSignal) {
 export function createReservationHold(input: { venueId: string; timeSlotId: string; serviceId?: string; employeeResourceId?: string; assignmentPreference?: string; partySize: number }) {
   return json("/api/public/reservations/holds", { method: "POST", body: JSON.stringify(input) }, holdSchema);
 }
-export function confirmReservation(reservationId: string, input: { holdToken: string; customerName: string; customerEmail: string; partySize: number; formResponses: Array<{ fieldId: string; value: unknown }>; acceptsPrivacyPolicy: boolean; acceptsBookingRules: boolean }) {
+export function confirmReservation(reservationId: string, input: { holdToken: string; customerName: string; customerEmail: string; locale: "es" | "en"; partySize: number; formResponses: Array<{ fieldId: string; value: unknown }>; acceptsPrivacyPolicy: boolean; acceptsBookingRules: boolean }) {
   return json(`/api/public/reservations/${reservationId}/confirm`, { method: "POST", body: JSON.stringify(input) }, reservationConfirmationSchema);
 }

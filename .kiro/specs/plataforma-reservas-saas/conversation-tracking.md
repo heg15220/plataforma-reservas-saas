@@ -5043,3 +5043,35 @@ Fuente de verdad del avance:
     2 tests correctos en un archivo con un worker. La compilación API fue correcta.
   - El typecheck web global sigue bloqueado por errores anteriores de MUI/i18n fuera del alcance;
     también se omitió Spotless global porque reporta 43 archivos históricos no relacionados.
+## Conversación 103 - Cobertura de enlace seguro e idioma por destinatario
+
+- Fecha: 2026-07-24.
+- Resumen de la conversación:
+  - Se completaron las tareas 8.13 y 8.14 en `phase/8-emails-management`.
+  - Se amplió la cobertura de cancelación para credenciales malformadas, caducadas y válidas,
+    verificando ausencia de consultas o mutaciones cuando corresponde.
+  - La revisión de 8.14 detectó que el evento usaba el locale del local para los dos destinatarios.
+    El contrato ahora transporta por separado el idioma del cliente y el del local.
+  - El formulario público envía el locale activo; el aviso del local conserva su preferencia
+    guardada y el consumidor selecciona cada plantilla de forma independiente.
+- Archivos modificados:
+  - Contrato de confirmación, servicio, evento y consumidor de email.
+  - Cliente y formulario público de reserva.
+  - Tests de gestión segura, confirmación, consumidor y relay.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-017 Consulta y cancelación por enlace seguro`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-002 Seguridad y privacidad` y `RNF-007 Internacionalización`.
+- Tareas impactadas y completadas: 8.13 y 8.14.
+- Siguiente tarea pendiente recomendada:
+  - `9.1. Implementar endpoint GET /api/venue/me/reservations`.
+- Decisiones o aclaraciones relevantes:
+  - `locale` del contrato público acepta exclusivamente `es` o `en`; cualquier valor ausente o no
+    permitido se rechaza por Bean Validation.
+  - Las reglas de reserva incluidas en el email del cliente se resuelven con su locale, mientras el
+    aviso del negocio usa `Venue.defaultLocale`.
+  - Evidencia focalizada API: 20 tests, 0 fallos, 0 errores y 0 omitidos.
+  - Vitest no pudo iniciar el worker del único test web en el límite de 60 segundos; no hubo test
+    ejecutado ni fallo de aserción. No se repitió para evitar validaciones interminables.
+  - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.

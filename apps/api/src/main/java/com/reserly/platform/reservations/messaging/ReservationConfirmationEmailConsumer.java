@@ -96,7 +96,7 @@ public class ReservationConfirmationEmailConsumer {
                         answer.label(), answer.valueJson()))
             .toList();
     return templates.renderReservationConfirmation(
-        event.locale(),
+        event.customerLocale(),
         new ReservationConfirmationTemplateData(
             event.venueName(),
             event.venueAddress(),
@@ -119,7 +119,7 @@ public class ReservationConfirmationEmailConsumer {
                         answer.label(), answer.valueJson()))
             .toList();
     return templates.renderVenueReservationNotification(
-        event.locale(),
+        event.venueLocale(),
         new VenueReservationNotificationTemplateData(
             event.venueName(),
             event.customerName(),

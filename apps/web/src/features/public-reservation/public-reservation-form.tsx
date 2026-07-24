@@ -67,6 +67,7 @@ export function PublicReservationFormView({ venueSlug, timeSlotId, serviceId, em
         holdToken: hold.holdToken,
         customerName: String(data.get("customer_name") ?? ""),
         customerEmail: String(data.get("customer_email") ?? ""),
+        locale,
         partySize,
         formResponses,
         acceptsPrivacyPolicy: data.has("acceptsPrivacyPolicy"),

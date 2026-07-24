@@ -40,6 +40,7 @@ class ReservationConfirmationEmailEventRelayTests {
             "local@example.com",
             "Calle 1",
             "es",
+            "en",
             LocalDate.of(2026, 7, 15),
             LocalTime.of(11, 0),
             LocalTime.of(12, 0),

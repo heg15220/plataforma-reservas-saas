@@ -104,6 +104,8 @@ class ReservationConfirmationServiceTests {
     assertThat(event.getValue().manageToken()).isEqualTo(MANAGE_TOKEN);
     assertThat(event.getValue().customerEmail()).isEqualTo("Maria@Example.COM");
     assertThat(event.getValue().venueEmail()).isEqualTo("owner@example.com");
+    assertThat(event.getValue().customerLocale()).isEqualTo("en");
+    assertThat(event.getValue().venueLocale()).isEqualTo("es");
     assertThat(event.getValue().formResponses())
         .singleElement()
         .extracting(ReservationConfirmationEmailAnswer::valueJson)
@@ -223,7 +225,7 @@ class ReservationConfirmationServiceTests {
   private ReservationConfirmRequest request(
       String token, List<ReservationConfirmFormResponse> responses) {
     return new ReservationConfirmRequest(
-        token, "  María López  ", "  Maria@Example.COM  ", 2, responses, true, true);
+        token, "  María López  ", "  Maria@Example.COM  ", "en", 2, responses, true, true);
   }
 
   private ReservationEntity reservation(UUID reservationId) {

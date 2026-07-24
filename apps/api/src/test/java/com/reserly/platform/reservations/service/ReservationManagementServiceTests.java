@@ -119,6 +119,32 @@ class ReservationManagementServiceTests {
         .isInstanceOf(ReservationManagementNotFoundException.class);
   }
 
+  @Test
+  void rejectsMalformedCancellationTokenBeforeDatabaseLookup() {
+    when(tokens.isValid("invalid")).thenReturn(false);
+
+    assertThatThrownBy(() -> service.cancelByToken("invalid"))
+        .isInstanceOf(ReservationManagementNotFoundException.class);
+
+    verifyNoInteractions(dao);
+    verify(tokens, never()).hash(any());
+  }
+
+  @Test
+  void rejectsExpiredCancellationTokenWithoutChangingReservation() {
+    String token = "e".repeat(43);
+    when(tokens.isValid(token)).thenReturn(true);
+    when(tokens.hash(token)).thenReturn("hash");
+    ReservationEntity reservation = reservation(clock.instant());
+    when(dao.findBySecureTokenHashForUpdate("hash")).thenReturn(Optional.of(reservation));
+
+    assertThatThrownBy(() -> service.cancelByToken(token))
+        .isInstanceOf(ReservationManagementNotFoundException.class);
+
+    assertThat(reservation.getStatus()).isEqualTo("confirmed");
+    verify(dao, never()).save(any());
+  }
+
   private ReservationEntity reservation(Instant expiresAt) {
     VenueEntity venue = new VenueEntity();
     venue.setName("Local Centro");

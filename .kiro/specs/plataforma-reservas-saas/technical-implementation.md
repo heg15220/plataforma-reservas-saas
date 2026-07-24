@@ -22004,3 +22004,50 @@ verifica parsing, codificación del secreto y mapeo opaco del 409: 2 tests corre
 El typecheck global se intentó y reveló errores anteriores en formularios, confirmación y equipo;
 los errores propios detectados se corrigieron. No se ejecutaron build, lint o suite global para
 mantener la validación acotada solicitada.
+## Iteración 8.13 - Tests de token inválido, expirado y cancelación válida
+
+- Fecha: 2026-07-24.
+- Tarea: `8.13. Crear tests de token inválido, expirado y cancelación válida`.
+- Objetivo, requisitos y diseño: verificar las fronteras de seguridad y estado de `RF-017`,
+  especialmente la indistinguibilidad de credenciales inválidas de `RNF-002` y la atomicidad de
+  `RNF-003`.
+
+`ReservationManagementServiceTests` cubre ahora el mismo comando de cancelación en tres familias:
+token malformado, token bien formado pero caducado y cancelación válida. El caso malformado prueba
+que no se calcula hash ni se consulta PostgreSQL. El caducado acredita la consulta bajo lock, pero
+no cambia estado ni ejecuta `save`. El válido verifica `cancelled_by_user`, actor `customer`, razón
+técnica, revocación del hash y su caducidad, y persistencia final. La cobertura anterior de consulta
+segura y plazo fuera de política se conserva.
+
+No se añadieron tablas, migraciones, endpoints, permisos, UI ni logs. Los fixtures usan reloj fijo
+y secretos sintácticamente válidos para que las fronteras sean deterministas. La evidencia conjunta
+con 8.14 ejecutó cuatro clases: 20 tests correctos, 0 fallos, 0 errores y 0 omitidos. Riesgo residual:
+la serialización real de dos peticiones concurrentes depende de PostgreSQL y permanece cubierta por
+la estrategia de lock, no por esta prueba unitaria.
+
+## Iteración 8.14 - Tests de selección de idioma en emails por destinatario
+
+- Fecha: 2026-07-24.
+- Tarea: `8.14. Crear tests de selección de idioma en emails según locale del destinatario`.
+- Objetivo, requisitos y diseño: demostrar que cada email de `RF-016` cumple `RF-031` y
+  `RNF-007`, sin asumir que cliente y local comparten idioma.
+
+La prueba parametrizada del consumidor ejecuta las combinaciones cliente ES/local EN y cliente
+EN/local ES. Verifica que `renderReservationConfirmation` recibe `customerLocale` y
+`renderVenueReservationNotification` recibe `venueLocale`. Para convertir la prueba en una
+invariante real se amplió `ReservationConfirmRequest` con `locale` validado por `^(es|en)$`; el
+formulario Next.js lo obtiene de `useLocale` y lo envía durante la confirmación.
+
+`ReservationConfirmationEmailRequestedEvent` sustituye el locale único por `customerLocale` y
+`venueLocale`. `ReservationConfirmationServiceImpl` normaliza el idioma del cliente con
+`SupportedLocale`, resuelve con él las reglas mostradas en su email y obtiene el idioma del negocio
+desde `Venue.defaultLocale`, con fallback inglés independiente. El relay conserva ambos campos en
+el JSON durable y el consumidor no registra destinatarios, contenido ni token.
+
+No cambia el modelo persistente, índices, transacciones, colas, routing keys, reintentos o
+idempotencia. Se actualizaron fixtures de servicio, controlador, consumidor y relay. La validación
+API focalizada fue correcta: 20 tests. El intento de ejecutar solo
+`public-reservation-form.test.tsx` con un worker terminó antes de cargar tests porque Vitest no pudo
+arrancar el worker en 60 segundos; se detuvo ahí para respetar el límite solicitado. Riesgo de
+compatibilidad: clientes antiguos que no envíen `locale` reciben 400 y deben actualizarse junto al
+frontend incluido en este commit.

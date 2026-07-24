@@ -143,7 +143,8 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     reservation.setUpdatedAt(now);
     ReservationEntity saved = reservationDao.save(reservation);
     eventPublisher.publishEvent(
-        confirmationEmailEvent(saved, formAnswers, managementToken, managementTokenExpiresAt));
+        confirmationEmailEvent(
+            saved, formAnswers, request.locale(), managementToken, managementTokenExpiresAt));
 
     return new ReservationConfirmResponse(
         saved.getStatus(),
@@ -177,15 +178,18 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
   private ReservationConfirmationEmailRequestedEvent confirmationEmailEvent(
       ReservationEntity reservation,
       List<ValidatedReservationFormAnswer> formAnswers,
+      String customerLocale,
       String managementToken,
       Instant managementTokenExpiresAt) {
-    SupportedLocale locale =
+    SupportedLocale resolvedCustomerLocale =
+        SupportedLocale.fromLanguageTag(customerLocale).orElse(SupportedLocale.EN);
+    SupportedLocale venueLocale =
         SupportedLocale.fromLanguageTag(reservation.getVenue().getDefaultLocale())
             .orElse(SupportedLocale.EN);
     String bookingRules =
         reservation.getVenue().getRulesI18n() == null
             ? null
-            : reservation.getVenue().getRulesI18n().resolve(locale).orElse(null);
+            : reservation.getVenue().getRulesI18n().resolve(resolvedCustomerLocale).orElse(null);
     return new ReservationConfirmationEmailRequestedEvent(
         UUID.randomUUID(),
         reservation.getId(),
@@ -194,7 +198,8 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
         reservation.getVenue().getName(),
         venueNotificationEmail(reservation),
         reservation.getVenue().getAddress(),
-        locale.languageTag(),
+        resolvedCustomerLocale.languageTag(),
+        venueLocale.languageTag(),
         reservation.getDate(),
         reservation.getStartsAt(),
         reservation.getEndsAt(),

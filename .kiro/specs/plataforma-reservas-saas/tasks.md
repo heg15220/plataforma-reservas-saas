@@ -177,8 +177,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 8.10. Implementar cancelación por token seguro.
 - [x] 8.11. Validar plazo de cancelación configurado por local.
 - [x] 8.12. Crear pantalla pública de consulta/cancelación.
-- [ ] 8.13. Crear tests de token inválido, expirado y cancelación válida.
-- [ ] 8.14. Crear tests de selección de idioma en emails según locale del destinatario.
+- [x] 8.13. Crear tests de token inválido, expirado y cancelación válida.
+- [x] 8.14. Crear tests de selección de idioma en emails según locale del destinatario.
 
 ## 11. Fase 9 - Panel de reservas del local
 

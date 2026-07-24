@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
@@ -102,7 +104,35 @@ class ReservationConfirmationEmailConsumerTests {
     verify(deliveries, atLeast(6)).save(argThat(value -> "failed".equals(value.getStatus())));
   }
 
+  @ParameterizedTest
+  @CsvSource({"es,en", "en,es"})
+  void selectsEmailLanguageIndependentlyForEachRecipient(String customerLocale, String venueLocale)
+      throws Exception {
+    ObjectMapper mapper = mock(ObjectMapper.class);
+    LocalizedEmailTemplateService templates = mock(LocalizedEmailTemplateService.class);
+    TransactionalEmailProvider provider = mock(TransactionalEmailProvider.class);
+    EmailDeliveryDao deliveries = mock(EmailDeliveryDao.class);
+    when(mapper.readValue(any(byte[].class), eq(ReservationConfirmationEmailRequestedEvent.class)))
+        .thenReturn(event(customerLocale, venueLocale));
+    when(deliveries.findByEventIdAndRecipientKind(any(), anyString())).thenReturn(Optional.empty());
+    var rendered = new RenderedEmailTemplate("subject", "text", "html");
+    when(templates.renderReservationConfirmation(anyString(), any())).thenReturn(rendered);
+    when(templates.renderVenueReservationNotification(anyString(), any())).thenReturn(rendered);
+
+    new ReservationConfirmationEmailConsumer(
+            mapper, templates, provider, deliveries, Clock.systemUTC(), "https://example.test")
+        .consume(new Message(new byte[] {1}, new MessageProperties()));
+
+    verify(templates).renderReservationConfirmation(eq(customerLocale), any());
+    verify(templates).renderVenueReservationNotification(eq(venueLocale), any());
+  }
+
   private ReservationConfirmationEmailRequestedEvent event() {
+    return event("es", "es");
+  }
+
+  private ReservationConfirmationEmailRequestedEvent event(
+      String customerLocale, String venueLocale) {
     return new ReservationConfirmationEmailRequestedEvent(
         UUID.randomUUID(),
         UUID.randomUUID(),
@@ -111,7 +141,8 @@ class ReservationConfirmationEmailConsumerTests {
         "Local",
         "local@example.com",
         "Dirección",
-        "es",
+        customerLocale,
+        venueLocale,
         LocalDate.of(2026, 8, 1),
         LocalTime.of(10, 0),
         LocalTime.of(11, 0),

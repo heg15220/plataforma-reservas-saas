@@ -28,13 +28,7 @@ class ReservationConfirmationControllerTests {
     UUID reservationId = UUID.randomUUID();
     ReservationConfirmRequest request =
         new ReservationConfirmRequest(
-            "A".repeat(43),
-            "María López",
-            "maria@example.com",
-            2,
-            List.of(),
-            true,
-            true);
+            "A".repeat(43), "María López", "maria@example.com", "es", 2, List.of(), true, true);
     ReservationConfirmResponse response =
         new ReservationConfirmResponse(
             "confirmed",
