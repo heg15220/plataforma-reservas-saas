@@ -174,9 +174,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 8.7. Implementar cola de envío con reintentos.
 - [x] 8.8. Implementar almacenamiento de errores de envío.
 - [x] 8.9. Implementar endpoint `GET /api/public/reservations/manage/{token}`.
-- [ ] 8.10. Implementar cancelación por token seguro.
-- [ ] 8.11. Validar plazo de cancelación configurado por local.
-- [ ] 8.12. Crear pantalla pública de consulta/cancelación.
+- [x] 8.10. Implementar cancelación por token seguro.
+- [x] 8.11. Validar plazo de cancelación configurado por local.
+- [x] 8.12. Crear pantalla pública de consulta/cancelación.
 - [ ] 8.13. Crear tests de token inválido, expirado y cancelación válida.
 - [ ] 8.14. Crear tests de selección de idioma en emails según locale del destinatario.
 

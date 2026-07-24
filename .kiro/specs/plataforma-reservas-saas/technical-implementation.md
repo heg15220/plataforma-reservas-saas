@@ -21934,3 +21934,73 @@ Antes de enviar se persiste `pending` e incrementa el intento; éxito limpia err
 Se añadieron `ManagedReservationResponse`, interfaz/implementación de servicio y controlador, excepción y advice. El servicio valida primero el formato CSPRNG con `OneTimeTokenService`, calcula SHA-256 y usa `ReservationDao.findBySecureTokenHash` con fetch del local. Exige caducidad estrictamente posterior al reloj. La respuesta contiene ID, nombre/dirección del local, fecha, horas, aforo y estado; excluye identidad del cliente, hash, expiración y reglas internas.
 
 Token malformado no toca PostgreSQL. Token inexistente, expirado o revocado devuelve el mismo `404 RESERVATION_MANAGEMENT_LINK_INVALID`, evitando enumeración. La consulta es read-only y no renueva credenciales. No hay migración nueva porque V23 ya incluye hash único y expiración. Tres tests de servicio cubren éxito, formato y frontera de expiración; dos de controlador verifican delegación y error opaco. Comando focalizado: `mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dspotless.check.skip=true -Dtest=ReservationManagementServiceTests,ReservationManagementControllerTests,ReservationConfirmationEmailConsumerTests test`: 8 tests, 0 fallos, 0 errores y 0 omitidos. Cancelación, plazo y UI permanecen en 8.10-8.12.
+## Iteración 8.10 - Cancelación por token seguro
+
+- Fecha: 2026-07-24.
+- Tarea: `8.10. Implementar cancelación por token seguro`.
+- Objetivo, requisitos y diseño: completar el comando de `RF-017` sobre el enlace creado en 7.10 y
+  consultado en 8.9, con privacidad `RNF-002` y consistencia `RNF-003`.
+
+`POST /api/public/reservations/manage/{token}/cancel` valida sintaxis CSPRNG, calcula SHA-256 y carga
+la reserva mediante `findBySecureTokenHashForUpdate`, un query con lock pesimista y fetch del local.
+Solo acepta un token no caducado asociado a estado `confirmed`. Dentro de la misma transacción cambia
+el estado a `cancelled_by_user`, fija `cancelledAt`, `cancelledBy=customer`,
+`cancellationReason=customer_request`, actualiza `updatedAt` y borra hash/caducidad para revocar el
+enlace. `ReservationEntity` mapea las columnas de cancelación ya creadas en V23. Al dejar de ser un
+estado ocupante, las consultas de aforo existentes liberan la plaza sin escritura duplicada.
+
+El contrato devuelve únicamente estado e instante. Token malformado, ausente, caducado, revocado o
+reserva no confirmada comparten el 404 opaco; el token nunca se registra, devuelve ni persiste en
+claro. El lock evita dos cancelaciones simultáneas y la revocación impide reuso. No se añadieron
+permisos de sesión: el secreto es la credencial. El envío del aviso de cancelación mediante la
+plantilla 8.5 queda como integración posterior del pipeline, sin afectar la atomicidad de este caso
+de uso.
+
+Archivos principales: controlador e implementación de gestión, `ReservationManagementService`,
+`ReservationManagementServiceImpl`, `ReservationCancellationResponse`, handler,
+`ReservationDao` y `ReservationEntity`. Tests: cancelación válida, mutaciones, revocación,
+delegación HTTP y respuesta opaca. Evidencia conjunta: 12 tests API correctos. Riesgo residual:
+PostgreSQL debe soportar el lock configurado, como exige el despliegue actual.
+
+## Iteración 8.11 - Plazo de cancelación configurado por local
+
+- Fecha: 2026-07-24.
+- Tarea: `8.11. Validar plazo de cancelación configurado por local`.
+- Objetivo, requisitos y diseño: aplicar en servidor la política de `RF-017`, sin confiar en la
+  indicación del navegador y manteniendo una frontera determinista.
+
+V25 añade a `Venues` el entero no nulo `cancellationNoticeMinutes`, default 1440, con check entre 0
+y 525600. La migración conserva los locales existentes con 24 horas y documenta la unidad.
+`VenueEntity` expone el valor persistido. `ReservationCancellationPolicy` calcula
+`inicio local - antelación` con `LocalDate`, `LocalTime` y la zona del `Clock` de negocio; se permite
+cancelar si `now` es anterior o igual a la frontera. `Math.multiplyExact` evita overflow y entradas
+nulas o antelaciones negativas fallan antes de operar.
+
+La consulta pública informa `cancellable`, frontera UTC y minutos configurados. El comando vuelve a
+evaluar la política bajo lock para impedir TOCTOU; fuera de plazo no muta la reserva y devuelve 409
+con código estable. No se expone ninguna identidad ni regla interna adicional. Los tests cubren 24
+horas en `Europe/Madrid`, igualdad exacta, instante posterior y ausencia de escritura fuera de
+plazo. Limitación: el modelo aún usa la zona del reloj común porque `Venue` no dispone de zona IANA;
+incorporarla por local evitará ambigüedad en despliegues multizona.
+
+## Iteración 8.12 - Pantalla pública de consulta y cancelación
+
+- Fecha: 2026-07-24.
+- Tarea: `8.12. Crear pantalla pública de consulta/cancelación`.
+- Objetivo, requisitos y diseño: entregar la UI de `RF-017` cumpliendo `RNF-002`, `RNF-004` y
+  `RNF-007`.
+
+La ruta dinámica `/reservas/gestionar/[token]` monta `PublicReservationManagement`. El componente
+cliente consulta el endpoint con `AbortController`, presenta local, dirección, fecha, hora, aforo y
+frontera localizada, y solo ofrece cancelar cuando la proyección del servidor lo permite. Un diálogo
+exige confirmación explícita. Tras el POST se muestra éxito y desaparece la acción; 404, 409 y fallos
+transitorios tienen textos separados pero no muestran información privada.
+
+`reservation-management-api.ts` valida ambas respuestas con Zod, codifica el segmento de URL y
+normaliza errores sin conservar cuerpo ni token. El secreto permanece únicamente en la URL/memoria:
+no se copia a localStorage, sessionStorage, logs o mensajes. La cuadrícula cambia de una a dos
+columnas, el diálogo es accesible mediante MUI y todos los textos existen en ES/EN. El test dirigido
+verifica parsing, codificación del secreto y mapeo opaco del 409: 2 tests correctos con un worker.
+El typecheck global se intentó y reveló errores anteriores en formularios, confirmación y equipo;
+los errores propios detectados se corrigieron. No se ejecutaron build, lint o suite global para
+mantener la validación acotada solicitada.

@@ -5005,3 +5005,41 @@ Fuente de verdad del avance:
   - La confirmación se transporta solo dentro de la sesión de la pestaña. Si falta o no valida, se muestra un estado neutro sin consultar por UUID.
   - Evidencia focalizada API: 3 tests, 0 fallos, 0 errores y 0 omitidos; compilación de 511 fuentes y Checkstyle correctos.
   - Evidencia focalizada web: 6 tests distintos correctos en los tres archivos nuevos; se usó un único worker y no se ejecutaron suite global, lint, build ni typecheck global.
+## Conversación 102 - Cancelación segura, plazo por local y gestión pública
+
+- Fecha: 2026-07-24.
+- Resumen de la conversación:
+  - Se completaron las tareas 8.10, 8.11 y 8.12 en `phase/8-emails-management`.
+  - El enlace seguro permite consultar y cancelar una reserva confirmada mediante una operación
+    transaccional serializada; el token queda revocado tras el éxito y la capacidad se libera al
+    salir la reserva del conjunto de estados ocupantes.
+  - Cada local dispone de una antelación persistente, con 24 horas por defecto, y el servidor
+    calcula una frontera inclusiva usando la zona del reloj de negocio.
+  - Se añadió la pantalla responsive `/reservas/gestionar/[token]`, con diálogo de confirmación,
+    estados de carga, plazo vencido, enlace inválido y cancelación completada, en español e inglés.
+- Archivos modificados:
+  - Entidades `ReservationEntity`, `VenueEntity`, `ReservationDao` y migración
+    `V25__add_venue_cancellation_notice.sql`.
+  - Contratos, servicio, política, controlador y manejador de errores de gestión de reservas.
+  - Tests dirigidos de servicio, política, controlador y cliente HTTP web.
+  - Ruta y módulo `features/reservation-management`, además de catálogos ES/EN.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-017 Consulta y cancelación por enlace seguro`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-003 Concurrencia y consistencia`,
+    `RNF-004 Responsive` y `RNF-007 Internacionalización`.
+- Tareas impactadas y completadas: 8.10, 8.11 y 8.12.
+- Siguiente tarea pendiente recomendada:
+  - `8.13. Crear tests de token inválido, expirado y cancelación válida`.
+- Decisiones o aclaraciones relevantes:
+  - `cancellationNoticeMinutes` admite de 0 a 525600 minutos y usa 1440 por defecto; cero permite
+    cancelar hasta el instante de inicio.
+  - La frontera es inclusiva. Un intento posterior devuelve `409
+    RESERVATION_CANCELLATION_DEADLINE_PASSED`; enlaces inexistentes, caducados, revocados o estados
+    no cancelables conservan el error opaco 404.
+  - La cancelación escribe actor `customer`, razón técnica `customer_request`, instante y estado
+    `cancelled_by_user`; no almacena ni registra el secreto.
+  - Evidencia focalizada API: 12 tests correctos en tres clases, sin fallos ni errores. Evidencia web:
+    2 tests correctos en un archivo con un worker. La compilación API fue correcta.
+  - El typecheck web global sigue bloqueado por errores anteriores de MUI/i18n fuera del alcance;
+    también se omitió Spotless global porque reporta 43 archivos históricos no relacionados.

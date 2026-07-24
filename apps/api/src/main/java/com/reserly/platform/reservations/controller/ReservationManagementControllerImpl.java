@@ -1,6 +1,7 @@
 package com.reserly.platform.reservations.controller;
 
 import com.reserly.platform.reservations.dto.ManagedReservationResponse;
+import com.reserly.platform.reservations.dto.ReservationCancellationResponse;
 import com.reserly.platform.reservations.service.ReservationManagementService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,5 +19,10 @@ public class ReservationManagementControllerImpl implements ReservationManagemen
   @Override
   public ResponseEntity<ManagedReservationResponse> findByToken(String token) {
     return ResponseEntity.ok(service.findByToken(token));
+  }
+
+  @Override
+  public ResponseEntity<ReservationCancellationResponse> cancelByToken(String token) {
+    return ResponseEntity.ok(service.cancelByToken(token));
   }
 }

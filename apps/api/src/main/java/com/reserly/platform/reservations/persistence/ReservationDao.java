@@ -45,8 +45,7 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
           or (reservation.status = 'hold' and reservation.holdExpiresAt > :now)
         )
       """)
-  long sumOccupiedCapacity(
-      @Param("timeSlotId") UUID timeSlotId, @Param("now") Instant now);
+  long sumOccupiedCapacity(@Param("timeSlotId") UUID timeSlotId, @Param("now") Instant now);
 
   /**
    * Suma la ocupación ajena al hold que se está confirmando. Debe ejecutarse con la franja
@@ -75,12 +74,18 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       select reservation from ReservationEntity reservation
       where reservation.id = :reservationId
       """)
-  Optional<ReservationEntity> findByIdForUpdate(
-      @Param("reservationId") UUID reservationId);
+  Optional<ReservationEntity> findByIdForUpdate(@Param("reservationId") UUID reservationId);
+
   /** Resuelve únicamente la huella de gestión y carga el local para la proyección pública. */
   @Query(
       "select reservation from ReservationEntity reservation join fetch reservation.venue "
           + "where reservation.secureTokenHash = :tokenHash")
-  Optional<ReservationEntity> findBySecureTokenHash(
-      @Param("tokenHash") String tokenHash);
+  Optional<ReservationEntity> findBySecureTokenHash(@Param("tokenHash") String tokenHash);
+
+  /** Bloquea la reserva asociada a la huella antes de validar plazo y cambiar estado. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      "select reservation from ReservationEntity reservation join fetch reservation.venue "
+          + "where reservation.secureTokenHash = :tokenHash")
+  Optional<ReservationEntity> findBySecureTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 }

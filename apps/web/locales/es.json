@@ -1181,5 +1181,42 @@
         "action": "Buscar locales"
       }
     }
+  },
+  "ReservationManagement": {
+    "loading": "Cargando reserva",
+    "eyebrow": "Gestión de la reserva",
+    "title": "Tu reserva",
+    "description": "Consulta los detalles y gestiona la cancelación desde este enlace seguro.",
+    "details": {
+      "venue": "Local",
+      "date": "Fecha",
+      "time": "Hora",
+      "partySize": "Personas",
+      "people": "{count, plural, one {# persona} other {# personas}}"
+    },
+    "policy": {
+      "allowed": "Puedes cancelar hasta el {deadline}.",
+      "closed": "El plazo de cancelación terminó el {deadline}. Contacta directamente con el local si necesitas ayuda."
+    },
+    "actions": {
+      "cancel": "Cancelar reserva",
+      "keep": "Mantener reserva",
+      "confirm": "Sí, cancelar",
+      "cancelling": "Cancelando…"
+    },
+    "dialog": {
+      "title": "¿Cancelar esta reserva?",
+      "description": "Esta acción libera tu plaza y no se puede deshacer desde este enlace."
+    },
+    "cancelled": {
+      "title": "Reserva cancelada",
+      "description": "La cancelación se ha registrado correctamente.",
+      "notice": "Tu plaza ya ha quedado liberada."
+    },
+    "errors": {
+      "invalid": "Este enlace no es válido, ha caducado o ya fue utilizado.",
+      "deadline": "El plazo de cancelación ya ha terminado. Contacta directamente con el local.",
+      "unavailable": "No pudimos gestionar la reserva. Inténtalo de nuevo más tarde."
+    }
   }
 }

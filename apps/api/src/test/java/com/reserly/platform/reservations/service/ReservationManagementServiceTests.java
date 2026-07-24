@@ -3,6 +3,7 @@ package com.reserly.platform.reservations.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,15 +21,25 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ReservationManagementServiceTests {
 
   private final ReservationDao dao = mock(ReservationDao.class);
   private final OneTimeTokenService tokens = mock(OneTimeTokenService.class);
+  private final ReservationCancellationPolicy policy = mock(ReservationCancellationPolicy.class);
   private final Clock clock = Clock.fixed(Instant.parse("2026-07-22T12:00:00Z"), ZoneOffset.UTC);
   private final ReservationManagementService service =
-      new ReservationManagementServiceImpl(dao, tokens, clock);
+      new ReservationManagementServiceImpl(dao, tokens, policy, clock);
+
+  @BeforeEach
+  void configureCancellationWindow() {
+    when(policy.evaluate(any(), any(), anyInt(), any(), any()))
+        .thenReturn(
+            new ReservationCancellationPolicy.CancellationWindow(
+                Instant.parse("2026-07-31T10:00:00Z"), true));
+  }
 
   @Test
   void returnsOnlyReservationBoundToValidUnexpiredToken() {
@@ -43,7 +54,47 @@ class ReservationManagementServiceTests {
     assertThat(response.reservationId()).isEqualTo(reservation.getId());
     assertThat(response.venueName()).isEqualTo("Local Centro");
     assertThat(response.status()).isEqualTo("confirmed");
+    assertThat(response.cancellable()).isTrue();
     verify(dao).findBySecureTokenHash("hash");
+  }
+
+  @Test
+  void cancelsConfirmedReservationAndRevokesManagementToken() {
+    String token = "c".repeat(43);
+    when(tokens.isValid(token)).thenReturn(true);
+    when(tokens.hash(token)).thenReturn("hash");
+    ReservationEntity reservation = reservation(Instant.parse("2026-07-23T12:00:00Z"));
+    reservation.setSecureTokenHash("hash");
+    when(dao.findBySecureTokenHashForUpdate("hash")).thenReturn(Optional.of(reservation));
+
+    var response = service.cancelByToken(token);
+
+    assertThat(response.status()).isEqualTo("cancelled_by_user");
+    assertThat(reservation.getStatus()).isEqualTo("cancelled_by_user");
+    assertThat(reservation.getCancelledBy()).isEqualTo("customer");
+    assertThat(reservation.getCancellationReason()).isEqualTo("customer_request");
+    assertThat(reservation.getSecureTokenHash()).isNull();
+    assertThat(reservation.getSecureTokenExpiresAt()).isNull();
+    verify(dao).save(reservation);
+  }
+
+  @Test
+  void rejectsCancellationOutsideConfiguredWindowWithoutMutation() {
+    String token = "d".repeat(43);
+    when(tokens.isValid(token)).thenReturn(true);
+    when(tokens.hash(token)).thenReturn("hash");
+    ReservationEntity reservation = reservation(Instant.parse("2026-07-23T12:00:00Z"));
+    when(dao.findBySecureTokenHashForUpdate("hash")).thenReturn(Optional.of(reservation));
+    when(policy.evaluate(any(), any(), anyInt(), any(), any()))
+        .thenReturn(
+            new ReservationCancellationPolicy.CancellationWindow(
+                Instant.parse("2026-07-21T10:00:00Z"), false));
+
+    assertThatThrownBy(() -> service.cancelByToken(token))
+        .isInstanceOf(ReservationCancellationNotAllowedException.class);
+
+    assertThat(reservation.getStatus()).isEqualTo("confirmed");
+    verify(dao, never()).save(any());
   }
 
   @Test

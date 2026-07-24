@@ -1181,5 +1181,42 @@
         "action": "Find venues"
       }
     }
+  },
+  "ReservationManagement": {
+    "loading": "Loading reservation",
+    "eyebrow": "Reservation management",
+    "title": "Your reservation",
+    "description": "Review the details and manage cancellation through this secure link.",
+    "details": {
+      "venue": "Venue",
+      "date": "Date",
+      "time": "Time",
+      "partySize": "Guests",
+      "people": "{count, plural, one {# guest} other {# guests}}"
+    },
+    "policy": {
+      "allowed": "You can cancel until {deadline}.",
+      "closed": "The cancellation window ended on {deadline}. Contact the venue directly if you need help."
+    },
+    "actions": {
+      "cancel": "Cancel reservation",
+      "keep": "Keep reservation",
+      "confirm": "Yes, cancel",
+      "cancelling": "Cancelling…"
+    },
+    "dialog": {
+      "title": "Cancel this reservation?",
+      "description": "This releases your place and cannot be undone through this link."
+    },
+    "cancelled": {
+      "title": "Reservation cancelled",
+      "description": "Your cancellation was recorded successfully.",
+      "notice": "Your place has now been released."
+    },
+    "errors": {
+      "invalid": "This link is invalid, expired, or has already been used.",
+      "deadline": "The cancellation window has ended. Contact the venue directly.",
+      "unavailable": "We could not manage the reservation. Please try again later."
+    }
   }
 }

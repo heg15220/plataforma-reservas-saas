@@ -45,6 +45,9 @@ public class ReservationEntity {
   private String holdTokenHash;
   private Instant createdAt;
   private Instant updatedAt;
+  private Instant cancelledAt;
+  private String cancelledBy;
+  private String cancellationReason;
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -210,6 +213,33 @@ public class ReservationEntity {
 
   public void setSecureTokenExpiresAt(Instant secureTokenExpiresAt) {
     this.secureTokenExpiresAt = secureTokenExpiresAt;
+  }
+
+  @Column(name = "\"cancelledAt\"")
+  public Instant getCancelledAt() {
+    return cancelledAt;
+  }
+
+  public void setCancelledAt(Instant value) {
+    cancelledAt = value;
+  }
+
+  @Column(name = "\"cancelledBy\"", length = 32)
+  public String getCancelledBy() {
+    return cancelledBy;
+  }
+
+  public void setCancelledBy(String value) {
+    cancelledBy = value;
+  }
+
+  @Column(name = "\"cancellationReason\"", length = 500)
+  public String getCancellationReason() {
+    return cancellationReason;
+  }
+
+  public void setCancellationReason(String value) {
+    cancellationReason = value;
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

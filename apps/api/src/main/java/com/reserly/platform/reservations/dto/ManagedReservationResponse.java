@@ -1,5 +1,6 @@
 package com.reserly.platform.reservations.dto;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -13,4 +14,7 @@ public record ManagedReservationResponse(
     LocalTime startsAt,
     LocalTime endsAt,
     int partySize,
-    String status) {}
+    String status,
+    boolean cancellable,
+    Instant cancellationDeadline,
+    int cancellationNoticeMinutes) {}

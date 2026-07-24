@@ -40,6 +40,7 @@ public class VenueEntity {
   private LocalizedText rulesI18n;
   private LocalizedText publicTextI18n;
   private String defaultLocale;
+  private int cancellationNoticeMinutes = 1440;
   private String contactEmail;
   private String phone;
   private String address;
@@ -180,6 +181,16 @@ public class VenueEntity {
 
   public void setPublicTextI18n(LocalizedText publicTextI18n) {
     this.publicTextI18n = publicTextI18n;
+  }
+
+  /** Antelación mínima que el cliente debe respetar para cancelar. */
+  @Column(name = "\"cancellationNoticeMinutes\"", nullable = false)
+  public int getCancellationNoticeMinutes() {
+    return cancellationNoticeMinutes;
+  }
+
+  public void setCancellationNoticeMinutes(int value) {
+    cancellationNoticeMinutes = value;
   }
 
   @Column(name = "\"defaultLocale\"", nullable = false, length = 2)
