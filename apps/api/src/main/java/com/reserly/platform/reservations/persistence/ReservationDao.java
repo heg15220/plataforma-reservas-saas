@@ -2,8 +2,11 @@ package com.reserly.platform.reservations.persistence;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,6 +15,73 @@ import org.springframework.data.repository.query.Param;
 
 /** DAO del agregado con lecturas explícitas para capacidad y confirmación transaccional. */
 public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
+
+  /**
+   * Lista reservas con identidad confirmada pertenecientes al local del propietario autenticado.
+   *
+   * <p>La consulta excluye holds y expiraciones anónimas mediante {@code customerEmail is not null},
+   * aplica todos los filtros en base de datos y precarga la franja para que el adaptador REST no
+   * dependa de una sesión JPA abierta.
+   */
+  @Query(
+      value =
+          """
+          select reservation
+          from ReservationEntity reservation
+          join fetch reservation.timeSlot
+          where reservation.venue.ownerUser.id = :ownerUserId
+            and reservation.customerEmail is not null
+            and (:fromDate is null or reservation.date >= :fromDate)
+            and (:toDateExclusive is null or reservation.date < :toDateExclusive)
+            and (:timeSlotId is null or reservation.timeSlot.id = :timeSlotId)
+            and (:status is null or reservation.status = :status)
+            and (
+              :userPattern is null
+              or lower(reservation.customerName) like :userPattern escape '\\'
+              or reservation.customerEmailNormalized like :userPattern escape '\\'
+            )
+          order by reservation.date desc, reservation.startsAt desc, reservation.createdAt desc
+          """,
+      countQuery =
+          """
+          select count(reservation)
+          from ReservationEntity reservation
+          where reservation.venue.ownerUser.id = :ownerUserId
+            and reservation.customerEmail is not null
+            and (:fromDate is null or reservation.date >= :fromDate)
+            and (:toDateExclusive is null or reservation.date < :toDateExclusive)
+            and (:timeSlotId is null or reservation.timeSlot.id = :timeSlotId)
+            and (:status is null or reservation.status = :status)
+            and (
+              :userPattern is null
+              or lower(reservation.customerName) like :userPattern escape '\\'
+              or reservation.customerEmailNormalized like :userPattern escape '\\'
+            )
+          """)
+  Page<ReservationEntity> findOwnedReservations(
+      @Param("ownerUserId") UUID ownerUserId,
+      @Param("fromDate") LocalDate fromDate,
+      @Param("toDateExclusive") LocalDate toDateExclusive,
+      @Param("timeSlotId") UUID timeSlotId,
+      @Param("status") String status,
+      @Param("userPattern") String userPattern,
+      Pageable pageable);
+
+  /**
+   * Obtiene el detalle exclusivamente a través de la frontera de propiedad del local autenticado.
+   * Reserva inexistente y reserva ajena producen la misma ausencia para no revelar identificadores.
+   */
+  @Query(
+      """
+      select reservation
+      from ReservationEntity reservation
+      join fetch reservation.timeSlot
+      where reservation.id = :reservationId
+        and reservation.venue.ownerUser.id = :ownerUserId
+        and reservation.customerEmail is not null
+      """)
+  Optional<ReservationEntity> findOwnedDetail(
+      @Param("ownerUserId") UUID ownerUserId, @Param("reservationId") UUID reservationId);
 
   /**
    * Expira en una sola sentencia los holds cuyo plazo terminó estrictamente antes del instante

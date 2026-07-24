@@ -5075,3 +5075,68 @@ Fuente de verdad del avance:
   - Vitest no pudo iniciar el worker del único test web en el límite de 60 segundos; no hubo test
     ejecutado ni fallo de aserción. No se repitió para evitar validaciones interminables.
   - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.
+
+## Conversación 104 - Listado, filtros y detalle privado de reservas
+
+- Fecha: 2026-07-24.
+- Resumen de la conversación:
+  - Se completaron conjuntamente las tareas 9.1, 9.2 y 9.3 en
+    `phase/9-panel-reservations`.
+  - Se implementó el listado paginado `GET /api/venue/me/reservations` con orden estable por fecha,
+    hora de inicio e instante de creación descendentes.
+  - El listado admite periodos de calendario `day`, `week` y `month`, fecha ancla, franja, estado,
+    búsqueda por nombre/email, página y tamaño limitado.
+  - Se implementó `GET /api/venue/me/reservations/{reservationId}` con una consulta que combina
+    UUID y propietario autenticado, sin distinguir entre reserva inexistente y ajena.
+  - Los contratos no exponen hashes de hold, tokens de gestión ni caducidades de secretos.
+  - Las validaciones se limitaron al módulo API y a tres clases nuevas del paquete `reservations`.
+- Archivos modificados:
+  - `ReservationDao.java`.
+  - `VenueReservationController.java`, `VenueReservationControllerImpl.java` y
+    `VenueReservationExceptionHandler.java`.
+  - `VenueReservationConverter.java`.
+  - DTOs `VenueReservationSummaryResponse`, `VenueReservationListResponse`,
+    `VenueReservationDetailResponse` y `VenueReservationErrorResponse`.
+  - `VenueReservationService.java`, `VenueReservationServiceImpl.java`,
+    `VenueReservationPeriod.java`, `VenueReservationFilterInvalidException.java` y
+    `VenueReservationNotFoundException.java`.
+  - `VenueReservationControllerTests.java`, `VenueReservationServiceTests.java` y
+    `VenueReservationDaoTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-018 Panel de reservas del local`.
+  - `RNF-002 Seguridad y privacidad`.
+  - `RNF-005 Rendimiento`.
+  - `RNF-006 Mantenibilidad`.
+- Tareas impactadas:
+  - 9.1, 9.2 y 9.3.
+  - Se preparan los contratos de detalle para 9.4 y 9.5 sin completar respuestas del formulario ni
+    presentación del empleado/recurso.
+- Tareas completadas:
+  - `9.1. Implementar endpoint GET /api/venue/me/reservations`.
+  - `9.2. Implementar filtros por día, semana, mes, franja, estado y usuario`.
+  - `9.3. Implementar endpoint de detalle de reserva`.
+- Siguiente tarea pendiente recomendada:
+  - `9.4. Mostrar respuestas del formulario en detalle`.
+- Decisiones o aclaraciones relevantes:
+  - Una fecha sin `period` se interpreta como un día; un `period` sin fecha se rechaza con 400 para
+    evitar resultados dependientes del reloj del servidor.
+  - La semana usa lunes inclusivo y el lunes siguiente exclusivo; el mes usa su primer día
+    inclusivo y el primer día del mes siguiente exclusivo.
+  - Los holds y expiraciones anónimas no forman parte del panel: solo se consultan filas con email
+    confirmado. Los estados visibles son `confirmed`, `cancelled_by_user`,
+    `cancelled_by_venue`, `attended`, `no_show` y `reported`.
+  - El filtro de usuario se normaliza con `Locale.ROOT`, escapa `%`, `_` y `\`, y se aplica contra
+    nombre en minúsculas y email normalizado.
+  - La paginación admite páginas 0..100000 y tamaños 1..100; el contrato usa 0 y 25 por defecto.
+  - Reserva inexistente, ajena o anónima devuelve el mismo 404
+    `VENUE_RESERVATION_NOT_FOUND`.
+  - Evidencia focalizada final: 10 tests, 0 fallos, 0 errores y 0 omitidos en tres clases; 551
+    fuentes principales y 124 fuentes de test compilaron correctamente.
+  - Spotless se aplicó y comprobó solo sobre `VenueReservation*.java` y `ReservationDao.java`.
+    Checkstyle se ejecutó durante Maven; no se ejecutaron suite global, frontend, Testcontainers,
+    migraciones ni validaciones visuales.
+  - El cambio previo `apps/web/next-env.d.ts` se conservó fuera del trabajo y del commit.

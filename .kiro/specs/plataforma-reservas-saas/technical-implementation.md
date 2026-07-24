@@ -22051,3 +22051,216 @@ API focalizada fue correcta: 20 tests. El intento de ejecutar solo
 arrancar el worker en 60 segundos; se detuvo ahí para respetar el límite solicitado. Riesgo de
 compatibilidad: clientes antiguos que no envíen `locale` reciben 400 y deben actualizarse junto al
 frontend incluido en este commit.
+
+## Iteración 9.1 - Endpoint paginado de reservas del local
+
+- Fecha: 2026-07-24.
+- Tarea: `9.1. Implementar endpoint GET /api/venue/me/reservations`.
+- Objetivo técnico: exponer un contrato privado, paginado y seguro para que el propietario
+  autenticado consulte las reservas que ya contienen identidad confirmada.
+- Requisitos y diseño relacionados: `RF-008`, `RF-018`, `RNF-002`, `RNF-005` y `RNF-006`;
+  namespace autenticado `/api/venue/me/**`, DTOs REST separados, controladores y servicios mediante
+  interfaces, conversor dedicado y consultas DAO declaradas con `@Query`.
+
+### Archivos y arquitectura
+
+Se crearon `VenueReservationController` y `VenueReservationControllerImpl`. La interfaz documenta
+el contrato HTTP y sus parámetros; la implementación obtiene exclusivamente
+`AuthenticatedAccount.userId()` del principal inyectado y no acepta ningún `venueId` desde URL,
+query string o payload. `SecurityConfiguration` ya protege todo `/api/venue/me/**` con el rol
+`VENUE_OWNER`, por lo que no fue necesario ampliar reglas ni duplicar autorización en el
+controlador.
+
+Se crearon `VenueReservationService` y `VenueReservationServiceImpl` como frontera de caso de uso.
+El servicio recibe el identificador de propietario ya acreditado, valida paginación y filtros y
+delega una sola lectura paginada al DAO dentro de una transacción `readOnly`. El controlador no
+opera con entidades de persistencia directamente: `VenueReservationConverter` genera
+`VenueReservationListResponse` y cada `VenueReservationSummaryResponse`.
+
+El contrato de listado contiene:
+
+- `items`: identificador de reserva y franja, nombre/email confirmados, personas, fecha, horas,
+  estado e instante de creación;
+- `page` y `size`: página basada en cero y tamaño efectivo;
+- `totalElements` y `totalPages`: metadatos obtenidos por la consulta de conteo equivalente.
+
+El constructor compacto de `VenueReservationListResponse` realiza `List.copyOf` para evitar que el
+adaptador entregue una colección mutable. No se serializan `holdTokenHash`, `secureTokenHash`,
+`secureTokenExpiresAt`, `holdExpiresAt` ni otros secretos. Tampoco se incluyen respuestas del
+formulario ni datos presentacionales del recurso, que permanecen en 9.4 y 9.5.
+
+### Persistencia, rendimiento y flujo de ejecución
+
+`ReservationDao.findOwnedReservations` es una consulta JPQL explícita que aplica como primera
+frontera `reservation.venue.ownerUser.id = :ownerUserId`. Además exige
+`reservation.customerEmail is not null`: los holds, expiraciones y estados sin identidad no son
+reservas recibidas por el negocio y no se muestran en el panel.
+
+La consulta precarga `reservation.timeSlot` mediante `join fetch`. Es una relación to-one, por lo
+que no multiplica filas y permite convertir `timeSlotId` después de cerrar la transacción sin
+depender de Open Session in View. Se declaró un `countQuery` separado, sin `fetch`, con exactamente
+las mismas condiciones. El orden es fijo y determinista:
+
+1. `reservation.date desc`;
+2. `reservation.startsAt desc`;
+3. `reservation.createdAt desc`.
+
+La paginación usa `PageRequest.of(page, size)`, página por defecto 0 y tamaño por defecto 25. El
+servicio limita `page` a 0..100000 y `size` a 1..100 para impedir lecturas no acotadas y cargas
+accidentales de PII. La migración V23 ya aporta `ixReservationsVenueDate` sobre local, fecha y hora
+de inicio, por lo que esta iteración no requiere una migración nueva. El conteo y los filtros
+adicionales pueden requerir revisión de plan con datos reales antes de añadir nuevos índices.
+
+### Validaciones, errores, seguridad y observabilidad
+
+Una paginación fuera de límites genera `VenueReservationFilterInvalidException`.
+`VenueReservationExceptionHandler`, limitado con `assignableTypes` al nuevo controlador, la
+traduce a HTTP 400 con `VENUE_RESERVATION_FILTER_INVALID`. El error no incluye JPQL, parámetros,
+identificadores internos ni PII. Un principal sin `userId`, escenario defensivo que no debería
+superar el filtro de sesión, se trata como ausencia opaca.
+
+No se añadieron logs porque las lecturas correctas contienen PII y no requieren auditoría en esta
+fase. Los errores estables permiten métricas HTTP posteriores sin registrar nombre, email o filtros.
+No se modificaron cache, colas, jobs, transacciones de escritura, modelo de datos, migraciones,
+i18n ni frontend.
+
+### Tests, verificación y riesgos
+
+`VenueReservationControllerTests` demuestra que todos los filtros se delegan junto al
+`account.userId()`, que se preservan metadatos de paginación y que el resumen contiene los campos
+esperados. `VenueReservationDaoTests` inspecciona el contrato `@Query` y protege la presencia de la
+frontera de propietario, el requisito de identidad, todos los filtros, el orden y el conteo.
+`VenueReservationServiceTests` cubre límites de paginación y delegación.
+
+Evidencia final focalizada:
+
+```text
+mvn -Dtest=VenueReservationServiceTests,VenueReservationControllerTests,VenueReservationDaoTests
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+Maven compiló 551 fuentes principales y 124 fuentes de test; Checkstyle se ejecutó correctamente.
+Spotless se aplicó y comprobó por separado con `spotlessFiles` restringido a
+`VenueReservation*.java` y `ReservationDao.java`. No se ejecutaron suite completa, frontend,
+Testcontainers, Flyway ni pruebas visuales. Riesgos residuales: no se midió el plan SQL con
+volúmenes de producción y la prueba DAO protege la declaración JPQL, no una ejecución real contra
+PostgreSQL. La futura tarea 9.10 debe ampliar permisos y filtros con integración HTTP/persistencia.
+
+## Iteración 9.2 - Filtros de periodo, franja, estado y usuario
+
+- Fecha: 2026-07-24.
+- Tarea: `9.2. Implementar filtros por día, semana, mes, franja, estado y usuario`.
+- Objetivo técnico: transformar filtros HTTP opcionales en predicados SQL parametrizados,
+  deterministas y limitados, sin construir JPQL dinámico ni aceptar estados internos.
+- Requisitos y diseño relacionados: criterio de filtrado de `RF-018`, privacidad de `RNF-002`,
+  rendimiento de `RNF-005` y contratos mantenibles de `RNF-006`.
+
+### Contrato y cálculo temporal
+
+El listado admite `period`, `date`, `timeSlotId`, `status`, `user`, `page` y `size`.
+`VenueReservationPeriod` acepta `day`, `week` y `month` sin sensibilidad a mayúsculas, usando
+`Locale.ROOT`. La semántica evita depender del reloj o zona del servidor:
+
+- `date` sin `period` equivale a un día;
+- `period` sin `date` es inválido;
+- `day` usa `[date, date + 1 día)`;
+- `week` usa desde el lunes anterior o igual hasta el lunes siguiente, ambos como frontera
+  inclusiva/exclusiva;
+- `month` usa desde el primer día del mes hasta el primer día del mes siguiente.
+
+El DAO recibe `fromDate` y `toDateExclusive`. Las fronteras semiabiertas evitan calcular
+artificialmente el último día/hora y funcionan directamente sobre el snapshot `Reservations.date`.
+Los filtros nulos conservan todas las fechas.
+
+### Estado, franja y usuario
+
+`timeSlotId` se compara con la relación persistida y no con datos enviados en la reserva. El estado
+se recorta, normaliza a minúsculas y valida contra el conjunto visible:
+`confirmed`, `cancelled_by_user`, `cancelled_by_venue`, `attended`, `no_show` y `reported`.
+`hold`, `pending_confirmation` y `expired` no se aceptan como filtros del panel porque representan
+procesos anónimos o internos, no reservas recibidas. Un estado desconocido produce 400 antes de
+consultar la base de datos.
+
+El usuario se busca sobre `lower(customerName)` y `customerEmailNormalized`. El servicio recorta y
+normaliza con `Locale.ROOT`, limita la entrada a 320 caracteres y escapa `\`, `%` y `_` antes de
+rodearla con `%`. La consulta usa `LIKE ... ESCAPE '\'`, de modo que comodines introducidos por el
+cliente se interpretan literalmente y no amplían de forma involuntaria el resultado. Todos los
+valores viajan como parámetros de JPA; no se concatena entrada HTTP en JPQL.
+
+La combinación de filtros se expresa en una única consulta y su conteo equivalente. No se realizan
+filtrados en memoria ni consultas por fila. Las restricciones de propiedad e identidad se aplican
+siempre, incluso cuando no hay filtros opcionales.
+
+### Tests, verificación y riesgos
+
+`VenueReservationServiceTests` verifica:
+
+- interpretación de fecha aislada como día;
+- semana ISO de lunes a lunes;
+- fronteras del mes natural;
+- normalización de estado;
+- escape simultáneo de `%` y `_`;
+- rechazo de periodo sin fecha, estado interno, página negativa y tamaño superior a 100.
+
+`VenueReservationDaoTests` comprueba que listado y conteo conservan periodo, franja, estado y los
+dos campos de usuario junto a la frontera de propietario. Estas pruebas se incluyeron en la misma
+ejecución focalizada de 10 tests correcta documentada en 9.1.
+
+No cambia el modelo de datos ni se añaden índices. Riesgos residuales: la búsqueda con `%texto%`
+puede requerir trigramas o un índice funcional cuando exista volumen representativo; se evita
+anticiparlo sin evidencia. El periodo usa calendario ISO y no una semana configurable por local.
+La exposición frontend de estos filtros y su i18n pertenecen a 9.7/9.8.
+
+## Iteración 9.3 - Endpoint privado de detalle de reserva
+
+- Fecha: 2026-07-24.
+- Tarea: `9.3. Implementar endpoint de detalle de reserva`.
+- Objetivo técnico: recuperar por UUID el detalle básico de una reserva recibida, manteniendo
+  aislamiento estricto entre propietarios y un error indistinguible para identificadores ajenos.
+- Requisitos y diseño relacionados: detalle de `RF-018`, acceso propio de `RF-008`, privacidad de
+  `RNF-002` y endpoint diseñado `GET /api/venue/me/reservations/{reservationId}`.
+
+### Contrato, propiedad y ejecución
+
+`VenueReservationController.findDetail` recibe el UUID de ruta y el principal. La implementación
+solo delega `account.userId()` y `reservationId`. `VenueReservationService.findDetail` ejecuta una
+transacción de solo lectura y llama `ReservationDao.findOwnedDetail`.
+
+La consulta combina en una misma sentencia:
+
+- `reservation.id = :reservationId`;
+- `reservation.venue.ownerUser.id = :ownerUserId`;
+- `reservation.customerEmail is not null`.
+
+Por ello una reserva de otro local nunca llega al servicio ni al conversor. La ausencia se traduce
+a `VenueReservationNotFoundException` y HTTP 404 con código
+`VENUE_RESERVATION_NOT_FOUND`; no existe una respuesta diferenciada que permita enumerar UUID.
+Como en el listado, la franja se precarga con `join fetch`.
+
+`VenueReservationDetailResponse` contiene identificadores de reserva, franja y servicio, identidad
+confirmada del cliente, número de personas, snapshot de fecha/horas, estado, metadatos de
+cancelación e instantes de creación/actualización. No contiene `employeeResourceId` ni nombre del
+recurso porque la tarea 9.5 debe definir su presentación; tampoco contiene respuestas porque 9.4
+debe cargarlas y ordenarlas desde sus snapshots. Esta separación evita marcar trabajo futuro como
+completado.
+
+El conversor enumera campos permitidos de forma explícita. Aunque la entidad tenga hashes de hold y
+gestión, sus caducidades y datos internos de cancelación, no hay serialización directa de la entidad
+y ningún secreto forma parte del DTO. No hay efectos secundarios, locks de escritura, eventos,
+emails, logs ni auditoría en esta lectura.
+
+### Tests, verificación y riesgos
+
+`VenueReservationServiceTests` cubre detalle propio y ausencia opaca. El mismo `Optional.empty`
+representa UUID inexistente o ajeno. `VenueReservationControllerTests` verifica uso del
+propietario autenticado, conversión de campos y que la existencia de hashes en el fixture no altera
+el contrato. También comprueba los códigos estables 400/404. `VenueReservationDaoTests` protege que
+UUID, propietario e identidad aparezcan juntos en la consulta.
+
+La evidencia comparte la ejecución final de 10 tests, compilación correcta y Spotless focalizado
+detallada en 9.1. No se ejecutó una prueba HTTP con Spring Security ni PostgreSQL real; la tarea
+9.10 debe añadir cobertura integral de rol, sesión, reserva propia/ajena y combinaciones de filtros.
+Las respuestas del formulario pueden contener datos sensibles y deberán exponerse en 9.4 solo
+desde snapshots asociados a una reserva ya acreditada por esta misma frontera de propiedad.

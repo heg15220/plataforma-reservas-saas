@@ -182,9 +182,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 11. Fase 9 - Panel de reservas del local
 
-- [ ] 9.1. Implementar endpoint `GET /api/venue/me/reservations`.
-- [ ] 9.2. Implementar filtros por día, semana, mes, franja, estado y usuario.
-- [ ] 9.3. Implementar endpoint de detalle de reserva.
+- [x] 9.1. Implementar endpoint `GET /api/venue/me/reservations`.
+- [x] 9.2. Implementar filtros por día, semana, mes, franja, estado y usuario.
+- [x] 9.3. Implementar endpoint de detalle de reserva.
 - [ ] 9.4. Mostrar respuestas del formulario en detalle.
 - [ ] 9.5. Mostrar empleado o recurso asignado.
 - [ ] 9.6. Mostrar historial de incidencias asociado al email.
