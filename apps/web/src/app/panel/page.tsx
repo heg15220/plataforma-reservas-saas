@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 
 /**
- * Punto de entrada estable al panel durante la construcción incremental.
+ * Punto de entrada estable al panel operativo.
  *
- * La verificación es la primera función privada real disponible. Las fases de
- * perfil y reservas sustituirán este redirect por el resumen operativo.
+ * La agenda diaria es la primera vista accionable tras el acceso del local.
  */
 export default function VenuePanelPage() {
-  redirect("/panel/verificacion");
+  redirect("/panel/reservas");
 }

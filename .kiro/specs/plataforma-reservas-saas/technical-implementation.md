@@ -22482,3 +22482,138 @@ Riesgos residuales:
   retención y transparencia en fase 16;
 - los procesos de creación deberán copiar el email normalizado de la reserva y no aceptar una
   identidad libre del payload.
+
+## Iteración 9.7 - Pantalla privada de reservas del día
+
+### Objetivo, requisitos y diseño
+
+La tarea `9.7. Crear pantalla de reservas del día` materializa la agenda operativa de RF-018 en
+`/panel/reservas`. También aplica RF-008 y los requisitos no funcionales de privacidad,
+accesibilidad, internacionalización, rendimiento y mantenibilidad. La ruta server
+`apps/web/src/app/panel/reservas/page.tsx` genera metadatos localizados, conserva `VenueShell` y
+acepta `date` desde la URL solo si cumple `YYYY-MM-DD`. `/panel` redirige ahora a la agenda.
+
+### Componentes, contrato y flujo
+
+`venue-reservations-api.ts` define esquemas Zod para lista y detalle. La consulta diaria es:
+
+```text
+GET /api/venue/me/reservations?period=day&date=YYYY-MM-DD&page=0&size=100
+credentials: include
+cache: no-store
+```
+
+No se envía `venueId`; el backend lo deriva de la sesión. La respuesta se valida antes de entrar
+en estado React. Los códigos 400/422, 401, 403, 404 y el resto se normalizan a errores de dominio
+sin leer ni conservar el cuerpo. Una pérdida de red se convierte en `unavailable`; `AbortError`
+conserva su semántica para ignorar cancelaciones intencionadas.
+
+`VenueReservationsDashboard` implementa selector de fecha, día anterior/siguiente, vuelta al día
+actual y actualización manual. Muestra hora, nombre, email, personas, estado y acceso al detalle.
+Cuatro métricas resumen reservas, confirmadas, personas y clientes únicos. La carga queda acotada
+a 100 filas; si `totalElements` es mayor se informa y no se inicia una cascada de páginas.
+
+La composición usa cuadrícula en escritorio y tarjetas apiladas en móvil. Los controles tienen
+etiquetas accesibles, la carga usa `role=status`, la hora de actualización se anuncia con
+`aria-live` y los iconos decorativos se ocultan del árbol accesible. Existen estados explícitos de
+carga, error y agenda vacía.
+
+### Datos, seguridad, i18n y observabilidad
+
+No se modifican tablas, migraciones, índices ni contratos backend. No se usa `localStorage`,
+IndexedDB ni caché HTTP para nombre o email. Las peticiones se cancelan al desmontar o cambiar de
+día y un contador monotónico evita que una respuesta atrasada reemplace la más reciente.
+
+Las 82 claves `VenueReservations` coinciden en `es.json` y `en.json`. Fechas, horas, números,
+plurales, estados, errores y acciones usan `next-intl` e `Intl`. La UI no registra payloads ni PII;
+la marca temporal de última actualización aporta observabilidad operativa sin logs.
+
+### Tests, evidencia, riesgos y deuda
+
+`venue-reservations-api.test.ts` verifica consulta diaria, paginación limitada, cookie privada,
+ausencia de caché, parseo del detalle y normalización de 403. La prueba UI verifica contenido,
+métricas, estado, personas y enlace al detalle. Evidencia conjunta de 9.7–9.9:
+
+```text
+npm test -- src/features/venue-reservations/venue-reservations-api.test.ts \
+  src/features/venue-reservations/venue-reservations-ui.test.tsx --maxWorkers=1
+Test Files 2 passed (2); Tests 6 passed (6)
+
+npx --no-install tsc --project tsconfig.reservations.json --pretty false
+Sin errores; configuración temporal limitada a los módulos y rutas implementados.
+
+Comprobación Node de locales: 82 claves VenueReservations coincidentes.
+```
+
+ESLint no terminó dentro de 60 segundos en dos intentos, el segundo reducido a cinco archivos de
+producción. Los procesos fueron detenidos por timeout y no se repitieron. No se ejecutaron suite,
+lint, typecheck o build globales, ni pruebas visuales, para mantener la validación acotada. Riesgos:
+una agenda con más de 100 reservas necesita paginación explícita; 9.10 debe profundizar permisos y
+combinaciones de filtros.
+
+## Iteración 9.8 - Detalle de reserva responsive
+
+### Objetivo, archivos y arquitectura
+
+La tarea `9.8. Crear detalle de reserva desktop y móvil` implementa
+`/panel/reservas/[id]` conforme a RF-018. La página server conserva metadatos y shell localizados y
+delega la carga a `VenueReservationDetailPanel`, que consume el detalle privado con cookie
+HttpOnly y valida el contrato mediante Zod.
+
+La pantalla usa dos columnas desde `lg` y una secuencia vertical en móvil. La columna principal
+presenta identidad y snapshots del formulario; la secundaria presenta fecha/franja, recurso e
+historial. El retorno conserva el día de la reserva en la query. No se añadió estado global ni una
+dependencia: la responsabilidad queda encapsulada en `venue-reservations`.
+
+### Presentación, privacidad y errores
+
+Las respuestas admiten texto, número, booleano, arrays y JSON; valores nulos o vacíos reciben una
+etiqueta localizada. El recurso prioriza `publicAlias`, después nombre/apellido y finalmente una
+etiqueta anónima. Solo se muestran los campos minimizados autorizados por backend; no aparecen
+notas internas ni identificadores de local o actor.
+
+El historial muestra tipo, fecha, estado y total. Si `truncated` es verdadero, informa elementos
+visibles y total. Estados o tipos futuros desconocidos degradan a etiquetas seguras. Una reserva
+ausente, ajena o no autorizada conserva mensajes opacos. No hay cambios de datos, migraciones,
+endpoints, jobs, auditoría ni logs.
+
+### Tests, accesibilidad y riesgos
+
+`venue-reservations-ui.test.tsx` comprueba cliente, formulario, recurso e incidencia y que no
+aparece un texto sensible no incluido en contrato. La misma ejecución de seis tests y TypeScript
+focalizado de 9.7 verifica esta tarea. La adaptación usa breakpoints MUI, anchos fluidos,
+`overflowWrap`, botones móviles de ancho completo y secciones semánticas.
+
+No se realizó comparación visual automatizada. Queda como deuda una validación manual en
+dispositivos reales y pruebas específicas de todos los tipos JSON del formulario.
+
+## Iteración 9.9 - Actualización tras una nueva reserva
+
+### Objetivo, estrategia y flujo
+
+La tarea `9.9. Añadir actualización tras nueva reserva` hace aparecer una confirmación pública en
+la agenda sin recargar la aplicación. Al no existir SSE ni WebSocket, usa revalidación HTTP:
+
+- cada 30 segundos solo con `document.visibilityState === "visible"`;
+- al recuperar el foco;
+- al volver la pestaña a visible;
+- mediante la acción manual.
+
+No abre conexiones persistentes ni crea infraestructura. `cache: no-store` consulta el estado
+confirmado actual. Oculta, la pestaña no hace tráfico. Al desmontar se aborta el controlador, se
+eliminan listeners y se limpia el intervalo.
+
+### Concurrencia, errores, verificación y deuda
+
+Cada carga recibe una secuencia y solo la más reciente actualiza datos, error, carga y marca
+temporal. Esto elimina carreras entre intervalo, foco, actualización manual y cambio de fecha.
+Las actualizaciones de fondo conservan la agenda y muestran indicador; un error se comunica sin
+salir del panel ni exponer el cuerpo de respuesta.
+
+La prueba `refreshes after focus and loads a newly confirmed reservation` entrega una agenda,
+simula foco, añade una segunda reserva y verifica que el nuevo cliente aparece con exactamente dos
+consultas. No espera el intervalo real, por lo que es determinista.
+
+No se añadieron modelos, migraciones, índices, endpoints, jobs, reintentos exponenciales ni
+telemetría. Si el producto exige latencia de segundos o gran escala, deberá evolucionar a eventos
+push autenticados por tenant, con reconexión limitada y observabilidad específica.

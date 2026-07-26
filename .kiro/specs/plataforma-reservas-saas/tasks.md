@@ -188,9 +188,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 9.4. Mostrar respuestas del formulario en detalle.
 - [x] 9.5. Mostrar empleado o recurso asignado.
 - [x] 9.6. Mostrar historial de incidencias asociado al email.
-- [ ] 9.7. Crear pantalla de reservas del día.
-- [ ] 9.8. Crear detalle de reserva desktop y móvil.
-- [ ] 9.9. Añadir actualización tras nueva reserva.
+- [x] 9.7. Crear pantalla de reservas del día.
+- [x] 9.8. Crear detalle de reserva desktop y móvil.
+- [x] 9.9. Añadir actualización tras nueva reserva.
 - [ ] 9.10. Crear tests de permisos y filtros.
 
 ## 12. Fase 10 - Asistencia, incidencias y penalizaciones

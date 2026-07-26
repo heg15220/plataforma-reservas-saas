@@ -1182,6 +1182,134 @@
       }
     }
   },
+  "VenueReservations": {
+    "metadata": {
+      "title": "Reservas del día | Reserly",
+      "description": "Consulta y gestiona las reservas recibidas por tu local."
+    },
+    "hero": {
+      "eyebrow": "Agenda del local",
+      "title": "Reservas del día",
+      "summary": "Consulta quién viene hoy y abre cada reserva para revisar todos sus detalles."
+    },
+    "loading": "Cargando reservas",
+    "filters": {
+      "date": "Fecha de la agenda"
+    },
+    "actions": {
+      "previousDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "refresh": "Actualizar",
+      "viewDetail": "Ver detalle",
+      "backToList": "Volver a las reservas"
+    },
+    "metrics": {
+      "total": "Reservas",
+      "confirmed": "Confirmadas",
+      "people": "Personas",
+      "customers": "Clientes"
+    },
+    "refresh": {
+      "waiting": "Esperando la primera actualización.",
+      "updatedAt": "Actualizado a las {time}. La agenda se refresca automáticamente."
+    },
+    "list": {
+      "title": "Agenda del {date}",
+      "summary": "{count, plural, =0 {No hay reservas} one {# reserva} other {# reservas}}",
+      "partySize": "{count, plural, one {# persona} other {# personas}}",
+      "limited": "Se muestran {shown} de {total} reservas. Usa los filtros del panel para acotar la consulta."
+    },
+    "empty": {
+      "title": "No hay reservas para este día",
+      "description": "Cuando se confirme una nueva reserva aparecerá aquí automáticamente."
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder al panel.",
+      "forbidden": "No tienes permisos para consultar estas reservas.",
+      "notFound": "No encontramos esta reserva o ya no está disponible.",
+      "invalid": "No se pudo aplicar la fecha o el filtro seleccionado.",
+      "unavailable": "No pudimos cargar las reservas. Inténtalo de nuevo."
+    },
+    "status": {
+      "confirmed": "Confirmada",
+      "cancelled_by_user": "Cancelada por el cliente",
+      "cancelled_by_venue": "Cancelada por el local",
+      "attended": "Asistida",
+      "no_show": "No asistida",
+      "reported": "Incidencia reportada",
+      "unknown": "Estado pendiente"
+    },
+    "common": {
+      "yes": "Sí",
+      "no": "No"
+    },
+    "detail": {
+      "metadata": {
+        "title": "Detalle de reserva | Reserly",
+        "description": "Consulta el detalle privado de una reserva de tu local."
+      },
+      "hero": {
+        "eyebrow": "Reserva recibida",
+        "title": "Detalle de la reserva",
+        "summary": "Revisa la cita, las respuestas del formulario y la información operativa asociada."
+      },
+      "loading": "Cargando detalle de reserva",
+      "customer": {
+        "title": "Cliente",
+        "name": "Nombre",
+        "email": "Correo electrónico",
+        "partySize": "Número de personas"
+      },
+      "appointment": {
+        "title": "Cita",
+        "date": "Fecha",
+        "time": "Hora",
+        "createdAt": "Reserva creada"
+      },
+      "form": {
+        "title": "Respuestas del formulario",
+        "empty": "Esta reserva no tiene respuestas personalizadas.",
+        "noAnswer": "Sin respuesta"
+      },
+      "resource": {
+        "title": "Empleado o recurso asignado",
+        "name": "Nombre",
+        "type": "Tipo",
+        "specialty": "Especialidad",
+        "empty": "No hay ningún empleado o recurso asignado.",
+        "unnamed": "Recurso sin nombre"
+      },
+      "incidents": {
+        "title": "Historial de incidencias",
+        "summary": "{count, plural, =0 {Sin incidencias registradas} one {# incidencia registrada} other {# incidencias registradas}}",
+        "empty": "No hay incidencias profesionales asociadas a este correo.",
+        "truncated": "Se muestran las {shown} incidencias más recientes de un total de {total}."
+      }
+    },
+    "resourceType": {
+      "employee": "Empleado",
+      "professional": "Profesional",
+      "room": "Sala",
+      "court": "Pista",
+      "table": "Mesa",
+      "equipment": "Equipo",
+      "other": "Otro recurso"
+    },
+    "incidentType": {
+      "no_show": "No asistencia",
+      "late_cancellation": "Cancelación tardía",
+      "late_arrival": "Llegada tardía",
+      "duplicate_or_abusive_booking": "Reserva duplicada o abusiva",
+      "venue_condition_breach": "Incumplimiento de condiciones",
+      "manual_incident": "Incidencia operativa"
+    },
+    "incidentStatus": {
+      "reported": "Reportada",
+      "confirmed": "Confirmada",
+      "dismissed": "Descartada"
+    }
+  },
   "ReservationManagement": {
     "loading": "Cargando reserva",
     "eyebrow": "Gestión de la reserva",

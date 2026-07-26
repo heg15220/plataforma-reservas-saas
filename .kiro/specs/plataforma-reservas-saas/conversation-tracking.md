@@ -5076,6 +5076,64 @@ Fuente de verdad del avance:
     ejecutado ni fallo de aserción. No se repitió para evitar validaciones interminables.
   - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.
 
+## Conversación 106 - Agenda diaria, detalle responsive y actualización automática
+
+- Fecha: 2026-07-26.
+- Resumen de la conversación:
+  - Se completaron las tareas 9.7, 9.8 y 9.9 en `phase/9-panel-reservations`.
+  - Se creó `/panel/reservas` como entrada principal del panel privado, con selector de fecha,
+    navegación entre días, métricas, estados de carga/error/vacío y listado responsive.
+  - Se creó `/panel/reservas/{id}` con composición adaptativa para escritorio y móvil, incluyendo
+    cliente, cita, respuestas del formulario, recurso asignado e historial de incidencias.
+  - La agenda actualiza en segundo plano cada 30 segundos únicamente mientras la pestaña está
+    visible, al recuperar el foco, al volver a ser visible y mediante una acción manual.
+  - La implementación consume exclusivamente los endpoints privados ya entregados en 9.1–9.6.
+- Archivos modificados:
+  - `apps/web/src/features/venue-reservations/venue-reservations-api.ts`.
+  - `apps/web/src/features/venue-reservations/venue-reservations-dashboard.tsx`.
+  - `apps/web/src/features/venue-reservations/venue-reservation-detail-panel.tsx`.
+  - Tests y fixtures focalizados de `venue-reservations`.
+  - `apps/web/src/app/panel/reservas/page.tsx`.
+  - `apps/web/src/app/panel/reservas/[id]/page.tsx`.
+  - `apps/web/src/app/panel/page.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-018 Panel de reservas del local`.
+  - `RNF-002 Seguridad y privacidad`.
+  - `RNF-003 Usabilidad y accesibilidad`.
+  - `RNF-004 Internacionalización`.
+  - `RNF-005 Rendimiento`.
+  - `RNF-006 Mantenibilidad`.
+- Tareas impactadas:
+  - 9.7, 9.8 y 9.9.
+- Tareas completadas:
+  - `9.7. Crear pantalla de reservas del día`.
+  - `9.8. Crear detalle de reserva desktop y móvil`.
+  - `9.9. Añadir actualización tras nueva reserva`.
+- Siguiente tarea pendiente recomendada:
+  - `9.10. Crear tests de permisos y filtros`.
+- Decisiones o aclaraciones relevantes:
+  - La vista diaria solicita como máximo 100 reservas. Si el total es superior, lo comunica sin
+    iniciar paginaciones automáticas ilimitadas.
+  - La actualización automática se suspende con la pestaña oculta y cada cambio de fecha cancela
+    la petición anterior; un contador de secuencia impide que una respuesta antigua sobrescriba
+    el día actual.
+  - Se usa `credentials: include`, `cache: no-store` y validación Zod en el límite HTTP. Los cuerpos
+    de error no se conservan ni se presentan al usuario.
+  - Los estados desconocidos reciben una etiqueta segura; los datos personales se muestran solo
+    dentro del shell privado y no se persisten en almacenamiento del navegador.
+  - Evidencia focalizada: 2 archivos Vitest, 6 tests, 0 fallos; TypeScript acotado sin errores; 82
+    claves `VenueReservations` coincidentes entre español e inglés.
+  - ESLint fue cancelado dos veces al alcanzar 60 segundos, incluso limitado a cinco archivos. No
+    se repitió ni se ejecutaron lint, build o suites globales para evitar validaciones
+    interminables y fuera del alcance solicitado.
+  - No se realizó despliegue ni validación visual con navegador; el alcance solicitado termina en
+    commit y push. El cambio previo `apps/web/next-env.d.ts` se conserva fuera del commit.
+
 ## Conversación 104 - Listado, filtros y detalle privado de reservas
 
 - Fecha: 2026-07-24.

@@ -1182,6 +1182,134 @@
       }
     }
   },
+  "VenueReservations": {
+    "metadata": {
+      "title": "Today's reservations | Reserly",
+      "description": "Review and manage the reservations received by your venue."
+    },
+    "hero": {
+      "eyebrow": "Venue schedule",
+      "title": "Today's reservations",
+      "summary": "See who is coming today and open each reservation to review every detail."
+    },
+    "loading": "Loading reservations",
+    "filters": {
+      "date": "Schedule date"
+    },
+    "actions": {
+      "previousDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "refresh": "Refresh",
+      "viewDetail": "View details",
+      "backToList": "Back to reservations"
+    },
+    "metrics": {
+      "total": "Reservations",
+      "confirmed": "Confirmed",
+      "people": "Guests",
+      "customers": "Customers"
+    },
+    "refresh": {
+      "waiting": "Waiting for the first update.",
+      "updatedAt": "Updated at {time}. The schedule refreshes automatically."
+    },
+    "list": {
+      "title": "Schedule for {date}",
+      "summary": "{count, plural, =0 {No reservations} one {# reservation} other {# reservations}}",
+      "partySize": "{count, plural, one {# guest} other {# guests}}",
+      "limited": "Showing {shown} of {total} reservations. Use the panel filters to narrow the query."
+    },
+    "empty": {
+      "title": "No reservations for this day",
+      "description": "Newly confirmed reservations will appear here automatically."
+    },
+    "errors": {
+      "unauthenticated": "Your session has expired. Sign in to the panel again.",
+      "forbidden": "You do not have permission to view these reservations.",
+      "notFound": "We could not find this reservation, or it is no longer available.",
+      "invalid": "The selected date or filter could not be applied.",
+      "unavailable": "We could not load the reservations. Please try again."
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "cancelled_by_user": "Cancelled by customer",
+      "cancelled_by_venue": "Cancelled by venue",
+      "attended": "Attended",
+      "no_show": "No-show",
+      "reported": "Incident reported",
+      "unknown": "Pending status"
+    },
+    "common": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "detail": {
+      "metadata": {
+        "title": "Reservation details | Reserly",
+        "description": "Review the private details of a reservation at your venue."
+      },
+      "hero": {
+        "eyebrow": "Received reservation",
+        "title": "Reservation details",
+        "summary": "Review the appointment, form answers, and associated operational information."
+      },
+      "loading": "Loading reservation details",
+      "customer": {
+        "title": "Customer",
+        "name": "Name",
+        "email": "Email address",
+        "partySize": "Party size"
+      },
+      "appointment": {
+        "title": "Appointment",
+        "date": "Date",
+        "time": "Time",
+        "createdAt": "Reservation created"
+      },
+      "form": {
+        "title": "Form answers",
+        "empty": "This reservation has no custom answers.",
+        "noAnswer": "No answer"
+      },
+      "resource": {
+        "title": "Assigned employee or resource",
+        "name": "Name",
+        "type": "Type",
+        "specialty": "Specialty",
+        "empty": "No employee or resource is assigned.",
+        "unnamed": "Unnamed resource"
+      },
+      "incidents": {
+        "title": "Incident history",
+        "summary": "{count, plural, =0 {No recorded incidents} one {# recorded incident} other {# recorded incidents}}",
+        "empty": "There are no professional incidents associated with this email.",
+        "truncated": "Showing the {shown} most recent incidents out of {total}."
+      }
+    },
+    "resourceType": {
+      "employee": "Employee",
+      "professional": "Professional",
+      "room": "Room",
+      "court": "Court",
+      "table": "Table",
+      "equipment": "Equipment",
+      "other": "Other resource"
+    },
+    "incidentType": {
+      "no_show": "No-show",
+      "late_cancellation": "Late cancellation",
+      "late_arrival": "Late arrival",
+      "duplicate_or_abusive_booking": "Duplicate or abusive booking",
+      "venue_condition_breach": "Venue condition breach",
+      "manual_incident": "Operational incident"
+    },
+    "incidentStatus": {
+      "reported": "Reported",
+      "confirmed": "Confirmed",
+      "dismissed": "Dismissed"
+    }
+  },
   "ReservationManagement": {
     "loading": "Loading reservation",
     "eyebrow": "Reservation management",
