@@ -2,7 +2,11 @@ package com.reserly.platform.reservations.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -22,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -165,6 +170,53 @@ class VenueReservationServiceTests {
     assertThatThrownBy(
             () -> service.list(ownerUserId, null, null, null, null, null, 0, 101))
         .isInstanceOf(VenueReservationFilterInvalidException.class);
+  }
+
+  @Test
+  void acceptsEveryVisibleReservationStatus() {
+    for (String status :
+        List.of(
+            "confirmed",
+            "cancelled_by_user",
+            "cancelled_by_venue",
+            "attended",
+            "no_show",
+            "reported")) {
+      service.list(ownerUserId, null, null, null, status, null, 0, 25);
+    }
+
+    ArgumentCaptor<String> statuses = ArgumentCaptor.forClass(String.class);
+    verify(reservationDao, times(6))
+        .findOwnedReservations(
+            eq(ownerUserId),
+            isNull(),
+            isNull(),
+            isNull(),
+            statuses.capture(),
+            isNull(),
+            eq(PageRequest.of(0, 25)));
+    assertThat(statuses.getAllValues())
+        .containsExactly(
+            "confirmed",
+            "cancelled_by_user",
+            "cancelled_by_venue",
+            "attended",
+            "no_show",
+            "reported");
+  }
+
+  @Test
+  void rejectsUnsupportedPeriodOversizedUserAndMissingOwnerBeforeQuerying() {
+    assertThatThrownBy(
+            () -> service.list(ownerUserId, "quarter", LocalDate.now(), null, null, null, 0, 25))
+        .isInstanceOf(VenueReservationFilterInvalidException.class);
+    assertThatThrownBy(
+            () -> service.list(ownerUserId, null, null, null, null, "a".repeat(321), 0, 25))
+        .isInstanceOf(VenueReservationFilterInvalidException.class);
+    assertThatThrownBy(() -> service.list(null, null, null, null, null, null, 0, 25))
+        .isInstanceOf(VenueReservationNotFoundException.class);
+
+    verifyNoInteractions(reservationDao);
   }
 
   @Test

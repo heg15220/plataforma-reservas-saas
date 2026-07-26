@@ -22617,3 +22617,121 @@ consultas. No espera el intervalo real, por lo que es determinista.
 No se añadieron modelos, migraciones, índices, endpoints, jobs, reintentos exponenciales ni
 telemetría. Si el producto exige latencia de segundos o gran escala, deberá evolucionar a eventos
 push autenticados por tenant, con reconexión limitada y observabilidad específica.
+
+## Iteración 9.10 - Tests de permisos y filtros del panel de reservas
+
+### Identificación, fecha y objetivo
+
+- Tarea: `9.10. Crear tests de permisos y filtros`.
+- Fecha: 2026-07-26.
+- Objetivo técnico: cerrar RF-018 con cobertura ejecutable sobre la frontera de autorización HTTP,
+  la derivación de identidad desde el principal y las validaciones de filtros antes de acceder a
+  persistencia.
+- Requisitos relacionados: RF-008, RF-018, RNF-002, RNF-005 y RNF-006.
+
+Esta iteración no añade comportamiento de producción. Consolida como contratos verificables las
+decisiones de 9.1–9.3: namespace exclusivo de propietario, aislamiento por `ownerUserId`, error
+opaco para detalle ajeno, periodos de calendario, estados visibles y límites de entrada.
+
+### Archivos y arquitectura de tests
+
+Se creó
+`apps/api/src/test/java/com/reserly/platform/reservations/controller/VenueReservationPermissionTests.java`
+y se amplió
+`apps/api/src/test/java/com/reserly/platform/reservations/service/VenueReservationServiceTests.java`.
+No se crearon, modificaron ni eliminaron módulos, endpoints, servicios, modelos, migraciones,
+tablas, índices, restricciones, jobs, DTOs o contratos productivos.
+
+`VenueReservationPermissionTests` usa `MockMvc` standalone para evitar cargar módulos ajenos. La
+cadena focalizada contiene:
+
+1. `SecurityContextHolderFilter`, que materializa la autenticación del request de prueba.
+2. `ExceptionTranslationFilter` con `RestAuthenticationEntryPoint` y
+   `RestAccessDeniedHandler`, los mismos manejadores JSON usados por producción.
+3. `AuthorizationFilter` con la política `/api/venue/me/** -> ROLE_VENUE_OWNER`.
+4. `AuthenticationPrincipalArgumentResolver`, que inyecta `AuthenticatedAccount` en el
+   controlador real.
+
+El controlador y `VenueReservationConverter` son reales; solo `VenueReservationService` se simula.
+Esta separación verifica binding HTTP, filtros de seguridad, resolución de principal, delegación y
+contratos de error, sin depender de red, Docker, PostgreSQL, Flyway, Redis o RabbitMQ.
+
+### Permisos, privacidad y contratos de error
+
+La cobertura HTTP demuestra:
+
+- petición anónima: 401 `AUTHENTICATION_REQUIRED`;
+- principal administrador con `ROLE_ADMIN`: 403 `AUTHORIZATION_DENIED`;
+- propietario con `ROLE_VENUE_OWNER`: acceso permitido;
+- ausencia de cualquier llamada al servicio cuando falla autorización;
+- el listado recibe el `userId` derivado del principal, no un tenant enviado por query;
+- el detalle recibe la misma identidad acreditada;
+- reserva ajena o inexistente conserva 404 `VENUE_RESERVATION_NOT_FOUND`.
+
+La prueba no registra nombres, emails, tokens ni payloads. Los principales usan UUID aleatorios y
+no persisten fuera del proceso. Como no existe un parámetro HTTP de local o propietario, no hay una
+entrada manipulable capaz de sustituir la identidad de sesión.
+
+### Filtros y validaciones cubiertas
+
+Las pruebas previas ya cubrían día implícito, fronteras ISO de semana, fronteras de mes, franja,
+normalización de estado, escape literal de `%`, `_` y `\` en usuario, paginación y estados
+internos rechazados. Esta iteración añade:
+
+- aceptación explícita de `confirmed`, `cancelled_by_user`, `cancelled_by_venue`, `attended`,
+  `no_show` y `reported`;
+- rechazo de un periodo no soportado;
+- rechazo del filtro de usuario por encima de 320 caracteres;
+- rechazo de propietario nulo;
+- verificación de que esos rechazos ocurren antes de invocar `ReservationDao`;
+- binding HTTP combinado de periodo, fecha, estado y usuario con valores por defecto de página.
+
+No cambia la estrategia de errores: entradas semánticamente inválidas producen
+`VenueReservationFilterInvalidException`; una identidad ausente o un detalle no acreditado
+producen `VenueReservationNotFoundException`. Las consultas siguen parametrizadas y acotadas.
+
+### Estrategia de ejecución y evidencia
+
+Se intentó inicialmente una sola clase `@SpringBootTest` que combinaba cookie real, HTTP y
+PostgreSQL mediante Testcontainers. Maven compiló 558 fuentes principales y 126 fuentes de test,
+pero Docker no estaba disponible y el contexto falló antes de ejecutar aserciones:
+
+```text
+Tests run: 5, Failures: 0, Errors: 5, Skipped: 0
+Cause: Could not find a valid Docker environment
+```
+
+La clase temporal se eliminó. No se repitió Docker; se adoptó el diseño aislado descrito para que
+la tarea tenga evidencia determinista en el entorno disponible.
+
+Comandos finales focalizados:
+
+```text
+mvn -Dtest=VenueReservationPermissionTests \
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+mvn -Dtest=VenueReservationServiceTests \
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+mvn -DspotlessFiles=<los dos tests afectados> spotless:check
+BUILD SUCCESS
+```
+
+No se ejecutaron suite global, frontend, Docker, PostgreSQL, Flyway, build completo ni validación
+visual. Checkstyle se omitió en las ejecuciones Maven para evitar que analizara archivos
+históricos fuera del alcance; Spotless sí se aplicó y comprobó solo sobre los dos tests.
+
+### Riesgos, limitaciones y deuda derivada
+
+- La prueba HTTP reproduce la regla central de seguridad en una cadena focalizada; la integración
+  completa de cookie persistida y PostgreSQL queda cubierta de forma transversal por
+  `RoleAuthorizationIntegrationTests` cuando Docker está disponible, pero no se ejecutó aquí.
+- Los tests de DAO protegen la declaración JPQL, no un plan ni resultados contra datos reales en
+  esta iteración.
+- No se midió rendimiento de combinaciones de filtros ni se introdujeron índices anticipados.
+- La tarea 10.1 es la siguiente pendiente y debe completar `Penalties` y `VenueBookingRules`; la
+  existencia previa de `NoShowIncidents` no permite marcarla parcialmente como terminada.

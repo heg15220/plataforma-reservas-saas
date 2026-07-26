@@ -5076,6 +5076,47 @@ Fuente de verdad del avance:
     ejecutado ni fallo de aserción. No se repitió para evitar validaciones interminables.
   - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.
 
+## Conversación 107 - Cobertura focalizada de permisos y filtros del panel
+
+- Fecha: 2026-07-26.
+- Resumen de la conversación:
+  - Se completó la tarea 9.10 y, con ella, la fase 9 del panel de reservas.
+  - Se añadió una prueba HTTP aislada con MockMvc y Spring Security que verifica 401 sin sesión,
+    403 para un administrador y acceso para `ROLE_VENUE_OWNER`.
+  - La prueba acredita que el controlador usa exclusivamente el `userId` del principal tanto para
+    listar como para abrir un detalle, y conserva 404 opaco para una reserva ajena o inexistente.
+  - Se amplió la cobertura del servicio para todos los estados visibles y para rechazos de periodo,
+    usuario sobredimensionado y propietario ausente antes de consultar persistencia.
+- Archivos modificados:
+  - `VenueReservationPermissionTests.java`.
+  - `VenueReservationServiceTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-018 Panel de reservas del local`.
+  - `RNF-002 Seguridad y privacidad`.
+  - `RNF-005 Rendimiento`.
+  - `RNF-006 Mantenibilidad`.
+- Tareas impactadas y completadas:
+  - `9.10. Crear tests de permisos y filtros`.
+- Siguiente tarea pendiente recomendada:
+  - `10.1. Crear migraciones de no_show_incidents, penalties y venue_booking_rules`.
+- Decisiones o aclaraciones relevantes:
+  - La prueba HTTP reproduce de forma focalizada la política central
+    `/api/venue/me/** -> ROLE_VENUE_OWNER` y usa los manejadores JSON reales de 401/403.
+  - La capa HTTP se ejecuta sin Spring Boot ni base de datos; las pruebas ya existentes de DAO
+    protegen que propietario, identidad y filtros permanezcan en la consulta JPQL.
+  - Un primer intento de integración real compiló 558 fuentes principales y 126 de test, pero los
+    cinco casos no llegaron a ejecutarse porque Docker no estaba disponible. La clase temporal se
+    descartó y no se reintentó Testcontainers.
+  - Evidencia final: 3 tests HTTP de permisos y 8 tests de servicio, todos correctos; Spotless
+    focalizado correcto para los dos archivos afectados.
+  - No se ejecutaron suite completa, tests frontend, Docker, PostgreSQL, Flyway, lint, build ni
+    validaciones visuales.
+  - El cambio previo `apps/web/next-env.d.ts` se conserva fuera del trabajo y del commit.
+
 ## Conversación 106 - Agenda diaria, detalle responsive y actualización automática
 
 - Fecha: 2026-07-26.

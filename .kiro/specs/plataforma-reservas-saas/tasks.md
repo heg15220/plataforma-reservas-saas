@@ -191,7 +191,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 9.7. Crear pantalla de reservas del día.
 - [x] 9.8. Crear detalle de reserva desktop y móvil.
 - [x] 9.9. Añadir actualización tras nueva reserva.
-- [ ] 9.10. Crear tests de permisos y filtros.
+- [x] 9.10. Crear tests de permisos y filtros.
 
 ## 12. Fase 10 - Asistencia, incidencias y penalizaciones
 
