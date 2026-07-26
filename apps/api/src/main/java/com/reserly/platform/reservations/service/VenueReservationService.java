@@ -29,5 +29,5 @@ public interface VenueReservationService {
    * @throws VenueReservationNotFoundException si no existe, no tiene identidad o pertenece a otro
    *     local
    */
-  ReservationEntity findDetail(UUID ownerUserId, UUID reservationId);
+  VenueReservationDetail findDetail(UUID ownerUserId, UUID reservationId);
 }

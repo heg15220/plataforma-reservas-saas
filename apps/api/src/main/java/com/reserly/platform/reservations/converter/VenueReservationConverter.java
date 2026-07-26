@@ -1,9 +1,15 @@
 package com.reserly.platform.reservations.converter;
 
 import com.reserly.platform.reservations.dto.VenueReservationDetailResponse;
+import com.reserly.platform.reservations.dto.VenueReservationAssignedResourceResponse;
+import com.reserly.platform.reservations.dto.VenueReservationFormAnswerResponse;
+import com.reserly.platform.reservations.dto.VenueReservationIncidentHistoryResponse;
+import com.reserly.platform.reservations.dto.VenueReservationIncidentResponse;
 import com.reserly.platform.reservations.dto.VenueReservationListResponse;
 import com.reserly.platform.reservations.dto.VenueReservationSummaryResponse;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.reservations.service.VenueReservationDetail;
+import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -24,8 +30,28 @@ public class VenueReservationConverter {
         reservations.getTotalPages());
   }
 
-  /** Convierte una reserva propia al detalle básico de la tarea 9.3. */
-  public VenueReservationDetailResponse toDetailResponse(ReservationEntity reservation) {
+  /** Convierte el detalle acreditado y minimiza respuestas, recurso e historial profesional. */
+  public VenueReservationDetailResponse toDetailResponse(VenueReservationDetail detail) {
+    ReservationEntity reservation = detail.reservation();
+    List<VenueReservationFormAnswerResponse> formAnswers =
+        detail.formResponses().stream()
+            .map(
+                response ->
+                    new VenueReservationFormAnswerResponse(
+                        response.getFieldKey(),
+                        response.getFieldLabel(),
+                        response.getValue(),
+                        response.getCreatedAt()))
+            .toList();
+    List<VenueReservationIncidentResponse> incidents =
+        detail.incidents().stream()
+            .map(
+                incident ->
+                    new VenueReservationIncidentResponse(
+                        incident.getIncidentType(),
+                        incident.getReportedAt(),
+                        incident.getStatus()))
+            .toList();
     return new VenueReservationDetailResponse(
         reservation.getId(),
         reservation.getTimeSlot().getId(),
@@ -41,7 +67,26 @@ public class VenueReservationConverter {
         reservation.getCancelledBy(),
         reservation.getCancellationReason(),
         reservation.getCreatedAt(),
-        reservation.getUpdatedAt());
+        reservation.getUpdatedAt(),
+        formAnswers,
+        toAssignedResource(detail.assignedResource()),
+        new VenueReservationIncidentHistoryResponse(
+            detail.incidentTotal(), detail.incidentTotal() > incidents.size(), incidents));
+  }
+
+  private VenueReservationAssignedResourceResponse toAssignedResource(
+      EmployeeResourceEntity resource) {
+    if (resource == null) {
+      return null;
+    }
+    return new VenueReservationAssignedResourceResponse(
+        resource.getId(),
+        resource.getType(),
+        resource.getFirstName(),
+        resource.getLastName(),
+        resource.getPublicAlias(),
+        resource.getSpecialty(),
+        resource.getStatus());
   }
 
   private VenueReservationSummaryResponse toSummaryResponse(ReservationEntity reservation) {

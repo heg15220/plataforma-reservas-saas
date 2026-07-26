@@ -34,6 +34,19 @@ public interface EmployeeResourceDao extends JpaRepository<EmployeeResourceEntit
   Optional<EmployeeResourceEntity> findOwned(
       @Param("ownerUserId") UUID ownerUserId, @Param("resourceId") UUID resourceId);
 
+  /**
+   * Resuelve una referencia histórica aunque el recurso o local estén archivados. La propiedad se
+   * conserva como frontera y el contrato de detalle decide qué campos son presentables.
+   */
+  @Query(
+      """
+      select resource from EmployeeResourceEntity resource
+      where resource.id = :resourceId
+        and resource.venue.ownerUser.id = :ownerUserId
+      """)
+  Optional<EmployeeResourceEntity> findOwnedHistoricalReference(
+      @Param("ownerUserId") UUID ownerUserId, @Param("resourceId") UUID resourceId);
+
   @Query(
       """
       select resource from EmployeeResourceEntity resource

@@ -5,9 +5,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.node.TextNode;
+import com.reserly.platform.forms.persistence.ReservationFormResponseDao;
+import com.reserly.platform.forms.persistence.ReservationFormResponseEntity;
+import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
+import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,13 +33,18 @@ import org.springframework.data.domain.PageRequest;
 class VenueReservationServiceTests {
 
   @Mock private ReservationDao reservationDao;
+  @Mock private ReservationFormResponseDao formResponseDao;
+  @Mock private EmployeeResourceDao employeeResourceDao;
+  @Mock private NoShowIncidentDao incidentDao;
 
   private VenueReservationService service;
   private UUID ownerUserId;
 
   @BeforeEach
   void setUp() {
-    service = new VenueReservationServiceImpl(reservationDao);
+    service =
+        new VenueReservationServiceImpl(
+            reservationDao, formResponseDao, employeeResourceDao, incidentDao);
     ownerUserId = UUID.randomUUID();
   }
 
@@ -156,16 +170,79 @@ class VenueReservationServiceTests {
   @Test
   void returnsOnlyAnOwnedDetailAndKeepsAbsenceOpaque() {
     UUID reservationId = UUID.randomUUID();
-    ReservationEntity reservation = new ReservationEntity();
+    UUID resourceId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId, resourceId);
+    ReservationFormResponseEntity answer = answer(reservationId);
+    EmployeeResourceEntity resource = new EmployeeResourceEntity();
+    NoShowIncidentEntity incident = incident();
     when(reservationDao.findOwnedDetail(ownerUserId, reservationId))
         .thenReturn(Optional.of(reservation));
+    when(formResponseDao.findAllByReservationId(reservationId)).thenReturn(List.of(answer));
+    when(employeeResourceDao.findOwnedHistoricalReference(ownerUserId, resourceId))
+        .thenReturn(Optional.of(resource));
+    when(incidentDao.findRecentByCustomerEmailNormalized(
+            "ana@example.com", PageRequest.of(0, 50)))
+        .thenReturn(List.of(incident));
+    when(incidentDao.countByCustomerEmailNormalized("ana@example.com")).thenReturn(4L);
 
-    assertThat(service.findDetail(ownerUserId, reservationId)).isSameAs(reservation);
+    VenueReservationDetail detail = service.findDetail(ownerUserId, reservationId);
+
+    assertThat(detail.reservation()).isSameAs(reservation);
+    assertThat(detail.formResponses()).containsExactly(answer);
+    assertThat(detail.assignedResource()).isSameAs(resource);
+    assertThat(detail.incidentTotal()).isEqualTo(4);
+    assertThat(detail.incidents()).containsExactly(incident);
 
     UUID foreignOrMissingId = UUID.randomUUID();
     when(reservationDao.findOwnedDetail(ownerUserId, foreignOrMissingId))
         .thenReturn(Optional.empty());
     assertThatThrownBy(() -> service.findDetail(ownerUserId, foreignOrMissingId))
         .isInstanceOf(VenueReservationNotFoundException.class);
+  }
+
+  @Test
+  void returnsEmptyOptionalSectionsWithoutLookingUpAResource() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId, null);
+    when(reservationDao.findOwnedDetail(ownerUserId, reservationId))
+        .thenReturn(Optional.of(reservation));
+    when(formResponseDao.findAllByReservationId(reservationId)).thenReturn(List.of());
+    when(incidentDao.findRecentByCustomerEmailNormalized(
+            "ana@example.com", PageRequest.of(0, 50)))
+        .thenReturn(List.of());
+
+    VenueReservationDetail detail = service.findDetail(ownerUserId, reservationId);
+
+    assertThat(detail.formResponses()).isEmpty();
+    assertThat(detail.assignedResource()).isNull();
+    assertThat(detail.incidentTotal()).isZero();
+    assertThat(detail.incidents()).isEmpty();
+  }
+
+  private ReservationEntity reservation(UUID id, UUID resourceId) {
+    ReservationEntity reservation = new ReservationEntity();
+    reservation.setId(id);
+    reservation.setEmployeeResourceId(resourceId);
+    reservation.setCustomerEmail("ana@example.com");
+    reservation.setCustomerEmailNormalized("ana@example.com");
+    return reservation;
+  }
+
+  private ReservationFormResponseEntity answer(UUID reservationId) {
+    ReservationFormResponseEntity answer = new ReservationFormResponseEntity();
+    answer.setReservationId(reservationId);
+    answer.setFieldKey("allergies");
+    answer.setFieldLabel("Alergias");
+    answer.setValue(TextNode.valueOf("Ninguna"));
+    answer.setCreatedAt(Instant.parse("2026-07-24T09:00:00Z"));
+    return answer;
+  }
+
+  private NoShowIncidentEntity incident() {
+    NoShowIncidentEntity incident = new NoShowIncidentEntity();
+    incident.setIncidentType("no_show");
+    incident.setReportedAt(Instant.parse("2026-07-20T12:00:00Z"));
+    incident.setStatus("reported");
+    return incident;
   }
 }

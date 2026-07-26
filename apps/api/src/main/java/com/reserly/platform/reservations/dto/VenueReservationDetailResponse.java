@@ -3,13 +3,14 @@ package com.reserly.platform.reservations.dto;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Detalle privado básico de una reserva del local.
+ * Detalle privado completo de una reserva del local.
  *
- * <p>Las respuestas personalizadas y la presentación del recurso asignado se incorporan en las
- * tareas 9.4 y 9.5. Los hashes y secretos de gestión nunca forman parte del contrato.
+ * <p>Los hashes, secretos de gestión y datos sensibles de incidencias nunca forman parte del
+ * contrato.
  */
 public record VenueReservationDetailResponse(
     UUID id,
@@ -26,4 +27,12 @@ public record VenueReservationDetailResponse(
     String cancelledBy,
     String cancellationReason,
     Instant createdAt,
-    Instant updatedAt) {}
+    Instant updatedAt,
+    List<VenueReservationFormAnswerResponse> formAnswers,
+    VenueReservationAssignedResourceResponse assignedResource,
+    VenueReservationIncidentHistoryResponse incidentHistory) {
+
+  public VenueReservationDetailResponse {
+    formAnswers = List.copyOf(formAnswers);
+  }
+}

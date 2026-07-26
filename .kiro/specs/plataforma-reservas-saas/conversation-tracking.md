@@ -5140,3 +5140,72 @@ Fuente de verdad del avance:
     Checkstyle se ejecutó durante Maven; no se ejecutaron suite global, frontend, Testcontainers,
     migraciones ni validaciones visuales.
   - El cambio previo `apps/web/next-env.d.ts` se conservó fuera del trabajo y del commit.
+
+## Conversación 105 - Respuestas, recurso e historial de incidencias en el detalle
+
+- Fecha: 2026-07-26.
+- Resumen de la conversación:
+  - Se completaron las tareas 9.4, 9.5 y 9.6 en `phase/9-panel-reservations`.
+  - El detalle privado carga los snapshots históricos de respuestas con clave, etiqueta y valor
+    JSON tal como fueron confirmados.
+  - El recurso asignado se resuelve por propietario aunque haya sido archivado después de la cita,
+    preservando el significado histórico de la reserva.
+  - Se creó `NoShowIncidents` como fuente persistente del historial profesional y se muestra un
+    máximo de 50 incidencias recientes asociadas al email normalizado.
+  - El historial minimiza datos: no devuelve local, reserva, actor, email ni notas de los reportes.
+  - Se mantuvo el mismo endpoint privado de detalle y no se añadieron rutas públicas.
+- Archivos modificados:
+  - Migración `V26__create_no_show_incidents.sql`.
+  - `NoShowIncidentEntity.java` y `NoShowIncidentDao.java`.
+  - `ReservationFormResponseDao.java` y `EmployeeResourceDao.java`.
+  - `VenueReservationService.java`, `VenueReservationServiceImpl.java` y
+    `VenueReservationDetail.java`.
+  - `VenueReservationConverter.java` y `VenueReservationDetailResponse.java`.
+  - DTOs `VenueReservationFormAnswerResponse`,
+    `VenueReservationAssignedResourceResponse`, `VenueReservationIncidentResponse` y
+    `VenueReservationIncidentHistoryResponse`.
+  - Tests focalizados de servicio, controlador, consultas y persistencia de incidencias.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-013 Formulario de reserva configurable`.
+  - `RF-018 Panel de reservas del local`.
+  - `RF-020 Reporte de no asistencia`.
+  - `RNF-002 Seguridad y privacidad`.
+  - `RNF-005 Rendimiento`.
+  - `RNF-006 Mantenibilidad`.
+- Tareas impactadas:
+  - 9.4, 9.5 y 9.6.
+  - 10.1 queda parcialmente preparada por la tabla `NoShowIncidents`, pero continúa pendiente
+    porque aún no existen las migraciones de `Penalties` y `VenueBookingRules`.
+- Tareas completadas:
+  - `9.4. Mostrar respuestas del formulario en detalle`.
+  - `9.5. Mostrar empleado o recurso asignado`.
+  - `9.6. Mostrar historial de incidencias asociado al email`.
+- Siguiente tarea pendiente recomendada:
+  - `9.7. Crear pantalla de reservas del día`.
+- Decisiones o aclaraciones relevantes:
+  - Las respuestas se ordenan por `createdAt` e `id` ascendentes y usan snapshots para no depender
+    de ediciones o eliminaciones posteriores del campo.
+  - El recurso histórico conserva nombre, apellido, alias, tipo, especialidad y estado, pero no
+    expone notas internas, descripción, visibilidad pública ni datos del local.
+  - Un `employeeResourceId` inexistente o ajeno se trata como detalle no encontrado para no devolver
+    una referencia inconsistente.
+  - El historial solo puede consultarse después de acreditar una reserva propia; no existe
+    búsqueda HTTP por email arbitrario.
+  - El historial devuelve `totalElements`, `truncated` e `items`; `items` está limitado a 50 y
+    ordenado por fecha de reporte e identificador descendentes.
+  - La migración V26 impone una incidencia por reserva, email canónico, tipos/estados cerrados,
+    relaciones auditables e índices por email y local. Los flujos de escritura permanecen en fase
+    10.
+  - Evidencia final: 14 tests focalizados, 0 fallos, 0 errores y 0 omitidos. Compilaron 558 fuentes
+    principales y 125 fuentes de test.
+  - Spotless se aplicó y comprobó solo sobre los archivos afectados. Checkstyle focalizado detectó
+    una línea nueva de 102 caracteres, que se corrigió; el comando también volvió a incluir 25
+    incidencias históricas fuera del alcance en plantillas y una clase previa, por lo que no se
+    repitió como chequeo global.
+  - No se ejecutaron suite global, frontend, Testcontainers, migraciones reales, Docker ni
+    validaciones visuales.
+  - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.

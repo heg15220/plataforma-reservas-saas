@@ -22264,3 +22264,221 @@ detallada en 9.1. No se ejecutó una prueba HTTP con Spring Security ni PostgreS
 9.10 debe añadir cobertura integral de rol, sesión, reserva propia/ajena y combinaciones de filtros.
 Las respuestas del formulario pueden contener datos sensibles y deberán exponerse en 9.4 solo
 desde snapshots asociados a una reserva ya acreditada por esta misma frontera de propiedad.
+
+## Iteración 9.4 - Respuestas históricas del formulario en el detalle
+
+- Fecha: 2026-07-26.
+- Tarea: `9.4. Mostrar respuestas del formulario en detalle`.
+- Objetivo técnico: ampliar el detalle privado de una reserva propia con las respuestas
+  personalizadas confirmadas, conservando snapshots históricos y valores JSON inmutables.
+- Requisitos y diseño relacionados: `RF-013`, `RF-018`, `RNF-002` y `RNF-006`; tabla
+  `ReservationFormResponses`, DTOs REST separados y consultas DAO explícitas con `@Query`.
+
+### Archivos, contratos y arquitectura
+
+`ReservationFormResponseDao` incorpora `findAllByReservationId`. La consulta filtra por el UUID de
+la reserva previamente acreditada y ordena por `createdAt asc, id asc`. Este desempate estable evita
+que dos respuestas persistidas en el mismo instante cambien de orden entre lecturas. No se consulta
+el formulario actual ni se hace join con `ReservationFormFields`: `fieldKey`, `fieldLabel` y
+`valueJson` ya son snapshots creados durante la confirmación y deben sobrevivir a cambios,
+desactivación o eliminación del campo original.
+
+`VenueReservationService.findDetail` ahora devuelve `VenueReservationDetail`, un resultado interno
+que agrupa la reserva acreditada y sus referencias históricas. La implementación carga las
+respuestas dentro de la misma transacción `readOnly` inmediatamente después de
+`ReservationDao.findOwnedDetail`. No hay una ruta que acepte solo `reservationId` para respuestas:
+la frontera de propiedad continúa siendo el detalle privado existente.
+
+`VenueReservationFormAnswerResponse` expone únicamente:
+
+- `fieldKey`;
+- `fieldLabel`;
+- `value`;
+- `createdAt`.
+
+No devuelve el identificador interno de la respuesta ni depende del `fieldId`, que puede quedar
+nulo por `ON DELETE SET NULL`. El constructor compacto realiza `JsonNode.deepCopy`, igual que la
+entidad, para evitar compartir un árbol JSON mutable entre persistencia y serialización.
+`VenueReservationDetailResponse` copia la lista mediante `List.copyOf`.
+
+`VenueReservationConverter` enumera los campos permitidos y transforma cada snapshot sin
+interpretar de nuevo su tipo. La validación semántica ya ocurrió durante la confirmación; el panel
+debe representar fielmente el dato histórico, no revalidarlo contra una configuración que puede
+haber cambiado.
+
+### Flujo, seguridad, errores y efectos
+
+El flujo es:
+
+1. Spring Security acredita una cuenta con rol `VENUE_OWNER`.
+2. `ReservationDao.findOwnedDetail` combina propietario, UUID e identidad confirmada.
+3. Solo tras ese éxito se consultan respuestas por `reservationId`.
+4. El conversor copia clave, etiqueta y valor al DTO privado.
+
+Una reserva ajena o inexistente sigue produciendo el mismo 404 opaco antes de consultar respuestas.
+No se añaden logs con valores de formulario, porque pueden contener teléfono, email u otros datos
+personales. No cambian tablas, índices ni migraciones del formulario: V21 ya aporta
+`ixReservationFormResponsesReservation` y V23 la clave foránea a `Reservations`.
+
+### Tests, verificación y riesgos
+
+`VenueReservationServiceTests` verifica que el detalle carga exactamente los snapshots de la
+reserva acreditada y que una ausencia corta el flujo. `VenueReservationControllerTests` comprueba
+clave, etiqueta y valor JSON serializable. `VenueReservationDaoTests` protege el filtro y el orden
+estable del nuevo `@Query`.
+
+La evidencia conjunta de 9.4–9.6 ejecutó:
+
+```text
+mvn -Dtest=VenueReservationServiceTests,VenueReservationControllerTests,
+  VenueReservationDaoTests,NoShowIncidentPersistenceTests
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+Riesgo residual: no se ejecutó una prueba de serialización HTTP con valores JSON de cada tipo de
+campo. La representación conserva el JSON normalizado sin transformación, por lo que la futura UI
+9.8 deberá renderizar de forma segura texto, número, booleano, fecha y selectores.
+
+## Iteración 9.5 - Empleado o recurso asignado en el detalle
+
+- Fecha: 2026-07-26.
+- Tarea: `9.5. Mostrar empleado o recurso asignado`.
+- Objetivo técnico: resolver la referencia `employeeResourceId` de la reserva y presentar datos
+  operativos mínimos al propietario, incluso si el recurso fue archivado posteriormente.
+- Requisitos y diseño relacionados: `RF-018`, modelo de equipo de fase 5, acceso propio de
+  `RF-008`, minimización de `RNF-002` y mantenibilidad de `RNF-006`.
+
+### Persistencia histórica y propiedad
+
+`EmployeeResourceDao.findOwnedHistoricalReference` busca por `resourceId` y
+`resource.venue.ownerUser.id`. A diferencia del CRUD de equipo, no filtra estado `archived` ni
+estado editorial del local. Esa diferencia es intencionada: archivar un empleado, pista, sala o
+unidad impide nuevas asignaciones, pero no debe borrar quién atendía una reserva histórica.
+
+La propiedad continúa comprobándose en el DAO aunque la reserva ya sea propia. Esta defensa evita
+presentar una relación inconsistente si existieran datos dañados o una futura migración incorrecta.
+Si el UUID persistido no puede resolverse como recurso del propietario, el servicio usa el mismo
+`VenueReservationNotFoundException`; no devuelve información de un recurso de otro local.
+
+Cuando `employeeResourceId` es nulo no se ejecuta consulta al catálogo y
+`assignedResource` se serializa como nulo. Cuando existe, `VenueReservationAssignedResourceResponse`
+incluye:
+
+- UUID, tipo y estado histórico actual;
+- nombre y apellido;
+- alias público;
+- especialidad.
+
+No incluye `internalNotes`, descripción, URL de foto, `publicVisibility`, local propietario ni
+fechas administrativas. Aunque el panel es privado, esta minimización evita acoplar el detalle de
+reserva al DTO completo de administración del equipo.
+
+### Arquitectura, ejecución y pruebas
+
+`VenueReservationDetail` mantiene la entidad de recurso únicamente dentro del resultado interno.
+`VenueReservationConverter.toAssignedResource` realiza la proyección explícita. No se modifica
+`ReservationEntity`, la migración V23 ni la clave foránea existente hacia `EmployeeResources`.
+Tampoco se generan consultas por elemento del listado: el recurso solo se carga al abrir un detalle.
+
+`VenueReservationServiceTests` cubre recurso presente, recurso ausente y omisión de la consulta
+cuando el UUID es nulo. `VenueReservationControllerTests` usa un recurso archivado y demuestra que
+se muestran sus datos operativos mientras `internalNotes` queda fuera del contrato.
+`VenueReservationDaoTests` verifica que la consulta histórica conserva propiedad y no aplica el
+filtro de archivado del CRUD.
+
+La verificación comparte los 14 tests correctos documentados en 9.4. Riesgo residual: el recurso es
+una referencia al registro actual, no un snapshot de nombre o especialidad. Una edición posterior
+puede cambiar esos textos en una reserva pasada. Resolverlo requeriría columnas snapshot y una
+migración explícita; no se introdujo sin requisito porque el identificador y la relación histórica
+permanecen correctos.
+
+## Iteración 9.6 - Historial profesional de incidencias asociado al email
+
+- Fecha: 2026-07-26.
+- Tarea: `9.6. Mostrar historial de incidencias asociado al email`.
+- Objetivo técnico: proporcionar en el detalle un historial real, acotado y minimizado derivado del
+  email confirmado de la reserva, sin ofrecer búsquedas arbitrarias por identidad.
+- Requisitos y diseño relacionados: `RF-018`, preparación de `RF-020`, privacidad de `RNF-002`,
+  rendimiento de `RNF-005`, modelo `no_show_incidents` y convención física `RNF-011`.
+
+### Migración y modelo de datos
+
+`V26__create_no_show_incidents.sql` crea `NoShowIncidents` con tablas UpperCamelCase y columnas
+lowerCamelCase. Esta migración es un prerrequisito de lectura de 9.6 y prepara parcialmente 10.1,
+pero no completa dicha tarea: `Penalties` y `VenueBookingRules` continúan sin materializar.
+
+Columnas:
+
+- `id`, `venueId`, `reservationId` y `reportedByUserId`;
+- `customerEmailNormalized`;
+- `incidentType`, `reportedAt`, `notes`, `status` y `createdAt`.
+
+Restricciones:
+
+- claves foráneas restrictivas a `Venues`, `Reservations` y `Users`;
+- una incidencia por reserva mediante `uqNoShowIncidentsReservation`;
+- email no vacío, recortado, en minúsculas y canónico;
+- tipos cerrados: `no_show`, `late_cancellation`, `late_arrival`,
+  `duplicate_or_abusive_booking`, `venue_condition_breach` y `manual_incident`;
+- estados cerrados: `reported`, `confirmed` y `dismissed`;
+- notas nulas o no vacías;
+- `createdAt >= reportedAt`.
+
+Índices:
+
+- `ixNoShowIncidentsEmailReportedAt` sobre email, fecha descendente e identificador descendente,
+  alineado con la lectura profesional;
+- `ixNoShowIncidentsVenueReportedAt` para las futuras vistas operativas del local.
+
+`NoShowIncidentEntity` mapea mediante getters/setters y mantiene UUID escalares en vez de
+relaciones JPA. La lectura del historial no necesita cargar local, reserva ni actor, reduciendo
+joins accidentales y el riesgo de serializar relaciones sensibles. `NoShowIncidentDao` declara
+consultas `@Query` separadas para el tramo reciente y el conteo total.
+
+### Contrato, privacidad y flujo de ejecución
+
+El cliente HTTP no envía un email para consultar historial. El servicio:
+
+1. acredita la reserva mediante UUID y propietario;
+2. toma `customerEmailNormalized` del agregado persistido;
+3. solicita solo la primera página de 50 incidencias, ordenada por `reportedAt desc, id desc`;
+4. cuenta el total asociado al email;
+5. devuelve `totalElements`, `truncated` e `items`.
+
+`VenueReservationIncidentResponse` contiene solo `incidentType`, `reportedAt` y `status`. Se omiten
+el email, local, reserva, actor y notas. Esta minimización es especialmente importante cuando el
+historial profesional agrupa señales procedentes de otros locales. El contrato indica si hay más
+de 50 elementos sin permitir una extracción ilimitada desde el detalle.
+
+No se implementan todavía altas, confirmación, descarte, auditoría administrativa, penalizaciones
+ni cambios de estado de reservas; corresponden a la fase 10. Por ello la tabla permanecerá vacía en
+instalaciones nuevas hasta que se implemente el reporte. La lectura ya es funcional para datos que
+se incorporen mediante ese flujo futuro y no simula incidencias desde estados de reserva.
+
+### Tests, validación y riesgos
+
+`NoShowIncidentPersistenceTests` lee la migración UTF-8 sin arrancar infraestructura y verifica
+tabla, claves foráneas, unicidad, checks e índice principal. También comprueba el mapeo de tabla y
+columnas críticas de la entidad. `VenueReservationServiceTests` acredita el límite 50, el conteo y
+la derivación del email desde la reserva. `VenueReservationControllerTests` verifica truncado y
+campos públicos, usando notas y referencias sensibles en el fixture para demostrar que no aparecen
+en el DTO. `VenueReservationDaoTests` protege filtro y orden del historial.
+
+Maven compiló 558 fuentes principales y 125 fuentes de test. Spotless se aplicó y comprobó solo
+sobre los archivos Java afectados. Un intento de Checkstyle con `checkstyle.includes` encontró una
+línea nueva de 102 caracteres, que fue corregida, pero el plugin también volvió a escanear 25
+incidencias históricas fuera del alcance en plantillas de email y una clase previa; no se repitió
+como validación global para respetar el límite de la conversación. No se ejecutaron suite global,
+frontend, Testcontainers, PostgreSQL, Flyway real, Docker ni pruebas visuales.
+
+Riesgos residuales:
+
+- la sintaxis V26 se verificó estructuralmente, no aplicándola a PostgreSQL en esta iteración;
+- los estados definitivos de revisión administrativa podrían requerir una migración compatible en
+  fase 10 si el flujo añade más transiciones;
+- el acceso profesional global por email exige una revisión específica de base jurídica,
+  retención y transparencia en fase 16;
+- los procesos de creación deberán copiar el email normalizado de la reserva y no aceptar una
+  identidad libre del payload.

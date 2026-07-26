@@ -1,11 +1,18 @@
 package com.reserly.platform.reservations.service;
 
+import com.reserly.platform.forms.persistence.ReservationFormResponseDao;
+import com.reserly.platform.forms.persistence.ReservationFormResponseEntity;
+import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
+import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.resources.persistence.EmployeeResourceDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -20,6 +27,7 @@ public class VenueReservationServiceImpl implements VenueReservationService {
   private static final int MAX_PAGE = 100_000;
   private static final int MAX_PAGE_SIZE = 100;
   private static final int MAX_USER_FILTER_LENGTH = 320;
+  private static final int MAX_INCIDENT_HISTORY = 50;
   private static final Set<String> VISIBLE_STATUSES =
       Set.of(
           "confirmed",
@@ -30,9 +38,19 @@ public class VenueReservationServiceImpl implements VenueReservationService {
           "reported");
 
   private final ReservationDao reservationDao;
+  private final ReservationFormResponseDao formResponseDao;
+  private final EmployeeResourceDao employeeResourceDao;
+  private final NoShowIncidentDao incidentDao;
 
-  public VenueReservationServiceImpl(ReservationDao reservationDao) {
+  public VenueReservationServiceImpl(
+      ReservationDao reservationDao,
+      ReservationFormResponseDao formResponseDao,
+      EmployeeResourceDao employeeResourceDao,
+      NoShowIncidentDao incidentDao) {
     this.reservationDao = reservationDao;
+    this.formResponseDao = formResponseDao;
+    this.employeeResourceDao = employeeResourceDao;
+    this.incidentDao = incidentDao;
   }
 
   @Override
@@ -64,13 +82,34 @@ public class VenueReservationServiceImpl implements VenueReservationService {
 
   @Override
   @Transactional(readOnly = true)
-  public ReservationEntity findDetail(UUID ownerUserId, UUID reservationId) {
+  public VenueReservationDetail findDetail(UUID ownerUserId, UUID reservationId) {
     requireOwner(ownerUserId);
     if (reservationId == null) {
       throw new VenueReservationNotFoundException();
     }
-    return reservationDao
-        .findOwnedDetail(ownerUserId, reservationId)
+    ReservationEntity reservation =
+        reservationDao
+            .findOwnedDetail(ownerUserId, reservationId)
+            .orElseThrow(VenueReservationNotFoundException::new);
+    List<ReservationFormResponseEntity> formResponses =
+        formResponseDao.findAllByReservationId(reservationId);
+    EmployeeResourceEntity assignedResource =
+        findAssignedResource(ownerUserId, reservation.getEmployeeResourceId());
+    String customerEmailNormalized = reservation.getCustomerEmailNormalized();
+    List<NoShowIncidentEntity> incidents =
+        incidentDao.findRecentByCustomerEmailNormalized(
+            customerEmailNormalized, PageRequest.of(0, MAX_INCIDENT_HISTORY));
+    long incidentTotal = incidentDao.countByCustomerEmailNormalized(customerEmailNormalized);
+    return new VenueReservationDetail(
+        reservation, formResponses, assignedResource, incidentTotal, incidents);
+  }
+
+  private EmployeeResourceEntity findAssignedResource(UUID ownerUserId, UUID resourceId) {
+    if (resourceId == null) {
+      return null;
+    }
+    return employeeResourceDao
+        .findOwnedHistoricalReference(ownerUserId, resourceId)
         .orElseThrow(VenueReservationNotFoundException::new);
   }
 
