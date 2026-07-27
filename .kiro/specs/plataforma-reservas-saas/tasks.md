@@ -204,9 +204,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días.
 - [x] 10.8. Implementar validación de penalización activa durante confirmación de reserva.
 - [x] 10.9. Implementar historial profesional de incidencias por email.
-- [ ] 10.10. Implementar cancelación preventiva por local con motivo.
-- [ ] 10.11. Crear sección "Incidencias y reglas de reserva".
-- [ ] 10.12. Crear vista móvil de asistencia e incidencias.
+- [x] 10.10. Implementar cancelación preventiva por local con motivo.
+- [x] 10.11. Crear sección "Incidencias y reglas de reserva".
+- [x] 10.12. Crear vista móvil de asistencia e incidencias.
 - [ ] 10.13. Crear tests de escalado de penalizaciones.
 - [ ] 10.14. Crear tests de bloqueo de email penalizado.
 - [ ] 10.15. Crear tests de auditoría de cancelación y reporte.

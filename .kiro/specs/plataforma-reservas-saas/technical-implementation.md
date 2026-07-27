@@ -9,9 +9,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10` y `10.1` a `10.9`.
-- Siguiente tarea pendiente recomendada: `10.10. Implementar cancelación preventiva por local con
-  motivo`.
+  `8.14`, `9.1` a `9.10` y `10.1` a `10.12`.
+- Siguiente tarea pendiente recomendada: `10.13. Crear tests de escalado de penalizaciones`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -23482,3 +23481,257 @@ PostgreSQL, Flyway real, Testcontainers ni pruebas visuales.
 La eliminación o anonimización física al vencer conservación sigue pendiente de 16.10. El endpoint
 no permite consultar por email libre; una búsqueda directa futura requerirá permiso específico,
 justificación de finalidad, rate limiting y auditoría.
+
+## Tarea 10.10 - Implementar cancelación preventiva por local con motivo
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Permitir que un miembro autorizado del local cancele una reserva futura confirmada, conservando el
+motivo operativo, liberando la capacidad de forma inmediata y notificando al cliente únicamente
+después de que la transacción de negocio sea definitiva.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-023`, `RF-019`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-006`,
+  `RNF-007`, `RNF-008` y `RNF-011`.
+- Diseño: endpoint privado de reservas del local, estados terminales de reserva, auditoría
+  minimizada, mensajería RabbitMQ y plantillas transaccionales localizadas.
+- Tareas relacionadas: reutiliza propiedad y bloqueo pesimista de `10.5`, auditoría de `10.6` y
+  deja para `10.15` la cobertura exhaustiva específica de auditoría.
+
+### Archivos afectados
+
+- Creados: `VenueReservationCancellationController`,
+  `VenueReservationCancellationControllerImpl`, request/response DTO, servicio e implementación,
+  contexto y errores de dominio, evento solicitado, relay, consumidor, configuración/topología de
+  mensajería, migración `V29__store_reservation_customer_locale.sql` y tres clases de tests.
+- Modificados: `VenueReservationExceptionHandler`, `ReservationEntity`,
+  `ReservationConfirmationServiceImpl`, su test, cliente API web y tests del contrato.
+- Eliminados: ninguno.
+
+### Implementación técnica
+
+`POST /api/venue/me/reservations/{reservationId}/cancel` recibe `{ "reason": "..." }`. Bean
+Validation exige texto no vacío y limita la entrada a 500 caracteres. El controlador obtiene la
+identidad autenticada y metadatos técnicos directos de la petición; no acepta `venueId`, actor ni
+estado desde el cliente.
+
+El servicio transaccional bloquea la reserva mediante la consulta de propiedad ya empleada por el
+flujo de asistencia. Solo continúa si el estado es `confirmed` y el inicio es estrictamente futuro
+según el `Clock` de negocio. Normaliza el motivo, cambia el estado a `cancelled_by_venue`, registra
+fecha, actor y motivo, y revoca el token de gestión. `saveAndFlush` fuerza las restricciones antes
+de crear el registro de auditoría con estado anterior/posterior y motivo. La ausencia o ajenidad
+son deliberadamente indistinguibles (`404`); una transición inválida responde `409`.
+
+La capacidad se libera por la misma transición: las consultas de ocupación excluyen estados
+cancelados y, por tanto, no existe un contador paralelo susceptible de desincronización. La
+operación no es idempotente por repetición semántica: una segunda cancelación recibe conflicto.
+
+### Modelo de datos
+
+`V29` añade `Reservations.customerLocale VARCHAR(2)` nullable y una restricción `CHECK` para `es`
+o `en`. Las filas históricas se mantienen compatibles mediante `NULL`; al confirmar nuevas
+reservas se persiste la locale efectiva normalizada. La cancelación reutiliza `status`,
+`cancelledAt`, `cancelledBy`, `cancellationReason` y `secureToken` existentes. No se crean índices:
+la búsqueda usa la clave primaria y el filtro de tenant existente.
+
+### Contratos, mensajería y flujo
+
+La respuesta incluye identificador, nuevo estado y fecha de cancelación, sin exponer auditoría ni
+datos personales adicionales. Tras el commit, un listener serializa
+`VenueReservationCancellationEmailRequestedEvent` como mensaje persistente en
+`reserly.reservations.venue-cancellation-email.v1`. Si la transacción revierte no se envía nada.
+
+El consumidor usa tres intentos y `EmailDeliveries` como clave idempotente. Renderiza la plantilla
+existente de cancelación por local con la locale capturada en la reserva; para datos históricos
+usa la locale por defecto del local y finalmente `en`. Logs y entrega no incluyen motivo, email,
+nombre ni cuerpo del mensaje.
+
+### Seguridad, errores, observabilidad e i18n
+
+El endpoint conserva el perímetro autenticado del panel y acredita la propiedad dentro de la
+consulta bloqueante. La auditoría guarda actor, instante, IP, user-agent, motivo y estados, pero no
+email ni nombre. La cola usa entrega persistente y el consumidor confirma únicamente tras
+registrar/envíar la entrega; los reintentos no duplican correos ya registrados. Los códigos
+predecibles son `VENUE_RESERVATION_NOT_FOUND`, `VENUE_RESERVATION_CANCELLATION_INVALID` y los
+errores estándar de validación.
+
+### Tests y evidencia
+
+`VenueReservationCancellationServiceTests` cubre transición completa, rechazo de estado no
+cancelable y opacidad de reserva ausente/ajena. Los tests de relay prueban la frontera after-commit
+y los del consumidor cubren localización/deduplicación. Se repitió
+`ReservationConfirmationServiceTests` para probar la nueva locale:
+
+```text
+VenueReservationCancellationServiceTests: 3 correctos
+VenueReservationCancellationEmailEventRelayTests: 1 correcto
+VenueReservationCancellationEmailConsumerTests: 2 correctos
+ReservationConfirmationServiceTests: 8 correctos
+Total API focalizado: 14, Failures: 0, Errors: 0, Skipped: 0
+```
+
+Spotless se aplicó únicamente a los 21 Java modificados o creados. No se ejecutó Flyway contra una
+base real; la migración queda cubierta por compilación y revisión estática. La garantía de entrega
+entre commit SQL y publicación RabbitMQ mantiene la misma ventana residual del relay existente;
+un outbox transaccional global sería la evolución para eliminarla. Checkstyle no dejó incidencias
+en el Java nuevo; la comprobación completa del recurso termina por 24 líneas largas preexistentes
+de `email-templates/en.properties` y `email-templates/es.properties`.
+
+## Tarea 10.11 - Crear sección "Incidencias y reglas de reserva"
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Proporcionar una superficie privada única desde la que el local pueda configurar el periodo de
+gracia y consultar incidencias asociadas a una reserva propia, sin introducir búsquedas por datos
+personales ni duplicar reglas de negocio del backend.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-020`, `RF-022`, `RNF-001`, `RNF-002`, `RNF-004`, `RNF-006`, `RNF-007` y
+  `RNF-011`.
+- Diseño: ruta `/panel/incidencias`, endpoints privados de reglas e historial, componentes MUI,
+  estados de carga/error/vacío e internacionalización `next-intl`.
+- Tareas relacionadas: consume los contratos implementados en `10.2`, `10.3` y `10.9`.
+
+### Archivos afectados
+
+- Creados: `src/app/panel/incidencias/page.tsx`,
+  `venue-incidents/venue-incidents-api.ts`, `venue-incidents-dashboard.tsx` y sus dos tests.
+- Modificados: `venue-shell.tsx`, catálogos `locales/es.json` y `locales/en.json`.
+- Eliminados: ninguno.
+
+### Implementación técnica y arquitectura UI
+
+La página de servidor limita su responsabilidad a metadatos localizados y lectura del parámetro
+opcional `reservationId`. El dashboard cliente separa dos tarjetas: reglas y consulta de
+incidencias. Al montar, carga las reglas vigentes; solo ejecuta la búsqueda histórica si existe un
+identificador de reserva. El formulario valida el número antes de llamar al backend, bloquea
+acciones mientras hay una petición y muestra confirmación o error contextual.
+
+El cliente API usa esquemas Zod para validar solicitudes/respuestas, `credentials: include` y el
+mapeo común de errores HTTP. La consulta construye exclusivamente `reservationId`, `page=0` y
+`size=50`; el email no forma parte del estado del formulario, la URL ni la respuesta. La lista
+representa tipo, instante y estado con claves traducidas y contempla carga, vacío, error y
+resultados.
+
+### Modelo de datos y contratos
+
+No se añade persistencia: el módulo consume `GET/PUT /api/venue/me/booking-rules` y
+`GET /api/venue/me/incident-history?reservationId=...&page=0&size=50`. Las reglas conservan el
+rango permitido por el backend y el historial hereda paginación, ventana de conservación,
+propiedad y minimización de `10.9`.
+
+### Seguridad, accesibilidad, responsive e i18n
+
+La ruta vive bajo el shell autenticado y todos los fetch mantienen cookies de sesión. Validar con
+Zod evita representar contratos incompletos como datos confiables. Etiquetas visibles, ayudas,
+alertas, botones y estados se añadieron en español e inglés. Los campos tienen label y ayuda; los
+controles quedan deshabilitados durante mutaciones. El grid pasa de una columna en móvil a dos
+columnas en escritorio sin depender de ancho fijo.
+
+### Tests, evidencia, riesgos y deuda
+
+`venue-incidents-api.test.ts` verifica parámetros minimizados y actualización de reglas.
+`venue-incidents-dashboard.test.tsx` cubre carga/edición y consulta desde una reserva:
+
+```text
+Vitest focalizado total del lote: 4 archivos, 12 tests correctos
+TypeScript focalizado: 7 entradas más dependencias, 0 errores
+Catálogos: JSON válido, 887 claves ES/EN equivalentes
+```
+
+El validador global `i18n:check` alcanza correctamente estos archivos, pero termina en error por
+cuatro literales preexistentes ajenos al lote en `public-reservation-form`,
+`team-availability-manager` y `venue-reservations-dashboard`. No se corrigieron para evitar ampliar
+el alcance. Una futura búsqueda por email requeriría un contrato nuevo con permiso, finalidad,
+rate limiting y auditoría; no debe añadirse al cliente actual.
+
+## Tarea 10.12 - Crear vista móvil de asistencia e incidencias
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Hacer operables desde móvil los flujos diarios de asistencia, reporte, cancelación e historial,
+con controles táctiles, confirmaciones explícitas y navegación inferior estable.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-019`, `RF-020`, `RF-022`, `RF-023`, `RNF-001`, `RNF-002`, `RNF-004`,
+  `RNF-006`, `RNF-007` y `RNF-011`.
+- Diseño: detalle responsive de reserva, navegación móvil de cuatro destinos, diálogos MUI y
+  consumo de endpoints privados.
+- Tareas relacionadas: integra las operaciones de `10.4`, `10.5`, `10.6`, `10.10` y la sección
+  de `10.11`.
+
+### Archivos afectados
+
+- Creado: `venue-reservation-actions.tsx`.
+- Modificados: `venue-reservation-detail-panel.tsx`, `venue-shell.tsx`,
+  `venue-reservations-api.ts`, sus tests UI/API y catálogos `es`/`en`.
+- Eliminados: ninguno.
+
+### Implementación técnica y flujos
+
+El detalle monta `VenueReservationActions` y refresca sus datos incrementando una revisión solo
+después de una mutación correcta. Para reservas confirmadas ofrece asistencia/no asistencia; el
+reporte solo aparece tras marcar `no_show` y requiere un diálogo de confirmación con advertencia
+de auditoría y notas opcionales. La cancelación exige un diálogo separado, motivo obligatorio y
+aviso de notificación al cliente. Los errores del cliente API permanecen visibles dentro del
+contexto de la operación.
+
+Un enlace construido con `pathname` y `query` abre la sección de incidencias con el identificador
+de la reserva, sin datos personales. En móvil los botones ocupan ancho útil y mantienen alturas
+táctiles; en pantallas mayores se distribuyen en fila. La navegación inferior queda reducida a
+Inicio, Reservas, Calendario y Más; el último destino conduce a incidencias. La navegación lateral
+de escritorio mantiene sus destinos y añade Incidencias explícitamente.
+
+### Contratos, permisos y validaciones
+
+El módulo consume:
+
+- `POST /api/venue/me/reservations/{id}/attendance` con estado explícito.
+- `POST /api/venue/me/reservations/{id}/report-no-show` con confirmación y notas.
+- `POST /api/venue/me/reservations/{id}/cancel` con motivo validado.
+
+Los DTO se validan con Zod y todas las llamadas usan la sesión existente. La UI orienta al usuario,
+pero el backend sigue siendo la autoridad para propiedad, estado, temporalidad y permisos. No se
+hace actualización optimista: el detalle se recarga para reflejar el estado persistido.
+
+### Accesibilidad, privacidad, i18n y errores
+
+Los diálogos tienen título, descripción, botones diferenciados y foco inicial en el motivo cuando
+corresponde. Los iconos decorativos usan `aria-hidden`; las acciones conservan texto y áreas
+táctiles. Todos los mensajes añadidos están disponibles en español e inglés. No se muestra email,
+contador global de penalizaciones, identidad del actor ni motivo interno de otras incidencias.
+
+### Tests, evidencia, riesgos y deuda
+
+Los tests UI comprueban presencia de acciones, apertura del historial y refresco después de marcar
+asistencia; el test API comprueba el payload de cancelación. Junto a la sección de incidencias:
+
+```text
+Vitest: 4 archivos, 12 tests, todos correctos (39,50 s)
+Typecheck focalizado: correcto (12,7 s)
+```
+
+Un primer Vitest dentro del sandbox no inició workers en 60 segundos y se detuvo; la misma
+selección exacta terminó fuera del sandbox. El typecheck global también superó el límite y sus
+procesos se detuvieron; se sustituyó por un `tsconfig` temporal de siete entradas que incluyó sus
+dependencias y se eliminó al finalizar. No se ejecutaron pruebas visuales ni E2E. El control
+temporal de la cancelación se decide en servidor; la UI puede mostrar el botón en una reserva
+confirmada ya iniciada y recibirá el conflicto seguro correspondiente.

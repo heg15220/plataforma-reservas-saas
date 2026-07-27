@@ -100,6 +100,7 @@ class ReservationConfirmationServiceTests {
 
     assertThat(response.status()).isEqualTo("confirmed");
     assertThat(reservation.getSecureTokenHash()).isEqualTo(MANAGE_HASH);
+    assertThat(reservation.getCustomerLocale()).isEqualTo("en");
     assertThat(reservation.getSecureTokenExpiresAt()).isEqualTo(MANAGE_EXPIRY);
     assertThat(reservation.getHoldTokenHash()).isNull();
     ArgumentCaptor<ReservationConfirmationEmailRequestedEvent> event =

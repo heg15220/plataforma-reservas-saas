@@ -7,12 +7,10 @@ import {
   fetchVenueReservationDetail,
   fetchVenueReservationsForDay,
 } from "./venue-reservations-api";
+import { updateReservationAttendance } from "@/features/venue-incidents/venue-incidents-api";
 import { VenueReservationDetailPanel } from "./venue-reservation-detail-panel";
 import { VenueReservationsDashboard } from "./venue-reservations-dashboard";
-import {
-  reservationDetail,
-  reservationList,
-} from "./venue-reservations-test-fixtures";
+import { reservationDetail, reservationList } from "./venue-reservations-test-fixtures";
 
 vi.mock("./venue-reservations-api", async (importOriginal) => {
   const original = await importOriginal<typeof import("./venue-reservations-api")>();
@@ -23,9 +21,21 @@ vi.mock("./venue-reservations-api", async (importOriginal) => {
   };
 });
 
+vi.mock("@/features/venue-incidents/venue-incidents-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/venue-incidents/venue-incidents-api")>()),
+  updateReservationAttendance: vi.fn(),
+  reportReservationNoShow: vi.fn(),
+}));
+
 beforeEach(() => {
   vi.mocked(fetchVenueReservationsForDay).mockResolvedValue(reservationList());
   vi.mocked(fetchVenueReservationDetail).mockResolvedValue(reservationDetail());
+  vi.mocked(updateReservationAttendance).mockResolvedValue({
+    reservationId: "10000000-0000-4000-8000-000000000001",
+    status: "no_show",
+    attendanceMarkedAt: "2026-07-27T10:00:00Z",
+    updatedAt: "2026-07-27T10:00:00Z",
+  });
 });
 
 afterEach(() => {
@@ -92,5 +102,25 @@ describe("VenueReservationDetailPanel", () => {
     expect(screen.getByText("Cancelación tardía")).toBeVisible();
     expect(screen.getByText("Reportada")).toBeVisible();
     expect(screen.queryByText("No debe exponerse")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Marcar asistida" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Abrir incidencias y reglas" })).toHaveAttribute(
+      "href",
+      "/panel/incidencias?reservationId=10000000-0000-4000-8000-000000000001",
+    );
+  });
+
+  it("offers touch-friendly attendance actions and refreshes after success", async () => {
+    renderWithIntl(
+      <VenueReservationDetailPanel reservationId="10000000-0000-4000-8000-000000000001" />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Marcar no asistida" }));
+
+    await waitFor(() =>
+      expect(updateReservationAttendance).toHaveBeenCalledWith(
+        "10000000-0000-4000-8000-000000000001",
+        "no_show",
+      ),
+    );
+    await waitFor(() => expect(fetchVenueReservationDetail).toHaveBeenCalledTimes(2));
   });
 });

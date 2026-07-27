@@ -470,7 +470,9 @@
       "profile": "Profile",
       "reservations": "Bookings",
       "team": "Team",
-      "form": "Form"
+      "form": "Form",
+      "incidents": "Incidents",
+      "more": "More"
     }
   },
   "Availability": {
@@ -1202,7 +1204,8 @@
       "today": "Today",
       "refresh": "Refresh",
       "viewDetail": "View details",
-      "backToList": "Back to reservations"
+      "backToList": "Back to reservations",
+      "openIncidentSection": "Open incidents and rules"
     },
     "metrics": {
       "total": "Reservations",
@@ -1287,6 +1290,41 @@
         "truncated": "Showing the {shown} most recent incidents out of {total}."
       }
     },
+    "operations": {
+      "title": "Attendance and actions",
+      "description": "Update attendance or manage an incident. Critical actions are validated and audited by the server.",
+      "attendance": {
+        "attended": "Mark attended",
+        "noShow": "Mark no-show",
+        "pending": "Leave pending"
+      },
+      "report": {
+        "open": "Report no-show",
+        "title": "Confirm no-show report",
+        "warning": "This action is audited and may activate a temporary restriction. Confirm only after verifying the absence.",
+        "notes": "Optional professional context",
+        "confirm": "Confirm report"
+      },
+      "cancel": {
+        "open": "Cancel as venue",
+        "title": "Cancel this reservation",
+        "warning": "The place will be released and the customer will receive an email with the reason provided.",
+        "reason": "Required reason",
+        "confirm": "Cancel and notify"
+      },
+      "common": {
+        "keep": "Go back"
+      },
+      "errors": {
+        "unauthenticated": "Your session has expired. Sign in again.",
+        "forbidden": "You do not have permission to perform this action.",
+        "notFound": "We could not find this reservation, or it is no longer available.",
+        "invalid": "The action or provided data is invalid.",
+        "conflict": "The reservation state has changed. Refresh and try again.",
+        "reason": "Enter a professional reason for the cancellation.",
+        "unavailable": "We could not complete the action. Please try again."
+      }
+    },
     "resourceType": {
       "employee": "Employee",
       "professional": "Professional",
@@ -1308,6 +1346,55 @@
       "reported": "Reported",
       "confirmed": "Confirmed",
       "dismissed": "Dismissed"
+    }
+  },
+  "VenueIncidents": {
+    "metadata": {
+      "title": "Incidents and rules | Reserly",
+      "description": "Configure booking rules and review professional incident history."
+    },
+    "hero": {
+      "eyebrow": "Venue operations",
+      "title": "Incidents and booking rules",
+      "summary": "Set the cancellation notice and review incidents through an owned reservation, without open email searches."
+    },
+    "loading": "Loading incidents and rules",
+    "rules": {
+      "title": "Cancellation rules",
+      "description": "These conditions apply to secure reservation management links.",
+      "cancellationAllowed": "Allow customer cancellation",
+      "minutes": "Minimum notice in minutes",
+      "minutesHelp": "Example: 1440 equals 24 hours.",
+      "save": "Save rules",
+      "saving": "Saving…",
+      "saved": "The rules were updated successfully."
+    },
+    "history": {
+      "title": "Professional history",
+      "selectReservation": "Open a reservation to review the history associated with its email. The email is never sent as a parameter.",
+      "openReservations": "Open reservations",
+      "summary": "{count, plural, one {# operational incident} other {# operational incidents}}",
+      "empty": "There are no visible operational incidents for this reservation."
+    },
+    "errors": {
+      "unauthenticated": "Your session has expired. Sign in again.",
+      "forbidden": "You do not have permission to view this section.",
+      "notFound": "We could not find the selected reservation.",
+      "invalid": "Review the rule values or reservation reference.",
+      "conflict": "The information has changed. Refresh and try again.",
+      "unavailable": "We could not load this section. Please try again."
+    },
+    "incidentType": {
+      "no_show": "No-show",
+      "late_cancellation": "Late cancellation",
+      "late_arrival": "Late arrival",
+      "duplicate_or_abusive_booking": "Duplicate or abusive booking",
+      "venue_condition_breach": "Venue condition breach",
+      "manual_incident": "Operational incident"
+    },
+    "incidentStatus": {
+      "reported": "Reported",
+      "confirmed": "Confirmed"
     }
   },
   "ReservationManagement": {

@@ -1,13 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  cancelVenueReservation,
   fetchVenueReservationDetail,
   fetchVenueReservationsForDay,
 } from "./venue-reservations-api";
-import {
-  reservationDetail,
-  reservationList,
-} from "./venue-reservations-test-fixtures";
+import { reservationDetail, reservationList } from "./venue-reservations-test-fixtures";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -41,9 +39,7 @@ describe("venue reservations api", () => {
   it("parses the enriched detail without requesting an email or venue id", async () => {
     fetchMock.mockResolvedValue(Response.json(reservationDetail()));
 
-    const result = await fetchVenueReservationDetail(
-      "10000000-0000-4000-8000-000000000001",
-    );
+    const result = await fetchVenueReservationDetail("10000000-0000-4000-8000-000000000001");
     const [url] = fetchMock.mock.calls[0];
 
     expect(String(url)).toBe(
@@ -59,6 +55,28 @@ describe("venue reservations api", () => {
 
     await expect(fetchVenueReservationsForDay("2026-07-26")).rejects.toEqual(
       expect.objectContaining({ kind: "forbidden" }),
+    );
+  });
+
+  it("posts an audited venue cancellation reason", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({
+        reservationId: "10000000-0000-4000-8000-000000000001",
+        status: "cancelled_by_venue",
+        cancelledAt: "2026-07-27T10:00:00Z",
+      }),
+    );
+
+    await cancelVenueReservation("10000000-0000-4000-8000-000000000001", "Cierre operativo");
+    const [url, init] = fetchMock.mock.calls[0];
+
+    expect(String(url)).toContain("/cancel");
+    expect(init).toEqual(
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ reason: "Cierre operativo" }),
+      }),
     );
   });
 });

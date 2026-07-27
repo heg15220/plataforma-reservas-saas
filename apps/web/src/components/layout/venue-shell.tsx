@@ -8,7 +8,9 @@ import {
   CalendarDays,
   Grid2X2,
   ListChecks,
+  MoreHorizontal,
   NotebookTabs,
+  ShieldAlert,
   Store,
   UsersRound,
   type LucideIcon,
@@ -29,10 +31,22 @@ const venueNavigation = [
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
   { href: "/panel/equipo", icon: UsersRound, labelKey: "team" },
   { href: "/panel/formulario", icon: ListChecks, labelKey: "form" },
+  { href: "/panel/incidencias", icon: ShieldAlert, labelKey: "incidents" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey: "home" | "profile" | "reservations" | "calendar" | "team" | "form";
+  labelKey: "home" | "profile" | "reservations" | "calendar" | "team" | "form" | "incidents";
+}>;
+
+const venueMobileNavigation = [
+  { href: "/panel", icon: Grid2X2, labelKey: "home" },
+  { href: "/panel/reservas", icon: NotebookTabs, labelKey: "reservations" },
+  { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
+  { href: "/panel/incidencias", icon: MoreHorizontal, labelKey: "more" },
+] satisfies ReadonlyArray<{
+  href: string;
+  icon: LucideIcon;
+  labelKey: "home" | "reservations" | "calendar" | "more";
 }>;
 
 export interface VenueShellProps {
@@ -137,14 +151,14 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         sx={{
           bottom: 0,
           display: { xs: "grid", md: "none" },
-          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
           left: 0,
           position: "fixed",
           right: 0,
           zIndex: "appBar",
         }}
       >
-        {venueNavigation.map((item) => {
+        {venueMobileNavigation.map((item) => {
           const Icon = item.icon;
           const label = navigation(item.labelKey);
           return (

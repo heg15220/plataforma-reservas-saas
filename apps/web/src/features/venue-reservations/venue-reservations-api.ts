@@ -54,23 +54,28 @@ const incidentHistorySchema = z.object({
   items: z.array(incidentSchema).max(50),
 });
 
-const reservationDetailSchema = reservationSummarySchema
-  .omit({ createdAt: true })
-  .extend({
-    serviceId: z.uuid().nullable(),
-    cancelledAt: instantSchema.nullable(),
-    cancelledBy: z.string().nullable(),
-    cancellationReason: z.string().nullable(),
-    createdAt: instantSchema,
-    updatedAt: instantSchema,
-    formAnswers: z.array(formAnswerSchema),
-    assignedResource: assignedResourceSchema.nullable(),
-    incidentHistory: incidentHistorySchema,
-  });
+const reservationDetailSchema = reservationSummarySchema.omit({ createdAt: true }).extend({
+  serviceId: z.uuid().nullable(),
+  cancelledAt: instantSchema.nullable(),
+  cancelledBy: z.string().nullable(),
+  cancellationReason: z.string().nullable(),
+  createdAt: instantSchema,
+  updatedAt: instantSchema,
+  formAnswers: z.array(formAnswerSchema),
+  assignedResource: assignedResourceSchema.nullable(),
+  incidentHistory: incidentHistorySchema,
+});
+
+const cancellationSchema = z.object({
+  reservationId: z.uuid(),
+  status: z.literal("cancelled_by_venue"),
+  cancelledAt: instantSchema,
+});
 
 export type VenueReservationSummary = z.infer<typeof reservationSummarySchema>;
 export type VenueReservationList = z.infer<typeof reservationListSchema>;
 export type VenueReservationDetail = z.infer<typeof reservationDetailSchema>;
+export type VenueReservationCancellation = z.infer<typeof cancellationSchema>;
 
 export type VenueReservationsApiErrorKind =
   | "unauthenticated"
@@ -112,18 +117,36 @@ export async function fetchVenueReservationDetail(
   return request(new URL(path, apiBaseUrl()), reservationDetailSchema, signal);
 }
 
+/** Cancela una reserva propia con un motivo que el backend persiste, audita y notifica. */
+export async function cancelVenueReservation(
+  reservationId: string,
+  reason: string,
+  signal?: AbortSignal,
+): Promise<VenueReservationCancellation> {
+  const path = `/api/venue/me/reservations/${encodeURIComponent(reservationId)}/cancel`;
+  return request(new URL(path, apiBaseUrl()), cancellationSchema, signal, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 async function request<T>(
   url: URL,
   schema: z.ZodType<T>,
   signal?: AbortSignal,
+  init?: Pick<RequestInit, "body" | "method">,
 ): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, {
-      method: "GET",
+      method: init?.method ?? "GET",
+      body: init?.body,
       cache: "no-store",
       credentials: "include",
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      },
       signal,
     });
   } catch (error) {

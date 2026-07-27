@@ -29,6 +29,17 @@ import {
   type VenueReservationDetail,
 } from "./venue-reservations-api";
 
+/** Builds a local-only list URL without exposing reservation customer data. */
+function reservationListHref(date: string): string {
+  return `/panel/reservas?date=${encodeURIComponent(date)}`;
+}
+
+/** Builds the minimized incident-history URL from an owned reservation identifier. */
+function reservationIncidentsHref(reservationId: string): string {
+  return `/panel/incidencias?reservationId=${encodeURIComponent(reservationId)}`;
+}
+import { VenueReservationActions } from "./venue-reservation-actions";
+
 /** Detalle privado responsive con bloques minimizados para cliente, formulario y riesgo. */
 export function VenueReservationDetailPanel({ reservationId }: { reservationId: string }) {
   const t = useTranslations("VenueReservations");
@@ -36,6 +47,7 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
   const [detail, setDetail] = useState<VenueReservationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,7 +63,7 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
       }
     });
     return () => controller.abort();
-  }, [reservationId, t]);
+  }, [reservationId, revision, t]);
 
   if (loading) {
     return (
@@ -93,7 +105,7 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
       >
         <Button
           component={NavigationLink}
-          href={`/panel/reservas?date=${detail.date}`}
+          href={reservationListHref(detail.date)}
           startIcon={<ArrowLeft aria-hidden="true" size={18} />}
           sx={{ alignSelf: "flex-start" }}
           variant="text"
@@ -242,17 +254,26 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
           </Surface>
         </Stack>
       </Box>
+
+      <VenueReservationActions
+        detail={detail}
+        onChanged={() => setRevision((current) => current + 1)}
+      />
+
+      <Button
+        component={NavigationLink}
+        href={reservationIncidentsHref(detail.id)}
+        startIcon={<ShieldAlert aria-hidden="true" size={18} />}
+        sx={{ alignSelf: "flex-start" }}
+        variant="outlined"
+      >
+        {t("actions.openIncidentSection")}
+      </Button>
     </Stack>
   );
 }
 
-function SectionTitle({
-  icon: Icon,
-  title,
-}: {
-  icon: typeof UserRound;
-  title: string;
-}) {
+function SectionTitle({ icon: Icon, title }: { icon: typeof UserRound; title: string }) {
   return (
     <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
       <Icon aria-hidden="true" size={19} />

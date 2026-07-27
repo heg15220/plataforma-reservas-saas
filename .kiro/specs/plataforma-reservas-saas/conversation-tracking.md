@@ -13,11 +13,61 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-27
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10` y `10.1` a `10.9`.
-- Siguiente tarea pendiente recomendada: `10.10. Implementar cancelación preventiva por local con
-  motivo`.
-- Observación: el reporte aplica la penalización global de forma atómica, la confirmación bloquea
-  emails restringidos y el historial privado está paginado, minimizado y limitado a 12 meses.
+  `9.1` a `9.10` y `10.1` a `10.12`.
+- Siguiente tarea pendiente recomendada: `10.13. Crear tests de escalado de penalizaciones`.
+- Observación: el local ya puede cancelar preventivamente con motivo y notificación localizada; la
+  gestión de reglas, asistencia e incidencias dispone de una superficie web responsive y privada.
+
+## Conversación 111 - Cancelación preventiva y operación responsive de incidencias
+
+- Fecha: 2026-07-27.
+- Resumen de la conversación:
+  - Se completaron `10.10`, `10.11` y `10.12` en
+    `phase/10-assistance-incidents-penalties`.
+  - Se añadió la cancelación preventiva de una reserva futura confirmada por su propio local,
+    exigiendo un motivo de hasta 500 caracteres, transición a `cancelled_by_venue`, liberación
+    inmediata de capacidad, revocación del token seguro y auditoría minimizada.
+  - La notificación al cliente se desacopló mediante un evento publicado después del commit y una
+    cola RabbitMQ persistente, con reintentos, deduplicación y plantilla localizada.
+  - El panel incorpora `/panel/incidencias` para editar las reglas de reserva y consultar el
+    historial privado a partir de una reserva propia, sin pedir ni mostrar el email del cliente.
+  - El detalle de reserva incorpora controles táctiles para marcar asistencia, preparar y confirmar
+    un reporte de no asistencia, cancelar con motivo y abrir el historial relacionado.
+  - La navegación móvil se concentró en cuatro destinos estables: inicio, reservas, calendario y
+    más; este último da acceso directo a incidencias.
+- Archivos modificados:
+  - Migración `V29__store_reservation_customer_locale.sql` y persistencia de la locale del cliente.
+  - Contrato, controlador, servicio, errores, auditoría, evento y mensajería de cancelación.
+  - Tests focalizados de servicio, relay, consumidor y confirmación.
+  - Cliente API web de reservas, nuevo cliente/dashboard de incidencias y acciones del detalle.
+  - Página `/panel/incidencias`, shell responsive, catálogos `es`/`en` y tests web asociados.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del commit el cambio previo del usuario en `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-019`, `RF-020`, `RF-022` y `RF-023`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-006`, `RNF-007`, `RNF-008` y `RNF-011`.
+- Tareas impactadas y completadas: `10.10`, `10.11` y `10.12`.
+- Siguiente tarea pendiente recomendada:
+  - `10.13. Crear tests de escalado de penalizaciones`.
+- Decisiones o aclaraciones relevantes:
+  - La cancelación bloquea la reserva propia y solo admite reservas `confirmed` cuyo inicio todavía
+    no ha llegado según el reloj de negocio; los estados terminales devuelven conflicto.
+  - La locale se guarda al confirmar la reserva. Los registros históricos sin locale usan primero
+    la locale por defecto del local y después `en`.
+  - La liberación de aforo no necesita una escritura adicional: las consultas de ocupación ya
+    excluyen `cancelled_by_venue`.
+  - La vista de historial exige `reservationId` y reutiliza el contrato privado y minimizado de
+    `10.9`; nunca transporta el email en URL, payload o respuesta.
+  - Evidencia API focalizada: 14 tests, 0 fallos, 0 errores y 0 omitidos. Evidencia web focalizada:
+    4 archivos y 12 tests, todos correctos. El typecheck limitado a siete entradas y sus
+    dependencias terminó sin errores.
+  - Los catálogos `es`/`en` son JSON válido y conservan 887 claves equivalentes. El validador global
+    de texto sigue fallando por cuatro literales preexistentes fuera de estas tareas
+    (`public-reservation-form`, `team-availability-manager` y `venue-reservations-dashboard`).
+  - Checkstyle no dejó incidencias en el Java nuevo; su ejecución termina por 24 líneas largas
+    preexistentes de las plantillas `.properties` en español e inglés.
+  - No se ejecutaron suites globales, Docker, Testcontainers, PostgreSQL/Flyway reales ni pruebas
+    end-to-end para respetar la validación acotada solicitada.
 
 ## Conversación 110 - Escalado, bloqueo de confirmación e historial profesional
 

@@ -470,7 +470,9 @@
       "profile": "Perfil",
       "reservations": "Reservas",
       "team": "Equipo",
-      "form": "Formulario"
+      "form": "Formulario",
+      "incidents": "Incidencias",
+      "more": "Más"
     }
   },
   "Availability": {
@@ -1202,7 +1204,8 @@
       "today": "Hoy",
       "refresh": "Actualizar",
       "viewDetail": "Ver detalle",
-      "backToList": "Volver a las reservas"
+      "backToList": "Volver a las reservas",
+      "openIncidentSection": "Abrir incidencias y reglas"
     },
     "metrics": {
       "total": "Reservas",
@@ -1287,6 +1290,41 @@
         "truncated": "Se muestran las {shown} incidencias más recientes de un total de {total}."
       }
     },
+    "operations": {
+      "title": "Asistencia y acciones",
+      "description": "Actualiza la asistencia o gestiona una incidencia. Las acciones críticas se validan y auditan en el servidor.",
+      "attendance": {
+        "attended": "Marcar asistida",
+        "noShow": "Marcar no asistida",
+        "pending": "Dejar pendiente"
+      },
+      "report": {
+        "open": "Reportar no asistencia",
+        "title": "Confirmar reporte de no asistencia",
+        "warning": "Esta acción queda auditada y puede activar una restricción temporal. Confirma solo cuando hayas verificado la ausencia.",
+        "notes": "Contexto profesional opcional",
+        "confirm": "Confirmar reporte"
+      },
+      "cancel": {
+        "open": "Cancelar por el local",
+        "title": "Cancelar esta reserva",
+        "warning": "La plaza se liberará y el cliente recibirá un email con el motivo indicado.",
+        "reason": "Motivo obligatorio",
+        "confirm": "Cancelar y notificar"
+      },
+      "common": {
+        "keep": "Volver"
+      },
+      "errors": {
+        "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",
+        "forbidden": "No tienes permisos para realizar esta acción.",
+        "notFound": "No encontramos esta reserva o ya no está disponible.",
+        "invalid": "La acción o los datos indicados no son válidos.",
+        "conflict": "El estado de la reserva ha cambiado. Actualiza y vuelve a intentarlo.",
+        "reason": "Introduce un motivo profesional para cancelar.",
+        "unavailable": "No pudimos completar la acción. Inténtalo de nuevo."
+      }
+    },
     "resourceType": {
       "employee": "Empleado",
       "professional": "Profesional",
@@ -1308,6 +1346,55 @@
       "reported": "Reportada",
       "confirmed": "Confirmada",
       "dismissed": "Descartada"
+    }
+  },
+  "VenueIncidents": {
+    "metadata": {
+      "title": "Incidencias y reglas | Reserly",
+      "description": "Configura reglas de reserva y consulta el historial profesional de incidencias."
+    },
+    "hero": {
+      "eyebrow": "Operativa del local",
+      "title": "Incidencias y reglas de reserva",
+      "summary": "Define la antelación de cancelación y revisa incidencias desde una reserva propia, sin búsquedas abiertas por correo."
+    },
+    "loading": "Cargando incidencias y reglas",
+    "rules": {
+      "title": "Reglas de cancelación",
+      "description": "Estas condiciones se aplican a los enlaces seguros de gestión de reservas.",
+      "cancellationAllowed": "Permitir cancelación por el cliente",
+      "minutes": "Antelación mínima en minutos",
+      "minutesHelp": "Ejemplo: 1440 equivale a 24 horas.",
+      "save": "Guardar reglas",
+      "saving": "Guardando…",
+      "saved": "Las reglas se han actualizado correctamente."
+    },
+    "history": {
+      "title": "Historial profesional",
+      "selectReservation": "Abre una reserva para consultar el historial asociado a su correo. El correo no se envía como parámetro.",
+      "openReservations": "Abrir reservas",
+      "summary": "{count, plural, one {# incidencia operativa} other {# incidencias operativas}}",
+      "empty": "No hay incidencias operativas visibles para esta reserva."
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",
+      "forbidden": "No tienes permisos para consultar esta sección.",
+      "notFound": "No encontramos la reserva seleccionada.",
+      "invalid": "Revisa los valores de las reglas o la referencia de reserva.",
+      "conflict": "La información ha cambiado. Actualiza e inténtalo de nuevo.",
+      "unavailable": "No pudimos cargar la sección. Inténtalo de nuevo."
+    },
+    "incidentType": {
+      "no_show": "No asistencia",
+      "late_cancellation": "Cancelación tardía",
+      "late_arrival": "Llegada tardía",
+      "duplicate_or_abusive_booking": "Reserva duplicada o abusiva",
+      "venue_condition_breach": "Incumplimiento de condiciones",
+      "manual_incident": "Incidencia operativa"
+    },
+    "incidentStatus": {
+      "reported": "Reportada",
+      "confirmed": "Confirmada"
     }
   },
   "ReservationManagement": {

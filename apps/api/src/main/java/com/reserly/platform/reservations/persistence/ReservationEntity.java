@@ -29,6 +29,7 @@ public class ReservationEntity {
   private String customerName;
   private String customerEmail;
   private String customerEmailNormalized;
+  private String customerLocale;
   private UUID id;
   private VenueEntity venue;
   private TimeSlotEntity timeSlot;
@@ -129,6 +130,16 @@ public class ReservationEntity {
 
   public void setCustomerEmailNormalized(String customerEmailNormalized) {
     this.customerEmailNormalized = customerEmailNormalized;
+  }
+
+  /** Locale efectivo usado para notificaciones posteriores de esta reserva. */
+  @Column(name = "\"customerLocale\"", length = 2)
+  public String getCustomerLocale() {
+    return customerLocale;
+  }
+
+  public void setCustomerLocale(String value) {
+    customerLocale = value;
   }
 
   @Column(name = "\"partySize\"", nullable = false)
