@@ -10,12 +10,61 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-22
+- Fecha de última actualización: 2026-07-27
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
-  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16` y `8.1` a `8.9`.
-- Siguiente tarea pendiente recomendada: `8.10. Implementar cancelación por token seguro`.
-- Observación: la entrega reintentable, el registro mínimo de fallos y la consulta por token están
-  implementados; la cancelación segura permanece en `8.10`.
+  `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
+  `9.1` a `9.10` y `10.1` a `10.3`.
+- Siguiente tarea pendiente recomendada: `10.4. Implementar job para marcar asistida por defecto
+  tras periodo configurado`.
+- Observación: el esquema de incidencias y penalizaciones está completo, las reglas básicas de
+  cancelación son configurables por local y la asistencia manual valida propiedad y finalización.
+
+## Conversación 108 - Esquema de penalizaciones, reglas de cancelación y asistencia manual
+
+- Fecha: 2026-07-27.
+- Resumen de la conversación:
+  - Se completaron las tareas `10.1`, `10.2` y `10.3` en
+    `phase/10-assistance-incidents-penalties`.
+  - Se completó el esquema iniciado por V26 con `Penalties` y `VenueBookingRules`, incluyendo
+    restricciones, índices operativos y migración de la antelación histórica de cada local.
+  - Se añadieron `GET` y `PUT /api/venue/me/booking-rules`; el propietario procede exclusivamente
+    de la sesión, la escritura se serializa y la política se aplica también al enlace público de
+    cancelación.
+  - Se añadió `POST /api/venue/me/reservations/{reservationId}/attendance` para marcar
+    `attended`, `no_show` o `pending` sobre reservas propias finalizadas. La opción `pending`
+    restaura `confirmed` y limpia la marca temporal.
+- Archivos modificados:
+  - Migración `V27__create_penalties_and_venue_booking_rules.sql`.
+  - Entidades y DAOs de `Penalties` y `VenueBookingRules`; servicios, DTOs, conversor,
+    controladores y errores del módulo `incidents`.
+  - `ReservationEntity`, `ReservationDao`, política y servicio de gestión pública de reservas.
+  - Tests focalizados de esquema, reglas, asistencia, cancelación pública y política.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del alcance el cambio previo de `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-017`, `RF-019`, `RF-022`.
+  - Preparación estructural de `RF-020` y `RF-021`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-007`, `RNF-008` y `RNF-011`.
+- Tareas impactadas y completadas: `10.1`, `10.2` y `10.3`.
+- Siguiente tarea pendiente recomendada:
+  - `10.4. Implementar job para marcar asistida por defecto tras periodo configurado`.
+- Decisiones o aclaraciones relevantes:
+  - V26 sigue siendo la migración que creó `NoShowIncidents`; V27 completa 10.1 sin recrearla.
+  - `VenueBookingRules` se siembra desde `Venues.cancellationNoticeMinutes`. Para locales creados
+    después de V27, el servicio devuelve defaults compatibles y persiste la fila en el primer PUT.
+  - El campo heredado de `Venues` se sincroniza al modificar reglas para que plantillas y contratos
+    anteriores no observen una antelación distinta durante la transición.
+  - Marcar `no_show` no crea incidencia ni penalización. El reporte confirmado y auditado se
+    reserva para 10.5–10.7, evitando consecuencias automáticas por una marca operativa reversible.
+  - Solo `confirmed`, `attended` y `no_show` admiten cambios manuales. Estados cancelados,
+    expirados, holds y `reported` fallan sin mutación.
+  - La finalización se calcula con el `Clock` y su zona de negocio; la igualdad con la hora de fin
+    permite marcar asistencia.
+  - Evidencia focalizada: 20 tests correctos, 0 fallos, 0 errores y 0 omitidos; compilación de 581
+    fuentes principales y compilación de tests correctas; Spotless focalizado correcto.
+  - Dos invocaciones Maven excedieron el límite externo de 60 segundos después de la compilación o
+    después de escribir los primeros resultados. Los procesos se detuvieron y no se ejecutaron
+    suite global, frontend, Docker, PostgreSQL real, Flyway real ni pruebas visuales.
 
 ## Conversación 101 - Entrega reintentable, errores persistidos y consulta por token
 

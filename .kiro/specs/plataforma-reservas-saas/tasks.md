@@ -195,9 +195,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 12. Fase 10 - Asistencia, incidencias y penalizaciones
 
-- [ ] 10.1. Crear migraciones de `no_show_incidents`, `penalties` y `venue_booking_rules`.
-- [ ] 10.2. Implementar reglas básicas de cancelación por local.
-- [ ] 10.3. Implementar marcado de asistida, no asistida y pendiente.
+- [x] 10.1. Crear migraciones de `no_show_incidents`, `penalties` y `venue_booking_rules`.
+- [x] 10.2. Implementar reglas básicas de cancelación por local.
+- [x] 10.3. Implementar marcado de asistida, no asistida y pendiente.
 - [ ] 10.4. Implementar job para marcar asistida por defecto tras periodo configurado.
 - [ ] 10.5. Implementar reporte de no asistencia con confirmación.
 - [ ] 10.6. Implementar auditoría del reporte.

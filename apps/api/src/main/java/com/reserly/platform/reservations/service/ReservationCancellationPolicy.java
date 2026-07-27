@@ -12,6 +12,7 @@ public interface ReservationCancellationPolicy {
   CancellationWindow evaluate(
       LocalDate date,
       LocalTime startsAt,
+      boolean cancellationAllowed,
       int cancellationNoticeMinutes,
       ZoneId zoneId,
       Instant now);

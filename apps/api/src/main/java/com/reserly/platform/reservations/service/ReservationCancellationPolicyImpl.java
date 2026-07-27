@@ -14,6 +14,7 @@ public class ReservationCancellationPolicyImpl implements ReservationCancellatio
   public CancellationWindow evaluate(
       LocalDate date,
       LocalTime startsAt,
+      boolean cancellationAllowed,
       int cancellationNoticeMinutes,
       ZoneId zoneId,
       Instant now) {
@@ -29,6 +30,6 @@ public class ReservationCancellationPolicyImpl implements ReservationCancellatio
             .atZone(zoneId)
             .toInstant()
             .minusSeconds(Math.multiplyExact(cancellationNoticeMinutes, 60L));
-    return new CancellationWindow(deadline, !now.isAfter(deadline));
+    return new CancellationWindow(deadline, cancellationAllowed && !now.isAfter(deadline));
   }
 }

@@ -84,6 +84,23 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       @Param("ownerUserId") UUID ownerUserId, @Param("reservationId") UUID reservationId);
 
   /**
+   * Bloquea una reserva propia con identidad confirmada antes de cambiar su asistencia.
+   *
+   * <p>La condición de propietario dentro de la consulta evita leer primero y autorizar después.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select reservation
+      from ReservationEntity reservation
+      where reservation.id = :reservationId
+        and reservation.venue.ownerUser.id = :ownerUserId
+        and reservation.customerEmail is not null
+      """)
+  Optional<ReservationEntity> findOwnedForAttendanceUpdate(
+      @Param("ownerUserId") UUID ownerUserId, @Param("reservationId") UUID reservationId);
+
+  /**
    * Expira en una sola sentencia los holds cuyo plazo terminó estrictamente antes del instante
    * recibido. La condición de estado hace la operación idempotente y evita sobrescribir una
    * confirmación concurrente.

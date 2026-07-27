@@ -1,0 +1,27 @@
+package com.reserly.platform.incidents.controller;
+
+import com.reserly.platform.identity.security.AuthenticatedAccount;
+import com.reserly.platform.incidents.dto.AttendanceResponse;
+import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
+import jakarta.validation.Valid;
+import java.util.UUID;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+/** Contrato privado de asistencia, protegido por la regla global {@code /api/venue/me/**}. */
+public interface AttendanceController {
+
+  /** Marca asistencia solo sobre una reserva propia ya finalizada. */
+  @PostMapping(
+      path = "/api/venue/me/reservations/{reservationId}/attendance",
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AttendanceResponse> update(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID reservationId,
+      @Valid @RequestBody AttendanceUpdateRequest request);
+}

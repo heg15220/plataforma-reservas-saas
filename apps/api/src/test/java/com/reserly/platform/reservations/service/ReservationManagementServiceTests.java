@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.identity.service.OneTimeTokenService;
+import com.reserly.platform.incidents.service.VenueBookingRuleService;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.venues.persistence.VenueEntity;
@@ -29,13 +31,16 @@ class ReservationManagementServiceTests {
   private final ReservationDao dao = mock(ReservationDao.class);
   private final OneTimeTokenService tokens = mock(OneTimeTokenService.class);
   private final ReservationCancellationPolicy policy = mock(ReservationCancellationPolicy.class);
+  private final VenueBookingRuleService bookingRules = mock(VenueBookingRuleService.class);
   private final Clock clock = Clock.fixed(Instant.parse("2026-07-22T12:00:00Z"), ZoneOffset.UTC);
   private final ReservationManagementService service =
-      new ReservationManagementServiceImpl(dao, tokens, policy, clock);
+      new ReservationManagementServiceImpl(dao, tokens, policy, bookingRules, clock);
 
   @BeforeEach
   void configureCancellationWindow() {
-    when(policy.evaluate(any(), any(), anyInt(), any(), any()))
+    when(bookingRules.resolveCancellation(any(), anyInt()))
+        .thenReturn(new VenueBookingRuleService.CancellationRule(true, 1440));
+    when(policy.evaluate(any(), any(), anyBoolean(), anyInt(), any(), any()))
         .thenReturn(
             new ReservationCancellationPolicy.CancellationWindow(
                 Instant.parse("2026-07-31T10:00:00Z"), true));
@@ -85,7 +90,7 @@ class ReservationManagementServiceTests {
     when(tokens.hash(token)).thenReturn("hash");
     ReservationEntity reservation = reservation(Instant.parse("2026-07-23T12:00:00Z"));
     when(dao.findBySecureTokenHashForUpdate("hash")).thenReturn(Optional.of(reservation));
-    when(policy.evaluate(any(), any(), anyInt(), any(), any()))
+    when(policy.evaluate(any(), any(), anyBoolean(), anyInt(), any(), any()))
         .thenReturn(
             new ReservationCancellationPolicy.CancellationWindow(
                 Instant.parse("2026-07-21T10:00:00Z"), false));
@@ -147,6 +152,7 @@ class ReservationManagementServiceTests {
 
   private ReservationEntity reservation(Instant expiresAt) {
     VenueEntity venue = new VenueEntity();
+    venue.setId(UUID.randomUUID());
     venue.setName("Local Centro");
     venue.setAddress("Calle Mayor 1");
     ReservationEntity value = new ReservationEntity();

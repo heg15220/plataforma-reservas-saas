@@ -48,6 +48,7 @@ public class ReservationEntity {
   private Instant cancelledAt;
   private String cancelledBy;
   private String cancellationReason;
+  private Instant attendanceMarkedAt;
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -240,6 +241,16 @@ public class ReservationEntity {
 
   public void setCancellationReason(String value) {
     cancellationReason = value;
+  }
+
+  /** Instante de la última decisión explícita; se limpia cuando vuelve a pendiente. */
+  @Column(name = "\"attendanceMarkedAt\"")
+  public Instant getAttendanceMarkedAt() {
+    return attendanceMarkedAt;
+  }
+
+  public void setAttendanceMarkedAt(Instant value) {
+    attendanceMarkedAt = value;
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

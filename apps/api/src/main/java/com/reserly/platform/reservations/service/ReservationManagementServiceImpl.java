@@ -1,6 +1,7 @@
 package com.reserly.platform.reservations.service;
 
 import com.reserly.platform.identity.service.OneTimeTokenService;
+import com.reserly.platform.incidents.service.VenueBookingRuleService;
 import com.reserly.platform.reservations.dto.ManagedReservationResponse;
 import com.reserly.platform.reservations.dto.ReservationCancellationResponse;
 import com.reserly.platform.reservations.persistence.ReservationDao;
@@ -23,16 +24,19 @@ public class ReservationManagementServiceImpl implements ReservationManagementSe
   private final ReservationDao reservationDao;
   private final OneTimeTokenService tokenService;
   private final ReservationCancellationPolicy cancellationPolicy;
+  private final VenueBookingRuleService bookingRuleService;
   private final Clock clock;
 
   public ReservationManagementServiceImpl(
       ReservationDao reservationDao,
       OneTimeTokenService tokenService,
       ReservationCancellationPolicy cancellationPolicy,
+      VenueBookingRuleService bookingRuleService,
       Clock clock) {
     this.reservationDao = reservationDao;
     this.tokenService = tokenService;
     this.cancellationPolicy = cancellationPolicy;
+    this.bookingRuleService = bookingRuleService;
     this.clock = clock;
   }
 
@@ -99,16 +103,25 @@ public class ReservationManagementServiceImpl implements ReservationManagementSe
         reservation.getStatus(),
         "confirmed".equals(reservation.getStatus()) && window.allowed(),
         window.deadline(),
-        reservation.getVenue().getCancellationNoticeMinutes());
+        resolvedCancellationRule(reservation).noticeMinutes());
   }
 
   private ReservationCancellationPolicy.CancellationWindow cancellationWindow(
       ReservationEntity reservation) {
+    var rule = resolvedCancellationRule(reservation);
     return cancellationPolicy.evaluate(
         reservation.getDate(),
         reservation.getStartsAt(),
-        reservation.getVenue().getCancellationNoticeMinutes(),
+        rule.allowed(),
+        rule.noticeMinutes(),
         clock.getZone(),
         clock.instant());
+  }
+
+  private VenueBookingRuleService.CancellationRule resolvedCancellationRule(
+      ReservationEntity reservation) {
+    return bookingRuleService.resolveCancellation(
+        reservation.getVenue().getId(),
+        reservation.getVenue().getCancellationNoticeMinutes());
   }
 }

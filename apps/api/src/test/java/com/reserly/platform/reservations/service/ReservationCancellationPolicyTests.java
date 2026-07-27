@@ -18,6 +18,7 @@ class ReservationCancellationPolicyTests {
         policy.evaluate(
             LocalDate.of(2026, 8, 1),
             LocalTime.of(10, 0),
+            true,
             1440,
             ZoneId.of("Europe/Madrid"),
             Instant.parse("2026-07-30T12:00:00Z"));
@@ -34,6 +35,7 @@ class ReservationCancellationPolicyTests {
         policy.evaluate(
             LocalDate.of(2026, 8, 1),
             LocalTime.of(10, 0),
+            true,
             1440,
             ZoneId.of("Europe/Madrid"),
             deadline);
@@ -47,9 +49,24 @@ class ReservationCancellationPolicyTests {
         policy.evaluate(
             LocalDate.of(2026, 8, 1),
             LocalTime.of(10, 0),
+            true,
             60,
             ZoneId.of("Europe/Madrid"),
             Instant.parse("2026-08-01T07:00:01Z"));
+
+    assertThat(window.allowed()).isFalse();
+  }
+
+  @Test
+  void rejectsCancellationWhenVenueDisablesItEvenBeforeDeadline() {
+    var window =
+        policy.evaluate(
+            LocalDate.of(2026, 8, 1),
+            LocalTime.of(10, 0),
+            false,
+            0,
+            ZoneId.of("Europe/Madrid"),
+            Instant.parse("2026-07-30T12:00:00Z"));
 
     assertThat(window.allowed()).isFalse();
   }

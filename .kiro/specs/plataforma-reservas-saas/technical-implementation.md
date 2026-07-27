@@ -22735,3 +22735,295 @@ históricos fuera del alcance; Spotless sí se aplicó y comprobó solo sobre lo
 - No se midió rendimiento de combinaciones de filtros ni se introdujeron índices anticipados.
 - La tarea 10.1 es la siguiente pendiente y debe completar `Penalties` y `VenueBookingRules`; la
   existencia previa de `NoShowIncidents` no permite marcarla parcialmente como terminada.
+
+## Iteración 10.1 - Persistencia de incidencias, penalizaciones y reglas de reserva
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `10.1. Crear migraciones de no_show_incidents, penalties y
+  venue_booking_rules`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: completar el modelo persistente de fase 10 sin duplicar la tabla de
+  incidencias creada anticipadamente para la lectura profesional de 9.6.
+- Requisitos relacionados: `RF-019`, `RF-020`, `RF-021`, `RF-022`, `RNF-002`, `RNF-003`,
+  `RNF-006`, `RNF-008` y `RNF-011`.
+- Diseño relacionado: secciones 3.8, 4.1 (`no_show_incidents`, `penalties` y
+  `venue_booking_rules`), 6 y 12.4 de `design.md`.
+
+### Migraciones, modelo de datos, índices y restricciones
+
+`V26__create_no_show_incidents.sql`, incorporada en 9.6, continúa siendo la fuente física de
+`NoShowIncidents`. Define una incidencia única por reserva, email canónico, actor, local, fecha,
+tipo cerrado, estado de revisión, notas opcionales e índices por identidad y local. La tarea 10.1
+no recrea ni altera destructivamente esa tabla.
+
+`V27__create_penalties_and_venue_booking_rules.sql` añade `Penalties`:
+
+- UUID generado en PostgreSQL y email normalizado obligatorio;
+- scope cerrado `global|venue`, con check que exige `venueId` únicamente para scope local;
+- contador operativo estrictamente positivo;
+- periodo temporal válido `startsAt < endsAt`;
+- estados `active`, `expired` y `revoked`;
+- razón no vacía e incidencia de origen obligatoria;
+- FKs restrictivas a `Venues` y `NoShowIncidents`;
+- índices parciales únicos que impiden dos penalizaciones activas globales para el mismo email o
+  dos activas para el mismo email y local;
+- índice de consulta por email, estado y fin, e índice operativo por local;
+- `createdAt` y `updatedAt` con restricción monotónica.
+
+La misma migración añade `VenueBookingRules`:
+
+- una fila por local mediante FK con borrado en cascada y unique de `venueId`;
+- `cancellationAllowed` y `freeCancellationUntilMinutesBefore`, limitado a 0–525600 minutos;
+- textos canónicos y JSONB localizados opcionales de no asistencia y cancelación tardía;
+- `autoMarkAttendedAfterMinutes`, limitado a 0–10080;
+- `requiresConfirmation`;
+- timestamps monotónicos y checks que exigen objetos JSON cuando los campos i18n están presentes.
+
+El `INSERT ... SELECT` inicial crea una regla para cada local existente y copia
+`Venues.cancellationNoticeMinutes`. Esto preserva exactamente la política que RF-017 ya aplicaba y
+evita un cambio silencioso de plazo al desplegar V27.
+
+### Entidades, DAOs y arquitectura
+
+Se añadieron `PenaltyEntity` y `VenueBookingRuleEntity`, mapeadas por getters/setters a tablas
+UpperCamelCase y columnas lowerCamelCase. Los datos localizados usan `@JdbcTypeCode(SqlTypes.JSON)`
+y permanecen nulos hasta que las tareas de políticas públicas introduzcan contenido válido; no se
+intenta deserializar un objeto JSON vacío como `LocalizedText`.
+
+`PenaltyEntity` conserva referencias UUID escalares para impedir cargas accidentales del email,
+incidencia o local. `PenaltyDao.findActiveGlobal` declara la futura consulta parametrizada por
+email, estado, scope y fin vigente, sin activar todavía el bloqueo de confirmación de 10.8.
+
+`VenueBookingRuleEntity` usa una relación `@OneToOne` perezosa con `VenueEntity`.
+`VenueBookingRuleDao` separa:
+
+- lectura por propietario;
+- lectura por propietario con `PESSIMISTIC_WRITE`;
+- resolución interna por UUID de local ya acreditado.
+
+No se implementaron cálculo, activación o finalización de penalizaciones. Incluir el modelo y su
+DAO no anticipa las reglas de 10.7 ni permite bloquear reservas antes de 10.8.
+
+### Validación, seguridad, privacidad y observabilidad
+
+La base de datos valida email canónico, cardinalidad, scopes, estados, periodos, rangos y objetos
+JSON. Los índices activos reducen carreras al crear penalizaciones futuras. Los campos conservan
+solo la identidad necesaria para la política global; la retención, anonimización y bloqueo legal
+siguen pendientes de 16.10 y del job diseñado en la política de privacidad.
+
+No se añaden logs con email, razón o notas. Los comentarios SQL documentan la finalidad y el origen
+de la transición. La migración es aditiva y no elimina datos.
+
+### Tests, comandos, evidencia, riesgos y pendientes
+
+`IncidentSchemaPersistenceTests` lee V26 y V27 como UTF-8 y comprueba tablas, FKs, checks,
+unicidades, índices y seed. También verifica con reflexión los nombres físicos críticos de ambas
+entidades. `NoShowIncidentPersistenceTests` continúa cubriendo V26.
+
+Evidencia:
+
+```text
+mvn -Dtest=IncidentSchemaPersistenceTests,VenueBookingRuleServiceTests,AttendanceServiceTests,\
+ReservationCancellationPolicyTests,ReservationManagementServiceTests \
+-Dspotless.check.skip=true -Dcheckstyle.skip=true test
+
+IncidentSchemaPersistenceTests: 2 correctos
+Total focalizado: 20 tests, 0 fallos, 0 errores, 0 omitidos
+```
+
+La sintaxis se verificó estructuralmente y se copió como recurso durante la compilación, pero no se
+aplicó contra PostgreSQL porque no se inició Docker ni Testcontainers. Riesgos restantes: la
+política de retención requiere validación jurídica; los estados de administración podrían exigir
+una migración aditiva; 10.7 debe usar los índices únicos y manejar colisiones de forma
+transaccional.
+
+## Iteración 10.2 - Reglas básicas de cancelación por local
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `10.2. Implementar reglas básicas de cancelación por local`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: permitir que cada propietario consulte y sustituya la habilitación y la
+  antelación de cancelación, y aplicar esa misma fuente en la gestión pública por token.
+- Requisitos relacionados: `RF-017`, `RF-022`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006`,
+  `RNF-008` y `RNF-011`.
+
+### Contratos REST, DTOs y conversión
+
+Se incorporaron:
+
+```http
+GET /api/venue/me/booking-rules
+PUT /api/venue/me/booking-rules
+Content-Type: application/json
+
+{
+  "cancellationAllowed": true,
+  "freeCancellationUntilMinutesBefore": 1440
+}
+```
+
+El contrato se declara en `VenueBookingRuleController` y la implementación permanece separada en
+`VenueBookingRuleControllerImpl`. `VenueBookingRuleUpdateRequest` aplica Bean Validation de 0 a
+525600 minutos. `VenueBookingRuleResponse` devuelve solo habilitación, antelación y `updatedAt`;
+no expone UUID de regla, local o propietario, textos futuros ni configuración automática.
+`VenueBookingRuleConverter` realiza la proyección explícita.
+
+Todo `/api/venue/me/**` exige `ROLE_VENUE_OWNER` en la configuración transversal. El controlador
+recibe `AuthenticatedAccount` y solo envía `userId` al servicio; no existe `venueId` controlable
+por cuerpo, path o query.
+
+### Servicio, concurrencia y compatibilidad
+
+`VenueBookingRuleService` separa la interfaz consumida por controladores y reservas.
+`VenueBookingRuleServiceImpl`:
+
+1. valida propietario y límites;
+2. lee la configuración por propietario;
+3. toma `PESSIMISTIC_WRITE` al actualizar;
+4. modifica ambos campos y `updatedAt`;
+5. sincroniza temporalmente `Venues.cancellationNoticeMinutes`;
+6. persiste con flush dentro de la transacción.
+
+La sincronización del campo V25 es deliberada: plantillas y contratos previos todavía consultan
+esa columna. Dejar dos valores divergentes podría informar un plazo distinto al aplicado.
+
+V27 siembra los locales existentes. Si un local se crea después de V27 y todavía no tiene fila, un
+GET devuelve un snapshot compatible basado en el valor heredado sin efectuar una escritura desde
+una transacción read-only; el primer PUT bloquea el perfil vigente, crea la fila y la persiste.
+
+`resolveCancellation` devuelve un value object `CancellationRule` al módulo de reservas. La
+ausencia excepcional de fila usa `allowed=true` y el plazo legado como fallback defensivo.
+`ReservationManagementServiceImpl` resuelve la regla tanto al consultar como al cancelar.
+`ReservationCancellationPolicy` recibe ahora `cancellationAllowed`: aun antes de la frontera, una
+regla deshabilitada produce `allowed=false`. La mutación sigue revalidando bajo el lock de la
+reserva, evitando TOCTOU.
+
+### Errores, seguridad, privacidad e internacionalización
+
+`IncidentExceptionHandler` produce códigos cerrados:
+
+- `VENUE_BOOKING_RULE_INVALID` para validación de dominio;
+- `INCIDENT_REQUEST_INVALID` para Bean Validation;
+- `VENUE_PROFILE_NOT_FOUND` sin revelar perfiles ajenos.
+
+El endpoint no registra payloads ni PII. Los valores son operativos y no contienen texto visible,
+por lo que 10.2 no añade claves ES/EN; los textos de política y su UI corresponden a 10.11 y 10.16.
+Los errores públicos siguen siendo códigos traducibles en el cliente.
+
+### Tests, evidencia, riesgos y deuda
+
+`VenueBookingRuleServiceTests` cubre actualización propia, lock declarado a través del DAO,
+sincronización heredada, rechazo antes de persistencia, resolución configurada, fallback y creación
+en el primer PUT para locales posteriores a V27. `ReservationCancellationPolicyTests` añade la
+regla deshabilitada. `ReservationManagementServiceTests` verifica la dependencia de resolución sin
+ampliar red, Docker o frontend.
+
+La ejecución focalizada válida aportó 3 tests de reglas antes del último caso compatible, 4 de
+política y 7 de gestión, todos correctos. Tras añadir el caso de local posterior a migración,
+`test-compile` verificó producción y tests; la repetición aislada excedió el timeout externo antes
+de iniciar Surefire y se detuvo, por lo que no se atribuye como test ejecutado.
+
+Riesgos: el campo heredado debe eliminarse en una migración futura cuando ningún consumidor lo use;
+la zona horaria sigue siendo la del `Clock` común; la auditoría de cambios de reglas pertenece a
+16.11 y no se anticipó.
+
+## Iteración 10.3 - Marcado manual de asistencia
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `10.3. Implementar marcado de asistida, no asistida y pendiente`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: ofrecer una transición manual, reversible y segura sobre reservas finalizadas
+  del local autenticado, sin activar todavía el protocolo de incidencia.
+- Requisitos relacionados: `RF-018`, `RF-019`, preparación de `RF-020`, `RNF-001`, `RNF-002`,
+  `RNF-003`, `RNF-006`, `RNF-007`, `RNF-008` y `RNF-011`.
+
+### Endpoint, contrato y máquina de estados
+
+```http
+POST /api/venue/me/reservations/{reservationId}/attendance
+Content-Type: application/json
+
+{ "status": "attended" | "no_show" | "pending" }
+```
+
+`AttendanceController` y `AttendanceControllerImpl` conservan la separación contrato/adaptador.
+`AttendanceUpdateRequest` limita presencia y longitud antes del dominio.
+`AttendanceResponse` devuelve `reservationId`, estado persistido, `attendanceMarkedAt` y
+`updatedAt`; no devuelve email, cliente, local, actor ni respuestas de formulario.
+
+La máquina admite como estados origen `confirmed`, `attended` y `no_show`:
+
+- `attended` persiste estado `attended` y marca el instante actual;
+- `no_show` persiste estado `no_show` y marca el instante actual;
+- `pending` restaura `confirmed` y limpia `attendanceMarkedAt`.
+
+El valor público `pending` es una decisión de asistencia, no un nuevo estado físico. Reutilizar
+`confirmed` preserva el check de V23 y significa “reserva confirmada pendiente de decisión”.
+`reported` no puede volver a un estado reversible desde este endpoint; canceladas, expiradas,
+holds y pendientes de confirmación tampoco son marcables.
+
+### Persistencia, concurrencia y flujo de ejecución
+
+`ReservationEntity` mapea la columna V23 `attendanceMarkedAt`.
+`ReservationDao.findOwnedForAttendanceUpdate` usa una consulta `@Query` con
+`PESSIMISTIC_WRITE`, propietario dentro del predicado e identidad confirmada no nula. Reserva
+inexistente, anónima o ajena comparten una ausencia opaca.
+
+`AttendanceServiceImpl`:
+
+1. rechaza propietario o UUID ausentes;
+2. normaliza el estado con `Locale.ROOT` y conjunto cerrado;
+3. bloquea la reserva ya acotada por propietario;
+4. valida el estado origen;
+5. calcula el fin como `date + endsAt` en la zona del `Clock`;
+6. rechaza solo si `now` es estrictamente anterior, por lo que la igualdad es válida;
+7. aplica estado y marca temporal;
+8. actualiza `updatedAt` y realiza `saveAndFlush`.
+
+La transacción y el lock serializan dos marcados concurrentes. La última decisión válida gana de
+forma explícita; no existe una lectura y autorización separadas.
+
+### Seguridad, errores, privacidad, auditoría e i18n
+
+La identidad procede de la sesión protegida por `ROLE_VENUE_OWNER`. El handler devuelve:
+
+- 404 `VENUE_RESERVATION_NOT_FOUND`;
+- 409 `ATTENDANCE_RESERVATION_NOT_FINISHED`;
+- 409 `ATTENDANCE_TRANSITION_INVALID`;
+- 400 `INCIDENT_REQUEST_INVALID` para payloads mal formados.
+
+No se registran email, nombre ni request. `attendanceMarkedAt` ofrece trazabilidad operativa mínima,
+pero no sustituye `AuditLogs`; la auditoría formal del reporte se implementará en 10.6.
+
+Marcar `no_show` no crea `NoShowIncident`, no incrementa contador y no crea `Penalty`. Esa
+separación es una salvaguarda contra sanciones accidentales: 10.5 exigirá confirmación y 10.6
+registrará actor y auditoría antes del cálculo de 10.7.
+
+### Tests, comandos, evidencia, riesgos y tareas derivadas
+
+`AttendanceServiceTests` cubre:
+
+- asistida con timestamp;
+- no asistida sin efectos de incidencia y vuelta a pendiente;
+- rechazo antes de la hora de fin sin escritura;
+- ausencia opaca de reserva ajena;
+- rechazo de un estado origen cancelado.
+
+Los 4 tests fueron correctos dentro de la ejecución focalizada de 20. La compilación final fue:
+
+```text
+mvn -DskipTests -Dspotless.check.skip=true -Dcheckstyle.skip=true test-compile
+Compiling/validating 581 production sources and affected test sources
+BUILD SUCCESS
+
+mvn -DspotlessFiles=<incidents y dependencias directas> spotless:check
+BUILD SUCCESS
+```
+
+No se ejecutaron frontend, suite global, Docker, PostgreSQL, Flyway real ni pruebas visuales. La
+zona del reloj común sigue siendo deuda para locales multizona. La siguiente tarea 10.4 debe usar
+`autoMarkAttendedAfterMinutes`, excluir estados ya decididos y aplicar una actualización
+idempotente acotada.
