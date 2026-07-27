@@ -210,7 +210,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 10.13. Crear tests de escalado de penalizaciones.
 - [x] 10.14. Crear tests de bloqueo de email penalizado.
 - [x] 10.15. Crear tests de auditoría de cancelación y reporte.
-- [ ] 10.16. Crear traducciones ES/EN para incidencias, penalizaciones, advertencias y mensajes de restricción.
+- [x] 10.16. Crear traducciones ES/EN para incidencias, penalizaciones, advertencias y mensajes de restricción.
 
 ## 13. Fase 11 - Reseñas y valoraciones
 

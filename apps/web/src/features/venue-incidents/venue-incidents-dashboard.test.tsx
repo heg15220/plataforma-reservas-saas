@@ -55,6 +55,8 @@ describe("VenueIncidentsDashboard", () => {
     );
 
     expect(await screen.findByText("Reglas de cancelación")).toBeVisible();
+    expect(screen.getByText("Restricciones temporales")).toBeVisible();
+    expect(screen.getByText(/7, 14, 21 o 60 días/)).toBeVisible();
     expect(screen.getByText("No asistencia")).toBeVisible();
     expect(screen.getByText("Reportada")).toBeVisible();
     expect(fetchVenueIncidentHistory).toHaveBeenCalledWith(

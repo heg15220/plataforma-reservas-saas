@@ -1144,11 +1144,13 @@
       "start": "Empezar reserva",
       "submit": "Confirmar reserva",
       "error": "No hemos podido preparar la reserva.",
+      "activeRestriction": "Este correo electrónico tiene una restricción temporal para realizar reservas hasta el {date} debido a incidencias previas de no asistencia.",
       "name": "Nombre",
       "email": "Correo electrónico",
       "party": "Número de personas",
       "date": "Fecha",
       "timeSlot": "Franja horaria",
+      "selectPlaceholder": "Selecciona una opción",
       "privacy": "Acepto la política de privacidad",
       "rules": "Acepto las normas de reserva"
     },
@@ -1359,6 +1361,10 @@
       "summary": "Define la antelación de cancelación y revisa incidencias desde una reserva propia, sin búsquedas abiertas por correo."
     },
     "loading": "Cargando incidencias y reglas",
+    "penalties": {
+      "title": "Restricciones temporales",
+      "summary": "Las no asistencias reportadas pueden activar una restricción global de 7, 14, 21 o 60 días. El lenguaje y el historial se mantienen profesionales, privados y limitados al periodo operativo."
+    },
     "rules": {
       "title": "Reglas de cancelación",
       "description": "Estas condiciones se aplican a los enlaces seguros de gestión de reservas.",
@@ -1394,7 +1400,8 @@
     },
     "incidentStatus": {
       "reported": "Reportada",
-      "confirmed": "Confirmada"
+      "confirmed": "Confirmada",
+      "dismissed": "Descartada"
     }
   },
   "ReservationManagement": {

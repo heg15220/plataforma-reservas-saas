@@ -1,6 +1,7 @@
 "use client";
 
 import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -106,6 +107,10 @@ export function VenueIncidentsDashboard({ reservationId }: { reservationId?: str
     <Stack spacing={4}>
       {error && <Alert severity="error">{error}</Alert>}
       {notice && <Alert severity="success">{notice}</Alert>}
+      <Alert severity="info">
+        <AlertTitle>{t("penalties.title")}</AlertTitle>
+        {t("penalties.summary")}
+      </Alert>
 
       <Box
         sx={{
@@ -201,7 +206,13 @@ export function VenueIncidentsDashboard({ reservationId }: { reservationId?: str
                         </Typography>
                         <StatusChip
                           label={t(`incidentStatus.${safeIncidentStatus(incident.status)}`)}
-                          tone={incident.status === "confirmed" ? "danger" : "warning"}
+                          tone={
+                            incident.status === "confirmed"
+                              ? "danger"
+                              : incident.status === "dismissed"
+                                ? "neutral"
+                                : "warning"
+                          }
                         />
                       </Stack>
                       <Typography color="text.secondary" sx={{ mt: 2 }} variant="body2">
@@ -249,7 +260,7 @@ function safeIncidentType(value: string) {
 }
 
 function safeIncidentStatus(value: string) {
-  return ["reported", "confirmed"].includes(value) ? value : "reported";
+  return ["reported", "confirmed", "dismissed"].includes(value) ? value : "reported";
 }
 
 function formatInstant(value: string, locale: string) {

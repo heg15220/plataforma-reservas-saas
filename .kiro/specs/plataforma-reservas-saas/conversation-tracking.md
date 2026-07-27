@@ -13,11 +13,56 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-27
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10` y `10.1` a `10.15`.
-- Siguiente tarea pendiente recomendada: `10.16. Crear traducciones ES/EN para incidencias,
-  penalizaciones, advertencias y mensajes de restricción`.
-- Observación: el escalado, el bloqueo de confirmación y la auditoría crítica disponen ya de
-  cobertura específica de fronteras, privacidad, orden y ausencia de efectos laterales.
+  `9.1` a `9.10` y `10.1` a `10.16`.
+- Siguiente tarea pendiente recomendada: `11.1. Crear migración de reviews`.
+- Observación: la fase 10 queda cerrada con operación, auditoría, penalización, restricción,
+  responsive y todos sus textos visibles disponibles en español e inglés.
+
+## Conversación 113 - Internacionalización completa de incidencias y restricciones
+
+- Fecha: 2026-07-27.
+- Resumen de la conversación:
+  - Se completó `10.16` y con ella la fase 10 en
+    `phase/10-assistance-incidents-penalties`.
+  - El formulario público ya interpreta el error `409 ACTIVE_BOOKING_RESTRICTION`, conserva
+    únicamente `restrictedUntil` y muestra una explicación profesional con fecha localizada.
+  - Una restricción activa deshabilita nuevos intentos inútiles de confirmación sin ocultar la
+    cuenta atrás del hold ni exponer contador, historial, actor, local o motivo interno.
+  - El panel de incidencias muestra en español e inglés el escalado global de 7, 14, 21 y 60 días,
+    junto con su contexto de privacidad y conservación operativa.
+  - Se completaron los estados y tipos de incidencia en ambos catálogos y se sustituyó el
+    placeholder hardcodeado de select por una clave localizada.
+- Archivos modificados:
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Cliente API y formulario de `public-reservation`, con sus tests.
+  - Dashboard de `venue-incidents`, su test y el nuevo
+    `incident-penalty-translations.test.ts`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del commit el cambio previo del usuario en `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-015`, `RF-020`, `RF-021`, `RF-022`, `RF-023` y `RF-031`.
+  - `RB-001` y `RB-007`.
+  - `RNF-002`, `RNF-007`, `RNF-009` y `RNF-012`.
+- Tarea impactada y completada: `10.16`.
+- Siguiente tarea pendiente recomendada:
+  - `11.1. Crear migración de reviews`.
+- Decisiones o aclaraciones relevantes:
+  - El cliente solo reconoce la restricción cuando coinciden HTTP 409, código estable y fecha ISO
+    válida; cualquier otro error se reduce al mensaje genérico.
+  - La fecha de dominio se formatea con `Intl.DateTimeFormat` y zona UTC para impedir que un
+    `LocalDate` retroceda un día según la zona del dispositivo.
+  - El estado de confirmación se endureció a `status: "confirmed"` en Zod para coincidir con el
+    almacenamiento local y eliminar una discrepancia de tipos preexistente.
+  - Evidencia focalizada: 13 tests correctos en cinco archivos; typecheck de tres módulos
+    productivos, cuatro tests, setup y dependencias correcto; Prettier y comprobación UTF-8
+    focalizada correctos.
+  - `i18n:check` ya no señala el placeholder de reserva; conserva tres literales históricos fuera
+    de esta tarea en `team-availability-manager` y `venue-reservations-dashboard`.
+  - El validador global de español conserva incidencias históricas en documentación, migraciones,
+    plantillas y claves anteriores del catálogo. Dos intentos de ESLint focalizado superaron 30
+    segundos sin producir diagnóstico y no se prolongaron.
+  - No se ejecutaron suite web global, backend, Docker, servicios externos, build completo ni
+    pruebas visuales.
 
 ## Conversación 112 - Cobertura de escalado, bloqueo y auditoría crítica
 

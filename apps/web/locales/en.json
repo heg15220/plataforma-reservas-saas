@@ -1144,11 +1144,13 @@
       "start": "Start booking",
       "submit": "Confirm booking",
       "error": "We could not prepare the booking.",
+      "activeRestriction": "This email address has a temporary booking restriction until {date} due to previous reported no-show incidents.",
       "name": "Name",
       "email": "Email address",
       "party": "Party size",
       "date": "Date",
       "timeSlot": "Time slot",
+      "selectPlaceholder": "Select an option",
       "privacy": "I accept the privacy policy",
       "rules": "I accept the booking rules"
     },
@@ -1359,6 +1361,10 @@
       "summary": "Set the cancellation notice and review incidents through an owned reservation, without open email searches."
     },
     "loading": "Loading incidents and rules",
+    "penalties": {
+      "title": "Temporary restrictions",
+      "summary": "Reported no-shows may activate a global restriction of 7, 14, 21, or 60 days. Language and history remain professional, private, and limited to the operational period."
+    },
     "rules": {
       "title": "Cancellation rules",
       "description": "These conditions apply to secure reservation management links.",
@@ -1394,7 +1400,8 @@
     },
     "incidentStatus": {
       "reported": "Reported",
-      "confirmed": "Confirmed"
+      "confirmed": "Confirmed",
+      "dismissed": "Dismissed"
     }
   },
   "ReservationManagement": {

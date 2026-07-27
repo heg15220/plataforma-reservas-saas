@@ -9,9 +9,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10` y `10.1` a `10.15`.
-- Siguiente tarea pendiente recomendada: `10.16. Crear traducciones ES/EN para incidencias,
-  penalizaciones, advertencias y mensajes de restricción`.
+  `8.14`, `9.1` a `9.10` y `10.1` a `10.16`.
+- Siguiente tarea pendiente recomendada: `11.1. Crear migración de reviews`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -23988,3 +23987,154 @@ conjunta superó 45 segundos durante la compilación incremental; tras diez segu
 detuvo el único proceso. Las cuatro clases ya habían quedado compiladas y se ejecutaron después en
 dos bloques `surefire:test` de 18 y 13 casos, seguidos por un bloque dependiente de 8 casos. No se
 ejecutaron suites globales, frontend, Docker, servicios externos ni pruebas visuales.
+
+## Tarea 10.16 - Crear traducciones ES/EN para incidencias, penalizaciones, advertencias y mensajes de restricción
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada; cierre de la fase 10.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Cerrar el contrato lingüístico de la fase de incidencias: todos los tipos, estados, acciones,
+advertencias y consecuencias visibles deben existir en español e inglés, usar lenguaje
+profesional y presentar la fecha final de una penalización sin filtrar información operativa.
+Además de completar catálogos, la tarea debe conectar el error público ya implementado en `10.8`
+con una experiencia localizada real; una clave no utilizada no satisface `RF-021`.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-015`, `RF-020`, `RF-021`, `RF-022`, `RF-023`, `RF-031`, `RB-001`, `RB-007`,
+  `RNF-002`, `RNF-007`, `RNF-009` y `RNF-012`.
+- Diseño: responsabilidades de internacionalización 3.14, mensaje sobrio 6.4, contrato de error
+  8.3, principios frontend 9.1 y estrategia de tests 15.1.
+- Tareas relacionadas: integra la restricción de `10.8`, completa las superficies creadas en
+  `10.11`/`10.12` y queda protegida por las fronteras de `10.13`–`10.15`.
+
+### Archivos afectados
+
+- Modificados:
+  - `apps/web/locales/es.json`;
+  - `apps/web/locales/en.json`;
+  - `public-reservation-api.ts` y `public-reservation-form.tsx`;
+  - sus dos tests;
+  - `venue-incidents-dashboard.tsx` y su test.
+- Creado: `venue-incidents/incident-penalty-translations.test.ts`.
+- Eliminados: ninguno.
+- Backend, base de datos, migraciones, emails y contratos REST: sin cambios.
+
+### Catálogos y lenguaje profesional
+
+`ReservationBooking.form` incorpora `activeRestriction` con placeholder ICU `{date}` y
+`selectPlaceholder`. El texto español sigue el mensaje sobrio del diseño: identifica una
+restricción temporal por incidencias previas de no asistencia, pero evita términos acusatorios.
+La variante inglesa conserva exactamente la misma finalidad y minimización.
+
+`VenueIncidents.penalties` añade título y resumen del escalado de 7, 14, 21 y 60 días. El resumen
+explica que la restricción es global y que lenguaje e historial permanecen profesionales, privados
+y limitados al periodo operativo. Se añadió `dismissed/Descartada` al estado de incidencias del
+dashboard, completando la misma taxonomía que el detalle de reserva.
+
+Los textos existentes de reporte y cancelación se auditaron y quedaron cubiertos por el nuevo
+test: advertencia de auditoría, posible restricción, motivo obligatorio, email al cliente, errores
+de permiso/estado y términos profesionales. No se incorporan "denuncia", "castigo",
+"antecedentes", "delincuente" ni "lista negra".
+
+### Contrato API y minimización
+
+`public-reservation-api.ts` define ahora:
+
+```text
+PublicReservationApiError
+  kind: activeRestriction | unavailable
+  restrictedUntil?: YYYY-MM-DD
+```
+
+La respuesta no exitosa se analiza con Zod. Solo una combinación de HTTP 409, código
+`ACTIVE_BOOKING_RESTRICTION` y `restrictedUntil` ISO válida crea `activeRestriction`; cualquier
+otro status o cuerpo se reduce a `unavailable`. Aunque el backend añadiera campos internos, el
+objeto de error cliente solo conserva tipo y fecha.
+
+La reestructuración documentó los tres contratos públicos y endureció el éxito de confirmación a
+`status: literal("confirmed")`. Esto corrige la incompatibilidad entre el esquema anterior
+`string` y `reservation-confirmation-storage`, que ya exigía el literal.
+
+### Flujo de UI y formateo localizado
+
+Al confirmar, el formulario distingue la restricción del fallo genérico. Si está activa:
+
+1. mantiene el hold y la cuenta atrás visibles;
+2. renderiza un `Alert` traducido;
+3. convierte `restrictedUntil` mediante `Intl.DateTimeFormat(locale, {dateStyle: "long"})`;
+4. fija `timeZone: "UTC"` y construye el instante a mediodía UTC para preservar el día de
+   `LocalDate` en cualquier dispositivo;
+5. deshabilita el botón de confirmación para evitar reintentos que no pueden prosperar.
+
+El selector de campos personalizados ya no renderiza el literal `-`; usa
+`selectPlaceholder`, eliminando una incidencia del validador i18n global. En el panel privado, un
+`AlertTitle` y resumen localizado hacen visible la regla de penalización sin mostrar el contador
+de un cliente concreto.
+
+### Accesibilidad, privacidad y errores
+
+El mensaje se presenta con severidad `warning`, mantiene un texto completo y no depende solo de
+color. El botón deshabilitado evita repetición accidental. La fecha se muestra según locale y no
+como ISO técnica. No se representan email, número de incidencias, local de origen, actor, notas,
+motivo interno ni timestamps de auditoría.
+
+Un cuerpo malformado, una fecha inválida o un código diferente no se reflejan en pantalla y usan
+la traducción genérica existente. El cliente tampoco confía en un mensaje textual procedente del
+backend: solo usa código y dato mínimo para seleccionar su propia clave.
+
+### Tests añadidos y modificados
+
+`public-reservation-api.test.ts` añade un 409 con un campo interno deliberado y exige que el error
+resultante preserve únicamente tipo y fecha. Los tests anteriores siguen verificando slug
+codificado y payload de hold.
+
+`public-reservation-form.test.tsx` construye los campos base reales, provoca
+`PublicReservationApiError("activeRestriction", "2026-08-01")`, comprueba el texto español
+"1 de agosto de 2026" y exige que el botón quede deshabilitado.
+
+`venue-incidents-dashboard.test.tsx` verifica que la regla de 7/14/21/60 días es visible.
+`incident-penalty-translations.test.ts` recorre ambos catálogos, todos los tipos y estados,
+advertencias, placeholder y resumen; también verifica caracteres españoles y ausencia de los
+términos prohibidos. `messages.test.ts` conserva la equivalencia completa de claves.
+
+### Verificación y evidencia
+
+```text
+public-reservation-api.test.ts: 3 tests correctos
+public-reservation-form.test.tsx: 3 tests correctos
+venue-incidents-dashboard.test.tsx +
+incident-penalty-translations.test.ts: 4 tests correctos
+messages.test.ts: 3 tests correctos
+Total focalizado: 13, Failures: 0, Errors: 0, Skipped: 0
+
+TypeScript focalizado: 3 entradas productivas, 4 tests, setup y dependencias, correcto
+Prettier focalizado: 9 archivos, correcto
+JSON/UTF-8 focalizado ES/EN: correcto
+```
+
+Una primera ejecución conjunta de dos archivos Vitest superó 45 segundos sin resultados; tras una
+ventana adicional de ocho segundos se detuvieron sus tres workers y cada archivo se ejecutó por
+separado en 5,21 y 9,18 segundos. El primer typecheck focalizado terminó en el límite sin salida;
+la repetición detectó el contrato `status` demasiado amplio, se corrigió y la siguiente pasada
+productiva terminó correctamente. Una última pasada incluyó los cuatro tests y `vitest.setup.ts`;
+detectó un genérico innecesario en un matcher, se corrigió y terminó sin errores.
+
+`i18n:check` valida catálogos y ya no informa del placeholder de este flujo, pero continúa fallando
+por tres literales históricos ajenos en `team-availability-manager` y
+`venue-reservations-dashboard`. `spanish:text:check` conserva deuda histórica en documentación,
+migraciones, plantillas y claves anteriores del catálogo. Dos ejecuciones de ESLint focalizado
+superaron 30 segundos sin emitir diagnóstico y no se prolongaron. No se ejecutaron suite global,
+backend, build completo, Docker, servicios externos, E2E ni pruebas visuales.
+
+### Riesgos, limitaciones y deuda
+
+La vista pública no ofrece todavía una acción directa para volver a elegir otro local desde la
+alerta; el hold simplemente permanece hasta expirar. La administración visible de penalizaciones
+corresponde a la fase 14. La anonimización y conservación física siguen en 16.10. Las tres
+incidencias históricas de `i18n:check` y la deuda global del validador español deben resolverse en
+una tarea transversal de calidad sin mezclarlas con este cierre funcional.
