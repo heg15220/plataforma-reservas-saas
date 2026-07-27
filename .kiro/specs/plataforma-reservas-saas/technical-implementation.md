@@ -22958,7 +22958,8 @@ La máquina admite como estados origen `confirmed`, `attended` y `no_show`:
 
 - `attended` persiste estado `attended` y marca el instante actual;
 - `no_show` persiste estado `no_show` y marca el instante actual;
-- `pending` restaura `confirmed` y limpia `attendanceMarkedAt`.
+- `pending` conserva `confirmed` y, desde la integración con 10.4, registra
+  `attendanceMarkedAt` para distinguir una decisión manual pendiente de una reserva sin revisar.
 
 El valor público `pending` es una decisión de asistencia, no un nuevo estado físico. Reutilizar
 `confirmed` preserva el check de V23 y significa “reserva confirmada pendiente de decisión”.
@@ -23027,3 +23028,250 @@ No se ejecutaron frontend, suite global, Docker, PostgreSQL, Flyway real ni prue
 zona del reloj común sigue siendo deuda para locales multizona. La siguiente tarea 10.4 debe usar
 `autoMarkAttendedAfterMinutes`, excluir estados ya decididos y aplicar una actualización
 idempotente acotada.
+
+## Iteración 10.4 - Marcado de asistencia por defecto tras periodo configurable
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `10.4. Implementar job para marcar asistida por defecto tras periodo
+  configurado`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: resolver automáticamente reservas finalizadas sin decisión manual, respetando
+  el periodo de cada local y sin sobrescribir asistencia, no asistencia o pendiente.
+- Requisitos y diseño relacionados: `RF-019`, `RB-006`, `RNF-003`, `RNF-005`, `RNF-006`,
+  `RNF-008`, diseño 3.8 y job programado de diseño 11.2.
+
+### Arquitectura del job y configuración temporal
+
+`DefaultAttendanceJob` es un componente programado y transaccional:
+
+```text
+fixed delay: ${reserly.incidents.default-attendance.fixed-delay:5m}
+initial delay: ${reserly.incidents.default-attendance.initial-delay:1m}
+```
+
+Cada ciclo captura una sola vez `clock.instant()` y `clock.getZone().getId()`, ejecuta una sentencia
+masiva y solo registra el número agregado cuando es mayor que cero. No enumera IDs, locales,
+emails ni clientes. El método devuelve el contador para test y observabilidad futura.
+
+Se creó `BusinessClockConfiguration` porque varios servicios de reserva ya dependían de `Clock`
+sin un bean productivo explícito. La propiedad
+`reserly.business-clock.zone-id`, enlazable mediante
+`RESERLY_BUSINESS_CLOCK_ZONE_ID`, usa `Europe/Madrid` por defecto y valida `ZoneId` al arrancar.
+Los ejemplos local, staging y producción documentan zona y frecuencias del job. Esta solución es
+transitoria hasta que cada local tenga zona IANA propia.
+
+### Consulta PostgreSQL, concurrencia e idempotencia
+
+`ReservationDao.markUnresolvedFinishedReservationsAttended` usa `@Modifying` y SQL nativo:
+
+- actualiza solo `status='confirmed'`;
+- exige identidad confirmada;
+- exige `attendanceMarkedAt IS NULL`;
+- combina el snapshot `date + endsAt` en la zona configurada;
+- añade `autoMarkAttendedAfterMinutes` de `VenueBookingRules`;
+- usa 120 minutos mediante `COALESCE` si falta la fila de regla;
+- cambia estado a `attended` y fija `attendanceMarkedAt` y `updatedAt` al mismo instante;
+- usa frontera inclusiva `fin + periodo <= now`.
+
+La condición hace la operación idempotente. PostgreSQL vuelve a evaluar el predicado al adquirir
+el lock de cada fila: si una escritura manual concurrente fija `attendanceMarkedAt`, el job deja de
+cumplir el filtro. Si el job gana primero, la operación manual posterior puede corregir
+`attended`, porque 10.3 permite transiciones entre estados de asistencia.
+
+### Ajuste dependiente de la semántica pendiente
+
+10.3 representó `pending` como `confirmed` y inicialmente limpiaba `attendanceMarkedAt`. Esa
+representación no permitía distinguir “sin revisar” de “pendiente decidido” y el job habría
+sobrescrito la decisión. `AttendanceServiceImpl` ahora conserva `confirmed` pero fija
+`attendanceMarkedAt=now` también para `pending`. El timestamp representa la última decisión
+manual o automática; no implica asistencia positiva.
+
+No se añadió un nuevo estado físico ni una migración incompatible. Listados y aforo continúan
+interpretando la reserva como confirmada, mientras el job usa la marca para exclusión.
+
+### Tests, evidencia, errores, riesgos y deuda
+
+`DefaultAttendanceJobTests` verifica frontera única, zona, contador y schedule configurable.
+`DefaultAttendanceDaoTests` protege SQL nativo, periodo, fallback, zona, condición manual,
+idempotencia y anotaciones de flush. `AttendanceServiceTests` confirma que pendiente conserva
+estado y marca temporal. `BusinessClockConfigurationTests` cubre zona válida e inicio fail-fast.
+
+Evidencia focalizada conjunta de 10.4–10.6:
+
+```text
+mvn -Dtest=DefaultAttendanceJobTests,DefaultAttendanceDaoTests,\
+NoShowReportServiceTests,AuditLogServiceTests,AuditLogPersistenceTests,\
+BusinessClockConfigurationTests,AttendanceServiceTests \
+-Dspotless.check.skip=true -Dcheckstyle.skip=true test
+
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+La consulta se verificó estructuralmente y compiló, pero no se ejecutó contra PostgreSQL real.
+Riesgos: la zona común no cubre locales multizona; una pausa larga del scheduler se recupera en el
+siguiente ciclo, pero todavía no existen métricas o alertas específicas; la configuración del
+periodo aún no tiene UI y se expondrá en la sección de reglas.
+
+## Iteración 10.5 - Reporte confirmado de no asistencia
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `10.5. Implementar reporte de no asistencia con confirmación`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: convertir una marca reversible `no_show` en una incidencia profesional
+  explícitamente confirmada, sin aplicar todavía una penalización.
+- Requisitos relacionados: `RF-019`, `RF-020`, preparación de `RF-021`, `RNF-001`, `RNF-002`,
+  `RNF-003`, `RNF-006`, `RNF-007`, `RNF-008` y `RNF-011`.
+
+### Contrato REST, DTOs y errores
+
+```http
+POST /api/venue/me/reservations/{reservationId}/report-no-show
+Content-Type: application/json
+
+{
+  "confirmed": true,
+  "notes": "Contexto profesional opcional"
+}
+```
+
+`NoShowReportController` separa contrato de `NoShowReportControllerImpl`. La ruta hereda la
+protección `ROLE_VENUE_OWNER`; el actor procede de `AuthenticatedAccount` y no del payload.
+`NoShowReportRequest` exige `@AssertTrue` y limita notas a 2000 caracteres. El servicio repite la
+validación para llamadas internas. Las notas se recortan y el vacío se persiste como nulo; deben
+renderizarse siempre como texto plano.
+
+`NoShowReportResponse` contiene solo `incidentId`, `reservationId`, estado e instante. El handler
+devuelve:
+
+- 404 `VENUE_RESERVATION_NOT_FOUND` para inexistente o ajena;
+- 400 `NO_SHOW_REPORT_INVALID` para llamada interna no confirmada o identidad inconsistente;
+- 400 `INCIDENT_REQUEST_INVALID` para Bean Validation;
+- 409 `NO_SHOW_REPORT_REQUIRES_NO_SHOW` para cualquier estado no elegible o reporte repetido.
+
+### Flujo transaccional y modelo afectado
+
+`NoShowReportServiceImpl.report`:
+
+1. exige `confirmed=true`;
+2. valida IDs;
+3. bloquea la reserva mediante `findOwnedForAttendanceUpdate`, que incluye propietario en query;
+4. exige estado exacto `no_show` y email normalizado persistido;
+5. crea `NoShowIncidentEntity` con local/reserva/email derivados, tipo `no_show`, actor de sesión,
+   instante único, notas normalizadas y estado `reported`;
+6. cambia la reserva a `reported` y actualiza `updatedAt`;
+7. registra la auditoría de 10.6;
+8. confirma las tres escrituras juntas o revierte todas.
+
+El lock serializa reportes repetidos. El primer reporte cambia la reserva a `reported`; el segundo
+despierta, vuelve a evaluar estado y termina en conflicto sin insertar. La unicidad física de
+`NoShowIncidents.reservationId` conserva una segunda defensa.
+
+La confirmación del propietario es confirmación de una acción crítica, no aprobación
+administrativa. La incidencia queda `reported`; 10.7 calculará la penalización y 14.5 permitirá
+revisión futura. No se envía email ni se actualizan estadísticas en esta tarea.
+
+### Seguridad, privacidad, i18n y observabilidad
+
+No existe búsqueda HTTP por email. El email normalizado se copia exclusivamente desde la reserva
+acreditada y no vuelve en la respuesta o auditoría. El controlador usa `getRemoteAddr()` y no
+confía en `X-Forwarded-For` aportado por cliente; una terminación proxy confiable deberá normalizar
+la dirección antes de la aplicación.
+
+Los errores usan códigos estables traducibles y lenguaje profesional. No se añaden textos de UI,
+porque la confirmación visual corresponde a 10.11/10.12 y las traducciones completas a 10.16.
+
+### Tests, evidencia, riesgos y pendientes
+
+`NoShowReportServiceTests` cubre alta válida, derivación de identidad, normalización de notas,
+cambio a `reported`, contenido minimizado de auditoría, confirmación obligatoria antes de DAO,
+estado no elegible sin efectos, ausencia opaca y presencia de frontera transaccional.
+
+Los cinco tests del servicio pasaron dentro de los 18 focalizados. No se ejecutó controlador HTTP
+real, PostgreSQL o la restricción única; la compilación protege contrato, Bean Validation y
+adaptador. La tarea 10.7 debe enlazar la penalización con el ID de incidencia ya persistido y
+resolver colisiones del índice único activo.
+
+## Iteración 10.6 - Auditoría atómica del reporte
+
+### Identificador, fecha y objetivo técnico
+
+- Tarea completada: `10.6. Implementar auditoría del reporte`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: conservar evidencia minimizada del actor y de la transición de reporte en la
+  misma transacción de dominio.
+- Requisitos y diseño relacionados: `RF-020`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-008`,
+  `RNF-011`, diseño 3.13, entidad `audit_logs` y acciones de diseño 12.4.
+
+### Migración, entidad, índices y restricciones
+
+`V28__create_audit_logs.sql` crea `AuditLogs` con:
+
+- UUID;
+- `actorUserId` con FK restrictiva a `Users`;
+- rol cerrado `venue_owner|admin`;
+- `entityType`, `entityId` y `action`;
+- snapshots JSONB opcionales antes/después, obligatoriamente objetos cuando existen;
+- IP de hasta 45 caracteres y user-agent de hasta 500;
+- `createdAt`;
+- checks de campos no vacíos;
+- índices por entidad/fecha, actor/fecha y acción/fecha.
+
+La tabla es append-only a nivel de servicios: no se implementaron update o delete. Los índices
+permiten futuras vistas administrativas sin indexar contenido JSON o PII. La migración documenta
+que snapshots no deben contener secretos.
+
+`AuditLogEntity` mapea getters/setters, JSONB con `@JdbcTypeCode(SqlTypes.JSON)` y copias
+inmutables de mapas. `AuditLogDao` es el único acceso persistente.
+
+### Servicio, contratos internos y atomicidad
+
+`AuditLogEntry` es un comando interno documentado. `AuditLogService` separa interfaz e
+implementación. `AuditLogServiceImpl`:
+
+- acepta solo roles cerrados;
+- exige actor, tipo, entidad y acción;
+- recorta tipo/acción;
+- copia snapshots;
+- normaliza campos opcionales;
+- limita IP y user-agent defensivamente;
+- usa el mismo `Clock`;
+- realiza `saveAndFlush` sin registrar contenido.
+
+El reporte invoca este servicio desde su método `@Transactional`; la propagación Spring por defecto
+es `REQUIRED`, por lo que auditoría, incidencia y reserva comparten transacción. Un fallo de
+auditoría propaga la excepción y revierte las escrituras anteriores.
+
+La entrada concreta usa:
+
+```text
+actorRole = venue_owner
+entityType = no_show_incident
+action = report_no_show
+beforeJson = { reservationStatus: no_show }
+afterJson = {
+  reservationStatus: reported,
+  incidentStatus: reported,
+  incidentType: no_show
+}
+```
+
+No contiene email, nombre, notas, token, ID de sesión, respuestas de formulario ni datos de otros
+locales. IP y user-agent son datos técnicos sujetos a retención y acceso restringido.
+
+### Tests, evidencia, riesgos y deuda
+
+`AuditLogPersistenceTests` verifica migración, FK, checks, índices y nombres físicos.
+`AuditLogServiceTests` cubre snapshots, timestamp, límites de metadatos y rechazo de rol
+desconocido antes de persistencia. `NoShowReportServiceTests` captura la entrada y demuestra que
+no contiene email o notas.
+
+Los cuatro tests propios de persistencia/servicio y los cinco de integración lógica con reporte
+pasaron dentro del bloque focalizado. Producción compiló 598 fuentes y tests compiló 135 fuentes.
+Spotless se aplicó y comprobó solo sobre módulos afectados y dependencias.
+
+No se aplicó V28 contra PostgreSQL real. La política de retención de logs, acceso administrativo,
+anonimización de IP y auditoría de otras acciones críticas permanecen en fases 14 y 16. La
+siguiente tarea recomendada es 10.7.

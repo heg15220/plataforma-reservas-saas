@@ -198,9 +198,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 10.1. Crear migraciones de `no_show_incidents`, `penalties` y `venue_booking_rules`.
 - [x] 10.2. Implementar reglas básicas de cancelación por local.
 - [x] 10.3. Implementar marcado de asistida, no asistida y pendiente.
-- [ ] 10.4. Implementar job para marcar asistida por defecto tras periodo configurado.
-- [ ] 10.5. Implementar reporte de no asistencia con confirmación.
-- [ ] 10.6. Implementar auditoría del reporte.
+- [x] 10.4. Implementar job para marcar asistida por defecto tras periodo configurado.
+- [x] 10.5. Implementar reporte de no asistencia con confirmación.
+- [x] 10.6. Implementar auditoría del reporte.
 - [ ] 10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días.
 - [ ] 10.8. Implementar validación de penalización activa durante confirmación de reserva.
 - [ ] 10.9. Implementar historial profesional de incidencias por email.

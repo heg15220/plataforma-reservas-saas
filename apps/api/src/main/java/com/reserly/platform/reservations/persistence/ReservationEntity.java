@@ -243,7 +243,7 @@ public class ReservationEntity {
     cancellationReason = value;
   }
 
-  /** Instante de la última decisión explícita; se limpia cuando vuelve a pendiente. */
+  /** Instante de la última decisión manual o automática, incluido el estado pendiente. */
   @Column(name = "\"attendanceMarkedAt\"")
   public Instant getAttendanceMarkedAt() {
     return attendanceMarkedAt;

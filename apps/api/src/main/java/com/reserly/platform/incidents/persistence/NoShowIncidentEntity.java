@@ -13,7 +13,7 @@ import java.util.UUID;
  * Incidencia auditable asociada a una reserva y a la identidad normalizada del cliente.
  *
  * <p>La entidad conserva referencias escalares para evitar que la lectura profesional cargue
- * locales, reservas o actores. Las escrituras se incorporarán en la fase 10.
+ * locales, reservas o actores. El alta solo se permite desde el reporte confirmado y auditado.
  */
 @Entity
 @Table(name = "\"NoShowIncidents\"")

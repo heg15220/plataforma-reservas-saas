@@ -65,7 +65,7 @@ class AttendanceServiceTests {
 
     service.update(ownerId, reservation.getId(), new AttendanceUpdateRequest("pending"));
     assertThat(reservation.getStatus()).isEqualTo("confirmed");
-    assertThat(reservation.getAttendanceMarkedAt()).isNull();
+    assertThat(reservation.getAttendanceMarkedAt()).isEqualTo(NOW);
   }
 
   @Test

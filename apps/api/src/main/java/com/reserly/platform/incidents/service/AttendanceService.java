@@ -10,8 +10,9 @@ public interface AttendanceService {
   /**
    * Marca una reserva finalizada como asistida, no asistida o pendiente.
    *
-   * <p>{@code pending} restaura el estado {@code confirmed} y elimina la marca temporal. No crea
-   * incidencias ni penalizaciones; esas acciones requieren el flujo confirmado de reporte.
+   * <p>{@code pending} conserva el estado {@code confirmed} y registra la decisión manual para que
+   * el job automático no la sobrescriba. No crea incidencias ni penalizaciones; esas acciones
+   * requieren el flujo confirmado de reporte.
    *
    * @throws AttendanceNotFoundException si no existe o no pertenece al propietario
    * @throws AttendanceTooEarlyException si la reserva todavía no finalizó

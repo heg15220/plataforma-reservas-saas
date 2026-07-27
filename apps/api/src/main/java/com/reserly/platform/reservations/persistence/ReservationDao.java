@@ -119,6 +119,46 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
   int expireHoldsBefore(@Param("now") Instant now);
 
   /**
+   * Marca en bloque solo reservas confirmadas sobre las que no existe decisión manual.
+   *
+   * <p>La fecha y hora snapshot se interpretan en la zona IANA del reloj de negocio. Cada regla
+   * aporta su periodo; 120 minutos es el fallback para locales creados sin fila de configuración.
+   * La condición completa vuelve a evaluarse al adquirir cada lock de escritura, por lo que una
+   * marca manual concurrente prevalece.
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      value =
+          """
+          UPDATE "Reservations" reservation
+          SET
+            "status" = 'attended',
+            "attendanceMarkedAt" = :now,
+            "updatedAt" = :now
+          WHERE reservation."status" = 'confirmed'
+            AND reservation."customerEmailNormalized" IS NOT NULL
+            AND reservation."attendanceMarkedAt" IS NULL
+            AND (
+              (
+                (reservation."date" + reservation."endsAt") AT TIME ZONE :zoneId
+              )
+              + make_interval(
+                  mins => COALESCE(
+                    (
+                      SELECT rule."autoMarkAttendedAfterMinutes"
+                      FROM "VenueBookingRules" rule
+                      WHERE rule."venueId" = reservation."venueId"
+                    ),
+                    120
+                  )
+                )
+            ) <= :now
+          """,
+      nativeQuery = true)
+  int markUnresolvedFinishedReservationsAttended(
+      @Param("now") Instant now, @Param("zoneId") String zoneId);
+
+  /**
    * Suma ocupación efectiva: reservas confirmadas en cualquier estado posterior y holds vigentes.
    * El llamador debe poseer el bloqueo pesimista de la franja antes de ejecutar esta consulta.
    */

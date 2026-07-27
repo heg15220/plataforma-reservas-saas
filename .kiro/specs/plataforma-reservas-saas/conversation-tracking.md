@@ -13,11 +13,58 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-27
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10` y `10.1` a `10.3`.
-- Siguiente tarea pendiente recomendada: `10.4. Implementar job para marcar asistida por defecto
-  tras periodo configurado`.
-- Observación: el esquema de incidencias y penalizaciones está completo, las reglas básicas de
-  cancelación son configurables por local y la asistencia manual valida propiedad y finalización.
+  `9.1` a `9.10` y `10.1` a `10.6`.
+- Siguiente tarea pendiente recomendada: `10.7. Implementar cálculo de penalización 7, 14, 21 y
+  60 días`.
+- Observación: el marcado automático respeta decisiones manuales, el reporte exige confirmación
+  explícita y su incidencia, cambio de reserva y auditoría comparten una transacción.
+
+## Conversación 109 - Asistencia automática y reporte auditado de no asistencia
+
+- Fecha: 2026-07-27.
+- Resumen de la conversación:
+  - Se completaron `10.4`, `10.5` y `10.6` en
+    `phase/10-assistance-incidents-penalties`.
+  - Se añadió un job cada cinco minutos que marca como asistidas las reservas confirmadas,
+    finalizadas y sin decisión manual, usando el periodo de `VenueBookingRules`.
+  - Se añadió `POST /api/venue/me/reservations/{reservationId}/report-no-show`, que exige
+    `confirmed=true`, propiedad acreditada y estado previo `no_show`.
+  - El reporte crea `NoShowIncidents`, cambia la reserva a `reported` y añade una entrada
+    minimizada en la nueva tabla `AuditLogs` dentro de la misma transacción.
+  - Se añadió un `Clock` de negocio único con zona IANA configurable y default `Europe/Madrid`.
+- Archivos modificados:
+  - `ReservationDao`, `ReservationEntity`, `AttendanceService` y su test.
+  - `DefaultAttendanceJob` y tests de job/consulta.
+  - DTOs, controlador, servicio, errores y tests del reporte de no asistencia.
+  - Migración `V28__create_audit_logs.sql`, entidad, DAO, servicio y tests de auditoría.
+  - `BusinessClockConfiguration`, test y ejemplos de entorno local, staging y producción.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del alcance `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-019`, `RF-020` y preparación de `RF-021`.
+  - `RB-006`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-005`, `RNF-006`, `RNF-008` y `RNF-011`.
+- Tareas impactadas y completadas: `10.4`, `10.5` y `10.6`.
+- Siguiente tarea pendiente recomendada:
+  - `10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días`.
+- Decisiones o aclaraciones relevantes:
+  - Se corrige la semántica interna documentada en 10.3: `pending` conserva el estado físico
+    `confirmed`, pero registra `attendanceMarkedAt` en vez de limpiarlo. Así queda como decisión
+    manual y el job no puede sobrescribirla.
+  - El job usa una única sentencia PostgreSQL condicional, `attendanceMarkedAt IS NULL` y el
+    periodo `autoMarkAttendedAfterMinutes`; 120 minutos es el fallback para reglas ausentes.
+  - La fecha y hora snapshot se interpretan en la zona de
+    `RESERLY_BUSINESS_CLOCK_ZONE_ID`; el arranque falla si la zona no es válida.
+  - El reporte solo acepta una reserva `no_show`; repetidos, estados `reported`, cancelados o
+    asistidos producen conflicto sin escrituras.
+  - La confirmación del operador no equivale a revisión administrativa: la incidencia se crea con
+    estado `reported`. El cálculo de penalización queda deliberadamente en 10.7.
+  - La auditoría guarda actor, rol, tipo/ID de entidad, acción, estados antes/después, IP directa y
+    user-agent acotado. No guarda email, nombre, notas ni secretos.
+  - Evidencia focalizada: 18 tests, 0 fallos, 0 errores y 0 omitidos; compilación correcta de 598
+    fuentes principales y 135 fuentes de test; Spotless focalizado correcto.
+  - No se ejecutaron suite global, frontend, Docker, Testcontainers, PostgreSQL real, Flyway real
+    ni pruebas visuales.
 
 ## Conversación 108 - Esquema de penalizaciones, reglas de cancelación y asistencia manual
 
@@ -32,7 +79,8 @@ Fuente de verdad del avance:
     cancelación.
   - Se añadió `POST /api/venue/me/reservations/{reservationId}/attendance` para marcar
     `attended`, `no_show` o `pending` sobre reservas propias finalizadas. La opción `pending`
-    restaura `confirmed` y limpia la marca temporal.
+    conserva `confirmed`; desde 10.4 registra una marca temporal para excluir la decisión manual
+    del job automático.
 - Archivos modificados:
   - Migración `V27__create_penalties_and_venue_booking_rules.sql`.
   - Entidades y DAOs de `Penalties` y `VenueBookingRules`; servicios, DTOs, conversor,

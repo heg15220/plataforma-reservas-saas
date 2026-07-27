@@ -55,7 +55,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     boolean pending = "pending".equals(requestedStatus);
     reservation.setStatus(pending ? "confirmed" : requestedStatus);
-    reservation.setAttendanceMarkedAt(pending ? null : now);
+    reservation.setAttendanceMarkedAt(now);
     reservation.setUpdatedAt(now);
     return reservationDao.saveAndFlush(reservation);
   }
