@@ -9,8 +9,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10` y `10.1` a `10.12`.
-- Siguiente tarea pendiente recomendada: `10.13. Crear tests de escalado de penalizaciones`.
+  `8.14`, `9.1` a `9.10` y `10.1` a `10.15`.
+- Siguiente tarea pendiente recomendada: `10.16. Crear traducciones ES/EN para incidencias,
+  penalizaciones, advertencias y mensajes de restricción`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -23735,3 +23736,255 @@ procesos se detuvieron; se sustituyó por un `tsconfig` temporal de siete entrad
 dependencias y se eliminó al finalizar. No se ejecutaron pruebas visuales ni E2E. El control
 temporal de la cancelación se decide en servidor; la UI puede mostrar el botón en una reserva
 confirmada ya iniciada y recibirá el conflicto seguro correspondiente.
+
+## Tarea 10.13 - Crear tests de escalado de penalizaciones
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Convertir la regla de escalado global de `RB-007` en una especificación ejecutable que proteja las
+cinco fronteras operativas, el reinicio tras completar el tramo máximo y la conservación de doce
+meses. La cobertura debe detectar regresiones tanto en la política pura como en la composición
+transaccional que persiste `Penalties`.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-020`, `RF-021`, `RB-001`, `RB-007`, `RNF-002`, `RNF-003`, `RNF-006` y
+  `RNF-011`.
+- Diseño: secciones 5.3 y 6.1–6.3, entidad `Penalties`, contador de `NoShowIncidents`, lock asesor
+  por email y frontera de conservación.
+- Tareas relacionadas: amplía la cobertura anticipada de `10.7`; usa el esquema de `10.1` y el
+  flujo de reporte de `10.5`–`10.7`.
+
+### Archivos afectados
+
+- Modificado: `apps/api/src/test/java/com/reserly/platform/incidents/service/PenaltyServiceTests.java`.
+- Creados o eliminados: ninguno.
+- Código productivo, migraciones y contratos HTTP: sin cambios.
+
+### Arquitectura y casos implementados
+
+Se añadió una prueba parametrizada a nivel de servicio con contadores 1, 2, 3, 4 y 5. Cada
+invocación parte de una identidad sin fila activa, calcula el corte de doce meses en la zona del
+`Clock`, devuelve el contador desde `NoShowIncidentDao` y exige que la entidad persistida contenga
+los periodos 7, 14, 21, 60 y 60 días. Así se comprueba no solo
+`PenaltyCalculationPolicyImpl`, sino también su uso por `PenaltyServiceImpl`, la conversión segura
+a entero y los timestamps `startsAt`/`endsAt`.
+
+Otro caso entrega una penalización `active` de cuarto tramo cuyo `endsAt` coincide exactamente con
+`now`. El test exige que se persista como `expired`, que el fin del tramo se use como frontera para
+contar solo incidencias posteriores y que se cree una entidad nueva con contador 1 y siete días.
+Esto fija como exclusiva la frontera temporal y evita que una restricción terminada siga
+reutilizándose.
+
+La cobertura de conservación devuelve una frontera de reset anterior en un segundo al corte de
+doce meses. El servicio debe ignorarla, contar desde el corte y rechazar un contador cero antes de
+persistir una penalización inválida. También se prueba que una incidencia `dismissed` no aplicable
+falla antes de tocar DAOs. Los casos ya existentes continúan verificando creación inicial,
+actualización sobre fila activa, normalización y reinicio con frontera válida.
+
+### Modelo de datos, concurrencia y restricciones
+
+No se modifica el modelo. Las pruebas ejercitan los invariantes existentes:
+
+- `scope=global`, `venueId=null` y una única fila activa por email normalizado;
+- contador positivo representable como `int`;
+- `reason=operational_no_show_incidents`;
+- enlace a la incidencia persistida que originó el tramo;
+- lock asesor antes de consultar o contar;
+- conservación de `createdAt` al recalcular una fila activa;
+- exclusión de incidencias anteriores al mayor corte válido entre retención y reset.
+
+El test unitario no ejecuta PostgreSQL real, pero las dependencias focalizadas
+`PenaltyDaoTests` comprueban que el lock es `pg_advisory_xact_lock`, que la actualización activa es
+pesimista y que el reset solo admite contadores 4 o superiores ya completados.
+
+### Errores, privacidad, observabilidad y límites
+
+Los escenarios inválidos esperan `IllegalArgumentException` para una incidencia no aplicable e
+`IllegalStateException` para un contador operativo imposible. Ningún caso imprime o incorpora el
+email en errores. Se usa una identidad ficticia normalizada y no se inspeccionan logs. La
+anonimización física y ejecución real de la conservación siguen reservadas a `16.10`.
+
+### Verificación y evidencia
+
+```text
+PenaltyServiceTests: 13 tests correctos
+PenaltyCalculationPolicyTests: 2 tests correctos
+PenaltyDaoTests: 2 tests correctos
+Failures: 0, Errors: 0, Skipped: 0
+```
+
+Las dependencias se ejecutaron con `surefire:test` sobre clases compiladas para evitar repetir la
+compilación de todo el backend. No se arrancaron PostgreSQL, Flyway, Testcontainers, RabbitMQ ni
+la suite completa.
+
+## Tarea 10.14 - Crear tests de bloqueo de email penalizado
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Demostrar que una restricción global vigente impide confirmar una reserva para el mismo email
+normalizado sin consumir capacidad, persistir respuestas, generar credenciales o publicar
+notificaciones, y que la consulta no ocurre antes de acreditar el hold.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-015`, `RF-021`, `RB-001`, `RB-007`, `RNF-001`, `RNF-002`, `RNF-003`,
+  `RNF-006` y `RNF-011`.
+- Diseño: flujo transaccional 5.3, cálculo 6.2, mensaje 6.4 y contrato de error 8.3.
+- Tareas relacionadas: amplía `10.8` y depende de la sincronización por identidad de `10.7`.
+
+### Archivos afectados
+
+- Modificados: `PenaltyServiceTests` y `ReservationConfirmationServiceTests`.
+- Creados o eliminados: ninguno.
+- Servicio, controlador, respuesta pública y persistencia: sin cambios.
+
+### Cobertura del servicio de restricción
+
+El servicio se invoca con espacios y mayúsculas y los mocks exigen que tanto el lock como la
+consulta reciban `user@example.com`. Una penalización activa produce
+`ActiveBookingRestrictionException` y la fecha pública se calcula en la zona de negocio, sin
+devolver contador, email, motivo ni historial.
+
+El caso permitido fija `now` como frontera exclusiva de la consulta
+`findActiveGlobal(email, now)`: si el DAO no encuentra una fila con `endsAt > now`, el método
+retorna normalmente después de adquirir el mismo lock asesor utilizado por el reporte. Una
+identidad vacía se rechaza antes de adquirir el lock.
+
+### Cobertura dentro de confirmación
+
+`ReservationConfirmationServiceTests` refuerza el escenario restringido con estas garantías:
+
+1. la reserva se bloquea y se acredita mediante token y party size;
+2. el email se normaliza antes de consultar la restricción;
+3. la excepción se propaga conservando estado `hold`, hash del token y datos de cliente sin
+   persistir;
+4. no se bloquea `TimeSlot`, no se recalcula ocupación, no se validan respuestas, no se guarda la
+   reserva y no se publica el evento de correo.
+
+Los casos de token ajeno y hold vencido ahora exigen explícitamente cero llamadas a
+`PenaltyService`, evitando que una reserva no acreditada funcione como oráculo de restricciones.
+También se añadió un email sintácticamente inválido: debe fallar antes de consultar la reserva o
+la penalización.
+
+### Seguridad, privacidad, errores y concurrencia
+
+La cobertura mantiene el orden de seguridad definido en `10.8`: autenticación del secreto,
+vigencia y después restricción. La dependencia focalizada
+`ReservationConfirmationExceptionHandlerTests` verifica que el HTTP 409 contiene únicamente
+`ACTIVE_BOOKING_RESTRICTION` y `restrictedUntil`.
+
+La exclusión es global porque `PenaltyService` consulta por email completo normalizado y
+`scope=global`, sin recibir `venueId`. El lock asesor compartido serializa reporte y confirmación;
+la prueba del DAO comprueba su declaración, aunque este lote no levanta dos transacciones
+PostgreSQL reales.
+
+### Verificación y evidencia
+
+```text
+ReservationConfirmationServiceTests: 9 tests correctos
+PenaltyServiceTests: 13 tests correctos
+ReservationConfirmationExceptionHandlerTests: 4 tests correctos
+PenaltyDaoTests: 2 tests correctos
+Failures: 0, Errors: 0, Skipped: 0
+```
+
+No se añadieron mensajes UI porque corresponde a `10.16`. No se ejecutaron frontend, E2E ni
+pruebas de concurrencia con base real.
+
+## Tarea 10.15 - Crear tests de auditoría de cancelación y reporte
+
+- Fecha: 2026-07-27.
+- Commit o referencia: rama `phase/10-assistance-incidents-penalties`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Fijar mediante tests el contrato de auditoría de las dos acciones críticas de la fase: reporte de
+no asistencia y cancelación preventiva por local. La evidencia debe acreditar actor, agregado,
+acción, snapshots mínimos, metadatos técnicos, orden de efectos y frontera transaccional.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-020`, `RF-023`, `RB-009`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-008` y
+  `RNF-011`.
+- Diseño: responsabilidades 3.5/3.8, flujo 6.1, auditoría 12.4 y estrategia de integración 15.2.
+- Tareas relacionadas: completa la cobertura iniciada en `10.6` y `10.10`; la auditoría visible y
+  conservación ampliada permanecen en `14.12`, `16.10` y `16.11`.
+
+### Archivos afectados
+
+- Modificados: `NoShowReportServiceTests` y `VenueReservationCancellationServiceTests`.
+- Creados o eliminados: ninguno.
+- Tablas, migraciones, entidades y endpoints: sin cambios.
+
+### Auditoría del reporte
+
+La captura de `AuditLogEntry` exige actor autenticado, rol `venue_owner`, entidad
+`no_show_incident`, ID de la incidencia guardada y acción `report_no_show`. El snapshot previo
+solo puede contener `reservationStatus=no_show`; el posterior solo puede contener
+`reservationStatus=reported`, `incidentStatus=reported` e `incidentType=no_show`. La prueba
+rechaza implícitamente cualquier ampliación accidental con email o notas.
+
+Se verifican IP directa y user-agent. Un `InOrder` exige la secuencia:
+
+1. persistir la incidencia;
+2. persistir la transición de la reserva;
+3. registrar auditoría;
+4. aplicar la penalización.
+
+El test de reflexión mantiene la anotación `@Transactional` en el método público. Los escenarios
+sin confirmación, reserva en estado incorrecto y reserva ajena continúan comprobando ausencia de
+auditoría y efectos laterales.
+
+### Auditoría de cancelación
+
+La entrada debe identificar al actor, rol, entidad `reservation`, ID y acción
+`cancel_by_venue`. El estado previo admite únicamente `reservationStatus=confirmed`; el posterior,
+únicamente `reservationStatus=cancelled_by_venue`, `cancelledBy=venue` y el motivo normalizado.
+Email y nombre no pueden entrar en el snapshot, mientras IP y user-agent sí se conservan como
+metadatos técnicos.
+
+La secuencia exigida es guardar y hacer flush de la reserva, registrar la auditoría y después
+publicar el evento de correo. Una prueba adicional comprueba `@Transactional` sobre
+`cancel`; las rutas de motivo vacío, reserva pasada/repetida y reserva ajena siguen sin escribir
+auditoría ni publicar eventos.
+
+### Atomicidad, privacidad, errores y observabilidad
+
+Los tests unitarios no fuerzan un rollback real de base de datos, pero garantizan que ambas
+operaciones mantienen la anotación transaccional y que `AuditLogService` participa sin abrir una
+transacción autónoma. El orden evita anunciar una cancelación antes de escribir su evidencia y
+evita aplicar una penalización sin haber registrado el reporte que la justifica.
+
+Los snapshots usan listas cerradas de claves para detectar filtraciones futuras. El motivo de
+cancelación es obligatorio por requisito; las notas del reporte, email, nombre, token y detalles
+de penalización quedan excluidos.
+
+### Verificación y evidencia
+
+```text
+NoShowReportServiceTests: 5 tests correctos
+VenueReservationCancellationServiceTests: 4 tests correctos
+Bloque principal A: 18 tests correctos
+Bloque principal B: 13 tests correctos
+Dependencias directas: 8 tests correctos
+Total focalizado: 39, Failures: 0, Errors: 0, Skipped: 0
+```
+
+Spotless se aplicó y comprobó solo sobre los cuatro tests modificados. La primera llamada Maven
+conjunta superó 45 segundos durante la compilación incremental; tras diez segundos adicionales se
+detuvo el único proceso. Las cuatro clases ya habían quedado compiladas y se ejecutaron después en
+dos bloques `surefire:test` de 18 y 13 casos, seguidos por un bloque dependiente de 8 casos. No se
+ejecutaron suites globales, frontend, Docker, servicios externos ni pruebas visuales.

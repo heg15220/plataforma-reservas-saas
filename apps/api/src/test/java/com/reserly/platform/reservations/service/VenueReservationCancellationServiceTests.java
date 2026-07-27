@@ -3,6 +3,7 @@ package com.reserly.platform.reservations.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Cubre propiedad, futuro, motivo, auditoría atómica y evento post-commit. */
 class VenueReservationCancellationServiceTests {
@@ -73,12 +75,22 @@ class VenueReservationCancellationServiceTests {
 
     ArgumentCaptor<AuditLogEntry> audit = ArgumentCaptor.forClass(AuditLogEntry.class);
     verify(auditLogService).record(audit.capture());
+    assertThat(audit.getValue().actorUserId()).isEqualTo(ownerId);
+    assertThat(audit.getValue().actorRole()).isEqualTo("venue_owner");
+    assertThat(audit.getValue().entityType()).isEqualTo("reservation");
+    assertThat(audit.getValue().entityId()).isEqualTo(reservation.getId());
     assertThat(audit.getValue().action()).isEqualTo("cancel_by_venue");
-    assertThat(audit.getValue().beforeJson()).containsEntry("reservationStatus", "confirmed");
+    assertThat(audit.getValue().beforeJson())
+        .containsOnlyKeys("reservationStatus")
+        .containsEntry("reservationStatus", "confirmed");
     assertThat(audit.getValue().afterJson())
+        .containsOnlyKeys("reservationStatus", "cancelledBy", "cancellationReason")
         .containsEntry("reservationStatus", "cancelled_by_venue")
+        .containsEntry("cancelledBy", "venue")
         .containsEntry("cancellationReason", "Cierre operativo imprevisto.");
     assertThat(audit.getValue().afterJson()).doesNotContainKeys("email", "customerName");
+    assertThat(audit.getValue().ipAddress()).isEqualTo("203.0.113.5");
+    assertThat(audit.getValue().userAgent()).isEqualTo("Browser/1.0");
 
     ArgumentCaptor<VenueReservationCancellationEmailRequestedEvent> event =
         ArgumentCaptor.forClass(VenueReservationCancellationEmailRequestedEvent.class);
@@ -87,6 +99,11 @@ class VenueReservationCancellationServiceTests {
     assertThat(event.getValue().customerLocale()).isEqualTo("es");
     assertThat(event.getValue().cancellationReason())
         .isEqualTo("Cierre operativo imprevisto.");
+
+    var ordered = inOrder(reservationDao, auditLogService, eventPublisher);
+    ordered.verify(reservationDao).saveAndFlush(reservation);
+    ordered.verify(auditLogService).record(audit.getValue());
+    ordered.verify(eventPublisher).publishEvent(event.getValue());
   }
 
   @Test
@@ -134,6 +151,21 @@ class VenueReservationCancellationServiceTests {
                     new VenueReservationCancellationRequest("Motivo"),
                     null))
         .isInstanceOf(VenueReservationCancellationNotFoundException.class);
+  }
+
+  @Test
+  void cancellationAndAuditShareTheTransactionalBoundary() throws NoSuchMethodException {
+    Transactional transactional =
+        VenueReservationCancellationServiceImpl.class
+            .getMethod(
+                "cancel",
+                UUID.class,
+                UUID.class,
+                VenueReservationCancellationRequest.class,
+                VenueReservationCancellationAuditContext.class)
+            .getAnnotation(Transactional.class);
+
+    assertThat(transactional).isNotNull();
   }
 
   private ReservationEntity reservation() {

@@ -146,6 +146,7 @@ class ReservationConfirmationServiceTests {
 
     assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ReservationConfirmationInvalidException.class);
+    verify(penaltyService, never()).requireBookingAllowed(any());
     verify(timeSlotDao, never()).findByIdForUpdate(any());
   }
 
@@ -161,6 +162,7 @@ class ReservationConfirmationServiceTests {
     assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ReservationHoldExpiredException.class);
 
+    verify(penaltyService, never()).requireBookingAllowed(any());
     verify(timeSlotDao, never()).findByIdForUpdate(any());
     verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
     verify(eventPublisher, never()).publishEvent(any());
@@ -178,6 +180,7 @@ class ReservationConfirmationServiceTests {
     assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ReservationHoldExpiredException.class);
 
+    verify(penaltyService, never()).requireBookingAllowed(any());
     verify(timeSlotDao, never()).findByIdForUpdate(any());
     verify(reservationDao, never()).sumOccupiedCapacityExcluding(any(), any(), any());
     verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
@@ -230,10 +233,28 @@ class ReservationConfirmationServiceTests {
     assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ActiveBookingRestrictionException.class);
 
+    assertThat(reservation.getStatus()).isEqualTo("hold");
+    assertThat(reservation.getHoldTokenHash()).isEqualTo(TOKEN_HASH);
+    assertThat(reservation.getCustomerEmail()).isNull();
+    verify(penaltyService).requireBookingAllowed("maria@example.com");
     verify(timeSlotDao, never()).findByIdForUpdate(any());
     verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
     verify(reservationDao, never()).save(any());
     verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void rejectsMalformedEmailBeforeReadingHoldOrConsultingGlobalRestriction() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationConfirmRequest invalid =
+        new ReservationConfirmRequest(
+            TOKEN, "María López", "not-an-email", "es", 2, List.of(), true, true);
+
+    assertThatThrownBy(() -> service.confirm(reservationId, invalid))
+        .isInstanceOf(ReservationConfirmationInvalidException.class);
+
+    verify(reservationDao, never()).findByIdForUpdate(any());
+    verify(penaltyService, never()).requireBookingAllowed(any());
   }
 
   private void arrangeValidHold(ReservationEntity reservation) {

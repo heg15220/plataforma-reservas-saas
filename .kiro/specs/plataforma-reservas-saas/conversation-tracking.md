@@ -13,10 +13,58 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-27
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10` y `10.1` a `10.12`.
-- Siguiente tarea pendiente recomendada: `10.13. Crear tests de escalado de penalizaciones`.
-- Observación: el local ya puede cancelar preventivamente con motivo y notificación localizada; la
-  gestión de reglas, asistencia e incidencias dispone de una superficie web responsive y privada.
+  `9.1` a `9.10` y `10.1` a `10.15`.
+- Siguiente tarea pendiente recomendada: `10.16. Crear traducciones ES/EN para incidencias,
+  penalizaciones, advertencias y mensajes de restricción`.
+- Observación: el escalado, el bloqueo de confirmación y la auditoría crítica disponen ya de
+  cobertura específica de fronteras, privacidad, orden y ausencia de efectos laterales.
+
+## Conversación 112 - Cobertura de escalado, bloqueo y auditoría crítica
+
+- Fecha: 2026-07-27.
+- Resumen de la conversación:
+  - Se completaron `10.13`, `10.14` y `10.15` en
+    `phase/10-assistance-incidents-penalties`.
+  - La cobertura del servicio de penalizaciones comprueba los contadores 1, 2, 3, 4 y 5 contra
+    periodos de 7, 14, 21, 60 y 60 días, respectivamente.
+  - Se añadieron casos para expirar una penalización activa exactamente en su frontera, reiniciar
+    el contador desde el último tramo completo de 60 días e ignorar fronteras anteriores a la
+    ventana operativa de 12 meses.
+  - La confirmación verifica que un email penalizado se normaliza y se bloquea después de acreditar
+    el hold, pero antes de bloquear la franja, validar formularios, persistir o publicar correos.
+  - Los tests de auditoría exigen snapshots con claves cerradas, metadatos del actor y orden de
+    escritura para reporte y cancelación, además de confirmar la frontera transaccional.
+- Archivos modificados:
+  - `PenaltyServiceTests`.
+  - `ReservationConfirmationServiceTests`.
+  - `NoShowReportServiceTests`.
+  - `VenueReservationCancellationServiceTests`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del commit el cambio previo del usuario en `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-015`, `RF-020`, `RF-021` y `RF-023`.
+  - `RB-001`, `RB-007` y `RB-009`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-008` y `RNF-011`.
+- Tareas impactadas y completadas: `10.13`, `10.14` y `10.15`.
+- Siguiente tarea pendiente recomendada:
+  - `10.16. Crear traducciones ES/EN para incidencias, penalizaciones, advertencias y mensajes de
+    restricción`.
+- Decisiones o aclaraciones relevantes:
+  - El fin de una restricción es exclusivo: `endsAt == now` no bloquea una confirmación nueva.
+  - Solo un tramo completado con contador operativo 4 o superior actúa como frontera de reinicio;
+    una frontera anterior a la conservación de 12 meses se ignora.
+  - Los contadores cero o fuera del rango entero y las incidencias no persistidas/no aplicables
+    fallan antes de crear una penalización.
+  - Un email o token inválido no consulta penalizaciones y, por tanto, no convierte el endpoint de
+    confirmación en un oráculo de restricciones.
+  - La auditoría del reporte se registra tras incidencia y reserva, pero antes de aplicar la
+    penalización. La auditoría de cancelación se registra tras guardar la reserva y antes de
+    publicar el evento de correo.
+  - Evidencia focalizada: 39 tests correctos, 0 fallos, 0 errores y 0 omitidos, repartidos en
+    bloques de 18, 13 y 8. Spotless se aplicó solo a cuatro tests Java.
+  - La primera invocación Maven conjunta superó el límite durante compilación incremental. Se
+    concedió una ventana adicional de diez segundos, se detuvo el proceso y se reutilizaron las
+    clases compiladas con `surefire:test`; no se ejecutó la suite global ni módulos frontend.
 
 ## Conversación 111 - Cancelación preventiva y operación responsive de incidencias
 

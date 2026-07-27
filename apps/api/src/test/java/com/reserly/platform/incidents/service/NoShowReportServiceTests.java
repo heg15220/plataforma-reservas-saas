@@ -3,6 +3,7 @@ package com.reserly.platform.incidents.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -91,14 +92,24 @@ class NoShowReportServiceTests {
     assertThat(audit.entityType()).isEqualTo("no_show_incident");
     assertThat(audit.entityId()).isEqualTo(incident.getId());
     assertThat(audit.action()).isEqualTo("report_no_show");
-    assertThat(audit.beforeJson()).containsEntry("reservationStatus", "no_show");
+    assertThat(audit.beforeJson())
+        .containsOnlyKeys("reservationStatus")
+        .containsEntry("reservationStatus", "no_show");
     assertThat(audit.afterJson())
+        .containsOnlyKeys("reservationStatus", "incidentStatus", "incidentType")
         .containsEntry("reservationStatus", "reported")
-        .containsEntry("incidentStatus", "reported");
+        .containsEntry("incidentStatus", "reported")
+        .containsEntry("incidentType", "no_show");
     assertThat(audit.beforeJson()).doesNotContainKeys("email", "notes");
     assertThat(audit.afterJson()).doesNotContainKeys("email", "notes");
     assertThat(audit.ipAddress()).isEqualTo("203.0.113.10");
-    verify(penaltyService).applyFor(incident);
+    assertThat(audit.userAgent()).isEqualTo("Browser/1.0");
+
+    var ordered = inOrder(incidentDao, reservationDao, auditLogService, penaltyService);
+    ordered.verify(incidentDao).saveAndFlush(incident);
+    ordered.verify(reservationDao).saveAndFlush(reservation);
+    ordered.verify(auditLogService).record(audit);
+    ordered.verify(penaltyService).applyFor(incident);
   }
 
   @Test

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
@@ -20,6 +21,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /** Verifica cálculo, reinicio, actualización y exclusión durante la confirmación. */
 class PenaltyServiceTests {
@@ -63,6 +66,25 @@ class PenaltyServiceTests {
     ordered.verify(incidentDao).countOperationalNoShows("user@example.com", retentionCutoff);
   }
 
+  @ParameterizedTest(name = "{0} incidencias aplican {1} días")
+  @CsvSource({"1, 7", "2, 14", "3, 21", "4, 60", "5, 60"})
+  void persistsEveryEscalationTierFromTheOperationalCounter(long count, long expectedDays) {
+    NoShowIncidentEntity incident = incident();
+    Instant retentionCutoff = NOW.atZone(ZONE).minusMonths(12).toInstant();
+    when(penaltyDao.findActiveGlobalForUpdate("user@example.com")).thenReturn(Optional.empty());
+    when(penaltyDao.findLatestCompletedResetBoundary("user@example.com", NOW))
+        .thenReturn(Optional.empty());
+    when(incidentDao.countOperationalNoShows("user@example.com", retentionCutoff))
+        .thenReturn(count);
+
+    PenaltyEntity penalty = service.applyFor(incident);
+
+    assertThat(penalty.getIncidentCountOperational()).isEqualTo(Math.toIntExact(count));
+    assertThat(penalty.getStartsAt()).isEqualTo(NOW);
+    assertThat(penalty.getEndsAt()).isEqualTo(NOW.plusSeconds(expectedDays * 86_400L));
+    assertThat(penalty.getStatus()).isEqualTo("active");
+  }
+
   @Test
   void resetsCounterAtCompletedSixtyDayBoundary() {
     NoShowIncidentEntity incident = incident();
@@ -77,6 +99,48 @@ class PenaltyServiceTests {
     assertThat(penalty.getIncidentCountOperational()).isEqualTo(1);
     assertThat(penalty.getEndsAt()).isEqualTo(NOW.plusSeconds(7 * 86_400L));
     verify(incidentDao).countOperationalNoShows("user@example.com", resetBoundary);
+  }
+
+  @Test
+  void expiresCompletedActiveTierAndCountsOnlyAfterItsSixtyDayBoundary() {
+    NoShowIncidentEntity incident = incident();
+    Instant completedBoundary = NOW;
+    PenaltyEntity completed = new PenaltyEntity();
+    completed.setIncidentCountOperational(4);
+    completed.setStatus("active");
+    completed.setEndsAt(completedBoundary);
+    completed.setCreatedAt(NOW.minusSeconds(60L * 86_400L));
+    when(penaltyDao.findActiveGlobalForUpdate("user@example.com"))
+        .thenReturn(Optional.of(completed));
+    when(penaltyDao.findLatestCompletedResetBoundary("user@example.com", NOW))
+        .thenReturn(Optional.of(completedBoundary));
+    when(incidentDao.countOperationalNoShows("user@example.com", completedBoundary))
+        .thenReturn(1L);
+
+    PenaltyEntity next = service.applyFor(incident);
+
+    assertThat(completed.getStatus()).isEqualTo("expired");
+    assertThat(completed.getUpdatedAt()).isEqualTo(NOW);
+    assertThat(next).isNotSameAs(completed);
+    assertThat(next.getIncidentCountOperational()).isEqualTo(1);
+    assertThat(next.getEndsAt()).isEqualTo(NOW.plusSeconds(7L * 86_400L));
+    verify(penaltyDao).saveAndFlush(completed);
+    verify(incidentDao).countOperationalNoShows("user@example.com", completedBoundary);
+  }
+
+  @Test
+  void ignoresResetBoundaryOutsideRetentionAndRejectsInvalidOperationalCounts() {
+    NoShowIncidentEntity incident = incident();
+    Instant retentionCutoff = NOW.atZone(ZONE).minusMonths(12).toInstant();
+    when(penaltyDao.findActiveGlobalForUpdate("user@example.com")).thenReturn(Optional.empty());
+    when(penaltyDao.findLatestCompletedResetBoundary("user@example.com", NOW))
+        .thenReturn(Optional.of(retentionCutoff.minusSeconds(1)));
+    when(incidentDao.countOperationalNoShows("user@example.com", retentionCutoff)).thenReturn(0L);
+
+    assertThatThrownBy(() -> service.applyFor(incident))
+        .isInstanceOf(IllegalStateException.class);
+
+    verify(incidentDao).countOperationalNoShows("user@example.com", retentionCutoff);
   }
 
   @Test
@@ -110,6 +174,31 @@ class PenaltyServiceTests {
             exception ->
                 assertThat(exception.getRestrictedUntil()).isEqualTo(LocalDate.of(2026, 7, 31)));
     verify(penaltyDao).lockGlobalIdentity("user@example.com");
+  }
+
+  @Test
+  void allowsBookingAtTheExclusiveEndBoundaryAndRejectsMissingIdentityBeforeLocking() {
+    when(penaltyDao.findActiveGlobal("user@example.com", NOW)).thenReturn(Optional.empty());
+
+    service.requireBookingAllowed(" User@Example.COM ");
+
+    verify(penaltyDao).lockGlobalIdentity("user@example.com");
+    verify(penaltyDao).findActiveGlobal("user@example.com", NOW);
+
+    assertThatThrownBy(() -> service.requireBookingAllowed(" "))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void rejectsNonPersistedOrNonNoShowIncidentsWithoutPersistenceAccess() {
+    NoShowIncidentEntity incident = incident();
+    incident.setStatus("dismissed");
+
+    assertThatThrownBy(() -> service.applyFor(incident))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    verifyNoInteractions(penaltyDao);
+    verifyNoInteractions(incidentDao);
   }
 
   private NoShowIncidentEntity incident() {
