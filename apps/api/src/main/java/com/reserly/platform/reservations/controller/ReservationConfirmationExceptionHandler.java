@@ -1,6 +1,8 @@
 package com.reserly.platform.reservations.controller;
 
+import com.reserly.platform.incidents.service.ActiveBookingRestrictionException;
 import com.reserly.platform.reservations.dto.ReservationErrorResponse;
+import com.reserly.platform.reservations.dto.ReservationRestrictionErrorResponse;
 import com.reserly.platform.reservations.service.ReservationCapacityUnavailableException;
 import com.reserly.platform.reservations.service.ReservationConfirmationInvalidException;
 import com.reserly.platform.reservations.service.ReservationFormAnswersInvalidException;
@@ -44,5 +46,15 @@ public class ReservationConfirmationExceptionHandler {
   public ResponseEntity<ReservationErrorResponse> handleUnavailableCapacity() {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(new ReservationErrorResponse("RESERVATION_CAPACITY_UNAVAILABLE"));
+  }
+
+  /** Informa solo del límite temporal necesario para que el usuario pueda reintentar. */
+  @ExceptionHandler(ActiveBookingRestrictionException.class)
+  public ResponseEntity<ReservationRestrictionErrorResponse> handleActiveRestriction(
+      ActiveBookingRestrictionException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            new ReservationRestrictionErrorResponse(
+                "ACTIVE_BOOKING_RESTRICTION", exception.getRestrictedUntil()));
   }
 }

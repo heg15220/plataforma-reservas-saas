@@ -201,9 +201,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 10.4. Implementar job para marcar asistida por defecto tras periodo configurado.
 - [x] 10.5. Implementar reporte de no asistencia con confirmación.
 - [x] 10.6. Implementar auditoría del reporte.
-- [ ] 10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días.
-- [ ] 10.8. Implementar validación de penalización activa durante confirmación de reserva.
-- [ ] 10.9. Implementar historial profesional de incidencias por email.
+- [x] 10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días.
+- [x] 10.8. Implementar validación de penalización activa durante confirmación de reserva.
+- [x] 10.9. Implementar historial profesional de incidencias por email.
 - [ ] 10.10. Implementar cancelación preventiva por local con motivo.
 - [ ] 10.11. Crear sección "Incidencias y reglas de reserva".
 - [ ] 10.12. Crear vista móvil de asistencia e incidencias.

@@ -15,6 +15,8 @@ import com.reserly.platform.forms.service.ReservationFormResponseInvalidExceptio
 import com.reserly.platform.forms.service.ReservationFormResponseViolation;
 import com.reserly.platform.identity.persistence.UserEntity;
 import com.reserly.platform.identity.service.OneTimeTokenService;
+import com.reserly.platform.incidents.service.ActiveBookingRestrictionException;
+import com.reserly.platform.incidents.service.PenaltyService;
 import com.reserly.platform.reservations.dto.ReservationConfirmFormResponse;
 import com.reserly.platform.reservations.dto.ReservationConfirmRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
@@ -54,6 +56,7 @@ class ReservationConfirmationServiceTests {
   @Mock private ReservationFormConfirmationService formConfirmationService;
   @Mock private ReservationManagementTokenPolicy managementTokenPolicy;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private PenaltyService penaltyService;
   private ReservationConfirmationServiceImpl service;
 
   @BeforeEach
@@ -67,6 +70,7 @@ class ReservationConfirmationServiceTests {
             formConfirmationService,
             managementTokenPolicy,
             eventPublisher,
+            penaltyService,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -110,6 +114,7 @@ class ReservationConfirmationServiceTests {
         .singleElement()
         .extracting(ReservationConfirmationEmailAnswer::valueJson)
         .isEqualTo("\"Sin gluten\"");
+    verify(penaltyService).requireBookingAllowed("maria@example.com");
   }
 
   @Test
@@ -208,6 +213,26 @@ class ReservationConfirmationServiceTests {
     assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
         .isInstanceOf(ReservationCapacityUnavailableException.class);
     verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
+  }
+
+  @Test
+  void rejectsActivePenaltyAfterAuthenticatingHoldAndBeforeLockingSlot() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationEntity reservation = reservation(reservationId);
+    when(reservationDao.findByIdForUpdate(reservationId)).thenReturn(Optional.of(reservation));
+    when(tokenService.isValid(TOKEN)).thenReturn(true);
+    when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
+    org.mockito.Mockito.doThrow(new ActiveBookingRestrictionException(LocalDate.of(2026, 8, 1)))
+        .when(penaltyService)
+        .requireBookingAllowed("maria@example.com");
+
+    assertThatThrownBy(() -> service.confirm(reservationId, request(TOKEN, List.of())))
+        .isInstanceOf(ActiveBookingRestrictionException.class);
+
+    verify(timeSlotDao, never()).findByIdForUpdate(any());
+    verify(formConfirmationService, never()).validateAndPersist(any(), any(), any(), any());
+    verify(reservationDao, never()).save(any());
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   private void arrangeValidHold(ReservationEntity reservation) {

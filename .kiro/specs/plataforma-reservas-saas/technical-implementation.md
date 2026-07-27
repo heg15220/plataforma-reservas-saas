@@ -8,8 +8,10 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
-  `3.1` a `3.14`, `4.1` a `4.14` y `5.1` a `5.8`.
-- Siguiente tarea pendiente recomendada: `5.9. Implementar asignación automática simple por primera disponibilidad`.
+  `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
+  `8.14`, `9.1` a `9.10` y `10.1` a `10.9`.
+- Siguiente tarea pendiente recomendada: `10.10. Implementar cancelación preventiva por local con
+  motivo`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -23275,3 +23277,208 @@ Spotless se aplicó y comprobó solo sobre módulos afectados y dependencias.
 No se aplicó V28 contra PostgreSQL real. La política de retención de logs, acceso administrativo,
 anonimización de IP y auditoría de otras acciones críticas permanecen en fases 14 y 16. La
 siguiente tarea recomendada es 10.7.
+
+## Iteración 10.7 - Cálculo escalonado de penalizaciones
+
+### Identificador, fecha, objetivo y trazabilidad
+
+- Tarea completada: `10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: transformar cada no asistencia reportada en una restricción global coherente,
+  serializable y atómica, respetando conservación y reinicio del contador.
+- Requisitos y diseño relacionados: `RF-020`, `RF-021`, `RB-007`, `RNF-002`, `RNF-003`,
+  `RNF-006`, diseño 5.3 y diseño 6.1–6.3.
+
+### Arquitectura, contratos y archivos
+
+Se añadieron las interfaces `PenaltyCalculationPolicy` y `PenaltyService`, con implementaciones
+separadas. La política pura acepta un contador positivo y devuelve 7, 14, 21 o 60 días para el
+primer, segundo, tercer o sucesivos reportes.
+
+`PenaltyServiceImpl.applyFor` exige una `NoShowIncidentEntity` persistida de tipo `no_show` y
+estado `reported|confirmed`. El servicio normaliza defensivamente el email, captura un instante
+único, adquiere el lock de identidad, resuelve la fila activa y calcula el contador antes de
+persistir con `saveAndFlush`.
+
+Archivos principales creados o modificados:
+
+- `PenaltyCalculationPolicy`, `PenaltyCalculationPolicyImpl`, `PenaltyService` y
+  `PenaltyServiceImpl`;
+- `PenaltyDao`, `PenaltyEntity` y `NoShowIncidentDao`;
+- `NoShowReportServiceImpl`;
+- `PenaltyCalculationPolicyTests`, `PenaltyServiceTests`, `PenaltyDaoTests` y
+  `NoShowReportServiceTests`.
+
+No hubo migración nueva: V27 ya contiene columnas, checks, FKs e índice parcial único necesarios.
+La fila usa `scope=global`, `venueId=null`, `status=active`,
+`reason=operational_no_show_incidents` y enlaza `createdFromIncidentId` con el último reporte que
+determinó el tramo.
+
+### Concurrencia, contador, modelo y reinicio
+
+`PenaltyDao.lockGlobalIdentity` ejecuta un
+`pg_advisory_xact_lock(hashtextextended(email_normalizado, 0))`. El lock transaccional resuelve el
+caso de primera penalización, donde todavía no existe fila para un lock JPA. Una posible colisión
+de hash solo serializa emails adicionales y no mezcla datos: las consultas posteriores comparan
+el valor completo. Si ya existe fila activa, `findActiveGlobalForUpdate` añade bloqueo pesimista.
+
+La implementación usa propagación `MANDATORY`: solo puede ejecutarse dentro de una transacción
+exterior. `NoShowReportServiceImpl.report`, ya transaccional, guarda incidencia, cambia la reserva,
+audita y aplica penalización. Un error de cualquiera de esas escrituras revierte todas.
+
+El contador considera únicamente tipo `no_show`, estado `reported|confirmed`, `reportedAt` dentro
+de los últimos 12 meses de calendario según el `Clock` de negocio y una frontera posterior si
+existe un bloqueo completado con `incidentCountOperational >= 4`.
+
+Al detectar una fila `active` cuyo `endsAt <= now`, se cambia a `expired`. Si era un tramo de 60
+días, su final se convierte en frontera de reinicio. El histórico no se borra; deja de participar
+en decisiones nuevas. Una penalización aún vigente se recalcula sobre la misma fila desde el
+último reporte, actualizando contador, periodo e incidencia origen sin violar el índice de una
+activa global por email.
+
+### Seguridad, errores, observabilidad, tests y límites
+
+El servicio no registra email, contador ni ID de incidencia en logs. La razón es un código interno,
+no texto acusatorio. El reporte conserva la auditoría minimizada de 10.6; la auditoría específica
+de aplicación o modificación de penalizaciones permanece en 16.11.
+
+`PenaltyCalculationPolicyTests` cubre las cuatro fronteras y contadores no positivos.
+`PenaltyServiceTests` cubre primera alta, actualización al cuarto tramo, reinicio tras 60 días,
+normalización y fecha local. `PenaltyDaoTests` inspecciona los dos locks y la consulta de reinicio.
+`NoShowReportServiceTests` verifica que la penalización solo se invoca tras el reporte válido.
+
+Estos tests formaron parte del bloque focalizado de incidencias de 16 tests correctos. No se aplicó
+V27 ni el lock asesor contra PostgreSQL real. No se implementó todavía el job de cierre periódico:
+las filas vencidas se cierran al siguiente reporte, mientras `endsAt > now` impide que bloqueen.
+La anonimización física sigue pendiente de 16.10 y la cobertura ampliada de escalado de 10.13.
+
+## Iteración 10.8 - Validación de penalización en confirmación
+
+### Identificador, fecha, objetivo y trazabilidad
+
+- Tarea completada: `10.8. Implementar validación de penalización activa durante confirmación de
+  reserva`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: impedir la transición de un hold a reserva confirmada cuando el email
+  normalizado tiene una restricción global vigente, sin filtrar historial ni permitir carreras con
+  el reporte.
+- Requisitos y diseño relacionados: `RF-015`, `RF-021`, `RB-001`, `RB-007`, `RNF-001`,
+  `RNF-003`, diseño 5.3 paso 5 y contrato 8.3.
+
+### Flujo transaccional, validaciones y concurrencia
+
+`ReservationConfirmationServiceImpl` depende de `PenaltyService` y del `Clock` de negocio
+inyectado. Se eliminó el constructor productivo que creaba un `Clock.systemUTC()` interno, por lo
+que confirmación, penalización y fecha pública usan la misma zona configurada.
+
+El orden efectivo es:
+
+1. validar estructura del request;
+2. bloquear la reserva;
+3. acreditar estado, token y tamaño de grupo;
+4. validar vigencia del hold;
+5. normalizar email con `strip`, `Locale.ROOT` y minúsculas;
+6. adquirir el mismo lock asesor del reporte y consultar `status=active`, `endsAt > now`;
+7. si está permitido, bloquear franja, recalcular capacidad, validar formulario y confirmar.
+
+La comprobación ocurre después de acreditar el secreto del hold para evitar usar reservas ajenas
+como oráculo. Ocurre antes del lock de franja y de persistir respuestas para reducir contención y
+efectos reversibles. El lock por email serializa confirmación y reporte concurrentes.
+
+### Contrato, privacidad, i18n y archivos
+
+`ActiveBookingRestrictionException` transporta solo la fecha local de fin. El handler devuelve:
+
+```json
+{
+  "error": "ACTIVE_BOOKING_RESTRICTION",
+  "restrictedUntil": "2026-08-01"
+}
+```
+
+La respuesta HTTP es 409 y no contiene email, contador, incidencias, local, actor, motivo o
+timestamps internos. El código estable permite localizar el mensaje en la UI; los catálogos ES/EN
+y la advertencia completa siguen en 10.16.
+
+Se modificaron `ReservationConfirmationServiceImpl` y
+`ReservationConfirmationExceptionHandler`; se crearon
+`ActiveBookingRestrictionException` y `ReservationRestrictionErrorResponse`. Los tests de servicio
+y handler verifican normalización, rechazo antes de franja/formulario/escrituras y contenido
+mínimo del 409. Los ocho tests existentes de confirmación siguieron correctos.
+
+El bloque dependiente ejecutó 23 tests correctos entre confirmación, handler, detalle y consultas.
+La tarea 10.14 permanece pendiente para cobertura ampliada, integración real y concurrencia contra
+PostgreSQL.
+
+## Iteración 10.9 - Historial profesional de incidencias por email
+
+### Identificador, fecha, objetivo y trazabilidad
+
+- Tarea completada: `10.9. Implementar historial profesional de incidencias por email`.
+- Fecha: 2026-07-27.
+- Objetivo técnico: ofrecer una consulta privada, paginada y minimizada del historial operativo por
+  identidad, sin aceptar búsquedas HTTP arbitrarias por email.
+- Requisitos y diseño relacionados: `RF-018`, `RF-020`, `RF-021`, `RNF-002`, `RNF-004`,
+  `RNF-007`, diseño 6.3 y endpoint de diseño 7.2.
+
+### Endpoint, autorización y contrato
+
+Se implementó:
+
+```http
+GET /api/venue/me/incident-history?reservationId={uuid}&page=0&size=25
+```
+
+`IncidentHistoryController` separa contrato de implementación. La ruta hereda
+`ROLE_VENUE_OWNER`. El actor procede de `AuthenticatedAccount`; el servicio consulta
+`ReservationDao.findOwnedDetail(ownerId, reservationId)` y deriva el email exclusivamente de esa
+reserva confirmada. Reserva inexistente o ajena produce el mismo 404
+`VENUE_RESERVATION_NOT_FOUND`.
+
+No existe parámetro email. La paginación admite páginas 0..100000 y tamaños 1..50; fuera de rango
+devuelve 400 `INCIDENT_HISTORY_INVALID`. `IncidentHistoryResponse` devuelve metadatos de página y
+los items contienen solo `incidentType`, `reportedAt` y `status`. Se omiten ID, email, local,
+reserva, actor y notas. `IncidentHistoryConverter` evita exponer la entidad JPA.
+
+### Persistencia, conservación, flujo y archivos
+
+`NoShowIncidentDao.findOperationalHistory` pagina y ordena por `reportedAt DESC, id DESC`, con
+`countQuery` equivalente. Solo muestra estados `reported|confirmed` y fechas posteriores a la
+frontera de 12 meses calculada por `Clock`; `dismissed` y registros antiguos quedan fuera.
+
+La misma frontera se añadió a las consultas consumidas por `VenueReservationServiceImpl`. Así el
+historial embebido en el detalle de 9.6 y el endpoint nuevo no divergen ni mantienen visible
+información fuera de conservación.
+
+Se crearon servicio, controlador, conversor, DTOs, dos excepciones y sus tests. También se
+modificaron `NoShowIncidentDao`, `IncidentExceptionHandler`, `VenueReservationServiceImpl`,
+`VenueReservationServiceTests` y `VenueReservationDaoTests`.
+
+### Verificación, evidencia, riesgos y deuda
+
+Los tests verifican derivación desde reserva propia, opacidad de reservas ajenas, límite de página,
+frontera de 12 meses, filtros de estado y proyección de tres campos. Los flujos dependientes del
+detalle se ejecutaron de nuevo.
+
+```text
+Bloque incidencias/penalizaciones:
+Tests run: 16, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS (18,816 s)
+
+Bloque confirmación/detalle:
+Tests run: 23, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS (20,446 s)
+
+Spotless focalizado: 33 archivos Java
+spotless:apply -> BUILD SUCCESS
+spotless:check -> BUILD SUCCESS
+```
+
+Compilaron 613 fuentes principales. Una ejecución conjunta superó el límite externo después de
+generar los 39 reportes correctos; sus procesos se detuvieron y la selección se repitió en los dos
+bloques anteriores con salida limpia. No se ejecutaron suite global, frontend, Docker,
+PostgreSQL, Flyway real, Testcontainers ni pruebas visuales.
+
+La eliminación o anonimización física al vencer conservación sigue pendiente de 16.10. El endpoint
+no permite consultar por email libre; una búsqueda directa futura requerirá permiso específico,
+justificación de finalidad, rate limiting y auditoría.

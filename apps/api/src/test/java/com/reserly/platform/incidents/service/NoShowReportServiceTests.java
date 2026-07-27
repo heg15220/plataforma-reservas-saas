@@ -35,11 +35,13 @@ class NoShowReportServiceTests {
   private final ReservationDao reservationDao = mock(ReservationDao.class);
   private final NoShowIncidentDao incidentDao = mock(NoShowIncidentDao.class);
   private final AuditLogService auditLogService = mock(AuditLogService.class);
+  private final PenaltyService penaltyService = mock(PenaltyService.class);
   private final NoShowReportService service =
       new NoShowReportServiceImpl(
           reservationDao,
           incidentDao,
           auditLogService,
+          penaltyService,
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   @BeforeEach
@@ -96,6 +98,7 @@ class NoShowReportServiceTests {
     assertThat(audit.beforeJson()).doesNotContainKeys("email", "notes");
     assertThat(audit.afterJson()).doesNotContainKeys("email", "notes");
     assertThat(audit.ipAddress()).isEqualTo("203.0.113.10");
+    verify(penaltyService).applyFor(incident);
   }
 
   @Test
@@ -111,6 +114,7 @@ class NoShowReportServiceTests {
 
     verifyNoInteractions(reservationDao);
     verifyNoInteractions(auditLogService);
+    verifyNoInteractions(penaltyService);
   }
 
   @Test
@@ -124,15 +128,13 @@ class NoShowReportServiceTests {
     assertThatThrownBy(
             () ->
                 service.report(
-                    ownerId,
-                    reservation.getId(),
-                    new NoShowReportRequest(true, null),
-                    null))
+                    ownerId, reservation.getId(), new NoShowReportRequest(true, null), null))
         .isInstanceOf(NoShowReportStateException.class);
 
     verify(incidentDao, never()).saveAndFlush(any());
     verify(reservationDao, never()).saveAndFlush(any());
     verifyNoInteractions(auditLogService);
+    verifyNoInteractions(penaltyService);
   }
 
   @Test
@@ -143,12 +145,7 @@ class NoShowReportServiceTests {
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () ->
-                service.report(
-                    ownerId,
-                    reservationId,
-                    new NoShowReportRequest(true, null),
-                    null))
+            () -> service.report(ownerId, reservationId, new NoShowReportRequest(true, null), null))
         .isInstanceOf(NoShowReportNotFoundException.class);
   }
 

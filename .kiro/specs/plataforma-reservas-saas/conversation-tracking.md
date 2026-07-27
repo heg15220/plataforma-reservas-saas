@@ -13,11 +13,61 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-27
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10` y `10.1` a `10.6`.
-- Siguiente tarea pendiente recomendada: `10.7. Implementar cálculo de penalización 7, 14, 21 y
-  60 días`.
-- Observación: el marcado automático respeta decisiones manuales, el reporte exige confirmación
-  explícita y su incidencia, cambio de reserva y auditoría comparten una transacción.
+  `9.1` a `9.10` y `10.1` a `10.9`.
+- Siguiente tarea pendiente recomendada: `10.10. Implementar cancelación preventiva por local con
+  motivo`.
+- Observación: el reporte aplica la penalización global de forma atómica, la confirmación bloquea
+  emails restringidos y el historial privado está paginado, minimizado y limitado a 12 meses.
+
+## Conversación 110 - Escalado, bloqueo de confirmación e historial profesional
+
+- Fecha: 2026-07-27.
+- Resumen de la conversación:
+  - Se completaron `10.7`, `10.8` y `10.9` en
+    `phase/10-assistance-incidents-penalties`.
+  - El reporte auditado calcula el número operativo de no asistencias, crea o recalcula una
+    penalización global de 7, 14, 21 o 60 días y reinicia el contador después de completar un tramo
+    de 60 días.
+  - La confirmación autentica primero el hold y después bloquea la identidad normalizada para
+    impedir que una penalización concurrente se omita.
+  - Se añadió `GET /api/venue/me/incident-history?reservationId=...` con paginación acotada; la
+    reserva propia acredita la consulta y el email nunca entra ni sale por HTTP.
+  - Tanto el endpoint nuevo como el historial incluido en el detalle excluyen incidencias
+    desestimadas o anteriores a la ventana operativa de 12 meses.
+- Archivos modificados:
+  - `PenaltyEntity`, `PenaltyDao`, `NoShowIncidentDao` y servicios de cálculo/restricción.
+  - `NoShowReportServiceImpl` y su test para incorporar la penalización a la transacción existente.
+  - `ReservationConfirmationServiceImpl`, handler, respuesta de restricción y tests dependientes.
+  - Servicio, controlador, conversor, DTOs y errores del historial profesional.
+  - `VenueReservationServiceImpl` y tests/consultas del detalle para aplicar conservación.
+  - Tests focalizados de política, servicio, DAO, conversor, confirmación y detalle.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del alcance `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-015`, `RF-018`, `RF-020` y `RF-021`.
+  - `RB-001` y `RB-007`.
+  - `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-006`, `RNF-007`, `RNF-008` y `RNF-011`.
+- Tareas impactadas y completadas: `10.7`, `10.8` y `10.9`.
+- Siguiente tarea pendiente recomendada:
+  - `10.10. Implementar cancelación preventiva por local con motivo`.
+- Decisiones o aclaraciones relevantes:
+  - La coordinación por email usa `pg_advisory_xact_lock(hashtextextended(...))`; el hash solo
+    selecciona el lock y las consultas de negocio siguen comparando el email completo.
+  - Una penalización activa se recalcula desde el instante del último reporte. Una fila activa cuyo
+    fin ya pasó se marca `expired` antes de crear el siguiente tramo.
+  - El contador incluye únicamente incidencias `no_show` en estado `reported` o `confirmed` dentro
+    de 12 meses y desde el último bloqueo completado con contador 4 o superior.
+  - El error público es `409 ACTIVE_BOOKING_RESTRICTION` y devuelve solo `restrictedUntil`; contador,
+    incidencias, locales, actores y motivo interno no se exponen.
+  - El historial independiente requiere `reservationId` propio. Devuelve únicamente tipo, fecha y
+    estado, con páginas de 1 a 50 elementos y orden descendente estable.
+  - Evidencia focalizada final: 39 tests, 0 fallos, 0 errores y 0 omitidos, divididos en bloques de
+    16 y 23 para mantenerse bajo límites cortos. Compilaron 613 fuentes principales.
+  - Spotless se aplicó y comprobó con una lista explícita de 33 Java afectados. Una primera
+    resolución incorrecta del filtro reformateó 70 archivos adicionales; se identificaron y
+    revirtieron inmediatamente porque al inicio no tenían cambios del usuario.
+  - No se ejecutaron suite global, frontend, Docker, Testcontainers, PostgreSQL real, Flyway real
+    ni pruebas visuales.
 
 ## Conversación 109 - Asistencia automática y reporte auditado de no asistencia
 

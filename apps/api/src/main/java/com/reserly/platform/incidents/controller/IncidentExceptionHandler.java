@@ -4,6 +4,8 @@ import com.reserly.platform.incidents.dto.IncidentErrorResponse;
 import com.reserly.platform.incidents.service.AttendanceInvalidException;
 import com.reserly.platform.incidents.service.AttendanceNotFoundException;
 import com.reserly.platform.incidents.service.AttendanceTooEarlyException;
+import com.reserly.platform.incidents.service.IncidentHistoryInvalidException;
+import com.reserly.platform.incidents.service.IncidentHistoryNotFoundException;
 import com.reserly.platform.incidents.service.NoShowReportInvalidException;
 import com.reserly.platform.incidents.service.NoShowReportNotFoundException;
 import com.reserly.platform.incidents.service.NoShowReportStateException;
@@ -20,7 +22,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
     assignableTypes = {
       VenueBookingRuleControllerImpl.class,
       AttendanceControllerImpl.class,
-      NoShowReportControllerImpl.class
+      NoShowReportControllerImpl.class,
+      IncidentHistoryControllerImpl.class
     })
 public class IncidentExceptionHandler {
 
@@ -76,5 +79,17 @@ public class IncidentExceptionHandler {
   ResponseEntity<IncidentErrorResponse> reportStateInvalid() {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(new IncidentErrorResponse("NO_SHOW_REPORT_REQUIRES_NO_SHOW"));
+  }
+
+  @ExceptionHandler(IncidentHistoryNotFoundException.class)
+  ResponseEntity<IncidentErrorResponse> historyNotFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(new IncidentErrorResponse("VENUE_RESERVATION_NOT_FOUND"));
+  }
+
+  @ExceptionHandler(IncidentHistoryInvalidException.class)
+  ResponseEntity<IncidentErrorResponse> historyInvalid() {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new IncidentErrorResponse("INCIDENT_HISTORY_INVALID"));
   }
 }

@@ -6,6 +6,7 @@ import com.reserly.platform.forms.dto.ValidatedReservationFormAnswer;
 import com.reserly.platform.forms.service.ReservationFormConfirmationService;
 import com.reserly.platform.forms.service.ReservationFormResponseInvalidException;
 import com.reserly.platform.identity.service.OneTimeTokenService;
+import com.reserly.platform.incidents.service.PenaltyService;
 import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.reservations.dto.ReservationConfirmRequest;
 import com.reserly.platform.reservations.dto.ReservationConfirmResponse;
@@ -20,7 +21,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,9 +38,9 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
   private final ReservationFormConfirmationService formConfirmationService;
   private final ReservationManagementTokenPolicy managementTokenPolicy;
   private final ApplicationEventPublisher eventPublisher;
+  private final PenaltyService penaltyService;
   private final Clock clock;
 
-  @Autowired
   public ReservationConfirmationServiceImpl(
       ReservationDao reservationDao,
       ReservationTimeSlotDao timeSlotDao,
@@ -48,26 +48,8 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
       ReservationHoldExpirationPolicy expirationPolicy,
       ReservationFormConfirmationService formConfirmationService,
       ReservationManagementTokenPolicy managementTokenPolicy,
-      ApplicationEventPublisher eventPublisher) {
-    this(
-        reservationDao,
-        timeSlotDao,
-        tokenService,
-        expirationPolicy,
-        formConfirmationService,
-        managementTokenPolicy,
-        eventPublisher,
-        Clock.systemUTC());
-  }
-
-  ReservationConfirmationServiceImpl(
-      ReservationDao reservationDao,
-      ReservationTimeSlotDao timeSlotDao,
-      OneTimeTokenService tokenService,
-      ReservationHoldExpirationPolicy expirationPolicy,
-      ReservationFormConfirmationService formConfirmationService,
-      ReservationManagementTokenPolicy managementTokenPolicy,
       ApplicationEventPublisher eventPublisher,
+      PenaltyService penaltyService,
       Clock clock) {
     this.reservationDao = reservationDao;
     this.timeSlotDao = timeSlotDao;
@@ -76,6 +58,7 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     this.formConfirmationService = formConfirmationService;
     this.managementTokenPolicy = managementTokenPolicy;
     this.eventPublisher = eventPublisher;
+    this.penaltyService = penaltyService;
     this.clock = clock;
   }
 
@@ -101,6 +84,8 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
         || !expirationPolicy.isActive(reservation.getHoldExpiresAt(), now)) {
       throw new ReservationHoldExpiredException();
     }
+    String customerEmailNormalized = request.customerEmail().strip().toLowerCase(Locale.ROOT);
+    penaltyService.requireBookingAllowed(customerEmailNormalized);
     TimeSlotEntity slot =
         timeSlotDao
             .findByIdForUpdate(reservation.getTimeSlot().getId())
@@ -134,7 +119,7 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     String customerEmail = request.customerEmail().strip();
     reservation.setCustomerName(customerName);
     reservation.setCustomerEmail(customerEmail);
-    reservation.setCustomerEmailNormalized(customerEmail.toLowerCase(Locale.ROOT));
+    reservation.setCustomerEmailNormalized(customerEmailNormalized);
     reservation.setStatus("confirmed");
     reservation.setHoldExpiresAt(null);
     reservation.setHoldTokenHash(null);

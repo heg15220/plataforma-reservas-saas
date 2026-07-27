@@ -6,6 +6,7 @@ import com.reserly.platform.forms.persistence.ReservationFormResponseDao;
 import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
 import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import java.lang.reflect.Method;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -39,8 +40,7 @@ class VenueReservationDaoTests {
 
   @Test
   void detailQueryCombinesIdentifierAndOwnerWithoutLeakingAnonymousHolds() throws Exception {
-    Method method =
-        ReservationDao.class.getMethod("findOwnedDetail", UUID.class, UUID.class);
+    Method method = ReservationDao.class.getMethod("findOwnedDetail", UUID.class, UUID.class);
     Query query = method.getAnnotation(Query.class);
 
     assertThat(query.value())
@@ -63,7 +63,7 @@ class VenueReservationDaoTests {
     Query incidentQuery =
         NoShowIncidentDao.class
             .getMethod(
-                "findRecentByCustomerEmailNormalized", String.class, Pageable.class)
+                "findRecentByCustomerEmailNormalized", String.class, Instant.class, Pageable.class)
             .getAnnotation(Query.class);
 
     assertThat(formQuery.value())
@@ -75,6 +75,8 @@ class VenueReservationDaoTests {
         .doesNotContain("resource.status <> 'archived'");
     assertThat(incidentQuery.value())
         .contains("incident.customerEmailNormalized = :customerEmailNormalized")
+        .contains("incident.reportedAt >= :cutoff")
+        .contains("incident.status in ('reported', 'confirmed')")
         .contains("incident.reportedAt desc, incident.id desc");
   }
 

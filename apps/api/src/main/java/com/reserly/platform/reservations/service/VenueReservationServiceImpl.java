@@ -8,11 +8,13 @@ import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import java.time.Clock;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -41,16 +43,19 @@ public class VenueReservationServiceImpl implements VenueReservationService {
   private final ReservationFormResponseDao formResponseDao;
   private final EmployeeResourceDao employeeResourceDao;
   private final NoShowIncidentDao incidentDao;
+  private final Clock clock;
 
   public VenueReservationServiceImpl(
       ReservationDao reservationDao,
       ReservationFormResponseDao formResponseDao,
       EmployeeResourceDao employeeResourceDao,
-      NoShowIncidentDao incidentDao) {
+      NoShowIncidentDao incidentDao,
+      Clock clock) {
     this.reservationDao = reservationDao;
     this.formResponseDao = formResponseDao;
     this.employeeResourceDao = employeeResourceDao;
     this.incidentDao = incidentDao;
+    this.clock = clock;
   }
 
   @Override
@@ -96,10 +101,12 @@ public class VenueReservationServiceImpl implements VenueReservationService {
     EmployeeResourceEntity assignedResource =
         findAssignedResource(ownerUserId, reservation.getEmployeeResourceId());
     String customerEmailNormalized = reservation.getCustomerEmailNormalized();
+    Instant incidentCutoff = clock.instant().atZone(clock.getZone()).minusMonths(12).toInstant();
     List<NoShowIncidentEntity> incidents =
         incidentDao.findRecentByCustomerEmailNormalized(
-            customerEmailNormalized, PageRequest.of(0, MAX_INCIDENT_HISTORY));
-    long incidentTotal = incidentDao.countByCustomerEmailNormalized(customerEmailNormalized);
+            customerEmailNormalized, incidentCutoff, PageRequest.of(0, MAX_INCIDENT_HISTORY));
+    long incidentTotal =
+        incidentDao.countByCustomerEmailNormalized(customerEmailNormalized, incidentCutoff);
     return new VenueReservationDetail(
         reservation, formResponses, assignedResource, incidentTotal, incidents);
   }
@@ -131,8 +138,7 @@ public class VenueReservationServiceImpl implements VenueReservationService {
     return switch (period) {
       case DAY -> new DateRange(anchorDate, anchorDate.plusDays(1));
       case WEEK -> {
-        LocalDate monday =
-            anchorDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate monday = anchorDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         yield new DateRange(monday, monday.plusWeeks(1));
       }
       case MONTH -> {

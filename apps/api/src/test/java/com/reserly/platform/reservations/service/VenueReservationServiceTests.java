@@ -18,8 +18,10 @@ import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +39,9 @@ import org.springframework.data.domain.PageRequest;
 @ExtendWith(MockitoExtension.class)
 class VenueReservationServiceTests {
 
+  private static final Instant NOW = Instant.parse("2026-07-27T18:30:00Z");
+  private static final Instant INCIDENT_CUTOFF = Instant.parse("2025-07-27T18:30:00Z");
+
   @Mock private ReservationDao reservationDao;
   @Mock private ReservationFormResponseDao formResponseDao;
   @Mock private EmployeeResourceDao employeeResourceDao;
@@ -49,7 +54,11 @@ class VenueReservationServiceTests {
   void setUp() {
     service =
         new VenueReservationServiceImpl(
-            reservationDao, formResponseDao, employeeResourceDao, incidentDao);
+            reservationDao,
+            formResponseDao,
+            employeeResourceDao,
+            incidentDao,
+            Clock.fixed(NOW, ZoneOffset.UTC));
     ownerUserId = UUID.randomUUID();
   }
 
@@ -62,8 +71,7 @@ class VenueReservationServiceTests {
             ownerUserId, date, date.plusDays(1), null, null, null, pageable))
         .thenReturn(result);
 
-    assertThat(service.list(ownerUserId, null, date, null, null, null, 0, 25))
-        .isSameAs(result);
+    assertThat(service.list(ownerUserId, null, date, null, null, null, 0, 25)).isSameAs(result);
   }
 
   @Test
@@ -149,26 +157,13 @@ class VenueReservationServiceTests {
 
   @Test
   void rejectsUnboundedOrUnsupportedFilterValuesBeforeQuerying() {
-    assertThatThrownBy(
-            () -> service.list(ownerUserId, "week", null, null, null, null, 0, 25))
+    assertThatThrownBy(() -> service.list(ownerUserId, "week", null, null, null, null, 0, 25))
         .isInstanceOf(VenueReservationFilterInvalidException.class);
-    assertThatThrownBy(
-            () ->
-                service.list(
-                    ownerUserId,
-                    null,
-                    null,
-                    null,
-                    "hold",
-                    null,
-                    0,
-                    25))
+    assertThatThrownBy(() -> service.list(ownerUserId, null, null, null, "hold", null, 0, 25))
         .isInstanceOf(VenueReservationFilterInvalidException.class);
-    assertThatThrownBy(
-            () -> service.list(ownerUserId, null, null, null, null, null, -1, 25))
+    assertThatThrownBy(() -> service.list(ownerUserId, null, null, null, null, null, -1, 25))
         .isInstanceOf(VenueReservationFilterInvalidException.class);
-    assertThatThrownBy(
-            () -> service.list(ownerUserId, null, null, null, null, null, 0, 101))
+    assertThatThrownBy(() -> service.list(ownerUserId, null, null, null, null, null, 0, 101))
         .isInstanceOf(VenueReservationFilterInvalidException.class);
   }
 
@@ -233,9 +228,10 @@ class VenueReservationServiceTests {
     when(employeeResourceDao.findOwnedHistoricalReference(ownerUserId, resourceId))
         .thenReturn(Optional.of(resource));
     when(incidentDao.findRecentByCustomerEmailNormalized(
-            "ana@example.com", PageRequest.of(0, 50)))
+            "ana@example.com", INCIDENT_CUTOFF, PageRequest.of(0, 50)))
         .thenReturn(List.of(incident));
-    when(incidentDao.countByCustomerEmailNormalized("ana@example.com")).thenReturn(4L);
+    when(incidentDao.countByCustomerEmailNormalized("ana@example.com", INCIDENT_CUTOFF))
+        .thenReturn(4L);
 
     VenueReservationDetail detail = service.findDetail(ownerUserId, reservationId);
 
@@ -260,7 +256,7 @@ class VenueReservationServiceTests {
         .thenReturn(Optional.of(reservation));
     when(formResponseDao.findAllByReservationId(reservationId)).thenReturn(List.of());
     when(incidentDao.findRecentByCustomerEmailNormalized(
-            "ana@example.com", PageRequest.of(0, 50)))
+            "ana@example.com", INCIDENT_CUTOFF, PageRequest.of(0, 50)))
         .thenReturn(List.of());
 
     VenueReservationDetail detail = service.findDetail(ownerUserId, reservationId);

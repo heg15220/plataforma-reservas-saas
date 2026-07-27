@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Implementación transaccional del reporte profesional de no asistencia.
  *
- * <p>No calcula penalizaciones: la incidencia queda en {@code reported} para que 10.7 aplique la
- * política global de forma separada y verificable.
+ * <p>La incidencia, la transición de reserva, la auditoría y la penalización global comparten la
+ * misma transacción. Cualquier fallo revierte el reporte completo.
  */
 @Service
 public class NoShowReportServiceImpl implements NoShowReportService {
@@ -29,16 +29,19 @@ public class NoShowReportServiceImpl implements NoShowReportService {
   private final ReservationDao reservationDao;
   private final NoShowIncidentDao incidentDao;
   private final AuditLogService auditLogService;
+  private final PenaltyService penaltyService;
   private final Clock clock;
 
   public NoShowReportServiceImpl(
       ReservationDao reservationDao,
       NoShowIncidentDao incidentDao,
       AuditLogService auditLogService,
+      PenaltyService penaltyService,
       Clock clock) {
     this.reservationDao = reservationDao;
     this.incidentDao = incidentDao;
     this.auditLogService = auditLogService;
+    this.penaltyService = penaltyService;
     this.clock = clock;
   }
 
@@ -97,6 +100,7 @@ public class NoShowReportServiceImpl implements NoShowReportService {
                 "incidentType", INCIDENT_TYPE),
             auditContext == null ? null : auditContext.ipAddress(),
             auditContext == null ? null : auditContext.userAgent()));
+    penaltyService.applyFor(savedIncident);
     return savedIncident;
   }
 

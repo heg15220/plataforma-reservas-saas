@@ -12,8 +12,9 @@ import java.util.UUID;
 /**
  * Restricción temporal derivada de una incidencia confirmada.
  *
- * <p>El email se conserva normalizado para una comparación determinista. La aplicación y el
- * cierre de penalizaciones se incorporan en las tareas 10.7 y 10.8.
+ * <p>El email se conserva normalizado para una comparación determinista. Cada fila representa el
+ * último tramo de restricción calculado para una identidad; el contador operativo y la incidencia
+ * origen se actualizan juntos cuando aparece una nueva no asistencia.
  */
 @Entity
 @Table(name = "\"Penalties\"")
