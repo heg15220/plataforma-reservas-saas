@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("21");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("30");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -47,6 +47,64 @@ class DatabaseMigrationIntegrationTests {
             String.class);
 
     assertThat(extensions).containsExactly("pg_trgm", "postgis", "unaccent");
+  }
+
+  /** Verifica sobre PostgreSQL real el contrato físico introducido por la migración de reseñas. */
+  @Test
+  void createsReviewTableWithReservationUniquenessAndEligibilityIndexes() {
+    List<String> columns =
+        jdbcTemplate.queryForList(
+            """
+            SELECT "column_name"
+            FROM "information_schema"."columns"
+            WHERE "table_schema" = current_schema()
+              AND "table_name" = 'Reviews'
+            ORDER BY "ordinal_position"
+            """,
+            String.class);
+    assertThat(columns)
+        .containsExactly(
+            "id",
+            "venueId",
+            "reservationId",
+            "customerEmailNormalized",
+            "rating",
+            "comment",
+            "createdAt",
+            "updatedAt");
+
+    List<String> constraints =
+        jdbcTemplate.queryForList(
+            """
+            SELECT "conname"
+            FROM "pg_constraint"
+            WHERE "conrelid" = '"Reviews"'::regclass
+            ORDER BY "conname"
+            """,
+            String.class);
+    assertThat(constraints)
+        .contains(
+            "ckReviewsEmailNormalized",
+            "ckReviewsRating",
+            "fkReviewsReservationVenue",
+            "fkReviewsVenue",
+            "uqReviewsReservation");
+
+    List<String> indexes =
+        jdbcTemplate.queryForList(
+            """
+            SELECT "indexname"
+            FROM "pg_indexes"
+            WHERE "schemaname" = current_schema()
+              AND "tablename" = 'Reviews'
+            ORDER BY "indexname"
+            """,
+            String.class);
+    assertThat(indexes)
+        .contains(
+            "ixReviewsVenueCreatedAt",
+            "ixReviewsVenueCustomerEmail",
+            "uqReviewsReservation");
   }
 
   @Test

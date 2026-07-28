@@ -10,13 +10,60 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-27
+- Fecha de última actualización: 2026-07-28
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10` y `10.1` a `10.16`.
-- Siguiente tarea pendiente recomendada: `11.1. Crear migración de reviews`.
-- Observación: la fase 10 queda cerrada con operación, auditoría, penalización, restricción,
-  responsive y todos sus textos visibles disponibles en español e inglés.
+  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.3`.
+- Siguiente tarea pendiente recomendada: `11.4. Calcular valoración media y número de reseñas`.
+- Observación: la fase 11 dispone ya de persistencia y creación verificada por reserva; las
+  consultas, agregación y flujo público por local/email permanecen pendientes.
+
+## Conversación 114 - Persistencia y creación única de reseñas verificadas
+
+- Fecha: 2026-07-28.
+- Resumen de la conversación:
+  - Se completaron `11.1`, `11.2` y `11.3` en `phase/11-ratings`.
+  - La migración `V30__create_reviews.sql` crea `Reviews` con puntuación 1..5, comentario opcional,
+    email canónico, timestamps, relaciones con local/reserva e índices para lecturas posteriores.
+  - La clave foránea compuesta `reservationId/venueId` impide asociar una reseña a un local
+    distinto del reservado y la unicidad de `reservationId` garantiza una sola reseña por visita.
+  - Se añadió `POST /api/public/reservations/{reservationId}/reviews`. La petición exige email,
+    puntuación, consentimiento y comentario opcional; la respuesta no incluye email ni historial.
+  - El servicio bloquea la reserva, normaliza el email, valida coincidencia, estado y finalización
+    en la zona del reloj de negocio antes de escribir.
+- Archivos modificados:
+  - Nueva migración `V30__create_reviews.sql`.
+  - Paquetes `reviews/persistence`, `reviews/dto`, `reviews/service` y `reviews/controller`.
+  - Tests focalizados de servicio, controlador y contrato SQL.
+  - `DatabaseMigrationIntegrationTests.java`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+  - Se preservó fuera del commit el cambio previo del usuario en `apps/web/next-env.d.ts`.
+- Requisitos impactados:
+  - `RF-024 Reseñas y valoraciones`.
+  - `RB-001 Identidad del usuario final`.
+  - `RB-013 Elegibilidad de reseñas por email y local`.
+  - `RNF-001 Seguridad`, `RNF-002 Seguridad y privacidad`, `RNF-003 Concurrencia y consistencia`,
+    `RNF-006 Mantenibilidad`, `RNF-008 Observabilidad` y `RNF-011 Convenciones backend`.
+- Tareas impactadas y completadas:
+  - `11.1. Crear migración de reviews`.
+  - `11.2. Implementar creación de reseña solo con reserva confirmada/finalizada`.
+  - `11.3. Impedir más de una reseña por reserva`.
+- Siguiente tarea pendiente recomendada:
+  - `11.4. Calcular valoración media y número de reseñas`.
+- Decisiones o aclaraciones relevantes:
+  - Los estados elegibles son `confirmed`, `attended`, `no_show` y `reported`, siempre que la hora
+    de fin ya haya llegado; holds, expiradas y canceladas se rechazan.
+  - Reserva inexistente, email ajeno y estado/fecha no elegible devuelven el mismo error
+    `REVIEW_NOT_ELIGIBLE`, evitando usar el endpoint como enumerador de reservas.
+  - El bloqueo pesimista serializa dos solicitudes sobre la misma reserva. La constraint única y
+    la traducción de `DataIntegrityViolationException` a `REVIEW_ALREADY_SUBMITTED` conservan la
+    defensa ante escritores que no atraviesen ese servicio.
+  - La agregación de media/recuento no se adelantó porque corresponde a `11.4`; el flujo que elige
+    la reserva más reciente por local/email corresponde a `11.10`.
+  - Evidencia focalizada: 9 tests correctos, 0 fallos, 0 errores y 0 omitidos; Spotless correcto
+    sobre los archivos del módulo. La prueba PostgreSQL preparada no pudo arrancar porque Docker no
+    está disponible en el entorno; falló antes de Flyway y no se reintentó.
+  - No se ejecutaron suite global, frontend, tests ajenos, servicios externos ni pruebas visuales.
 
 ## Conversación 113 - Internacionalización completa de incidencias y restricciones
 

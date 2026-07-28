@@ -9,8 +9,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10` y `10.1` a `10.16`.
-- Siguiente tarea pendiente recomendada: `11.1. Crear migración de reviews`.
+  `8.14`, `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.3`.
+- Siguiente tarea pendiente recomendada: `11.4. Calcular valoración media y número de reseñas`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -24138,3 +24138,269 @@ alerta; el hold simplemente permanece hasta expirar. La administración visible 
 corresponde a la fase 14. La anonimización y conservación física siguen en 16.10. Las tres
 incidencias históricas de `i18n:check` y la deuda global del validador español deben resolverse en
 una tarea transversal de calidad sin mezclarlas con este cierre funcional.
+
+## Tarea 11.1 - Crear migración de `reviews`
+
+- Fecha: 2026-07-28.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada de forma estructural; prueba PostgreSQL preparada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear la fuente relacional de verdad de las valoraciones y fijar en PostgreSQL las invariantes que
+no deben depender de la futura UI: puntuación válida, email canónico, pertenencia al mismo local y
+una sola reseña por reserva. El esquema debe preparar tanto las lecturas públicas ordenadas como la
+comprobación posterior por local/email, sin desnormalizar todavía la media en `Venues`.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-024`, `RB-001`, `RB-013`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-011`.
+- Diseño: responsabilidades 3.9, modelo `reviews` de la sección 5, endpoints públicos de 7.1,
+  seguridad de 12 y estrategia de datos de 14.
+- Tareas relacionadas: habilita `11.2` a `11.12`; no completa la agregación de `11.4`.
+
+### Archivos afectados
+
+- Creado: `apps/api/src/main/resources/db/migration/V30__create_reviews.sql`.
+- Creados: `ReviewEntity`, `ReviewDao` y documentación de `reviews.persistence`.
+- Creados: `ReviewMigrationTests` y sus `package-info`.
+- Modificado: `DatabaseMigrationIntegrationTests`.
+- Eliminados: ninguno.
+
+### Modelo de datos, índices y restricciones
+
+`Reviews` usa UUID generado por PostgreSQL y contiene `venueId`, `reservationId`,
+`customerEmailNormalized`, `rating`, `comment`, `createdAt` y `updatedAt`. `comment` admite `NULL`
+y tiene límite físico de 2000 caracteres. `rating` es `integer`, coherente con el mapeo JPA, y
+`ckReviewsRating` restringe el dominio a 1..5. `ckReviewsEmailNormalized` exige valor no vacío,
+recortado y en minúsculas. `ckReviewsUpdatedAt` impide una actualización anterior a la creación.
+
+La migración crea `uqReservationsIdVenue` sobre `Reservations(id, venueId)` para que
+`fkReviewsReservationVenue` pueda referenciar la pareja. Esto garantiza físicamente que el
+`venueId` de una reseña sea exactamente el de su reserva; un simple par de claves foráneas
+independientes no habría impedido cruzar una reserva válida con otro local válido.
+`fkReviewsVenue` conserva además la relación directa con el local. Ambas relaciones usan
+`ON DELETE RESTRICT` para no borrar evidencia histórica de manera implícita.
+
+`uqReviewsReservation` impone una reseña por reserva incluso ante procesos concurrentes o
+escritores alternativos. `ixReviewsVenueCreatedAt` prepara listados públicos/privados recientes e
+`ixReviewsVenueCustomerEmail` prepara la futura elegibilidad por local e identidad normalizada.
+No se crea todavía una columna de media o contador: esos valores se calcularán en `11.4`.
+
+### Arquitectura, seguridad y privacidad
+
+`ReviewEntity` mantiene referencias UUID escalares en vez de asociaciones JPA navegables. Así, una
+lectura de reseñas no arrastra accidentalmente el agregado de reserva ni la identidad del cliente.
+Su documentación establece que `customerEmailNormalized` es interno y no puede entrar en
+proyecciones públicas. No se almacenan nombre, email original, token, respuestas del formulario,
+fecha de la reserva ni metadatos de acceso.
+
+La base de datos no decide por sí sola si una reserva ha finalizado porque la interpretación de
+`date/endsAt` usa la zona IANA del reloj de negocio. Esa regla temporal y el estado se validan en el
+servicio transaccional de `11.2`; la migración conserva las invariantes relacionales y de dominio
+que sí son estables en SQL.
+
+### Tests y verificación
+
+`ReviewMigrationTests` carga `V30` como recurso UTF-8 y protege tabla, unicidad, rango, email
+canónico, clave foránea compuesta e índices sin arrancar la aplicación. El test
+`DatabaseMigrationIntegrationTests.createsReviewTableWithReservationUniquenessAndEligibilityIndexes`
+queda preparado para consultar columnas, constraints e índices sobre PostgreSQL/PostGIS real. La
+aserción de versión Flyway se actualizó de un valor histórico desfasado a `30`.
+
+Comandos y resultados:
+
+```text
+mvn -f apps/api/pom.xml
+  -Dtest=ReviewCreationServiceTests,ReviewCreationControllerTests,ReviewMigrationTests
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test
+Resultado: 9 tests correctos, BUILD SUCCESS.
+
+mvn -f apps/api/pom.xml
+  -Dtest=DatabaseMigrationIntegrationTests#createsReviewTableWithReservationUniquenessAndEligibilityIndexes
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test
+Resultado: no ejecutado; ApplicationContext falló antes de Flyway porque no existe un entorno
+Docker válido. No hubo error SQL ni aserción fallida.
+```
+
+### Decisiones, riesgos y deuda
+
+Se eligió integridad compuesta sobre trigger para que la pertenencia local/reserva sea declarativa,
+inspeccionable y estable. El índice único adicional sobre `Reservations` tiene coste mínimo porque
+`id` ya es selectivo y evita lógica procedural. Antes de desplegar, CI o un entorno con Docker debe
+ejecutar el test PostgreSQL preparado y una migración completa desde vacío. La sanitización de
+comentarios antes de cualquier representación enriquecida queda en `16.4`; en esta iteración el
+comentario se trata exclusivamente como texto.
+
+## Tarea 11.2 - Implementar creación de reseña solo con reserva confirmada/finalizada
+
+- Fecha: 2026-07-28.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Permitir la creación pública de una reseña únicamente cuando el solicitante acredita mediante su
+email una reserva propia, no cancelada y ya terminada. La autorización debe repetirse dentro del
+comando de escritura y no confiar en una comprobación de elegibilidad previa ni revelar datos del
+historial del email.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-024`, `RB-001`, `RB-013`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-007`,
+  `RNF-008`, `RNF-011`.
+- Diseño: módulo 3.9, flujo público 6, contratos 7.1 y 8.13, privacidad 12.2 y amenazas 12.5.
+- Tareas relacionadas: usa el esquema de `11.1`, comparte la defensa de `11.3` y deja para
+  `11.10` la selección automática de la reserva más reciente por local/email.
+
+### Archivos, módulos y contratos
+
+- Creados en `reviews.dto`: `ReviewCreateRequest`, `ReviewCreateResponse` y
+  `ReviewErrorResponse`.
+- Creados en `reviews.service`: interfaz e implementación de `ReviewCreationService`, errores
+  `ReviewInvalidException`, `ReviewNotEligibleException` y documentación de paquete.
+- Creados en `reviews.controller`: contrato, adaptador, advice y documentación.
+- Creados: `ReviewCreationServiceTests` y `ReviewCreationControllerTests`.
+- Migraciones adicionales, jobs, mensajería, cache y frontend: sin cambios.
+
+El endpoint implementado es:
+
+```http
+POST /api/public/reservations/{reservationId}/reviews
+Content-Type: application/json
+
+{
+  "customerEmail": "maria@example.com",
+  "rating": 5,
+  "comment": "Muy buena atención.",
+  "acceptsReviewPolicy": true
+}
+```
+
+Devuelve HTTP 201 y `status`, `reviewId`, `venueId`, `reservationId` y `rating`. No devuelve
+email, fecha, franja, nombre, respuestas, asistencia ni tokens. Bean Validation exige email válido
+de hasta 320 caracteres, rating 1..5, comentario de hasta 2000 y consentimiento verdadero. El
+servicio repite los límites para que una invocación interna no pueda evitar el contrato HTTP.
+
+### Flujo de ejecución e invariantes
+
+1. Se validan entrada, consentimiento y límites antes de consultar persistencia.
+2. El email se recorta y convierte con `Locale.ROOT`.
+3. `ReservationDao.findByIdForUpdate` adquiere un lock pesimista sobre la reserva.
+4. Reserva ausente, local ausente, email diferente, campos temporales incompletos o estado no
+   elegible se reducen a `ReviewNotEligibleException`.
+5. La fecha/hora snapshot se interpreta mediante `Clock.getZone()` y se compara con el instante
+   actual. Si el fin es posterior, se rechaza; la igualdad ya representa una cita finalizada.
+6. Tras comprobar duplicado se construye `ReviewEntity`, normalizando comentario vacío a `NULL` y
+   recortando extremos.
+7. `saveAndFlush` materializa de inmediato cualquier violación antes de responder 201.
+
+Los estados habilitados son `confirmed`, `attended`, `no_show` y `reported`: todos proceden de una
+reserva confirmada que ha alcanzado su fin. `hold`, `pending_confirmation`, `expired`,
+`cancelled_by_user` y `cancelled_by_venue` no habilitan la operación. Esta taxonomía coincide con
+`RB-013`, que excluye explícitamente holds, expiradas y canceladas.
+
+### Seguridad, privacidad, errores y observabilidad
+
+El email debe coincidir exactamente después de normalizarse con
+`Reservation.customerEmailNormalized`; conocer solo un UUID no autoriza la escritura. Reserva
+inexistente, UUID ajeno, email incorrecto, reserva futura y estado inválido producen HTTP 422 con
+`REVIEW_NOT_ELIGIBLE`. El contrato no distingue causas y evita convertir el endpoint en un oráculo
+de reservas.
+
+Los errores de validación producen HTTP 400 `VALIDATION_ERROR`; el duplicado acreditado produce
+HTTP 409 `REVIEW_ALREADY_SUBMITTED`. Ninguna excepción incluye PII en el mensaje ni se añaden logs
+con emails, comentarios o UUID. El servicio no hace llamadas externas, reintentos, sleeps ni
+publica eventos. El endpoint permanece bajo `/api/public/**`, coherente con el usuario final sin
+cuenta; el consentimiento se almacena como precondición del comando, no como dato redundante de la
+reseña.
+
+### Tests y evidencia
+
+`ReviewCreationServiceTests` usa un `Clock` fijo en `Europe/Madrid`. Verifica creación confirmada,
+normalización de email/comentario, timestamps, todos los estados terminales admitidos, comentario
+vacío, reserva inexistente, email ajeno, cancelación, cita futura, invocaciones inválidas y ausencia
+de escrituras al rechazar. `ReviewCreationControllerTests` verifica HTTP 201, `Location`, cuerpo
+minimizado y delegación exacta.
+
+La ejecución focalizada compiló 644 fuentes principales y 149 fuentes de test, y ejecutó solo las
+tres clases de reseñas seleccionadas: 9 tests, 0 fallos, 0 errores y 0 omitidos. Checkstyle pasó
+durante Maven. Spotless se comprobó con una lista explícita limitada a `reviews`; el primer comando
+usó separadores Windows que Spotless interpretó como regex y se repitió inmediatamente con `/`,
+obteniendo BUILD SUCCESS. No se ejecutaron frontend, suite global, broker, Redis ni pruebas
+visuales.
+
+### Riesgos y deuda técnica
+
+El endpoint por `reservationId` es el contrato base preparado en el diseño. La experiencia pública
+principal no debe pedir al usuario ese UUID: `11.10` implementará el comando por `venueId` y email,
+seleccionando la reserva elegible más reciente sin exponerla. El rate limiting específico de
+elegibilidad/creación corresponde a `16.6`. La publicación del comentario debe escapar texto y,
+si algún día admite HTML, atravesar un sanitizador explícito.
+
+## Tarea 11.3 - Impedir más de una reseña por reserva
+
+- Fecha: 2026-07-28.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Garantizar que dos peticiones concurrentes o dos rutas de aplicación no puedan crear más de una
+reseña para la misma reserva, y convertir el conflicto en un resultado público estable sin filtrar
+detalles de persistencia.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-024`, `RB-013`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-008`.
+- Diseño: restricción única del modelo `reviews`, concurrencia 11.2 y estrategia de tests 15.
+- Tareas relacionadas: completa la escritura iniciada en `11.2`; `11.10` reutilizará esta
+  invariante al elegir una reserva sin reseña por email/local.
+
+### Implementación y concurrencia
+
+La defensa opera en tres niveles:
+
+1. El lock `PESSIMISTIC_WRITE` de `ReservationDao.findByIdForUpdate` serializa comandos sobre la
+   misma reserva dentro de todas las instancias de la aplicación.
+2. Tras adquirirlo, `ReviewDao.existsByReservationId` produce un conflicto legible sin intentar
+   una escritura innecesaria.
+3. `uqReviewsReservation` impide físicamente el segundo insert aunque otro escritor no use el
+   servicio o exista una carrera fuera de su disciplina de locks.
+
+Se usa `saveAndFlush` para que la violación aparezca dentro del caso de uso. Una
+`DataIntegrityViolationException` se traduce a `ReviewAlreadySubmittedException`, y el advice
+devuelve HTTP 409 `REVIEW_ALREADY_SUBMITTED`; no se propagan nombre de constraint, SQL ni stack
+trace al cliente. La transacción queda destinada a rollback y no existe ningún efecto secundario
+adicional que compensar.
+
+El lock se toma sobre `Reservations`, no sobre `Reviews`, porque en el primer intento todavía no
+existe una fila de reseña que bloquear. Esta fila padre estable es también la frontera que
+coordinará el futuro flujo por local/email. La consulta previa no sustituye a la unicidad de base
+de datos: únicamente mejora semántica y evita usar excepciones como camino habitual.
+
+### Tests, verificación y evidencia
+
+`ReviewCreationServiceTests.rejectsSecondReviewBeforeWriting` comprueba que un duplicado detectado
+tras el lock no llama a `saveAndFlush`.
+`translatesDatabaseUniqueRaceToStableConflict` simula la defensa física y exige excepción pública
+estable conservando la causa técnica solo internamente. El test SQL exige literalmente
+`uqReviewsReservation UNIQUE ("reservationId")`; el test PostgreSQL preparado consulta
+`pg_constraint` e índices.
+
+La evidencia forma parte del bloque focalizado de 9 tests correctos. La prueba PostgreSQL intentó
+arrancar una única vez y se detuvo con `Could not find a valid Docker environment` antes de crear
+el datasource o aplicar Flyway. No se repitió para respetar el límite solicitado. CI debe ejecutar
+el método preparado cuando disponga de Docker/PostGIS.
+
+### Riesgos, limitaciones y tareas derivadas
+
+La respuesta de duplicado solo se alcanza después de acreditar email y elegibilidad; un tercero
+con UUID pero email incorrecto sigue recibiendo `REVIEW_NOT_ELIGIBLE`, no confirmación de que ya
+existe reseña. Si una futura operación administrativa importa reseñas, deberá reutilizar la misma
+constraint y traducir el conflicto en su propio contrato. No se implementa edición o borrado de
+reseñas en esta fase; cualquier política futura deberá conservar auditoría y no permitir trasladar
+una reseña entre reservas.

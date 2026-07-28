@@ -214,9 +214,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 13. Fase 11 - Reseñas y valoraciones
 
-- [ ] 11.1. Crear migración de `reviews`.
-- [ ] 11.2. Implementar creación de reseña solo con reserva confirmada/finalizada.
-- [ ] 11.3. Impedir más de una reseña por reserva.
+- [x] 11.1. Crear migración de `reviews`.
+- [x] 11.2. Implementar creación de reseña solo con reserva confirmada/finalizada.
+- [x] 11.3. Impedir más de una reseña por reserva.
 - [ ] 11.4. Calcular valoración media y número de reseñas.
 - [ ] 11.5. Mostrar reseñas en ficha pública.
 - [ ] 11.6. Mostrar reseñas en panel del local.
