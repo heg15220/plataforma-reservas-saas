@@ -36,6 +36,19 @@ const publicVenueProfileSchema = z.object({
   longitude: z.number(),
   phone: z.string().nullable(),
   contactEmail: z.string().nullable(),
+  reviews: z.object({
+    averageRating: z.number().min(1).max(5).nullable(),
+    reviewsCount: z.number().int().nonnegative(),
+    truncated: z.boolean(),
+    items: z.array(
+      z.object({
+        id: z.uuid(),
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().nullable(),
+        createdAt: z.string().datetime(),
+      }),
+    ),
+  }),
 });
 
 export type PublicVenueProfile = z.infer<typeof publicVenueProfileSchema>;

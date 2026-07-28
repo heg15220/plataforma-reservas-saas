@@ -24404,3 +24404,294 @@ existe reseña. Si una futura operación administrativa importa reseñas, deber�
 constraint y traducir el conflicto en su propio contrato. No se implementa edición o borrado de
 reseñas en esta fase; cualquier política futura deberá conservar auditoría y no permitir trasladar
 una reseña entre reservas.
+
+## Tarea 11.4 - Calcular valoración media y número de reseñas
+
+- Fecha: 2026-07-28.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Ofrecer un único cálculo canónico de la valoración media y del número de reseñas de un local,
+reutilizable por la escritura, la ficha pública y el panel privado, sin introducir columnas
+derivadas susceptibles de quedar desincronizadas.
+
+### Requisitos y decisiones de diseño relacionados
+
+- Requisitos: `RF-024`, `RNF-002`, `RNF-003`, `RNF-005`, `RNF-006` y `RNF-011`.
+- Diseño: agregado de reseñas por local, respuesta pública minimizada y separación entre casos de
+  uso de escritura y lectura.
+- Tareas relacionadas: consume la persistencia de `11.1` y la escritura de `11.2`; alimenta
+  directamente `11.5` y `11.6`.
+
+### Archivos y contratos afectados
+
+- `ReviewDao.java`: incorpora `summarizeByVenueId` y la lectura estable
+  `findByVenueIdOrderByCreatedAtDescIdDesc`.
+- `ReviewAggregateProjection.java`: contrato cerrado de proyección con `averageRating` y
+  `reviewsCount`.
+- `ReviewQueryService.java` y `ReviewQueryServiceImpl.java`: caso de uso compartido de métricas y
+  colecciones.
+- `ReviewCreateResponse.java` y `ReviewCreationServiceImpl.java`: el resultado de creación incluye
+  el agregado inmediatamente posterior al `saveAndFlush`.
+- DTOs nuevos `ReviewItemResponse`, `PublicReviewCollectionResponse` y
+  `VenueReviewListResponse`.
+- Tests `ReviewCreationServiceTests`, `ReviewCreationControllerTests` y
+  `ReviewQueryServiceTests`.
+
+No se creó migración en esta tarea: el índice `ixReviewsVenueCreatedAt` y la relación con el local
+ya forman parte de `V30__create_reviews.sql`. Tampoco se añadieron columnas de suma, contador o
+promedio a `Venues`.
+
+### Arquitectura y flujo de ejecución
+
+`ReviewDao.summarizeByVenueId` ejecuta una única consulta JPQL con `AVG(review.rating)` y
+`COUNT(review.id)`, filtrada por `venueId`. Spring Data materializa el resultado mediante
+`ReviewAggregateProjection`, evitando cargar entidades para calcular métricas en memoria.
+
+`ReviewQueryServiceImpl` transforma el promedio `Double` producido por JPA en `BigDecimal` con
+escala uno y `RoundingMode.HALF_UP`. Si no existe ninguna reseña, el contrato conserva
+`reviewsCount = 0` y `averageRating = null`; no inventa una puntuación cero que pudiera confundirse
+con una valoración real. El helper tolera una proyección nula para mantener una frontera defensiva
+ante implementaciones alternativas del repositorio.
+
+Tras persistir una reseña, `ReviewCreationServiceImpl` consulta el agregado dentro de la misma
+transacción y lo incorpora a `ReviewCreateResponse`. El `flush` previo garantiza que el promedio y
+el contador incluyen la fila recién creada. El orden es:
+
+1. validar y bloquear la reserva;
+2. persistir y forzar el `flush` de la reseña;
+3. consultar el agregado por el `venueId` acreditado;
+4. devolver identificadores minimizados, puntuación y métricas actualizadas.
+
+La lectura de elementos se ordena por `createdAt DESC, id DESC`. El identificador actúa como
+desempate determinista cuando varias reseñas comparten timestamp y evita saltos arbitrarios entre
+páginas.
+
+### Seguridad, privacidad, errores y observabilidad
+
+El agregado solo recibe el `venueId` ya acreditado por el caso de uso llamante. Los DTOs de lectura
+no contienen `customerEmailNormalized`, `reservationId`, nombre del cliente ni datos históricos de
+la reserva. El comentario permanece como texto nullable y la puntuación como entero 1..5, apoyada
+por las constraints de la tabla.
+
+El cálculo no genera logs por lectura normal para evitar ruido y exposición indirecta de patrones
+de uso. Los errores de base de datos continúan atravesando el manejo transversal del API; no se
+introducen mensajes con SQL, constraints ni identificadores sensibles.
+
+### Tests y evidencia de verificación
+
+`ReviewQueryServiceTests` cubre redondeo `4.666 -> 4.7`, contador, ausencia de media, orden de
+elementos, señal de truncado, paginación privada y rechazo de límites inválidos. Los tests de
+creación verifican que la respuesta contiene la media y el contador posteriores a la escritura.
+
+Comando focalizado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=ReviewCreationServiceTests,ReviewCreationControllerTests,ReviewQueryServiceTests,VenueReviewControllerTests,VenuePublicProfileServiceTests,VenuePublicProfileControllerTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+Resultado: 18 tests, 0 fallos, 0 errores y 0 omitidos; compilaron correctamente fuentes
+principales y de test. Checkstyle se ejecutó durante los pases de Maven aunque la propiedad de
+skip indicada no evitó su fase configurada. Spotless formateó los archivos Java de esta iteración;
+los cambios mecánicos producidos fuera del alcance se revirtieron usando el estado previo
+registrado.
+
+### Riesgos, limitaciones y deuda técnica
+
+El cálculo bajo demanda privilegia consistencia y simplicidad. Si el volumen convierte el agregado
+en un punto caliente, deberá evaluarse una proyección materializada o contador transaccional con
+reconciliación, métricas y una estrategia explícita de reparación; no se debe añadir caché sin
+invalidación atómica. La consulta actual aprovecha el índice por local/fecha para el listado, pero
+el motor todavía debe agregar todas las filas del local para `AVG/COUNT`.
+
+## Tarea 11.5 - Mostrar reseñas en ficha pública
+
+- Fecha: 2026-07-28.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Incorporar en la ficha pública la valoración agregada y comentarios verificados recientes, con un
+contrato acotado, contenido localizado y ausencia total de identidad del cliente o referencias a
+su reserva.
+
+### Requisitos y decisiones de diseño relacionados
+
+- Requisitos: `RF-009`, `RF-024`, `RB-013`, `RNF-002`, `RNF-005`, `RNF-007`, `RNF-009` y
+  `RNF-010`.
+- Diseño: composición del perfil público por slug, publicación acreditada antes de leer módulos
+  asociados y visualización de reseñas dentro del contenido público.
+- Tareas relacionadas: consume el agregado de `11.4`; no implementa el formulario de estrellas de
+  `11.7`, el botón de `11.9` ni la elegibilidad pública de `11.10`.
+
+### Backend y contrato público
+
+`VenuePublicProfileServiceImpl` inyecta `ReviewQueryService` y solicita las reseñas únicamente
+después de resolver un local publicado mediante el slug. Una petición a un slug inexistente o no
+publicado termina antes de consultar reseñas, preservando la frontera de publicación ya existente.
+
+`VenuePublicProfileResponse` añade `reviews: PublicReviewCollectionResponse` con:
+
+- `averageRating`: decimal de una cifra o `null`;
+- `reviewsCount`: total real del local;
+- `truncated`: indica que la colección visible es parcial;
+- `items`: hasta 20 elementos recientes con `id`, `rating`, `comment` y `createdAt`.
+
+El límite público constante de 20 evita que una ficha con gran historial crezca sin cota. El total
+y `truncated` permiten comunicar honestamente que se presenta una selección reciente sin cargar
+todas las filas. La consulta combina fecha e identificador descendentes para un orden estable.
+
+### Frontend, responsive, accesibilidad e i18n
+
+`public-venue-api.ts` amplía el esquema Zod para rechazar medias fuera de 1..5, contadores
+negativos, puntuaciones inválidas, UUID o timestamps mal formados y cualquier estructura
+incompatible. `PublicVenueProfileView` muestra:
+
+- resumen junto al título, con estrella decorativa oculta a tecnología asistiva;
+- etiqueta accesible de media localizada;
+- contador de reseñas verificadas;
+- sección `article` por reseña con puntuación, fecha localizada y comentario opcional;
+- identidad genérica “Cliente con reserva verificada”;
+- estado vacío y aviso cuando solo se muestran las reseñas recientes.
+
+Los comentarios se insertan como nodos de texto de React, por lo que no se interpreta HTML ni se
+usa `dangerouslySetInnerHTML`. La cuadrícula adapta columnas y espaciado mediante breakpoints MUI.
+Las fechas y decimales usan el locale activo. Todos los textos nuevos existen en `es.json` y
+`en.json`.
+
+### Seguridad, privacidad y errores
+
+El API público no devuelve email normalizado, nombre, teléfono, `reservationId` ni estado de la
+visita. El `id` público identifica únicamente la reseña y sirve como clave estable de renderizado.
+La verificación procede de la propia invariante de creación: solo una reserva elegible puede
+originar una fila de `Reviews`.
+
+Los errores de carga del perfil conservan el contrato existente. No se añadió un endpoint público
+independiente que pudiera revelar la existencia de un local no publicado. Zod clasifica un
+contrato inesperado como indisponibilidad en la capa que ya consume el perfil.
+
+### Tests y evidencia de verificación
+
+`VenuePublicProfileServiceTests` comprueba la composición del agregado y que un local no publicado
+no dispara consultas al módulo de reseñas. `VenuePublicProfileControllerTests` verifica la
+serialización del contrato ampliado. Los tests frontend validan esquema, media localizada,
+contador, comentarios, identidad genérica y ausencia de emails dentro de la sección de
+valoraciones.
+
+El primer pase conjunto de Vitest detectó una aserción que buscaba cualquier email en toda la
+ficha, incluido el email público legítimo del local. La aserción se restringió a la sección de
+valoraciones, sin ocultar ni eliminar el contacto público del negocio. El pase conjunto final
+terminó con cuatro archivos y 9/9 tests correctos.
+
+### Riesgos, limitaciones y deuda técnica
+
+La ficha no pagina todavía el historial completo; muestra hasta 20 elementos y lo declara mediante
+`truncated`. Si se añade una vista pública completa, deberá conservar el mismo contrato minimizado,
+paginación acotada y acreditación de publicación. La moderación, edición y borrado de comentarios
+no forman parte de las tareas actuales.
+
+## Tarea 11.6 - Mostrar reseñas en panel del local
+
+- Fecha: 2026-07-28.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Proporcionar al propietario autenticado una pantalla privada responsive para consultar la media,
+el volumen y los comentarios verificados de su propio local, con paginación acotada y sin aceptar
+identificadores de local manipulables desde el cliente.
+
+### Requisitos y decisiones de diseño relacionados
+
+- Requisitos: `RF-008`, `RF-024`, `RNF-001`, `RNF-002`, `RNF-005`, `RNF-007`, `RNF-009`,
+  `RNF-010` y `RNF-011`.
+- Diseño: endpoint `GET /api/venue/me/reviews`, autenticación por cookie y shell privado del local.
+- Tareas relacionadas: consume `11.4`; prepara la visibilidad del resultado, pero no implementa
+  entrada de estrellas ni elegibilidad pública.
+
+### Endpoint, permisos y paginación
+
+`VenueReviewController` documenta `GET /api/venue/me/reviews?page={page}&size={size}`.
+`VenueReviewControllerImpl` exige `AuthenticatedAccount` y pasa exclusivamente
+`account.userId()` al servicio. `ReviewQueryServiceImpl.findOwned` resuelve el local mediante
+`VenueDao.findCurrentByOwnerUserId`; el cliente nunca envía `venueId`.
+
+Los parámetros admiten páginas 0..100000 y tamaños 1..100. El controlador usa 0 y 20 por defecto.
+Un límite inválido produce HTTP 400 mediante `VenueReviewInvalidPageException`; una cuenta sin
+local actual produce 404 mediante `VenueReviewNotFoundException`. Autenticación y tipo de cuenta
+siguen las reglas transversales del panel.
+
+`VenueReviewListResponse` devuelve media, total, elementos de la página, página solicitada, tamaño
+y número total de páginas. Las listas se copian defensivamente en los constructores de los records
+para impedir mutación accidental posterior a la construcción.
+
+### Interfaz privada y flujo de ejecución
+
+La ruta `app/panel/resenas/page.tsx` reutiliza `VenueShell`, declara metadata localizada y marca
+`/panel/resenas` como navegación activa. `venue-shell.tsx` incorpora la entrada con icono de
+estrella tanto en escritorio como en la barra móvil, ampliada a cinco columnas.
+
+`VenueReviewsDashboard`:
+
+1. inicia en la página cero y crea un `AbortController` por carga;
+2. llama a `fetchVenueReviews` con cookie, `no-store` y `Accept: application/json`;
+3. aborta la petición al desmontar o cambiar de página;
+4. presenta carga, error localizado, resumen, estado vacío o tarjetas;
+5. habilita anterior/siguiente según `page` y `totalPages`.
+
+El cliente clasifica 400, 401, 403 y 404 en errores semánticos; errores de red, JSON o esquema se
+degradan a `unavailable`. El esquema Zod limita la forma completa de la respuesta antes de
+almacenarla en estado React.
+
+La interfaz usa una cuadrícula de una columna en móvil y dos desde `sm`, tarjetas con `article`,
+heading asociado a la sección y navegación paginada con etiqueta accesible. Fechas y decimales se
+formatean con el locale; los textos y errores se traducen en español e inglés.
+
+### Privacidad, seguridad y observabilidad
+
+La propiedad se deriva en servidor y no puede sustituirse en query string. Los comentarios del
+panel tampoco incluyen datos identificativos: el producto muestra una identidad genérica
+verificada. React escapa los comentarios y no existe ruta de HTML enriquecido.
+
+No se registran comentarios ni emails. Los abortos esperados no se presentan como error al usuario.
+Las respuestas inválidas se encapsulan sin mostrar el cuerpo recibido ni detalles de excepción.
+
+### Tests y evidencia de verificación
+
+`VenueReviewControllerTests` acredita el contrato autenticado y parámetros de paginación.
+`ReviewQueryServiceTests` comprueba resolución por propietario, consulta del `venueId` derivado,
+límites y local ausente. `venue-reviews-api.test.ts` valida petición, cookies, paginación,
+clasificación de permisos y rechazo de contratos. `venue-reviews-dashboard.test.tsx` cubre métricas,
+comentarios, ausencia de identidad y estado vacío.
+
+Verificación frontend focalizada:
+
+```text
+npx tsc -p tsconfig.reviews.json
+npx vitest run <4 archivos de reseñas/perfil> --pool=forks --maxWorkers=1 --fileParallelism=false
+```
+
+Se usó una configuración TypeScript temporal sin plugin global de Next, limitada a los seis
+módulos de producción y sus imports; terminó correctamente en 18,7 s. Se amplió después a sus
+cuatro tests y terminó correctamente en 15,2 s. El archivo temporal se eliminó. El pase Vitest
+final terminó con cuatro archivos y 9 tests correctos, 0 fallos y 0 omitidos en 25 s.
+
+ESLint se invocó con una lista explícita de los diez archivos TypeScript/TSX afectados, pero no
+emitió diagnóstico antes del timeout de 60 segundos y se detuvo. No se amplió el tiempo ni se lanzó
+lint o build global. Tampoco se ejecutaron Docker, Testcontainers, suite integral ni validación
+visual.
+
+### Riesgos, limitaciones y tareas derivadas
+
+La pantalla es de lectura y no incluye respuesta del local, moderación, exportación ni filtros por
+puntuación. La paginación no conserva todavía el índice en la URL; una futura mejora debe decidir
+si se requiere deep-linking sin relajar los límites del servidor. La barra móvil pasa a cinco
+destinos y deberá revisarse visualmente junto con futuras entradas para evitar densidad excesiva.
+La siguiente tarea de especificación es `11.7`, dedicada a la UI de valoración de 1 a 5 estrellas.

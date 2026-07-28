@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
@@ -35,6 +35,25 @@ const venue: PublicVenueProfile = {
   longitude: -3.70379,
   phone: null,
   contactEmail: "hola@casaluz.test",
+  reviews: {
+    averageRating: 4.5,
+    reviewsCount: 2,
+    truncated: false,
+    items: [
+      {
+        id: "10000000-0000-4000-8000-000000000001",
+        rating: 5,
+        comment: "Atención excelente.",
+        createdAt: "2026-07-28T10:00:00Z",
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000002",
+        rating: 4,
+        comment: null,
+        createdAt: "2026-07-27T10:00:00Z",
+      },
+    ],
+  },
 };
 
 beforeEach(() => {
@@ -63,12 +82,18 @@ describe("PublicVenueProfileView", () => {
     expect(screen.queryByRole("link", { name: /^\+/ })).not.toBeInTheDocument();
   });
 
-  it("comunica honestamente las capacidades futuras sin habilitar reservas", () => {
+  it("muestra valoración agregada y reseñas verificadas sin identidad", () => {
     renderWithIntl(<PublicVenueProfileView venue={venue} />);
 
     expect(screen.getByRole("button", { name: "Reservas próximamente" })).toBeDisabled();
-    expect(
-      screen.getByText("Las valoraciones aparecerán cuando comiencen las reservas verificadas."),
-    ).toBeVisible();
+    expect(screen.getByLabelText("Valoración media: 4,5 de 5")).toBeVisible();
+    expect(screen.getByText("2 reseñas verificadas")).toBeVisible();
+    expect(screen.getByText("Atención excelente.")).toBeVisible();
+    expect(screen.getAllByText("Cliente con reserva verificada")).toHaveLength(2);
+    const reviewsSection = screen
+      .getByRole("heading", { level: 2, name: "Valoraciones" })
+      .closest("section");
+    expect(reviewsSection).not.toBeNull();
+    expect(within(reviewsSection!).queryByText(/@/)).not.toBeInTheDocument();
   });
 });

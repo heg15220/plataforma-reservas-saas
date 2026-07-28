@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.reviews.dto.PublicReviewCollectionResponse;
 import com.reserly.platform.venues.dto.VenuePublicProfileResponse;
 import com.reserly.platform.venues.service.VenuePublicProfileService;
 import java.math.BigDecimal;
@@ -70,6 +71,7 @@ class VenuePublicProfileControllerTests {
         new BigDecimal("40.416775"),
         new BigDecimal("-3.703790"),
         null,
-        null);
+        null,
+        new PublicReviewCollectionResponse(null, 0, false, List.of()));
   }
 }

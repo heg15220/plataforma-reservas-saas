@@ -2,6 +2,8 @@ package com.reserly.platform.venues.service;
 
 import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.reviews.dto.PublicReviewCollectionResponse;
+import com.reserly.platform.reviews.service.ReviewQueryService;
 import com.reserly.platform.venues.dto.VenuePublicCustomTabResponse;
 import com.reserly.platform.venues.dto.VenuePublicGalleryImageResponse;
 import com.reserly.platform.venues.dto.VenuePublicProfileResponse;
@@ -22,12 +24,17 @@ public class VenuePublicProfileServiceImpl implements VenuePublicProfileService 
   private final VenueDao venueDao;
   private final VenueImageDao imageDao;
   private final VenueCustomTabDao customTabDao;
+  private final ReviewQueryService reviewQueryService;
 
   public VenuePublicProfileServiceImpl(
-      VenueDao venueDao, VenueImageDao imageDao, VenueCustomTabDao customTabDao) {
+      VenueDao venueDao,
+      VenueImageDao imageDao,
+      VenueCustomTabDao customTabDao,
+      ReviewQueryService reviewQueryService) {
     this.venueDao = venueDao;
     this.imageDao = imageDao;
     this.customTabDao = customTabDao;
+    this.reviewQueryService = reviewQueryService;
   }
 
   @Override
@@ -53,6 +60,7 @@ public class VenuePublicProfileServiceImpl implements VenuePublicProfileService 
                         tab.getContentFormat()))
             .filter(tab -> !tab.title().isBlank() && !tab.content().isBlank())
             .toList();
+    PublicReviewCollectionResponse reviews = reviewQueryService.findPublic(venue.getId());
 
     return new VenuePublicProfileResponse(
         venue.getSlug(),
@@ -75,7 +83,8 @@ public class VenuePublicProfileServiceImpl implements VenuePublicProfileService 
         venue.getLatitude(),
         venue.getLongitude(),
         venue.isShowPhone() ? venue.getPhone() : null,
-        venue.isShowEmail() ? venue.getContactEmail() : null);
+        venue.isShowEmail() ? venue.getContactEmail() : null,
+        reviews);
   }
 
   private static String resolve(

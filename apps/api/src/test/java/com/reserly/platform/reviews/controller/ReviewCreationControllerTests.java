@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.reviews.dto.ReviewCreateRequest;
 import com.reserly.platform.reviews.dto.ReviewCreateResponse;
 import com.reserly.platform.reviews.service.ReviewCreationService;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -23,14 +24,14 @@ class ReviewCreationControllerTests {
     ReviewCreateRequest request =
         new ReviewCreateRequest("customer@example.com", 5, "Excelente.", true);
     ReviewCreateResponse response =
-        new ReviewCreateResponse("created", reviewId, venueId, reservationId, 5);
+        new ReviewCreateResponse(
+            "created", reviewId, venueId, reservationId, 5, new BigDecimal("4.7"), 12);
     when(service.create(reservationId, request)).thenReturn(response);
 
     var result = new ReviewCreationControllerImpl(service).create(reservationId, request);
 
     assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(result.getHeaders().getLocation())
-        .hasToString("/api/public/reviews/" + reviewId);
+    assertThat(result.getHeaders().getLocation()).hasToString("/api/public/reviews/" + reviewId);
     assertThat(result.getBody()).isEqualTo(response);
     verify(service).create(reservationId, request);
   }

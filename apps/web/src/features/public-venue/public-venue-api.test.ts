@@ -35,6 +35,19 @@ const validVenue = {
   longitude: -3.70379,
   phone: null,
   contactEmail: null,
+  reviews: {
+    averageRating: 4.5,
+    reviewsCount: 2,
+    truncated: false,
+    items: [
+      {
+        id: "10000000-0000-4000-8000-000000000001",
+        rating: 5,
+        comment: "Atención excelente.",
+        createdAt: "2026-07-28T10:00:00Z",
+      },
+    ],
+  },
 };
 
 beforeEach(() => {

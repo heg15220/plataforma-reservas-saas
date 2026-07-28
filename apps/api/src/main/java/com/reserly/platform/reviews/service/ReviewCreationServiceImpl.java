@@ -6,6 +6,8 @@ import com.reserly.platform.reviews.dto.ReviewCreateRequest;
 import com.reserly.platform.reviews.dto.ReviewCreateResponse;
 import com.reserly.platform.reviews.persistence.ReviewDao;
 import com.reserly.platform.reviews.persistence.ReviewEntity;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -71,8 +73,17 @@ public class ReviewCreationServiceImpl implements ReviewCreationService {
       // La constraint única es la última defensa si otro escritor evita el bloqueo de aplicación.
       throw new ReviewAlreadySubmittedException(exception);
     }
+    var aggregate = reviewDao.summarizeByVenueId(review.getVenueId());
+    BigDecimal averageRating =
+        BigDecimal.valueOf(aggregate.getAverageRating()).setScale(1, RoundingMode.HALF_UP);
     return new ReviewCreateResponse(
-        "created", review.getId(), review.getVenueId(), review.getReservationId(), review.getRating());
+        "created",
+        review.getId(),
+        review.getVenueId(),
+        review.getReservationId(),
+        review.getRating(),
+        averageRating,
+        aggregate.getReviewsCount());
   }
 
   private void validateInput(UUID reservationId, ReviewCreateRequest request) {

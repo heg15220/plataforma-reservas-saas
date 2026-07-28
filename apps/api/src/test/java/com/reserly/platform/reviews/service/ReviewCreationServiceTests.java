@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.reviews.dto.ReviewCreateRequest;
+import com.reserly.platform.reviews.persistence.ReviewAggregateProjection;
 import com.reserly.platform.reviews.persistence.ReviewDao;
 import com.reserly.platform.reviews.persistence.ReviewEntity;
 import com.reserly.platform.venues.persistence.VenueEntity;
@@ -46,6 +47,10 @@ class ReviewCreationServiceTests {
               review.setId(UUID.randomUUID());
               return review;
             });
+    ReviewAggregateProjection aggregate = mock(ReviewAggregateProjection.class);
+    when(aggregate.getAverageRating()).thenReturn(5.0);
+    when(aggregate.getReviewsCount()).thenReturn(1L);
+    when(reviewDao.summarizeByVenueId(any(UUID.class))).thenReturn(aggregate);
   }
 
   @Test
@@ -57,18 +62,18 @@ class ReviewCreationServiceTests {
     var response =
         service.create(
             reservation.getId(),
-            new ReviewCreateRequest(
-                " Customer@Example.COM ", 5, "  Atención excelente.  ", true));
+            new ReviewCreateRequest(" Customer@Example.COM ", 5, "  Atención excelente.  ", true));
 
     assertThat(response.status()).isEqualTo("created");
     assertThat(response.venueId()).isEqualTo(reservation.getVenue().getId());
     assertThat(response.reservationId()).isEqualTo(reservation.getId());
     assertThat(response.rating()).isEqualTo(5);
+    assertThat(response.averageRating()).isEqualByComparingTo("5.0");
+    assertThat(response.reviewsCount()).isEqualTo(1);
 
     ArgumentCaptor<ReviewEntity> review = ArgumentCaptor.forClass(ReviewEntity.class);
     verify(reviewDao).saveAndFlush(review.capture());
-    assertThat(review.getValue().getCustomerEmailNormalized())
-        .isEqualTo("customer@example.com");
+    assertThat(review.getValue().getCustomerEmailNormalized()).isEqualTo("customer@example.com");
     assertThat(review.getValue().getComment()).isEqualTo("Atención excelente.");
     assertThat(review.getValue().getCreatedAt()).isEqualTo(NOW);
     assertThat(review.getValue().getUpdatedAt()).isEqualTo(NOW);
@@ -82,8 +87,7 @@ class ReviewCreationServiceTests {
           .thenReturn(Optional.of(reservation));
 
       service.create(
-          reservation.getId(),
-          new ReviewCreateRequest("customer@example.com", 3, "   ", true));
+          reservation.getId(), new ReviewCreateRequest("customer@example.com", 3, "   ", true));
     }
 
     ArgumentCaptor<ReviewEntity> reviews = ArgumentCaptor.forClass(ReviewEntity.class);
@@ -104,8 +108,7 @@ class ReviewCreationServiceTests {
     assertThatThrownBy(
             () ->
                 service.create(
-                    foreign.getId(),
-                    new ReviewCreateRequest("other@example.com", 5, null, true)))
+                    foreign.getId(), new ReviewCreateRequest("other@example.com", 5, null, true)))
         .isInstanceOf(ReviewNotEligibleException.class);
 
     ReservationEntity cancelled = eligibleReservation("cancelled_by_user");
@@ -161,14 +164,12 @@ class ReviewCreationServiceTests {
     assertThatThrownBy(
             () ->
                 service.create(
-                    reservationId,
-                    new ReviewCreateRequest("customer@example.com", 0, null, true)))
+                    reservationId, new ReviewCreateRequest("customer@example.com", 0, null, true)))
         .isInstanceOf(ReviewInvalidException.class);
     assertThatThrownBy(
             () ->
                 service.create(
-                    reservationId,
-                    new ReviewCreateRequest("customer@example.com", 5, null, false)))
+                    reservationId, new ReviewCreateRequest("customer@example.com", 5, null, false)))
         .isInstanceOf(ReviewInvalidException.class);
 
     verify(reservationDao, never()).findByIdForUpdate(any());

@@ -217,9 +217,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 11.1. Crear migración de `reviews`.
 - [x] 11.2. Implementar creación de reseña solo con reserva confirmada/finalizada.
 - [x] 11.3. Impedir más de una reseña por reserva.
-- [ ] 11.4. Calcular valoración media y número de reseñas.
-- [ ] 11.5. Mostrar reseñas en ficha pública.
-- [ ] 11.6. Mostrar reseñas en panel del local.
+- [x] 11.4. Calcular valoración media y número de reseñas.
+- [x] 11.5. Mostrar reseñas en ficha pública.
+- [x] 11.6. Mostrar reseñas en panel del local.
 - [ ] 11.7. Crear UI de valoración de 1 a 5 estrellas.
 - [ ] 11.8. Crear tests de autorización de reseñas.
 - [ ] 11.9. Añadir botón "Hacer reseña" dentro de los detalles de la ficha pública del local.

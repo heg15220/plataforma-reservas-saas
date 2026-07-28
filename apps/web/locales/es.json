@@ -472,7 +472,8 @@
       "team": "Equipo",
       "form": "Formulario",
       "incidents": "Incidencias",
-      "more": "Más"
+      "more": "Más",
+      "reviews": "Reseñas"
     }
   },
   "Availability": {
@@ -636,7 +637,13 @@
       "notFoundTitle": "Local no disponible"
     },
     "reviews": {
-      "pending": "Las valoraciones aparecerán cuando comiencen las reservas verificadas.",
+      "empty": "Este local todavía no ha recibido reseñas verificadas.",
+      "itemRating": "Puntuación: {rating} de 5",
+      "publishedOn": "Publicada el {date}",
+      "recentOnly": "Se muestran las reseñas verificadas más recientes.",
+      "scoreLabel": "Valoración media: {rating} de 5",
+      "summary": "{count, plural, one {# reseña verificada} other {# reseñas verificadas}}",
+      "verifiedGuest": "Cliente con reserva verificada",
       "title": "Valoraciones"
     },
     "sections": {
@@ -1348,6 +1355,42 @@
       "reported": "Reportada",
       "confirmed": "Confirmada",
       "dismissed": "Descartada"
+    }
+  },
+  "VenueReviews": {
+    "metadata": {
+      "title": "Reseñas recibidas | Reserly",
+      "description": "Consulta las valoraciones verificadas recibidas por tu local."
+    },
+    "hero": {
+      "eyebrow": "Reputación del local",
+      "title": "Reseñas recibidas",
+      "summary": "Consulta las opiniones vinculadas a reservas verificadas. La identidad y el historial del cliente permanecen privados."
+    },
+    "loading": "Cargando reseñas",
+    "summary": {
+      "average": "Valoración media",
+      "count": "Reseñas verificadas",
+      "withoutAverage": "Sin valoración"
+    },
+    "list": {
+      "title": "Opiniones recientes",
+      "empty": "Tu local todavía no ha recibido reseñas verificadas.",
+      "verifiedGuest": "Cliente con reserva verificada",
+      "rating": "Puntuación: {rating} de 5",
+      "publishedOn": "Publicada el {date}"
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "status": "Página {page} de {total}"
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",
+      "forbidden": "No tienes permisos para consultar estas reseñas.",
+      "notFound": "No encontramos un local activo para esta cuenta.",
+      "invalid": "La página solicitada no es válida.",
+      "unavailable": "No pudimos cargar las reseñas. Inténtalo de nuevo."
     }
   },
   "VenueIncidents": {

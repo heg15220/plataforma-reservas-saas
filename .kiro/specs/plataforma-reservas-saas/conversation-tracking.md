@@ -13,10 +13,77 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-28
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.3`.
-- Siguiente tarea pendiente recomendada: `11.4. Calcular valoración media y número de reseñas`.
-- Observación: la fase 11 dispone ya de persistencia y creación verificada por reserva; las
-  consultas, agregación y flujo público por local/email permanecen pendientes.
+  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.6`.
+- Siguiente tarea pendiente recomendada: `11.7. Crear UI de valoración de 1 a 5 estrellas`.
+- Observación: la fase 11 dispone de persistencia, creación única, métricas y lectura pública y
+  privada de reseñas. La captura visual de estrellas y el flujo público por local/email permanecen
+  pendientes.
+
+## Conversación 115 - Métricas y lectura pública y privada de reseñas
+
+- Fecha: 2026-07-28.
+- Resumen de la conversación:
+  - Se completaron `11.4`, `11.5` y `11.6` en `phase/11-ratings`.
+  - Se añadió una proyección JPQL que calcula `AVG(rating)` y `COUNT(id)` por local bajo demanda,
+    con media decimal redondeada a una cifra y ausencia explícita de media cuando no hay reseñas.
+  - La respuesta de creación devuelve el agregado actualizado después de persistir, evitando una
+    segunda petición del consumidor que acaba de enviar la reseña.
+  - La ficha pública incorpora el resumen y hasta 20 reseñas recientes, sin email, nombre ni
+    identificadores de reserva; comunica expresamente que se trata de clientes con reserva
+    verificada.
+  - Se creó `GET /api/venue/me/reviews`, que deriva el local desde el propietario autenticado,
+    pagina los comentarios y devuelve sus métricas.
+  - Se añadió `/panel/resenas`, con resumen, estado vacío, listado responsive, paginación,
+    navegación de escritorio/móvil, contratos Zod e internacionalización española e inglesa.
+  - Las validaciones se limitaron a los módulos de reseñas, perfil público, shell del local y sus
+    dependencias directas.
+- Archivos modificados:
+  - Persistencia y servicios de reseñas: `ReviewDao.java`, `ReviewAggregateProjection.java`,
+    `ReviewQueryService.java`, `ReviewQueryServiceImpl.java` y excepciones de lectura.
+  - Contratos: `ReviewCreateResponse.java`, `ReviewItemResponse.java`,
+    `PublicReviewCollectionResponse.java` y `VenueReviewListResponse.java`.
+  - Endpoint privado: `VenueReviewController.java`, `VenueReviewControllerImpl.java` y
+    `VenueReviewExceptionHandler.java`.
+  - Perfil público: `VenuePublicProfileResponse.java`, `VenuePublicProfileServiceImpl.java`,
+    `public-venue-api.ts`, `public-venue-profile.tsx` y sus tests.
+  - Panel: `app/panel/resenas/page.tsx`, `venue-reviews-api.ts`,
+    `venue-reviews-dashboard.tsx`, tests y `venue-shell.tsx`.
+  - Traducciones `locales/es.json` y `locales/en.json`.
+  - Tests focalizados de creación, consulta, controladores y perfil público.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-009 Ficha pública del local`.
+  - `RF-024 Reseñas y valoraciones`.
+  - `RB-013 Elegibilidad de reseñas por email y local`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-005 Rendimiento`, `RNF-006 Mantenibilidad`,
+    `RNF-007 Accesibilidad`, `RNF-009 Responsive design` y `RNF-010 Internacionalización`.
+- Tareas impactadas y completadas:
+  - `11.4. Calcular valoración media y número de reseñas`.
+  - `11.5. Mostrar reseñas en ficha pública`.
+  - `11.6. Mostrar reseñas en panel del local`.
+- Siguiente tarea pendiente recomendada:
+  - `11.7. Crear UI de valoración de 1 a 5 estrellas`.
+- Decisiones o aclaraciones relevantes:
+  - Las métricas se calculan desde `Reviews` en cada lectura; no se mantiene un contador o promedio
+    desnormalizado que pueda divergir.
+  - La media se devuelve con una cifra decimal y como `null` cuando el recuento es cero.
+  - El perfil público limita la carga a las 20 reseñas más recientes e informa mediante
+    `truncated` si existen más. El panel usa páginas de 20 y admite como máximo 100 elementos.
+  - El endpoint privado no acepta `venueId`: resuelve `findCurrentByOwnerUserId` desde la sesión,
+    impidiendo consultar comentarios de otro local por manipulación de parámetros.
+  - Ningún contrato de lectura expone `customerEmailNormalized`, `reservationId` ni identidad del
+    cliente. Los comentarios se renderizan como texto React, sin HTML interpretado.
+  - Evidencia backend: 18 tests focalizados, 0 fallos, 0 errores y 0 omitidos.
+  - Evidencia frontend: typecheck focalizado correcto para producción y tests; pase final de nueve
+    tests seleccionados con 9 correctos, 0 fallos y 0 omitidos. ESLint focalizado se detuvo a los
+    60 segundos sin emitir diagnóstico.
+  - Spotless formateó los archivos Java nuevos/modificados; sus cambios mecánicos fuera de alcance
+    se revirtieron. No se ejecutaron suite global, Docker, Testcontainers ni validación visual.
+  - El cambio previo `apps/web/next-env.d.ts` se preservó fuera de esta implementación y no se
+    incluirá en el commit.
 
 ## Conversación 114 - Persistencia y creación única de reseñas verificadas
 

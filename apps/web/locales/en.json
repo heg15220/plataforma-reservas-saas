@@ -472,7 +472,8 @@
       "team": "Team",
       "form": "Form",
       "incidents": "Incidents",
-      "more": "More"
+      "more": "More",
+      "reviews": "Reviews"
     }
   },
   "Availability": {
@@ -636,7 +637,13 @@
       "notFoundTitle": "Venue unavailable"
     },
     "reviews": {
-      "pending": "Reviews will appear once verified bookings begin.",
+      "empty": "This venue has not received any verified reviews yet.",
+      "itemRating": "Rating: {rating} out of 5",
+      "publishedOn": "Published on {date}",
+      "recentOnly": "The most recent verified reviews are shown.",
+      "scoreLabel": "Average rating: {rating} out of 5",
+      "summary": "{count, plural, one {# verified review} other {# verified reviews}}",
+      "verifiedGuest": "Customer with a verified booking",
       "title": "Reviews"
     },
     "sections": {
@@ -1348,6 +1355,42 @@
       "reported": "Reported",
       "confirmed": "Confirmed",
       "dismissed": "Dismissed"
+    }
+  },
+  "VenueReviews": {
+    "metadata": {
+      "title": "Reviews received | Reserly",
+      "description": "View the verified ratings received by your venue."
+    },
+    "hero": {
+      "eyebrow": "Venue reputation",
+      "title": "Reviews received",
+      "summary": "View feedback linked to verified bookings. Customer identity and booking history remain private."
+    },
+    "loading": "Loading reviews",
+    "summary": {
+      "average": "Average rating",
+      "count": "Verified reviews",
+      "withoutAverage": "No rating yet"
+    },
+    "list": {
+      "title": "Recent feedback",
+      "empty": "Your venue has not received any verified reviews yet.",
+      "verifiedGuest": "Customer with a verified booking",
+      "rating": "Rating: {rating} out of 5",
+      "publishedOn": "Published on {date}"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "status": "Page {page} of {total}"
+    },
+    "errors": {
+      "unauthenticated": "Your session has expired. Sign in again.",
+      "forbidden": "You do not have permission to view these reviews.",
+      "notFound": "We could not find an active venue for this account.",
+      "invalid": "The requested page is invalid.",
+      "unavailable": "We could not load the reviews. Please try again."
     }
   },
   "VenueIncidents": {

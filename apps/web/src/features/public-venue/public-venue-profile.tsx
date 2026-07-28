@@ -63,6 +63,13 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
                 <Typography component="h1" variant="h1">
                   {venue.name}
                 </Typography>
+                {venue.reviews.averageRating !== null && (
+                  <ReviewScore
+                    average={venue.reviews.averageRating}
+                    count={venue.reviews.reviewsCount}
+                    locale={venue.locale}
+                  />
+                )}
                 <Stack
                   direction="row"
                   spacing={1}
@@ -84,6 +91,7 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
                 <TextSection title={t("sections.additional")} body={venue.publicText} />
               )}
               <PublicAvailabilityCalendar venueSlug={venue.slug} />
+              <PublicReviews reviews={venue.reviews} locale={venue.locale} />
 
               {venue.customTabs.map((tab) => (
                 <CustomTabSection key={`${tab.position}-${tab.title}`} tab={tab} />
@@ -172,24 +180,99 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
                 </Stack>
               </Surface>
 
-              <Surface component="aside">
-                <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
-                  <Star aria-hidden="true" size={21} />
-                  <Box>
-                    <Typography component="h2" variant="h3">
-                      {t("reviews.title")}
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ mt: 1 }}>
-                      {t("reviews.pending")}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Surface>
             </Stack>
           </Box>
         </Stack>
       </PageContainer>
     </PublicShell>
+  );
+}
+
+function ReviewScore({
+  average,
+  count,
+  locale,
+}: {
+  average: number;
+  count: number;
+  locale: string;
+}) {
+  const t = useTranslations("VenuePublicProfile.reviews");
+  const formatted = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(average);
+  return (
+    <Stack
+      aria-label={t("scoreLabel", { rating: formatted })}
+      direction="row"
+      spacing={1}
+      sx={{ alignItems: "center", color: "text.secondary" }}
+    >
+      <Star aria-hidden="true" fill="currentColor" size={19} />
+      <Typography component="span" sx={{ color: "text.primary", fontWeight: 700 }}>
+        {formatted}
+      </Typography>
+      <Typography component="span">{t("summary", { count })}</Typography>
+    </Stack>
+  );
+}
+
+function PublicReviews({
+  reviews,
+  locale,
+}: {
+  reviews: PublicVenueProfile["reviews"];
+  locale: string;
+}) {
+  const t = useTranslations("VenuePublicProfile.reviews");
+  const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
+  return (
+    <Box component="section" aria-labelledby="venue-reviews-title">
+      <Typography id="venue-reviews-title" component="h2" variant="h2" sx={{ mb: 3 }}>
+        {t("title")}
+      </Typography>
+      {reviews.items.length === 0 ? (
+        <Surface>
+          <Typography color="text.secondary">{t("empty")}</Typography>
+        </Surface>
+      ) : (
+        <Stack spacing={2}>
+          {reviews.items.map((review) => (
+            <Surface component="article" key={review.id}>
+              <Stack spacing={2}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  sx={{ justifyContent: "space-between" }}
+                >
+                  <Typography sx={{ fontWeight: 700 }}>{t("verifiedGuest")}</Typography>
+                  <Typography
+                    aria-label={t("itemRating", { rating: review.rating })}
+                    color="text.secondary"
+                  >
+                    <Star
+                      aria-hidden="true"
+                      fill="currentColor"
+                      size={17}
+                      style={{ verticalAlign: "text-bottom" }}
+                    />{" "}
+                    {review.rating}/5
+                  </Typography>
+                </Stack>
+                {review.comment && <Typography>{review.comment}</Typography>}
+                <Typography color="text.secondary" variant="body2">
+                  {t("publishedOn", { date: dateFormatter.format(new Date(review.createdAt)) })}
+                </Typography>
+              </Stack>
+            </Surface>
+          ))}
+          {reviews.truncated && (
+            <Typography color="text.secondary">{t("recentOnly")}</Typography>
+          )}
+        </Stack>
+      )}
+    </Box>
   );
 }
 

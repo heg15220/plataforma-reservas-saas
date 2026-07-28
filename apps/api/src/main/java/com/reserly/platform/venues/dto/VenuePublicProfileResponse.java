@@ -1,5 +1,6 @@
 package com.reserly.platform.venues.dto;
 
+import com.reserly.platform.reviews.dto.PublicReviewCollectionResponse;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -30,4 +31,5 @@ public record VenuePublicProfileResponse(
     BigDecimal latitude,
     BigDecimal longitude,
     String phone,
-    String contactEmail) {}
+    String contactEmail,
+    PublicReviewCollectionResponse reviews) {}

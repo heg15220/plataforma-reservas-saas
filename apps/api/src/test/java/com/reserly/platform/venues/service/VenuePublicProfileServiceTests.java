@@ -7,6 +7,9 @@ import static org.mockito.Mockito.when;
 
 import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.reviews.dto.PublicReviewCollectionResponse;
+import com.reserly.platform.reviews.dto.ReviewItemResponse;
+import com.reserly.platform.reviews.service.ReviewQueryService;
 import com.reserly.platform.venues.persistence.CategoryEntity;
 import com.reserly.platform.venues.persistence.VenueCustomTabDao;
 import com.reserly.platform.venues.persistence.VenueCustomTabEntity;
@@ -15,6 +18,7 @@ import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.persistence.VenueImageDao;
 import com.reserly.platform.venues.persistence.VenueImageEntity;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,12 +38,14 @@ class VenuePublicProfileServiceTests {
   @Mock private VenueDao venueDao;
   @Mock private VenueImageDao imageDao;
   @Mock private VenueCustomTabDao customTabDao;
+  @Mock private ReviewQueryService reviewQueryService;
 
   private VenuePublicProfileServiceImpl service;
 
   @BeforeEach
   void setUp() {
-    service = new VenuePublicProfileServiceImpl(venueDao, imageDao, customTabDao);
+    service =
+        new VenuePublicProfileServiceImpl(venueDao, imageDao, customTabDao, reviewQueryService);
   }
 
   @Test
@@ -51,6 +57,18 @@ class VenuePublicProfileServiceTests {
     when(imageDao.findAllPublishedByVenueId(venue.getId())).thenReturn(List.of(first, second));
     when(customTabDao.findAllPublishedActiveByVenueId(venue.getId()))
         .thenReturn(List.of(tab(venue, 0, "Carta", "Menu", "<p>Menú</p>", "<p>Menu</p>")));
+    when(reviewQueryService.findPublic(venue.getId()))
+        .thenReturn(
+            new PublicReviewCollectionResponse(
+                new BigDecimal("4.5"),
+                2,
+                false,
+                List.of(
+                    new ReviewItemResponse(
+                        UUID.randomUUID(),
+                        5,
+                        "Excelente",
+                        Instant.parse("2026-07-28T10:00:00Z")))));
 
     var response = service.findBySlug("casa-luz", SupportedLocale.EN);
 
@@ -62,6 +80,9 @@ class VenuePublicProfileServiceTests {
     assertThat(response.gallery()).extracting("position").containsExactly(0, 1);
     assertThat(response.customTabs()).extracting("title").containsExactly("Menu");
     assertThat(response.customTabs()).extracting("content").containsExactly("<p>Menu</p>");
+    assertThat(response.reviews().averageRating()).isEqualByComparingTo("4.5");
+    assertThat(response.reviews().reviewsCount()).isEqualTo(2);
+    assertThat(response.reviews().items()).hasSize(1);
   }
 
   @Test
@@ -74,6 +95,8 @@ class VenuePublicProfileServiceTests {
     when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
     when(imageDao.findAllPublishedByVenueId(venue.getId())).thenReturn(List.of());
     when(customTabDao.findAllPublishedActiveByVenueId(venue.getId())).thenReturn(List.of());
+    when(reviewQueryService.findPublic(venue.getId()))
+        .thenReturn(new PublicReviewCollectionResponse(null, 0, false, List.of()));
 
     var response = service.findBySlug("casa-luz", SupportedLocale.ES);
 
@@ -89,7 +112,7 @@ class VenuePublicProfileServiceTests {
     assertThatThrownBy(() -> service.findBySlug("borrador", SupportedLocale.ES))
         .isInstanceOf(VenueProfileNotFoundException.class);
 
-    verifyNoInteractions(customTabDao);
+    verifyNoInteractions(customTabDao, reviewQueryService);
   }
 
   private static VenueEntity publishedVenue() {
