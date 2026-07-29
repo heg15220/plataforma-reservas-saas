@@ -239,9 +239,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 15. Fase 13 - Suscripción y RedSys preparado sin cobro real en MVP
 
-- [ ] 13.1. Crear migraciones de `plans`, `subscriptions` y `payments`.
-- [ ] 13.2. Crear planes gratuito, profesional y premium.
-- [ ] 13.3. Implementar estados de suscripción.
+- [x] 13.1. Crear migraciones de `plans`, `subscriptions` y `payments`.
+- [x] 13.2. Crear planes gratuito, profesional y premium.
+- [x] 13.3. Implementar estados de suscripción.
 - [ ] 13.4. Crear pantalla de suscripción del local.
 - [ ] 13.5. Mostrar estado de monetización y aviso de pago seguro externo RedSys solo cuando el cobro real esté habilitado.
 - [ ] 13.6. Implementar interfaz de proveedor de pagos y adaptador simulado para local, test y staging.

@@ -5,4 +5,4 @@ ALTER TABLE "Venues"
     CHECK ("cancellationNoticeMinutes" BETWEEN 0 AND 525600);
 
 COMMENT ON COLUMN "Venues"."cancellationNoticeMinutes" IS
-  ''Antelación mínima en minutos para cancelación pública; 0 permite cancelar hasta el inicio'';
+  'Antelación mínima en minutos para cancelación pública; 0 permite cancelar hasta el inicio';

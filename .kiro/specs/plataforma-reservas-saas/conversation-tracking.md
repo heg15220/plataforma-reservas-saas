@@ -13,11 +13,73 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-29
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.7`.
-- Siguiente tarea pendiente recomendada: `13.1. Crear migraciones de plans, subscriptions y
-  payments`.
-- Observación: la fase 12 queda cerrada con recálculo acotado por local, filtros temporales, panel
-  responsive, gráficos accesibles y cobertura focalizada de agregación y permisos.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.3`.
+- Siguiente tarea pendiente recomendada: `13.4. Crear pantalla de suscripción del local`.
+- Observación: la fase 13 dispone ya del modelo persistente, el catálogo inicial localizado y los
+  estados estrictos; el cobro real continúa deshabilitado y los límites aún no se aplican.
+
+## Conversación 120 - Núcleo persistente, catálogo y estados de suscripción
+
+- Fecha: 2026-07-29.
+- Resumen de la conversación:
+  - Se completaron `13.1`, `13.2` y `13.3` en `phase/13-Suscriptions-plans`.
+  - `V32__create_billing_tables.sql` crea `Plans`, `Subscriptions` y `Payments` con identificadores
+    y columnas físicas acordes con las convenciones del proyecto.
+  - Las restricciones protegen localización ES/EN, slugs, importes, periodicidad, periodos,
+    cancelación, fecha de pago, hashes SHA-256 y catálogos cerrados de estados.
+  - Cada local solo puede tener una suscripción actual. Una clave foránea compuesta impide que un
+    pago declare un local distinto al de su suscripción.
+  - La combinación `provider`/`providerOrderId` es única y prepara la idempotencia de callbacks.
+    El payload de respuesta es opcional, estructurado y debe quedar sanitizado sin PAN, CVV, claves
+    ni firmas secretas.
+  - `V33__seed_initial_plans.sql` crea los planes gratuito, profesional y premium con UUID y slug
+    estables, nombres y funciones ES/EN, límites declarativos y precios iniciales.
+  - Se añadieron entidades JPA, DAOs y conversores estrictos para planes, suscripciones, pagos,
+    periodicidad y estados. El DAO de suscripciones ofrece un lock pesimista explícito para las
+    transiciones transaccionales futuras.
+  - El cambio previo de una comilla SQL incorrecta en V25 se conservó y se incluirá como reparación
+    necesaria: sin él, una base vacía no podría alcanzar V32/V33 mediante Flyway.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V25__add_venue_cancellation_notice.sql`.
+  - `apps/api/src/main/resources/db/migration/V32__create_billing_tables.sql`.
+  - `apps/api/src/main/resources/db/migration/V33__seed_initial_plans.sql`.
+  - Paquete `apps/api/src/main/java/com/reserly/platform/billing`.
+  - Tests focalizados bajo `apps/api/src/test/java/com/reserly/platform/billing/persistence`.
+  - `DatabaseMigrationIntegrationTests.java`, actualizado a la versión Flyway `33`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-028 Suscripción y RedSys`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+  - `RNF-012 Calidad lingüística y UTF-8`.
+- Tareas impactadas y completadas:
+  - `13.1. Crear migraciones de plans, subscriptions y payments`.
+  - `13.2. Crear planes gratuito, profesional y premium`.
+  - `13.3. Implementar estados de suscripción`.
+- Siguiente tarea pendiente recomendada:
+  - `13.4. Crear pantalla de suscripción del local`.
+- Decisiones o aclaraciones relevantes:
+  - Los importes iniciales son 0 € para gratuito, 29 €/mes o 290 €/año para profesional y
+    59 €/mes o 590 €/año para premium. Son configuración comercial revisable y no activan cobro.
+  - Los límites viven como claves declarativas en JSONB. `null` expresa que premium no tiene un
+    límite configurado; ningún flujo los aplica todavía.
+  - Los estados de suscripción son `trial`, `active`, `pending_payment`, `suspended` y `cancelled`.
+    Los estados de pago dependientes son `confirmed`, `rejected`, `cancelled_by_user`,
+    `communication_error` y `pending_confirmation`.
+  - No se añadió endpoint, pantalla, proveedor, simulador, callback ni llamada de red de pagos.
+  - Spotless se aplicó exclusivamente a los 17 archivos Java del módulo billing.
+  - Los siete casos focalizados terminaron correctos dos veces: 2 de esquema, 2 de seed y 3 de
+    conversión de estados. En ambas ejecuciones Maven escribió los informes correctos, pero un
+    proceso Java residual no devolvió control y se cerró al alcanzar el límite de 60 segundos.
+  - El Checkstyle global se detuvo antes de compilar por 53 incidencias históricas ajenas y cuatro
+    líneas nuevas; solo se corrigieron las cuatro nuevas y se omitió el análisis global al repetir.
+  - No se ejecutaron suite global, frontend, Docker, Testcontainers ni migraciones PostgreSQL
+    reales para mantener la validación acotada.
 
 ## Conversación 119 - Consulta temporal, panel responsive y cierre de estadísticas
 

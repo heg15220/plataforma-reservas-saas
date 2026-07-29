@@ -9,9 +9,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.7`.
-- Siguiente tarea pendiente recomendada: `13.1. Crear migraciones de plans, subscriptions y
-  payments`.
+  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a
+  `13.3`.
+- Siguiente tarea pendiente recomendada: `13.4. Crear pantalla de suscripción del local`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -26115,3 +26115,411 @@ nativa necesita ejecución PostgreSQL en CI; el contrato estructural no sustituy
 
 Con `12.4`–`12.7` termina la fase 12. La siguiente tarea fuente de verdad es `13.1`, migraciones de
 planes, suscripciones y pagos.
+
+## Tarea 13.1 - Crear migraciones de `plans`, `subscriptions` y `payments`
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`, commit de cierre de esta iteración.
+- Estado: completada y verificada de forma focalizada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear la fuente persistente del núcleo de monetización sin activar cobros reales. El esquema debía
+representar catálogo de planes, suscripción actual de cada local e intentos de pago externos, y
+proteger desde PostgreSQL las invariantes que más adelante consumirán la pantalla, el simulador y
+el adaptador RedSys.
+
+La tarea también debía impedir que la preparación de pagos introdujera datos de tarjeta o una
+dependencia prematura de RedSys. La persistencia solo conserva identificadores, importes, moneda,
+estado, un hash del request y una respuesta sanitizada.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-028`, `RNF-001`, `RNF-002`, `RNF-006`, `RNF-008`, `RNF-009`, `RNF-011` y
+  `RNF-012`.
+- Diseño: módulo `3.11 Suscripciones y pagos`; entidades `plans`, `subscriptions` y `payments` de
+  `4.1`; contrato RedSys de `7.4`; seguridad, privacidad e idempotencia de secciones 12 y 13.
+- Tareas relacionadas: habilita `13.2`–`13.12` y la gestión administrativa futura `14.10`.
+
+### Archivos afectados
+
+- Creado: `apps/api/src/main/resources/db/migration/V32__create_billing_tables.sql`.
+- Creados: `PlanEntity`, `SubscriptionEntity`, `PaymentEntity`, `PlanDao`, `SubscriptionDao`,
+  `PaymentDao` y documentación del paquete `billing.persistence`.
+- Modificado: `billing/package-info.java`.
+- Modificado: `DatabaseMigrationIntegrationTests.java`, cuya versión Flyway esperada pasa de 31 a
+  33 después de incorporar también el seed de `13.2`.
+- Creado: `BillingSchemaMigrationTests`.
+- Conservado e incluido: corrección previa de las comillas de
+  `V25__add_venue_cancellation_notice.sql`.
+- Eliminados: ninguno.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+`"Plans"` usa:
+
+- UUID generado por PostgreSQL;
+- nombre interno y documento `nameI18n` JSONB;
+- slug semántico único, minúsculo y validado;
+- precios mensual y anual `numeric(12,2)` no negativos;
+- límites como objeto JSONB;
+- funciones como array JSONB y su catálogo localizado como objeto JSONB;
+- activación y timestamps coherentes.
+
+La constraint de `nameI18n` exige objeto, `sourceLocale` soportado, objeto `values` y valores no
+vacíos tanto para `es` como para `en`. El índice `ixPlansActivePrice` prepara la lectura de planes
+contratables ordenada por precio sin recorrer planes archivados.
+
+`"Subscriptions"` usa:
+
+- referencia obligatoria a local y plan con borrado restringido;
+- unicidad de `venueId`, de modo que cada local conserva una sola suscripción actual;
+- estado y periodicidad cerrados por constraints;
+- periodo actual opcional como pareja indivisible y con fin posterior al inicio;
+- fin de prueba obligatorio para `trial`;
+- fecha de cancelación obligatoria exclusivamente para `cancelled`;
+- timestamps monotónicos.
+
+La pareja `id`/`venueId` también es única para servir como destino de la clave foránea compuesta de
+pagos. Los índices por estado/fin de periodo y plan/estado preparan renovaciones y operación.
+
+`"Payments"` usa:
+
+- referencia a suscripción y local;
+- clave foránea compuesta que impide registrar un pago bajo un local diferente al de la
+  suscripción;
+- proveedor normalizado y `providerOrderId`;
+- importe positivo y moneda ISO de tres letras mayúsculas;
+- catálogo cerrado de resultados;
+- hash SHA-256 hexadecimal de 64 caracteres;
+- respuesta JSONB opcional y limitada estructuralmente a objeto;
+- `paidAt` obligatorio solo cuando el estado es `confirmed`;
+- timestamps monotónicos.
+
+`uqPaymentsProviderOrder` materializa idempotencia por proveedor/pedido. Los índices ordenan
+historial por suscripción y local, y un índice parcial localiza pagos pendientes sin recorrer
+resultados terminales.
+
+Las eliminaciones de planes, locales con suscripción y suscripciones con pagos usan `RESTRICT`.
+Esta elección evita borrar evidencia financiera como efecto secundario de un borrado ordinario. La
+política de retención y anonimización completa deberá cerrarse antes de producción.
+
+### Arquitectura, contratos, servicios y flujos
+
+Se mantiene el monolito modular bajo `billing`. Las entidades usan acceso JPA por propiedades y
+columnas físicas entrecomilladas `lowerCamelCase`. Las relaciones se representan mediante UUID
+escalares porque las operaciones futuras de callback no necesitan cargar el perfil del local ni el
+plan completo para bloquear y actualizar una suscripción.
+
+Cada tabla dispone de DAO:
+
+- `PlanDao` resuelve slug y catálogo activo con `@Query`;
+- `SubscriptionDao` resuelve por local y ofrece `findByIdForUpdate` con
+  `PESSIMISTIC_WRITE`, destinado a serializar callbacks futuros dentro de transacciones cortas;
+- `PaymentDao` resuelve proveedor/pedido para idempotencia y lista historial aislado por local.
+
+No se implementó servicio, endpoint, DTO, conversor REST, job, callback ni proveedor. Las consultas
+quedan preparadas, pero ningún flujo puede crear pagos todavía.
+
+### Seguridad, privacidad, errores, logs y observabilidad
+
+La migración documenta explícitamente que `responsePayloadJson` no puede contener PAN, CVV, claves
+o firmas secretas. El request completo tampoco se almacena: solo se reserva un hash canónico para
+detectar reenvíos o discrepancias. La base impide asociar un pago a otro tenant mediante la clave
+foránea compuesta.
+
+No se añadieron logs ni auditoría en esta tarea porque no existe ejecución de pagos. Los futuros
+servicios deberán registrar identificadores técnicos y transiciones, nunca payloads sensibles. Los
+errores de constraints se propagarán desde persistencia y deberán convertirse en errores de dominio
+opacos cuando existan endpoints.
+
+### Internacionalización, UI y experiencia
+
+Los nombres y funciones de plan admiten español e inglés desde el esquema. No se creó UI, ruta ni
+texto de pantalla; corresponden a `13.4` y `13.5`. Los importes se guardan como valores decimales y
+la futura UI deberá formatearlos según locale, nunca concatenar símbolos manualmente.
+
+### Tests, comandos y evidencia
+
+`BillingSchemaMigrationTests` ejecuta dos casos sin Docker:
+
+- presencia de tablas, claves foráneas, unicidad idempotente, estados e índices;
+- estructura localizada y minimización documentada del payload.
+
+El módulo completo compiló 698 fuentes principales y generó las clases de las tres entidades y
+DAOs. La versión esperada del test integral se actualizó a `33`, pero el test no se ejecutó porque
+requiere Docker/Testcontainers.
+
+El SQL de V25 contenía previamente dos comillas simples exteriores en el `COMMENT`, lo que impediría
+aplicar la cadena desde cero. El usuario ya había corregido localmente esa línea antes de la
+iteración; se preservó como dependencia real de V32/V33 y se documentó en lugar de sobrescribirla.
+
+### Decisiones técnicas
+
+- Tabla única de suscripción actual por local; el historial monetario vive en pagos y auditoría.
+- Borrado restringido para no perder trazabilidad financiera.
+- UUID, no secuencias previsibles, para entidades de facturación.
+- Idempotencia garantizada también en base de datos, no solo mediante comprobación de servicio.
+- JSONB para límites y funciones extensibles, pero columnas tipadas para importes, estado y fechas
+  que participan en invariantes.
+- No se almacena request o respuesta cruda del proveedor.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La migración real sobre PostgreSQL queda pendiente de CI porque Docker no está disponible.
+- `responsePayloadJson` solo puede validar estructura, no detectar por sí solo todas las claves
+  sensibles; el adaptador deberá usar una lista positiva de campos.
+- La política de borrado/retención financiera necesita revisión jurídica antes de producción.
+- Aún no existe historial de cambios de plan separado de pagos.
+- El lock DAO no sustituye el servicio transaccional e idempotente de `13.8`/`13.9`.
+
+## Tarea 13.2 - Crear planes gratuito, profesional y premium
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`, commit de cierre de esta iteración.
+- Estado: completada y verificada de forma focalizada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear un catálogo inicial reproducible y localizado que permita construir la pantalla de
+suscripción sin depender de datos manuales. La migración debía distinguir identidad estable,
+presentación localizada, precios, límites y funciones, y dejar claro que el catálogo no activa por
+sí mismo pagos ni feature gates.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-028`, `RF-031`, `RNF-002`, `RNF-009`, `RNF-011` y `RNF-012`.
+- Diseño: entidad `plans`, módulo `3.11`, estrategia de coste gratuito primero de `17.2` y decisión
+  RedSys sin cobro real.
+- Tareas relacionadas: usa `13.1`; alimentará `13.4`, `13.5`, `13.9` y `14.10`.
+
+### Archivos afectados
+
+- Creado: `apps/api/src/main/resources/db/migration/V33__seed_initial_plans.sql`.
+- Creado: `InitialPlanSeedTests`.
+- Implementación compartida: `PlanEntity` y `PlanDao`.
+- Modificados: documentos de estado en `.kiro`.
+- Eliminados: ninguno.
+
+### Catálogo, localización y configuración
+
+Se usan UUID fijos y slugs independientes del idioma:
+
+- `free`: Gratuito/Free;
+- `professional`: Profesional/Professional;
+- `premium`: Premium/Premium.
+
+Precios iniciales:
+
+- gratuito: 0 € mensual y anual;
+- profesional: 29 € mensual y 290 € anual;
+- premium: 59 € mensual y 590 € anual.
+
+La anualidad equivale inicialmente a diez mensualidades. Los importes son configuración comercial
+versionada, no una promesa irreversible; cualquier cambio posterior deberá usar una migración nueva
+y revisar el efecto sobre suscripciones existentes.
+
+Los límites declarativos son reservas mensuales, recursos de equipo, campos personalizados e
+imágenes de galería. Premium usa JSON `null` para expresar ausencia de límite configurado, evitando
+números mágicos como `-1`. Esta iteración no aplica esos límites a reservas, recursos, formularios
+o galería.
+
+Las funciones usan claves técnicas estables y textos ES/EN separados. Gratuito incluye perfil
+público, reservas online y estadísticas básicas. Profesional añade equipo, formularios y soporte
+prioritario. Premium añade uso sin límites configurados y estadísticas avanzadas. Algunas funciones
+describen posicionamiento futuro; la API no debe anunciarlas como activas hasta que el caso de uso
+correspondiente exista.
+
+### Arquitectura, contratos y flujo
+
+V33 es una migración append-only y falla ante conflictos inesperados; no usa `ON CONFLICT DO
+NOTHING`, porque silenciar una colisión podría dejar un catálogo parcialmente distinto al
+versionado. `PlanDao.findActivePlans` devuelve el catálogo por precio mensual y slug, mientras
+`findBySlug` permite mantener referencias históricas a un plan desactivado.
+
+No existe endpoint ni DTO de catálogo. La futura pantalla deberá consumir un servicio privado que
+resuelva `LocalizedText`, filtre funciones realmente disponibles y no exponga mapas JSON abiertos.
+
+### Seguridad, privacidad, i18n y UI
+
+El seed no contiene PII, credenciales ni referencias a proveedores. Los textos visibles conservan
+tildes y UTF-8 y existen en español e inglés. Los slugs y claves de función son internos y nunca
+deben mostrarse como traducciones.
+
+No se creó UI. La futura pantalla deberá formatear moneda y periodicidad con el locale activo,
+explicar que el cobro real está deshabilitado y evitar una acción que simule una transacción real
+cuando no corresponda.
+
+### Tests, comandos y evidencia
+
+`InitialPlanSeedTests` ejecuta dos casos:
+
+- acredita UUID/slug implícitamente estable, nombres localizados y los seis precios;
+- comprueba límites, funciones, tildes ES, equivalentes EN y ausencia de una cláusula que silencie
+  conflictos.
+
+Ambos casos pasaron en las dos ejecuciones focalizadas. No se realizó una lectura real desde
+PostgreSQL ni se probó serialización JPA del catálogo con fixtures porque se evitó activar
+Testcontainers.
+
+### Decisiones técnicas
+
+- UUID y slug estables para que futuras referencias no dependan del nombre.
+- Precios explícitos en migración, no configuración oculta de entorno.
+- JSON `null` para límite no configurado.
+- Funciones identificadas por claves y traducidas por separado.
+- Seed estricto, sin resolución silenciosa de conflictos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Precios, límites y posicionamiento requieren validación comercial antes de producción.
+- Las funciones no constituyen todavía autorización ni feature gating.
+- `advanced_statistics` no debe mostrarse como disponible hasta que exista implementación.
+- La gestión administrativa de planes llegará en `14.10`; hasta entonces cualquier cambio exige
+  migración.
+- La asignación automática del plan gratuito a locales existentes o nuevos aún no está
+  implementada; deberá resolverse antes de que `13.4` dependa de una suscripción obligatoria.
+
+## Tarea 13.3 - Implementar estados de suscripción
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`, commit de cierre de esta iteración.
+- Estado: completada y verificada de forma focalizada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Convertir los estados definidos en diseño en un contrato compilable y persistente, evitando cadenas
+libres o el acoplamiento a los nombres Java de los enums. La implementación debía alinear
+suscripciones, periodicidades y resultados de pago porque las constraints de `13.1` y los futuros
+callbacks dependen de los tres catálogos.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-028`, `RNF-001`, `RNF-006`, `RNF-008` y `RNF-011`.
+- Diseño: estados de suscripción y pago de `3.11`, tablas de `4.1` y validación transaccional e
+  idempotente de `7.4`.
+- Tareas relacionadas: usa `13.1`; prepara `13.4`, `13.6`, `13.8`, `13.9`, `13.10` y `13.11`.
+
+### Archivos afectados
+
+- Creados: `SubscriptionStatus`, `BillingPeriod` y `PaymentStatus`.
+- Creados: `SubscriptionStatusConverter`, `BillingPeriodConverter` y
+  `PaymentStatusConverter`.
+- Creados: `SubscriptionEntity`, `SubscriptionDao` y `SubscriptionStatusTests`.
+- Implementación dependiente compartida: `PaymentEntity` y `PaymentDao`.
+- Eliminados: ninguno.
+
+### Estados, persistencia e invariantes
+
+`SubscriptionStatus` define:
+
+- `TRIAL` → `trial`;
+- `ACTIVE` → `active`;
+- `PENDING_PAYMENT` → `pending_payment`;
+- `SUSPENDED` → `suspended`;
+- `CANCELLED` → `cancelled`.
+
+Cada valor documenta su significado. `trial` exige `trialEndsAt`; `cancelled` es el único estado que
+exige y admite `cancelledAt`. La base no inventa todavía una máquina de transiciones: el servicio de
+`13.9` deberá decidir cambios válidos dentro de una transacción y después de validar el pago.
+
+`BillingPeriod` define `monthly` y `yearly`. `PaymentStatus` conserva `confirmed`, `rejected`,
+`cancelled_by_user`, `communication_error` y `pending_confirmation`. Se implementó como dependencia
+directa porque `PaymentEntity` no debe usar una cadena libre mientras la migración ya impone el
+catálogo.
+
+Los tres conversores aceptan `null` para que Hibernate pueda representar campos opcionales durante
+su ciclo interno, pero fallan ante cualquier valor no reconocido. No usan `EnumType.STRING`, ya que
+ese mecanismo persistiría nombres Java en mayúsculas y acoplaría renombrados internos al esquema.
+
+### Arquitectura, flujo y concurrencia
+
+`SubscriptionEntity` contiene UUID escalares de local y plan, estado tipado, periodicidad y fechas.
+No expone lógica de transición ni efectos externos. `SubscriptionDao.findByVenueId` prepara la
+consulta privada por tenant y `findByIdForUpdate` usa `PESSIMISTIC_WRITE`.
+
+El flujo futuro esperado es:
+
+1. resolver una orden idempotente;
+2. abrir transacción;
+3. bloquear suscripción;
+4. comprobar importe, moneda, pedido y estado previo;
+5. registrar resultado de pago;
+6. cambiar suscripción si corresponde;
+7. confirmar la transacción una sola vez.
+
+Esta tarea solo entrega los tipos y el punto de lock. No ejecuta el flujo ni concede acceso según el
+estado.
+
+### Seguridad, errores, logs y observabilidad
+
+Los parsers estrictos lanzan `IllegalArgumentException` ante divergencia entre datos y catálogo,
+evitando convertir un estado desconocido en activo. Ningún mensaje incluye el valor recibido, lo
+que reduce filtrado accidental de datos en logs genéricos.
+
+No se implementaron logs, métricas o auditoría porque todavía no hay transición ejecutable. Las
+tareas de callbacks deberán medir resultados y auditar cambios sin registrar firma o payload
+sensible.
+
+### Contratos, UI e internacionalización
+
+No se añadió API. Los códigos persistidos son internos y futuros DTOs deberán transformarlos en un
+contrato explícito. Los labels visibles de estados deberán salir de catálogos ES/EN en `13.4`; los
+enums no contienen textos de UI.
+
+### Tests, comandos y evidencia
+
+`SubscriptionStatusTests` contiene tres casos:
+
+- round-trip exacto de los cinco estados y orden esperado;
+- round-trip de periodicidades y estados de pago dependientes;
+- preservación de `null` y rechazo de `ACTIVE`/`paid` como valores no canónicos.
+
+La verificación focalizada conjunta se lanzó con:
+
+```text
+mvn -f apps/api/pom.xml
+  "-Dtest=BillingSchemaMigrationTests,InitialPlanSeedTests,SubscriptionStatusTests"
+  "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+Resultado en informes Surefire, repetido tras formato:
+
+- `BillingSchemaMigrationTests`: 2/2;
+- `InitialPlanSeedTests`: 2/2;
+- `SubscriptionStatusTests`: 3/3;
+- total: 7 casos, 0 fallos, 0 errores y 0 omitidos.
+
+En ambas ejecuciones los informes se escribieron en menos de dos segundos de tests, pero el proceso
+Java de Maven no terminó después y fue cerrado al superar el límite de 60 segundos. Se evitó
+incrementar el timeout. Spotless se aplicó y comprobó únicamente sobre los 17 archivos Java cuyo
+path contiene `billing`.
+
+Un primer intento con Checkstyle alcanzó su fase global y detectó 57 incidencias: cuatro líneas
+nuevas y 53 incidencias históricas en disponibilidad, formularios, incidencias, reservas,
+estadísticas, reseñas y plantillas. Se corrigieron las cuatro propias. La repetición omitió
+Checkstyle global para no modificar módulos ajenos ni convertir la validación en una limpieza
+transversal.
+
+### Decisiones técnicas
+
+- Enum de dominio con valor persistido explícito y parser estricto.
+- Conversor JPA separado por catálogo.
+- Sin máquina de transiciones prematura antes del servicio de pago.
+- Lock pesimista preparado en DAO, no aplicado desde controlador.
+- Estados de pago tipados como dependencia necesaria del modelo creado en `13.1`.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Aún no se asigna un estado inicial a cada local existente porque no existe alta de suscripción.
+- La política concreta de transición, gracia de pago y suspensión queda para `13.9`.
+- No hay endpoint, UI, auditoría ni métrica de transiciones.
+- No se validó Hibernate contra PostgreSQL real; CI debe ejecutar Flyway y `ddl-auto=validate`.
+- El bloqueo debe permanecer corto y acompañarse de idempotencia; usarlo alrededor de una llamada
+  externa sería incorrecto.
+
+Con `13.1`–`13.3` queda preparado el núcleo de datos y estados. La siguiente tarea fuente de verdad
+es `13.4`, pantalla de suscripción del local.
