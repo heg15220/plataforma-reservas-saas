@@ -474,7 +474,8 @@
       "incidents": "Incidencias",
       "more": "Más",
       "reviews": "Reseñas",
-      "statistics": "Estadísticas"
+      "statistics": "Estadísticas",
+      "subscription": "Suscripción"
     }
   },
   "Availability": {
@@ -1483,6 +1484,88 @@
       "notFound": "No encontramos un local activo para esta cuenta.",
       "invalid": "El periodo no es válido. Revisa las fechas y limita el rango a 366 días.",
       "unavailable": "No pudimos cargar las estadísticas. Inténtalo de nuevo."
+    }
+  },
+  "VenueSubscription": {
+    "metadata": {
+      "title": "Suscripción | Reserly",
+      "description": "Consulta el plan, el estado de suscripción y la monetización de tu local."
+    },
+    "hero": {
+      "eyebrow": "Plan y facturación",
+      "title": "Suscripción",
+      "summary": "Consulta tu plan actual, sus funciones y el estado de monetización. No se realizará ningún cobro mientras los pagos reales estén desactivados."
+    },
+    "loading": "Cargando suscripción",
+    "current": {
+      "title": "Plan actual",
+      "monthlyPrice": "Precio mensual",
+      "yearlyPrice": "Precio anual",
+      "renewal": "Próxima renovación",
+      "trialEnd": "Fin del periodo de prueba",
+      "notApplicable": "No aplicable",
+      "features": "Funciones incluidas"
+    },
+    "billingPeriod": {
+      "monthly": "Facturación mensual",
+      "yearly": "Facturación anual"
+    },
+    "status": {
+      "trial": {
+        "label": "Periodo de prueba",
+        "description": "El plan está activo temporalmente hasta la fecha indicada."
+      },
+      "active": {
+        "label": "Activa",
+        "description": "La suscripción está activa y el local conserva las funciones de su plan."
+      },
+      "pending_payment": {
+        "label": "Pago pendiente",
+        "description": "Existe una confirmación de pago pendiente. No repitas la operación sin revisar su estado."
+      },
+      "suspended": {
+        "label": "Suspendida",
+        "description": "La suscripción está suspendida temporalmente. Contacta con soporte para revisarla."
+      },
+      "cancelled": {
+        "label": "Cancelada",
+        "description": "La suscripción ha sido cancelada y no se renovará."
+      }
+    },
+    "monetization": {
+      "disabled": {
+        "title": "Monetización aún no activada",
+        "description": "Puedes consultar los planes, pero no hay ninguna acción de pago disponible ni se realizará un cobro."
+      },
+      "redsys": {
+        "title": "Pago seguro externo",
+        "description": "El pago se completará fuera de Reserly mediante RedSys. Reserly no solicitará ni almacenará los datos completos de tu tarjeta."
+      }
+    },
+    "plans": {
+      "title": "Planes disponibles",
+      "description": "Compara las funciones y límites configurados. La contratación solo aparecerá cuando el cobro real esté habilitado.",
+      "current": "Actual",
+      "monthlyPrice": "{price} al mes",
+      "yearlyPrice": "{price} al año"
+    },
+    "limits": {
+      "monthlyReservations": "Reservas mensuales",
+      "teamResources": "Recursos de equipo",
+      "customFormFields": "Campos personalizados",
+      "galleryImages": "Imágenes de galería",
+      "unlimited": "Sin límite configurado",
+      "value": "{label}: {value}"
+    },
+    "history": {
+      "title": "Historial de facturación",
+      "empty": "Todavía no hay movimientos de facturación. Los pagos confirmados aparecerán aquí cuando la monetización esté habilitada."
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",
+      "forbidden": "No tienes permisos para consultar esta suscripción.",
+      "notFound": "No encontramos un local activo para esta cuenta.",
+      "unavailable": "No pudimos cargar la suscripción. Inténtalo de nuevo."
     }
   },
   "VenueIncidents": {

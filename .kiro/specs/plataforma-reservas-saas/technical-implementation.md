@@ -10,8 +10,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a
-  `13.3`.
-- Siguiente tarea pendiente recomendada: `13.4. Crear pantalla de suscripción del local`.
+  `13.6`.
+- Siguiente tarea pendiente recomendada: `13.7. Preparar adaptador RedSys por redirección,
+  configuración segura y contratos de creación de orden, retorno y notificación`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -26523,3 +26524,364 @@ transversal.
 
 Con `13.1`–`13.3` queda preparado el núcleo de datos y estados. La siguiente tarea fuente de verdad
 es `13.4`, pantalla de suscripción del local.
+
+## Tarea 13.4 - Crear pantalla de suscripción del local
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`, conversación 121.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Entregar una consulta autenticada y una pantalla responsive para que el propietario conozca el
+plan efectivo de su local, su estado, periodicidad, fechas, funciones y límites, además del catálogo
+de planes disponible. La solución debía aprovechar las tablas y catálogos de `13.1`–`13.3` sin
+introducir todavía transiciones de suscripción, checkout ni historial de pagos.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-028`, `RF-031`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-009`,
+  `RNF-011` y `RNF-012`.
+- Diseño: área privada `/panel/suscripcion`, recurso propio bajo `/api/venue/me`, catálogo
+  localizado ES/EN, cookies HttpOnly y separación controller/service/persistence.
+- Tareas relacionadas: consume `13.1`, `13.2` y `13.3`; deja el cambio de plan para `13.9`, el
+  historial real para `13.11` y la aplicación de límites para `13.12`.
+
+### Archivos afectados
+
+- Creados:
+  - DTOs `VenueSubscriptionResponse`, `SubscriptionPlanResponse`, `PlanLimitsResponse`,
+    `PlanFeatureResponse`, `MonetizationStatusResponse` y `BillingErrorResponse`.
+  - `VenueSubscriptionController`, `VenueSubscriptionControllerImpl` y
+    `VenueSubscriptionExceptionHandler`.
+  - `VenueSubscriptionService`, `VenueSubscriptionServiceImpl`,
+    `VenueSubscriptionNotFoundException` y `VenueSubscriptionUnavailableException`.
+  - `venue-subscription-api.ts`, `venue-subscription-dashboard.tsx` y
+    `app/panel/suscripcion/page.tsx`.
+  - Tests `VenueSubscriptionServiceTests`, `VenueSubscriptionAuthorizationTests`,
+    `venue-subscription-api.test.ts` y `venue-subscription-dashboard.test.tsx`.
+  - Documentación de paquetes Java mediante sus `package-info.java`.
+- Modificados:
+  - `venue-shell.tsx`, para navegación desktop y móvil.
+  - `locales/es.json` y `locales/en.json`, para el namespace `VenueSubscription`.
+- Eliminados: ninguno.
+
+### Implementación técnica
+
+`GET /api/venue/me/subscription` obtiene exclusivamente el UUID del usuario desde el principal
+autenticado. `VenueSubscriptionServiceImpl` resuelve el local con `VenueDao`, carga los planes
+activos y consulta la suscripción por `venueId`. La operación está marcada
+`@Transactional(readOnly = true)` y no acepta un identificador de local enviado por el cliente.
+
+Cuando el local todavía no tiene fila en `Subscriptions`, el servicio proyecta como estado efectivo
+el plan `free`, estado `active` y periodicidad `monthly`. Se optó por no escribir desde un `GET`:
+así la lectura permanece idempotente, no crea carreras de aprovisionamiento y no anticipa la
+transacción de `13.9`. Si faltan catálogo, plan relacionado, traducciones o límites válidos, el
+servicio falla con indisponibilidad en vez de fabricar información comercial.
+
+Los nombres de plan se resuelven mediante `LocalizedText`. Las variantes BCP 47 se reducen a su
+idioma base soportado, por lo que `es-ES` selecciona `es`; cualquier idioma desconocido conserva el
+fallback inglés. Las etiquetas de funciones se extraen del JSONB localizado y los límites se
+convierten a enteros no negativos o `null` para ilimitado.
+
+El cliente usa Zod estricto para validar el contrato completo, limita tamaños, formatos, slugs,
+estados, fechas e importes, y convierte respuesta HTTP o payload inválido en errores de UI
+controlados. La petición usa `credentials: include`, `cache: no-store` y `AbortSignal`.
+
+### Modelo de datos
+
+No hay migraciones ni escrituras nuevas. Se leen `Plans` y `Subscriptions` mediante los DAOs de
+`13.1`. La ausencia de suscripción se representa en memoria como plan gratuito efectivo y no altera
+datos existentes. Las fechas opcionales exponen fin de periodo, fin de prueba y cancelación sin
+derivar valores ficticios.
+
+### Contratos y APIs
+
+- Método y ruta: `GET /api/venue/me/subscription`.
+- Autenticación: sesión obligatoria; el usuario se deriva de `AuthenticatedUserPrincipal`.
+- Respuesta: `currentPlan`, `subscriptionStatus`, `billingPeriod`, `renewalAt`, `trialEndsAt`,
+  `cancelledAt`, `monetization` y `availablePlans`.
+- Cada plan contiene `slug`, nombre localizado, precios mensual/anual, cuatro límites tipados y
+  funciones con código y etiqueta.
+- Errores: `404` opaco cuando no existe local propio y `503` cuando el catálogo persistido no
+  permite construir una respuesta coherente. El contrato no filtra UUID internos.
+- No existe endpoint de cambio de plan, creación de orden o pago en esta tarea.
+
+### Seguridad, privacidad, errores y observabilidad
+
+La autorización se basa en ownership y no en IDs controlados por el navegador. El DTO no contiene
+emails, clientes, reservas, PAN, CVV, claves, firmas ni payloads de proveedor. Los errores públicos
+usan códigos estables y mensajes opacos. La lectura no registra datos personales ni genera
+auditoría porque no cambia estado; la observabilidad específica de transiciones se añadirá con los
+flujos de pago.
+
+### UI y experiencia de usuario
+
+`VenueSubscriptionDashboard` presenta:
+
+- nombre, periodicidad y chip de estado;
+- explicación localizada del estado;
+- precios, renovación y fin de prueba;
+- funciones incluidas;
+- catálogo responsive de gratuito, profesional y premium con sus límites;
+- bloque de historial vacío explícito hasta `13.11`;
+- estados de carga y error accesibles.
+
+La navegación añade “Suscripción” tanto en escritorio como en móvil. La barra móvil usa scroll
+horizontal y ancho mínimo por elemento para conservar siete destinos sin comprimir etiquetas. La UI
+usa encabezados semánticos, listas, `dl`, iconos decorativos ocultos a lectores y textos ES/EN. No
+incluye botón de pago ni falsa acción de checkout.
+
+### Tests y verificación
+
+- `VenueSubscriptionServiceTests`: 3/3, con plan gratuito sin escritura, suscripción persistida y
+  estado de monetización.
+- `VenueSubscriptionAuthorizationTests`: 2/2, acceso autenticado propio y rechazo sin principal.
+- `venue-subscription-api.test.ts`: 2/2, contrato válido y rechazo de monetización inconsistente.
+- `venue-subscription-dashboard.test.tsx`: 2/2, panel sin cobro y aviso condicional.
+- `messages.test.ts`: 3/3, paridad y carga de catálogos ES/EN.
+- Prettier focalizado: correcto.
+- Spotless focalizado al paquete billing: correcto.
+- Checkstyle focalizado a Java de billing, excluyendo recursos ajenos: 0 incidencias.
+
+Maven se ejecutó mediante objetivos directos `compiler:compile`, `compiler:testCompile` y
+`surefire:test` para evitar las validaciones globales de módulos ajenos. El proceso de compilación
+incremental superó el límite de 60 segundos después de generar clases; `surefire:test` se reanudó
+directamente y completó 10 casos backend, 0 fallos, 0 errores y 0 omitidos.
+
+TypeScript y ESLint se ejecutaron con archivos/include limitados a la funcionalidad, pero ambos
+alcanzaron el timeout de 45 segundos durante la carga del toolchain sin emitir diagnósticos. No se
+amplió el tiempo ni se ejecutó el monorepo completo. La transformación TypeScript de Vitest y los
+siete casos frontend finalizaron correctamente.
+
+### Decisiones técnicas
+
+- Proyección gratuita sin escritura en lectura.
+- Un único endpoint agregado para evitar consultas parciales y estados visuales contradictorios.
+- Contrato frontend estricto e independiente de las entidades JPA.
+- Fechas ausentes como `null`, nunca inventadas.
+- Historial visible como estado vacío, sin simular registros que corresponden a `13.11`.
+
+### Riesgos y deuda técnica
+
+- La fila gratuita sigue sin materializarse y debe crearse de forma transaccional en `13.9`.
+- El historial no consulta `Payments` hasta `13.11`.
+- Los límites son informativos hasta `13.12`.
+- El typecheck/lint focalizado debe repetirse en CI con caché caliente; no hay diagnóstico pendiente
+  conocido, pero el proceso local no terminó dentro del límite acordado.
+- No se ejecutó navegador real; los puntos responsive se cubrieron por estructura MUI y pruebas de
+  componente.
+
+## Tarea 13.5 - Mostrar estado de monetización y aviso RedSys solo con cobro real habilitado
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`, conversación 121.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Hacer visible el estado operativo de monetización sin insinuar que existe checkout real. El aviso
+de pago seguro externo y la marca RedSys deben aparecer únicamente cuando la configuración backend
+habilite de forma explícita los pagos reales.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-028`, `RNF-001`, `RNF-002`, `RNF-006` y `RNF-009`.
+- Diseño: feature flag backend como fuente de verdad, RedSys por redirección externa y cobro real
+  deshabilitado hasta completar contratos, firma, retorno, notificación e idempotencia.
+- Tareas relacionadas: depende de `13.4`; prepara la comunicación visual para `13.7` y `13.8`.
+
+### Archivos afectados
+
+- Creados: `MonetizationStatusResponse` y cobertura específica en los tests de servicio, API web y
+  dashboard.
+- Modificados: `VenueSubscriptionServiceImpl`, `VenueSubscriptionResponse`,
+  `venue-subscription-api.ts`, `venue-subscription-dashboard.tsx` y catálogos ES/EN.
+- Eliminados: ninguno.
+
+### Implementación técnica
+
+El backend deriva cuatro valores coherentes de
+`reserly.features.real-payments-enabled`: estado `disabled` o `real_payments_enabled`, booleano de
+cobro real, booleano de aviso externo y proveedor `redsys` o `null`. No acepta ese estado desde el
+cliente ni desde parámetros del endpoint.
+
+El esquema Zod aplica una refinación cruzada: los tres indicadores y el proveedor deben coincidir.
+Un proxy, despliegue incoherente o respuesta parcial no puede provocar que la pantalla muestre
+RedSys con pagos desactivados. El componente usa una condición doble para renderizar el aviso y
+muestra en su lugar un mensaje informativo neutro cuando la monetización está deshabilitada.
+
+### Modelo de datos
+
+No se modifica el modelo persistente. El estado es configuración operativa, no un atributo de
+`Subscriptions`. Esta separación impide confundir el estado comercial del local con la capacidad
+global del despliegue para aceptar pagos reales.
+
+### Contratos y APIs
+
+El objeto `monetization` contiene:
+
+- `status`: `disabled` o `real_payments_enabled`;
+- `realPaymentsEnabled`;
+- `secureExternalPaymentNoticeRequired`;
+- `provider`: `redsys` solo en el estado habilitado, `null` en otro caso.
+
+No se exponen URL, merchant code, terminal, secreto, clave de firma ni configuración interna.
+
+### Seguridad, privacidad, errores y observabilidad
+
+La política falla cerrada: la configuración de los entornos actuales continúa a `false`. El aviso
+explica una futura redirección segura y que Reserly no recoge datos de tarjeta. No existe formulario
+de tarjeta ni llamada a un proveedor. Una respuesta incoherente se transforma en indisponibilidad
+en el cliente en vez de degradar a un mensaje engañoso.
+
+### UI y experiencia de usuario
+
+Con cobro deshabilitado se presenta únicamente que la gestión de planes todavía no admite pago
+real; la cadena “RedSys” no se renderiza. Con cobro habilitado se muestra un `Alert` de advertencia
+con icono decorativo y texto localizado sobre redirección externa. La UI no ofrece acción de pago
+en ninguno de los dos estados porque la creación real de órdenes pertenece a tareas posteriores.
+
+### Tests y verificación
+
+`VenueSubscriptionServiceTests` comprueba las dos proyecciones de configuración. El test del
+dashboard verifica que RedSys queda ausente con pagos deshabilitados y aparece con la combinación
+habilitada. El test del cliente rechaza un payload que declara `disabled` pero incluye proveedor.
+Estos casos forman parte de los 10 tests backend y 7 frontend correctos documentados en `13.4`.
+
+### Decisiones técnicas
+
+- La fuente de verdad reside en backend y no en `NEXT_PUBLIC_*`.
+- Estado redundante pero validado de forma cruzada para expresar el contrato sin ambigüedad.
+- Sin CTA hasta que exista un flujo seguro completo.
+- El nombre del proveedor solo cruza la API cuando su uso real está habilitado.
+
+### Riesgos y deuda técnica
+
+- El flag no puede habilitarse en producción mientras la validación de configuración continúe
+  bloqueándolo y no estén cerradas `13.7`–`13.10`.
+- Los textos no sustituyen las comprobaciones criptográficas o de idempotencia futuras.
+- La telemetría de intentos de pago no existe porque todavía no hay intentos ejecutables.
+
+## Tarea 13.6 - Interfaz de proveedor de pagos y adaptador simulado
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`, conversación 121.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear una frontera estable entre dominio y proveedor de pagos, y ofrecer un simulador local,
+determinista y sin red para desarrollar las siguientes transiciones. Producción debe permanecer
+cerrada y no puede seleccionar accidentalmente el simulador.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-028`, `RNF-001`, `RNF-002`, `RNF-006`, `RNF-008` y `RNF-011`.
+- Diseño: patrón adapter/port, selección por entorno, simulación explícita, resultado tipado y
+  ausencia de datos de tarjeta.
+- Tareas relacionadas: consume estados de `13.3`; habilita el desarrollo aislado de `13.7`–`13.10`.
+
+### Archivos afectados
+
+- Creados:
+  - `PaymentProvider`, `PaymentOrderCommand` y `PaymentOrderResult`.
+  - `SimulatedPaymentProvider`, `DisabledPaymentProvider`,
+    `PaymentProviderUnavailableException` y `PaymentProviderConfiguration`.
+  - `SimulatedPaymentProviderTests` y `PaymentProviderConfigurationTests`.
+  - `billing/payment/package-info.java`.
+- Modificados: ninguno fuera de la documentación de la iteración.
+- Eliminados: ninguno.
+
+### Implementación técnica
+
+`PaymentProvider` define una única creación de orden que recibe un comando inmutable y devuelve un
+resultado inmutable. `PaymentOrderCommand` valida UUID de pago, suscripción y local, identificador
+mercantil visible, importe estrictamente positivo con máximo dos decimales y moneda ISO alfabética
+de tres caracteres. El contrato documenta excepciones, ausencia de persistencia y prohibición de
+datos de tarjeta.
+
+`SimulatedPaymentProvider` decide el resultado por prefijo de `merchantOrderId`:
+
+- `sim_confirmed_`: `confirmed`;
+- `sim_rejected_`: `rejected`;
+- `sim_cancelled_`: `cancelled_by_user`;
+- `sim_error_`: `communication_error`;
+- cualquier otro identificador válido: `pending_confirmation`.
+
+La referencia externa se construye con SHA-256 sobre una representación canónica del comando, por
+lo que la misma orden produce exactamente el mismo resultado y referencia. El payload de respuesta
+es una copia defensiva limitada a `simulation: true` y `outcome`; no contiene comando completo,
+firma, secreto, PAN o CVV. No hay aleatoriedad, reloj, HTTP, base de datos, reintentos ni efectos
+secundarios.
+
+`PaymentProviderConfiguration` selecciona el simulador solo para `LOCAL`, `TEST` y `STAGING`.
+`PRODUCTION` recibe `DisabledPaymentProvider`, que lanza `PaymentProviderUnavailableException`.
+Esta configuración permanece independiente del futuro adaptador RedSys y evita registrar dos
+implementaciones ambiguas del puerto.
+
+### Modelo de datos
+
+No hay migraciones ni persistencia. Los UUID del comando enlazan conceptualmente pago, suscripción y
+local ya modelados, pero el simulador no crea ni actualiza filas. `PaymentOrderResult` reutiliza
+`PaymentStatus` para impedir estados libres incompatibles con la restricción SQL.
+
+### Contratos y APIs
+
+El puerto es interno; no se añade endpoint público. Entradas: identidad correlacionada, pedido
+mercantil, importe y moneda. Salidas: estado tipado, referencia externa determinista y mapa
+saneado. Errores de validación usan `IllegalArgumentException`; ausencia deliberada de proveedor
+usa `PaymentProviderUnavailableException`.
+
+La idempotencia persistente todavía no se implementa: la salida determinista facilita repetir
+fixtures, pero la unicidad transaccional y el procesamiento de callbacks pertenecen a `13.8`–`13.10`.
+
+### Seguridad, privacidad, errores y observabilidad
+
+El simulador no admite ni almacena credenciales. El comando no modela datos bancarios y el resultado
+realiza copia defensiva del mapa recibido. Producción falla cerrada. No se registran comandos o
+payloads; cuando se añada observabilidad deberá usar UUID/referencia técnica y estado, nunca firma,
+secreto o datos financieros.
+
+### UI y experiencia de usuario
+
+No hay UI ni botón para invocar el simulador. Es una dependencia interna para pruebas y flujos
+backend futuros, evitando que una herramienta técnica sea confundida con un checkout de usuario.
+
+### Tests y verificación
+
+- `SimulatedPaymentProviderTests`: 3/3; cubre matriz de cinco resultados, estabilidad de referencia,
+  payload saneado y rechazo de importe con escala inválida.
+- `PaymentProviderConfigurationTests`: 2/2; comprueba simulador en local/test/staging y fallo cerrado
+  en producción.
+- Los cinco casos forman parte de la ejecución Surefire conjunta de 10 casos, sin fallos ni errores.
+- Spotless fue aplicado y comprobado solo sobre `billing`.
+- Checkstyle, limitado a Java de `billing` y con recursos ajenos excluidos, terminó con 0
+  incidencias.
+
+El intento de lifecycle Maven completo alcanzó Spotless global y reveló 103 archivos históricos
+ajenos que necesitarían formato. No se modificaron. Se usaron objetivos Maven directos y suites
+nombradas para cumplir la validación acotada solicitada.
+
+### Decisiones técnicas
+
+- Un puerto mínimo ahora y contratos RedSys separados en `13.7`.
+- Selección exhaustiva por `RuntimeEnvironment`, sin fallback silencioso.
+- Simulación determinista por prefijo para que los fixtures expresen intención.
+- SHA-256 como referencia reproducible, no como firma ni mecanismo de seguridad.
+- Sin persistencia en el adaptador; la transacción pertenece al servicio de aplicación futuro.
+
+### Riesgos y deuda técnica
+
+- `DisabledPaymentProvider` deberá sustituirse por el adaptador RedSys solo cuando configuración,
+  redirección y firma estén verificadas.
+- El hash determinista no proporciona idempotencia de base de datos.
+- Faltan timeouts, reintentos y clasificación HTTP porque no existe integración externa todavía.
+- Faltan auditoría y métricas de pago hasta que haya un flujo ejecutable.
+
+Con `13.4`–`13.6` existe una vista completa y segura del estado actual y una frontera de proveedor
+testeable sin habilitar cobro. La siguiente tarea fuente de verdad es `13.7`, preparación del
+adaptador RedSys por redirección.

@@ -474,7 +474,8 @@
       "incidents": "Incidents",
       "more": "More",
       "reviews": "Reviews",
-      "statistics": "Statistics"
+      "statistics": "Statistics",
+      "subscription": "Subscription"
     }
   },
   "Availability": {
@@ -1483,6 +1484,88 @@
       "notFound": "We could not find an active venue for this account.",
       "invalid": "The period is invalid. Review the dates and limit the range to 366 days.",
       "unavailable": "We could not load the statistics. Please try again."
+    }
+  },
+  "VenueSubscription": {
+    "metadata": {
+      "title": "Subscription | Reserly",
+      "description": "View your venue's plan, subscription status, and monetisation."
+    },
+    "hero": {
+      "eyebrow": "Plan and billing",
+      "title": "Subscription",
+      "summary": "View your current plan, included features, and monetisation status. No charge will be made while real payments are disabled."
+    },
+    "loading": "Loading subscription",
+    "current": {
+      "title": "Current plan",
+      "monthlyPrice": "Monthly price",
+      "yearlyPrice": "Yearly price",
+      "renewal": "Next renewal",
+      "trialEnd": "Trial end",
+      "notApplicable": "Not applicable",
+      "features": "Included features"
+    },
+    "billingPeriod": {
+      "monthly": "Monthly billing",
+      "yearly": "Yearly billing"
+    },
+    "status": {
+      "trial": {
+        "label": "Trial",
+        "description": "The plan is temporarily active until the displayed date."
+      },
+      "active": {
+        "label": "Active",
+        "description": "The subscription is active and the venue retains its plan features."
+      },
+      "pending_payment": {
+        "label": "Payment pending",
+        "description": "A payment confirmation is pending. Do not repeat the operation before checking its status."
+      },
+      "suspended": {
+        "label": "Suspended",
+        "description": "The subscription is temporarily suspended. Contact support to review it."
+      },
+      "cancelled": {
+        "label": "Cancelled",
+        "description": "The subscription has been cancelled and will not renew."
+      }
+    },
+    "monetization": {
+      "disabled": {
+        "title": "Monetisation is not active yet",
+        "description": "You can compare plans, but no payment action is available and no charge will be made."
+      },
+      "redsys": {
+        "title": "Secure external payment",
+        "description": "Payment will be completed outside Reserly through RedSys. Reserly will not request or store your complete card details."
+      }
+    },
+    "plans": {
+      "title": "Available plans",
+      "description": "Compare configured features and limits. A purchase action will only appear when real payments are enabled.",
+      "current": "Current",
+      "monthlyPrice": "{price} per month",
+      "yearlyPrice": "{price} per year"
+    },
+    "limits": {
+      "monthlyReservations": "Monthly bookings",
+      "teamResources": "Team resources",
+      "customFormFields": "Custom fields",
+      "galleryImages": "Gallery images",
+      "unlimited": "No configured limit",
+      "value": "{label}: {value}"
+    },
+    "history": {
+      "title": "Billing history",
+      "empty": "There are no billing entries yet. Confirmed payments will appear here when monetisation is enabled."
+    },
+    "errors": {
+      "unauthenticated": "Your session has expired. Sign in again.",
+      "forbidden": "You do not have permission to view this subscription.",
+      "notFound": "We could not find an active venue for this account.",
+      "unavailable": "We could not load the subscription. Please try again."
     }
   },
   "VenueIncidents": {

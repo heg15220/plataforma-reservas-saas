@@ -13,10 +13,70 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-29
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.3`.
-- Siguiente tarea pendiente recomendada: `13.4. Crear pantalla de suscripción del local`.
-- Observación: la fase 13 dispone ya del modelo persistente, el catálogo inicial localizado y los
-  estados estrictos; el cobro real continúa deshabilitado y los límites aún no se aplican.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.6`.
+- Siguiente tarea pendiente recomendada: `13.7. Preparar adaptador RedSys por redirección,
+  configuración segura y contratos de creación de orden, retorno y notificación`.
+- Observación: el local ya consulta su suscripción y catálogo localizado desde un panel responsive;
+  el cobro real continúa deshabilitado y el puerto de pagos solo usa simulación determinista fuera
+  de producción.
+
+## Conversación 121 - Panel de suscripción, monetización condicional y simulador de pagos
+
+- Fecha: 2026-07-29.
+- Resumen de la conversación:
+  - Se completaron `13.4`, `13.5` y `13.6` en `phase/13-Suscriptions-plans`.
+  - Se creó `GET /api/venue/me/subscription`, limitado al local del propietario autenticado, para
+    devolver plan actual, estado, periodicidad, fechas, límites, funciones localizadas, catálogo
+    activo y estado explícito de monetización.
+  - Un local sin fila de suscripción recibe una proyección efectiva del plan gratuito sin que un
+    `GET` provoque escrituras o carreras de aprovisionamiento.
+  - Se creó `/panel/suscripcion`, responsive y accesible, con resumen del plan actual, estado,
+    renovación, funciones, comparativa de planes, límites e historial vacío hasta `13.11`.
+  - La interfaz no ofrece acciones de pago. El aviso de pago seguro externo y el nombre RedSys solo
+    se renderizan cuando el backend declara simultáneamente el cobro real habilitado y el aviso
+    obligatorio.
+  - Se añadió el puerto `PaymentProvider`, un adaptador simulado para `local`, `test` y `staging`, y
+    un adaptador cerrado para producción. El simulador resuelve resultados deterministas mediante
+    prefijos de orden, genera una referencia SHA-256 y no realiza red ni persistencia.
+- Archivos modificados:
+  - Paquetes `billing/controller`, `billing/dto`, `billing/service` y `billing/payment` de la API.
+  - Tests focalizados de los cuatro paquetes bajo `apps/api/src/test`.
+  - `apps/web/src/features/venue-subscription`.
+  - `apps/web/src/app/panel/suscripcion/page.tsx`.
+  - `apps/web/src/components/layout/venue-shell.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-028 Suscripción y RedSys`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-003 Accesibilidad`.
+  - `RNF-004 Compatibilidad y responsive`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `13.4. Crear pantalla de suscripción del local`.
+  - `13.5. Mostrar estado de monetización y aviso de pago seguro externo RedSys solo cuando el
+    cobro real esté habilitado`.
+  - `13.6. Implementar interfaz de proveedor de pagos y adaptador simulado para local, test y
+    staging`.
+- Siguiente tarea pendiente recomendada:
+  - `13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación
+    de orden, retorno y notificación`.
+- Decisiones o aclaraciones relevantes:
+  - La lectura de suscripción no materializa todavía la fila gratuita; esa transición
+    transaccional corresponde a `13.9`.
+  - Producción falla de forma cerrada con `DisabledPaymentProvider`; no reutiliza el simulador.
+  - Ningún contrato contiene PAN, CVV, firma, secreto o dato bancario, y la respuesta simulada solo
+    conserva resultado, referencia y un payload técnico saneado.
+  - Se ejecutaron 10 casos backend y 7 casos frontend enfocados, todos correctos.
+  - Prettier, Spotless y Checkstyle quedaron limpios sobre los archivos propios. TypeScript y
+    ESLint enfocados se limitaron a 45 segundos y alcanzaron el timeout durante la carga sin emitir
+    errores.
+  - No se ejecutaron suites globales, Docker ni Testcontainers. El Spotless global mostró 103
+    incidencias históricas ajenas y se sustituyó por su comprobación focalizada.
 
 ## Conversación 120 - Núcleo persistente, catálogo y estados de suscripción
 

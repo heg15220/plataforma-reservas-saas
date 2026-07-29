@@ -242,9 +242,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 13.1. Crear migraciones de `plans`, `subscriptions` y `payments`.
 - [x] 13.2. Crear planes gratuito, profesional y premium.
 - [x] 13.3. Implementar estados de suscripción.
-- [ ] 13.4. Crear pantalla de suscripción del local.
-- [ ] 13.5. Mostrar estado de monetización y aviso de pago seguro externo RedSys solo cuando el cobro real esté habilitado.
-- [ ] 13.6. Implementar interfaz de proveedor de pagos y adaptador simulado para local, test y staging.
+- [x] 13.4. Crear pantalla de suscripción del local.
+- [x] 13.5. Mostrar estado de monetización y aviso de pago seguro externo RedSys solo cuando el cobro real esté habilitado.
+- [x] 13.6. Implementar interfaz de proveedor de pagos y adaptador simulado para local, test y staging.
 - [ ] 13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación de orden, retorno y notificación.
 - [ ] 13.8. Implementar validación de firma e idempotencia mediante simulador y fixtures oficiales, sin activar producción.
 - [ ] 13.9. Actualizar estado de suscripción tras pago simulado o confirmado por un proveedor habilitado.

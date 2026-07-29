@@ -7,6 +7,7 @@ import Typography from "@mui/material/Typography";
 import {
   CalendarDays,
   ChartNoAxesColumnIncreasing,
+  CreditCard,
   Grid2X2,
   ListChecks,
   MoreHorizontal,
@@ -40,6 +41,7 @@ const venueNavigation = [
     icon: ChartNoAxesColumnIncreasing,
     labelKey: "statistics",
   },
+  { href: "/panel/suscripcion", icon: CreditCard, labelKey: "subscription" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
@@ -52,7 +54,8 @@ const venueNavigation = [
     | "form"
     | "incidents"
     | "reviews"
-    | "statistics";
+    | "statistics"
+    | "subscription";
 }>;
 
 const venueMobileNavigation = [
@@ -66,10 +69,18 @@ const venueMobileNavigation = [
     icon: ChartNoAxesColumnIncreasing,
     labelKey: "statistics",
   },
+  { href: "/panel/suscripcion", icon: CreditCard, labelKey: "subscription" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey: "home" | "reservations" | "calendar" | "more" | "reviews" | "statistics";
+  labelKey:
+    | "home"
+    | "reservations"
+    | "calendar"
+    | "more"
+    | "reviews"
+    | "statistics"
+    | "subscription";
 }>;
 
 export interface VenueShellProps {
@@ -173,9 +184,9 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         square
         sx={{
           bottom: 0,
-          display: { xs: "grid", md: "none" },
-          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+          display: { xs: "flex", md: "none" },
           left: 0,
+          overflowX: "auto",
           position: "fixed",
           right: 0,
           zIndex: "appBar",
@@ -198,7 +209,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
                 fontSize: "0.75rem",
                 gap: 0.75,
                 minHeight: 64,
-                minWidth: 0,
+                minWidth: 72,
                 px: 1,
               }}
             >
