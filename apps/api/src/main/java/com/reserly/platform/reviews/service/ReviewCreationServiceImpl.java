@@ -6,15 +6,19 @@ import com.reserly.platform.reviews.dto.ReviewCreateRequest;
 import com.reserly.platform.reviews.dto.ReviewCreateResponse;
 import com.reserly.platform.reviews.persistence.ReviewDao;
 import com.reserly.platform.reviews.persistence.ReviewEntity;
+import com.reserly.platform.venues.persistence.VenueDao;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Locale;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,34 +37,86 @@ public class ReviewCreationServiceImpl implements ReviewCreationService {
 
   private final ReservationDao reservationDao;
   private final ReviewDao reviewDao;
+  private final VenueDao venueDao;
   private final Clock clock;
 
   public ReviewCreationServiceImpl(
-      ReservationDao reservationDao, ReviewDao reviewDao, Clock clock) {
+      ReservationDao reservationDao, ReviewDao reviewDao, VenueDao venueDao, Clock clock) {
     this.reservationDao = reservationDao;
     this.reviewDao = reviewDao;
+    this.venueDao = venueDao;
     this.clock = clock;
   }
 
   @Override
   @Transactional
   public ReviewCreateResponse create(UUID reservationId, ReviewCreateRequest request) {
-    validateInput(reservationId, request);
-    String normalizedEmail = request.customerEmail().strip().toLowerCase(Locale.ROOT);
+    if (reservationId == null) {
+      throw new ReviewInvalidException();
+    }
+    validateInput(request);
+    String normalizedEmail = ReviewEligibilityServiceImpl.normalizeEmail(request.customerEmail());
     Instant now = clock.instant();
     ReservationEntity reservation =
         reservationDao
             .findByIdForUpdate(reservationId)
             .orElseThrow(ReviewNotEligibleException::new);
 
-    requireEligibleReservation(reservation, normalizedEmail, now);
+    requireEligibleReservation(reservation, normalizedEmail, now, null);
     if (reviewDao.existsByReservationId(reservationId)) {
       throw new ReviewAlreadySubmittedException();
     }
+    return persistReview(reservation, request, normalizedEmail, now);
+  }
 
+  @Override
+  @Transactional
+  public ReviewCreateResponse createForVenue(String venueSlug, ReviewCreateRequest request) {
+    validateInput(request);
+    if (venueSlug == null || venueSlug.isBlank() || venueSlug.length() > 160) {
+      throw new ReviewInvalidException();
+    }
+    String normalizedEmail = ReviewEligibilityServiceImpl.normalizeEmail(request.customerEmail());
+    UUID venueId =
+        venueDao
+            .findPublishedBySlug(venueSlug)
+            .map(venue -> venue.getId())
+            .orElseThrow(ReviewNotEligibleException::new);
+    LocalDate today = LocalDate.now(clock);
+    LocalTime currentTime = LocalTime.now(clock);
+    List<ReservationEntity> candidates =
+        reservationDao.findLatestUnreviewedPastReviewEligibleReservationForUpdate(
+            venueId,
+            normalizedEmail,
+            ELIGIBLE_STATUSES,
+            today,
+            currentTime,
+            PageRequest.of(0, 1));
+    if (candidates.isEmpty()) {
+      if (reservationDao.existsPastReviewEligibleReservation(
+          venueId, normalizedEmail, ELIGIBLE_STATUSES, today, currentTime)) {
+        throw new ReviewAlreadySubmittedException();
+      }
+      throw new ReviewNotEligibleException();
+    }
+
+    ReservationEntity reservation = candidates.get(0);
+    Instant now = clock.instant();
+    requireEligibleReservation(reservation, normalizedEmail, now, venueId);
+    if (reviewDao.existsByReservationId(reservation.getId())) {
+      throw new ReviewAlreadySubmittedException();
+    }
+    return persistReview(reservation, request, normalizedEmail, now);
+  }
+
+  private ReviewCreateResponse persistReview(
+      ReservationEntity reservation,
+      ReviewCreateRequest request,
+      String normalizedEmail,
+      Instant now) {
     ReviewEntity review = new ReviewEntity();
     review.setVenueId(reservation.getVenue().getId());
-    review.setReservationId(reservationId);
+    review.setReservationId(reservation.getId());
     review.setCustomerEmailNormalized(normalizedEmail);
     review.setRating(request.rating());
     review.setComment(normalizeComment(request.comment()));
@@ -86,12 +142,12 @@ public class ReviewCreationServiceImpl implements ReviewCreationService {
         aggregate.getReviewsCount());
   }
 
-  private void validateInput(UUID reservationId, ReviewCreateRequest request) {
-    if (reservationId == null
-        || request == null
+  private void validateInput(ReviewCreateRequest request) {
+    if (request == null
         || request.customerEmail() == null
         || request.customerEmail().isBlank()
         || request.customerEmail().length() > 320
+        || !ReviewEligibilityServiceImpl.isValidEmail(request.customerEmail())
         || request.rating() < 1
         || request.rating() > 5
         || !request.acceptsReviewPolicy()
@@ -101,9 +157,10 @@ public class ReviewCreationServiceImpl implements ReviewCreationService {
   }
 
   private void requireEligibleReservation(
-      ReservationEntity reservation, String normalizedEmail, Instant now) {
+      ReservationEntity reservation, String normalizedEmail, Instant now, UUID expectedVenueId) {
     if (reservation.getVenue() == null
         || reservation.getVenue().getId() == null
+        || (expectedVenueId != null && !expectedVenueId.equals(reservation.getVenue().getId()))
         || reservation.getCustomerEmailNormalized() == null
         || !reservation.getCustomerEmailNormalized().equals(normalizedEmail)
         || !ELIGIBLE_STATUSES.contains(reservation.getStatus())

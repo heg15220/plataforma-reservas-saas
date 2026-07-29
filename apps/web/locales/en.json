@@ -648,13 +648,34 @@
       },
       "reviewForm": {
         "action": "Write a review",
+        "back": "Back",
         "cancel": "Cancel",
+        "checkAction": "Check",
+        "checking": "Checking",
+        "close": "Close",
+        "commentHelper": "Optional. Maximum 2,000 characters.",
+        "commentLabel": "Comment",
         "dialogDescription": "Enter the email used for your booking. We will securely check whether you can review this venue without showing any booking history.",
         "dialogTitle": "Write a review",
         "emailLabel": "Booking email",
+        "eligibleDescription": "Your email has a valid past booking at this venue. Share your experience.",
+        "errors": {
+          "alreadySubmitted": "All past bookings that allow a review for this venue have already been reviewed.",
+          "invalid": "Check the email and review details before continuing.",
+          "notEligible": "We could not find a valid past booking for this venue with that email.",
+          "policyRequired": "You must agree to publish the review.",
+          "ratingRequired": "Choose a rating from 1 to 5 stars.",
+          "unavailable": "We cannot check or publish the review right now. Try again later."
+        },
+        "policyLabel": "I agree that the rating and comment will be published anonymously.",
+        "publish": "Publish review",
+        "publishing": "Publishing",
         "ratingHelper": "Choose between 1 and 5 stars.",
         "ratingLabel": "Your rating",
-        "ratingOption": "{rating, plural, one {# star} other {# stars}}"
+        "ratingOption": "{rating, plural, one {# star} other {# stars}}",
+        "success": "Your {rating} out of 5 review has been published.",
+        "successSummary": "The venue average is now {average}, from {count, plural, one {# review} other {# reviews}}.",
+        "successTitle": "Review published"
       },
     "sections": {
       "about": "About the venue",

@@ -13,12 +13,78 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-29
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.9`.
-- Siguiente tarea pendiente recomendada: `11.10. Implementar comprobación de elegibilidad de reseña
-  por email normalizado, local y reserva pasada confirmada/finalizada`.
-- Observación: la fase 11 dispone de persistencia, creación, métricas, lecturas, selector accesible,
-  autorización verificada y entrada desde la ficha. La elegibilidad por local/email permanece
-  pendiente y no se ha simulado en cliente.
+  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.12`.
+- Siguiente tarea pendiente recomendada: `12.1. Crear migración de stats_daily_venue`.
+- Observación: la fase 11 queda cerrada con elegibilidad por local/email, creación transaccional
+  desde la ficha, mensajes i18n y contratos públicos sin datos históricos.
+
+## Conversación 117 - Elegibilidad y creación completa desde la ficha pública
+
+- Fecha: 2026-07-29.
+- Resumen de la conversación:
+  - Se completaron `11.10`, `11.11` y `11.12`, cerrando la fase 11.
+  - Se añadieron `POST /api/public/venues/{venueSlug}/reviews/eligibility` y
+    `POST /api/public/venues/{venueSlug}/reviews`.
+  - La elegibilidad resuelve solo locales publicados, normaliza el email, limita estados a
+    `confirmed`, `attended`, `no_show` y `reported`, y exige que la hora de fin ya haya llegado en
+    la zona del reloj de negocio.
+  - Se distingue entre ausencia de reserva elegible (`REVIEW_NOT_ELIGIBLE`) y agotamiento de todas
+    las reservas elegibles (`REVIEW_ALREADY_SUBMITTED`) sin devolver reservas, fechas o recuentos.
+  - La creación selecciona la reserva elegible sin reseña más reciente, la bloquea, repite local,
+    email, estado, finalización y unicidad, y conserva la constraint como defensa final.
+  - El diálogo público ejecuta la comprobación, muestra estrellas/comentario/consentimiento solo
+    tras respuesta positiva, publica y presenta el agregado actualizado.
+- Archivos modificados:
+  - `ReservationDao.java`.
+  - DTOs `ReviewEligibilityRequest`, `ReviewEligibilityResponse` y
+    `PublicVenueReviewCreateResponse`.
+  - `ReviewEligibilityService.java`, `ReviewEligibilityServiceImpl.java`,
+    `ReviewCreationService.java` y `ReviewCreationServiceImpl.java`.
+  - `PublicVenueReviewController.java`, `PublicVenueReviewControllerImpl.java` y
+    `ReviewExceptionHandler.java`.
+  - `public-review-api.ts`, `review-entry-dialog.tsx`, `public-venue-profile.tsx` y sus tests.
+  - Catálogos `locales/es.json` y `locales/en.json`.
+  - Tests focalizados de servicio, contrato público, autorización, API y UI.
+  - Documentación de paquetes de reseñas.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Ficha pública del local`.
+  - `RF-024 Reseñas y valoraciones`.
+  - `RB-013 Elegibilidad de reseñas por email y local`.
+  - `RNF-001 Seguridad`, `RNF-002 Seguridad y privacidad`, `RNF-003 Concurrencia y consistencia`,
+    `RNF-005 Rendimiento`, `RNF-006 Mantenibilidad`, `RNF-007 Accesibilidad`,
+    `RNF-009 Responsive design`, `RNF-010 Internacionalización` y `RNF-011 Convenciones backend`.
+- Tareas impactadas y completadas:
+  - `11.10. Implementar comprobación de elegibilidad de reseña por email normalizado, local y
+    reserva pasada confirmada/finalizada`.
+  - `11.11. Mostrar mensaje i18n cuando el email no tenga reservas pasadas elegibles en ese local
+    o cuando todas sus reservas elegibles ya tengan reseña`.
+  - `11.12. Crear tests de elegibilidad por email/local, rechazo sin reserva, rechazo por reseña
+    duplicada y no exposición de datos de reservas`.
+- Siguiente tarea pendiente recomendada:
+  - `12.1. Crear migración de stats_daily_venue`.
+- Decisiones o aclaraciones relevantes:
+  - La comprobación devuelve HTTP 200 tanto si permite como si rechaza y usa un contrato cerrado;
+    input inválido conserva 400. La creación devuelve 422 sin elegibilidad y 409 si todas las
+    visitas elegibles ya están reseñadas.
+  - El endpoint de creación desde ficha devuelve local/reseña/agregado, pero elimina
+    `reservationId`. El esquema Zod es estricto y rechaza cualquier campo histórico inesperado.
+  - Las consultas públicas de elegibilidad son booleanas; no cargan listas de reservas. La
+    selección de creación usa tamaño uno, orden fecha/hora/id descendente y lock pesimista.
+  - Un slug inexistente o no publicado comparte `REVIEW_NOT_ELIGIBLE`, sin confirmar la existencia
+    editorial del local desde este endpoint.
+  - La comprobación previa no genera una credencial ni se confía al crear: el comando vuelve a
+    seleccionar y validar bajo transacción.
+  - Evidencia backend: pase focalizado de 18/18 tests y repetición final de
+    `ReviewCreationServiceTests` con 10/10 según Surefire.
+  - Evidencia frontend: typecheck focalizado correcto; 6/6 tests de API/diálogo y 5/5 de
+    ficha/selector. Catálogos ES/EN parseados correctamente.
+  - Spotless se restringió a los archivos Java del flujo. No se ejecutaron suite global, build
+    global, Docker, Testcontainers, migraciones reales ni validación visual.
+  - El cambio previo `apps/web/next-env.d.ts` se preservó fuera de esta implementación y no se
+    incluirá en el commit.
 
 ## Conversación 116 - Selector, autorización y entrada pública de reseñas
 

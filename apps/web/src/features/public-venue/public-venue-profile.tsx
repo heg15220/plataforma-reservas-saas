@@ -92,7 +92,11 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
                 <TextSection title={t("sections.additional")} body={venue.publicText} />
               )}
               <PublicAvailabilityCalendar venueSlug={venue.slug} />
-              <PublicReviews reviews={venue.reviews} locale={venue.locale} />
+              <PublicReviews
+                reviews={venue.reviews}
+                locale={venue.locale}
+                venueSlug={venue.slug}
+              />
 
               {venue.customTabs.map((tab) => (
                 <CustomTabSection key={`${tab.position}-${tab.title}`} tab={tab} />
@@ -222,9 +226,11 @@ function ReviewScore({
 function PublicReviews({
   reviews,
   locale,
+  venueSlug,
 }: {
   reviews: PublicVenueProfile["reviews"];
   locale: string;
+  venueSlug: string;
 }) {
   const t = useTranslations("VenuePublicProfile.reviews");
   const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
@@ -238,7 +244,7 @@ function PublicReviews({
         <Typography id="venue-reviews-title" component="h2" variant="h2">
           {t("title")}
         </Typography>
-        <ReviewEntryDialog />
+        <ReviewEntryDialog venueSlug={venueSlug} />
       </Stack>
       {reviews.items.length === 0 ? (
         <Surface>

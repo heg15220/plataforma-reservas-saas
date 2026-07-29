@@ -3,6 +3,9 @@ package com.reserly.platform.reservations.persistence;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -202,6 +205,91 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       where reservation.id = :reservationId
       """)
   Optional<ReservationEntity> findByIdForUpdate(@Param("reservationId") UUID reservationId);
+
+  /**
+   * Comprueba si el email tiene alguna visita pasada válida en el local, aunque ya esté reseñada.
+   *
+   * <p>La fecha y hora se comparan en la zona de negocio calculada por el servicio. El resultado
+   * booleano evita cargar historial en la comprobación pública.
+   */
+  @Query(
+      """
+      select (count(reservation) > 0)
+      from ReservationEntity reservation
+      where reservation.venue.id = :venueId
+        and reservation.customerEmailNormalized = :customerEmailNormalized
+        and reservation.status in :statuses
+        and (
+          reservation.date < :today
+          or (reservation.date = :today and reservation.endsAt <= :currentTime)
+        )
+      """)
+  boolean existsPastReviewEligibleReservation(
+      @Param("venueId") UUID venueId,
+      @Param("customerEmailNormalized") String customerEmailNormalized,
+      @Param("statuses") Collection<String> statuses,
+      @Param("today") LocalDate today,
+      @Param("currentTime") LocalTime currentTime);
+
+  /**
+   * Comprueba si queda una visita elegible sin reseña, sin devolver fechas ni reservas al llamador.
+   */
+  @Query(
+      """
+      select (count(reservation) > 0)
+      from ReservationEntity reservation
+      where reservation.venue.id = :venueId
+        and reservation.customerEmailNormalized = :customerEmailNormalized
+        and reservation.status in :statuses
+        and (
+          reservation.date < :today
+          or (reservation.date = :today and reservation.endsAt <= :currentTime)
+        )
+        and not exists (
+          select review.id
+          from ReviewEntity review
+          where review.reservationId = reservation.id
+        )
+      """)
+  boolean existsUnreviewedPastReviewEligibleReservation(
+      @Param("venueId") UUID venueId,
+      @Param("customerEmailNormalized") String customerEmailNormalized,
+      @Param("statuses") Collection<String> statuses,
+      @Param("today") LocalDate today,
+      @Param("currentTime") LocalTime currentTime);
+
+  /**
+   * Bloquea la visita elegible sin reseña más reciente para asociar la creación desde la ficha.
+   *
+   * <p>El {@link Pageable} se usa con tamaño uno. La creación repite todas las invariantes después
+   * del lock y la constraint única de {@code Reviews} conserva la defensa final.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select reservation
+      from ReservationEntity reservation
+      where reservation.venue.id = :venueId
+        and reservation.customerEmailNormalized = :customerEmailNormalized
+        and reservation.status in :statuses
+        and (
+          reservation.date < :today
+          or (reservation.date = :today and reservation.endsAt <= :currentTime)
+        )
+        and not exists (
+          select review.id
+          from ReviewEntity review
+          where review.reservationId = reservation.id
+        )
+      order by reservation.date desc, reservation.endsAt desc, reservation.id desc
+      """)
+  List<ReservationEntity> findLatestUnreviewedPastReviewEligibleReservationForUpdate(
+      @Param("venueId") UUID venueId,
+      @Param("customerEmailNormalized") String customerEmailNormalized,
+      @Param("statuses") Collection<String> statuses,
+      @Param("today") LocalDate today,
+      @Param("currentTime") LocalTime currentTime,
+      Pageable pageable);
 
   /** Resuelve únicamente la huella de gestión y carga el local para la proyección pública. */
   @Query(

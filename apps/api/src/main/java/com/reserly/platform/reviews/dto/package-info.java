@@ -1,2 +1,2 @@
-/** Contratos HTTP minimizados para crear reseñas y comunicar rechazos seguros. */
+/** Contratos HTTP minimizados para elegibilidad, creación, lectura y rechazos de reseñas. */
 package com.reserly.platform.reviews.dto;

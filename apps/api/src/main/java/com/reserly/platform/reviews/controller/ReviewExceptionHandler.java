@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Traduce rechazos de reseña sin revelar reservas, fechas ni emails registrados. */
-@RestControllerAdvice(basePackageClasses = ReviewCreationController.class)
+@RestControllerAdvice(
+    basePackageClasses = {ReviewCreationController.class, PublicVenueReviewController.class})
 public class ReviewExceptionHandler {
 
   @ExceptionHandler({MethodArgumentNotValidException.class, ReviewInvalidException.class})

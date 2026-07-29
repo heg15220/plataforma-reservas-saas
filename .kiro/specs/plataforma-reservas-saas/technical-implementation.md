@@ -25002,3 +25002,475 @@ El diálogo queda intencionadamente detenido en la captura de email hasta `11.10
 considerarse una autorización ni una creación de reseña. La siguiente iteración debe evitar
 enumeración, aplicar rate limiting posterior según `16.6`, repetir validación al crear y nunca
 devolver datos de reservas. La primera tarea pendiente recomendada es `11.10`.
+
+## Tarea 11.10 - Comprobar elegibilidad por email normalizado, local y reserva pasada
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Cerrar el caso de uso público iniciado desde la ficha: decidir si un email tiene una reserva
+confirmada/finalizada pasada todavía sin reseña en ese local y, tras una decisión positiva, crear
+la reseña seleccionando la visita más reciente bajo bloqueo y repitiendo todas las invariantes.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-024`, `RB-013`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-005`, `RNF-006` y
+  `RNF-011`.
+- Diseño 8.12 y 8.13: comprobación minimizada, creación desde ficha y validación repetida.
+- Diseño 9.5: email primero; puntuación y comentario solo después de elegibilidad positiva.
+- Seguridad 12.1/12.3 y privacidad 13: endpoint anónimo, validación backend y respuesta sin
+  historial.
+
+### Archivos creados y modificados
+
+Backend:
+
+- `ReservationDao.java`.
+- `ReviewEligibilityRequest.java`.
+- `ReviewEligibilityResponse.java`.
+- `PublicVenueReviewCreateResponse.java`.
+- `ReviewEligibilityService.java`.
+- `ReviewEligibilityServiceImpl.java`.
+- `ReviewCreationService.java`.
+- `ReviewCreationServiceImpl.java`.
+- `PublicVenueReviewController.java`.
+- `PublicVenueReviewControllerImpl.java`.
+- `ReviewExceptionHandler.java`.
+- documentación `package-info.java` de controller y DTO.
+
+Frontend:
+
+- `public-review-api.ts`.
+- `review-entry-dialog.tsx`.
+- `public-venue-profile.tsx`.
+- catálogos ES/EN.
+
+No se añadió migración. La fase reutiliza `Reservations`, `Reviews`, la constraint única por
+reserva y el índice de reseñas creado en `V30`.
+
+### Endpoints y contratos
+
+`POST /api/public/venues/{venueSlug}/reviews/eligibility` recibe:
+
+```json
+{
+  "customerEmail": "maria@example.com"
+}
+```
+
+Respuesta positiva:
+
+```json
+{
+  "eligible": true,
+  "canReview": true,
+  "error": null,
+  "messageKey": null
+}
+```
+
+Respuesta sin reserva pasada:
+
+```json
+{
+  "eligible": false,
+  "canReview": false,
+  "error": "REVIEW_NOT_ELIGIBLE",
+  "messageKey": "reviews.notEligibleForVenue"
+}
+```
+
+Respuesta cuando todas las visitas elegibles ya fueron reseñadas:
+
+```json
+{
+  "eligible": false,
+  "canReview": false,
+  "error": "REVIEW_ALREADY_SUBMITTED",
+  "messageKey": "reviews.alreadySubmittedForVenue"
+}
+```
+
+Las tres decisiones usan HTTP 200 porque forman parte del resultado normal de una comprobación.
+Email o slug inválidos continúan como 400 `VALIDATION_ERROR`.
+
+`POST /api/public/venues/{venueSlug}/reviews` recibe email, rating 1..5, comentario opcional y
+consentimiento. Devuelve HTTP 201 y `PublicVenueReviewCreateResponse`:
+
+- `status`;
+- `reviewId`;
+- `venueId`;
+- `rating`;
+- `averageRating`;
+- `reviewsCount`.
+
+El contrato omite expresamente `reservationId`, aunque el servicio interno conserva ese dato para
+persistencia y auditoría relacional. La cabecera `Location` apunta a
+`/api/public/reviews/{reviewId}`.
+
+### Modelo de consultas y rendimiento
+
+`ReservationDao` añade tres consultas acotadas por:
+
+- `venueId`;
+- `customerEmailNormalized`;
+- estados cerrados `confirmed`, `attended`, `no_show`, `reported`;
+- fecha anterior a hoy o misma fecha con `endsAt <= currentTime`.
+
+`existsPastReviewEligibleReservation` responde si existe alguna visita válida aunque ya tenga
+reseña. `existsUnreviewedPastReviewEligibleReservation` añade un `NOT EXISTS` contra
+`ReviewEntity.reservationId`. Ambas devuelven booleano y no materializan reservas.
+
+`findLatestUnreviewedPastReviewEligibleReservationForUpdate`:
+
+- repite los mismos filtros;
+- excluye reservas reseñadas mediante `NOT EXISTS`;
+- ordena por `date DESC`, `endsAt DESC`, `id DESC`;
+- recibe `PageRequest.of(0, 1)`;
+- aplica `PESSIMISTIC_WRITE`.
+
+El identificador actúa como desempate determinista. La lectura de elegibilidad ejecuta como máximo
+dos consultas booleanas después de resolver el local. La ruta positiva termina tras la primera.
+La creación carga y bloquea una única candidata.
+
+### Zona horaria y regla temporal
+
+El servicio usa el `Clock` de negocio. Calcula `LocalDate.now(clock)` y `LocalTime.now(clock)` para
+filtrar en base de datos. Tras adquirir el lock, recompone
+`LocalDateTime.of(date, endsAt).atZone(clock.getZone()).toInstant()` y compara de nuevo con
+`clock.instant()`.
+
+Una visita cuya hora de fin coincide exactamente con el instante local actual es elegible; una
+visita que todavía no terminó se rechaza. No se usa el timezone del navegador ni una hora enviada
+por cliente.
+
+### Normalización y validación
+
+Email se:
+
+1. recorta con `strip`;
+2. convierte a minúsculas con `Locale.ROOT`;
+3. compara con `customerEmailNormalized`.
+
+DTOs aplican `@NotBlank`, `@Email` y longitud máxima 320. Los servicios repiten null, blank,
+longitud y un patrón cerrado `^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$` para que una invocación interna no
+pueda omitir la validación HTTP.
+
+Slug nulo, blank o superior a 160 caracteres produce `ReviewInvalidException`. Slug bien formado
+pero inexistente/no publicado produce la misma decisión no elegible que una ausencia de reservas,
+sin actuar como enumerador editorial.
+
+### Flujo de elegibilidad
+
+`ReviewEligibilityServiceImpl.check`:
+
+1. valida slug y request;
+2. normaliza email;
+3. resuelve exclusivamente `VenueDao.findPublishedBySlug`;
+4. si no hay local publicado, devuelve decisión opaca no elegible;
+5. consulta si existe reserva pasada sin reseña;
+6. si existe, devuelve `allowed`;
+7. en caso contrario comprueba si hubo alguna reserva pasada válida;
+8. distingue `alreadySubmitted` de `notEligible`.
+
+El record de respuesta solo tiene cuatro campos cerrados. No transporta IDs, fechas, estados,
+número de visitas, nombres, importes, servicios o incidencias.
+
+### Flujo de creación y concurrencia
+
+`ReviewCreationService.createForVenue` no acepta `reservationId` del cliente:
+
+1. valida request y slug;
+2. normaliza email;
+3. resuelve local publicado;
+4. solicita la candidata más reciente sin reseña bajo lock;
+5. si no hay candidata, consulta si todas las válidas ya fueron reseñadas;
+6. revalida tras el lock local, email, estado, fecha, hora y existencia de reseña;
+7. persiste y fuerza `flush`;
+8. traduce una carrera de unicidad a `REVIEW_ALREADY_SUBMITTED`;
+9. calcula media/recuento actualizados;
+10. el controlador elimina el ID de reserva de la respuesta pública.
+
+La elegibilidad previa no genera token ni autorización reutilizable. Entre comprobación y creación
+otra petición puede consumir la visita; por eso el comando repite la consulta y puede responder
+409. El lock sobre la fila de `Reservations` serializa escritores disciplinados y
+`uqReviewsReservation` conserva la defensa física frente a cualquier otro escritor.
+
+### Frontend y estados
+
+`public-review-api.ts` usa Zod estricto. La elegibilidad es una unión discriminada y exige
+coherencia entre `eligible`, `canReview`, `error` y `messageKey`. La creación rechaza campos
+adicionales, incluido `reservationId`.
+
+Todas las peticiones:
+
+- usan POST JSON;
+- `Accept: application/json`;
+- `credentials: include`;
+- `cache: no-store`;
+- `AbortSignal`;
+- URL con slug codificado.
+
+Los estados HTTP se traducen a `invalid`, `notEligible`, `alreadySubmitted` o `unavailable`. Un
+fallo de red, JSON o contrato también produce `unavailable` sin mostrar el cuerpo recibido.
+
+`ReviewEntryDialog` implementa una máquina de estados local:
+
+- `email`: captura y comprueba;
+- `review`: muestra estrellas, comentario y consentimiento;
+- `success`: confirma y presenta el agregado actualizado.
+
+Un `AbortController` activo se cancela al cerrar o desmontar. Durante peticiones se bloquean cierre
+accidental y campos. El comentario se recorta y se envía como `null` si está vacío.
+
+### Errores, observabilidad y privacidad
+
+Errores públicos:
+
+- 400 `VALIDATION_ERROR`;
+- 422 `REVIEW_NOT_ELIGIBLE`;
+- 409 `REVIEW_ALREADY_SUBMITTED`.
+
+La comprobación negativa usa 200 con el código dentro de la decisión. No se registran emails,
+comentarios ni resultados históricos desde este flujo. La tarea de rate limiting específico sigue
+ubicada en `16.6`; esta iteración no amplía su alcance.
+
+### Evidencia de verificación
+
+Pase backend focalizado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=ReviewEligibilityServiceTests,ReviewCreationServiceTests,PublicVenueReviewControllerTests,ReviewAuthorizationTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+Resultado: 18 tests, 0 fallos, 0 errores y 0 omitidos. Compilaron 662 fuentes principales y 154
+fuentes de test. Tras endurecer email se ejecutaron únicamente los dos servicios; el comando llegó
+al timeout al cerrar la JVM, pero los reportes Surefire nuevos registraron 4/4 y 9/9 correctos. La
+revalidación explícita de local añadió un décimo test de creación; el comando volvió a agotar el
+límite al cerrar y el reporte final registró 10/10 correctos en 6,051 s.
+
+Spotless se aplicó mediante `spotlessFiles` exacto. Un primer intento con glob `**` falló en 2,7 s
+porque el plugin interpreta la propiedad como regex; se repitió inmediatamente con los catorce
+paths exactos y terminó correctamente. No se lanzó formateo global.
+
+### Riesgos y deuda técnica
+
+Las consultas JPQL compilaron como código, pero no se ejecutaron contra PostgreSQL real porque no
+se arrancó Testcontainers. CI debe validar generación SQL, lock y plan con el índice real. Si los
+locales acumulan muchas reservas por email, las consultas necesitarán revisar el plan y quizá un
+índice compuesto específico por `venueId/customerEmailNormalized/date/status`; no se añade sin
+medición.
+
+El rate limiting y protección antiabuso permanecen en `16.6`. Una respuesta diferenciada
+`ALREADY_SUBMITTED` confirma únicamente que ese email agotó sus visitas elegibles en ese local,
+distinción exigida por `RF-024`; nunca revela cuántas ni cuándo.
+
+## Tarea 11.11 - Mensajes i18n para ausencia o agotamiento de reservas elegibles
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Presentar al usuario una explicación clara y localizada tanto cuando el email no acredita una
+reserva pasada válida como cuando todas sus reservas válidas ya tienen reseña, sin filtrar ningún
+dato histórico ni mostrar códigos internos directamente.
+
+### Contratos y claves
+
+Backend comunica:
+
+- `REVIEW_NOT_ELIGIBLE` / `reviews.notEligibleForVenue`;
+- `REVIEW_ALREADY_SUBMITTED` / `reviews.alreadySubmittedForVenue`.
+
+Frontend no renderiza `messageKey` como texto. La unión Zod acepta únicamente las dos claves
+cerradas y `ReviewEntryDialog` las traduce a:
+
+Español:
+
+- “No encontramos una reserva pasada válida con ese email para este local.”
+- “Todas las reservas pasadas que permiten valorar este local ya tienen una reseña.”
+
+Inglés:
+
+- “We could not find a valid past booking for this venue with that email.”
+- “All past bookings that allow a review for this venue have already been reviewed.”
+
+Se añadieron también textos ES/EN para comprobación, progreso, comentario, consentimiento,
+publicación, éxito y errores inválido/indisponible. Todos permanecen bajo
+`VenuePublicProfile.reviewForm`.
+
+### Flujo de presentación
+
+Mientras se comprueba, el botón muestra un estado localizado y el campo queda deshabilitado. Una
+decisión negativa conserva el paso email, muestra `Alert` informativo y no monta
+`StarRatingInput`. No hay tabla, fecha, número de visita o enlace a una reserva.
+
+Tras una decisión positiva se muestra:
+
+- descripción de elegibilidad;
+- selector 1..5;
+- comentario opcional con máximo 2.000 caracteres;
+- consentimiento explícito;
+- volver/publicar.
+
+Rating ausente y consentimiento ausente producen mensajes contextuales sin enviar red. Un 409/422
+durante creación devuelve el diálogo al paso email porque la decisión previa dejó de ser vigente.
+
+Tras crear se muestra:
+
+- puntuación publicada;
+- media localizada a una cifra;
+- recuento pluralizado;
+- acción de cierre.
+
+### Accesibilidad, responsive y privacidad
+
+El diálogo aumenta a `maxWidth=sm` para el formulario, conserva layout vertical móvil y acciones
+separadas. Labels de email/comentario son persistentes. Checkbox incluye texto completo y el
+selector mantiene su radiogrupo/teclado.
+
+La explicación inicial declara que la comprobación no mostrará historial. El email solo vive en
+estado React durante el diálogo y se limpia al cerrar. No se escribe en localStorage, URL o logs.
+El comentario se renderiza y envía como texto plano.
+
+### Tests y evidencia
+
+`review-entry-dialog.test.tsx` cubre:
+
+- email -> elegibilidad positiva -> estrellas;
+- normalización de espacios antes de enviar;
+- rating, comentario y consentimiento;
+- payload de creación;
+- pantalla de éxito;
+- mensaje no elegible;
+- mensaje todas reseñadas;
+- ausencia de fechas, referencias y selector durante rechazos.
+
+Los catálogos `es.json` y `en.json` se parsearon con Node. TypeScript focalizado terminó sin
+errores. El pase API/diálogo terminó con 6/6 tests correctos; ficha/selector terminó con 5/5.
+
+### Riesgos y tareas derivadas
+
+La UI no refresca automáticamente la lista pública detrás del diálogo después del éxito; muestra
+el agregado devuelto. Un futuro refresco debe evitar duplicar POST y puede invalidar/revalidar la
+ficha de forma segura. Los textos deben revisarse en validación visual de fase 15.
+
+## Tarea 11.12 - Tests de elegibilidad, rechazos y no exposición de reservas
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Probar las fronteras críticas del flujo por email/local: selección positiva, ausencia, agotamiento
+por duplicados, revalidación al crear y contratos que impidan filtrar datos de reservas.
+
+### Tests backend añadidos o ampliados
+
+`ReviewEligibilityServiceTests`:
+
+- normaliza espacios/case y consulta con local, email, estados, fecha y hora exactos;
+- permite cuando queda una reserva pasada sin reseña;
+- trata local no publicado como no elegible sin consultar reservas;
+- rechaza cuando no existe reserva;
+- distingue cuando todas ya tienen reseña;
+- rechaza slug, request o email inválidos antes de consultar;
+- verifica que `toString` de respuesta no incluye email, reserva, fecha o visita.
+
+`ReviewCreationServiceTests` se amplió de siete a diez casos:
+
+- creación por slug publicado;
+- selección con página tamaño uno;
+- propagación del ID de la candidata solo dentro del contrato interno;
+- distinción no elegible/already submitted;
+- revalidación de que la fila bloqueada pertenece al local publicado;
+- validación directa de email;
+- mantiene unicidad previa y carrera de base de datos existentes.
+
+`PublicVenueReviewControllerTests`:
+
+- decisión sin email/reserva/fecha;
+- respuesta 201 sin `reservationId`;
+- `Location` estable;
+- delegación a servicios.
+
+`ReviewAuthorizationTests` se incluyó en el pase para conservar creación pública anónima y lectura
+privada protegida.
+
+### Tests frontend añadidos
+
+`public-review-api.test.ts`:
+
+- URL y body de elegibilidad;
+- método POST;
+- rechazo de respuesta de creación que contenga `reservationId`;
+- clasificación de 409.
+
+Los esquemas Zod usan `.strict()`. Un backend que añadiera cualquier campo histórico provoca
+`unavailable` en vez de incorporarlo silenciosamente al estado del cliente.
+
+`review-entry-dialog.test.tsx` cubre el flujo completo y los dos rechazos i18n. Los tests existentes
+de `public-venue-profile` y `star-rating-input` se repitieron como dependencias visuales/lógicas
+directas.
+
+### Comandos y resultados
+
+Backend:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=ReviewEligibilityServiceTests,ReviewCreationServiceTests,PublicVenueReviewControllerTests,ReviewAuthorizationTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+- pase principal: 18/18 correctos;
+- repetición tras email: reportes 4/4 y 9/9 correctos;
+- repetición final de creación: 10/10 correctos;
+- Checkstyle pasó durante Maven;
+- Spotless focalizado correcto.
+
+Frontend:
+
+```text
+npx tsc -p tsconfig.review-flow.json
+npx vitest run public-review-api.test.ts review-entry-dialog.test.tsx --pool=forks --maxWorkers=1 --fileParallelism=false
+npx vitest run public-venue-profile.test.tsx star-rating-input.test.tsx --pool=forks --maxWorkers=1 --fileParallelism=false
+```
+
+- typecheck focalizado correcto;
+- API/diálogo: 6/6;
+- ficha/selector: 5/5;
+- total final relevante: 11 tests frontend correctos.
+
+El intento conjunto de cuatro archivos Vitest no ejecutó casos antes del timeout de 60 s. Se
+dividió inmediatamente en los dos pases anteriores sin ampliar el timeout. El tsconfig temporal se
+eliminó. No se ejecutaron suite global, lint/build global, Docker, Testcontainers, migraciones
+reales ni validación visual.
+
+### Evidencia de privacidad
+
+La no exposición se defiende en capas:
+
+1. queries booleanas para elegibilidad;
+2. DTO backend sin campos históricos;
+3. DTO distinto para creación desde ficha que elimina `reservationId`;
+4. esquemas Zod estrictos;
+5. tests de contrato backend;
+6. tests frontend que rechazan un campo histórico inyectado;
+7. mensajes sin fechas, conteos o identificadores.
+
+### Riesgos y cierre de fase
+
+La cobertura de DAO es indirecta mediante argumentos exactos y declaración JPQL; no sustituye una
+ejecución PostgreSQL. Debe ejecutarse en CI con infraestructura disponible. El rate limiting queda
+para `16.6`.
+
+Con `11.10`, `11.11` y `11.12` termina la fase 11. La siguiente tarea fuente de verdad es `12.1`,
+crear la migración de estadísticas diarias por local.

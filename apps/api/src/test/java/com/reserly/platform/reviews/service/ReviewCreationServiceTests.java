@@ -14,18 +14,21 @@ import com.reserly.platform.reviews.dto.ReviewCreateRequest;
 import com.reserly.platform.reviews.persistence.ReviewAggregateProjection;
 import com.reserly.platform.reviews.persistence.ReviewDao;
 import com.reserly.platform.reviews.persistence.ReviewEntity;
+import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 
 /** Cobertura focalizada de elegibilidad, privacidad y unicidad de reseñas. */
 class ReviewCreationServiceTests {
@@ -34,9 +37,10 @@ class ReviewCreationServiceTests {
 
   private final ReservationDao reservationDao = mock(ReservationDao.class);
   private final ReviewDao reviewDao = mock(ReviewDao.class);
+  private final VenueDao venueDao = mock(VenueDao.class);
   private final Clock clock = Clock.fixed(NOW, ZoneId.of("Europe/Madrid"));
   private final ReviewCreationService service =
-      new ReviewCreationServiceImpl(reservationDao, reviewDao, clock);
+      new ReviewCreationServiceImpl(reservationDao, reviewDao, venueDao, clock);
 
   @BeforeEach
   void assignReviewIdWhenPersisted() {
@@ -171,8 +175,84 @@ class ReviewCreationServiceTests {
                 service.create(
                     reservationId, new ReviewCreateRequest("customer@example.com", 5, null, false)))
         .isInstanceOf(ReviewInvalidException.class);
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    reservationId, new ReviewCreateRequest("invalid-email", 5, null, true)))
+        .isInstanceOf(ReviewInvalidException.class);
 
     verify(reservationDao, never()).findByIdForUpdate(any());
+  }
+
+  @Test
+  void createsFromPublishedVenueUsingLatestLockedEligibleReservation() {
+    ReservationEntity reservation = eligibleReservation("attended");
+    VenueEntity venue = reservation.getVenue();
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(reservationDao.findLatestUnreviewedPastReviewEligibleReservationForUpdate(
+            venue.getId(),
+            "customer@example.com",
+            ReviewEligibilityServiceImpl.ELIGIBLE_STATUSES,
+            LocalDate.of(2026, 7, 28),
+            LocalTime.of(14, 0),
+            PageRequest.of(0, 1)))
+        .thenReturn(List.of(reservation));
+
+    var response = service.createForVenue("casa-luz", validRequest());
+
+    assertThat(response.reservationId()).isEqualTo(reservation.getId());
+    assertThat(response.venueId()).isEqualTo(venue.getId());
+    verify(reviewDao).existsByReservationId(reservation.getId());
+    verify(reviewDao).saveAndFlush(any(ReviewEntity.class));
+  }
+
+  @Test
+  void distinguishesNoPastReservationFromAllEligibleReservationsReviewed() {
+    VenueEntity venue = new VenueEntity();
+    venue.setId(UUID.randomUUID());
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(reservationDao.findLatestUnreviewedPastReviewEligibleReservationForUpdate(
+            venue.getId(),
+            "customer@example.com",
+            ReviewEligibilityServiceImpl.ELIGIBLE_STATUSES,
+            LocalDate.of(2026, 7, 28),
+            LocalTime.of(14, 0),
+            PageRequest.of(0, 1)))
+        .thenReturn(List.of());
+
+    assertThatThrownBy(() -> service.createForVenue("casa-luz", validRequest()))
+        .isInstanceOf(ReviewNotEligibleException.class);
+
+    when(reservationDao.existsPastReviewEligibleReservation(
+            venue.getId(),
+            "customer@example.com",
+            ReviewEligibilityServiceImpl.ELIGIBLE_STATUSES,
+            LocalDate.of(2026, 7, 28),
+            LocalTime.of(14, 0)))
+        .thenReturn(true);
+    assertThatThrownBy(() -> service.createForVenue("casa-luz", validRequest()))
+        .isInstanceOf(ReviewAlreadySubmittedException.class);
+    verify(reviewDao, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void revalidatesThatTheLockedCandidateBelongsToThePublishedVenue() {
+    VenueEntity publishedVenue = new VenueEntity();
+    publishedVenue.setId(UUID.randomUUID());
+    ReservationEntity foreignReservation = eligibleReservation("confirmed");
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(publishedVenue));
+    when(reservationDao.findLatestUnreviewedPastReviewEligibleReservationForUpdate(
+            publishedVenue.getId(),
+            "customer@example.com",
+            ReviewEligibilityServiceImpl.ELIGIBLE_STATUSES,
+            LocalDate.of(2026, 7, 28),
+            LocalTime.of(14, 0),
+            PageRequest.of(0, 1)))
+        .thenReturn(List.of(foreignReservation));
+
+    assertThatThrownBy(() -> service.createForVenue("casa-luz", validRequest()))
+        .isInstanceOf(ReviewNotEligibleException.class);
+    verify(reviewDao, never()).saveAndFlush(any());
   }
 
   private ReviewCreateRequest validRequest() {
