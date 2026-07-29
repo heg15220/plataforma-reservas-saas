@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
@@ -95,5 +95,18 @@ describe("PublicVenueProfileView", () => {
       .closest("section");
     expect(reviewsSection).not.toBeNull();
     expect(within(reviewsSection!).queryByText(/@/)).not.toBeInTheDocument();
+  });
+
+  it("abre la entrada de reseña y solicita email sin adelantar la elegibilidad", () => {
+    renderWithIntl(<PublicVenueProfileView venue={venue} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hacer reseña" }));
+
+    expect(screen.getByRole("dialog", { name: "Hacer una reseña" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Correo de la reserva" })).toHaveAttribute(
+      "type",
+      "email",
+    );
+    expect(screen.queryByText("Tu puntuación")).not.toBeInTheDocument();
   });
 });

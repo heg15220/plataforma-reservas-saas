@@ -12,6 +12,7 @@ import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { PublicAvailabilityCalendar } from "@/features/availability/public-availability-calendar";
 
 import { type PublicVenueProfile, resolvePublicAssetUrl } from "./public-venue-api";
+import { ReviewEntryDialog } from "./review-entry-dialog";
 
 export interface PublicVenueProfileViewProps {
   venue: PublicVenueProfile;
@@ -229,9 +230,16 @@ function PublicReviews({
   const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
   return (
     <Box component="section" aria-labelledby="venue-reviews-title">
-      <Typography id="venue-reviews-title" component="h2" variant="h2" sx={{ mb: 3 }}>
-        {t("title")}
-      </Typography>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", mb: 3 }}
+      >
+        <Typography id="venue-reviews-title" component="h2" variant="h2">
+          {t("title")}
+        </Typography>
+        <ReviewEntryDialog />
+      </Stack>
       {reviews.items.length === 0 ? (
         <Surface>
           <Typography color="text.secondary">{t("empty")}</Typography>

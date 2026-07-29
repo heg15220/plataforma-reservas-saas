@@ -636,16 +636,26 @@
     "metadata": {
       "notFoundTitle": "Venue unavailable"
     },
-    "reviews": {
+      "reviews": {
       "empty": "This venue has not received any verified reviews yet.",
       "itemRating": "Rating: {rating} out of 5",
       "publishedOn": "Published on {date}",
       "recentOnly": "The most recent verified reviews are shown.",
       "scoreLabel": "Average rating: {rating} out of 5",
       "summary": "{count, plural, one {# verified review} other {# verified reviews}}",
-      "verifiedGuest": "Customer with a verified booking",
-      "title": "Reviews"
-    },
+        "verifiedGuest": "Customer with a verified booking",
+        "title": "Reviews"
+      },
+      "reviewForm": {
+        "action": "Write a review",
+        "cancel": "Cancel",
+        "dialogDescription": "Enter the email used for your booking. We will securely check whether you can review this venue without showing any booking history.",
+        "dialogTitle": "Write a review",
+        "emailLabel": "Booking email",
+        "ratingHelper": "Choose between 1 and 5 stars.",
+        "ratingLabel": "Your rating",
+        "ratingOption": "{rating, plural, one {# star} other {# stars}}"
+      },
     "sections": {
       "about": "About the venue",
       "additional": "Additional information",

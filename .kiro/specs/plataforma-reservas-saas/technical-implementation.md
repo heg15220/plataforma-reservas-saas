@@ -24695,3 +24695,310 @@ puntuación. La paginación no conserva todavía el índice en la URL; una futur
 si se requiere deep-linking sin relajar los límites del servidor. La barra móvil pasa a cinco
 destinos y deberá revisarse visualmente junto con futuras entradas para evitar densidad excesiva.
 La siguiente tarea de especificación es `11.7`, dedicada a la UI de valoración de 1 a 5 estrellas.
+
+## Tarea 11.7 - Crear UI de valoración de 1 a 5 estrellas
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear un control reutilizable, controlado y accesible para seleccionar exactamente una puntuación
+entera entre una y cinco estrellas, sin permitir cero, fracciones ni estados fuera del dominio
+validado por `ReviewCreateRequest`.
+
+### Requisitos y decisiones de diseño relacionados
+
+- Requisitos: `RF-024`, `RB-013`, `RNF-006`, `RNF-007`, `RNF-009` y `RNF-010`.
+- Diseño: el selector solo se presenta después de acreditar una reserva pasada elegible; iconografía
+  lineal, etiquetas persistentes, objetivo táctil mínimo y mensajes próximos al campo.
+- Tareas relacionadas: prepara la captura visual que `11.10` conectará a la elegibilidad por
+  local/email. No altera todavía el endpoint de creación por `reservationId`.
+
+### Archivos y contrato del componente
+
+Se añadieron:
+
+- `apps/web/src/features/public-venue/star-rating-input.tsx`;
+- `apps/web/src/features/public-venue/star-rating-input.test.tsx`;
+- claves `VenuePublicProfile.reviewForm.ratingLabel`, `ratingHelper` y `ratingOption` en los
+  catálogos español e inglés.
+
+`StarRatingInput` recibe:
+
+- `value: number | null`, controlado por el consumidor;
+- `onChange(value: number)`, que solo emite enteros 1..5;
+- `disabled`, para bloquear interacción durante futuras peticiones;
+- `error`, presentado junto al control;
+- `name`, usado por el input oculto de integración con formulario.
+
+No mantiene una puntuación interna paralela. El consumidor conserva la fuente de verdad, lo que
+permite integrar validación, envío, reset y estados asíncronos sin divergencias.
+
+### Accesibilidad e interacción
+
+El control implementa un contenedor `role="radiogroup"` etiquetado mediante `aria-labelledby`.
+Contiene exactamente cinco `IconButton` con `role="radio"`, `aria-checked` y nombre accesible
+localizado (“1 estrella”, “2 estrellas”, etc.). La estrella seleccionada y todas las anteriores se
+rellenan visualmente; la semántica no depende del color o del relleno.
+
+Se aplica un patrón de foco móvil:
+
+- la opción seleccionada tiene `tabIndex=0`;
+- sin valor, la primera estrella recibe el foco de tabulación;
+- el resto usa `tabIndex=-1`;
+- flecha derecha/arriba avanza y envuelve de cinco a uno;
+- flecha izquierda/abajo retrocede y envuelve de uno a cinco;
+- `Home` elige uno y `End` elige cinco;
+- tras teclado se mueve el foco a la opción elegida.
+
+Cada estrella usa `IconButton`, manteniendo un objetivo táctil adecuado. El icono `Star` es
+decorativo porque el botón ya tiene nombre accesible. Un input `hidden` conserva `name/value` para
+el futuro formulario, sin crear una sexta opción de radio.
+
+### Decisión de no usar `MUI Rating`
+
+El primer test reveló que `MUI Rating` renderiza seis radios accesibles: cinco puntuaciones y una
+opción adicional para vaciar el valor. Aunque visualmente resulte útil en otros contextos, esa
+sexta opción contradice el dominio cerrado 1..5 y hacía posible anunciar un valor no aceptado por
+backend. No se relajó el test; se sustituyó por el radiogrupo explícito descrito arriba.
+
+Esta decisión evita depender de detalles internos del componente y documenta por qué existe una
+implementación pequeña propia. No se replicaron animaciones ni hover complejos que no fueran
+necesarios para el requisito.
+
+### Validación, i18n y errores
+
+Las etiquetas singular/plural se resuelven con ICU en `es.json` y `en.json`. La ayuda siempre
+permanece próxima al control; si existe `error`, `FormHelperText` cambia a estado de error y
+reemplaza la ayuda. La validación definitiva 1..5 sigue siendo obligatoria en backend; el control
+solo reduce errores de interacción.
+
+Los comentarios y el consentimiento no se implementaron aquí porque no forman parte del selector.
+La futura composición deberá mantenerlos como campos separados y no mostrar este componente hasta
+que backend acredite la elegibilidad.
+
+### Tests y evidencia de verificación
+
+`star-rating-input.test.tsx` comprueba:
+
+- etiqueta persistente;
+- exactamente cinco radios accesibles;
+- selección por click;
+- cambio por flecha derecha;
+- propagación de valores enteros;
+- presentación próxima del error.
+
+El primer pase falló al detectar seis radios de `MUI Rating`; tras sustituirlo por el radiogrupo
+propio, el pase conjunto de UI terminó con 5/5 tests correctos. La repetición aislada del selector,
+incluida la cobertura de teclado, terminó con 2/2.
+
+Se creó temporalmente `tsconfig.reviews-ui.json`, sin plugin global de Next y limitado a los cinco
+archivos de producción/test afectados y sus imports. `npx tsc -p tsconfig.reviews-ui.json` terminó
+sin errores. El archivo temporal se eliminó y no forma parte del cambio.
+
+### Riesgos, limitaciones y tareas derivadas
+
+La selección no está aún montada dentro del diálogo público porque hacerlo antes de acreditar el
+email violaría `RB-013`. `11.10` deberá introducir el estado elegible y entonces montar
+`StarRatingInput`; `11.11` añadirá los rechazos i18n y `11.12` cerrará la cobertura del flujo.
+
+## Tarea 11.8 - Crear tests de autorización de reseñas
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Demostrar en la frontera HTTP que la creación pública no exige sesión pero tampoco concede
+elegibilidad por autenticación, y que la lectura privada de reseñas solo admite propietarios de
+local autenticados antes de invocar el caso de uso.
+
+### Requisitos y decisiones de diseño relacionados
+
+- Requisitos: `RF-008`, `RF-024`, `RB-013`, `RNF-001`, `RNF-002`, `RNF-006` y `RNF-011`.
+- Diseño: `/api/public/**` permite entrada anónima con revalidación de negocio en backend;
+  `/api/venue/me/**` exige `ROLE_VENUE_OWNER` y aislamiento por principal.
+- Tareas relacionadas: cubre los endpoints implementados en `11.2` y `11.6`. La prueba exhaustiva
+  de elegibilidad por email/local corresponde a `11.12`.
+
+### Archivo y arquitectura de test
+
+Se añadió
+`apps/api/src/test/java/com/reserly/platform/reviews/controller/ReviewAuthorizationTests.java`.
+El test usa `MockMvc` standalone y mocks de `ReviewCreationService` y `ReviewQueryService`; no
+arranca Spring Boot completo, PostgreSQL, Flyway, Redis ni broker.
+
+La cadena focalizada reproduce las reglas relevantes de `SecurityConfiguration`:
+
+1. `PathPatternRequestMatcher("/api/venue/me/**")` exige `ROLE_VENUE_OWNER`;
+2. el resto de rutas se permite, igual que `anyRequest().permitAll()`;
+3. `RestAuthenticationEntryPoint` produce el 401 JSON estable;
+4. `RestAccessDeniedHandler` produce el 403 JSON estable;
+5. `AuthenticationPrincipalArgumentResolver` inyecta `AuthenticatedAccount` en el controlador.
+
+Se prueban controladores reales y advices reales, pero servicios simulados. Así se aísla
+autorización HTTP de las invariantes de reserva, que ya tienen tests de servicio.
+
+### Casos cubiertos
+
+`permitsAnonymousCreationAndDelegatesEligibilityToTheService` envía un POST anónimo válido a
+`/api/public/reservations/{reservationId}/reviews`, espera 201 y verifica que el comando completo
+se delega al servicio. Esto demuestra que no se exige una cuenta de usuario final, coherente con la
+identidad por email del MVP. No demuestra elegibilidad: el servicio sigue obligado a bloquear la
+reserva y comparar email/estado/fecha.
+
+`rejectsAnonymousAndAdminFromPrivateReviewsBeforeQuerying` acredita:
+
+- anónimo: HTTP 401 `AUTHENTICATION_REQUIRED`;
+- administrador sin rol de propietario: HTTP 403 `AUTHORIZATION_DENIED`;
+- cero interacciones con `ReviewQueryService`.
+
+`permitsVenueOwnerAndUsesOnlyPrincipalIdentity` acredita HTTP 200 y verifica que
+`findOwned` recibe `principal.userId()`, página 0 y tamaño 20. El endpoint no acepta `venueId`, por
+lo que no existe parámetro con el que seleccionar otro local.
+
+### Seguridad, privacidad y errores
+
+Permitir el POST anónimo no equivale a autorizar una reseña por conocer un UUID. El servicio de
+creación vuelve a comprobar email normalizado, estado, finalización y unicidad bajo lock. Los
+errores de elegibilidad permanecen opacos para impedir enumeración.
+
+El test privado verifica que la cadena corta antes del servicio. Así un rol incorrecto no produce
+consultas por propietario ni puede distinguir si existe un local o si tiene reseñas. Los cuerpos
+401/403 no revelan el rol requerido ni las concesiones presentes.
+
+### Tests y evidencia de verificación
+
+Comando focalizado:
+
+```text
+mvn -f apps/api/pom.xml "-Dtest=ReviewAuthorizationTests,ReviewCreationControllerTests,VenueReviewControllerTests" "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+Resultado final: 5 tests, 0 fallos, 0 errores y 0 omitidos. El primer intento dentro del sandbox no
+pudo resolver el parent POM por red; el primer intento con red aprobada agotó 60 segundos durante
+resolución/arranque. Se hizo un único intento adicional con dependencias ya iniciadas y terminó en
+21 segundos. No se amplió a otros paquetes.
+
+Spotless se aplicó únicamente a `ReviewAuthorizationTests.java` mediante `spotlessFiles`, con
+`BUILD SUCCESS`. Checkstyle se ejecutó en la fase Maven. No se ejecutaron tests de persistencia,
+Testcontainers ni suite de seguridad global.
+
+### Riesgos, limitaciones y tareas derivadas
+
+La cadena del test replica la política central en vez de arrancar toda la configuración. Si cambia
+el namespace o rol en `SecurityConfiguration`, ambos lugares deben actualizarse; las pruebas de
+seguridad integrales de fases posteriores deberán detectar divergencias. `11.12` añadirá la
+autorización de negocio por email/local y los rechazos sin exponer reservas.
+
+## Tarea 11.9 - Añadir botón "Hacer reseña" dentro de los detalles de la ficha pública
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/11-ratings`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Incorporar una entrada visible, responsive e internacionalizada al flujo de reseña dentro de la
+sección de valoraciones de cada ficha pública, solicitando el email usado en la reserva sin
+adelantar ni simular la decisión de elegibilidad que corresponde al backend.
+
+### Requisitos y decisiones de diseño relacionados
+
+- Requisitos: `RF-009`, `RF-024`, `RB-013`, `RNF-002`, `RNF-006`, `RNF-007`, `RNF-009` y
+  `RNF-010`.
+- Diseño 9.5: botón dentro de los detalles del local; al pulsarlo se solicita email y solo después
+  de una respuesta elegible se muestran puntuación y comentario.
+- Tareas relacionadas: usa el selector preparado en `11.7` en una fase posterior; `11.10`
+  implementará la continuación real y `11.11` sus estados de rechazo.
+
+### Archivos y composición
+
+Se añadió `review-entry-dialog.tsx` y se integró en `PublicReviews` dentro de
+`public-venue-profile.tsx`. También se ampliaron:
+
+- `public-venue-profile.test.tsx`;
+- `locales/es.json`;
+- `locales/en.json`.
+
+El encabezado de la sección usa un `Stack`:
+
+- en móvil apila título y botón;
+- desde `sm` los coloca en fila, centrados y separados;
+- el botón usa variante secundaria y un icono decorativo de estrella;
+- la acción permanece dentro del `section` etiquetado por `venue-reviews-title`.
+
+### Flujo actual y frontera con 11.10
+
+Al pulsar “Hacer reseña”/“Write a review”, `ReviewEntryDialog` abre un diálogo modal `maxWidth=xs`
+con:
+
+- título explícito;
+- descripción de privacidad;
+- campo `type=email`;
+- `autocomplete=email`;
+- etiqueta persistente;
+- acción de cancelación/cierre.
+
+La descripción explica que el sistema comprobará la posibilidad de valorar sin mostrar historial.
+El diálogo no realiza todavía una llamada y no muestra el selector. Esta ausencia es deliberada:
+no existe aún el endpoint por `venueId/email` de `11.10`, y usar solo validación del navegador o
+aceptar cualquier email sería una autorización falsa.
+
+El componente documenta esta frontera. `11.10` deberá añadir callback/estado de continuación,
+enviar slug o identificador público junto al email normalizado al backend y montar
+`StarRatingInput` exclusivamente tras una respuesta elegible.
+
+### Accesibilidad, responsive e internacionalización
+
+MUI gestiona foco modal, bloqueo del fondo y Escape. `aria-describedby` enlaza el diálogo con la
+explicación. El campo mantiene label visible y tipo semántico de email. El botón conserva texto,
+por lo que su significado no depende del icono.
+
+Todas las cadenas nuevas están bajo `VenuePublicProfile.reviewForm` en español e inglés: acción,
+título, descripción, email, cancelación y textos del selector. Ambos JSON se parsearon
+explícitamente con Node antes de ejecutar tests.
+
+### Seguridad, privacidad y errores
+
+El cliente no consulta reservas, no conserva el email fuera del estado interno del campo y no
+genera logs. No se expone `reservationId`, fecha, importe, estado ni historial. No se ha creado un
+resultado de elegibilidad optimista.
+
+El modal todavía no presenta errores remotos porque no envía la petición. La tarea `11.11`
+introducirá mensajes i18n equivalentes para ausencia de reserva elegible y agotamiento por reseñas
+previas, manteniendo una respuesta pública minimizada.
+
+### Tests y evidencia de verificación
+
+`public-venue-profile.test.tsx` verifica que:
+
+- el botón aparece dentro de la ficha;
+- click abre un diálogo con nombre accesible;
+- se solicita “Correo de la reserva” con `type=email`;
+- el selector “Tu puntuación” no aparece antes de acreditar elegibilidad.
+
+Pase frontend focalizado:
+
+```text
+npx tsc -p tsconfig.reviews-ui.json
+npx vitest run src/features/public-venue/public-venue-profile.test.tsx src/features/public-venue/star-rating-input.test.tsx --pool=forks --maxWorkers=1 --fileParallelism=false
+```
+
+El typecheck terminó sin errores. Vitest terminó con dos archivos y 5/5 tests correctos. La
+repetición aislada del selector tras añadir teclado terminó con 2/2 tests correctos en 11 segundos.
+No se ejecutaron build, lint o suite global para respetar el límite de validación; tampoco se hizo
+validación visual en navegador.
+
+### Riesgos, limitaciones y tareas derivadas
+
+El diálogo queda intencionadamente detenido en la captura de email hasta `11.10`; no debe
+considerarse una autorización ni una creación de reseña. La siguiente iteración debe evitar
+enumeración, aplicar rate limiting posterior según `16.6`, repetir validación al crear y nunca
+devolver datos de reservas. La primera tarea pendiente recomendada es `11.10`.

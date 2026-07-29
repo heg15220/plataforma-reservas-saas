@@ -220,9 +220,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 11.4. Calcular valoración media y número de reseñas.
 - [x] 11.5. Mostrar reseñas en ficha pública.
 - [x] 11.6. Mostrar reseñas en panel del local.
-- [ ] 11.7. Crear UI de valoración de 1 a 5 estrellas.
-- [ ] 11.8. Crear tests de autorización de reseñas.
-- [ ] 11.9. Añadir botón "Hacer reseña" dentro de los detalles de la ficha pública del local.
+- [x] 11.7. Crear UI de valoración de 1 a 5 estrellas.
+- [x] 11.8. Crear tests de autorización de reseñas.
+- [x] 11.9. Añadir botón "Hacer reseña" dentro de los detalles de la ficha pública del local.
 - [ ] 11.10. Implementar comprobación de elegibilidad de reseña por email normalizado, local y reserva pasada confirmada/finalizada.
 - [ ] 11.11. Mostrar mensaje i18n cuando el email no tenga reservas pasadas elegibles en ese local o cuando todas sus reservas elegibles ya tengan reseña.
 - [ ] 11.12. Crear tests de elegibilidad por email/local, rechazo sin reserva, rechazo por reseña duplicada y no exposición de datos de reservas.

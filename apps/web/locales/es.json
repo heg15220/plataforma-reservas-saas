@@ -636,16 +636,26 @@
     "metadata": {
       "notFoundTitle": "Local no disponible"
     },
-    "reviews": {
+      "reviews": {
       "empty": "Este local todavía no ha recibido reseñas verificadas.",
       "itemRating": "Puntuación: {rating} de 5",
       "publishedOn": "Publicada el {date}",
       "recentOnly": "Se muestran las reseñas verificadas más recientes.",
       "scoreLabel": "Valoración media: {rating} de 5",
       "summary": "{count, plural, one {# reseña verificada} other {# reseñas verificadas}}",
-      "verifiedGuest": "Cliente con reserva verificada",
-      "title": "Valoraciones"
-    },
+        "verifiedGuest": "Cliente con reserva verificada",
+        "title": "Valoraciones"
+      },
+      "reviewForm": {
+        "action": "Hacer reseña",
+        "cancel": "Cancelar",
+        "dialogDescription": "Introduce el correo usado en tu reserva. Comprobaremos de forma segura si puedes valorar este local sin mostrar datos de tu historial.",
+        "dialogTitle": "Hacer una reseña",
+        "emailLabel": "Correo de la reserva",
+        "ratingHelper": "Selecciona entre 1 y 5 estrellas.",
+        "ratingLabel": "Tu puntuación",
+        "ratingOption": "{rating, plural, one {# estrella} other {# estrellas}}"
+      },
     "sections": {
       "about": "Sobre el local",
       "additional": "Información adicional",

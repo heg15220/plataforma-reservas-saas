@@ -10,14 +10,71 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-28
+- Fecha de última actualización: 2026-07-29
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.6`.
-- Siguiente tarea pendiente recomendada: `11.7. Crear UI de valoración de 1 a 5 estrellas`.
-- Observación: la fase 11 dispone de persistencia, creación única, métricas y lectura pública y
-  privada de reseñas. La captura visual de estrellas y el flujo público por local/email permanecen
-  pendientes.
+  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.9`.
+- Siguiente tarea pendiente recomendada: `11.10. Implementar comprobación de elegibilidad de reseña
+  por email normalizado, local y reserva pasada confirmada/finalizada`.
+- Observación: la fase 11 dispone de persistencia, creación, métricas, lecturas, selector accesible,
+  autorización verificada y entrada desde la ficha. La elegibilidad por local/email permanece
+  pendiente y no se ha simulado en cliente.
+
+## Conversación 116 - Selector, autorización y entrada pública de reseñas
+
+- Fecha: 2026-07-29.
+- Resumen de la conversación:
+  - Se completaron `11.7`, `11.8` y `11.9` en `phase/11-ratings`.
+  - Se creó un selector controlado de exactamente cinco estrellas con semántica de radiogrupo,
+    navegación por flechas/Home/End, estado seleccionado, valor de formulario y mensajes de ayuda
+    o error.
+  - Se descartó `MUI Rating` al comprobar que exponía una sexta opción accesible para vaciar la
+    selección, incompatible con el dominio cerrado 1..5.
+  - Se añadió cobertura HTTP focalizada que acredita creación pública anónima, rechazo del panel a
+    anónimos y administradores, y acceso del propietario usando exclusivamente su principal.
+  - La sección de valoraciones incorpora el botón responsive “Hacer reseña”. Al pulsarlo abre un
+    diálogo accesible que solicita el email usado en la reserva.
+  - El diálogo no muestra todavía el selector ni simula elegibilidad: la tarea `11.10` añadirá el
+    contrato backend por local/email y solo entonces permitirá continuar.
+- Archivos modificados:
+  - `apps/web/src/features/public-venue/star-rating-input.tsx` y su test.
+  - `apps/web/src/features/public-venue/review-entry-dialog.tsx`.
+  - `apps/web/src/features/public-venue/public-venue-profile.tsx` y su test.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `apps/api/src/test/java/com/reserly/platform/reviews/controller/ReviewAuthorizationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Ficha pública del local`.
+  - `RF-024 Reseñas y valoraciones`.
+  - `RB-013 Elegibilidad de reseñas por email y local`.
+  - `RNF-001 Seguridad`, `RNF-002 Seguridad y privacidad`, `RNF-006 Mantenibilidad`,
+    `RNF-007 Accesibilidad`, `RNF-009 Responsive design`, `RNF-010 Internacionalización` y
+    `RNF-011 Convenciones backend`.
+- Tareas impactadas y completadas:
+  - `11.7. Crear UI de valoración de 1 a 5 estrellas`.
+  - `11.8. Crear tests de autorización de reseñas`.
+  - `11.9. Añadir botón "Hacer reseña" dentro de los detalles de la ficha pública del local`.
+- Siguiente tarea pendiente recomendada:
+  - `11.10. Implementar comprobación de elegibilidad de reseña por email normalizado, local y
+    reserva pasada confirmada/finalizada`.
+- Decisiones o aclaraciones relevantes:
+  - La UI de estrellas existe como componente reutilizable, pero no aparece antes de acreditar
+    elegibilidad para no contradecir `RB-013`.
+  - La creación existente bajo `/api/public/reservations/{reservationId}/reviews` sigue siendo
+    anónima y delega toda acreditación en backend; conocer un UUID no concede autorización.
+  - `GET /api/venue/me/reviews` exige `ROLE_VENUE_OWNER`; anónimo recibe 401 y admin 403 antes de
+    invocar el servicio.
+  - El botón está dentro del encabezado de la sección de valoraciones, se apila en móvil y abre un
+    diálogo con etiqueta persistente de email, descripción de privacidad y cierre explícito.
+  - Evidencia backend: 5 tests focalizados, 0 fallos, 0 errores y 0 omitidos.
+  - Evidencia frontend: typecheck focalizado correcto; 5 tests focalizados correctos y repetición
+    del selector con 2/2 tras añadir cobertura de teclado.
+  - Los catálogos ES/EN se parsearon correctamente. No se ejecutaron suite global, build global,
+    Docker, Testcontainers ni validación visual.
+  - El cambio previo `apps/web/next-env.d.ts` se preservó fuera de esta implementación y no se
+    incluirá en el commit.
 
 ## Conversación 115 - Métricas y lectura pública y privada de reseñas
 
