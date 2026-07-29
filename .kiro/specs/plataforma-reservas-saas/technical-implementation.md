@@ -9,9 +9,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.3`.
-- Siguiente tarea pendiente recomendada: `12.4. Implementar filtros hoy, semana, mes, año y rango
-  personalizado`.
+  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.7`.
+- Siguiente tarea pendiente recomendada: `13.1. Crear migraciones de plans, subscriptions y
+  payments`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -25767,3 +25767,351 @@ Riesgos conocidos:
 Con `12.1`, `12.2` y `12.3` quedan disponibles la persistencia y las métricas fuente. La siguiente
 tarea recomendada es `12.4`, que debe consultar periodos y calcular totales, tasa de ocupación y
 media ponderada sin exponer datos personales.
+
+## Tarea 12.4 - Implementar filtros hoy, semana, mes, año y rango personalizado
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Exponer una consulta privada que recalcule y devuelva estadísticas coherentes para periodos de
+calendario y rangos manuales, sin depender de que el job nocturno haya procesado previamente los
+días solicitados y sin permitir que un propietario seleccione el local de otra cuenta.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-008`, `RF-025`, `RNF-002`, `RNF-004`, `RNF-005`, `RNF-006` y `RNF-011`.
+- Diseño: responsabilidades 3.10, tabla diaria de 4.1, ruta privada `/panel/estadisticas`, seguridad
+  de 12 y agregaciones periódicas de 11.2.
+- Tareas relacionadas: consume `12.1`–`12.3`; alimenta `12.5` y `12.6`; se cubre en `12.7`.
+
+### Archivos, contratos y módulos
+
+Backend creado:
+
+- DTOs `VenueStatisticsDailyResponse`, `VenueStatisticsResponse` y `StatisticsErrorResponse`.
+- `VenueStatisticsPeriod`.
+- `VenueStatisticsService` y `VenueStatisticsServiceImpl`.
+- `VenueStatisticsFilterInvalidException` y `VenueStatisticsNotFoundException`.
+- `VenueStatisticsController`, implementación y advice.
+- documentación de paquetes `statistics.dto` y `statistics.controller`.
+
+Backend modificado:
+
+- `StatsDailyVenueDao`, con lectura ordenada y recálculo de rango por local.
+
+Endpoint:
+
+```http
+GET /api/venue/me/statistics?period=month
+GET /api/venue/me/statistics?period=custom&from=2026-07-01&to=2026-07-29
+```
+
+La respuesta incluye periodo canónico, fechas inclusivas, totales de reservas, confirmadas,
+canceladas, no asistencias, asistencias, plazas ocupadas/ofertadas, ocupación, recuento/media de
+reseñas y una serie diaria con las mismas dimensiones. No incluye `venueId`, IDs de reserva,
+emails, nombres, comentarios, servicios, recursos o incidencias.
+
+### Resolución de filtros
+
+`VenueStatisticsPeriod` admite exclusivamente:
+
+- `today`: hoy local;
+- `week`: lunes de la semana ISO actual hasta hoy;
+- `month`: primer día del mes actual hasta hoy;
+- `year`: 1 de enero hasta hoy;
+- `custom`: `from` y `to` inclusivos.
+
+El parseo usa `Locale.ROOT`. Un periodo predefinido acompañado de fechas manuales se rechaza para
+evitar contratos ambiguos. El rango custom exige ambas fechas, `from <= to`, final no futuro y un
+máximo inclusivo de 366 días. El límite impide consultas accidentales o abusivas sin bloquear un
+año bisiesto completo.
+
+### Recálculo acotado y persistencia
+
+`aggregateVenueRange` ejecuta una única sentencia PostgreSQL por petición:
+
+1. `dates` crea cada fecha mediante `generate_series`.
+2. `reservationStats` agrega solo reservas del `venueId` y rango.
+3. `capacityStats` agrega franjas del mismo local y fechas.
+4. `reviewStats` convierte `createdAt` a fecha con `AT TIME ZONE :zoneId`.
+5. Se generan filas cero para días sin actividad.
+6. El UPSERT actualiza cada pareja local/fecha.
+
+Este camino evita un bucle de hasta 366 llamadas a `aggregateDate` y evita recalcular todos los
+locales cuando un único propietario abre su panel. Después, `findRange` obtiene la serie ordenada
+dentro de la misma transacción.
+
+El local se resuelve mediante `VenueDao.findCurrentByOwnerUserId(ownerUserId)`. El endpoint nunca
+acepta `venueId`, y un perfil ausente o archivado produce el 404 opaco
+`VENUE_STATISTICS_NOT_FOUND`.
+
+### Cálculos del periodo
+
+Los contadores y capacidades se suman. La ocupación se calcula sobre totales:
+
+```text
+occupancyRate = occupiedCapacity * 100 / availableCapacity
+```
+
+Se redondea a una cifra con `HALF_UP`; capacidad cero produce `0.0`, evitando división indefinida.
+No se promedian porcentajes diarios, porque días con capacidades diferentes deben conservar su
+peso.
+
+La valoración se pondera:
+
+```text
+sum(dailyAverageRating * dailyReviewsCount) / sum(dailyReviewsCount)
+```
+
+Se redondea a dos cifras. Sin reseñas devuelve `null`, diferenciando ausencia de datos de una
+puntuación imposible de cero.
+
+### Seguridad, errores y observabilidad
+
+La política central `/api/venue/me/**` exige `ROLE_VENUE_OWNER`. Anónimo obtiene 401 y administrador
+403 antes del servicio. La respuesta es agregada y no almacena ni expone PII. El recálculo no
+registra parámetros, local o métricas; errores SQL se propagan a observabilidad sin convertirse en
+datos públicos.
+
+Errores propios:
+
+- 400 `STATISTICS_FILTER_INVALID`;
+- 404 `VENUE_STATISTICS_NOT_FOUND`.
+
+Errores de fecha que Spring no pueda convertir también permanecen como 400 del contrato HTTP
+general.
+
+### Tests, evidencia, riesgos y deuda
+
+`VenueStatisticsServiceTests` cubre mes, hoy, semana, año, custom, máximo, fechas futuras/invertidas,
+parámetros incompatibles, local ausente, recálculo exacto, ocupación y media ponderada.
+`VenueStatisticsControllerTests` comprueba delegación por principal y respuesta minimizada.
+`VenueStatisticsAuthorizationTests` acredita 401/403/acceso de propietario.
+`StatsDailyVenueAggregationContractTests` protege `generate_series`, aislamiento por local, zona,
+días cero y UPSERT.
+
+La consulta nativa compiló como contrato Spring Data y quedó protegida estructuralmente. No se
+ejecutó contra PostgreSQL real porque Docker/Testcontainers no está disponible y se evitó una
+validación larga sin casos ejecutados. CI debe validar el SQL real y su plan antes de producción.
+
+## Tarea 12.5 - Crear panel de estadísticas desktop
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear la vista privada de escritorio para interpretar métricas y evolución simple, consumiendo
+exclusivamente el contrato agregado de `12.4` y manteniendo estados de carga, error y ausencia de
+actividad.
+
+### Archivos y componentes
+
+- Creado: `apps/web/src/app/panel/estadisticas/page.tsx`.
+- Creados: `venue-statistics-api.ts` y `venue-statistics-dashboard.tsx`.
+- Modificado: `venue-shell.tsx` para navegación.
+- Modificado: `surface.tsx` para propagar una etiqueta accesible opcional.
+- Modificados: catálogos `es.json` y `en.json`.
+
+La página genera metadata localizada y `robots: noindex,nofollow`. Usa `VenueShell` con
+`currentPath=/panel/estadisticas` y `PageHeading`, manteniendo el lenguaje visual del panel.
+
+### Cliente HTTP y validación
+
+`fetchVenueStatistics`:
+
+- construye exclusivamente `/api/venue/me/statistics`;
+- añade `period` y solo añade `from/to` en custom;
+- exige rango custom completo antes de red;
+- usa `credentials: include`, `cache: no-store`, `Accept: application/json` y `AbortSignal`;
+- clasifica 400/401/403/404 y fallos de red;
+- valida con Zod `.strict()` tanto resumen como cada día;
+- limita la serie a 366 elementos y rechaza campos inesperados.
+
+Un backend que filtrase accidentalmente email o cualquier otro campo convertiría la respuesta en
+`unavailable`, en vez de incorporar silenciosamente el dato al estado del navegador.
+
+### UI desktop y estados
+
+El panel comienza en `month`. Los cinco filtros son botones con `aria-pressed`. Custom presenta
+campos `date` con label persistente, máximo hoy y acción explícita; seleccionar “Rango” no lanza una
+petición incompleta.
+
+El resumen usa cuatro tarjetas:
+
+- reservas;
+- ocupación;
+- no asistencias;
+- valoración media.
+
+El detalle añade confirmadas, cancelaciones, asistencias y reseñas. Números, decimales y fechas usan
+`Intl` con el locale activo. La media ausente muestra texto, no cero.
+
+Dos gráficos presentan evolución de reservas y ocupación. No se añadió una dependencia externa:
+`EvolutionChart` usa barras CSS dentro de una lista semántica y calcula altura respecto al máximo
+del periodo. Cada barra expone una etiqueta con fecha y valor; iconos son decorativos. Un periodo
+sin valores muestra un estado vacío textual.
+
+La carga usa `role=status`; cada cambio de filtro cancela la petición anterior y no permite que una
+respuesta desmontada actualice estado. Los errores se presentan mediante `Alert` con textos
+localizados, sin mostrar cuerpo técnico.
+
+### Responsive, accesibilidad e i18n
+
+En desktop las tarjetas llegan a cuatro columnas y los gráficos a dos. Las superficies, bordes,
+tipografía e iconos reutilizan MUI y los tokens existentes. `Surface` incorporó soporte documentado
+para `aria-label`, permitiendo nombrar cada región gráfica sin alterar sus consumidores.
+
+Se añadieron todas las claves bajo `VenueStatistics` en ES/EN y `Navigation.venue.statistics`. El
+test transversal de mensajes confirma equivalencia completa de catálogos.
+
+### Tests y evidencia
+
+`venue-statistics-api.test.ts` comprueba URL, cookie, custom, errores y rechazo de PII inesperada.
+`venue-statistics-dashboard.test.tsx` comprueba tarjetas, detalle, gráficos accesibles, ausencia de
+emails y aplicación custom sin peticiones intermedias.
+
+TypeScript se ejecutó con una configuración temporal que incluyó únicamente el módulo, ruta, shell,
+componentes layout y tests; terminó sin errores. La configuración temporal se eliminó después.
+Prettier se aplicó exclusivamente a los archivos web afectados y catálogos.
+
+No se ejecutaron build Next.js, lint global ni navegador real.
+
+## Tarea 12.6 - Crear panel móvil con tarjetas y gráficos simples
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada a nivel de componentes.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Garantizar que el mismo panel conserve jerarquía, controles táctiles, legibilidad y alternativa
+accesible en anchos móviles, sin mantener una segunda implementación que pueda divergir.
+
+### Implementación responsive
+
+`VenueStatisticsDashboard` usa una sola columna en `xs`, dos tarjetas desde `sm` y cuatro en
+pantallas amplias. Filtros se envuelven; el rango custom se apila en móvil y la acción mantiene una
+altura táctil mínima de 44 px. Los detalles pasan de una a dos columnas.
+
+Los gráficos se apilan hasta `xl`. La lista de barras permite desplazamiento horizontal, por lo que
+una vista anual no comprime 366 puntos hasta hacerlos inoperables. Para periodos de hasta 31 días
+muestra el número de día; para periodos mayores conserva cada etiqueta completa en accesibilidad y
+omite texto visual repetitivo.
+
+La navegación inferior conserva reseñas y añade estadísticas como sexto destino. Cada control
+mantiene 64 px de alto, `minWidth: 0`, icono y texto breve; así no se elimina una capacidad ya
+entregada en fase 11. La fase 15 deberá decidir si los destinos secundarios pasan a una sección
+“Más” completa para reducir densidad.
+
+### Accesibilidad
+
+Cada gráfico es una región `section` nombrada. El título es `h2`, las barras forman una lista y cada
+elemento declara fecha y valor localizado. La representación visual usa `aria-hidden` donde procede
+y el estado vacío es texto normal. Las tarjetas no dependen solo del icono o color.
+
+El test de dashboard ejecutado en JSDOM protege la estructura accesible que comparten desktop y
+móvil. La validación visual con viewport real queda para la fase 15, pero el comportamiento
+responsive está definido mediante breakpoints MUI y no mediante detección de dispositivo.
+
+### Seguridad, privacidad y limitaciones
+
+No se persisten filtros ni respuestas en `localStorage`. La información vive en estado React y se
+descarta al desmontar. El panel no recibe ni representa identidad de clientes.
+
+Limitación: seis destinos producen mayor densidad en los anchos mínimos. La fase 15 debe revisar la
+arquitectura final de navegación y confirmar visualmente scroll, foco y densidad; una sección “Más”
+completa puede agrupar destinos secundarios sin perder accesos.
+
+## Tarea 12.7 - Crear tests de agregación
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada de forma focalizada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Cerrar la fase con cobertura automatizada de semántica, rangos, cálculos, permisos, contratos y
+presentación, manteniendo las ejecuciones limitadas a estadísticas y dependencias directas.
+
+### Cobertura backend
+
+Clases ejecutadas:
+
+- `StatsDailyVenueAggregationContractTests`;
+- `StatsDailyVenueMigrationTests`;
+- `DailyVenueStatsAggregationServiceTests`;
+- `DailyVenueStatsAggregationJobTests`;
+- `VenueStatisticsServiceTests`;
+- `VenueStatisticsControllerTests`;
+- `VenueStatisticsAuthorizationTests`.
+
+La cobertura protege:
+
+- constraints e índice de V31;
+- estados de reservas y franjas;
+- media y ventana local de reseñas;
+- UPSERT diario y por rango;
+- `generate_series` y días cero;
+- aislamiento de las tres fuentes por `venueId`;
+- DST del job diario;
+- rangos today/week/month/year/custom y máximo 366;
+- suma de métricas, ocupación sobre totales y media ponderada;
+- 401, 403 y propietario autorizado;
+- ausencia de datos personales en DTO.
+
+Comando final:
+
+```text
+mvn -f apps/api/pom.xml
+  "-Dtest=StatsDailyVenueAggregationContractTests,StatsDailyVenueMigrationTests,DailyVenueStatsAggregationServiceTests,DailyVenueStatsAggregationJobTests,VenueStatisticsServiceTests,VenueStatisticsControllerTests,VenueStatisticsAuthorizationTests"
+  "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+Resultado: 14 tests, 0 fallos, 0 errores, 0 omitidos y `BUILD SUCCESS`; 682 fuentes principales y
+164 de test. Checkstyle pasó dentro de Maven. Spotless se aplicó solo a los archivos Java bajo
+`statistics`.
+
+El primer pase final detectó durante `testCompile` un import ausente en el nuevo test de
+autorización. No se ejecutó ningún caso en ese pase. Se añadió el import y el segundo pase terminó
+correctamente.
+
+### Cobertura frontend
+
+Comandos:
+
+```text
+npx tsc -p tsconfig.statistics.json
+npx vitest run src/features/venue-statistics/venue-statistics-api.test.ts --pool=forks --maxWorkers=1 --fileParallelism=false
+npx vitest run src/features/venue-statistics/venue-statistics-dashboard.test.tsx --pool=forks --maxWorkers=1 --fileParallelism=false
+npx vitest run src/i18n/messages.test.ts --pool=forks --maxWorkers=1 --fileParallelism=false
+```
+
+Resultados:
+
+- TypeScript focalizado: correcto;
+- API: 2/2;
+- dashboard: 2/2;
+- equivalencia y calidad estructural de mensajes: 3/3.
+
+Un intento inicial con los dos archivos del módulo juntos alcanzó el límite de 60 segundos. Antes
+del timeout había mostrado que la región gráfica no recibía `aria-label`, porque `Surface` no
+propagaba esa propiedad. Se corrigió el componente compartido y los archivos se ejecutaron por
+separado: dashboard en unos nueve segundos y API en unos cuatro. No se repitió el pase conjunto.
+
+### Evidencia, riesgos y cierre
+
+No se ejecutaron suite global, ESLint global, build completo, Docker, Testcontainers, migraciones
+reales ni pruebas visuales. Esta decisión mantiene la validación acotada solicitada. La sentencia
+nativa necesita ejecución PostgreSQL en CI; el contrato estructural no sustituye un plan real.
+
+Con `12.4`–`12.7` termina la fase 12. La siguiente tarea fuente de verdad es `13.1`, migraciones de
+planes, suscripciones y pagos.

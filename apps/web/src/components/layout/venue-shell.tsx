@@ -6,6 +6,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import {
   CalendarDays,
+  ChartNoAxesColumnIncreasing,
   Grid2X2,
   ListChecks,
   MoreHorizontal,
@@ -34,6 +35,11 @@ const venueNavigation = [
   { href: "/panel/formulario", icon: ListChecks, labelKey: "form" },
   { href: "/panel/incidencias", icon: ShieldAlert, labelKey: "incidents" },
   { href: "/panel/resenas", icon: Star, labelKey: "reviews" },
+  {
+    href: "/panel/estadisticas",
+    icon: ChartNoAxesColumnIncreasing,
+    labelKey: "statistics",
+  },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
@@ -45,7 +51,8 @@ const venueNavigation = [
     | "team"
     | "form"
     | "incidents"
-    | "reviews";
+    | "reviews"
+    | "statistics";
 }>;
 
 const venueMobileNavigation = [
@@ -54,10 +61,15 @@ const venueMobileNavigation = [
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
   { href: "/panel/incidencias", icon: MoreHorizontal, labelKey: "more" },
   { href: "/panel/resenas", icon: Star, labelKey: "reviews" },
+  {
+    href: "/panel/estadisticas",
+    icon: ChartNoAxesColumnIncreasing,
+    labelKey: "statistics",
+  },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey: "home" | "reservations" | "calendar" | "more" | "reviews";
+  labelKey: "home" | "reservations" | "calendar" | "more" | "reviews" | "statistics";
 }>;
 
 export interface VenueShellProps {
@@ -162,7 +174,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         sx={{
           bottom: 0,
           display: { xs: "grid", md: "none" },
-          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
           left: 0,
           position: "fixed",
           right: 0,

@@ -232,10 +232,10 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 12.1. Crear migración de `stats_daily_venue`.
 - [x] 12.2. Implementar agregación diaria de estadísticas.
 - [x] 12.3. Implementar métricas de reservas, ocupación, cancelaciones, no asistencias y valoración media.
-- [ ] 12.4. Implementar filtros hoy, semana, mes, año y rango personalizado.
-- [ ] 12.5. Crear panel de estadísticas desktop.
-- [ ] 12.6. Crear panel móvil con tarjetas y gráficos simples.
-- [ ] 12.7. Crear tests de agregación.
+- [x] 12.4. Implementar filtros hoy, semana, mes, año y rango personalizado.
+- [x] 12.5. Crear panel de estadísticas desktop.
+- [x] 12.6. Crear panel móvil con tarjetas y gráficos simples.
+- [x] 12.7. Crear tests de agregación.
 
 ## 15. Fase 13 - Suscripción y RedSys preparado sin cobro real en MVP
 

@@ -473,7 +473,8 @@
       "form": "Formulario",
       "incidents": "Incidencias",
       "more": "Más",
-      "reviews": "Reseñas"
+      "reviews": "Reseñas",
+      "statistics": "Estadísticas"
     }
   },
   "Availability": {
@@ -636,47 +637,47 @@
     "metadata": {
       "notFoundTitle": "Local no disponible"
     },
-      "reviews": {
+    "reviews": {
       "empty": "Este local todavía no ha recibido reseñas verificadas.",
       "itemRating": "Puntuación: {rating} de 5",
       "publishedOn": "Publicada el {date}",
       "recentOnly": "Se muestran las reseñas verificadas más recientes.",
       "scoreLabel": "Valoración media: {rating} de 5",
       "summary": "{count, plural, one {# reseña verificada} other {# reseñas verificadas}}",
-        "verifiedGuest": "Cliente con reserva verificada",
-        "title": "Valoraciones"
+      "verifiedGuest": "Cliente con reserva verificada",
+      "title": "Valoraciones"
+    },
+    "reviewForm": {
+      "action": "Hacer reseña",
+      "back": "Volver",
+      "cancel": "Cancelar",
+      "checkAction": "Comprobar",
+      "checking": "Comprobando",
+      "close": "Cerrar",
+      "commentHelper": "Opcional. Máximo 2.000 caracteres.",
+      "commentLabel": "Comentario",
+      "dialogDescription": "Introduce el correo usado en tu reserva. Comprobaremos de forma segura si puedes valorar este local sin mostrar datos de tu historial.",
+      "dialogTitle": "Hacer una reseña",
+      "emailLabel": "Correo de la reserva",
+      "eligibleDescription": "Tu email tiene una reserva pasada válida en este local. Comparte tu experiencia.",
+      "errors": {
+        "alreadySubmitted": "Todas las reservas pasadas que permiten valorar este local ya tienen una reseña.",
+        "invalid": "Revisa el email y los datos de la reseña antes de continuar.",
+        "notEligible": "No encontramos una reserva pasada válida con ese email para este local.",
+        "policyRequired": "Debes aceptar la publicación de la reseña.",
+        "ratingRequired": "Selecciona una puntuación de 1 a 5 estrellas.",
+        "unavailable": "No podemos comprobar o publicar la reseña ahora. Inténtalo más tarde."
       },
-      "reviewForm": {
-        "action": "Hacer reseña",
-        "back": "Volver",
-        "cancel": "Cancelar",
-        "checkAction": "Comprobar",
-        "checking": "Comprobando",
-        "close": "Cerrar",
-        "commentHelper": "Opcional. Máximo 2.000 caracteres.",
-        "commentLabel": "Comentario",
-        "dialogDescription": "Introduce el correo usado en tu reserva. Comprobaremos de forma segura si puedes valorar este local sin mostrar datos de tu historial.",
-        "dialogTitle": "Hacer una reseña",
-        "emailLabel": "Correo de la reserva",
-        "eligibleDescription": "Tu email tiene una reserva pasada válida en este local. Comparte tu experiencia.",
-        "errors": {
-          "alreadySubmitted": "Todas las reservas pasadas que permiten valorar este local ya tienen una reseña.",
-          "invalid": "Revisa el email y los datos de la reseña antes de continuar.",
-          "notEligible": "No encontramos una reserva pasada válida con ese email para este local.",
-          "policyRequired": "Debes aceptar la publicación de la reseña.",
-          "ratingRequired": "Selecciona una puntuación de 1 a 5 estrellas.",
-          "unavailable": "No podemos comprobar o publicar la reseña ahora. Inténtalo más tarde."
-        },
-        "policyLabel": "Acepto que la puntuación y el comentario se publiquen de forma anónima.",
-        "publish": "Publicar reseña",
-        "publishing": "Publicando",
-        "ratingHelper": "Selecciona entre 1 y 5 estrellas.",
-        "ratingLabel": "Tu puntuación",
-        "ratingOption": "{rating, plural, one {# estrella} other {# estrellas}}",
-        "success": "Tu reseña de {rating} sobre 5 se ha publicado.",
-        "successSummary": "La valoración media del local es ahora {average}, con {count, plural, one {# reseña} other {# reseñas}}.",
-        "successTitle": "Reseña publicada"
-      },
+      "policyLabel": "Acepto que la puntuación y el comentario se publiquen de forma anónima.",
+      "publish": "Publicar reseña",
+      "publishing": "Publicando",
+      "ratingHelper": "Selecciona entre 1 y 5 estrellas.",
+      "ratingLabel": "Tu puntuación",
+      "ratingOption": "{rating, plural, one {# estrella} other {# estrellas}}",
+      "success": "Tu reseña de {rating} sobre 5 se ha publicado.",
+      "successSummary": "La valoración media del local es ahora {average}, con {count, plural, one {# reseña} other {# reseñas}}.",
+      "successTitle": "Reseña publicada"
+    },
     "sections": {
       "about": "Sobre el local",
       "additional": "Información adicional",
@@ -1422,6 +1423,66 @@
       "notFound": "No encontramos un local activo para esta cuenta.",
       "invalid": "La página solicitada no es válida.",
       "unavailable": "No pudimos cargar las reseñas. Inténtalo de nuevo."
+    }
+  },
+  "VenueStatistics": {
+    "metadata": {
+      "title": "Estadísticas | Reserly",
+      "description": "Consulta las métricas básicas y la evolución de tu local."
+    },
+    "hero": {
+      "eyebrow": "Rendimiento del local",
+      "title": "Estadísticas",
+      "summary": "Analiza reservas, ocupación, cancelaciones, no asistencias y valoraciones sin exponer datos personales."
+    },
+    "loading": "Cargando estadísticas",
+    "periodLabel": "Datos del {from} al {to}",
+    "percent": "{value} %",
+    "filters": {
+      "title": "Periodo",
+      "description": "Las métricas se recalculan para el intervalo seleccionado.",
+      "periodAria": "Seleccionar periodo de estadísticas",
+      "periods": {
+        "today": "Hoy",
+        "week": "Semana",
+        "month": "Mes",
+        "year": "Año",
+        "custom": "Rango"
+      },
+      "from": "Desde",
+      "to": "Hasta",
+      "apply": "Aplicar rango"
+    },
+    "summary": {
+      "aria": "Resumen de métricas",
+      "reservations": "Reservas",
+      "occupancy": "Ocupación",
+      "noShows": "No asistencias",
+      "averageRating": "Valoración media",
+      "withoutRating": "Sin valoración"
+    },
+    "charts": {
+      "reservations": "Evolución de reservas",
+      "occupancy": "Evolución de ocupación",
+      "reservationsAria": "Gráfico diario de reservas",
+      "occupancyAria": "Gráfico diario del porcentaje de ocupación",
+      "reservationValue": "{value, plural, one {# reserva} other {# reservas}}",
+      "occupancyValue": "{value} % de ocupación",
+      "empty": "No hay actividad en este periodo."
+    },
+    "details": {
+      "title": "Detalle del periodo",
+      "confirmed": "Reservas confirmadas",
+      "cancelled": "Cancelaciones",
+      "attended": "Asistencias",
+      "reviews": "Reseñas recibidas"
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",
+      "forbidden": "No tienes permisos para consultar estas estadísticas.",
+      "notFound": "No encontramos un local activo para esta cuenta.",
+      "invalid": "El periodo no es válido. Revisa las fechas y limita el rango a 366 días.",
+      "unavailable": "No pudimos cargar las estadísticas. Inténtalo de nuevo."
     }
   },
   "VenueIncidents": {

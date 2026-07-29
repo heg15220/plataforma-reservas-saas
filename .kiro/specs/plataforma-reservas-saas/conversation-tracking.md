@@ -13,12 +13,85 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-29
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.3`.
-- Siguiente tarea pendiente recomendada: `12.4. Implementar filtros hoy, semana, mes, año y rango
-  personalizado`.
-- Observación: la fase 12 dispone ya de almacenamiento diario, agregación idempotente y las
-  métricas fuente; quedan las consultas por periodo, el panel responsive y la cobertura de
-  agregación sobre PostgreSQL real.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.7`.
+- Siguiente tarea pendiente recomendada: `13.1. Crear migraciones de plans, subscriptions y
+  payments`.
+- Observación: la fase 12 queda cerrada con recálculo acotado por local, filtros temporales, panel
+  responsive, gráficos accesibles y cobertura focalizada de agregación y permisos.
+
+## Conversación 119 - Consulta temporal, panel responsive y cierre de estadísticas
+
+- Fecha: 2026-07-29.
+- Resumen de la conversación:
+  - Se completaron `12.4`, `12.5`, `12.6` y `12.7`, cerrando la fase 12.
+  - Se creó `GET /api/venue/me/statistics` con filtros `today`, `week`, `month`, `year` y `custom`.
+  - El rango personalizado exige fechas inclusivas válidas, no futuras y con un máximo de 366
+    días; los filtros predefinidos usan periodos de calendario en la zona del reloj de negocio.
+  - Antes de leer, una única sentencia PostgreSQL recalcula todos los días del rango únicamente
+    para el local derivado del propietario autenticado, incluyendo días sin actividad mediante
+    `generate_series`.
+  - El backend devuelve totales, ocupación calculada, valoración media ponderada y una serie diaria
+    minimizada sin emails, reservas, comentarios ni IDs de clientes.
+  - Se creó `/panel/estadisticas` con tarjetas, filtros, detalles y gráficos simples de reservas y
+    ocupación. El mismo componente se adapta de escritorio a móvil y ofrece etiquetas textuales
+    accesibles para cada barra.
+  - La navegación desktop y móvil incorpora la sección de estadísticas y todos los textos existen
+    en español e inglés.
+- Archivos modificados:
+  - Paquetes backend `statistics/controller`, `statistics/dto`, `statistics/service` y
+    `statistics/persistence`.
+  - Tests backend de consulta, agregación, controlador y autorización.
+  - `apps/web/src/features/venue-statistics/*`.
+  - `apps/web/src/app/panel/estadisticas/page.tsx`.
+  - `apps/web/src/components/layout/venue-shell.tsx` y `surface.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Tests frontend de API, filtros, tarjetas, gráficos e i18n.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-025 Estadísticas básicas para locales`.
+  - `RNF-002 Seguridad y privacidad`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-005 Escalabilidad`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-007 Accesibilidad`.
+  - `RNF-009 Responsive design`.
+  - `RNF-010 Internacionalización`.
+  - `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `12.4. Implementar filtros hoy, semana, mes, año y rango personalizado`.
+  - `12.5. Crear panel de estadísticas desktop`.
+  - `12.6. Crear panel móvil con tarjetas y gráficos simples`.
+  - `12.7. Crear tests de agregación`.
+- Siguiente tarea pendiente recomendada:
+  - `13.1. Crear migraciones de plans, subscriptions y payments`.
+- Decisiones o aclaraciones relevantes:
+  - Hoy es la fecha local actual; semana empieza el lunes; mes y año empiezan en el primer día de
+    sus periodos de calendario y terminan hoy. Un filtro predefinido con fechas manuales se rechaza.
+  - El endpoint no acepta `venueId`. Anónimo recibe 401, administrador 403 y solo
+    `ROLE_VENUE_OWNER` alcanza el servicio con el `userId` del principal.
+  - El recálculo bajo demanda se limita a un local y una única sentencia por petición, evitando 366
+    consultas y garantizando datos desde el primer acceso tras desplegar V31.
+  - La ocupación del rango usa suma de plazas ocupadas dividida por suma de capacidad ofertada; si
+    el denominador es cero devuelve `0.0`. La valoración se pondera por el número diario de reseñas.
+  - Los gráficos se implementan con layout CSS y elementos semánticos, sin añadir una librería de
+    gráficos. Cada barra tiene fecha y valor accesibles y los rangos largos usan desplazamiento
+    horizontal.
+  - Evidencia backend final: 14 tests, 0 fallos, 0 errores y 0 omitidos. Compilaron 682 fuentes
+    principales y 164 fuentes de test.
+  - Evidencia frontend final: TypeScript focalizado correcto; 2/2 tests de API, 2/2 de dashboard y
+    3/3 del contrato de catálogos ES/EN.
+  - El primer pase backend final detectó un import ausente en el test nuevo antes de ejecutar
+    casos; se corrigió y el pase siguiente terminó correctamente.
+  - Un intento conjunto de dos archivos Vitest alcanzó el límite de 60 segundos después de mostrar
+    un fallo de accesibilidad del test. Se corrigió la propagación de `aria-label` en `Surface` y
+    cada archivo se ejecutó por separado en menos de diez segundos.
+  - No se ejecutaron suite global, build global, ESLint global, Docker, Testcontainers, migraciones
+    reales ni pruebas visuales de navegador.
+  - El cambio previo `apps/web/next-env.d.ts` se preservó fuera de la implementación y se excluirá
+    del commit.
 
 ## Conversación 118 - Persistencia, agregación diaria y métricas básicas
 
