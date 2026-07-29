@@ -7,10 +7,10 @@
   ],
   "scripts": {
     "dev": "concurrently --kill-others --names api,web --prefix-colors blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
-    "dev:api": "dotenv -e .env.local -- mvn -f apps/api/pom.xml spring-boot:run -Dspring-boot.run.profiles=local",
+    "dev:api": "dotenv -e .env.local -- mvn -f apps/api/pom.xml -Dspotless.check.skip=true -Dcheckstyle.skip=true spring-boot:run -Dspring-boot.run.profiles=local",
     "dev:web": "dotenv -e .env.local -- npm run dev --workspace @reserly/web",
     "dev:staging": "concurrently --kill-others --names api,web --prefix-colors blue,magenta \"npm:dev:api:staging\" \"npm:dev:web:staging\"",
-    "dev:api:staging": "dotenv -e .env.staging -- mvn -f apps/api/pom.xml spring-boot:run -Dspring-boot.run.profiles=staging",
+    "dev:api:staging": "dotenv -e .env.staging -- mvn -f apps/api/pom.xml -Dspotless.check.skip=true -Dcheckstyle.skip=true spring-boot:run -Dspring-boot.run.profiles=staging",
     "dev:web:staging": "dotenv -e .env.staging -- npm run dev --workspace @reserly/web",
     "infra:up": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml up -d --wait",
     "infra:down": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml down",

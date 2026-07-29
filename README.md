@@ -48,7 +48,10 @@ npm run infra:up
 npm run dev
 ```
 
-También pueden iniciarse por separado con `npm run dev:api` y `npm run dev:web`.
+También pueden iniciarse por separado con `npm run dev:api` y `npm run dev:web`. Los
+scripts de desarrollo omiten los controles Maven de formato y estilo para no bloquear
+el arranque; `npm run lint`, `npm run format:check` y `npm run verify` siguen
+ejecutándolos de forma explícita.
 
 PostgreSQL/PostGIS, Redis y RabbitMQ se ejecutan localmente con Docker Compose. El almacenamiento S3 se incorporará en una tarea posterior.
 
