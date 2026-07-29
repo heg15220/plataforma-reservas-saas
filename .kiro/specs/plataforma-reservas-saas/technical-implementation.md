@@ -9,8 +9,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.3`.
-- Siguiente tarea pendiente recomendada: `11.4. Calcular valoración media y número de reseñas`.
+  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.3`.
+- Siguiente tarea pendiente recomendada: `12.4. Implementar filtros hoy, semana, mes, año y rango
+  personalizado`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -25474,3 +25475,295 @@ para `16.6`.
 
 Con `11.10`, `11.11` y `11.12` termina la fase 11. La siguiente tarea fuente de verdad es `12.1`,
 crear la migración de estadísticas diarias por local.
+
+## Tarea 12.1 - Crear migración de `stats_daily_venue`
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada estructuralmente.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Crear una tabla derivada que permita consultar la evolución diaria de un local sin recorrer en cada
+petición todas sus reservas, franjas y reseñas. El esquema debía conservar una sola instantánea por
+local y fecha, admitir recalculados idempotentes y hacer explícitas las invariantes numéricas que
+necesitarán los filtros y gráficos de las tareas `12.4` a `12.6`.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-025`, `RNF-003`, `RNF-004`, `RNF-005`, `RNF-006` y `RNF-011`.
+- Diseño: módulo 3.10, modelo `stats_daily_venue` de 4.1, jobs de 11.2 y estrategia de agregación de
+  estadísticas en background.
+- Tareas relacionadas: habilita `12.2` a `12.7`; no implementa todavía filtros ni panel.
+
+### Archivos afectados
+
+- Creado: `apps/api/src/main/resources/db/migration/V31__create_daily_venue_stats.sql`.
+- Creados: `StatsDailyVenueEntity`, documentación de `statistics.persistence` y
+  `StatsDailyVenueMigrationTests`.
+- Modificado: `DatabaseMigrationIntegrationTests` para declarar Flyway 31 como versión actual.
+- Eliminados: ninguno.
+
+### Modelo de datos, restricciones e índices
+
+La migración traduce el nombre conceptual `stats_daily_venue` a la convención física
+`StatsDailyVenue`. La tabla contiene:
+
+- `id` UUID generado por PostgreSQL;
+- `venueId` UUID no nulo;
+- `date` como fecha local de negocio;
+- contadores `bigint` para reservas, confirmaciones, cancelaciones, no asistencias, asistencias,
+  capacidad ocupada, capacidad ofertada y reseñas;
+- `averageRating numeric(3,2)`;
+- `createdAt` y `updatedAt` como instantes con zona.
+
+`fkStatsDailyVenueVenue` usa `ON DELETE CASCADE`: la fila es un derivado operativo, no evidencia
+legal ni fuente de verdad, y carece de significado tras eliminar físicamente el local.
+`uqStatsDailyVenueVenueDate` garantiza una instantánea por pareja incluso con dos escritores.
+`ckStatsDailyVenueCounts` impide valores negativos. `ckStatsDailyVenueRating` exige `NULL` cuando
+no hay reseñas y un valor 1.00..5.00 cuando sí las hay. La constraint de timestamps impide
+retroceder `updatedAt`.
+
+`ixStatsDailyVenueDateVenue` prepara barridos por rango de fechas y local. La unicidad crea además
+el acceso natural `venueId/date` que usarán las consultas privadas. No se añaden índices por cada
+métrica porque los filtros de MVP son temporales y siempre acotados a un local.
+
+### Mapeo JPA y documentación del código
+
+`StatsDailyVenueEntity` usa acceso por getters/setters, tabla y columnas citadas explícitamente y
+una asociación `LAZY` con `VenueEntity`. Todos los contadores Java son `long`, evitando el límite
+de `integer` al agregar periodos amplios. La media usa `BigDecimal` para preservar la escala
+persistida.
+
+La documentación de la entidad aclara una decisión importante: `availableCapacity` es la capacidad
+total ofertada, no la capacidad restante. Junto con `occupiedCapacity` proporciona numerador y
+denominador para la tasa de ocupación futura sin almacenar un porcentaje redundante.
+
+### Contratos, seguridad, privacidad e i18n
+
+No se crea endpoint ni DTO HTTP en esta tarea. La tabla no contiene emails, nombres, IDs de
+reserva, comentarios, servicios ni recursos; solo UUID del local, fecha y métricas agregadas. Por
+ello reduce el riesgo de exposición al alimentar el futuro panel. No hay texto visible ni cambios
+i18n.
+
+### Tests y verificación
+
+`StatsDailyVenueMigrationTests` lee V31 como UTF-8 y exige tabla, unicidad local/fecha, constraints
+de contadores y media, clave foránea con cascada e índice temporal. El test integrado existente
+queda apuntando a la versión 31 para que CI valide la cadena completa con PostgreSQL/PostGIS.
+
+La prueba PostgreSQL no se ejecutó localmente porque requeriría Docker/Testcontainers y la petición
+exigía validaciones acotadas y no interminables. La compilación de la entidad se acreditó dentro
+del pase Maven focalizado de estadísticas.
+
+### Decisiones técnicas, riesgos y deuda
+
+Se eligió una tabla diaria reconstruible frente a columnas acumuladas en `Venues`: permite
+recalcular una fecha, generar series simples y ponderar medias sin introducir escrituras en los
+flujos transaccionales de reserva. No se restringe `occupiedCapacity <= availableCapacity` porque
+un cambio posterior de capacidad, datos históricos importados o una corrección operativa podría
+hacer visible una discrepancia real que no debe impedir recalcular el resto del día.
+
+CI debe ejecutar Flyway desde vacío y validar V31 contra PostgreSQL real antes de producción. La
+retención o reconstrucción masiva de años completos queda fuera del MVP.
+
+## Tarea 12.2 - Implementar agregación diaria de estadísticas
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Consolidar cada día las fuentes transaccionales en `StatsDailyVenue` mediante un flujo acotado,
+repetible y seguro ante cambios de horario, sin cargar reservas en memoria ni ejecutar una consulta
+por local.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-025`, `RNF-003`, `RNF-004`, `RNF-005`, `RNF-006` y `RNF-008`.
+- Diseño: responsabilidades de agregaciones periódicas del módulo 3.10, cola/jobs de 1.2 y job
+  programado de estadísticas de 11.2.
+- Tareas relacionadas: consume `12.1`, materializa `12.3` y será consultada por `12.4`.
+
+### Archivos afectados
+
+- Creados: `StatsDailyVenueDao`, `DailyVenueStatsAggregationService`,
+  `DailyVenueStatsAggregationServiceImpl`, `DailyVenueStatsAggregationJob` y documentación de sus
+  paquetes.
+- Creados: `DailyVenueStatsAggregationServiceTests`,
+  `DailyVenueStatsAggregationJobTests` y `StatsDailyVenueAggregationContractTests`.
+- Modificado: `application.yaml` con `reserly.statistics.daily.cron`.
+- Migraciones adicionales, endpoints, frontend, cache y mensajería: sin cambios.
+
+### Arquitectura y flujo de ejecución
+
+El DAO ejecuta una única sentencia nativa PostgreSQL:
+
+1. `reservationStats` agrupa reservas contabilizables por `venueId` para `statsDate`.
+2. `capacityStats` agrupa la capacidad ofertada por franjas del mismo día.
+3. `reviewStats` agrupa reseñas cuyo `createdAt` pertenece al intervalo local recibido.
+4. El `SELECT` parte de `Venues` y hace `LEFT JOIN` con los tres agregados, generando también filas
+   cero para locales sin actividad.
+5. `INSERT ... ON CONFLICT (venueId, date) DO UPDATE` inserta o reemplaza todas las métricas,
+   preserva `createdAt` y actualiza `updatedAt`.
+
+Este modelo es idempotente: repetir una fecha no incrementa contadores, sino que vuelve a derivarlos
+desde las fuentes. La transacción engloba una sola sentencia y no expone un estado parcialmente
+actualizado.
+
+`DailyVenueStatsAggregationServiceImpl.aggregate(date)` valida que la fecha no sea nula ni futura.
+Calcula `dayStart` con `date.atStartOfDay(clock.getZone())` y `dayEnd` desde el inicio del día
+siguiente. No suma 24 horas: en el cambio DST del 29 de marzo de 2026 el intervalo correcto de
+Europe/Madrid dura 23 horas. Usa un único `calculatedAt` para todas las filas.
+
+`DailyVenueStatsAggregationJob` obtiene el día anterior desde el mismo reloj de negocio y delega
+una única fecha. El cron por defecto es `0 15 0 * * *`, a las 00:15, con zona explícita
+`${reserly.business-clock.zone-id:Europe/Madrid}`. Puede configurarse mediante
+`RESERLY_STATISTICS_DAILY_CRON`. Se evita ejecutar exactamente a medianoche para dejar margen a
+transiciones operativas inmediatamente anteriores.
+
+### Concurrencia, errores y observabilidad
+
+La unicidad de base de datos y el UPSERT hacen converger ejecuciones duplicadas de uno o varios
+nodos. No hay bucles, sleeps, paginación ni reintentos internos. Una excepción SQL se propaga para
+que el scheduler y la observabilidad de Spring registren el fallo; el día puede recalcularse de
+nuevo sin compensación.
+
+El job registra a INFO únicamente fecha y número de locales agregados. No registra UUID, email,
+reservas ni comentarios. El valor de retorno de servicio y job facilita métricas operativas y
+tests. No se publica ningún evento porque la consulta por rango aún no existe y no hay cache que
+invalidar.
+
+### Tests y evidencia
+
+`DailyVenueStatsAggregationServiceTests` verifica el intervalo DST exacto, el instante común,
+delegación única y rechazo de fecha nula/futura antes de persistencia.
+`DailyVenueStatsAggregationJobTests` verifica el día local anterior, retorno y las propiedades
+exactas de `@Scheduled`.
+`StatsDailyVenueAggregationContractTests` inspecciona la consulta declarada y protege UPSERT,
+estados, ocupación, capacidad y ventana temporal de reseñas.
+
+Comando final:
+
+```text
+mvn -f apps/api/pom.xml
+  "-Dtest=StatsDailyVenueMigrationTests,StatsDailyVenueAggregationContractTests,DailyVenueStatsAggregationServiceTests,DailyVenueStatsAggregationJobTests"
+  "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+```
+
+Resultado: 6 tests, 0 fallos, 0 errores, 0 omitidos y `BUILD SUCCESS`. Maven compiló 669 fuentes
+principales y 160 de test. Checkstyle se ejecutó dentro del ciclo Maven sin incidencias. Spotless se
+aplicó en un comando separado con catorce paths exactos, sin recorrer ni modificar módulos ajenos.
+
+El primer intento no llegó a construir porque el sandbox bloqueó Maven Central. Se repitió con
+acceso de red autorizado y terminó correctamente. No se ejecutaron suite global, frontend, Docker,
+Testcontainers, broker, Redis ni validaciones visuales.
+
+### Riesgos y deuda técnica
+
+El job no usa todavía un lock distribuido. El UPSERT conserva el resultado, pero dos nodos podrían
+duplicar temporalmente el coste de cálculo. Si el número de locales hace relevante ese coste, debe
+añadirse coordinación persistente o particionado sin alterar la semántica idempotente. La
+recuperación automática de días omitidos y el backfill quedan como capacidades operativas futuras.
+
+## Tarea 12.3 - Implementar métricas de reservas, ocupación, cancelaciones, no asistencias y valoración media
+
+- Fecha: 2026-07-29.
+- Commit o referencia: rama `phase/12-basic-stats`, commit de cierre de esta iteración.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Definir y materializar una semántica estable para las métricas MVP, teniendo en cuenta que el estado
+actual de una reserva puede haber evolucionado de confirmada a asistida, no asistida, reportada o
+cancelada. La agregación debe excluir holds y expiraciones, evitar doble conteo y permitir calcular
+ocupación y medias ponderadas cuando se implementen rangos.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-025`, `RF-024`, `RF-018`, `RF-020`, `RNF-002`, `RNF-004`, `RNF-005` y
+  `RNF-011`.
+- Diseño: métricas del módulo 3.10, modelo diario 4.1 y estados de reservas/incidencias de las fases
+  7 y 10.
+- Tareas relacionadas: usa `12.1` y `12.2`; prepara el recálculo por periodos de `12.4`.
+
+### Semántica de métricas
+
+`reservationsCount` cuenta filas de la fecha que tienen `customerEmailNormalized` y uno de estos
+estados:
+
+- `confirmed`;
+- `attended`;
+- `no_show`;
+- `reported`;
+- `cancelled_by_user`;
+- `cancelled_by_venue`.
+
+La presencia de identidad confirma que el hold llegó a convertirse en reserva. `hold`,
+`pending_confirmation` y `expired` quedan fuera incluso si existiera un dato inconsistente.
+
+`confirmedCount` agrupa `confirmed`, `attended`, `no_show` y `reported`. El nombre representa
+reservas aceptadas que no fueron canceladas, no exclusivamente las que todavía conservan el estado
+literal `confirmed`. Esta definición permite que marcar asistencia no reduzca artificialmente el
+total confirmado histórico.
+
+`cancelledCount` agrupa cancelación por cliente y por local. La división por actor puede añadirse
+en estadísticas avanzadas, pero no forma parte de `RF-025`.
+
+`noShowCount` agrupa `no_show` y `reported`. Reportar una incidencia es una evolución de la misma no
+asistencia y no debe borrar esa señal del día. Cada reserva sigue contando una sola vez.
+
+`attendedCount` usa únicamente `attended`. Una reserva todavía `confirmed` no se presume asistida
+hasta que el job o el propietario materializan la decisión.
+
+`occupiedCapacity` suma `partySize` de `confirmed`, `attended`, `no_show` y `reported`. Una no
+asistencia consumió la plaza ofrecida y forma parte de la ocupación operativa. Las cancelaciones no
+la consumen en la instantánea recalculada.
+
+`availableCapacity` suma `TimeSlots.capacity` para franjas `available` y `full`. Es capacidad total
+ofertada, no remanente. Se excluyen franjas `blocked` y `unavailable`. El porcentaje futuro será
+`occupiedCapacity / availableCapacity`, con tratamiento explícito de denominador cero en `12.4`.
+
+`reviewsCount` cuenta reseñas creadas desde `dayStart` inclusivo hasta `dayEnd` exclusivo.
+`averageRating` usa `ROUND(AVG(rating), 2)` y queda nula sin reseñas. Para un rango, la media correcta
+se podrá reconstruir ponderando cada media diaria por `reviewsCount`, sin promediar promedios de
+forma ingenua.
+
+### Seguridad, privacidad, contratos y UI
+
+La agregación solo proyecta cantidades. Aunque filtra por `customerEmailNormalized IS NOT NULL`
+para distinguir reservas confirmadas, nunca selecciona ni persiste ese valor. Tampoco copia
+comentarios, IDs de reserva, servicios, recursos o incidencias.
+
+No se añade contrato HTTP ni UI: los filtros corresponden a `12.4` y los paneles a `12.5`/`12.6`.
+No hay textos visibles ni cambios de internacionalización en esta tarea.
+
+### Validación, evidencia y limitaciones
+
+El test de contrato exige literalmente los conjuntos de estados, suma de `partySize`, estados de
+franjas, media de reseñas y fronteras inclusiva/exclusiva. Los tests de servicio acreditan que la
+fecha de reseña se transforma correctamente en instantes incluso con DST. La constraint de V31
+protege recuentos y rango de media.
+
+La evidencia conjunta es el pase final de 6 tests focalizados y la compilación correcta del módulo
+API. No se añadió una prueba con fixtures PostgreSQL porque la tarea `12.7` reserva la cobertura de
+agregación y el entorno local no dispone de Docker; se evitó un intento largo que no aportaría una
+asercción ejecutada.
+
+Riesgos conocidos:
+
+- cambiar retrospectivamente el estado o capacidad de una franja puede alterar una fecha al
+  recalcularla; esta es una propiedad deliberada de un agregado reconstruible;
+- `availableCapacity` depende del estado actual de la franja, por lo que una futura auditoría
+  histórica estricta podría requerir snapshots de publicación;
+- la capacidad puede superar o quedar por debajo de la ocupación ante datos importados o cambios
+  retrospectivos; el panel deberá representar el dato y observabilidad deberá detectar anomalías;
+- usuarios recurrentes, comparativas avanzadas y división de cancelaciones quedan fuera del MVP.
+
+Con `12.1`, `12.2` y `12.3` quedan disponibles la persistencia y las métricas fuente. La siguiente
+tarea recomendada es `12.4`, que debe consultar periodos y calcular totales, tasa de ocupación y
+media ponderada sin exponer datos personales.

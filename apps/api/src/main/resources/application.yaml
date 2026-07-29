@@ -117,6 +117,9 @@ reserly:
       fromName: ${RESERLY_EMAIL_FROM_NAME:Reserly}
   features:
     realPaymentsEnabled: ${RESERLY_REAL_PAYMENTS_ENABLED:false}
+  statistics:
+    daily:
+      cron: "${RESERLY_STATISTICS_DAILY_CRON:0 15 0 * * *}"
   venues:
     images:
       upload:

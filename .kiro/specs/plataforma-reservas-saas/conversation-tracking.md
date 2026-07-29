@@ -13,10 +13,76 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-29
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16` y `11.1` a `11.12`.
-- Siguiente tarea pendiente recomendada: `12.1. Crear migración de stats_daily_venue`.
-- Observación: la fase 11 queda cerrada con elegibilidad por local/email, creación transaccional
-  desde la ficha, mensajes i18n y contratos públicos sin datos históricos.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12` y `12.1` a `12.3`.
+- Siguiente tarea pendiente recomendada: `12.4. Implementar filtros hoy, semana, mes, año y rango
+  personalizado`.
+- Observación: la fase 12 dispone ya de almacenamiento diario, agregación idempotente y las
+  métricas fuente; quedan las consultas por periodo, el panel responsive y la cobertura de
+  agregación sobre PostgreSQL real.
+
+## Conversación 118 - Persistencia, agregación diaria y métricas básicas
+
+- Fecha: 2026-07-29.
+- Resumen de la conversación:
+  - Se completaron `12.1`, `12.2` y `12.3` en `phase/12-basic-stats`.
+  - La migración `V31__create_daily_venue_stats.sql` crea una instantánea única por local y fecha,
+    con contadores no negativos, media coherente con su recuento, clave foránea e índice temporal.
+  - Se implementó una única sentencia PostgreSQL que agrega reservas, capacidad ofertada y reseñas
+    para una fecha y ejecuta `UPSERT`, por lo que recalcular el mismo día converge sin duplicados.
+  - El servicio convierte la fecha local a un intervalo de instantes inclusivo/exclusivo respetando
+    cambios de horario de verano.
+  - El job se ejecuta a las 00:15 en la zona del reloj de negocio, agrega exclusivamente el día
+    anterior y permite configurar el cron mediante entorno.
+  - Se documentó y protegió la semántica de reservas, confirmaciones, cancelaciones, no
+    asistencias, ocupación, capacidad ofertada y valoración media diaria.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V31__create_daily_venue_stats.sql`.
+  - `apps/api/src/main/java/com/reserly/platform/statistics/persistence/*`.
+  - `apps/api/src/main/java/com/reserly/platform/statistics/service/*`.
+  - `apps/api/src/test/java/com/reserly/platform/statistics/persistence/*`.
+  - `apps/api/src/test/java/com/reserly/platform/statistics/service/*`.
+  - `apps/api/src/main/resources/application.yaml`.
+  - `apps/api/src/test/java/com/reserly/platform/configuration/DatabaseMigrationIntegrationTests.java`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-025 Estadísticas básicas para locales`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-005 Escalabilidad`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-008 Observabilidad`.
+  - `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `12.1. Crear migración de stats_daily_venue`.
+  - `12.2. Implementar agregación diaria de estadísticas`.
+  - `12.3. Implementar métricas de reservas, ocupación, cancelaciones, no asistencias y valoración
+    media`.
+- Siguiente tarea pendiente recomendada:
+  - `12.4. Implementar filtros hoy, semana, mes, año y rango personalizado`.
+- Decisiones o aclaraciones relevantes:
+  - `reservationsCount` incluye toda reserva que llegó a recopilar identidad y conserva un estado
+    posterior a la confirmación, incluidas las canceladas; excluye holds y expiraciones.
+  - `confirmedCount` incluye `confirmed`, `attended`, `no_show` y `reported`; estas reservas
+    consumieron capacidad y no fueron canceladas.
+  - `cancelledCount` incluye cancelación por usuario o local. `noShowCount` incluye `no_show` y
+    `reported`, evitando perder la no asistencia cuando evoluciona al estado reportado.
+  - `occupiedCapacity` suma las personas de reservas no canceladas. `availableCapacity` representa
+    la capacidad total ofertada por franjas `available` o `full`, no la capacidad restante.
+  - `reviewsCount` y `averageRating` incluyen únicamente reseñas creadas dentro del día local. La
+    media se almacena con dos decimales y queda a `NULL` cuando no existen reseñas.
+  - La tabla conserva una fila por cada local incluso sin actividad para que los rangos futuros
+    puedan distinguir un día con cero de un día todavía no agregado.
+  - Evidencia final: 6 tests focalizados, 0 fallos, 0 errores y 0 omitidos; compilación de 669
+    fuentes principales y 160 fuentes de test; Checkstyle pasó durante Maven y Spotless se aplicó
+    solo a los archivos Java afectados.
+  - El primer intento Maven falló antes del build porque el sandbox bloqueó Maven Central; se
+    repitió con el acceso autorizado y terminó correctamente.
+  - No se ejecutaron suite global, frontend, Docker, Testcontainers, migraciones reales ni
+    validaciones visuales. El test de migración integrado queda actualizado a la versión 31 para CI.
+  - El cambio previo `apps/web/next-env.d.ts` se preservó fuera de la implementación y se excluirá
+    del commit.
 
 ## Conversación 117 - Elegibilidad y creación completa desde la ficha pública
 
