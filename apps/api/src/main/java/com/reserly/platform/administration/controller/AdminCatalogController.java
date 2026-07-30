@@ -6,6 +6,12 @@ import com.reserly.platform.administration.dto.AdminCategoryResponse;
 import com.reserly.platform.administration.dto.AdminVenueListResponse;
 import com.reserly.platform.administration.dto.AdminVenueResponse;
 import com.reserly.platform.administration.dto.AdminVenueUpdateRequest;
+import com.reserly.platform.administration.dto.AdminVenueSuspensionRequest;
+import com.reserly.platform.administration.dto.AdminIncidentListResponse;
+import com.reserly.platform.administration.dto.AdminIncidentResponse;
+import com.reserly.platform.administration.dto.AdminIncidentReviewRequest;
+import com.reserly.platform.administration.dto.AdminBusinessAccountListResponse;
+import com.reserly.platform.administration.dto.AdminBusinessAccountResponse;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -49,4 +55,28 @@ public interface AdminCatalogController {
       @PathVariable UUID venueId,
       @Valid @RequestBody AdminVenueUpdateRequest request,
       HttpServletRequest servletRequest);
+
+  @PatchMapping(path = "/venues/{venueId}/suspension", consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminVenueResponse> suspendVenue(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID venueId,
+      @Valid @RequestBody AdminVenueSuspensionRequest request,
+      HttpServletRequest servletRequest);
+
+  @GetMapping("/incidents")
+  ResponseEntity<AdminIncidentListResponse> listIncidents();
+
+  @PatchMapping(path = "/incidents/{incidentId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminIncidentResponse> reviewIncident(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID incidentId,
+      @Valid @RequestBody AdminIncidentReviewRequest request,
+      HttpServletRequest servletRequest);
+
+  @GetMapping("/business-accounts")
+  ResponseEntity<AdminBusinessAccountListResponse> listPendingBusinessAccounts();
+
+  @GetMapping("/business-accounts/{accountId}")
+  ResponseEntity<AdminBusinessAccountResponse> getPendingBusinessAccount(
+      @PathVariable UUID accountId);
 }

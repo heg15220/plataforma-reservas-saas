@@ -14,10 +14,52 @@ Fuente de verdad del avance:
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.3`.
-- Siguiente tarea pendiente recomendada: `14.4. Implementar suspensión de local`.
-- Observación: el acceso admin, las categorías y la edición básica de locales ya están protegidos
-  y auditados; suspensión y cambios de estado permanecen fuera del editor básico.
+  `14.1` a `14.6`.
+- Siguiente tarea pendiente recomendada: `14.7. Implementar aprobación, rechazo y reintento manual
+  de verificación empresarial`.
+- Observación: suspensión de locales, resolución de incidencias y consulta de la cola empresarial
+  pendiente están protegidas y auditadas cuando mutan; las decisiones empresariales siguen fuera.
+
+## Conversación 125 - Suspensión, incidencias y cola empresarial pendiente
+
+- Fecha: 2026-07-30.
+- Resumen de la conversación:
+  - Se completaron `14.4`, `14.5` y `14.6` en `phase/14-administration`.
+  - La suspensión es una acción separada del editor básico, exige motivo y retira inmediatamente
+    el local de búsquedas, ficha y reserva públicas sin cancelar reservas existentes.
+  - Se añadió una cola de incidencias con evidencia operativa y resolución limitada a confirmar o
+    desestimar reportes todavía pendientes, siempre con motivo y auditoría.
+  - Se añadió una cola y detalle de cuentas empresariales con doble estado `pending_review`; es de
+    solo lectura para no anticipar aprobación, rechazo o reintento de `14.7`.
+  - Se incorporaron `/admin/incidencias` y `/admin/verificaciones`, navegación responsive,
+    contratos Zod y textos ES/EN; `/admin/locales` dispone del flujo separado de suspensión.
+- Archivos modificados:
+  - `administration/controller`, `administration/dto` y `administration/service`.
+  - `VenueDao`, `NoShowIncidentDao` y `BusinessAccountDao`.
+  - Frontend `features/admin`, rutas administrativas, `AdminShell` y catálogos ES/EN.
+  - Tests focalizados backend/frontend.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-030 Administración de plataforma`, `RF-032 Verificación empresarial reforzada`.
+  - `RNF-001 Seguridad`, `RNF-002 Privacidad`, `RNF-003 Concurrencia y consistencia`,
+    `RNF-004 Rendimiento`, `RNF-007 Accesibilidad`, `RNF-009 Responsive`,
+    `RNF-010 Internacionalización` y `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `14.4. Implementar suspensión de local`.
+  - `14.5. Implementar revisión de incidencias`.
+  - `14.6. Implementar revisión de cuentas empresariales pendientes`.
+- Siguiente tarea pendiente recomendada:
+  - `14.7. Implementar aprobación, rechazo y reintento manual de verificación empresarial`.
+- Decisiones o aclaraciones relevantes:
+  - Suspender un local no suspende a su propietario ni cancela reservas existentes.
+  - Una incidencia resuelta no puede volver a decidirse desde este contrato; el conflicto devuelve
+    `409` y la decisión no altera reservas o penalizaciones.
+  - La cola fiscal filtra en persistencia por ambos estados pendientes y limita la respuesta a 100.
+  - Cinco tests backend y cinco frontend finalizaron correctamente. Spotless y Prettier se
+    aplicaron solo a archivos modificados; `git diff --check` quedó limpio.
+  - La compilación/test focalizado produjo las clases y reportes correctos. Los validadores
+    globales detectaron deuda fuera del alcance o alcanzaron el límite temporal; no se prolongaron.
+  - No se ejecutaron suites globales, Docker, Testcontainers ni servicios externos.
 
 ## Conversación 124 - Acceso administrativo, categorías y edición básica de locales
 

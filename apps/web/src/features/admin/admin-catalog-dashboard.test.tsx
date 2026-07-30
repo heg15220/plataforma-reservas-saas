@@ -12,6 +12,7 @@ vi.mock("./admin-api", async (importOriginal) => ({
   fetchAdminVenues: vi.fn(),
   saveAdminCategory: vi.fn(),
   saveAdminVenue: vi.fn(),
+  suspendAdminVenue: vi.fn(),
 }));
 
 afterEach(() => {
@@ -69,6 +70,6 @@ describe("AdminCatalogDashboard", () => {
 
     await waitFor(() => expect(screen.getByText("Local Centro")).toBeVisible());
     expect(screen.getByText(/Restaurantes · Madrid/)).toBeVisible();
-    expect(screen.queryByRole("button", { name: /suspender/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /suspender/i })).toBeVisible();
   });
 });

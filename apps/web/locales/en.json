@@ -1685,7 +1685,9 @@
     },
     "navigation": {
       "categories": "Categories",
-      "venues": "Venues"
+      "venues": "Venues",
+      "incidents": "Incidents",
+      "businessAccounts": "Verifications"
     },
     "actions": {
       "save": "Save",
@@ -1724,7 +1726,28 @@
         "province": "Province",
         "country": "Country (ISO)",
         "postalCode": "Postcode"
+      },
+      "suspension": {
+        "action": "Suspend",
+        "title": "Suspend {name}",
+        "warning": "The venue will no longer be publicly visible or bookable. Existing bookings will not be cancelled.",
+        "reason": "Administrative reason",
+        "confirm": "Confirm suspension"
       }
+    },
+    "incidents": {
+      "title": "Incident review",
+      "description": "Review the booking, venue, normalized identity and reporting actor before resolving the report.",
+      "review": "Review incident",
+      "status": "Decision",
+      "reason": "Decision reason",
+      "confirmed": "Confirm report",
+      "dismissed": "Dismiss report"
+    },
+    "businessAccounts": {
+      "title": "Pending business accounts",
+      "description": "Review pending tax details. Decisions will be added in the next administration flow.",
+      "noProvider": "No provider"
     }
   }
 }

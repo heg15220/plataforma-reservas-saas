@@ -1685,7 +1685,9 @@
     },
     "navigation": {
       "categories": "Categorías",
-      "venues": "Locales"
+      "venues": "Locales",
+      "incidents": "Incidencias",
+      "businessAccounts": "Verificaciones"
     },
     "actions": {
       "save": "Guardar",
@@ -1724,7 +1726,28 @@
         "province": "Provincia",
         "country": "País (ISO)",
         "postalCode": "Código postal"
+      },
+      "suspension": {
+        "action": "Suspender",
+        "title": "Suspender {name}",
+        "warning": "El local dejará de ser visible y reservable públicamente. Las reservas existentes no se cancelarán.",
+        "reason": "Motivo administrativo",
+        "confirm": "Confirmar suspensión"
       }
+    },
+    "incidents": {
+      "title": "Revisión de incidencias",
+      "description": "Consulta la reserva, el local, la identidad normalizada y el actor antes de resolver el reporte.",
+      "review": "Revisar incidencia",
+      "status": "Decisión",
+      "reason": "Motivo de la decisión",
+      "confirmed": "Confirmar reporte",
+      "dismissed": "Desestimar reporte"
+    },
+    "businessAccounts": {
+      "title": "Cuentas empresariales pendientes",
+      "description": "Revisa los datos fiscales pendientes. Las decisiones se incorporarán en el siguiente flujo administrativo.",
+      "noProvider": "Sin proveedor"
     }
   }
 }

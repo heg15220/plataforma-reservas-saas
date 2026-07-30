@@ -23,6 +23,7 @@ import {
   fetchAdminVenues,
   saveAdminCategory,
   saveAdminVenue,
+  suspendAdminVenue,
 } from "./admin-api";
 
 /** CRUD inicial responsive de categorías y datos básicos de locales. */
@@ -32,6 +33,7 @@ export function AdminCatalogDashboard({ mode }: { mode: "categories" | "venues" 
   const [venues, setVenues] = useState<AdminVenue[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<AdminCategory>();
   const [selectedVenue, setSelectedVenue] = useState<AdminVenue>();
+  const [suspensionVenue, setSuspensionVenue] = useState<AdminVenue>();
   const [error, setError] = useState<"forbidden" | "unavailable">();
   const [busy, setBusy] = useState(false);
 
@@ -104,6 +106,22 @@ export function AdminCatalogDashboard({ mode }: { mode: "categories" | "venues" 
         postalCode: optional("postalCode"),
       });
       setSelectedVenue(undefined);
+      await reload();
+    } catch {
+      setError("unavailable");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitSuspension(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!suspensionVenue) return;
+    setBusy(true);
+    try {
+      const data = new FormData(event.currentTarget);
+      await suspendAdminVenue(suspensionVenue.id, String(data.get("reason") ?? ""));
+      setSuspensionVenue(undefined);
       await reload();
     } catch {
       setError("unavailable");
@@ -248,6 +266,32 @@ export function AdminCatalogDashboard({ mode }: { mode: "categories" | "venues" 
               </Stack>
             </Surface>
           )}
+          {suspensionVenue && (
+            <Surface component="section">
+              <Stack component="form" onSubmit={submitSuspension} spacing={2}>
+                <Typography component="h2" variant="h2">
+                  {t("venues.suspension.title", { name: suspensionVenue.name })}
+                </Typography>
+                <Alert severity="warning">{t("venues.suspension.warning")}</Alert>
+                <TextField
+                  label={t("venues.suspension.reason")}
+                  name="reason"
+                  required
+                  inputProps={{ maxLength: 500 }}
+                  multiline
+                  minRows={3}
+                />
+                <Stack direction="row" spacing={2}>
+                  <Button color="error" disabled={busy} type="submit" variant="contained">
+                    {t("venues.suspension.confirm")}
+                  </Button>
+                  <Button onClick={() => setSuspensionVenue(undefined)}>
+                    {t("actions.cancel")}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Surface>
+          )}
           <ItemGrid>
             {venues.map((venue) => (
               <Surface component="article" key={venue.id}>
@@ -263,6 +307,15 @@ export function AdminCatalogDashboard({ mode }: { mode: "categories" | "venues" 
                 <Button onClick={() => setSelectedVenue(venue)} sx={{ mt: 2 }}>
                   {t("actions.edit")}
                 </Button>
+                {venue.status !== "suspended" && venue.status !== "archived" && (
+                  <Button
+                    color="error"
+                    onClick={() => setSuspensionVenue(venue)}
+                    sx={{ mt: 2, ml: 1 }}
+                  >
+                    {t("venues.suspension.action")}
+                  </Button>
+                )}
               </Surface>
             ))}
           </ItemGrid>

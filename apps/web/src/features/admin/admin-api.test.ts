@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchAdminCategories, fetchAdminVenues, loginAdmin, saveAdminCategory } from "./admin-api";
+import {
+  fetchAdminCategories,
+  fetchAdminIncidents,
+  fetchAdminVenues,
+  fetchPendingBusinessAccounts,
+  loginAdmin,
+  saveAdminCategory,
+  suspendAdminVenue,
+} from "./admin-api";
 
 beforeEach(() => vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://api.test/"));
 afterEach(() => {
@@ -55,5 +63,39 @@ describe("admin-api", () => {
         active: true,
       }),
     ).resolves.toEqual(category);
+  });
+
+  it("consume suspensión y colas administrativas con contratos acotados", async () => {
+    const venue = {
+      id: "30000000-0000-4000-8000-000000000001",
+      name: "Local Centro",
+      slug: "local-centro",
+      categoryId: "20000000-0000-4000-8000-000000000001",
+      categoryName: "Restaurantes",
+      status: "suspended",
+      contactEmail: null,
+      phone: null,
+      address: null,
+      city: "Madrid",
+      province: null,
+      country: "ES",
+      postalCode: null,
+      updatedAt: "2026-07-30T14:00:00Z",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(venue))
+      .mockResolvedValueOnce(Response.json({ incidents: [] }))
+      .mockResolvedValueOnce(Response.json({ accounts: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(suspendAdminVenue(venue.id, "Incumplimiento")).resolves.toEqual(venue);
+    await expect(fetchAdminIncidents()).resolves.toEqual({ incidents: [] });
+    await expect(fetchPendingBusinessAccounts()).resolves.toEqual({ accounts: [] });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      new URL(`http://api.test/api/admin/venues/${venue.id}/suspension`),
+      expect.objectContaining({ method: "PATCH" }),
+    );
   });
 });

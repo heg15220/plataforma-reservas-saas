@@ -1,16 +1,32 @@
 package com.reserly.platform.incidents.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** Lecturas explícitas del historial profesional por identidad normalizada. */
 public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, UUID> {
+
+  /** Cola administrativa reciente, limitada por el pageable recibido. */
+  @Query(
+      """
+      select incident from NoShowIncidentEntity incident
+      order by incident.reportedAt desc, incident.id desc
+      """)
+  List<NoShowIncidentEntity> findAdminPage(Pageable pageable);
+
+  /** Serializa una decisión administrativa sobre la incidencia. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select incident from NoShowIncidentEntity incident where incident.id = :incidentId")
+  Optional<NoShowIncidentEntity> findByIdForAdminReview(@Param("incidentId") UUID incidentId);
 
   /**
    * Obtiene el tramo reciente sin cargar referencias sensibles ni aceptar un email arbitrario desde

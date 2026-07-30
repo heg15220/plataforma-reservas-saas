@@ -30,10 +30,18 @@ export function AdminShell({
             sx={{ alignItems: { sm: "center" } }}
           >
             <Brand />
-            <Stack component="nav" direction="row" spacing={1} sx={{ ml: { sm: "auto" } }}>
+            <Stack
+              component="nav"
+              direction="row"
+              spacing={1}
+              useFlexGap
+              sx={{ flexWrap: "wrap", ml: { sm: "auto" } }}
+            >
               {[
                 ["/admin/categorias", "categories"],
                 ["/admin/locales", "venues"],
+                ["/admin/incidencias", "incidents"],
+                ["/admin/verificaciones", "businessAccounts"],
               ].map(([href, key]) => (
                 <Button
                   aria-current={currentPath === href ? "page" : undefined}

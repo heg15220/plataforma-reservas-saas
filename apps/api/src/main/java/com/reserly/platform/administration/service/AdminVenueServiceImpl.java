@@ -2,6 +2,7 @@ package com.reserly.platform.administration.service;
 
 import com.reserly.platform.administration.dto.AdminVenueListResponse;
 import com.reserly.platform.administration.dto.AdminVenueResponse;
+import com.reserly.platform.administration.dto.AdminVenueSuspensionRequest;
 import com.reserly.platform.administration.dto.AdminVenueUpdateRequest;
 import com.reserly.platform.venues.persistence.CategoryDao;
 import com.reserly.platform.venues.persistence.CategoryEntity;
@@ -83,6 +84,46 @@ public class AdminVenueServiceImpl implements AdminVenueService {
             "venue.basic_details_updated",
             before,
             snapshot(venue),
+            context.ipAddress(),
+            context.userAgent()));
+    return response(venue);
+  }
+
+  /**
+   * Retira el local de todos los flujos públicos que exigen estado {@code published}.
+   *
+   * <p>Las reservas existentes y la cuenta propietaria permanecen intactas. El motivo solo se
+   * conserva en auditoría para no exponerlo accidentalmente en el perfil.
+   */
+  @Override
+  @Transactional
+  public AdminVenueResponse suspend(
+      UUID actorUserId,
+      UUID venueId,
+      AdminVenueSuspensionRequest request,
+      AdminRequestContext context) {
+    VenueEntity venue =
+        venueDao
+            .findByIdForAdminUpdate(venueId)
+            .orElseThrow(AdminResourceNotFoundException::new);
+    if ("suspended".equals(venue.getStatus()) || "archived".equals(venue.getStatus())) {
+      throw new AdminResourceConflictException();
+    }
+    Map<String, Object> before = snapshot(venue);
+    venue.setStatus("suspended");
+    venue.setUpdatedAt(clock.instant());
+    venueDao.saveAndFlush(venue);
+    Map<String, Object> after = new java.util.LinkedHashMap<>(snapshot(venue));
+    after.put("reason", request.reason().strip());
+    auditLogService.record(
+        new AuditLogEntry(
+            actorUserId,
+            "admin",
+            "venue",
+            venue.getId(),
+            "venue.suspended",
+            before,
+            after,
             context.ipAddress(),
             context.userAgent()));
     return response(venue);

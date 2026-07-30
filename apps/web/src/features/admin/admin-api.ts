@@ -26,6 +26,36 @@ const venueSchema = z.object({
 });
 const categoriesSchema = z.object({ categories: z.array(categorySchema).max(500) });
 const venuesSchema = z.object({ venues: z.array(venueSchema).max(100) });
+const incidentSchema = z.object({
+  id: z.uuid(),
+  reservationId: z.uuid(),
+  venueId: z.uuid(),
+  venueName: z.string().nullable(),
+  customerEmailNormalized: z.email(),
+  incidentType: z.string(),
+  reportedByUserId: z.uuid(),
+  reportedAt: z.iso.datetime({ offset: true }),
+  notes: z.string().nullable(),
+  status: z.enum(["reported", "confirmed", "dismissed"]),
+});
+const incidentsSchema = z.object({ incidents: z.array(incidentSchema).max(100) });
+const businessAccountSchema = z.object({
+  id: z.uuid(),
+  ownerUserId: z.uuid(),
+  ownerEmail: z.email(),
+  taxCountry: z.string().length(2),
+  businessLegalName: z.string(),
+  businessTaxIdentifier: z.string(),
+  businessAddress: z.string().nullable(),
+  verificationStatus: z.literal("pending_review"),
+  verificationProvider: z.string().nullable(),
+  verificationReference: z.string().nullable(),
+  manualReviewStatus: z.literal("pending_review"),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+const businessAccountsSchema = z.object({
+  accounts: z.array(businessAccountSchema).max(100),
+});
 const loginSchema = z.object({
   userId: z.uuid(),
   accountType: z.literal("admin"),
@@ -36,6 +66,8 @@ const loginSchema = z.object({
 
 export type AdminCategory = z.infer<typeof categorySchema>;
 export type AdminVenue = z.infer<typeof venueSchema>;
+export type AdminIncident = z.infer<typeof incidentSchema>;
+export type AdminBusinessAccount = z.infer<typeof businessAccountSchema>;
 export type AdminCategoryInput = Pick<AdminCategory, "active" | "nameEn" | "nameEs" | "slug">;
 export type AdminVenueInput = Pick<
   AdminVenue,
@@ -87,6 +119,34 @@ export async function saveAdminVenue(venueId: string, input: AdminVenueInput) {
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+/** Suspende un local mediante una acción separada de la edición básica. */
+export async function suspendAdminVenue(venueId: string, reason: string) {
+  return request(`/api/admin/venues/${venueId}/suspension`, venueSchema, {
+    method: "PATCH",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function fetchAdminIncidents(signal?: AbortSignal) {
+  return request("/api/admin/incidents", incidentsSchema, { signal });
+}
+
+/** Confirma o desestima una incidencia; la API exige siempre un motivo auditable. */
+export async function reviewAdminIncident(
+  incidentId: string,
+  status: "confirmed" | "dismissed",
+  reason: string,
+) {
+  return request(`/api/admin/incidents/${incidentId}`, incidentSchema, {
+    method: "PATCH",
+    body: JSON.stringify({ status, reason }),
+  });
+}
+
+export async function fetchPendingBusinessAccounts(signal?: AbortSignal) {
+  return request("/api/admin/business-accounts", businessAccountsSchema, { signal });
 }
 
 async function request<T>(

@@ -1683,6 +1683,7 @@ pública de estado permanecen reservados mientras el cobro real esté deshabilit
 ```http
 GET /api/admin/venues
 PATCH /api/admin/venues/{venueId}
+PATCH /api/admin/venues/{venueId}/suspension
 GET /api/admin/business-accounts
 GET /api/admin/business-accounts/{businessAccountId}
 POST /api/admin/business-accounts/{businessAccountId}/approve
@@ -1710,6 +1711,21 @@ La gestión inicial de categorías exige slug único y textos completos ES/EN; c
 auditoría dentro de la transacción. El listado de locales se limita a 100 filas y la edición básica
 solo permite nombre, categoría activa y datos de contacto/ubicación. Estado, suspensión, propiedad,
 slug, publicación y contenido editorial quedan fuera de `14.3`.
+
+La suspensión se modela como acción separada mediante
+`PATCH /api/admin/venues/{venueId}/suspension`: bloquea el local con lock pesimista, exige un motivo
+de hasta 500 caracteres y cambia únicamente su estado a `suspended`. Las consultas públicas ya
+exigen `published`, de modo que el retiro es inmediato sin cancelar reservas existentes ni
+suspender la cuenta propietaria. Estado y motivo se registran atómicamente en auditoría.
+
+La revisión de incidencias devuelve como máximo 100 registros recientes con reserva, local, email
+normalizado, tipo, actor, fecha, notas y estado. Solo un registro `reported` puede pasar a
+`confirmed` o `dismissed`; la decisión exige motivo, se serializa mediante lock y se audita sin
+editar la reserva ni la penalización asociada.
+
+`GET /api/admin/business-accounts` y su detalle exponen únicamente cuentas cuyo estado empresarial
+y revisión manual son `pending_review`, con propietario y evidencia fiscal mínima. En `14.6` son de
+solo lectura: aprobar, rechazar o reintentar permanecen expresamente reservados para `14.7`.
 
 ### 7.4 RedSys
 

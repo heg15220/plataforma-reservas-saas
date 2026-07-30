@@ -27669,3 +27669,140 @@ rechaza campos o tipos inesperados.
 El tramo de 100 filas no incluye búsqueda o paginación; deberán añadirse cuando el volumen lo
 requiera. La auditoría visible queda para `14.12`, aunque las evidencias ya se persisten. La siguiente
 tarea fuente de verdad es `14.4`, suspensión de local.
+
+## Tarea 14.4 - Implementar suspensión de local
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Objetivo técnico: retirar un local de todos los flujos públicos mediante una transición
+  administrativa explícita, concurrente y auditable, sin ampliar el editor básico de `14.3`.
+
+### Requisitos, contrato y arquitectura
+
+La tarea aplica `RF-030`, `RNF-001`, `RNF-003` y `RNF-011`. Se añadió
+`PATCH /api/admin/venues/{venueId}/suspension`, protegido por el `ROLE_ADMIN` ya exigido para todo
+`/api/admin/**`. `AdminVenueSuspensionRequest` obliga a aportar un motivo no vacío de máximo 500
+caracteres. El actor se deriva del principal autenticado y la IP/user-agent del request; ninguno se
+acepta desde el cuerpo.
+
+`AdminVenueServiceImpl.suspend` reutiliza `VenueDao.findByIdForAdminUpdate` con lock pesimista. Solo
+admite locales no suspendidos y no archivados; los demás producen `409 ADMIN_RESOURCE_CONFLICT` y
+una ausencia produce `404 ADMIN_RESOURCE_NOT_FOUND`. La transición cambia exclusivamente
+`Venue.status` a `suspended` y `updatedAt` con el reloj del servidor. No cambia propietario, cuenta
+empresarial, slug, publicación, contenido, disponibilidad ni reservas existentes.
+
+No fue necesaria migración: `ckVenuesStatus` ya admite `suspended` y los índices/consultas públicas
+ya filtran `status = 'published'`. Por ello búsqueda, ficha, imágenes y disponibilidad pública dejan
+de resolver el local inmediatamente después del commit. Las reservas históricas o futuras
+existentes permanecen accesibles al propietario para gestión operativa.
+
+La acción `venue.suspended` se guarda en `AuditLogs` dentro de la misma transacción con estado
+antes/después, categoría, nombre y motivo normalizado. Si el guardado o auditoría falla, la
+transición completa revierte. No se registra contenido sensible adicional.
+
+### UI, i18n, accesibilidad y responsive
+
+`AdminCatalogDashboard` mantiene el editor básico separado y añade en cada local elegible la acción
+destructiva “Suspender”. Antes de enviar presenta nombre, advertencia sobre visibilidad y reservas,
+campo multilínea obligatorio y confirmación semántica en color de error. La API cliente valida la
+respuesta con el contrato Zod de local. Todos los textos existen en `es.json` y `en.json`; las
+tarjetas y formulario reutilizan el layout responsive y campos etiquetados de Material UI.
+
+### Archivos, tests, evidencia y límites
+
+- DTO `AdminVenueSuspensionRequest`; contrato/controlador y servicio de local ampliados.
+- `admin-api.ts`, `admin-catalog-dashboard.tsx`, tests y catálogos ES/EN.
+- Test backend: transición publicada-suspendida, reloj, persistencia y auditoría.
+- Test frontend/API: presencia del flujo separado y ruta/método correctos.
+- Verificación conjunta focalizada: 5 tests backend y 5 frontend correctos; Spotless y Prettier
+  limitados a archivos modificados; `git diff --check` sin errores.
+
+No se implementó reactivación: requiere política explícita de elegibilidad y queda como deuda
+futura. La suspensión tampoco revoca la cuenta propietaria ni cancela reservas, decisión deliberada
+para no ampliar el alcance operativo.
+
+## Tarea 14.5 - Implementar revisión de incidencias
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Objetivo técnico: permitir al administrador consultar evidencia suficiente y resolver reportes
+  pendientes sin editar directamente reservas o penalizaciones.
+
+### Modelo de lectura, transición y seguridad
+
+Se añadieron `GET /api/admin/incidents` y `PATCH /api/admin/incidents/{incidentId}`. El listado usa
+`NoShowIncidentDao.findAdminPage(Pageable)` con límite de 100 y orden estable por `reportedAt` e ID
+descendentes. `VenueDao.findAllById` resuelve los nombres en una segunda consulta por lote, evitando
+una consulta por tarjeta. La respuesta incluye UUID de incidencia, reserva y local, nombre del
+local, email normalizado, tipo, actor reportante, fecha, notas y estado, tal como exige `RF-030`.
+Estos datos no se exponen fuera del namespace administrativo.
+
+`AdminIncidentReviewRequest` limita por validación el resultado a `confirmed` o `dismissed` y exige
+motivo de hasta 500 caracteres. `findByIdForAdminReview` adquiere lock pesimista y el servicio solo
+acepta el estado origen `reported`; esto impide decisiones concurrentes o reescritura de una
+resolución. La tabla ya restringía los tres estados, por lo que no se creó migración ni índice.
+
+La actualización solo modifica `NoShowIncident.status`. No cambia reserva, asistencia, email,
+notas originales ni penalización. `incident.reviewed` audita estado anterior, estado final, motivo,
+actor, IP y user-agent dentro de la misma transacción. Los errores usan el manejador administrativo
+existente (`404`, `409`, `400` de validación) sin revelar trazas.
+
+### UI, lenguaje y observabilidad
+
+`/admin/incidencias` presenta tarjetas responsive con local, identidad normalizada, tipo, reserva y
+estado. Solo los registros `reported` muestran la acción de revisión. El formulario exige una
+decisión cerrada y motivo. Los textos ES/EN usan lenguaje profesional (“confirmar reporte” y
+“desestimar reporte”), no acusatorio. La navegación se incorporó a `AdminShell`.
+
+El test unitario acredita que una incidencia pendiente se confirma, conserva la reserva y registra
+auditoría. Los contratos frontend se validan con Zod y forman parte de los 5 tests web correctos.
+La auditoría visible permanece para `14.12`; los eventos ya quedan persistidos.
+
+## Tarea 14.6 - Implementar revisión de cuentas empresariales pendientes
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Objetivo técnico: construir una cola administrativa de solo lectura que permita inspeccionar
+  identidades pendientes sin anticipar las decisiones de `14.7` ni documentos de `14.8`.
+
+### Persistencia, contratos y privacidad
+
+`BusinessAccountDao.findPendingAdminReview(Pageable)` filtra en PostgreSQL simultáneamente
+`businessVerificationStatus = 'pending_review'` y `manualReviewStatus = 'pending_review'`, ordena
+por antigüedad de actualización e ID y recibe un límite de 100. El detalle
+`findPendingAdminReviewById` aplica los mismos predicados, por lo que un UUID válido fuera de la cola
+no puede usarse para inspeccionar otra identidad. Ambas consultas precargan al propietario para
+evitar acceso lazy y consultas repetidas.
+
+`GET /api/admin/business-accounts` devuelve la cola y
+`GET /api/admin/business-accounts/{accountId}` el detalle pendiente. La proyección contiene UUID,
+propietario y email, país fiscal, razón social, identificador presentado, dirección, estado,
+proveedor, referencia mínima y fecha de actualización. Excluye hash de contraseña, identificador
+normalizado, respuestas remotas completas, hashes de evidencia, objetos privados y documentos.
+No se añadió migración porque estados, restricciones e índice de verificación ya existían.
+
+`AdminBusinessAccountService` es transaccional de solo lectura y no acepta actor, motivo o estado.
+No registra auditoría porque no existe mutación; la autorización se aplica antes de entrar al
+servicio. Aprobar, rechazar, solicitar corrección o reintentar no existen en este contrato y quedan
+para `14.7`/`14.8`.
+
+### UI, tests, riesgos y siguiente paso
+
+`/admin/verificaciones` muestra tarjetas responsive con la evidencia fiscal mínima y textos ES/EN.
+La descripción informa que las decisiones llegarán en el siguiente flujo para evitar una interfaz
+engañosa. El contrato Zod exige ambos estados pendientes y limita la colección a 100.
+
+El test backend verifica la proyección del propietario desde una cuenta pendiente; el test API
+verifica la cola vacía válida. En conjunto se ejecutaron `AdminInitialServicesTests` (2) y
+`AdminReviewServicesTests` (3), todos correctos, además de 5 tests frontend. Los comandos
+globalizados de Checkstyle/Spotless detectaron deuda previa en módulos ajenos y ESLint alcanzó 35
+segundos sin diagnóstico; se detuvieron según el límite acordado. Spotless se reaplicó mediante
+expresiones restringidas a administración y los dos DAO afectados, y Prettier solo a los archivos
+web tocados.
+
+La cola no pagina más allá de 100 ni incluye documentos: la paginación será necesaria al crecer el
+volumen y la revisión documental corresponde a `14.8`. La siguiente tarea fuente de verdad es
+`14.7`, aprobación, rechazo y reintento manual de verificación empresarial.
