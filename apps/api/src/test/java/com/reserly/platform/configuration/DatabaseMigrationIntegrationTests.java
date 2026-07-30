@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("33");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("34");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -101,10 +101,7 @@ class DatabaseMigrationIntegrationTests {
             """,
             String.class);
     assertThat(indexes)
-        .contains(
-            "ixReviewsVenueCreatedAt",
-            "ixReviewsVenueCustomerEmail",
-            "uqReviewsReservation");
+        .contains("ixReviewsVenueCreatedAt", "ixReviewsVenueCustomerEmail", "uqReviewsReservation");
   }
 
   @Test

@@ -14,6 +14,10 @@ const requiredKeys = [
   "RESERLY_API_INTERNAL_URL",
   "RESERLY_SECURE_COOKIES",
   "RESERLY_REAL_PAYMENTS_ENABLED",
+  "RESERLY_REDSYS_PAYMENT_ENDPOINT",
+  "RESERLY_REDSYS_MERCHANT_CODE",
+  "RESERLY_REDSYS_TERMINAL",
+  "RESERLY_REDSYS_SIGNING_KEY",
   "RESERLY_DATABASE_NAME",
   "RESERLY_DATABASE_PORT",
   "RESERLY_DATABASE_URL",
@@ -109,6 +113,23 @@ for (const template of templates) {
 
   if (values.get("RESERLY_REAL_PAYMENTS_ENABLED") !== "false") {
     throw new Error(`${template} no puede activar pagos reales`);
+  }
+
+  const expectedRedsysEndpoint =
+    environment === "production"
+      ? "https://sis.redsys.es/sis/realizarPago"
+      : "https://sis-t.redsys.es:25443/sis/realizarPago";
+  if (values.get("RESERLY_REDSYS_PAYMENT_ENDPOINT") !== expectedRedsysEndpoint) {
+    throw new Error(`${template} no usa el endpoint RedSys esperado`);
+  }
+  for (const key of [
+    "RESERLY_REDSYS_MERCHANT_CODE",
+    "RESERLY_REDSYS_TERMINAL",
+    "RESERLY_REDSYS_SIGNING_KEY",
+  ]) {
+    if (values.get(key) !== "") {
+      throw new Error(`${template} no debe contener credenciales RedSys`);
+    }
   }
 }
 

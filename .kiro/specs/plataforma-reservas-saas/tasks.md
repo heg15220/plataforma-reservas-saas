@@ -245,9 +245,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 13.4. Crear pantalla de suscripción del local.
 - [x] 13.5. Mostrar estado de monetización y aviso de pago seguro externo RedSys solo cuando el cobro real esté habilitado.
 - [x] 13.6. Implementar interfaz de proveedor de pagos y adaptador simulado para local, test y staging.
-- [ ] 13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación de orden, retorno y notificación.
-- [ ] 13.8. Implementar validación de firma e idempotencia mediante simulador y fixtures oficiales, sin activar producción.
-- [ ] 13.9. Actualizar estado de suscripción tras pago simulado o confirmado por un proveedor habilitado.
+- [x] 13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación de orden, retorno y notificación.
+- [x] 13.8. Implementar validación de firma e idempotencia mediante simulador y fixtures oficiales, sin activar producción.
+- [x] 13.9. Actualizar estado de suscripción tras pago simulado o confirmado por un proveedor habilitado.
 - [ ] 13.10. Registrar pago simulado o real como confirmado, rechazado, cancelado, error o pendiente.
 - [ ] 13.11. Crear historial básico de facturación.
 - [ ] 13.12. Crear tests de callbacks, firma e idempotencia del contrato RedSys.

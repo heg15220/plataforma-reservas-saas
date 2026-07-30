@@ -9,6 +9,7 @@ import java.util.UUID;
 /**
  * Orden neutral respecto al proveedor.
  *
+ * @param paymentId intento local que se correlacionara sin exponer la suscripción
  * @param subscriptionId suscripción objetivo
  * @param venueId local propietario
  * @param merchantOrderId identificador idempotente generado por Reserly
@@ -16,10 +17,16 @@ import java.util.UUID;
  * @param currency moneda ISO de tres letras
  */
 public record PaymentOrderCommand(
-    UUID subscriptionId, UUID venueId, String merchantOrderId, BigDecimal amount, String currency) {
+    UUID paymentId,
+    UUID subscriptionId,
+    UUID venueId,
+    String merchantOrderId,
+    BigDecimal amount,
+    String currency) {
 
   /** Normaliza moneda e importe antes de que un adaptador calcule firma o hash. */
   public PaymentOrderCommand {
+    Objects.requireNonNull(paymentId, "paymentId");
     Objects.requireNonNull(subscriptionId, "subscriptionId");
     Objects.requireNonNull(venueId, "venueId");
     if (merchantOrderId == null || merchantOrderId.isBlank() || merchantOrderId.length() > 128) {

@@ -32,6 +32,7 @@ public class SubscriptionEntity {
   private Instant currentPeriodEndsAt;
   private Instant trialEndsAt;
   private Instant cancelledAt;
+  private UUID lastAppliedPaymentId;
   private Instant createdAt;
   private Instant updatedAt;
 
@@ -118,6 +119,21 @@ public class SubscriptionEntity {
 
   public void setCancelledAt(Instant value) {
     cancelledAt = value;
+  }
+
+  /**
+   * Ultimo pago confirmado aplicado al periodo.
+   *
+   * <p>La referencia permite que callbacks repetidos sean idempotentes incluso si su payload
+   * incluye campos nuevos o llega por mas de un canal.
+   */
+  @Column(name = "\"lastAppliedPaymentId\"")
+  public UUID getLastAppliedPaymentId() {
+    return lastAppliedPaymentId;
+  }
+
+  public void setLastAppliedPaymentId(UUID value) {
+    lastAppliedPaymentId = value;
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

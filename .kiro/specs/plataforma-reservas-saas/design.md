@@ -396,6 +396,16 @@ Estados de pago RedSys:
 - `communication_error`.
 - `pending_confirmation`.
 
+La integración por redirección usa el protocolo oficial `HMAC_SHA512_V2`. La aplicación firma el
+valor Base64URL exacto de `Ds_MerchantParameters`; la clave de operación se deriva cifrando el
+pedido mediante AES-128-CBC con padding PKCS y vector de inicialización cero. El navegador nunca
+entrega datos de tarjeta a Reserly.
+
+La notificación servidor a servidor es la fuente de verdad para mutaciones. El retorno del
+navegador se valida y correlaciona, pero es exclusivamente informativo. Los callbacks válidos se
+deduplican de forma atómica por proveedor, pedido y hash SHA-256 del payload firmado, sin almacenar
+el payload, la firma ni datos bancarios.
+
 ### 3.12 Notificaciones
 
 Responsabilidades:
@@ -1689,6 +1699,18 @@ GET /api/payments/redsys/status/{orderId}
 
 La notificación debe validar firma, idempotencia y correspondencia de importe, moneda, pedido y suscripción.
 
+Contratos preparados:
+
+- la creación de orden produce el endpoint HTTPS oficial y los campos
+  `Ds_MerchantParameters`, `Ds_SignatureVersion` y `Ds_Signature`;
+- retorno y notificación aceptan únicamente `application/x-www-form-urlencoded` con esos tres
+  campos y límites explícitos de tamaño;
+- el identificador técnico de pago viaja en `Ds_MerchantData`, y se correlaciona con el pedido,
+  comercio, terminal, importe, moneda EUR y tipo de transacción;
+- la activación o renovación de la suscripción solo ocurre ante un resultado `confirmed`;
+- la configuración admite exclusivamente los endpoints oficiales de pruebas o producción y las
+  credenciales se suministran por variables de entorno.
+
 ## 8. Contratos de API relevantes
 
 ### 8.1 Crear hold
@@ -2601,6 +2623,9 @@ El adaptador AEAT solo puede activarse si se confirma documentalmente un servici
 - El MVP incluye **preparación técnica sin cobro real en producción**.
 - Se implementa una interfaz de pagos, un simulador determinista y el contrato del adaptador RedSys por redirección con firma, callbacks e idempotencia.
 - El botón de pago real permanece deshabilitado mientras no existan contrato con una entidad adquirente, credenciales de comercio, claves de test y validación completa en el entorno de pruebas.
+- El adaptador preparado usa exclusivamente los endpoints oficiales de pruebas y producción,
+  `HMAC_SHA512_V2` y los contratos de redirección documentados por RedSys. Esta preparación no
+  altera la política que rechaza la activación real en producción.
 - No se utilizará Stripe como sustituto temporal: añadir otro proveedor no valida RedSys y aumenta alcance y coste.
 - La activación de producción será una tarea post-MVP separada y no bloqueará el lanzamiento del plan gratuito.
 

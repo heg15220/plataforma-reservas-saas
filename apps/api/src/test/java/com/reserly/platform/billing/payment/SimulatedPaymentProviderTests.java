@@ -15,6 +15,7 @@ class SimulatedPaymentProviderTests {
   private static final UUID SUBSCRIPTION_ID =
       UUID.fromString("10000000-0000-4000-8000-000000000001");
   private static final UUID VENUE_ID = UUID.fromString("20000000-0000-4000-8000-000000000001");
+  private static final UUID PAYMENT_ID = UUID.fromString("30000000-0000-4000-8000-000000000001");
   private final SimulatedPaymentProvider provider = new SimulatedPaymentProvider();
 
   @Test
@@ -33,7 +34,7 @@ class SimulatedPaymentProviderTests {
           assertThat(result.provider()).isEqualTo("simulated");
           assertThat(result.providerOrderId()).isEqualTo(order);
           assertThat(result.status()).isEqualTo(expected);
-          assertThat(result.redirectUri()).isNull();
+          assertThat(result.redirect()).isNull();
           assertThat(result.requestPayloadHash()).matches("[0-9a-f]{64}");
           assertThat(result.responsePayload())
               .containsExactlyInAnyOrderEntriesOf(
@@ -57,22 +58,22 @@ class SimulatedPaymentProviderTests {
     assertThatThrownBy(
             () ->
                 new PaymentOrderCommand(
-                    SUBSCRIPTION_ID, VENUE_ID, "order", new BigDecimal("1.001"), "EUR"))
+                    PAYMENT_ID, SUBSCRIPTION_ID, VENUE_ID, "order", new BigDecimal("1.001"), "EUR"))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
                 new PaymentOrderCommand(
-                    SUBSCRIPTION_ID, VENUE_ID, " ", new BigDecimal("1.00"), "EUR"))
+                    PAYMENT_ID, SUBSCRIPTION_ID, VENUE_ID, " ", new BigDecimal("1.00"), "EUR"))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
                 new PaymentOrderCommand(
-                    SUBSCRIPTION_ID, VENUE_ID, "order", new BigDecimal("1.00"), "EURO"))
+                    PAYMENT_ID, SUBSCRIPTION_ID, VENUE_ID, "order", new BigDecimal("1.00"), "EURO"))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   private PaymentOrderCommand command(String orderId) {
     return new PaymentOrderCommand(
-        SUBSCRIPTION_ID, VENUE_ID, orderId, new BigDecimal("29.00"), "eur");
+        PAYMENT_ID, SUBSCRIPTION_ID, VENUE_ID, orderId, new BigDecimal("29.00"), "eur");
   }
 }

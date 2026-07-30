@@ -10,15 +10,69 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-29
+- Fecha de última actualización: 2026-07-30
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.6`.
-- Siguiente tarea pendiente recomendada: `13.7. Preparar adaptador RedSys por redirección,
-  configuración segura y contratos de creación de orden, retorno y notificación`.
-- Observación: el local ya consulta su suscripción y catálogo localizado desde un panel responsive;
-  el cobro real continúa deshabilitado y el puerto de pagos solo usa simulación determinista fuera
-  de producción.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.9`.
+- Siguiente tarea pendiente recomendada: `13.10. Registrar pago simulado o real como confirmado,
+  rechazado, cancelado, error o pendiente`.
+- Observación: el adaptador RedSys, la firma, la idempotencia y la aplicación de pagos confirmados
+  a suscripciones están preparados y probados; el cobro real continúa bloqueado por política.
+
+## Conversación 122 - RedSys preparado, callbacks idempotentes y aplicación a suscripciones
+
+- Fecha: 2026-07-30.
+- Resumen de la conversación:
+  - Se completaron `13.7`, `13.8` y `13.9` en `phase/13-Suscriptions-plans`.
+  - Se preparó el adaptador de redirección RedSys con configuración tipada, validación cerrada de
+    endpoints oficiales, credenciales por entorno y formulario firmado `HMAC_SHA512_V2`.
+  - Se añadieron contratos públicos de retorno y notificación. La firma se valida antes de acceder
+    al pago y se correlacionan comercio, terminal, pedido, pago, importe, moneda y tipo de
+    transacción.
+  - La migración `V34` incorpora recibos mínimos de callback con inserción atómica e idempotencia
+    por proveedor, pedido y hash del payload. No se persisten parámetros firmados, firmas ni datos
+    de tarjeta.
+  - Las confirmaciones verificadas del simulador o de un proveedor habilitado activan o renuevan
+    la suscripción en UTC. El identificador del último pago aplicado impide extenderla dos veces.
+  - La activación de cobro real permanece prohibida por la política global de configuración. La
+    notificación servidor a servidor es la única fuente de verdad para mutaciones; el retorno del
+    navegador es informativo.
+- Archivos modificados:
+  - Configuración RedSys en `RedsysProperties`, `application.yaml` y plantillas `.env`.
+  - Paquetes `billing/payment`, `billing/payment/redsys`, `billing/controller`,
+    `billing/persistence`, `billing/service` y `billing/dto` de la API.
+  - Migración `V34__prepare_payment_callback_idempotency.sql`.
+  - Tests focalizados de configuración, proveedor, firma, callbacks, migración y suscripciones.
+  - `scripts/validate-environment-examples.mjs`.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-028 Suscripción y RedSys`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación
+    de orden, retorno y notificación`.
+  - `13.8. Implementar validación de firma e idempotencia mediante simulador y fixtures oficiales,
+    sin activar producción`.
+  - `13.9. Actualizar estado de suscripción tras pago simulado o confirmado por un proveedor
+    habilitado`.
+- Siguiente tarea pendiente recomendada:
+  - `13.10. Registrar pago simulado o real como confirmado, rechazado, cancelado, error o
+    pendiente`.
+- Decisiones o aclaraciones relevantes:
+  - Se implementó el algoritmo oficial actual `HMAC_SHA512_V2`, incluyendo la derivación de clave
+    AES-128-CBC y comparación de firma en tiempo constante.
+  - El importe válido es la instantánea ya persistida al crear el pago; no se vuelve a comparar
+    con el precio mutable del catálogo al recibir la confirmación.
+  - Una suscripción cancelada no se reactiva implícitamente. Una renovación activa se encadena al
+    final del periodo vigente; el resto comienza en el instante de confirmación del servidor.
+  - El estado persistente de `Payments` no se modifica aún: esa responsabilidad queda
+    deliberadamente en `13.10`.
+  - Se verificaron 28 casos focalizados sin fallos, además de formato, análisis estático,
+    compilación y validación de plantillas de entorno sobre los módulos afectados. No se
+    ejecutaron suites globales, Docker ni Testcontainers.
 
 ## Conversación 121 - Panel de suscripción, monetización condicional y simulador de pagos
 

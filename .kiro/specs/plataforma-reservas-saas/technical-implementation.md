@@ -10,9 +10,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a
-  `13.6`.
-- Siguiente tarea pendiente recomendada: `13.7. Preparar adaptador RedSys por redirección,
-  configuración segura y contratos de creación de orden, retorno y notificación`.
+  `13.9`.
+- Siguiente tarea pendiente recomendada: `13.10. Registrar pago simulado o real como confirmado,
+  rechazado, cancelado, error o pendiente`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -26885,3 +26885,299 @@ nombradas para cumplir la validación acotada solicitada.
 Con `13.4`–`13.6` existe una vista completa y segura del estado actual y una frontera de proveedor
 testeable sin habilitar cobro. La siguiente tarea fuente de verdad es `13.7`, preparación del
 adaptador RedSys por redirección.
+
+## Tarea 13.7 - Preparar adaptador RedSys por redirección, configuración segura y contratos
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Preparar la frontera completa de RedSys por redirección sin efectuar cobros ni habilitar producción.
+El resultado debía construir una orden conforme al protocolo oficial, aislar las credenciales,
+exponer contratos mínimos de retorno y notificación y mantener fuera del sistema cualquier dato de
+tarjeta.
+
+### Requisitos y diseño relacionados
+
+- `RF-028 Suscripción y RedSys`: proveedor externo, retorno, notificación y producción desactivada.
+- `RNF-001`: secretos fuera del código, transporte HTTPS y validación de entradas.
+- `RNF-002`: ausencia de PAN, CVV y parámetros bancarios persistidos.
+- `RNF-006`: fallo cerrado ante configuración incompleta.
+- Se amplió `design.md` con el protocolo `HMAC_SHA512_V2`, la autoridad de la notificación y los
+  contratos preparados.
+- Referencias oficiales contrastadas:
+  - <https://pagosonline.redsys.es/desarrolladores-inicio/documentacion-operativa/autorizacion/>
+  - <https://pagosonline.redsys.es/desarrolladores-inicio/documentacion-operativa/firmar-una-operacion/>
+  - <https://pagosonline.redsys.es/desarrolladores-inicio/integrate-con-nosotros/parametros-de-entrada-y-salida/>
+
+### Archivos creados, modificados o eliminados
+
+- Nuevos: `RedsysProperties`, `PaymentRedirect`, paquete `billing/payment/redsys`,
+  `RedsysCallbackController`, `RedsysCallbackControllerImpl`, `RedsysCallbackExceptionHandler` y
+  `RedsysReturnResponse`.
+- Modificados: `PaymentOrderCommand`, `PaymentOrderResult`, `PaymentProviderConfiguration`,
+  `SimulatedPaymentProvider`, `application.yaml`, las tres plantillas `.env` y su validador.
+- Tests nuevos o adaptados: `RedsysPropertiesTests`, `RedsysPaymentProviderTests`,
+  `RedsysCallbackControllerTests`, `PaymentProviderConfigurationTests` y
+  `SimulatedPaymentProviderTests`.
+- No se eliminó ningún archivo.
+
+### Arquitectura y decisiones técnicas
+
+`PaymentProvider` continúa siendo el puerto de aplicación. `RedsysPaymentProvider` es un adaptador
+puro: crea los parámetros, los firma y devuelve `PaymentRedirect`, pero no abre conexiones ni
+persiste. El resultado conserva únicamente proveedor, pedido, estado inicial, hash de petición y una
+descripción técnica saneada.
+
+`PaymentRedirect` exige HTTPS y aplica copia defensiva a los campos del formulario. La configuración
+solo acepta los endpoints oficiales de pruebas y producción. Comercio, terminal y clave se cargan
+desde variables de entorno; deben estar todos ausentes o todos presentes. `toString()` no expone la
+clave.
+
+Fuera de producción se conserva el simulador determinista. La rama que seleccionaría RedSys en
+producción exige simultáneamente la bandera real y credenciales completas, pero la política global
+`isRealPaymentPolicyValid()` sigue rechazando la bandera. Por tanto, el código preparado no activa
+cobros.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+Esta tarea no necesita almacenar una orden RedSys nueva: utiliza el pago creado por el flujo de
+aplicación. `PaymentOrderCommand` incorpora el UUID técnico del pago para enviarlo como
+`Ds_MerchantData`; el pedido externo permanece como correlación opaca de 5 a 12 caracteres
+alfanuméricos.
+
+### Endpoints, contratos y flujos
+
+- El adaptador produce un formulario para el endpoint oficial con
+  `Ds_MerchantParameters`, `Ds_SignatureVersion=HMAC_SHA512_V2` y `Ds_Signature`.
+- Los parámetros incluyen importe en unidades menores, moneda `978`, comercio, terminal,
+  transacción `0`, pedido, UUID de pago, URL de notificación y retornos OK/KO.
+- `POST /api/payments/redsys/return` acepta formulario URL-encoded, valida y devuelve solo pedido y
+  estado normalizado. Es informativo y no escribe.
+- `POST /api/payments/redsys/notification` acepta el mismo contrato y delega el procesamiento
+  transaccional. Devuelve cuerpo vacío al aceptar.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+Los records de entrada limitan versión y tamaños antes de decodificar. El controlador nunca recibe
+ni modela tarjeta. Los endpoints son públicos porque RedSys no dispone de sesión Reserly; su
+autenticidad depende de firma criptográfica y correlación completa, no de cookies. Los errores son
+opacos y no incluyen payload, firma, clave o causa interna. No se añadieron textos de interfaz.
+
+### Errores, logs, auditoría y observabilidad
+
+Configuración incompleta y datos inválidos fallan de forma cerrada. La excepción de callback no
+construye una traza costosa ni expone detalles. Los logs solo registran rechazo genérico o metadatos
+técnicos saneados de proveedor, pedido, resultado e indicador de actualización.
+
+### Tests y evidencia de verificación
+
+- La configuración prueba ausencia válida, conjunto completo válido y rechazo de endpoints no
+  oficiales.
+- El proveedor prueba el formulario firmado y el rechazo de configuración incompleta.
+- El controlador prueba retorno informativo, notificación y error opaco.
+- La selección del proveedor prueba simulador, producción cerrada y cableado futuro sin cambiar la
+  política global.
+- La compilación directa de fuentes principales y tests finalizó correctamente.
+- Spotless y Checkstyle se ejecutaron solo sobre billing y la configuración RedSys.
+
+### Riesgos, limitaciones y deuda técnica
+
+No existe activación real ni prueba contra un comercio contratado. Las URLs de retorno del navegador
+apuntan al panel; el endpoint de retorno queda disponible para integraciones que lo necesiten, pero
+la notificación es la única autoridad. La creación y persistencia del pago ejecutable se completa
+en las siguientes tareas de la fase.
+
+## Tarea 13.8 - Validar firma e idempotencia con simulador y fixtures oficiales
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Autenticar callbacks RedSys conforme al protocolo oficial y garantizar que reintentos o carreras no
+apliquen dos veces un mismo resultado. La solución debía poder verificarse completamente con
+fixtures y simulador, sin acceso a RedSys ni activación productiva.
+
+### Requisitos y diseño relacionados
+
+- `RF-028`: firma, retorno, notificación y estados normalizados.
+- `RNF-001`: comparación en tiempo constante, correlación y límites.
+- `RNF-002`: minimización y no persistencia del mensaje bancario.
+- `RNF-006`: idempotencia transaccional ante reintentos.
+- `RNF-011`: migración versionada, nombres físicos y restricciones explícitas.
+
+### Archivos creados, modificados o eliminados
+
+- Nuevos: `RedsysSignatureService`, `RedsysSignatureServiceImpl`, `RedsysSignedMessage`,
+  `VerifiedRedsysCallback`, `RedsysCallbackVerificationService` y su implementación,
+  `InvalidPaymentCallbackException`, `PaymentCallbackProcessingService` y su implementación,
+  `PaymentCallbackProcessingResult`, `PaymentCallbackReceiptEntity`,
+  `PaymentCallbackReceiptDao` y `V34__prepare_payment_callback_idempotency.sql`.
+- Modificados: `PaymentDao`, `SubscriptionEntity` y la expectativa de versión de Flyway.
+- Tests nuevos: `RedsysSignatureServiceTests`, `RedsysCallbackVerificationServiceTests`,
+  `PaymentCallbackProcessingServiceTests` y `PaymentCallbackMigrationTests`.
+- No se eliminó ningún archivo.
+
+### Arquitectura y decisiones técnicas
+
+La firma se valida antes de bloquear o consultar el pago. La implementación deriva una clave de
+operación cifrando el pedido mediante AES-128-CBC, padding PKCS y IV cero; usa la representación
+Base64 de esa clave como clave HMAC-SHA512, firma el Base64URL exacto recibido y compara bytes con
+`MessageDigest.isEqual`.
+
+El decodificador tolera campos escalares desconocidos para compatibilidad, pero solo proyecta los
+necesarios. Verifica versión, firma, comercio, terminal normalizado, moneda `978`, transacción `0`,
+pedido, importe, respuesta y UUID de pago. Los códigos `0000`–`0099` se normalizan como confirmados;
+`9915`, como cancelación; `9997`–`9999`, pendientes; `909` y `912`, como comunicación; el resto,
+como rechazo.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+`V34` crea `PaymentCallbackReceipts` con UUID, referencia al pago, proveedor, pedido, canal,
+SHA-256 del payload, resultado y fecha de recepción. Una clave foránea compuesta garantiza que
+pago, proveedor y pedido pertenecen juntos. La restricción única
+`(provider, providerOrderId, payloadHash)` materializa la idempotencia.
+
+El DAO reserva el recibo mediante un único `INSERT ... ON CONFLICT DO NOTHING`; no existe ventana
+entre consultar y escribir. La tabla admite únicamente los canales `notification` y `simulator`.
+No almacena el Base64 recibido, JSON decodificado ni firma.
+
+### Endpoints, servicios y flujos
+
+1. Se valida criptográficamente el mensaje fuera de la sección crítica.
+2. Se bloquea el pago mediante lectura pesimista.
+3. Se correlacionan UUID, proveedor, pedido, importe y EUR.
+4. Se intenta insertar el recibo.
+5. Un conflicto devuelve resultado duplicado sin efectos secundarios.
+6. Solo el primer resultado confirmado puede delegar la aplicación a la suscripción.
+
+El simulador entra por `processProviderResult`; exige UUID, proveedor, pedido y hash de petición
+idénticos al pago persistido, y utiliza la misma barrera idempotente.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+El Base64 y el JSON tienen límites previos y posteriores a la decodificación. Las expresiones
+regulares limitan números y UUID; no se confía en el estado que trae el navegador. El endpoint
+público queda protegido por firma y correlación. Los mensajes rechazados no revelan cuál de las
+comprobaciones falló.
+
+### Errores, logs, auditoría y observabilidad
+
+Los rechazos se transforman en `400 REDSYS_CALLBACK_INVALID`. Aceptaciones y duplicados emiten logs
+estructurados sin contenido firmado. El recibo inmutable proporciona evidencia técnica mínima para
+idempotencia; la auditoría funcional completa queda fuera de este corte porque el modelo actual de
+auditoría exige un actor usuario.
+
+### Tests y evidencia de verificación
+
+- El fixture oficial con clave `sq7HjrUOBfKmC576ILgskD5srU870gJ7`, pedido `1234567890` y firma
+  publicada verifica exactamente el algoritmo actual.
+- Se prueba rechazo de firma alterada, clasificación de respuestas, comercio incorrecto y
+  correlación de pago.
+- Se prueban primer procesamiento, duplicado, resultado no confirmado, discrepancia y simulador.
+- Los dos tests estructurales de migración verifican restricciones, índice, FK y ausencia de
+  columnas con payload o firma.
+- En la suite focalizada conjunta se ejecutaron 28 tests: 28 correctos, 0 fallos, 0 errores y 0
+  omitidos.
+
+### Riesgos, limitaciones y deuda técnica
+
+Los fixtures no sustituyen la certificación en el entorno de pruebas de un adquirente. Una
+notificación válida con payload diferente para el mismo pedido se registra como otro evento y se
+procesa según su resultado; la aplicación a la suscripción mantiene además su propia idempotencia.
+La persistencia del estado del pago corresponde expresamente a `13.10`.
+
+## Tarea 13.9 - Actualizar suscripción tras un pago confirmado
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Convertir una confirmación autenticada, ya sea del simulador o de un proveedor habilitado, en una
+transición consistente de la suscripción. Debía activar o renovar exactamente una vez, respetar
+cancelaciones y calcular periodos mensuales o anuales con el reloj del servidor.
+
+### Requisitos y diseño relacionados
+
+- `RF-028`: actualización de la suscripción tras confirmación.
+- `RNF-001`: no confiar en identidad, importe o fechas aportadas por el cliente.
+- `RNF-006`: consistencia, concurrencia e idempotencia.
+- `RNF-011`: transacciones y restricciones persistentes.
+
+### Archivos creados, modificados o eliminados
+
+- Nuevos: `PaymentConfirmation`, `SubscriptionPaymentApplicationService`,
+  `SubscriptionPaymentApplicationServiceImpl` y `SubscriptionPaymentApplicationException`.
+- Modificados: `SubscriptionEntity` y la migración `V34`.
+- Tests nuevos: `SubscriptionPaymentApplicationServiceTests`.
+- No se eliminó ningún archivo.
+
+### Arquitectura y decisiones técnicas
+
+El servicio recibe una confirmación interna mínima, vuelve a bloquear el pago y después bloquea la
+suscripción. Correlaciona proveedor, pedido, moneda, local y periodicidad. El pago persistido es la
+instantánea económica de la orden; no se compara con el precio actual del plan, que podría haber
+cambiado legítimamente después del inicio del checkout.
+
+Una suscripción `ACTIVE` con fin futuro se renueva desde ese fin para no perder tiempo pagado. Una
+suscripción pendiente, suspendida, en trial o expirada empieza en el instante confirmado por el
+reloj del servidor. El final se calcula con `plusMonths(1)` o `plusYears(1)` en UTC. `CANCELLED`
+falla de forma cerrada y exige una futura reactivación explícita.
+
+### Modelo de datos, migraciones, índices y restricciones
+
+`Subscriptions.lastAppliedPaymentId` es una FK nullable y única hacia `Payments`. Actúa como
+marcador persistente de la última aplicación y evita que un pago extienda dos veces la suscripción,
+incluso si se recibe mediante canales distintos. La restricción única también impide asociar el
+mismo pago a dos suscripciones.
+
+### Servicios y flujos
+
+Ante `confirmed`, el procesador crea `PaymentConfirmation` con el instante local de recepción. El
+servicio:
+
+1. bloquea y correlaciona pago y suscripción;
+2. devuelve sin cambios si el pago ya fue aplicado;
+3. rechaza una suscripción cancelada;
+4. calcula el nuevo periodo;
+5. establece estado `ACTIVE`, limpia trial y cancelación, guarda el pago aplicado y hace flush.
+
+Resultados rechazados, cancelados, con error o pendientes no alteran la suscripción.
+
+### Validaciones, permisos, seguridad, privacidad e internacionalización
+
+No existe entrada directa desde el controlador a este servicio: solo recibe confirmaciones
+producidas por el verificador o el proveedor simulado correlacionado. Fechas, periodicidad y
+relaciones se toman de entidades bloqueadas. La tarea no introduce textos ni datos personales.
+
+### Errores, logs, auditoría y observabilidad
+
+Las discrepancias lanzan una excepción de aplicación sin detalles sensibles. El procesador registra
+si la suscripción cambió, junto con proveedor, pedido y resultado saneados. La transacción revierte
+recibo y suscripción de forma conjunta si la aplicación falla.
+
+### Tests y evidencia de verificación
+
+- Se prueba activación mensual desde una confirmación.
+- Se prueba renovación anual desde el final futuro del periodo vigente.
+- Se prueba idempotencia por `lastAppliedPaymentId`.
+- Se prueba rechazo de una suscripción cancelada.
+- Estas pruebas forman parte de los 28 casos focalizados ejecutados sin fallos.
+- No se ejecutaron suites globales, Docker ni Testcontainers; la validación quedó limitada a los
+  módulos implementados y sus dependencias directas.
+
+### Riesgos, limitaciones y deuda técnica
+
+El pago permanece con su estado previo hasta implementar `13.10`; deliberadamente no se mezcló esa
+responsabilidad con la transición de suscripción. El flujo futuro de creación de checkout deberá
+persistir la instantánea del pago antes de invocar al proveedor. La siguiente tarea fuente de verdad
+es `13.10`.

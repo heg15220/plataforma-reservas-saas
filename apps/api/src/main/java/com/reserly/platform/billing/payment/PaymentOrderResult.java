@@ -1,7 +1,6 @@
 package com.reserly.platform.billing.payment;
 
 import com.reserly.platform.billing.PaymentStatus;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -11,7 +10,7 @@ import java.util.Map;
  * @param provider código persistible del proveedor
  * @param providerOrderId pedido idempotente reconocido por el proveedor
  * @param status resultado inicial
- * @param redirectUri destino externo o {@code null} para simulador/resultado no redirigible
+ * @param redirect formulario externo o {@code null} para simulador/resultado no redirigible
  * @param requestPayloadHash SHA-256 canónico sin guardar el request completo
  * @param responsePayload subconjunto sanitizado permitido para persistencia
  */
@@ -19,7 +18,7 @@ public record PaymentOrderResult(
     String provider,
     String providerOrderId,
     PaymentStatus status,
-    URI redirectUri,
+    PaymentRedirect redirect,
     String requestPayloadHash,
     Map<String, Object> responsePayload) {
 

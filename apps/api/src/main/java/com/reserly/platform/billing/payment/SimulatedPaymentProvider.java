@@ -62,6 +62,7 @@ public final class SimulatedPaymentProvider implements PaymentProvider {
   private String canonicalPayload(PaymentOrderCommand command) {
     return String.join(
         "\n",
+        command.paymentId().toString(),
         command.subscriptionId().toString(),
         command.venueId().toString(),
         command.merchantOrderId(),
