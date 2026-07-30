@@ -254,9 +254,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 16. Fase 14 - Administración inicial
 
-- [ ] 14.1. Crear acceso admin protegido.
-- [ ] 14.2. Implementar gestión de categorías.
-- [ ] 14.3. Implementar listado y edición básica de locales.
+- [x] 14.1. Crear acceso admin protegido.
+- [x] 14.2. Implementar gestión de categorías.
+- [x] 14.3. Implementar listado y edición básica de locales.
 - [ ] 14.4. Implementar suspensión de local.
 - [ ] 14.5. Implementar revisión de incidencias.
 - [ ] 14.6. Implementar revisión de cuentas empresariales pendientes.

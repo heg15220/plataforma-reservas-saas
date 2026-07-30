@@ -1668,5 +1668,63 @@
       "deadline": "El plazo de cancelación ya ha terminado. Contacta directamente con el local.",
       "unavailable": "No pudimos gestionar la reserva. Inténtalo de nuevo más tarde."
     }
+  },
+  "Admin": {
+    "login": {
+      "metadata": "Acceso administrativo | Reserly",
+      "title": "Acceso administrativo",
+      "description": "Identifícate con una cuenta administradora activa.",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Acceder",
+      "submitting": "Verificando…",
+      "errors": {
+        "invalid": "Las credenciales no son válidas para el acceso administrativo.",
+        "unavailable": "No pudimos iniciar la sesión. Inténtalo de nuevo."
+      }
+    },
+    "navigation": {
+      "categories": "Categorías",
+      "venues": "Locales"
+    },
+    "actions": {
+      "save": "Guardar",
+      "edit": "Editar",
+      "cancel": "Cancelar"
+    },
+    "errors": {
+      "forbidden": "La sesión no tiene permisos administrativos.",
+      "unavailable": "No pudimos completar la operación."
+    },
+    "categories": {
+      "title": "Gestión de categorías",
+      "description": "Crea y edita el catálogo global con textos en español e inglés.",
+      "create": "Nueva categoría",
+      "edit": "Editar categoría",
+      "slug": "Identificador estable",
+      "nameEs": "Nombre en español",
+      "nameEn": "Nombre en inglés",
+      "active": "Categoría activa",
+      "enabled": "Activa",
+      "disabled": "Desactivada"
+    },
+    "venues": {
+      "title": "Gestión de locales",
+      "description": "Consulta y corrige los datos comerciales básicos. La suspensión se gestiona en un flujo separado.",
+      "edit": "Editar local",
+      "noCity": "Sin ciudad",
+      "status": "Estado: {status}",
+      "fields": {
+        "name": "Nombre",
+        "category": "Categoría",
+        "contactEmail": "Correo de contacto",
+        "phone": "Teléfono",
+        "address": "Dirección",
+        "city": "Ciudad",
+        "province": "Provincia",
+        "country": "País (ISO)",
+        "postalCode": "Código postal"
+      }
+    }
   }
 }

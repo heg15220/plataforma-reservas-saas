@@ -45,11 +45,21 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   @Override
   @Transactional
   public LoginOutcome login(LoginCommand command) {
+    return login(command, AccountType.VENUE_BUSINESS);
+  }
+
+  @Override
+  @Transactional
+  public LoginOutcome loginAdmin(LoginCommand command) {
+    return login(command, AccountType.ADMIN);
+  }
+
+  private LoginOutcome login(LoginCommand command, AccountType expectedAccountType) {
     String normalizedEmail = normalizeEmail(command.email());
     UserEntity user = userDao.findForAuthentication(normalizedEmail).orElse(null);
     String storedHash = user == null ? null : user.getPasswordHash();
     boolean passwordMatches = passwordHashingService.matches(command.rawPassword(), storedHash);
-    if (!passwordMatches || user == null || !canUseVenueLogin(user)) {
+    if (!passwordMatches || user == null || !canUseLogin(user, expectedAccountType)) {
       throw new InvalidAuthenticationException();
     }
 
@@ -87,10 +97,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     authSessionDao.revokeByTokenHash(sessionTokenService.hash(sessionToken), Instant.now());
   }
 
-  private boolean canUseVenueLogin(UserEntity user) {
-    return user.getAccountType() == AccountType.VENUE_BUSINESS
-        && (ACTIVE_STATUS.equals(user.getStatus())
-            || PENDING_EMAIL_STATUS.equals(user.getStatus()));
+  private boolean canUseLogin(UserEntity user, AccountType expectedAccountType) {
+    if (user.getAccountType() != expectedAccountType) {
+      return false;
+    }
+    return ACTIVE_STATUS.equals(user.getStatus())
+        || (expectedAccountType == AccountType.VENUE_BUSINESS
+            && PENDING_EMAIL_STATUS.equals(user.getStatus()));
   }
 
   private String normalizeEmail(String email) {

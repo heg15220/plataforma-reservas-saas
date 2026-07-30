@@ -13,10 +13,65 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-30
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.12`.
-- Siguiente tarea pendiente recomendada: `14.1. Crear acceso admin protegido`.
-- Observación: la fase 13 queda cerrada con estados persistentes, historial básico y pruebas
-  contractuales RedSys; el cobro real continúa bloqueado por política.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
+  `14.1` a `14.3`.
+- Siguiente tarea pendiente recomendada: `14.4. Implementar suspensión de local`.
+- Observación: el acceso admin, las categorías y la edición básica de locales ya están protegidos
+  y auditados; suspensión y cambios de estado permanecen fuera del editor básico.
+
+## Conversación 124 - Acceso administrativo, categorías y edición básica de locales
+
+- Fecha: 2026-07-30.
+- Resumen de la conversación:
+  - Se completaron `14.1`, `14.2` y `14.3` en `phase/14-administration`.
+  - Se añadió `POST /api/auth/admin/login`, segregado del acceso empresarial: solo una cuenta
+    `admin` activa puede crear la sesión y el rol persistido sigue siendo obligatorio en
+    `/api/admin/**`.
+  - Se implementó gestión de categorías con listado completo, creación y edición, slug único,
+    estado activo y nombres obligatorios ES/EN.
+  - Se implementó listado acotado a 100 locales y edición básica de nombre, categoría activa,
+    contacto y ubicación.
+  - Crear o editar categorías y editar locales registra snapshots mínimos de auditoría dentro de la
+    misma transacción.
+  - Se crearon `/admin/acceso`, `/admin/categorias` y `/admin/locales`, con shell responsive,
+    contratos Zod y catálogos ES/EN.
+- Archivos modificados:
+  - Autenticación en `identity/controller` e `identity/service`.
+  - Nuevo contrato administrativo en `administration/controller`, `administration/dto` y
+    `administration/service`.
+  - `CategoryDao` y `VenueDao`.
+  - Frontend `apps/web/src/features/admin`, rutas `apps/web/src/app/admin` y `AdminShell`.
+  - Catálogos `es.json` y `en.json`.
+  - Tests focalizados backend y frontend.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-030 Administración de plataforma`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-004 Rendimiento`.
+  - `RNF-007 Accesibilidad`.
+  - `RNF-009 Responsive`.
+  - `RNF-010 Internacionalización`.
+  - `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `14.1. Crear acceso admin protegido`.
+  - `14.2. Implementar gestión de categorías`.
+  - `14.3. Implementar listado y edición básica de locales`.
+- Siguiente tarea pendiente recomendada:
+  - `14.4. Implementar suspensión de local`.
+- Decisiones o aclaraciones relevantes:
+  - No existe sesión admin paralela: se reutiliza la cookie opaca, revocable y HttpOnly.
+  - El login de local no acepta admins y el login admin no acepta cuentas empresariales o admins
+    suspendidos.
+  - El editor de locales no acepta estado, suspensión, propietario, slug, publicación, imágenes ni
+    contenido editorial. Esas fronteras impiden anticipar `14.4`.
+  - Una categoría desactivada sigue visible al admin, pero no puede asignarse a un local.
+  - Los cuatro tests backend y cuatro tests frontend focalizados finalizaron correctamente.
+  - Checkstyle quedó limpio en administración, autenticación y DAOs modificados. ESLint focalizado
+    y TypeScript alcanzaron 35 y 45 segundos sin diagnósticos y se detuvieron.
+  - No se ejecutaron suites globales, Docker, Testcontainers ni servicios externos.
 
 ## Conversación 123 - Estados de pago, historial de facturación y cierre contractual RedSys
 

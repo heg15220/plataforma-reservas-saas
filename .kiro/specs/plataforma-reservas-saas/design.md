@@ -1609,6 +1609,7 @@ GET /api/public/recommendations
 ```http
 POST /api/auth/venues/register
 POST /api/auth/login
+POST /api/auth/admin/login
 POST /api/auth/logout
 POST /api/auth/password/forgot
 POST /api/auth/password/reset
@@ -1699,6 +1700,16 @@ POST /api/admin/plans
 PATCH /api/admin/plans/{planId}
 GET /api/admin/metrics
 ```
+
+El acceso administrativo está segregado en `POST /api/auth/admin/login`: exige `accountType=admin`,
+estado `active` y el rol persistido `admin` para utilizar `/api/admin/**`. Las cuentas de local, los
+admins suspendidos y las credenciales incorrectas reciben el mismo fallo opaco. La sesión reutiliza
+la cookie HttpOnly revocable, sin crear un mecanismo de identidad paralelo.
+
+La gestión inicial de categorías exige slug único y textos completos ES/EN; crear y editar registra
+auditoría dentro de la transacción. El listado de locales se limita a 100 filas y la edición básica
+solo permite nombre, categoría activa y datos de contacto/ubicación. Estado, suspensión, propiedad,
+slug, publicación y contenido editorial quedan fuera de `14.3`.
 
 ### 7.4 RedSys
 
@@ -1890,6 +1901,10 @@ La ruta pública `/locales/acceso` consume el login mediante un formulario clien
 - bloquea reenvíos mientras la petición está activa y cancela el `fetch` al desmontarse;
 - valida que la respuesta pertenece a `venue_business` y contiene un locale soportado;
 - navega a `/panel?locale={preferredLocale}` tras el éxito.
+
+El formulario `/admin/acceso` usa el endpoint segregado y valida que la respuesta declare
+`accountType=admin`; después navega a `/admin/categorias`. Las páginas administrativas no reciben
+credenciales y toda lectura o escritura efectiva vuelve a comprobar `ROLE_ADMIN` en backend.
 
 El proxy normaliza el parámetro de locale contra el catálogo cerrado, persiste la preferencia y el
 punto de entrada `/panel` redirige temporalmente a `/panel/verificacion`, primera capacidad privada
@@ -2176,6 +2191,7 @@ de proveedor y detalles de persistencia no son textos de usuario.
 
 ```text
 /admin
+/admin/acceso
 /admin/locales
 /admin/categorias
 /admin/incidencias

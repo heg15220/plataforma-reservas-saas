@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * Contrato público de login y logout de locales.
+ * Contrato público de login segregado y logout común.
  *
  * <p>Login devuelve metadatos no sensibles y establece cookie. Logout es idempotente y siempre
  * elimina la cookie recibida.
@@ -22,6 +22,10 @@ public interface AuthenticationController {
   /** Autentica una cuenta empresarial operativa y crea una sesión revocable. */
   @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
   ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request);
+
+  /** Autentica exclusivamente una cuenta administrativa activa. */
+  @PostMapping(path = "/admin/login", consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<LoginResponse> loginAdmin(@Valid @RequestBody LoginRequest request);
 
   /** Revoca la sesión si existe; no revela validez de la cookie. */
   @PostMapping(path = "/logout")

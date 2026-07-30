@@ -9,9 +9,9 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Fecha de creación: 2026-06-06
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
-  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a
-  `13.12`.
-- Siguiente tarea pendiente recomendada: `14.1. Crear acceso admin protegido`.
+  `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a
+  `13.12` y `14.1` a `14.3`.
+- Siguiente tarea pendiente recomendada: `14.4. Implementar suspensión de local`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -27477,3 +27477,195 @@ Las tareas `13.1`–`13.12` están implementadas, verificadas y documentadas. La
 estado, panel, proveedor simulado, adaptador RedSys preparado, firma, callbacks, idempotencia,
 transición de pago y suscripción e historial básico, sin activar cobro real. La siguiente tarea
 fuente de verdad es `14.1`.
+
+## Tarea 14.1 - Crear acceso admin protegido
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Permitir que una cuenta administrativa activa cree una sesión revocable desde un punto de entrada
+separado, sin ampliar el login de locales ni confiar en el tipo de cuenta declarado por el cliente.
+
+### Requisitos y diseño relacionados
+
+- `RF-030`: acceso administrativo global.
+- `RNF-001`: credenciales opacas, roles persistidos y fallos no enumerables.
+- `RNF-002`: contraseña y token fuera de logs y JSON.
+- Diseño: `/api/admin/**` exige `ROLE_ADMIN`; cookie `reserly_session` HttpOnly.
+
+### Archivos afectados
+
+- Modificados: `AuthenticationController`, `AuthenticationControllerImpl`,
+  `AuthenticationService` y `AuthenticationServiceImpl`.
+- Creados: `AdminLoginForm`, `admin-api.ts`, `/admin/acceso`, `/admin` y `AdminShell`.
+- Tests: `AdminAuthenticationServiceTests` y casos de login en `admin-api.test.ts`.
+- Catálogos ES/EN bajo `Admin.login` y `Admin.navigation`.
+
+### Arquitectura y flujo
+
+`POST /api/auth/admin/login` reutiliza `LoginRequest`, conversión, BCrypt, token CSPRNG, hash
+SHA-256, entidad de sesión y cookie existentes. El servicio común recibe internamente el
+`AccountType` esperado:
+
+- el endpoint empresarial admite únicamente `venue_business`, activo o pendiente de email;
+- el endpoint admin admite únicamente `admin` con estado `active`.
+
+Contraseña incorrecta, cuenta de otro tipo y admin suspendido lanzan la misma
+`InvalidAuthenticationException`. Tras autenticar, cada request administrativa vuelve a consultar
+sesión y roles; `accountType=admin` no concede permisos por sí solo.
+
+La UI valida que la respuesta sea estrictamente `accountType: admin`, nunca lee la cookie y navega a
+`/admin/categorias`. Las páginas no incluyen secretos ni datos de sesión.
+
+### Seguridad, errores y observabilidad
+
+Se conserva el coste dummy para usuarios inexistentes, rehash BCrypt, expiración absoluta,
+revocación y política CORS. No se registran email, contraseña o token. El contrato reduce 400/401/403
+del login a un mensaje de credenciales inválidas; la indisponibilidad permanece diferenciada.
+
+### Evidencia y riesgos
+
+Los tests prueban que un admin activo crea sesión y que una cuenta empresarial o admin suspendido
+fallan con la misma excepción. El test frontend comprueba la ruta segregada y la cookie por
+`credentials: include`.
+
+La tarea no crea ni eleva cuentas admin; depende del seed/aprovisionamiento seguro y del rol
+persistido existente. CSRF continúa reservado a `16.3`.
+
+## Tarea 14.2 - Implementar gestión de categorías
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Ofrecer al administrador listado, creación y edición del catálogo global de categorías, incluidas
+las desactivadas, con traducciones completas ES/EN y auditoría transaccional.
+
+### Requisitos y diseño relacionados
+
+- `RF-030`: gestión global de categorías.
+- `RF-031`: textos visibles en español e inglés.
+- `RNF-001`: autorización central y validación cerrada.
+- `RNF-003`: locks y unicidad.
+- `RNF-011`: capas controller/service/DAO y nombres físicos existentes.
+
+### Archivos y contratos
+
+- Nuevos DTOs `AdminCategoryRequest`, `AdminCategoryResponse` y
+  `AdminCategoryListResponse`.
+- Nuevos `AdminCategoryService` y `AdminCategoryServiceImpl`.
+- Nuevo `AdminCatalogController` con:
+  - `GET /api/admin/categories`;
+  - `POST /api/admin/categories`;
+  - `PATCH /api/admin/categories/{categoryId}`.
+- `CategoryDao` añade listado completo, búsqueda por slug y lock pesimista.
+- Frontend: modo categorías de `AdminCatalogDashboard`.
+
+### Modelo, validaciones y flujo
+
+No se requiere migración. `Categories` ya contiene UUID, slug único, `nameI18n`, estado y timestamps.
+El request exige slug canónico de máximo 120 caracteres y nombres ES/EN no vacíos. El nombre español
+se mantiene como valor canónico compatible y `LocalizedText` persiste ambos idiomas.
+
+Crear comprueba slug antes de generar UUID. Editar bloquea la fila y rechaza colisiones con otra
+categoría. Una categoría inactiva sigue listada para administración pero `findActiveById` impide
+asignarla a nuevos locales.
+
+Cada cambio escribe `category.created` o `category.updated` mediante `AuditLogService` en la misma
+transacción, con slug, nombres y estado antes/después; actor, IP y user-agent proceden del principal
+y servlet, no del JSON.
+
+### UI, accesibilidad e i18n
+
+`/admin/categorias` ofrece formulario de alta/edición, checkbox de actividad y tarjetas responsive.
+Etiquetas, estados, acciones y errores salen de `Admin` en ambos catálogos. Los controles conservan
+labels visibles y el listado usa artículos con encabezados.
+
+### Tests, evidencia y riesgos
+
+`AdminInitialServicesTests` comprueba creación localizada, guardado y auditoría. El dashboard
+verifica que categorías activas e inactivas muestran ambos nombres. Conflictos se traducen a
+`409 ADMIN_RESOURCE_CONFLICT` y ausencias a `404 ADMIN_RESOURCE_NOT_FOUND`.
+
+La desactivación no reasigna locales existentes; solo impide asignaciones futuras. Borrado físico no
+se ofrece para preservar referencias.
+
+## Tarea 14.3 - Implementar listado y edición básica de locales
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Permitir que el administrador consulte un tramo acotado de locales y corrija exclusivamente sus
+datos comerciales básicos, sin mezclar suspensión o decisiones editoriales.
+
+### Requisitos y diseño relacionados
+
+- `RF-030`: gestión global de locales.
+- `RF-031`: UI ES/EN.
+- `RNF-001` y `RNF-002`: mínima superficie editable y respuesta sin identidad fiscal.
+- `RNF-003`: lock pesimista y auditoría atómica.
+- `RNF-004`: consulta limitada.
+- `RNF-007` y `RNF-009`: formularios etiquetados y layout responsive.
+
+### Archivos y endpoints
+
+- DTOs `AdminVenueUpdateRequest`, `AdminVenueResponse` y `AdminVenueListResponse`.
+- `AdminVenueService` y `AdminVenueServiceImpl`.
+- `VenueDao.findAdminPage(Pageable)` con categoría precargada y
+  `findByIdForAdminUpdate`.
+- `GET /api/admin/venues`.
+- `PATCH /api/admin/venues/{venueId}`.
+- UI `/admin/locales` en `AdminCatalogDashboard`.
+
+### Contrato y límites de autoridad
+
+El listado devuelve máximo 100 filas ordenadas por actualización e ID, con UUID, nombre, slug,
+categoría, estado, contacto, ubicación y fecha. Excluye propietario, cuenta empresarial, datos
+fiscales, documentos, imágenes privadas y configuración operativa.
+
+La edición admite nombre, categoría activa, email de contacto, teléfono, dirección, ciudad,
+provincia, país ISO y código postal. No modela ni acepta:
+
+- estado o suspensión;
+- propietario o cuenta empresarial;
+- slug;
+- publicación o fecha de publicación;
+- imágenes, descripciones, reglas o formulario.
+
+El servicio bloquea el local, resuelve una categoría activa, normaliza opcionales y actualiza con el
+reloj de servidor. La auditoría `venue.basic_details_updated` guarda solo nombre, categoría y estado
+antes/después para evidenciar que el estado no cambió.
+
+### UI, errores y privacidad
+
+`/admin/locales` presenta tarjetas responsive y un editor que usa categorías activas. No existe
+acción de suspensión, manteniendo `14.4` como flujo separado. La API valida respuestas con Zod y
+rechaza campos o tipos inesperados.
+
+### Tests y evidencia
+
+- Backend: edición cambia nombre/categoría, conserva slug/estado y registra auditoría.
+- Frontend: listado muestra local, categoría y ciudad y acredita ausencia de acción de suspensión.
+- Validación focalizada: 4 tests backend y 4 frontend correctos; compilación backend principal y de
+  tests correcta; Checkstyle limpio en administración y dependencias modificadas; Prettier aplicado
+  a archivos admin.
+- ESLint focalizado y `tsc --noEmit` alcanzaron los límites de 35 y 45 segundos sin emitir
+  diagnósticos y no se prolongaron.
+- No se ejecutaron suite global, Docker, Testcontainers ni servicios externos.
+
+### Riesgos, limitaciones y siguiente paso
+
+El tramo de 100 filas no incluye búsqueda o paginación; deberán añadirse cuando el volumen lo
+requiera. La auditoría visible queda para `14.12`, aunque las evidencias ya se persisten. La siguiente
+tarea fuente de verdad es `14.4`, suspensión de local.

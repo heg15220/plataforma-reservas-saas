@@ -13,6 +13,27 @@ import org.springframework.data.repository.query.Param;
 /** Persistencia de perfiles siempre acotada por el propietario autenticado. */
 public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
 
+  /** Lista administrativa acotada con categoría precargada. */
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      join fetch venue.category
+      order by venue.updatedAt desc, venue.id desc
+      """)
+  List<VenueEntity> findAdminPage(Pageable pageable);
+
+  /** Serializa la edición administrativa sin cambiar propiedad ni estado. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      join fetch venue.category
+      where venue.id = :venueId
+      """)
+  Optional<VenueEntity> findByIdForAdminUpdate(@Param("venueId") UUID venueId);
+
   String PUBLISHED_SEARCH_QUERY =
       "select venue from VenueEntity venue "
           + "join fetch venue.category "

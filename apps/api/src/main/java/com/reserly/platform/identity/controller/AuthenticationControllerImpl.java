@@ -28,7 +28,15 @@ public class AuthenticationControllerImpl implements AuthenticationController {
 
   @Override
   public ResponseEntity<LoginResponse> login(LoginRequest request) {
-    LoginOutcome outcome = authenticationService.login(converter.toCommand(request));
+    return response(authenticationService.login(converter.toCommand(request)));
+  }
+
+  @Override
+  public ResponseEntity<LoginResponse> loginAdmin(LoginRequest request) {
+    return response(authenticationService.loginAdmin(converter.toCommand(request)));
+  }
+
+  private ResponseEntity<LoginResponse> response(LoginOutcome outcome) {
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookieFactory.create(outcome.sessionToken()).toString())
         .body(converter.toResponse(outcome));

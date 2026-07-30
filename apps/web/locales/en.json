@@ -1668,5 +1668,63 @@
       "deadline": "The cancellation window has ended. Contact the venue directly.",
       "unavailable": "We could not manage the reservation. Please try again later."
     }
+  },
+  "Admin": {
+    "login": {
+      "metadata": "Administration access | Reserly",
+      "title": "Administration access",
+      "description": "Sign in with an active administrator account.",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Verifying…",
+      "errors": {
+        "invalid": "These credentials are not valid for administration access.",
+        "unavailable": "We could not sign you in. Please try again."
+      }
+    },
+    "navigation": {
+      "categories": "Categories",
+      "venues": "Venues"
+    },
+    "actions": {
+      "save": "Save",
+      "edit": "Edit",
+      "cancel": "Cancel"
+    },
+    "errors": {
+      "forbidden": "This session does not have administrator permissions.",
+      "unavailable": "We could not complete the operation."
+    },
+    "categories": {
+      "title": "Category management",
+      "description": "Create and edit the global catalogue with Spanish and English text.",
+      "create": "New category",
+      "edit": "Edit category",
+      "slug": "Stable identifier",
+      "nameEs": "Spanish name",
+      "nameEn": "English name",
+      "active": "Active category",
+      "enabled": "Active",
+      "disabled": "Inactive"
+    },
+    "venues": {
+      "title": "Venue management",
+      "description": "Review and correct basic business details. Suspension is handled in a separate flow.",
+      "edit": "Edit venue",
+      "noCity": "No city",
+      "status": "Status: {status}",
+      "fields": {
+        "name": "Name",
+        "category": "Category",
+        "contactEmail": "Contact email",
+        "phone": "Phone",
+        "address": "Address",
+        "city": "City",
+        "province": "Province",
+        "country": "Country (ISO)",
+        "postalCode": "Postcode"
+      }
+    }
   }
 }
