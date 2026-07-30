@@ -88,6 +88,13 @@ public class BusinessVerificationDocumentPersistenceServiceImpl
     document.setUpdatedAt(now);
     BusinessVerificationDocumentEntity persisted = documentDao.saveAndFlush(document);
 
+    BusinessAccountEntity account = request.getBusinessAccount();
+    if ("needs_correction".equals(account.getManualReviewStatus())) {
+      account.setManualReviewStatus(PENDING_REVIEW_ACCOUNT_STATUS);
+      account.setManualReviewedByUser(null);
+      account.setManualReviewedAt(null);
+      account.setUpdatedAt(now);
+    }
     request.setStatus(FULFILLED_REQUEST_STATUS);
     request.setResolvedAt(now);
     request.setUpdatedAt(now);

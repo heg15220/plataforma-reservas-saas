@@ -2,8 +2,10 @@ package com.reserly.platform.incidents.persistence;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +13,19 @@ import org.springframework.data.repository.query.Param;
 
 /** Acceso explícito a restricciones activas por identidad normalizada. */
 public interface PenaltyDao extends JpaRepository<PenaltyEntity, UUID> {
+
+  /** Listado administrativo reciente y acotado de restricciones. */
+  @Query(
+      """
+      select penalty from PenaltyEntity penalty
+      order by penalty.updatedAt desc, penalty.id desc
+      """)
+  List<PenaltyEntity> findAdminPage(Pageable pageable);
+
+  /** Serializa una modificación administrativa de una penalización. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select penalty from PenaltyEntity penalty where penalty.id = :penaltyId")
+  Optional<PenaltyEntity> findByIdForAdminUpdate(@Param("penaltyId") UUID penaltyId);
 
   /**
    * Serializa decisiones para una identidad incluso cuando aún no existe fila de penalización.

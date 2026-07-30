@@ -1687,7 +1687,8 @@
       "categories": "Categorías",
       "venues": "Locales",
       "incidents": "Incidencias",
-      "businessAccounts": "Verificaciones"
+      "businessAccounts": "Verificaciones",
+      "penalties": "Penalizaciones"
     },
     "actions": {
       "save": "Guardar",
@@ -1746,8 +1747,42 @@
     },
     "businessAccounts": {
       "title": "Cuentas empresariales pendientes",
-      "description": "Revisa los datos fiscales pendientes. Las decisiones se incorporarán en el siguiente flujo administrativo.",
-      "noProvider": "Sin proveedor"
+      "description": "Revisa datos fiscales y documentación, y registra cada decisión con su motivo.",
+      "noProvider": "Sin proveedor",
+      "review": "Revisar cuenta",
+      "decision": "Decisión",
+      "approve": "Aprobar identidad",
+      "reject": "Rechazar identidad",
+      "recheck": "Reintentar comprobación remota",
+      "reason": "Motivo de la decisión",
+      "queue": "Identidades pendientes"
+    },
+    "businessDocuments": {
+      "queue": "Documentos pendientes",
+      "review": "Revisar documento",
+      "view": "Abrir contenido",
+      "accept": "Aceptar documento",
+      "reject": "Rechazar documento",
+      "correction": "Solicitar corrección",
+      "types": {
+        "census_registration_036_037": "Alta censal 036/037",
+        "census_certificate": "Certificado censal",
+        "activity_or_opening_license": "Licencia de actividad o apertura",
+        "equivalent_administrative_document": "Documento administrativo equivalente",
+        "other": "Otro documento"
+      }
+    },
+    "penalties": {
+      "title": "Gestión de penalizaciones",
+      "description": "Revoca o ajusta la vigencia de restricciones activas con trazabilidad completa.",
+      "edit": "Modificar penalización",
+      "status": "Acción",
+      "adjust": "Ajustar fecha de fin",
+      "revoke": "Revocar restricción",
+      "endsAt": "Fin de la restricción",
+      "reason": "Motivo administrativo",
+      "save": "Guardar cambio",
+      "error": "No pudimos completar la operación."
     }
   }
 }

@@ -26,6 +26,7 @@ class AesGcmDocumentEncryptionServiceTests {
     assertThat(first).startsWith((byte) 'R', (byte) 'S', (byte) 'Y', (byte) '1');
     assertThat(first).isNotEqualTo(PLAINTEXT).hasSizeGreaterThan(PLAINTEXT.length);
     assertThat(second).isNotEqualTo(first);
+    assertThat(service.decrypt(first, "test-key-v1")).isEqualTo(PLAINTEXT);
     assertThat(service.keyId()).isEqualTo("test-key-v1");
   }
 }

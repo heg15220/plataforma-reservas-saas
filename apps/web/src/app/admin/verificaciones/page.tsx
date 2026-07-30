@@ -1,11 +1,11 @@
 import { AdminShell } from "@/components/layout/admin-shell";
-import { AdminReviewDashboard } from "@/features/admin/admin-review-dashboard";
+import { AdminVerificationDashboard } from "@/features/admin/admin-verification-dashboard";
 
 /** Cola de identidades empresariales pendientes, todavía sin acciones de decisión. */
 export default function AdminBusinessAccountsPage() {
   return (
     <AdminShell currentPath="/admin/verificaciones">
-      <AdminReviewDashboard mode="businessAccounts" />
+      <AdminVerificationDashboard />
     </AdminShell>
   );
 }

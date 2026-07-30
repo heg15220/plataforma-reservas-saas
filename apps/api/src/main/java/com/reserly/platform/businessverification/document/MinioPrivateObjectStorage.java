@@ -3,6 +3,7 @@ package com.reserly.platform.businessverification.document;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
+import io.minio.GetObjectArgs;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import java.io.ByteArrayInputStream;
@@ -43,6 +44,24 @@ public class MinioPrivateObjectStorage implements PrivateObjectStorage {
               .contentType(ENCRYPTED_MEDIA_TYPE)
               .stream(new ByteArrayInputStream(encryptedContent), encryptedContent.length, -1)
               .build());
+    } catch (Exception exception) {
+      throw new PrivateDocumentStorageException();
+    }
+  }
+
+  @Override
+  public byte[] get(String objectKey, long maximumBytes) {
+    if (maximumBytes < 1 || maximumBytes > Integer.MAX_VALUE - 1L) {
+      throw new PrivateDocumentStorageException();
+    }
+    try (var stream =
+        client.getObject(
+            GetObjectArgs.builder().bucket(properties.bucket()).object(objectKey).build())) {
+      byte[] content = stream.readNBytes((int) maximumBytes + 1);
+      if (content.length > maximumBytes) {
+        throw new PrivateDocumentStorageException();
+      }
+      return content;
     } catch (Exception exception) {
       throw new PrivateDocumentStorageException();
     }

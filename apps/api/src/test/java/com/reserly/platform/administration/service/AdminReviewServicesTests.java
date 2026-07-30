@@ -95,7 +95,19 @@ class AdminReviewServicesTests {
     account.setUpdatedAt(NOW);
     when(dao.findPendingAdminReview(any())).thenReturn(List.of(account));
 
-    var response = new AdminBusinessAccountServiceImpl(dao).listPending();
+    var response =
+        new AdminBusinessAccountServiceImpl(
+                dao,
+                mock(com.reserly.platform.identity.persistence.UserDao.class),
+                mock(
+                    com.reserly.platform.businessverification.persistence
+                        .BusinessVerificationCheckDao.class),
+                mock(
+                    com.reserly.platform.businessverification.service
+                        .RemoteBusinessVerificationService.class),
+                mock(AuditLogService.class),
+                fixedClock())
+            .listPending();
 
     assertThat(response.accounts()).singleElement()
         .satisfies(item -> assertThat(item.ownerEmail()).isEqualTo("owner@example.com"));
@@ -130,5 +142,9 @@ class AdminReviewServicesTests {
     incident.setStatus("reported");
     incident.setCreatedAt(NOW.minusSeconds(60));
     return incident;
+  }
+
+  private Clock fixedClock() {
+    return Clock.fixed(NOW, ZoneOffset.UTC);
   }
 }

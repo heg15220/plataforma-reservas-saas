@@ -1689,6 +1689,9 @@ GET /api/admin/business-accounts/{businessAccountId}
 POST /api/admin/business-accounts/{businessAccountId}/approve
 POST /api/admin/business-accounts/{businessAccountId}/reject
 POST /api/admin/business-accounts/{businessAccountId}/recheck
+GET /api/admin/business-documents
+GET /api/admin/business-documents/{documentId}/content
+PATCH /api/admin/business-documents/{documentId}
 GET /api/admin/categories
 POST /api/admin/categories
 PATCH /api/admin/categories/{categoryId}
@@ -1726,6 +1729,24 @@ editar la reserva ni la penalización asociada.
 `GET /api/admin/business-accounts` y su detalle exponen únicamente cuentas cuyo estado empresarial
 y revisión manual son `pending_review`, con propietario y evidencia fiscal mínima. En `14.6` son de
 solo lectura: aprobar, rechazar o reintentar permanecen expresamente reservados para `14.7`.
+
+La decisión manual usa las rutas separadas `approve` y `reject`, exige motivo y bloquea la cuenta.
+Una aprobación fija `manualReviewStatus=approved` y conserva el resultado técnico
+`pending_review`; la política de publicación ya reconoce esta aprobación manual. Un rechazo fija
+también el estado empresarial `rejected`. `recheck` recibe un `requestId` idempotente y reutiliza el
+gateway remoto existente, con sus timeouts, reintentos y evidencia mínima, sin mantener locks
+durante la red. Cada acción administrativa queda auditada.
+
+La cola documental incluye solo metadatos y nunca revela `fileUrl`, hash o clave de cifrado. El
+contenido se recupera del bucket privado bajo autorización admin, con tamaño acotado, se autentica
+y descifra en memoria mediante AES-GCM y se entrega sin URL pública. Aceptar, rechazar o solicitar
+corrección exige motivo y actor. La corrección reabre la solicitud original; una carga posterior
+vuelve a dejar la cuenta en revisión pendiente.
+
+La gestión básica de penalizaciones lista como máximo 100 restricciones y permite únicamente
+revocar una penalización activa o ajustar su fecha final futura. No crea, reactiva ni altera email,
+contador o incidencia origen. La fila se bloquea y el cambio, su motivo y snapshots mínimos se
+auditan en la misma transacción.
 
 ### 7.4 RedSys
 

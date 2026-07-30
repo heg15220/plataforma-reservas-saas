@@ -14,11 +14,51 @@ Fuente de verdad del avance:
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.6`.
-- Siguiente tarea pendiente recomendada: `14.7. Implementar aprobación, rechazo y reintento manual
-  de verificación empresarial`.
-- Observación: suspensión de locales, resolución de incidencias y consulta de la cola empresarial
-  pendiente están protegidas y auditadas cuando mutan; las decisiones empresariales siguen fuera.
+  `14.1` a `14.9`.
+- Siguiente tarea pendiente recomendada: `14.10. Implementar gestión básica de planes con textos
+  ES/EN`.
+- Observación: cuentas y documentos empresariales ya admiten decisión/reintento auditados, y las
+  penalizaciones activas pueden revocarse o ajustar su vigencia sin alterar su evidencia origen.
+
+## Conversación 126 - Decisiones empresariales, documentos y penalizaciones
+
+- Fecha: 2026-07-30.
+- Resumen de la conversación:
+  - Se completaron `14.7`, `14.8` y `14.9` en `phase/14-administration`.
+  - Se implementaron aprobación, rechazo y reintento remoto idempotente de cuentas empresariales,
+    con locks cortos, gateway existente y auditoría administrativa.
+  - Se añadió cola documental, lectura privada descifrada en memoria y decisiones de aceptación,
+    rechazo o corrección; la corrección reabre la solicitud y una nueva carga devuelve la cuenta a
+    revisión pendiente.
+  - Se añadió listado de penalizaciones y modificación básica limitada a revocación o ajuste de
+    fecha final, preservando email, contador e incidencia origen.
+  - `/admin/verificaciones` integra cuentas y documentos; `/admin/penalizaciones` gestiona
+    restricciones. Navegación, formularios y mensajes están localizados ES/EN.
+- Archivos modificados:
+  - Administración: controladores, DTOs, servicios y tests.
+  - Verificación: DAO de cuentas/documentos, persistencia de carga, cifrado y almacenamiento
+    privado.
+  - Incidencias: `PenaltyDao`.
+  - Frontend administrativo, rutas y catálogos ES/EN.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-030`, `RF-032`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-005`,
+    `RNF-007`, `RNF-009`, `RNF-010` y `RNF-011`.
+- Tareas impactadas y completadas:
+  - `14.7`, `14.8` y `14.9`.
+- Siguiente tarea pendiente recomendada:
+  - `14.10. Implementar gestión básica de planes con textos ES/EN`.
+- Decisiones o aclaraciones relevantes:
+  - La aprobación manual no falsifica un resultado remoto `verified`; se expresa mediante
+    `manualReviewStatus=approved`, que ya habilita publicación.
+  - Reintentar usa `requestId` para repetir de forma segura una solicitud ya ejecutada; una
+    solicitud nueva solo se permite desde la cola pendiente.
+  - El binario documental no se expone mediante URL persistente: se limita por tamaño, se descifra
+    y autentica bajo demanda y solo vive en memoria durante la respuesta.
+  - No se permite crear ni reactivar penalizaciones desde administración.
+  - Los tests focalizados finalizaron correctamente: 6 frontend, 8 de servicios administrativos y
+    1 de cifrado. Compilación API correcta. ESLint exacto alcanzó 35 segundos sin diagnósticos y se
+    detuvo; no se ejecutaron suites globales, Docker ni Testcontainers.
 
 ## Conversación 125 - Suspensión, incidencias y cola empresarial pendiente
 

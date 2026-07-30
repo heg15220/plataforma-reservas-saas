@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchAdminCategories,
   fetchAdminIncidents,
+  fetchAdminPenalties,
   fetchAdminVenues,
+  fetchPendingDocuments,
   fetchPendingBusinessAccounts,
   loginAdmin,
   saveAdminCategory,
@@ -97,5 +99,17 @@ describe("admin-api", () => {
       new URL(`http://api.test/api/admin/venues/${venue.id}/suspension`),
       expect.objectContaining({ method: "PATCH" }),
     );
+  });
+
+  it("valida las colas nuevas de documentos y penalizaciones", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ documents: [] }))
+      .mockResolvedValueOnce(Response.json({ penalties: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPendingDocuments()).resolves.toEqual({ documents: [] });
+    await expect(fetchAdminPenalties()).resolves.toEqual({ penalties: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

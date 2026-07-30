@@ -42,6 +42,7 @@ export function AdminShell({
                 ["/admin/locales", "venues"],
                 ["/admin/incidencias", "incidents"],
                 ["/admin/verificaciones", "businessAccounts"],
+                ["/admin/penalizaciones", "penalties"],
               ].map(([href, key]) => (
                 <Button
                   aria-current={currentPath === href ? "page" : undefined}

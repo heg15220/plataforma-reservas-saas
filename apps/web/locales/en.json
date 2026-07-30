@@ -1687,7 +1687,8 @@
       "categories": "Categories",
       "venues": "Venues",
       "incidents": "Incidents",
-      "businessAccounts": "Verifications"
+      "businessAccounts": "Verifications",
+      "penalties": "Penalties"
     },
     "actions": {
       "save": "Save",
@@ -1746,8 +1747,42 @@
     },
     "businessAccounts": {
       "title": "Pending business accounts",
-      "description": "Review pending tax details. Decisions will be added in the next administration flow.",
-      "noProvider": "No provider"
+      "description": "Review tax details and documents, recording every decision and its reason.",
+      "noProvider": "No provider",
+      "review": "Review account",
+      "decision": "Decision",
+      "approve": "Approve identity",
+      "reject": "Reject identity",
+      "recheck": "Retry remote verification",
+      "reason": "Decision reason",
+      "queue": "Pending identities"
+    },
+    "businessDocuments": {
+      "queue": "Pending documents",
+      "review": "Review document",
+      "view": "Open content",
+      "accept": "Accept document",
+      "reject": "Reject document",
+      "correction": "Request correction",
+      "types": {
+        "census_registration_036_037": "036/037 census registration",
+        "census_certificate": "Census certificate",
+        "activity_or_opening_license": "Activity or opening licence",
+        "equivalent_administrative_document": "Equivalent administrative document",
+        "other": "Other document"
+      }
+    },
+    "penalties": {
+      "title": "Penalty management",
+      "description": "Revoke or adjust active restrictions with complete traceability.",
+      "edit": "Modify penalty",
+      "status": "Action",
+      "adjust": "Adjust end date",
+      "revoke": "Revoke restriction",
+      "endsAt": "Restriction end",
+      "reason": "Administrative reason",
+      "save": "Save change",
+      "error": "We could not complete the operation."
     }
   }
 }

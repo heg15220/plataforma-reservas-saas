@@ -42,6 +42,15 @@ public interface BusinessAccountDao extends JpaRepository<BusinessAccountEntity,
       """)
   Optional<BusinessAccountEntity> findPendingAdminReviewById(@Param("accountId") UUID accountId);
 
+  /** Recarga el resultado de una revalidación con propietario inicializado fuera de la red. */
+  @Query(
+      """
+      select account from BusinessAccountEntity account
+      join fetch account.ownerUser
+      where account.id = :accountId
+      """)
+  Optional<BusinessAccountEntity> findAdminById(@Param("accountId") UUID accountId);
+
   /**
    * Resuelve la identidad empresarial propiedad del actor autenticado sin aceptar IDs del cliente.
    */

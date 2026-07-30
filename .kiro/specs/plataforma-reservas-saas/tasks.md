@@ -260,9 +260,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 14.4. Implementar suspensión de local.
 - [x] 14.5. Implementar revisión de incidencias.
 - [x] 14.6. Implementar revisión de cuentas empresariales pendientes.
-- [ ] 14.7. Implementar aprobación, rechazo y reintento manual de verificación empresarial.
-- [ ] 14.8. Implementar revisión de documentos de respaldo con aprobación, rechazo o solicitud de corrección.
-- [ ] 14.9. Implementar gestión básica de penalizaciones.
+- [x] 14.7. Implementar aprobación, rechazo y reintento manual de verificación empresarial.
+- [x] 14.8. Implementar revisión de documentos de respaldo con aprobación, rechazo o solicitud de corrección.
+- [x] 14.9. Implementar gestión básica de penalizaciones.
 - [ ] 14.10. Implementar gestión básica de planes con textos ES/EN.
 - [ ] 14.11. Implementar métricas globales iniciales.
 - [ ] 14.12. Crear auditoría visible para acciones críticas.

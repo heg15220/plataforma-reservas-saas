@@ -47,15 +47,52 @@ const businessAccountSchema = z.object({
   businessLegalName: z.string(),
   businessTaxIdentifier: z.string(),
   businessAddress: z.string().nullable(),
-  verificationStatus: z.literal("pending_review"),
+  verificationStatus: z.enum([
+    "unverified",
+    "pending_remote_check",
+    "verified",
+    "pending_review",
+    "rejected",
+    "expired",
+  ]),
   verificationProvider: z.string().nullable(),
   verificationReference: z.string().nullable(),
-  manualReviewStatus: z.literal("pending_review"),
+  manualReviewStatus: z
+    .enum(["pending_review", "approved", "rejected", "needs_correction"])
+    .nullable(),
   updatedAt: z.iso.datetime({ offset: true }),
 });
 const businessAccountsSchema = z.object({
   accounts: z.array(businessAccountSchema).max(100),
 });
+const documentSchema = z.object({
+  id: z.uuid(),
+  businessAccountId: z.uuid(),
+  documentRequestId: z.uuid().nullable(),
+  documentType: z.string(),
+  mediaType: z.string().nullable(),
+  fileSizeBytes: z.number().int().nonnegative().nullable(),
+  malwareScanStatus: z.string().nullable(),
+  status: z.enum(["pending_review", "accepted", "rejected", "needs_correction"]),
+  createdAt: z.iso.datetime({ offset: true }),
+  reviewedAt: z.iso.datetime({ offset: true }).nullable(),
+  reviewNotes: z.string().nullable(),
+});
+const documentsSchema = z.object({ documents: z.array(documentSchema).max(100) });
+const penaltySchema = z.object({
+  id: z.uuid(),
+  customerEmailNormalized: z.email(),
+  scope: z.enum(["global", "venue"]),
+  venueId: z.uuid().nullable(),
+  incidentCountOperational: z.number().int().positive(),
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+  status: z.enum(["active", "expired", "revoked"]),
+  reason: z.string(),
+  createdFromIncidentId: z.uuid(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+const penaltiesSchema = z.object({ penalties: z.array(penaltySchema).max(100) });
 const loginSchema = z.object({
   userId: z.uuid(),
   accountType: z.literal("admin"),
@@ -68,6 +105,8 @@ export type AdminCategory = z.infer<typeof categorySchema>;
 export type AdminVenue = z.infer<typeof venueSchema>;
 export type AdminIncident = z.infer<typeof incidentSchema>;
 export type AdminBusinessAccount = z.infer<typeof businessAccountSchema>;
+export type AdminDocument = z.infer<typeof documentSchema>;
+export type AdminPenalty = z.infer<typeof penaltySchema>;
 export type AdminCategoryInput = Pick<AdminCategory, "active" | "nameEn" | "nameEs" | "slug">;
 export type AdminVenueInput = Pick<
   AdminVenue,
@@ -147,6 +186,75 @@ export async function reviewAdminIncident(
 
 export async function fetchPendingBusinessAccounts(signal?: AbortSignal) {
   return request("/api/admin/business-accounts", businessAccountsSchema, { signal });
+}
+
+export async function decideBusinessAccount(
+  accountId: string,
+  decision: "approved" | "rejected",
+  reason: string,
+) {
+  return request(
+    `/api/admin/business-accounts/${accountId}/${decision === "approved" ? "approve" : "reject"}`,
+    businessAccountSchema,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export async function recheckBusinessAccount(accountId: string, reason: string) {
+  return request(`/api/admin/business-accounts/${accountId}/recheck`, businessAccountSchema, {
+    method: "POST",
+    body: JSON.stringify({ requestId: crypto.randomUUID(), reason }),
+  });
+}
+
+export async function fetchPendingDocuments(signal?: AbortSignal) {
+  return request("/api/admin/business-documents", documentsSchema, { signal });
+}
+
+/** Recupera contenido privado con credenciales; el llamador controla su URL efímera en memoria. */
+export async function fetchAdminDocumentContent(documentId: string) {
+  let response: Response;
+  try {
+    response = await fetch(
+      new URL(`/api/admin/business-documents/${documentId}/content`, apiBase()),
+      { credentials: "include", headers: { Accept: "application/octet-stream" } },
+    );
+  } catch {
+    throw new AdminApiError("unavailable");
+  }
+  if (response.status === 401 || response.status === 403) throw new AdminApiError("forbidden");
+  if (!response.ok) throw new AdminApiError("unavailable");
+  return response.blob();
+}
+
+export async function reviewAdminDocument(
+  documentId: string,
+  decision: "accepted" | "rejected" | "needs_correction",
+  reason: string,
+) {
+  return request(`/api/admin/business-documents/${documentId}`, documentSchema, {
+    method: "PATCH",
+    body: JSON.stringify({ decision, reason }),
+  });
+}
+
+export async function fetchAdminPenalties(signal?: AbortSignal) {
+  return request("/api/admin/penalties", penaltiesSchema, { signal });
+}
+
+export async function updateAdminPenalty(
+  penaltyId: string,
+  status: "active" | "revoked",
+  endsAt: string | null,
+  reason: string,
+) {
+  return request(`/api/admin/penalties/${penaltyId}`, penaltySchema, {
+    method: "PATCH",
+    body: JSON.stringify({ status, endsAt, reason }),
+  });
 }
 
 async function request<T>(

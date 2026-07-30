@@ -51,6 +51,32 @@ public class AesGcmDocumentEncryptionServiceImpl implements DocumentEncryptionSe
   }
 
   @Override
+  public byte[] decrypt(byte[] encryptedContent, String keyId) {
+    if (!properties.keyId().equals(keyId)
+        || encryptedContent == null
+        || encryptedContent.length <= FORMAT_HEADER.length + IV_BYTES) {
+      throw new IllegalArgumentException("Unsupported encrypted document");
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(encryptedContent);
+    byte[] header = new byte[FORMAT_HEADER.length];
+    buffer.get(header);
+    if (!java.util.Arrays.equals(FORMAT_HEADER, header)) {
+      throw new IllegalArgumentException("Unsupported encrypted document");
+    }
+    byte[] iv = new byte[IV_BYTES];
+    buffer.get(iv);
+    byte[] ciphertext = new byte[buffer.remaining()];
+    buffer.get(ciphertext);
+    try {
+      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
+      return cipher.doFinal(ciphertext);
+    } catch (GeneralSecurityException exception) {
+      throw new IllegalArgumentException("Document authentication failed", exception);
+    }
+  }
+
+  @Override
   public String keyId() {
     return properties.keyId();
   }

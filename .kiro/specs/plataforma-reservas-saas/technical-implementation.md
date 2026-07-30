@@ -27806,3 +27806,161 @@ web tocados.
 La cola no pagina más allá de 100 ni incluye documentos: la paginación será necesaria al crecer el
 volumen y la revisión documental corresponde a `14.8`. La siguiente tarea fuente de verdad es
 `14.7`, aprobación, rechazo y reintento manual de verificación empresarial.
+
+## Tarea 14.7 - Aprobación, rechazo y reintento manual de verificación empresarial
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Objetivo: convertir la cola de `14.6` en un flujo de decisión seguro, trazable e idempotente sin
+  confundir evidencia manual con un resultado técnico remoto.
+
+### Contratos y máquina de estados
+
+Se implementaron:
+
+- `POST /api/admin/business-accounts/{id}/approve`;
+- `POST /api/admin/business-accounts/{id}/reject`;
+- `POST /api/admin/business-accounts/{id}/recheck`.
+
+Aprobar y rechazar reciben únicamente un motivo obligatorio de hasta 1000 caracteres; el resultado
+lo fija la ruta para impedir discrepancias entre URL y cuerpo. `AdminBusinessAccountService.decide`
+adquiere `BusinessAccountDao.findByIdForStateUpdate`, exige los dos estados `pending_review`,
+resuelve al administrador desde `UserDao` y persiste actor/fecha. Aprobación establece
+`manualReviewStatus=approved` y mantiene `businessVerificationStatus=pending_review`: así la
+política de publicación reconoce la aprobación manual sin fabricar fechas, proveedor o caducidad
+de una verificación remota inexistente. Rechazo establece ambos estados en `rejected`.
+
+El reintento recibe UUID `requestId`, proveedor preferido opcional y motivo. Si el request es nuevo,
+la cuenta debe seguir pendiente; si ya existe evidencia para ese UUID se permite repetirlo y
+`RemoteBusinessVerificationService` devuelve el resultado idempotente. El gateway existente
+mantiene timeouts, reintentos transitorios, rate limit, referencias y hashes mínimos. La llamada de
+red ocurre sin lock ni transacción administrativa abierta; después se recarga la cuenta con su
+propietario inicializado.
+
+### Auditoría, errores y privacidad
+
+Las acciones `business_account.manual_approved`,
+`business_account.manual_rejected` y
+`business_account.remote_recheck_requested` registran actor, cuenta, estados anterior/final,
+motivo, requestId cuando aplica, IP y user-agent. Las decisiones locales y su auditoría comparten
+transacción; el reintento conserva además su propio `BusinessVerificationCheck`. Conflictos de
+estado responden `409`, ausencias `404`, validación `400` y autorización sigue centralizada por
+`ROLE_ADMIN`.
+
+No se almacenan respuestas remotas completas ni se añaden datos fiscales al audit log. No hubo
+migración: estados, revisor y fechas ya estaban restringidos en `BusinessAccounts`.
+
+### UI, tests y límites
+
+`/admin/verificaciones` permite aprobar, rechazar o reintentar desde tarjetas responsive. Todos los
+formularios exigen motivo y usan textos ES/EN. Los contratos Zod aceptan el conjunto completo de
+estados posterior a una decisión.
+
+`AdminDecisionServicesTests` acredita aprobación manual, persistencia del revisor, conservación del
+estado técnico y auditoría. `AdminReviewServicesTests` mantiene la cobertura de cola. No se
+implementó segunda aprobación para contradecir un resultado oficial negativo: el flujo actual solo
+opera sobre estados pendientes y una política de doble control deberá añadirse antes de habilitar
+ese supuesto.
+
+## Tarea 14.8 - Revisión de documentos de respaldo
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Objetivo: permitir una revisión documental real sin convertir objetos privados en recursos
+  públicos ni conservar contenido descifrado.
+
+### Cola, contenido privado y cifrado
+
+`BusinessVerificationDocumentDao.findPendingAdminReview` devuelve máximo 100 documentos pendientes
+por antigüedad, con cuenta y solicitud precargadas. La respuesta administrativa contiene UUID,
+tipo, media type detectado, tamaño, estado antivirus, estado y fechas. Excluye `fileUrl`,
+`fileHash`, `encryptionKeyId`, uploader y cualquier secreto.
+
+`GET /api/admin/business-documents/{id}/content` resuelve metadatos bajo autorización, abandona la
+transacción de lectura antes del I/O y solicita al puerto privado el objeto con un límite derivado
+del tamaño original más el sobre AES-GCM. `MinioPrivateObjectStorage.get` rechaza límites inválidos
+y objetos que superen el máximo. `DocumentEncryptionService.decrypt` exige keyId vigente, cabecera
+`RSY1`, IV de 12 bytes y tag GCM válido. Un fallo de clave, formato o autenticidad se cierra sin
+entregar bytes. La respuesta usa media type detectado, `Content-Disposition: inline` y
+`X-Content-Type-Options: nosniff`; no existe URL pública o persistente.
+
+### Decisiones y corrección
+
+Se implementaron:
+
+- `GET /api/admin/business-documents`;
+- `PATCH /api/admin/business-documents/{id}`;
+- `GET /api/admin/business-documents/{id}/content`.
+
+La decisión admite solo `accepted`, `rejected` o `needs_correction` y motivo obligatorio de máximo
+2000 caracteres. El servicio bloquea el documento, exige `pending_review`, fija revisor, fecha,
+nota y estado, y audita la transición dentro de la misma transacción.
+
+Solicitar corrección reabre la `BusinessVerificationDocumentRequest` original (`open`,
+`resolvedAt=null`) y fija la cuenta en `manualReviewStatus=needs_correction`. No se crea una segunda
+solicitud que viole la unicidad por check. Cuando el titular sube una copia distinta mediante el
+flujo privado existente, `BusinessVerificationDocumentPersistenceServiceImpl` vuelve a establecer
+`pending_review`, limpia revisor/fecha de la cuenta y satisface otra vez la solicitud. La unicidad
+por hash sigue impidiendo reenviar exactamente el mismo fichero.
+
+### UI, verificación y riesgos
+
+La pantalla integrada muestra dos colas separadas, permite abrir el contenido mediante un Blob URL
+efímero revocado al minuto y ofrece las tres decisiones documentales. Tipos y acciones están
+localizados ES/EN. `AdminDecisionServicesTests` verifica que la corrección reabre la solicitud y
+actualiza la cuenta; `AesGcmDocumentEncryptionServiceTests` verifica cifrado aleatorio y
+descifrado autenticado.
+
+Limitación: solo la clave configurada actualmente puede descifrar. Antes de rotación debe
+implementarse un keyring por `encryptionKeyId`; por ello un ID antiguo falla cerrado en vez de
+intentar una clave incorrecta.
+
+## Tarea 14.9 - Gestión básica de penalizaciones
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/14-administration`.
+- Estado: completada y verificada.
+- Objetivo: ofrecer corrección operativa mínima y auditada sin permitir fabricar o reactivar
+  restricciones desde el panel.
+
+### Contratos, persistencia e invariantes
+
+`GET /api/admin/penalties` usa `PenaltyDao.findAdminPage(Pageable)` con máximo 100 filas y orden
+estable por actualización e ID. Devuelve email normalizado, scope/local, contador, inicio/fin,
+estado, razón, incidencia origen y actualización.
+
+`PATCH /api/admin/penalties/{id}` adquiere lock pesimista y solo admite una fila `active`. El cuerpo
+elige:
+
+- `revoked`, sin necesidad de fecha final nueva; o
+- `active`, con `endsAt` futuro y posterior a `startsAt`, para acortar o ampliar vigencia.
+
+El servicio no permite crear, reactivar una fila expirada/revocada, modificar email, scope, local,
+contador, razón automática, inicio o incidencia origen. No fue necesaria migración porque
+`active`, `expired` y `revoked`, los periodos y los índices ya existían.
+
+Cada cambio actualiza con reloj de servidor y registra `penalty.admin_updated` con estado/fin
+antes y después, motivo, actor, IP y user-agent dentro de la misma transacción. Esto satisface la
+auditoría obligatoria de `RF-030`; la consulta visible de auditoría continúa reservada a `14.12`.
+
+### UI, tests y evidencia conjunta
+
+`/admin/penalizaciones` presenta tarjetas responsive y solo muestra edición para filas activas. El
+formulario permite ajuste de fin o revocación y exige motivo, con textos ES/EN. El test unitario
+verifica revocación, conservación de la incidencia origen, guardado y auditoría.
+
+Evidencia focalizada de las tres tareas:
+
+- compilación del módulo API correcta con validadores globales omitidos;
+- `AdminInitialServicesTests` (2), `AdminReviewServicesTests` (3) y
+  `AdminDecisionServicesTests` (3): 8 tests correctos;
+- prueba AES-GCM: 1 correcta;
+- frontend admin API/catálogo: 6 tests correctos;
+- Spotless aplicado solo a administración y dependencias Java modificadas; Prettier solo a
+  archivos admin web;
+- ESLint sobre los archivos exactos alcanzó 35 segundos sin diagnósticos y fue detenido;
+- no se ejecutaron suites globales, Docker, Testcontainers, MinIO real ni proveedor remoto.
+
+La siguiente tarea fuente de verdad es `14.10`, gestión básica de planes con textos ES/EN.

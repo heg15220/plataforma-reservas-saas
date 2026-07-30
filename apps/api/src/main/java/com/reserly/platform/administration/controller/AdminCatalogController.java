@@ -12,6 +12,14 @@ import com.reserly.platform.administration.dto.AdminIncidentResponse;
 import com.reserly.platform.administration.dto.AdminIncidentReviewRequest;
 import com.reserly.platform.administration.dto.AdminBusinessAccountListResponse;
 import com.reserly.platform.administration.dto.AdminBusinessAccountResponse;
+import com.reserly.platform.administration.dto.AdminBusinessRecheckRequest;
+import com.reserly.platform.administration.dto.AdminDocumentListResponse;
+import com.reserly.platform.administration.dto.AdminDocumentResponse;
+import com.reserly.platform.administration.dto.AdminDocumentReviewRequest;
+import com.reserly.platform.administration.dto.AdminPenaltyListResponse;
+import com.reserly.platform.administration.dto.AdminPenaltyResponse;
+import com.reserly.platform.administration.dto.AdminPenaltyUpdateRequest;
+import com.reserly.platform.administration.dto.AdminReasonRequest;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -79,4 +87,58 @@ public interface AdminCatalogController {
   @GetMapping("/business-accounts/{accountId}")
   ResponseEntity<AdminBusinessAccountResponse> getPendingBusinessAccount(
       @PathVariable UUID accountId);
+
+  @PostMapping(
+      path = "/business-accounts/{accountId}/approve",
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminBusinessAccountResponse> approveBusinessAccount(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID accountId,
+      @Valid @RequestBody AdminReasonRequest request,
+      HttpServletRequest servletRequest);
+
+  @PostMapping(
+      path = "/business-accounts/{accountId}/reject",
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminBusinessAccountResponse> rejectBusinessAccount(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID accountId,
+      @Valid @RequestBody AdminReasonRequest request,
+      HttpServletRequest servletRequest);
+
+  @PostMapping(
+      path = "/business-accounts/{accountId}/recheck",
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminBusinessAccountResponse> recheckBusinessAccount(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID accountId,
+      @Valid @RequestBody AdminBusinessRecheckRequest request,
+      HttpServletRequest servletRequest);
+
+  @GetMapping("/business-documents")
+  ResponseEntity<AdminDocumentListResponse> listPendingDocuments();
+
+  @GetMapping(
+      path = "/business-documents/{documentId}/content",
+      produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+  ResponseEntity<byte[]> getDocumentContent(@PathVariable UUID documentId);
+
+  @PatchMapping(
+      path = "/business-documents/{documentId}",
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminDocumentResponse> reviewDocument(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID documentId,
+      @Valid @RequestBody AdminDocumentReviewRequest request,
+      HttpServletRequest servletRequest);
+
+  @GetMapping("/penalties")
+  ResponseEntity<AdminPenaltyListResponse> listPenalties();
+
+  @PatchMapping(path = "/penalties/{penaltyId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminPenaltyResponse> updatePenalty(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID penaltyId,
+      @Valid @RequestBody AdminPenaltyUpdateRequest request,
+      HttpServletRequest servletRequest);
 }
