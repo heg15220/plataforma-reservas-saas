@@ -406,6 +406,12 @@ navegador se valida y correlaciona, pero es exclusivamente informativo. Los call
 deduplican de forma atómica por proveedor, pedido y hash SHA-256 del payload firmado, sin almacenar
 el payload, la firma ni datos bancarios.
 
+La persistencia del pago aplica una máquina de estados monotónica: `confirmed` es absorbente;
+`rejected` y `cancelled_by_user` no se degradan por mensajes atrasados, aunque una confirmación
+auténtica posterior puede prevalecer; `communication_error` y `pending_confirmation` son
+transitorios. Solo `confirmed` establece `paidAt`. El diagnóstico persistido se limita a canal,
+resultado normalizado y código de respuesta del proveedor.
+
 ### 3.12 Notificaciones
 
 Responsabilidades:
@@ -1666,6 +1672,11 @@ POST /api/venue/me/subscription/checkout/redsys
 GET /api/venue/me/payments
 ```
 
+`GET /api/venue/me/payments` deriva el local de la sesión, devuelve como máximo los 50 movimientos
+más recientes y expone únicamente referencia de pedido, importe, moneda, estado, creación y fecha
+de confirmación. No devuelve UUID internos, hashes ni payloads. Los endpoints de checkout y consulta
+pública de estado permanecen reservados mientras el cobro real esté deshabilitado.
+
 ### 7.3 Administración
 
 ```http
@@ -1708,6 +1719,8 @@ Contratos preparados:
 - el identificador técnico de pago viaja en `Ds_MerchantData`, y se correlaciona con el pedido,
   comercio, terminal, importe, moneda EUR y tipo de transacción;
 - la activación o renovación de la suscripción solo ocurre ante un resultado `confirmed`;
+- el pago y la suscripción se actualizan dentro de la misma transacción que reserva el recibo
+  idempotente, de modo que cualquier fallo revierte los tres efectos;
 - la configuración admite exclusivamente los endpoints oficiales de pruebas o producción y las
   credenciales se suministran por variables de entorno.
 

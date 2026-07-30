@@ -1559,7 +1559,17 @@
     },
     "history": {
       "title": "Billing history",
-      "empty": "There are no billing entries yet. Confirmed payments will appear here when monetisation is enabled."
+      "empty": "There are no billing entries yet. Payments will appear here when an attempt has been recorded.",
+      "createdAt": "Created on {date}",
+      "paidAt": "Confirmed on {date}",
+      "notPaid": "Payment not confirmed",
+      "status": {
+        "confirmed": "Confirmed",
+        "rejected": "Rejected",
+        "cancelled_by_user": "Cancelled",
+        "communication_error": "Communication error",
+        "pending_confirmation": "Pending"
+      }
     },
     "errors": {
       "unauthenticated": "Your session has expired. Sign in again.",

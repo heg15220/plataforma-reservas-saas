@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchVenueSubscription } from "./venue-subscription-api";
+import { fetchVenuePaymentHistory, fetchVenueSubscription } from "./venue-subscription-api";
 
 const freePlan = {
   slug: "free",
@@ -91,5 +91,40 @@ describe("fetchVenueSubscription", () => {
       ),
     );
     await expect(fetchVenueSubscription()).rejects.toMatchObject({ kind: "unavailable" });
+  });
+});
+
+describe("fetchVenuePaymentHistory", () => {
+  it("consulta el historial propio y exige coherencia entre confirmación y fecha de cobro", async () => {
+    const validHistory = {
+      payments: [
+        {
+          orderReference: "ORDER12345",
+          amount: 29,
+          currency: "EUR",
+          status: "confirmed",
+          createdAt: "2026-07-30T10:00:00Z",
+          paidAt: "2026-07-30T10:01:00Z",
+        },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(validHistory));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchVenuePaymentHistory()).resolves.toEqual(validHistory);
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL("http://api.test/api/venue/me/payments"),
+      expect.objectContaining({ cache: "no-store", credentials: "include" }),
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          payments: [{ ...validHistory.payments[0], paidAt: null }],
+        }),
+      ),
+    );
+    await expect(fetchVenuePaymentHistory()).rejects.toMatchObject({ kind: "unavailable" });
   });
 });

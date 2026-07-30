@@ -1,14 +1,22 @@
 import { cleanup, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
 
-import { fetchVenueSubscription, type VenueSubscription } from "./venue-subscription-api";
+import {
+  fetchVenuePaymentHistory,
+  fetchVenueSubscription,
+  type VenueSubscription,
+} from "./venue-subscription-api";
 import { VenueSubscriptionDashboard } from "./venue-subscription-dashboard";
 
 vi.mock("./venue-subscription-api", async (importOriginal) => {
   const original = await importOriginal<typeof import("./venue-subscription-api")>();
-  return { ...original, fetchVenueSubscription: vi.fn() };
+  return {
+    ...original,
+    fetchVenuePaymentHistory: vi.fn(),
+    fetchVenueSubscription: vi.fn(),
+  };
 });
 
 const freePlan = {
@@ -62,6 +70,10 @@ afterEach(() => {
 });
 
 describe("VenueSubscriptionDashboard", () => {
+  beforeEach(() => {
+    vi.mocked(fetchVenuePaymentHistory).mockResolvedValue({ payments: [] });
+  });
+
   it("muestra plan, estado y catálogo sin acción ni aviso RedSys cuando el cobro está apagado", async () => {
     vi.mocked(fetchVenueSubscription).mockResolvedValue(disabledSubscription);
 
@@ -99,5 +111,38 @@ describe("VenueSubscriptionDashboard", () => {
     expect(screen.getByText("Pago pendiente")).toBeVisible();
     expect(screen.queryByText("Monetización aún no activada")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("muestra movimientos confirmados y pendientes sin datos financieros sensibles", async () => {
+    vi.mocked(fetchVenueSubscription).mockResolvedValue(disabledSubscription);
+    vi.mocked(fetchVenuePaymentHistory).mockResolvedValue({
+      payments: [
+        {
+          orderReference: "ORDER12345",
+          amount: 29,
+          currency: "EUR",
+          status: "confirmed",
+          createdAt: "2026-07-30T10:00:00Z",
+          paidAt: "2026-07-30T10:01:00Z",
+        },
+        {
+          orderReference: "ORDER12346",
+          amount: 59,
+          currency: "EUR",
+          status: "pending_confirmation",
+          createdAt: "2026-07-30T11:00:00Z",
+          paidAt: null,
+        },
+      ],
+    });
+
+    renderWithIntl(<VenueSubscriptionDashboard />);
+
+    await waitFor(() => expect(screen.getByText("ORDER12345")).toBeVisible());
+    expect(screen.getByText("ORDER12346")).toBeVisible();
+    expect(screen.getByText("Confirmado")).toBeVisible();
+    expect(screen.getByText("Pendiente")).toBeVisible();
+    expect(screen.getByText("Sin confirmación de cobro")).toBeVisible();
+    expect(screen.queryByText(/\b(CVV|firma|payload)\b/i)).not.toBeInTheDocument();
   });
 });

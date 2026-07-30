@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Traduce fallos de catálogo y propiedad sin exponer IDs ni configuración interna. */
-@RestControllerAdvice(assignableTypes = VenueSubscriptionControllerImpl.class)
+@RestControllerAdvice(
+    assignableTypes = {VenueSubscriptionControllerImpl.class, VenuePaymentControllerImpl.class})
 public class VenueSubscriptionExceptionHandler {
 
   @ExceptionHandler(VenueSubscriptionNotFoundException.class)

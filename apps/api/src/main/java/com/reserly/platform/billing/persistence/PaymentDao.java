@@ -4,6 +4,7 @@ import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -36,5 +37,6 @@ public interface PaymentDao extends JpaRepository<PaymentEntity, UUID> {
       where payment.venueId = :venueId
       order by payment.createdAt desc, payment.id desc
       """)
-  List<PaymentEntity> findHistoryByVenueId(@Param("venueId") UUID venueId);
+  List<PaymentEntity> findHistoryByVenueId(
+      @Param("venueId") UUID venueId, Pageable pageable);
 }

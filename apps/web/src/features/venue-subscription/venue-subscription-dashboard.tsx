@@ -14,9 +14,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Surface } from "@/components/layout";
 
 import {
+  fetchVenuePaymentHistory,
   fetchVenueSubscription,
+  type PaymentStatus,
   type SubscriptionPlan,
   type SubscriptionStatus,
+  type VenuePayment,
+  type VenuePaymentHistory,
   type VenueSubscription,
   VenueSubscriptionApiError,
 } from "./venue-subscription-api";
@@ -32,11 +36,20 @@ const STATUS_TONES = {
   "default" | "error" | "info" | "success" | "warning"
 >;
 
+const PAYMENT_STATUS_TONES = {
+  confirmed: "success",
+  rejected: "error",
+  cancelled_by_user: "default",
+  communication_error: "warning",
+  pending_confirmation: "warning",
+} as const satisfies Record<PaymentStatus, "default" | "error" | "success" | "warning">;
+
 /** Panel responsive de plan actual, monetización y catálogo disponible. */
 export function VenueSubscriptionDashboard() {
   const t = useTranslations("VenueSubscription");
   const locale = useLocale();
   const [data, setData] = useState<VenueSubscription | null>(null);
+  const [history, setHistory] = useState<VenuePaymentHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<VenueSubscriptionApiError["kind"] | null>(null);
   const currency = useMemo(
@@ -46,9 +59,15 @@ export function VenueSubscriptionDashboard() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchVenueSubscription(controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setData(result);
+    Promise.all([
+      fetchVenueSubscription(controller.signal),
+      fetchVenuePaymentHistory(controller.signal),
+    ])
+      .then(([subscription, payments]) => {
+        if (!controller.signal.aborted) {
+          setData(subscription);
+          setHistory(payments);
+        }
       })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
@@ -71,7 +90,7 @@ export function VenueSubscriptionDashboard() {
       </Stack>
     );
   }
-  if (error || !data) {
+  if (error || !data || !history) {
     return (
       <Alert severity="error" sx={{ mt: 6 }}>
         {t(`errors.${error ?? "unavailable"}`)}
@@ -195,11 +214,66 @@ export function VenueSubscriptionDashboard() {
             {t("history.title")}
           </Typography>
         </Stack>
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          {t("history.empty")}
-        </Typography>
+        {history.payments.length === 0 ? (
+          <Typography color="text.secondary" sx={{ mt: 2 }}>
+            {t("history.empty")}
+          </Typography>
+        ) : (
+          <Stack component="ul" spacing={2} sx={{ listStyle: "none", m: 0, mt: 3, p: 0 }}>
+            {history.payments.map((payment) => (
+              <PaymentHistoryItem
+                key={`${payment.orderReference}-${payment.createdAt}`}
+                locale={locale}
+                payment={payment}
+              />
+            ))}
+          </Stack>
+        )}
       </Surface>
     </Stack>
+  );
+}
+
+function PaymentHistoryItem({ locale, payment }: { locale: string; payment: VenuePayment }) {
+  const t = useTranslations("VenueSubscription");
+  const currency = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: payment.currency,
+  });
+  return (
+    <Box
+      component="li"
+      sx={{
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 3,
+        display: "grid",
+        gap: 2,
+        gridTemplateColumns: { md: "minmax(0, 1fr) repeat(3, auto)" },
+        p: 2.5,
+      }}
+    >
+      <Box>
+        <Typography sx={{ fontWeight: 800 }}>{payment.orderReference}</Typography>
+        <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
+          {t("history.createdAt", { date: formatDate(payment.createdAt, locale) })}
+        </Typography>
+      </Box>
+      <Typography sx={{ alignSelf: "center", fontWeight: 800 }}>
+        {currency.format(payment.amount)}
+      </Typography>
+      <Chip
+        color={PAYMENT_STATUS_TONES[payment.status]}
+        label={t(`history.status.${payment.status}`)}
+        size="small"
+        sx={{ alignSelf: "center", justifySelf: "start" }}
+      />
+      <Typography color="text.secondary" sx={{ alignSelf: "center" }} variant="body2">
+        {payment.paidAt
+          ? t("history.paidAt", { date: formatDate(payment.paidAt, locale) })
+          : t("history.notPaid")}
+      </Typography>
+    </Box>
   );
 }
 

@@ -1559,7 +1559,17 @@
     },
     "history": {
       "title": "Historial de facturación",
-      "empty": "Todavía no hay movimientos de facturación. Los pagos confirmados aparecerán aquí cuando la monetización esté habilitada."
+      "empty": "Todavía no hay movimientos de facturación. Los pagos aparecerán aquí cuando exista un intento registrado.",
+      "createdAt": "Creado el {date}",
+      "paidAt": "Confirmado el {date}",
+      "notPaid": "Sin confirmación de cobro",
+      "status": {
+        "confirmed": "Confirmado",
+        "rejected": "Rechazado",
+        "cancelled_by_user": "Cancelado",
+        "communication_error": "Error de comunicación",
+        "pending_confirmation": "Pendiente"
+      }
     },
     "errors": {
       "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",

@@ -7,6 +7,13 @@ const subscriptionStatusSchema = z.enum([
   "suspended",
   "cancelled",
 ]);
+const paymentStatusSchema = z.enum([
+  "confirmed",
+  "rejected",
+  "cancelled_by_user",
+  "communication_error",
+  "pending_confirmation",
+]);
 const billingPeriodSchema = z.enum(["monthly", "yearly"]);
 const nullableLimit = z.number().int().nonnegative().nullable();
 const planSchema = z
@@ -68,9 +75,36 @@ const responseSchema = z
   })
   .strict();
 
+const paymentHistorySchema = z
+  .object({
+    payments: z
+      .array(
+        z
+          .object({
+            orderReference: z.string().trim().min(1).max(128),
+            amount: z.number().positive().max(1_000_000),
+            currency: z.string().regex(/^[A-Z]{3}$/),
+            status: paymentStatusSchema,
+            createdAt: z.iso.datetime({ offset: true }),
+            paidAt: z.iso.datetime({ offset: true }).nullable(),
+          })
+          .strict()
+          .superRefine((payment, context) => {
+            if ((payment.status === "confirmed") !== (payment.paidAt !== null)) {
+              context.addIssue({ code: "custom", message: "Inconsistent payment date" });
+            }
+          }),
+      )
+      .max(50),
+  })
+  .strict();
+
 export type VenueSubscription = z.infer<typeof responseSchema>;
 export type SubscriptionPlan = z.infer<typeof planSchema>;
 export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
+export type VenuePaymentHistory = z.infer<typeof paymentHistorySchema>;
+export type VenuePayment = VenuePaymentHistory["payments"][number];
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 
 export class VenueSubscriptionApiError extends Error {
   constructor(
@@ -84,9 +118,22 @@ export class VenueSubscriptionApiError extends Error {
 
 /** Consulta la suscripción propia con cookie HttpOnly y contrato estricto sin datos financieros. */
 export async function fetchVenueSubscription(signal?: AbortSignal): Promise<VenueSubscription> {
+  return fetchBillingResource("/api/venue/me/subscription", responseSchema, signal);
+}
+
+/** Consulta hasta cincuenta movimientos propios sin exponer payloads o identificadores internos. */
+export async function fetchVenuePaymentHistory(signal?: AbortSignal): Promise<VenuePaymentHistory> {
+  return fetchBillingResource("/api/venue/me/payments", paymentHistorySchema, signal);
+}
+
+async function fetchBillingResource<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  signal?: AbortSignal,
+): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(new URL("/api/venue/me/subscription", apiBaseUrl()), {
+    response = await fetch(new URL(path, apiBaseUrl()), {
       cache: "no-store",
       credentials: "include",
       headers: { Accept: "application/json" },
@@ -107,7 +154,7 @@ export async function fetchVenueSubscription(signal?: AbortSignal): Promise<Venu
     );
   }
   try {
-    return responseSchema.parse(await response.json());
+    return schema.parse(await response.json());
   } catch (error) {
     throw new VenueSubscriptionApiError("unavailable", { cause: error });
   }

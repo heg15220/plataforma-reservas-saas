@@ -13,6 +13,8 @@ import com.reserly.platform.billing.service.PaymentConfirmation;
 import com.reserly.platform.billing.service.SubscriptionPaymentApplicationService;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +73,12 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
             .orElseThrow(InvalidPaymentCallbackException::new);
     correlateRedsys(payment, callback);
     return process(
-        payment, callback.status(), callback.payloadHash(), "notification", callback.order());
+        payment,
+        callback.status(),
+        callback.payloadHash(),
+        "notification",
+        callback.order(),
+        callback.responseCode());
   }
 
   @Override
@@ -93,7 +100,8 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
         result.status(),
         result.requestPayloadHash(),
         "simulator",
-        result.providerOrderId());
+        result.providerOrderId(),
+        null);
   }
 
   private PaymentCallbackProcessingResult process(
@@ -101,7 +109,8 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
       PaymentStatus outcome,
       String payloadHash,
       String channel,
-      String order) {
+      String order,
+      String providerResponseCode) {
     Instant receivedAt = clock.instant();
     int inserted =
         receiptDao.insertIfAbsent(
@@ -121,8 +130,12 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
           outcome.persistedValue());
       return new PaymentCallbackProcessingResult(order, outcome, true, false);
     }
+    PaymentStatus previousOutcome = payment.getStatus();
+    PaymentStatus persistedOutcome =
+        persistOutcome(payment, outcome, channel, providerResponseCode, receivedAt);
     boolean subscriptionUpdated =
-        outcome == PaymentStatus.CONFIRMED
+        persistedOutcome == PaymentStatus.CONFIRMED
+            && previousOutcome != PaymentStatus.CONFIRMED
             && subscriptionService.applyConfirmedPayment(
                 new PaymentConfirmation(
                     payment.getId(),
@@ -133,9 +146,56 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
         "payment_callback_accepted provider={} order={} outcome={} subscriptionUpdated={}",
         payment.getProvider(),
         order,
-        outcome.persistedValue(),
+        persistedOutcome.persistedValue(),
         subscriptionUpdated);
-    return new PaymentCallbackProcessingResult(order, outcome, false, subscriptionUpdated);
+    return new PaymentCallbackProcessingResult(
+        order, persistedOutcome, false, subscriptionUpdated);
+  }
+
+  /**
+   * Persiste una transición monotónica y un diagnóstico mínimo sin copiar el mensaje firmado.
+   *
+   * <p>La confirmación es absorbente. Rechazo y cancelación son terminales salvo una confirmación
+   * posterior autenticada; error y pendiente pueden evolucionar. Esto evita que una notificación
+   * atrasada degrade un resultado definitivo.
+   */
+  private PaymentStatus persistOutcome(
+      PaymentEntity payment,
+      PaymentStatus incoming,
+      String channel,
+      String providerResponseCode,
+      Instant updatedAt) {
+    PaymentStatus effective = effectiveOutcome(payment.getStatus(), incoming);
+    if (payment.getStatus() == PaymentStatus.CONFIRMED
+        || (effective == payment.getStatus() && effective != incoming)) {
+      return effective;
+    }
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("channel", channel);
+    response.put("outcome", effective.persistedValue());
+    if (providerResponseCode != null) {
+      response.put("providerResponseCode", providerResponseCode);
+    }
+    payment.setStatus(effective);
+    payment.setResponsePayloadJson(response);
+    payment.setPaidAt(effective == PaymentStatus.CONFIRMED ? updatedAt : null);
+    payment.setUpdatedAt(updatedAt);
+    paymentDao.saveAndFlush(payment);
+    return effective;
+  }
+
+  private PaymentStatus effectiveOutcome(PaymentStatus current, PaymentStatus incoming) {
+    if (current == PaymentStatus.CONFIRMED || incoming == PaymentStatus.CONFIRMED) {
+      return PaymentStatus.CONFIRMED;
+    }
+    if (current == PaymentStatus.REJECTED || current == PaymentStatus.CANCELLED_BY_USER) {
+      return current;
+    }
+    if (current == PaymentStatus.COMMUNICATION_ERROR
+        && incoming == PaymentStatus.PENDING_CONFIRMATION) {
+      return current;
+    }
+    return incoming;
   }
 
   private void correlateRedsys(PaymentEntity payment, VerifiedRedsysCallback callback) {

@@ -13,11 +13,68 @@ Fuente de verdad del avance:
 - Fecha de última actualización: 2026-07-30
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.9`.
-- Siguiente tarea pendiente recomendada: `13.10. Registrar pago simulado o real como confirmado,
-  rechazado, cancelado, error o pendiente`.
-- Observación: el adaptador RedSys, la firma, la idempotencia y la aplicación de pagos confirmados
-  a suscripciones están preparados y probados; el cobro real continúa bloqueado por política.
+  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a `13.12`.
+- Siguiente tarea pendiente recomendada: `14.1. Crear acceso admin protegido`.
+- Observación: la fase 13 queda cerrada con estados persistentes, historial básico y pruebas
+  contractuales RedSys; el cobro real continúa bloqueado por política.
+
+## Conversación 123 - Estados de pago, historial de facturación y cierre contractual RedSys
+
+- Fecha: 2026-07-30.
+- Resumen de la conversación:
+  - Se completaron `13.10`, `13.11` y `13.12`, cerrando la fase 13 en
+    `phase/13-Suscriptions-plans`.
+  - Cada callback nuevo persiste el estado normalizado del pago, fecha de confirmación cuando
+    corresponde y un diagnóstico mínimo sin firma, parámetros bancarios ni payload completo.
+  - Se definió una máquina de estados monotónica: una confirmación no se degrada por callbacks
+    atrasados y los estados terminales solo pueden ser superados por una confirmación auténtica.
+  - Se creó `GET /api/venue/me/payments`, limitado al local derivado del propietario autenticado y
+    a sus 50 movimientos más recientes.
+  - El panel de suscripción carga y muestra historial responsive con referencia, importe, estado y
+    fechas localizadas, incluidos los cinco resultados posibles.
+  - Se añadió una prueba contractual que recorre firma real, verificación, correlación, persistencia
+    e idempotencia sin red ni base de datos externa.
+- Archivos modificados:
+  - Backend `billing/payment`, `billing/persistence`, `billing/service`, `billing/controller` y
+    `billing/dto`.
+  - Tests backend focalizados de estados, historial, autorización y contrato RedSys.
+  - Frontend `apps/web/src/features/venue-subscription` y sus tests.
+  - Catálogos `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-028 Suscripción y RedSys`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-001 Seguridad`.
+  - `RNF-002 Privacidad y protección de datos`.
+  - `RNF-003 Accesibilidad`.
+  - `RNF-004 Compatibilidad y responsive`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-009 Internacionalización y localización`.
+  - `RNF-011 Convenciones de implementación backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `13.10. Registrar pago simulado o real como confirmado, rechazado, cancelado, error o
+    pendiente`.
+  - `13.11. Crear historial básico de facturación`.
+  - `13.12. Crear tests de callbacks, firma e idempotencia del contrato RedSys`.
+- Siguiente tarea pendiente recomendada:
+  - `14.1. Crear acceso admin protegido`.
+- Decisiones o aclaraciones relevantes:
+  - La notificación autenticada y el resultado correlacionado del simulador usan la misma
+    transición transaccional.
+  - `paidAt` solo existe para `confirmed`; cualquier otro estado lo conserva nulo.
+  - El historial no expone UUID de pago o suscripción, proveedor, hashes, payload de respuesta ni
+    datos bancarios.
+  - Se limita a 50 filas sin paginación pública porque el alcance solicitado es un historial
+    básico; la paginación completa queda como ampliación futura.
+  - Checkout y consulta pública de estado no se exponen mientras el cobro real siga deshabilitado.
+  - La ejecución conjunta de Vitest alcanzó el límite de 45 segundos durante el arranque; se
+    dividió por archivo y los 6 casos finalizaron correctamente.
+  - Las 10 suites backend focalizadas ejecutaron 31 casos correctos. Checkstyle de billing,
+    Prettier y la paridad de las 54 claves ES/EN de la función quedaron limpios.
+  - ESLint focalizado y TypeScript alcanzaron sus límites de 30 y 45 segundos sin emitir
+    diagnósticos; no se prolongaron. El validador i18n global detectó cinco textos históricos
+    ajenos en otros módulos, por lo que se sustituyó por la comprobación acotada de claves.
+  - No se ejecutaron suite global, Docker, Testcontainers ni servicios externos.
 
 ## Conversación 122 - RedSys preparado, callbacks idempotentes y aplicación a suscripciones
 

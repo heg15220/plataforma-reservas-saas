@@ -248,9 +248,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 13.7. Preparar adaptador RedSys por redirección, configuración segura y contratos de creación de orden, retorno y notificación.
 - [x] 13.8. Implementar validación de firma e idempotencia mediante simulador y fixtures oficiales, sin activar producción.
 - [x] 13.9. Actualizar estado de suscripción tras pago simulado o confirmado por un proveedor habilitado.
-- [ ] 13.10. Registrar pago simulado o real como confirmado, rechazado, cancelado, error o pendiente.
-- [ ] 13.11. Crear historial básico de facturación.
-- [ ] 13.12. Crear tests de callbacks, firma e idempotencia del contrato RedSys.
+- [x] 13.10. Registrar pago simulado o real como confirmado, rechazado, cancelado, error o pendiente.
+- [x] 13.11. Crear historial básico de facturación.
+- [x] 13.12. Crear tests de callbacks, firma e idempotencia del contrato RedSys.
 
 ## 16. Fase 14 - Administración inicial
 

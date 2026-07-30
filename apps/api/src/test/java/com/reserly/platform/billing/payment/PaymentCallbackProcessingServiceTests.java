@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.reserly.platform.billing.PaymentStatus;
@@ -26,6 +27,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /** Acredita correlacion previa, insercion atomica y paridad entre RedSys y simulador. */
 class PaymentCallbackProcessingServiceTests {
@@ -48,6 +51,13 @@ class PaymentCallbackProcessingServiceTests {
     assertThat(result.status()).isEqualTo(PaymentStatus.CONFIRMED);
     assertThat(result.duplicate()).isFalse();
     assertThat(result.subscriptionUpdated()).isTrue();
+    assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.CONFIRMED);
+    assertThat(fixture.payment().getPaidAt()).isEqualTo(NOW);
+    assertThat(fixture.payment().getResponsePayloadJson())
+        .containsEntry("channel", "notification")
+        .containsEntry("providerResponseCode", "0000")
+        .doesNotContainKeys("signature", "merchantParameters");
+    verify(fixture.paymentDao()).saveAndFlush(fixture.payment());
     verify(fixture.subscriptionService())
         .applyConfirmedPayment(new PaymentConfirmation(PAYMENT_ID, "redsys", "1234567890", NOW));
   }
@@ -64,6 +74,7 @@ class PaymentCallbackProcessingServiceTests {
         fixture.service().processRedsysNotification(fixture.message());
 
     assertThat(result.duplicate()).isTrue();
+    verify(fixture.paymentDao(), never()).saveAndFlush(any());
     verify(fixture.subscriptionService(), never()).applyConfirmedPayment(any());
   }
 
@@ -129,6 +140,71 @@ class PaymentCallbackProcessingServiceTests {
             new PaymentConfirmation(PAYMENT_ID, "simulated", "sim_confirmed_001", NOW));
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = PaymentStatus.class,
+      names = {
+        "REJECTED",
+        "CANCELLED_BY_USER",
+        "COMMUNICATION_ERROR",
+        "PENDING_CONFIRMATION"
+      })
+  void persistsEveryNonConfirmedOutcomeWithoutPaidDateOrSubscriptionChange(
+      PaymentStatus outcome) {
+    Fixture fixture = fixture();
+    when(fixture.redsysVerifier().verify(fixture.message()))
+        .thenReturn(
+            new VerifiedRedsysCallback(
+                PAYMENT_ID,
+                "1234567890",
+                new BigDecimal("29.00"),
+                responseCode(outcome),
+                outcome,
+                outcome.name().substring(0, 1).toLowerCase().repeat(64)));
+    when(fixture
+            .receiptDao()
+            .insertIfAbsent(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(1);
+
+    PaymentCallbackProcessingResult result =
+        fixture.service().processRedsysNotification(fixture.message());
+
+    assertThat(result.status()).isEqualTo(outcome);
+    assertThat(fixture.payment().getStatus()).isEqualTo(outcome);
+    assertThat(fixture.payment().getPaidAt()).isNull();
+    assertThat(fixture.payment().getUpdatedAt()).isEqualTo(NOW);
+    verify(fixture.paymentDao()).saveAndFlush(fixture.payment());
+    verifyNoInteractions(fixture.subscriptionService());
+  }
+
+  @Test
+  void neverDowngradesConfirmedPaymentWithALaterNonConfirmedCallback() {
+    Fixture fixture = fixture();
+    fixture.payment().setStatus(PaymentStatus.CONFIRMED);
+    fixture.payment().setPaidAt(NOW.minusSeconds(60));
+    when(fixture.redsysVerifier().verify(fixture.message()))
+        .thenReturn(
+            new VerifiedRedsysCallback(
+                PAYMENT_ID,
+                "1234567890",
+                new BigDecimal("29.00"),
+                "9999",
+                PaymentStatus.PENDING_CONFIRMATION,
+                "c".repeat(64)));
+    when(fixture
+            .receiptDao()
+            .insertIfAbsent(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(1);
+
+    PaymentCallbackProcessingResult result =
+        fixture.service().processRedsysNotification(fixture.message());
+
+    assertThat(result.status()).isEqualTo(PaymentStatus.CONFIRMED);
+    assertThat(fixture.payment().getPaidAt()).isEqualTo(NOW.minusSeconds(60));
+    verify(fixture.paymentDao(), never()).saveAndFlush(any());
+    verifyNoInteractions(fixture.subscriptionService());
+  }
+
   private Fixture fixture() {
     RedsysCallbackVerificationService verifier = mock(RedsysCallbackVerificationService.class);
     PaymentDao paymentDao = mock(PaymentDao.class);
@@ -150,6 +226,9 @@ class PaymentCallbackProcessingServiceTests {
     payment.setProviderOrderId("1234567890");
     payment.setAmount(new BigDecimal("29.00"));
     payment.setCurrency("EUR");
+    payment.setStatus(PaymentStatus.PENDING_CONFIRMATION);
+    payment.setCreatedAt(NOW.minusSeconds(120));
+    payment.setUpdatedAt(NOW.minusSeconds(120));
     when(verifier.verify(message)).thenReturn(callback);
     when(paymentDao.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
     when(paymentDao.findByIdForUpdate(PAYMENT_ID)).thenReturn(Optional.of(payment));
@@ -160,12 +239,24 @@ class PaymentCallbackProcessingServiceTests {
             receiptDao,
             subscriptionService,
             Clock.fixed(NOW, ZoneOffset.UTC));
-    return new Fixture(service, verifier, receiptDao, subscriptionService, payment, message);
+    return new Fixture(
+        service, verifier, paymentDao, receiptDao, subscriptionService, payment, message);
+  }
+
+  private String responseCode(PaymentStatus status) {
+    return switch (status) {
+      case REJECTED -> "0101";
+      case CANCELLED_BY_USER -> "9915";
+      case COMMUNICATION_ERROR -> "0909";
+      case PENDING_CONFIRMATION -> "9999";
+      default -> throw new IllegalArgumentException("Unsupported fixture status");
+    };
   }
 
   private record Fixture(
       PaymentCallbackProcessingServiceImpl service,
       RedsysCallbackVerificationService redsysVerifier,
+      PaymentDao paymentDao,
       PaymentCallbackReceiptDao receiptDao,
       SubscriptionPaymentApplicationService subscriptionService,
       PaymentEntity payment,

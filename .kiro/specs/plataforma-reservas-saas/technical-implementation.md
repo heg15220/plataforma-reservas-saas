@@ -10,9 +10,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7` y `13.1` a
-  `13.9`.
-- Siguiente tarea pendiente recomendada: `13.10. Registrar pago simulado o real como confirmado,
-  rechazado, cancelado, error o pendiente`.
+  `13.12`.
+- Siguiente tarea pendiente recomendada: `14.1. Crear acceso admin protegido`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -27181,3 +27180,300 @@ El pago permanece con su estado previo hasta implementar `13.10`; deliberadament
 responsabilidad con la transición de suscripción. El flujo futuro de creación de checkout deberá
 persistir la instantánea del pago antes de invocar al proveedor. La siguiente tarea fuente de verdad
 es `13.10`.
+
+## Tarea 13.10 - Registrar el resultado del pago
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Persistir el resultado normalizado de cada callback RedSys o respuesta del simulador dentro de la
+misma transacción que deduplica el evento y, cuando procede, actualiza la suscripción. El pago debe
+representar `confirmed`, `rejected`, `cancelled_by_user`, `communication_error` o
+`pending_confirmation` sin conservar material firmado o bancario.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-028`: registrar todos los resultados devueltos y actualizar la suscripción al confirmar.
+- `RNF-001`: correlación previa y transición no controlable por el navegador.
+- `RNF-002`: diagnóstico minimizado.
+- `RNF-006`: transacción, locks e idempotencia frente a reintentos y desorden.
+- `RNF-008`: logs estructurados sin secretos.
+- `design.md` documenta la máquina monotónica y el contrato de `paidAt`.
+
+### Archivos creados, modificados o eliminados
+
+- Modificados:
+  - `PaymentCallbackProcessingServiceImpl`.
+  - `PaymentCallbackProcessingServiceTests`.
+- No se crearon migraciones: `Payments` ya contenía estado, respuesta saneada, `paidAt` y
+  `updatedAt`; `V34` ya aportaba el recibo idempotente.
+- No se eliminó ningún archivo.
+
+### Arquitectura aplicada
+
+El procesador conserva la única frontera para notificación real y simulador. Después de verificar y
+correlacionar, bloquea `PaymentEntity`, reserva el recibo con `ON CONFLICT DO NOTHING` y solo el
+primer evento nuevo calcula la transición. El pago se guarda con `saveAndFlush`; si una confirmación
+activa la suscripción y ese paso falla, Spring revierte pago, recibo y suscripción conjuntamente.
+
+La máquina evita degradaciones por orden de entrega:
+
+- `confirmed` es absorbente;
+- cualquier estado puede evolucionar a una confirmación auténtica;
+- `rejected` y `cancelled_by_user` no se sustituyen por estados no confirmados posteriores;
+- `communication_error` no vuelve a pendiente;
+- `pending_confirmation` y error pueden evolucionar hacia un resultado definitivo.
+
+Un evento nuevo que reafirma el mismo estado no confirmado actualiza diagnóstico y fecha de
+procesamiento. Una confirmación ya persistida no modifica `paidAt` ni repite la suscripción.
+
+### Modelo de datos y persistencia
+
+No cambió el esquema. Se aplican las restricciones existentes:
+
+- `status` usa el catálogo cerrado de cinco valores;
+- `paidAt` es obligatorio exclusivamente para `confirmed`;
+- `updatedAt` avanza con el reloj del servidor;
+- `responsePayloadJson` permanece como objeto JSON.
+
+El JSON guardado solo contiene `channel`, `outcome` y, para RedSys, `providerResponseCode`. No
+contiene Base64, firma, clave, parámetros completos, PAN, CVV o datos del titular.
+
+### Flujos, validaciones y permisos
+
+El retorno del navegador sigue siendo de solo lectura. La notificación firmada y el resultado
+interno del simulador ejecutan el mismo método `process`. Importe, moneda, proveedor, pedido, UUID y
+hash se correlacionan antes de escribir. Ningún endpoint nuevo se añadió en esta tarea.
+
+### Errores, logs y observabilidad
+
+Un duplicado exacto devuelve `duplicate=true` sin `UPDATE`. Los logs registran proveedor, pedido,
+resultado efectivo y si cambió la suscripción. Cualquier excepción revierte la transacción y el
+controlador mantiene su error opaco.
+
+### Tests y evidencia
+
+`PaymentCallbackProcessingServiceTests` cubre:
+
+- los cinco estados persistibles;
+- `paidAt` solo para confirmación;
+- diagnóstico saneado;
+- duplicado sin segunda escritura;
+- retorno informativo;
+- discrepancia de importe antes del recibo;
+- paridad del simulador;
+- confirmación absorbente frente a un callback atrasado.
+
+Los casos se ejecutaron junto con el contrato RedSys y las dependencias directas, sin fallos.
+
+### Riesgos, limitaciones y deuda
+
+No existe todavía creación de checkout pública porque el cobro real continúa deshabilitado. La
+máquina prioriza seguridad ante callbacks desordenados; una conciliación manual futura deberá usar
+un caso de uso administrativo auditado, no modificar estados directamente.
+
+## Tarea 13.11 - Crear historial básico de facturación
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Mostrar al propietario los movimientos recientes de su local en el panel de suscripción, sin
+convertir el historial básico en un extracto financiero ilimitado ni exponer datos internos de
+proveedor.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-028`: plan, estado e historial básico visibles.
+- `RF-031` y `RNF-009`: estados y fechas localizados en ES/EN.
+- `RNF-001` y `RNF-002`: ownership por sesión y proyección minimizada.
+- `RNF-003` y `RNF-004`: semántica accesible y composición responsive.
+- `RNF-006`: consulta acotada.
+- Contrato de diseño: `GET /api/venue/me/payments`.
+
+### Archivos creados, modificados o eliminados
+
+- Backend creado:
+  - `VenuePaymentController` y `VenuePaymentControllerImpl`.
+  - `VenuePaymentHistoryService` y `VenuePaymentHistoryServiceImpl`.
+  - `VenuePaymentHistoryResponse` y `VenuePaymentHistoryItemResponse`.
+- Backend modificado:
+  - `PaymentDao`.
+  - `VenueSubscriptionExceptionHandler`.
+- Frontend modificado:
+  - `venue-subscription-api.ts`.
+  - `venue-subscription-dashboard.tsx`.
+  - tests de API y dashboard.
+  - `locales/es.json` y `locales/en.json`.
+- Tests backend creados:
+  - `VenuePaymentHistoryServiceTests`.
+  - `VenuePaymentAuthorizationTests`.
+- No se eliminó ningún archivo.
+
+### Arquitectura y contrato HTTP
+
+`GET /api/venue/me/payments` está bajo el namespace que exige `ROLE_VENUE_OWNER`. El controlador no
+acepta `venueId`; pasa únicamente el `userId` del principal. El servicio resuelve el local vigente
+mediante `VenueDao` y consulta sus pagos ordenados por creación e ID descendentes.
+
+La consulta recibe `PageRequest.of(0, 50)`. La respuesta raíz contiene `payments`; cada elemento
+expone:
+
+- `orderReference`;
+- `amount`;
+- `currency`;
+- `status`;
+- `createdAt`;
+- `paidAt`.
+
+Se excluyen UUID de pago, suscripción y local, proveedor, hash de petición, respuesta JSON y recibos
+de callback. Una lista vacía es una respuesta correcta.
+
+### Modelo de datos, índices y rendimiento
+
+No se añadió migración. La consulta usa `Payments.venueId` y orden estable. El índice existente por
+suscripción y fecha no cubre directamente todos los pagos de un local; el límite 50 mantiene el
+alcance actual acotado. Si el volumen real justifica optimización, deberá añadirse un índice
+`(venueId, createdAt DESC, id DESC)` mediante una migración futura basada en métricas.
+
+### UI, accesibilidad, responsive e internacionalización
+
+El adaptador frontend valida con Zod el catálogo completo de estados, ISO de moneda, fechas y la
+invariante `confirmed`/`paidAt`. Suscripción e historial se cargan en paralelo con un único
+`AbortController`.
+
+El panel mantiene el estado vacío y, cuando existen movimientos, renderiza una lista semántica. Cada
+fila muestra referencia, fecha de creación, importe localizado, chip de estado y fecha de
+confirmación o ausencia de cobro. La cuadrícula usa una columna en móvil y cuatro áreas desde
+escritorio. Los cinco estados y todas las ayudas están en los catálogos ES/EN con paridad.
+
+### Seguridad, privacidad, errores y observabilidad
+
+Anónimo recibe 401, admin sin rol propietario recibe 403 y un propietario desconocido recibe el
+mismo 404 saneado de suscripción. No hay parámetros de filtrado que permitan cruzar locales. La UI
+rechaza campos extra o inconsistencias de fecha y no registra cuerpos.
+
+### Tests y evidencia
+
+- `VenuePaymentHistoryServiceTests`: ownership, límite 50, orden delegado y proyección.
+- `VenuePaymentAuthorizationTests`: 401, 403, propietario autorizado y ausencia de hashes/payloads.
+- `venue-subscription-api.test.ts`: ruta privada y coherencia de fecha confirmada.
+- `venue-subscription-dashboard.test.tsx`: estado vacío, monetización condicional y dos movimientos
+  con adaptación de estado.
+- Resultado frontend focalizado: 2 archivos, 6 tests correctos.
+- La primera ejecución conjunta alcanzó 45 segundos durante el arranque sin resultados; cada
+  archivo terminó correctamente al ejecutarse por separado.
+- Prettier quedó limpio sobre los seis archivos propios y las 54 claves de `VenueSubscription`
+  mantienen paridad exacta ES/EN.
+- ESLint focalizado y `tsc --noEmit` alcanzaron respectivamente 30 y 45 segundos sin emitir
+  diagnósticos; se detuvieron en vez de prolongarlos. El validador i18n global encontró cinco
+  textos JSX históricos fuera de billing y no se usó como criterio de este cierre.
+
+### Riesgos, limitaciones y deuda
+
+El historial no pagina más allá de 50 movimientos ni genera facturas fiscales descargables. Esas
+capacidades requieren numeración legal, datos fiscales congelados y política de conservación, fuera
+del alcance de “historial básico”. Un fallo del historial actualmente muestra el estado de error del
+panel completo porque ambas consultas representan una vista coherente.
+
+## Tarea 13.12 - Tests de callbacks, firma e idempotencia RedSys
+
+- Fecha: 2026-07-30.
+- Commit o referencia: rama `phase/13-Suscriptions-plans`.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Cerrar la fase con evidencia que pruebe el contrato RedSys como flujo y no solo como unidades
+aisladas: autenticidad criptográfica, decodificación, correlación, deduplicación, persistencia del
+pago y aplicación única de la suscripción.
+
+### Requisitos y decisiones de diseño relacionados
+
+- `RF-028`: simulación determinista, firma, callbacks, cinco estados e idempotencia.
+- `RNF-001`: manipulación rechazada antes de persistencia.
+- `RNF-002`: ausencia de material sensible en estado y respuesta.
+- `RNF-006`: reintento exacto sin doble efecto.
+- Diseño `3.11` y `7.4`: notificación como autoridad y retorno informativo.
+
+### Archivos creados, modificados o eliminados
+
+- Creado `RedsysCallbackContractTests`.
+- Ampliado `PaymentCallbackProcessingServiceTests`.
+- Se reutilizan `RedsysSignatureServiceTests`, `RedsysCallbackVerificationServiceTests`,
+  `RedsysCallbackControllerTests`, `SubscriptionPaymentApplicationServiceTests` y
+  `PaymentCallbackMigrationTests`.
+- No se modificó código productivo exclusivamente para facilitar el test.
+
+### Estrategia contractual
+
+`RedsysCallbackContractTests` instancia implementaciones reales de:
+
+- `RedsysSignatureServiceImpl`;
+- `RedsysCallbackVerificationServiceImpl`;
+- `PaymentCallbackProcessingServiceImpl`.
+
+Construye parámetros compatibles con RedSys, los serializa, codifica en Base64URL y firma con
+`HMAC_SHA512_V2`. Solo DAOs y aplicación de suscripción son dobles, para comprobar fronteras sin
+PostgreSQL ni red.
+
+El primer envío:
+
+1. verifica firma y campos;
+2. correlaciona pago, pedido, importe y moneda;
+3. reserva recibo;
+4. persiste `confirmed` y `paidAt`;
+5. aplica la suscripción.
+
+El reintento exacto recibe conflicto idempotente y no repite guardado ni aplicación. Un mensaje
+alterado conserva la firma original y se rechaza antes de interactuar con pago, recibo o
+suscripción.
+
+### Fixtures, seguridad y privacidad
+
+La suite conserva además el vector oficial en `RedsysSignatureServiceTests`. Las credenciales usadas
+son públicas de prueba y no corresponden a un comercio real. Las aserciones comprueban que la
+respuesta persistida contiene solo canal, resultado y código, y que no aparecen firma o parámetros.
+
+### Evidencia de verificación
+
+La validación backend focalizada incluye diez suites:
+
+- procesamiento y máquina de estados;
+- contrato RedSys integrado;
+- firma oficial;
+- verificador de callback;
+- controlador;
+- aplicación de suscripción;
+- historial y autorización;
+- autorización del resumen de suscripción;
+- estructura de idempotencia de migración.
+
+El resultado final de las diez suites Surefire fue 31 tests, 0 fallos, 0 errores y 0 omitidos.
+Checkstyle terminó limpio limitado a billing. La compilación principal y de tests había finalizado
+correctamente antes del pase final. No se ejecutaron lifecycle global, Docker, Testcontainers ni
+servicios externos. Los dos archivos frontend se ejecutaron por separado para evitar arranques
+interminables.
+
+### Riesgos, limitaciones y deuda
+
+El test contractual no sustituye certificación con el entorno SIS de una entidad adquirente ni
+prueba concurrencia real de PostgreSQL; la restricción única y el `ON CONFLICT` sí quedan protegidos
+estructuralmente. Mockito advierte sobre la futura restricción de auto-carga de Byte Buddy; no afecta
+el resultado actual, pero deberá configurarse como agente antes de actualizar a un JDK que lo
+prohíba.
+
+### Criterio de cierre
+
+Las tareas `13.1`–`13.12` están implementadas, verificadas y documentadas. La fase ofrece catálogo,
+estado, panel, proveedor simulado, adaptador RedSys preparado, firma, callbacks, idempotencia,
+transición de pago y suscripción e historial básico, sin activar cobro real. La siguiente tarea
+fuente de verdad es `14.1`.
