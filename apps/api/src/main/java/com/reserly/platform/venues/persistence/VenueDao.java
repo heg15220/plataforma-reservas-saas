@@ -13,6 +13,10 @@ import org.springframework.data.repository.query.Param;
 /** Persistencia de perfiles siempre acotada por el propietario autenticado. */
 public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
 
+  /** Cuenta global administrativa por estado editorial exacto. */
+  @Query("select count(venue) from VenueEntity venue where venue.status = :status")
+  long countAdminByStatus(@Param("status") String status);
+
   /** Lista administrativa acotada con categoría precargada. */
   @Query(
       """

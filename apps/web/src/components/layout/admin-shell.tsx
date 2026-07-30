@@ -43,6 +43,9 @@ export function AdminShell({
                 ["/admin/incidencias", "incidents"],
                 ["/admin/verificaciones", "businessAccounts"],
                 ["/admin/penalizaciones", "penalties"],
+                ["/admin/planes", "plans"],
+                ["/admin/metricas", "metrics"],
+                ["/admin/auditoria", "audit"],
               ].map(([href, key]) => (
                 <Button
                   aria-current={currentPath === href ? "page" : undefined}

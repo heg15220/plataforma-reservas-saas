@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   fetchAdminCategories,
+  fetchAdminAuditLogs,
   fetchAdminIncidents,
+  fetchAdminMetrics,
   fetchAdminPenalties,
+  fetchAdminPlans,
   fetchAdminVenues,
   fetchPendingDocuments,
   fetchPendingBusinessAccounts,
@@ -111,5 +114,31 @@ describe("admin-api", () => {
     await expect(fetchPendingDocuments()).resolves.toEqual({ documents: [] });
     await expect(fetchAdminPenalties()).resolves.toEqual({ penalties: [] });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("valida planes, métricas agregadas y auditoría minimizada", async () => {
+    const metrics = {
+      totalVenues: 3,
+      publishedVenues: 2,
+      suspendedVenues: 1,
+      totalReservations: 8,
+      confirmedReservations: 6,
+      totalBusinessAccounts: 2,
+      pendingBusinessReviews: 1,
+      activeSubscriptions: 2,
+      activePenalties: 1,
+      generatedAt: "2026-07-30T16:00:00Z",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ plans: [] }))
+      .mockResolvedValueOnce(Response.json(metrics))
+      .mockResolvedValueOnce(Response.json({ logs: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchAdminPlans()).resolves.toEqual({ plans: [] });
+    await expect(fetchAdminMetrics()).resolves.toEqual(metrics);
+    await expect(fetchAdminAuditLogs()).resolves.toEqual({ logs: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

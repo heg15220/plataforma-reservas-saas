@@ -1,39 +1,47 @@
 package com.reserly.platform.administration.controller;
 
-import com.reserly.platform.administration.dto.AdminCategoryListResponse;
-import com.reserly.platform.administration.dto.AdminCategoryRequest;
-import com.reserly.platform.administration.dto.AdminCategoryResponse;
-import com.reserly.platform.administration.dto.AdminVenueListResponse;
-import com.reserly.platform.administration.dto.AdminVenueResponse;
-import com.reserly.platform.administration.dto.AdminVenueUpdateRequest;
-import com.reserly.platform.administration.dto.AdminVenueSuspensionRequest;
-import com.reserly.platform.administration.dto.AdminIncidentListResponse;
-import com.reserly.platform.administration.dto.AdminIncidentResponse;
-import com.reserly.platform.administration.dto.AdminIncidentReviewRequest;
+import com.reserly.platform.administration.dto.AdminAuditLogListResponse;
 import com.reserly.platform.administration.dto.AdminBusinessAccountListResponse;
 import com.reserly.platform.administration.dto.AdminBusinessAccountResponse;
 import com.reserly.platform.administration.dto.AdminBusinessDecisionRequest;
 import com.reserly.platform.administration.dto.AdminBusinessRecheckRequest;
+import com.reserly.platform.administration.dto.AdminCategoryListResponse;
+import com.reserly.platform.administration.dto.AdminCategoryRequest;
+import com.reserly.platform.administration.dto.AdminCategoryResponse;
 import com.reserly.platform.administration.dto.AdminDocumentListResponse;
 import com.reserly.platform.administration.dto.AdminDocumentResponse;
 import com.reserly.platform.administration.dto.AdminDocumentReviewRequest;
+import com.reserly.platform.administration.dto.AdminIncidentListResponse;
+import com.reserly.platform.administration.dto.AdminIncidentResponse;
+import com.reserly.platform.administration.dto.AdminIncidentReviewRequest;
+import com.reserly.platform.administration.dto.AdminMetricsResponse;
 import com.reserly.platform.administration.dto.AdminPenaltyListResponse;
 import com.reserly.platform.administration.dto.AdminPenaltyResponse;
 import com.reserly.platform.administration.dto.AdminPenaltyUpdateRequest;
+import com.reserly.platform.administration.dto.AdminPlanListResponse;
+import com.reserly.platform.administration.dto.AdminPlanRequest;
+import com.reserly.platform.administration.dto.AdminPlanResponse;
 import com.reserly.platform.administration.dto.AdminReasonRequest;
+import com.reserly.platform.administration.dto.AdminVenueListResponse;
+import com.reserly.platform.administration.dto.AdminVenueResponse;
+import com.reserly.platform.administration.dto.AdminVenueSuspensionRequest;
+import com.reserly.platform.administration.dto.AdminVenueUpdateRequest;
+import com.reserly.platform.administration.service.AdminAuditQueryService;
 import com.reserly.platform.administration.service.AdminBusinessAccountService;
 import com.reserly.platform.administration.service.AdminCategoryService;
-import com.reserly.platform.administration.service.AdminIncidentService;
 import com.reserly.platform.administration.service.AdminDocumentService;
+import com.reserly.platform.administration.service.AdminIncidentService;
+import com.reserly.platform.administration.service.AdminMetricsService;
 import com.reserly.platform.administration.service.AdminPenaltyService;
+import com.reserly.platform.administration.service.AdminPlanService;
 import com.reserly.platform.administration.service.AdminRequestContext;
 import com.reserly.platform.administration.service.AdminVenueService;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Adapta principal y metadatos observados sin aceptar actor desde el cuerpo. */
@@ -46,6 +54,9 @@ public class AdminCatalogControllerImpl implements AdminCatalogController {
   private final AdminBusinessAccountService businessAccountService;
   private final AdminDocumentService documentService;
   private final AdminPenaltyService penaltyService;
+  private final AdminPlanService planService;
+  private final AdminMetricsService metricsService;
+  private final AdminAuditQueryService auditQueryService;
 
   public AdminCatalogControllerImpl(
       AdminCategoryService categoryService,
@@ -53,13 +64,19 @@ public class AdminCatalogControllerImpl implements AdminCatalogController {
       AdminIncidentService incidentService,
       AdminBusinessAccountService businessAccountService,
       AdminDocumentService documentService,
-      AdminPenaltyService penaltyService) {
+      AdminPenaltyService penaltyService,
+      AdminPlanService planService,
+      AdminMetricsService metricsService,
+      AdminAuditQueryService auditQueryService) {
     this.categoryService = categoryService;
     this.venueService = venueService;
     this.incidentService = incidentService;
     this.businessAccountService = businessAccountService;
     this.documentService = documentService;
     this.penaltyService = penaltyService;
+    this.planService = planService;
+    this.metricsService = metricsService;
+    this.auditQueryService = auditQueryService;
   }
 
   @Override
@@ -201,8 +218,7 @@ public class AdminCatalogControllerImpl implements AdminCatalogController {
       AdminDocumentReviewRequest request,
       HttpServletRequest servletRequest) {
     return ResponseEntity.ok(
-        documentService.review(
-            account.userId(), documentId, request, context(servletRequest)));
+        documentService.review(account.userId(), documentId, request, context(servletRequest)));
   }
 
   @Override
@@ -217,8 +233,39 @@ public class AdminCatalogControllerImpl implements AdminCatalogController {
       AdminPenaltyUpdateRequest request,
       HttpServletRequest servletRequest) {
     return ResponseEntity.ok(
-        penaltyService.update(
-            account.userId(), penaltyId, request, context(servletRequest)));
+        penaltyService.update(account.userId(), penaltyId, request, context(servletRequest)));
+  }
+
+  @Override
+  public ResponseEntity<AdminPlanListResponse> listPlans() {
+    return ResponseEntity.ok(planService.list());
+  }
+
+  @Override
+  public ResponseEntity<AdminPlanResponse> createPlan(
+      AuthenticatedAccount account, AdminPlanRequest request, HttpServletRequest servletRequest) {
+    return ResponseEntity.ok(
+        planService.create(account.userId(), request, context(servletRequest)));
+  }
+
+  @Override
+  public ResponseEntity<AdminPlanResponse> updatePlan(
+      AuthenticatedAccount account,
+      UUID planId,
+      AdminPlanRequest request,
+      HttpServletRequest servletRequest) {
+    return ResponseEntity.ok(
+        planService.update(account.userId(), planId, request, context(servletRequest)));
+  }
+
+  @Override
+  public ResponseEntity<AdminMetricsResponse> getMetrics() {
+    return ResponseEntity.ok(metricsService.snapshot());
+  }
+
+  @Override
+  public ResponseEntity<AdminAuditLogListResponse> listAuditLogs() {
+    return ResponseEntity.ok(auditQueryService.listRecent());
   }
 
   private AdminRequestContext context(HttpServletRequest request) {

@@ -1688,7 +1688,10 @@
       "venues": "Locales",
       "incidents": "Incidencias",
       "businessAccounts": "Verificaciones",
-      "penalties": "Penalizaciones"
+      "penalties": "Penalizaciones",
+      "plans": "Planes",
+      "metrics": "Métricas",
+      "audit": "Auditoría"
     },
     "actions": {
       "save": "Guardar",
@@ -1783,6 +1786,55 @@
       "reason": "Motivo administrativo",
       "save": "Guardar cambio",
       "error": "No pudimos completar la operación."
+    },
+    "plans": {
+      "title": "Gestión de planes",
+      "description": "Configura precios, límites y prestaciones con textos completos en español e inglés.",
+      "create": "Nuevo plan",
+      "edit": "Editar plan",
+      "slug": "Identificador estable",
+      "nameEs": "Nombre en español",
+      "nameEn": "Nombre en inglés",
+      "priceMonthly": "Precio mensual",
+      "priceYearly": "Precio anual",
+      "features": "Prestaciones",
+      "featuresHelp": "Una por línea: codigo|texto en español|text in English",
+      "featuresCount": "prestaciones",
+      "active": "Plan activo",
+      "enabled": "Activo",
+      "disabled": "Inactivo",
+      "unlimited": "Déjalo vacío para indicar sin límite.",
+      "limits": {
+        "monthlyReservations": "Reservas mensuales",
+        "teamResources": "Recursos del equipo",
+        "customFormFields": "Campos personalizados",
+        "galleryImages": "Imágenes de galería"
+      },
+      "save": "Guardar plan",
+      "cancel": "Cancelar",
+      "error": "No pudimos cargar o guardar los planes."
+    },
+    "metrics": {
+      "title": "Métricas globales",
+      "description": "Resumen agregado del estado operativo de la plataforma.",
+      "generatedAt": "Generado: {value}",
+      "error": "No pudimos cargar las métricas.",
+      "items": {
+        "totalVenues": "Locales totales",
+        "publishedVenues": "Locales publicados",
+        "suspendedVenues": "Locales suspendidos",
+        "totalReservations": "Reservas totales",
+        "confirmedReservations": "Reservas confirmadas",
+        "totalBusinessAccounts": "Cuentas empresariales",
+        "pendingBusinessReviews": "Verificaciones pendientes",
+        "activeSubscriptions": "Suscripciones activas",
+        "activePenalties": "Penalizaciones activas"
+      }
+    },
+    "audit": {
+      "title": "Auditoría administrativa",
+      "description": "Últimas acciones críticas, con actor y cambios, sin metadatos de red.",
+      "error": "No pudimos cargar la auditoría."
     }
   }
 }

@@ -1,25 +1,30 @@
 package com.reserly.platform.administration.controller;
 
-import com.reserly.platform.administration.dto.AdminCategoryListResponse;
-import com.reserly.platform.administration.dto.AdminCategoryRequest;
-import com.reserly.platform.administration.dto.AdminCategoryResponse;
-import com.reserly.platform.administration.dto.AdminVenueListResponse;
-import com.reserly.platform.administration.dto.AdminVenueResponse;
-import com.reserly.platform.administration.dto.AdminVenueUpdateRequest;
-import com.reserly.platform.administration.dto.AdminVenueSuspensionRequest;
-import com.reserly.platform.administration.dto.AdminIncidentListResponse;
-import com.reserly.platform.administration.dto.AdminIncidentResponse;
-import com.reserly.platform.administration.dto.AdminIncidentReviewRequest;
+import com.reserly.platform.administration.dto.AdminAuditLogListResponse;
 import com.reserly.platform.administration.dto.AdminBusinessAccountListResponse;
 import com.reserly.platform.administration.dto.AdminBusinessAccountResponse;
 import com.reserly.platform.administration.dto.AdminBusinessRecheckRequest;
+import com.reserly.platform.administration.dto.AdminCategoryListResponse;
+import com.reserly.platform.administration.dto.AdminCategoryRequest;
+import com.reserly.platform.administration.dto.AdminCategoryResponse;
 import com.reserly.platform.administration.dto.AdminDocumentListResponse;
 import com.reserly.platform.administration.dto.AdminDocumentResponse;
 import com.reserly.platform.administration.dto.AdminDocumentReviewRequest;
+import com.reserly.platform.administration.dto.AdminIncidentListResponse;
+import com.reserly.platform.administration.dto.AdminIncidentResponse;
+import com.reserly.platform.administration.dto.AdminIncidentReviewRequest;
+import com.reserly.platform.administration.dto.AdminMetricsResponse;
 import com.reserly.platform.administration.dto.AdminPenaltyListResponse;
 import com.reserly.platform.administration.dto.AdminPenaltyResponse;
 import com.reserly.platform.administration.dto.AdminPenaltyUpdateRequest;
+import com.reserly.platform.administration.dto.AdminPlanListResponse;
+import com.reserly.platform.administration.dto.AdminPlanRequest;
+import com.reserly.platform.administration.dto.AdminPlanResponse;
 import com.reserly.platform.administration.dto.AdminReasonRequest;
+import com.reserly.platform.administration.dto.AdminVenueListResponse;
+import com.reserly.platform.administration.dto.AdminVenueResponse;
+import com.reserly.platform.administration.dto.AdminVenueSuspensionRequest;
+import com.reserly.platform.administration.dto.AdminVenueUpdateRequest;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -141,4 +146,26 @@ public interface AdminCatalogController {
       @PathVariable UUID penaltyId,
       @Valid @RequestBody AdminPenaltyUpdateRequest request,
       HttpServletRequest servletRequest);
+
+  @GetMapping("/plans")
+  ResponseEntity<AdminPlanListResponse> listPlans();
+
+  @PostMapping(path = "/plans", consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminPlanResponse> createPlan(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @Valid @RequestBody AdminPlanRequest request,
+      HttpServletRequest servletRequest);
+
+  @PatchMapping(path = "/plans/{planId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<AdminPlanResponse> updatePlan(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID planId,
+      @Valid @RequestBody AdminPlanRequest request,
+      HttpServletRequest servletRequest);
+
+  @GetMapping("/metrics")
+  ResponseEntity<AdminMetricsResponse> getMetrics();
+
+  @GetMapping("/audit-logs")
+  ResponseEntity<AdminAuditLogListResponse> listAuditLogs();
 }

@@ -14,6 +14,14 @@ import org.springframework.data.repository.query.Param;
 /** Acceso explícito a restricciones activas por identidad normalizada. */
 public interface PenaltyDao extends JpaRepository<PenaltyEntity, UUID> {
 
+  /** Cuenta restricciones vigentes sin cargar emails normalizados. */
+  @Query(
+      """
+      select count(penalty) from PenaltyEntity penalty
+      where penalty.status = 'active' and penalty.endsAt > :now
+      """)
+  long countAdminActive(@Param("now") Instant now);
+
   /** Listado administrativo reciente y acotado de restricciones. */
   @Query(
       """

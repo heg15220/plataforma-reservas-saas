@@ -14,11 +14,53 @@ Fuente de verdad del avance:
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.9`.
-- Siguiente tarea pendiente recomendada: `14.10. Implementar gestión básica de planes con textos
-  ES/EN`.
-- Observación: cuentas y documentos empresariales ya admiten decisión/reintento auditados, y las
-  penalizaciones activas pueden revocarse o ajustar su vigencia sin alterar su evidencia origen.
+  `14.1` a `14.12`.
+- Siguiente tarea pendiente recomendada: `14.13. Crear tests de permisos admin`.
+- Observación: administración ya dispone de planes localizados, métricas agregadas y una vista
+  minimizada de las acciones críticas recientes.
+
+## Conversación 127 - Planes, métricas globales y auditoría visible
+
+- Fecha: 2026-07-30.
+- Resumen de la conversación:
+  - Se completaron `14.10`, `14.11` y `14.12` en `phase/14-administration`.
+  - Se implementó el catálogo administrativo completo de planes, con creación y edición,
+    traducciones obligatorias ES/EN, precios, límites conocidos y prestaciones localizadas.
+  - Se añadió un snapshot de métricas globales basado exclusivamente en conteos SQL agregados.
+  - Se expusieron las 100 evidencias de auditoría más recientes sin IP ni user-agent.
+  - Se incorporaron `/admin/planes`, `/admin/metricas` y `/admin/auditoria`, navegación responsive,
+    validación Zod y mensajes ES/EN.
+- Archivos modificados:
+  - Administración: controladores, DTOs, servicios, `AuditLogDao` y tests focalizados.
+  - Facturación: `PlanDao` y `SubscriptionDao`.
+  - DAOs agregados de locales, reservas, cuentas empresariales y penalizaciones.
+  - Frontend administrativo: API, dashboards, rutas, navegación, tests y catálogos ES/EN.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-030 Administración de plataforma`.
+  - `RNF-001 Seguridad`, `RNF-002 Privacidad`, `RNF-003 Concurrencia y consistencia`,
+    `RNF-004 Rendimiento`, `RNF-005 Disponibilidad`, `RNF-006 Mantenibilidad`,
+    `RNF-007 Accesibilidad`, `RNF-009 Responsive`, `RNF-010 Internacionalización` y
+    `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `14.10. Implementar gestión básica de planes con textos ES/EN`.
+  - `14.11. Implementar métricas globales iniciales`.
+  - `14.12. Crear auditoría visible para acciones críticas`.
+- Siguiente tarea pendiente recomendada:
+  - `14.13. Crear tests de permisos admin`.
+- Decisiones o aclaraciones relevantes:
+  - El slug de un plan es estable e inmutable tras su creación; la edición usa lock pesimista.
+  - Las prestaciones separan código estable y etiquetas ES/EN; los límites mantienen exactamente
+    las claves ya interpretadas por `VenueSubscriptionService`.
+  - Suscripciones `active` y `trial` cuentan como activas; una penalización solo cuenta si conserva
+    estado `active` y su fin es posterior al instante del snapshot.
+  - La auditoría visible no devuelve metadatos de red y está limitada a 100 filas.
+  - Verificación focalizada: compilación API correcta; 6 tests backend correctos (3 de los
+    servicios nuevos y 3 del consumidor de suscripción); 8 tests frontend correctos de contratos
+    admin e integridad de mensajes ES/EN.
+  - ESLint exacto alcanzó el corte de 30 segundos sin diagnósticos. Checkstyle global se omitió en
+    la ejecución final porque detecta 52 incidencias históricas ajenas; no se ejecutaron suites
+    globales, Docker, Testcontainers ni migraciones reales.
 
 ## Conversación 126 - Decisiones empresariales, documentos y penalizaciones
 

@@ -1688,7 +1688,10 @@
       "venues": "Venues",
       "incidents": "Incidents",
       "businessAccounts": "Verifications",
-      "penalties": "Penalties"
+      "penalties": "Penalties",
+      "plans": "Plans",
+      "metrics": "Metrics",
+      "audit": "Audit"
     },
     "actions": {
       "save": "Save",
@@ -1783,6 +1786,55 @@
       "reason": "Administrative reason",
       "save": "Save change",
       "error": "We could not complete the operation."
+    },
+    "plans": {
+      "title": "Plan management",
+      "description": "Configure prices, limits and features with complete Spanish and English text.",
+      "create": "New plan",
+      "edit": "Edit plan",
+      "slug": "Stable identifier",
+      "nameEs": "Spanish name",
+      "nameEn": "English name",
+      "priceMonthly": "Monthly price",
+      "priceYearly": "Annual price",
+      "features": "Features",
+      "featuresHelp": "One per line: code|texto en español|text in English",
+      "featuresCount": "features",
+      "active": "Active plan",
+      "enabled": "Active",
+      "disabled": "Inactive",
+      "unlimited": "Leave empty for unlimited.",
+      "limits": {
+        "monthlyReservations": "Monthly reservations",
+        "teamResources": "Team resources",
+        "customFormFields": "Custom fields",
+        "galleryImages": "Gallery images"
+      },
+      "save": "Save plan",
+      "cancel": "Cancel",
+      "error": "We could not load or save the plans."
+    },
+    "metrics": {
+      "title": "Global metrics",
+      "description": "Aggregated snapshot of the platform's operational state.",
+      "generatedAt": "Generated: {value}",
+      "error": "We could not load the metrics.",
+      "items": {
+        "totalVenues": "Total venues",
+        "publishedVenues": "Published venues",
+        "suspendedVenues": "Suspended venues",
+        "totalReservations": "Total reservations",
+        "confirmedReservations": "Confirmed reservations",
+        "totalBusinessAccounts": "Business accounts",
+        "pendingBusinessReviews": "Pending verifications",
+        "activeSubscriptions": "Active subscriptions",
+        "activePenalties": "Active penalties"
+      }
+    },
+    "audit": {
+      "title": "Administration audit",
+      "description": "Latest critical actions with actor and changes, without network metadata.",
+      "error": "We could not load the audit trail."
     }
   }
 }

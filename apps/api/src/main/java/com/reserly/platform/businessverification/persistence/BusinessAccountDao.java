@@ -20,6 +20,15 @@ import org.springframework.data.repository.query.Param;
  */
 public interface BusinessAccountDao extends JpaRepository<BusinessAccountEntity, UUID> {
 
+  /** Cuenta la cola empresarial pendiente sin cargar datos fiscales. */
+  @Query(
+      """
+      select count(account) from BusinessAccountEntity account
+      where account.businessVerificationStatus = 'pending_review'
+        and account.manualReviewStatus = 'pending_review'
+      """)
+  long countPendingAdminReview();
+
   /** Cola administrativa pendiente con propietario precargado y límite explícito. */
   @Query(
       """

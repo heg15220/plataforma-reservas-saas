@@ -93,6 +93,54 @@ const penaltySchema = z.object({
   updatedAt: z.iso.datetime({ offset: true }),
 });
 const penaltiesSchema = z.object({ penalties: z.array(penaltySchema).max(100) });
+const planFeatureSchema = z.object({
+  code: z.string(),
+  labelEs: z.string(),
+  labelEn: z.string(),
+});
+const planLimitsSchema = z.object({
+  monthlyReservations: z.number().int().nonnegative().nullable(),
+  teamResources: z.number().int().nonnegative().nullable(),
+  customFormFields: z.number().int().nonnegative().nullable(),
+  galleryImages: z.number().int().nonnegative().nullable(),
+});
+const planSchema = z.object({
+  id: z.uuid(),
+  slug: z.string(),
+  nameEs: z.string(),
+  nameEn: z.string(),
+  priceMonthly: z.number().nonnegative(),
+  priceYearly: z.number().nonnegative(),
+  limits: planLimitsSchema,
+  features: z.array(planFeatureSchema).max(50),
+  active: z.boolean(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+const plansSchema = z.object({ plans: z.array(planSchema).max(100) });
+const metricsSchema = z.object({
+  totalVenues: z.number().int().nonnegative(),
+  publishedVenues: z.number().int().nonnegative(),
+  suspendedVenues: z.number().int().nonnegative(),
+  totalReservations: z.number().int().nonnegative(),
+  confirmedReservations: z.number().int().nonnegative(),
+  totalBusinessAccounts: z.number().int().nonnegative(),
+  pendingBusinessReviews: z.number().int().nonnegative(),
+  activeSubscriptions: z.number().int().nonnegative(),
+  activePenalties: z.number().int().nonnegative(),
+  generatedAt: z.iso.datetime({ offset: true }),
+});
+const auditLogSchema = z.object({
+  id: z.uuid(),
+  actorUserId: z.uuid().nullable(),
+  actorRole: z.string(),
+  entityType: z.string(),
+  entityId: z.uuid().nullable(),
+  action: z.string(),
+  before: z.record(z.string(), z.unknown()).nullable(),
+  after: z.record(z.string(), z.unknown()).nullable(),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+const auditLogsSchema = z.object({ logs: z.array(auditLogSchema).max(100) });
 const loginSchema = z.object({
   userId: z.uuid(),
   accountType: z.literal("admin"),
@@ -107,6 +155,10 @@ export type AdminIncident = z.infer<typeof incidentSchema>;
 export type AdminBusinessAccount = z.infer<typeof businessAccountSchema>;
 export type AdminDocument = z.infer<typeof documentSchema>;
 export type AdminPenalty = z.infer<typeof penaltySchema>;
+export type AdminPlan = z.infer<typeof planSchema>;
+export type AdminPlanInput = Omit<AdminPlan, "id" | "updatedAt">;
+export type AdminMetrics = z.infer<typeof metricsSchema>;
+export type AdminAuditLog = z.infer<typeof auditLogSchema>;
 export type AdminCategoryInput = Pick<AdminCategory, "active" | "nameEn" | "nameEs" | "slug">;
 export type AdminVenueInput = Pick<
   AdminVenue,
@@ -255,6 +307,26 @@ export async function updateAdminPenalty(
     method: "PATCH",
     body: JSON.stringify({ status, endsAt, reason }),
   });
+}
+
+export async function fetchAdminPlans(signal?: AbortSignal) {
+  return request("/api/admin/plans", plansSchema, { signal });
+}
+
+/** Conserva el mismo contrato bilingüe tanto al crear como al editar planes. */
+export async function saveAdminPlan(input: AdminPlanInput, planId?: string) {
+  return request(planId ? `/api/admin/plans/${planId}` : "/api/admin/plans", planSchema, {
+    method: planId ? "PATCH" : "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchAdminMetrics(signal?: AbortSignal) {
+  return request("/api/admin/metrics", metricsSchema, { signal });
+}
+
+export async function fetchAdminAuditLogs(signal?: AbortSignal) {
+  return request("/api/admin/audit-logs", auditLogsSchema, { signal });
 }
 
 async function request<T>(

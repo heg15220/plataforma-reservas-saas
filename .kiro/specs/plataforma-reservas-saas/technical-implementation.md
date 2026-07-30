@@ -27964,3 +27964,179 @@ Evidencia focalizada de las tres tareas:
 - no se ejecutaron suites globales, Docker, Testcontainers, MinIO real ni proveedor remoto.
 
 La siguiente tarea fuente de verdad es `14.10`, gestión básica de planes con textos ES/EN.
+
+## Tarea 14.10 - Gestión básica de planes con textos ES/EN
+
+### Iteración, objetivo y trazabilidad
+
+- Fecha: 2026-07-30.
+- Objetivo técnico: permitir que una cuenta administradora consulte, cree y edite el catálogo SaaS
+  sin romper el contrato ya consumido por suscripciones.
+- Requisitos relacionados: `RF-030`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006`, `RNF-007`,
+  `RNF-009`, `RNF-010` y `RNF-011`.
+- Decisiones de diseño: textos de plataforma completos ES/EN, acceso exclusivo bajo
+  `/api/admin/**`, persistencia mediante DAO y auditoría transaccional de toda mutación.
+
+### Archivos, contratos y arquitectura
+
+Se añadieron `AdminPlanLimits`, `AdminPlanFeature`, `AdminPlanRequest`, `AdminPlanResponse` y
+`AdminPlanListResponse`. `AdminPlanService`/`AdminPlanServiceImpl` implementan:
+
+- `GET /api/admin/plans`, catálogo completo ordenado por precio mensual y slug;
+- `POST /api/admin/plans`, alta con slug único;
+- `PATCH /api/admin/plans/{planId}`, edición serializada mediante lock pesimista.
+
+`PlanDao.findAdminPlans` incluye filas activas e inactivas para que administración pueda recuperar
+un plan desactivado. `findByIdForAdminUpdate` mantiene un lock `PESSIMISTIC_WRITE` durante la
+mutación. No se añadió migración: `Plans` ya contenía precio mensual/anual, JSON de límites,
+códigos de prestaciones, traducciones, actividad y timestamps con los índices y restricciones
+necesarios.
+
+El slug acepta únicamente identificadores URL seguros y queda inmutable al editar. Los precios son
+no negativos. Los límites conocidos son `monthlyReservations`, `teamResources`,
+`customFormFields` y `galleryImages`; aceptan enteros no negativos o `null` como valor ilimitado.
+Estas claves son exactamente las interpretadas por `VenueSubscriptionService`, por lo que no se
+creó una segunda representación incompatible.
+
+Cada prestación contiene un código `snake_case` único y etiquetas no vacías ES/EN. El código se
+persiste en `featuresJson`; `featuresI18nJson` conserva `sourceLocale=es` y los dos valores. El
+nombre usa `LocalizedText` con fuente española y traducciones completas. Una estructura almacenada
+que no pueda proyectarse de forma segura se trata como conflicto de recurso, evitando entregar una
+respuesta parcial.
+
+Crear y editar registra `plan.created` o `plan.updated` dentro de la misma transacción. El snapshot
+minimizado contiene slug, precios, actividad y número de prestaciones; no duplica textos ni
+configuración completa. Actor, rol efectivo y metadatos observados proceden del principal y de la
+petición, nunca del cuerpo.
+
+En web se añadieron:
+
+- `admin-plan-dashboard.tsx`, editor responsive de nombres, precios, límites, prestaciones y estado;
+- `/admin/planes`;
+- esquemas Zod y funciones `fetchAdminPlans`/`saveAdminPlan`;
+- navegación y mensajes completos en `locales/es.json` y `locales/en.json`.
+
+El formato de entrada de prestaciones es una línea por código,
+`codigo|etiqueta española|English label`. HTML aplica patrón, tipos y mínimos; la API sigue siendo
+la autoridad y valida nuevamente el contrato. El editor deshabilita el slug de planes existentes,
+expresando en UI la misma invariante del servicio.
+
+### Errores, seguridad, observabilidad y verificación
+
+Slug duplicado, códigos repetidos o intento de cambiar el slug producen conflicto administrativo.
+Un ID inexistente produce el error opaco de recurso no encontrado ya normalizado por
+`AdminCatalogExceptionHandler`. No se registran secretos ni datos de facturación de clientes.
+
+`AdminOverviewServicesTests.createsLocalizedPlanUsingSubscriptionLimitKeysAndAuditsIt` verifica
+traducciones, claves de límites, `null` ilimitado, prestación localizada, persistencia y auditoría.
+También se ejecutaron los tres tests de `VenueSubscriptionServiceTests` para comprobar el
+dependiente directo que consume esa configuración.
+
+Comandos relevantes:
+
+- `mvn -DskipTests "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" compile`: correcto;
+- `mvn "-Dtest=AdminOverviewServicesTests,VenueSubscriptionServiceTests"
+  "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test`: 6 tests, 0 fallos;
+- Vitest focalizado de `admin-api.test.ts` y `messages.test.ts`: 8 tests, 0 fallos.
+
+Riesgos y deuda: la edición textual de prestaciones prioriza un contrato compacto para esta fase;
+una UI con filas reordenables puede incorporarse después. No se implementa borrado de planes para
+preservar referencias históricas. Los tests HTTP de permisos corresponden expresamente a `14.13`.
+
+## Tarea 14.11 - Métricas globales iniciales
+
+### Objetivo, modelo de lectura y contratos
+
+- Fecha: 2026-07-30.
+- Objetivo técnico: ofrecer una visión global inicial sin cargar entidades ni exponer identidades.
+- Requisitos relacionados: `RF-030`, `RNF-001`, `RNF-002`, `RNF-004`, `RNF-005`, `RNF-006` y
+  `RNF-011`.
+
+`GET /api/admin/metrics` devuelve un `AdminMetricsResponse` con:
+
+- locales totales, publicados y suspendidos;
+- reservas totales y confirmadas;
+- cuentas empresariales totales y revisiones manuales pendientes;
+- suscripciones activas, sumando estados `ACTIVE` y `TRIAL`;
+- penalizaciones activas cuya vigencia termina después del instante calculado;
+- `generatedAt`, producido por el reloj de servidor.
+
+`AdminMetricsServiceImpl` abre una transacción de solo lectura y compone exclusivamente valores
+escalares. Se añadieron consultas `count` documentadas en `VenueDao`, `ReservationDao`,
+`BusinessAccountDao`, `SubscriptionDao` y `PenaltyDao`. Los DAOs aplican estados exactos y la
+consulta de penalizaciones recibe el mismo `Instant` que se devuelve en el snapshot, evitando una
+frontera temporal incoherente.
+
+No hay migración, tabla materializada ni caché en esta iteración. Los conteos aprovechan índices de
+estado y vigencia existentes. La respuesta no incluye email, datos fiscales, IDs de clientes,
+locales concretos ni distribución temporal; por ello minimiza datos y evita que la pantalla se
+convierta en una vía de consulta de información operativa individual.
+
+### UI, errores y verificación
+
+`admin-overview-dashboard.tsx` presenta las nueve métricas como una rejilla responsive y muestra la
+hora de generación. `/admin/metricas`, el cliente `fetchAdminMetrics`, el esquema Zod y los textos
+ES/EN completan el flujo. Los errores de red, permisos o contrato se traducen al estado de error
+administrativo existente.
+
+`AdminOverviewServicesTests.returnsOnlyAggregateGlobalMetrics` fija el reloj y simula cada DAO para
+verificar la composición, incluida la suma de `ACTIVE + TRIAL` y la vigencia de penalizaciones. El
+contrato web se valida en el test focalizado de `admin-api`.
+
+Riesgos y deuda: son métricas instantáneas, no series históricas ni analítica financiera. En
+volúmenes elevados podrá incorporarse una tabla agregada o caché con una política explícita de
+caducidad, sin cambiar el contrato. No se añadieron consultas por rango para evitar trabajo fuera
+del MVP.
+
+## Tarea 14.12 - Auditoría visible para acciones críticas
+
+### Objetivo, privacidad y arquitectura
+
+- Fecha: 2026-07-30.
+- Objetivo técnico: hacer consultable la evidencia crítica ya generada por administración sin
+  ampliar la superficie de datos personales.
+- Requisitos relacionados: `RF-030`, `RNF-001`, `RNF-002`, `RNF-004`, `RNF-006`, `RNF-007`,
+  `RNF-009`, `RNF-010` y `RNF-011`.
+
+`AuditLogDao.findAdminPage(Pageable)` ordena por `createdAt DESC, id DESC`. El servicio impone una
+única página de 100 filas, evitando listados ilimitados. `AdminAuditQueryServiceImpl` proyecta cada
+entidad a `AdminAuditLogResponse`, que contiene ID de evidencia, actor, rol, tipo/ID de agregado,
+acción, snapshots anterior/posterior y fecha.
+
+Aunque `AuditLogEntity` conserva IP y user-agent para evidencia interna, esos campos se omiten
+deliberadamente del DTO y del esquema web. No existe filtro por actor, entidad o datos de red en
+esta fase. La lectura es transaccional de solo lectura y sigue protegida por la regla global
+`ROLE_ADMIN`.
+
+Se añadieron `GET /api/admin/audit-logs`, `/admin/auditoria`, el cliente Zod y un modo de auditoría
+en `admin-overview-dashboard.tsx`. La pantalla muestra la acción, agregado, actor, fecha y snapshots
+JSON con ajuste de línea; no interpreta HTML de los valores y React los renderiza como texto.
+Navegación y mensajes disponen de versiones ES/EN y el layout reutiliza componentes semánticos
+`article`, encabezados y rejilla responsive.
+
+### Evidencia, errores y límites
+
+`AdminOverviewServicesTests.exposesRecentAuditSnapshotsWithoutNetworkMetadata` crea una entidad que
+sí contiene IP y user-agent y comprueba que la proyección visible mantiene únicamente acción y
+snapshots. El test del cliente valida `{logs: []}` y el límite estructural máximo de 100 entradas
+permanece declarado en Zod.
+
+No se añadió migración porque `AuditLogs` y su evidencia append-only ya estaban implementados.
+Fallos de lectura o contratos inesperados usan el error administrativo genérico; no se entregan
+filas parciales. Los propios snapshots siguen siendo responsabilidad de los escritores, que deben
+mantenerlos minimizados según `AuditLogEntry`.
+
+Evidencia conjunta final de `14.10` a `14.12`:
+
+- compilación API correcta;
+- backend: 6 tests focalizados correctos;
+- frontend: 8 tests focalizados correctos;
+- Prettier aplicado únicamente a archivos web modificados y `git diff --check` correcto;
+- ESLint limitado a los archivos admin alcanzó 30 segundos sin diagnósticos y fue detenido;
+- Checkstyle global mostró 52 incidencias históricas en módulos y plantillas ajenos, por lo que la
+  ejecución focalizada final lo omitió;
+- no se ejecutaron suite global, Docker, Testcontainers, migraciones reales ni servicios externos.
+
+Riesgos y deuda: no existe paginación navegable ni filtros, suficientes para la vista inicial de 100
+acciones. Los tests específicos de autorización HTTP se mantienen pendientes para `14.13`. La
+siguiente tarea fuente de verdad es `14.13`, tests de permisos admin.

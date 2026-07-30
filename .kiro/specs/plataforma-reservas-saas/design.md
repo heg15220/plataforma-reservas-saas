@@ -1703,7 +1703,20 @@ GET /api/admin/plans
 POST /api/admin/plans
 PATCH /api/admin/plans/{planId}
 GET /api/admin/metrics
+GET /api/admin/audit-logs
 ```
+
+La gestión de planes devuelve todo el catálogo, incluidos planes inactivos, y permite crear o
+editar precio, límites conocidos, prestaciones y textos completos ES/EN. El `slug` queda
+inmutable tras la creación para no romper referencias comerciales; cada actualización usa lock
+pesimista y registra un snapshot administrativo minimizado. Los límites conservan las claves que
+consume el flujo de suscripción y `null` representa ausencia de límite.
+
+`GET /api/admin/metrics` ejecuta exclusivamente conteos agregados de locales, reservas, cuentas
+empresariales, suscripciones y penalizaciones vigentes. No carga entidades ni devuelve identidades.
+`GET /api/admin/audit-logs` limita la respuesta a las 100 acciones más recientes, ordenadas de
+forma estable, y muestra actor, agregado, acción y snapshots; IP y user-agent permanecen fuera del
+contrato visible para minimizar datos personales.
 
 El acceso administrativo está segregado en `POST /api/auth/admin/login`: exige `accountType=admin`,
 estado `active` y el rol persistido `admin` para utilizar `/api/admin/**`. Las cuentas de local, los

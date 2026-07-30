@@ -263,9 +263,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 14.7. Implementar aprobación, rechazo y reintento manual de verificación empresarial.
 - [x] 14.8. Implementar revisión de documentos de respaldo con aprobación, rechazo o solicitud de corrección.
 - [x] 14.9. Implementar gestión básica de penalizaciones.
-- [ ] 14.10. Implementar gestión básica de planes con textos ES/EN.
-- [ ] 14.11. Implementar métricas globales iniciales.
-- [ ] 14.12. Crear auditoría visible para acciones críticas.
+- [x] 14.10. Implementar gestión básica de planes con textos ES/EN.
+- [x] 14.11. Implementar métricas globales iniciales.
+- [x] 14.12. Crear auditoría visible para acciones críticas.
 - [ ] 14.13. Crear tests de permisos admin.
 - [ ] 14.14. Crear tests de aprobación/rechazo manual de cuenta empresarial y documentos de respaldo.
 

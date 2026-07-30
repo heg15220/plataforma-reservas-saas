@@ -19,12 +19,18 @@ import org.springframework.data.repository.query.Param;
 /** DAO del agregado con lecturas explícitas para capacidad y confirmación transaccional. */
 public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
 
+  /** Cuenta global por estado para el snapshot operativo administrativo. */
+  @Query(
+      "select count(reservation) from ReservationEntity reservation"
+          + " where reservation.status = :status")
+  long countAdminByStatus(@Param("status") String status);
+
   /**
    * Lista reservas con identidad confirmada pertenecientes al local del propietario autenticado.
    *
-   * <p>La consulta excluye holds y expiraciones anónimas mediante {@code customerEmail is not null},
-   * aplica todos los filtros en base de datos y precarga la franja para que el adaptador REST no
-   * dependa de una sesión JPA abierta.
+   * <p>La consulta excluye holds y expiraciones anónimas mediante {@code customerEmail is not
+   * null}, aplica todos los filtros en base de datos y precarga la franja para que el adaptador
+   * REST no dependa de una sesión JPA abierta.
    */
   @Query(
       value =
