@@ -28140,3 +28140,151 @@ Evidencia conjunta final de `14.10` a `14.12`:
 Riesgos y deuda: no existe paginación navegable ni filtros, suficientes para la vista inicial de 100
 acciones. Los tests específicos de autorización HTTP se mantienen pendientes para `14.13`. La
 siguiente tarea fuente de verdad es `14.13`, tests de permisos admin.
+
+## Tarea 14.13 - Tests de permisos admin
+
+### Iteración, objetivo y trazabilidad
+
+- Fecha: 2026-07-31.
+- Estado: completada y verificada.
+- Objetivo técnico: acreditar sobre endpoints administrativos reales que la cadena de seguridad
+  rechaza peticiones anónimas y sesiones de local antes de ejecutar lógica de aplicación, y que una
+  cuenta con rol administrativo puede leer y mutar el catálogo.
+- Requisitos relacionados: `RF-030`, `RNF-001`, `RNF-002`, `RNF-006` y `RNF-011`.
+- Diseño relacionado: `/api/admin` y `/api/admin/**` exigen `ROLE_ADMIN`; tipo de cuenta y actor se
+  derivan del principal autenticado.
+
+### Archivo y arquitectura de prueba
+
+Se creó
+`apps/api/src/test/java/com/reserly/platform/administration/controller/AdminCatalogAuthorizationTests.java`.
+No se modificó código de producción, modelo de datos, migraciones, endpoints ni contratos.
+
+La clase construye `AdminCatalogControllerImpl` con sus nueve interfaces de servicio simuladas y
+lo ejecuta mediante MockMvc standalone. La cadena focalizada reproduce la regla productiva:
+
+- `PathPatternRequestMatcher("/api/admin/**")`;
+- `AuthorityAuthorizationManager.hasRole("ADMIN")`;
+- respuesta JSON estable mediante `RestAuthenticationEntryPoint` y `RestAccessDeniedHandler`;
+- repositorio de contexto por petición y resolución de `@AuthenticationPrincipal`.
+
+Este enfoque prueba filtros, autorización, resolución de argumentos, validación MVC, mapeo del
+controlador y serialización sin iniciar el contexto completo ni depender de PostgreSQL.
+
+### Casos, invariantes y seguridad
+
+`rejectsAnonymousAndVenueOwnerBeforeAnyAdminService` comprueba:
+
+- una lectura anónima de `/api/admin/metrics` devuelve 401 y
+  `AUTHENTICATION_REQUIRED`;
+- la misma lectura con `ROLE_VENUE_OWNER` devuelve 403 y `AUTHORIZATION_DENIED`;
+- una escritura válida sobre `/api/admin/categories` también devuelve 403 para el local;
+- ninguno de los nueve servicios administrativos recibe interacción tras los rechazos.
+
+`permitsAdminToReadAggregatedMetrics` acredita que `ROLE_ADMIN` alcanza el servicio de métricas y
+recibe el contrato agregado esperado.
+
+`derivesMutationActorAndRequestContextFromAuthenticatedRequest` crea una categoría con una cuenta
+admin y verifica exactamente que el servicio recibe:
+
+- el `userId` del principal como actor;
+- el DTO validado, sin campos de identidad inyectables;
+- la IP remota observada y el user-agent acotado desde `HttpServletRequest`.
+
+Así se cubren lectura y mutación, 401 frente a 403, ausencia de bypass por rol de local y
+procedencia confiable del actor. Los permisos específicos de cada endpoint no se duplican porque
+todo el contrato comparte el namespace y la misma cadena central.
+
+### Verificación, riesgos y deuda
+
+El formateador Spotless se aplicó con `spotlessFiles` restringido a las dos clases de esta
+iteración. La ejecución conjunta focalizada acreditó los 3 casos de autorización sin fallos. No se
+ejecutaron suites globales, Spring Boot completo, base de datos, Docker ni Testcontainers.
+
+Checkstyle se invocó con `checkstyle.includes` limitado a ambas clases y no informó incidencias en
+ellas. El goal también procesa recursos con independencia de ese filtro y terminó por 24 líneas
+históricas largas en las plantillas de email ES/EN; no se repitió ni se corrigieron módulos ajenos.
+
+Riesgo residual: MockMvc standalone replica explícitamente la regla central. La integración de
+cookie, roles persistidos y namespace ya está cubierta por `RoleAuthorizationIntegrationTests`;
+repetirla aquí habría introducido PostgreSQL y ampliado innecesariamente el tiempo de validación.
+
+## Tarea 14.14 - Tests de aprobación/rechazo manual de cuenta empresarial y documentos
+
+### Iteración, objetivo y alcance
+
+- Fecha: 2026-07-31.
+- Estado: completada y verificada.
+- Objetivo técnico: cerrar la matriz de decisiones manuales de cuentas y documentos, comprobando
+  transición, revisor, fecha, motivo, persistencia y auditoría.
+- Requisitos relacionados: `RF-030`, `RF-032`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-006` y
+  `RNF-011`.
+- Diseño relacionado: la aprobación manual no falsifica un resultado remoto; el rechazo de cuenta
+  deniega la verificación, y cada decisión documental se conserva como evidencia separada.
+
+### Casos implementados
+
+Se amplió `AdminDecisionServicesTests.java`; no se modificó producción ni persistencia.
+
+La aprobación de cuenta ya existente se reforzó para verificar:
+
+- `manualReviewStatus=approved`;
+- conservación de `businessVerificationStatus=pending_review`;
+- fecha de revisión fijada con el reloj inyectado;
+- guardado con flush;
+- acción `business_account.manual_approved`;
+- snapshot posterior con estado manual y motivo UTF-8 correcto.
+
+`rejectsPendingBusinessAccountAndPersistsReviewerEvidence` verifica:
+
+- transición conjunta a `businessVerificationStatus=rejected` y
+  `manualReviewStatus=rejected`;
+- asociación del administrador revisor y fecha determinista;
+- persistencia;
+- acción `business_account.manual_rejected`;
+- snapshot anterior pendiente y posterior rechazado con motivo.
+
+`acceptsOrRejectsPendingDocumentAndAuditsDecision` es parametrizado para `accepted` y `rejected`.
+En ambos casos acredita:
+
+- transición desde `pending_review`;
+- revisor, `reviewedAt`, nota y `updatedAt`;
+- guardado del documento;
+- acciones `business_document.accepted` y `business_document.rejected`;
+- snapshots antes/después con estado y motivo.
+
+La prueba existente de `needs_correction` se conserva como dependiente directo: comprueba reapertura
+de la solicitud original, limpieza de `resolvedAt`, actualización de la cuenta a
+`needs_correction` y auditoría. La prueba de penalización permanece en la misma clase pero no se
+amplió.
+
+### Datos, errores, privacidad y observabilidad
+
+Los fixtures contienen identidades ficticias y no acceden a almacenamiento privado. Los servicios
+se ejercitan con DAOs, gateway remoto, cifrado y object storage simulados; ninguna llamada externa
+es posible. Los motivos quedan en snapshots auditables, pero no se incorporan binarios, URL,
+hashes, claves, IP adicionales ni datos fiscales nuevos.
+
+Las decisiones parten siempre de entidades `pending_review`; conflictos, ausencia de entidad y
+validación HTTP ya están cubiertos por los contratos existentes y no se duplicaron. El reloj fijo
+elimina flakiness temporal y los capturadores de Mockito inspeccionan la evidencia enviada a
+`AuditLogService`.
+
+### Evidencia final y limitaciones
+
+Comandos ejecutados:
+
+- Spotless focalizado sobre `AdminCatalogAuthorizationTests.java` y
+  `AdminDecisionServicesTests.java`: correcto;
+- ejecución conjunta de ambas clases: los 3 tests de permisos pasaron y 5 de 6 decisiones pasaron;
+  el único fallo era una expectativa histórica codificada como mojibake;
+- reejecución exclusiva de `AdminDecisionServicesTests` tras corregir la expectativa UTF-8:
+  6 tests, 0 fallos, 0 errores y 0 omitidos.
+- Checkstyle no señaló ninguna de las dos clases, aunque su goal finalizó con las 24 incidencias
+  históricas de longitud en recursos de plantillas de email.
+
+Resultado consolidado: 9 casos focalizados correctos. No se ejecutaron validaciones globales,
+frontend, Docker, Testcontainers, PostgreSQL ni servicios externos.
+
+La fase 14 queda completa. La siguiente tarea fuente de verdad es `15.1`, validación móvil del
+inicio con buscador, ubicación y categorías.

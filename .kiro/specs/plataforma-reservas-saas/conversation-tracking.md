@@ -10,14 +10,56 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-30
+- Fecha de última actualización: 2026-07-31
 - Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.12`.
-- Siguiente tarea pendiente recomendada: `14.13. Crear tests de permisos admin`.
-- Observación: administración ya dispone de planes localizados, métricas agregadas y una vista
-  minimizada de las acciones críticas recientes.
+  `14.1` a `14.14`.
+- Siguiente tarea pendiente recomendada: `15.1. Validar inicio móvil con buscador, ubicación y
+  categorías`.
+- Observación: la fase 14 queda completa, incluidos permisos HTTP y decisiones manuales de cuentas
+  y documentos con evidencia auditada.
+
+## Conversación 128 - Permisos admin y decisiones manuales verificadas
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se completaron `14.13` y `14.14`, cerrando la fase 14 en `phase/14-administration`.
+  - Se añadió una prueba MVC aislada del catálogo administrativo que acredita 401 anónimo, 403 para
+    `venue_owner` y acceso de lectura/escritura con `ROLE_ADMIN`.
+  - La mutación administrativa prueba que actor, IP observada y user-agent proceden de la sesión y
+    de la petición, no del cuerpo.
+  - Se amplió la prueba de decisiones para cubrir aprobación y rechazo de cuenta, y aceptación y
+    rechazo de documentos, verificando estados, revisor, fecha, motivo, persistencia y auditoría.
+- Archivos modificados:
+  - `AdminCatalogAuthorizationTests.java`.
+  - `AdminDecisionServicesTests.java`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-030 Administración de plataforma`.
+  - `RF-032 Verificación empresarial de cuentas de local`.
+  - `RNF-001 Seguridad`, `RNF-002 Privacidad`, `RNF-003 Concurrencia y consistencia`,
+    `RNF-006 Mantenibilidad` y `RNF-011 Convenciones backend y persistencia`.
+- Tareas impactadas y completadas:
+  - `14.13. Crear tests de permisos admin`.
+  - `14.14. Crear tests de aprobación/rechazo manual de cuenta empresarial y documentos de
+    respaldo`.
+- Siguiente tarea pendiente recomendada:
+  - `15.1. Validar inicio móvil con buscador, ubicación y categorías`.
+- Decisiones o aclaraciones relevantes:
+  - Las pruebas de autorización usan MockMvc standalone y la misma regla `hasRole("ADMIN")`, sin
+    levantar Spring Boot, PostgreSQL, Docker ni Testcontainers.
+  - Se prueban una lectura y una mutación reales del controlador; el rechazo ocurre antes de
+    interactuar con cualquiera de los nueve servicios administrativos.
+  - La aprobación manual conserva `businessVerificationStatus=pending_review`; el rechazo cambia
+    tanto el estado empresarial como el manual a `rejected`.
+  - Aceptar o rechazar un documento resuelve esa evidencia; la decisión separada sobre la cuenta
+    sigue siendo la que habilita o deniega la identidad empresarial.
+  - Evidencia focalizada final: 3 tests de permisos y 6 tests de decisiones, todos correctos.
+  - La primera ejecución descubrió una expectativa antigua con mojibake en el propio test; se
+    corrigió a UTF-8 y solo se reejecutó la clase afectada.
+  - Checkstyle limitado no señaló los tests, pero el goal incluye recursos y finalizó por 24 líneas
+    históricas largas de las plantillas de email ES/EN; no se repitió ni se amplió el alcance.
 
 ## Conversación 127 - Planes, métricas globales y auditoría visible
 

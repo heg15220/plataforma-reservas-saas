@@ -13,8 +13,8 @@ import com.reserly.platform.businessverification.document.DocumentEncryptionServ
 import com.reserly.platform.businessverification.document.PrivateObjectStorage;
 import com.reserly.platform.businessverification.persistence.BusinessAccountDao;
 import com.reserly.platform.businessverification.persistence.BusinessAccountEntity;
-import com.reserly.platform.businessverification.persistence.BusinessVerificationDocumentDao;
 import com.reserly.platform.businessverification.persistence.BusinessVerificationCheckDao;
+import com.reserly.platform.businessverification.persistence.BusinessVerificationDocumentDao;
 import com.reserly.platform.businessverification.persistence.BusinessVerificationDocumentEntity;
 import com.reserly.platform.businessverification.persistence.BusinessVerificationDocumentRequestEntity;
 import com.reserly.platform.businessverification.service.RemoteBusinessVerificationService;
@@ -28,8 +28,11 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
-/** Cubre las transiciones administrativas de las tareas 14.7, 14.8 y 14.9. */
+/** Cubre las transiciones administrativas y su matriz de decisiones de 14.7 a 14.9 y 14.14. */
 class AdminDecisionServicesTests {
   private static final Instant NOW = Instant.parse("2026-07-30T20:00:00Z");
   private static final UUID ACTOR_ID = UUID.fromString("10000000-0000-4000-8000-000000000001");
@@ -65,7 +68,92 @@ class AdminDecisionServicesTests {
     assertThat(account.getBusinessVerificationStatus()).isEqualTo("pending_review");
     assertThat(account.getManualReviewedAt()).isEqualTo(NOW);
     verify(accountDao).saveAndFlush(account);
-    verify(audit).record(any());
+    ArgumentCaptor<AuditLogEntry> entry = ArgumentCaptor.forClass(AuditLogEntry.class);
+    verify(audit).record(entry.capture());
+    assertThat(entry.getValue().action()).isEqualTo("business_account.manual_approved");
+    assertThat(entry.getValue().afterJson())
+        .containsEntry("manualReviewStatus", "approved")
+        .containsEntry("reason", "Documentación coherente");
+  }
+
+  @Test
+  void rejectsPendingBusinessAccountAndPersistsReviewerEvidence() {
+    BusinessAccountDao accountDao = mock(BusinessAccountDao.class);
+    UserDao userDao = mock(UserDao.class);
+    AuditLogService audit = mock(AuditLogService.class);
+    UserEntity reviewer = user(ACTOR_ID, "admin@example.com");
+    BusinessAccountEntity account = pendingAccount();
+    when(accountDao.findByIdForStateUpdate(account.getId())).thenReturn(Optional.of(account));
+    when(userDao.findById(ACTOR_ID)).thenReturn(Optional.of(reviewer));
+    var service =
+        new AdminBusinessAccountServiceImpl(
+            accountDao,
+            userDao,
+            mock(BusinessVerificationCheckDao.class),
+            mock(RemoteBusinessVerificationService.class),
+            audit,
+            fixedClock());
+
+    var response =
+        service.decide(
+            ACTOR_ID,
+            account.getId(),
+            new AdminBusinessDecisionRequest("rejected", "Identidad no acreditada"),
+            CONTEXT);
+
+    assertThat(response.verificationStatus()).isEqualTo("rejected");
+    assertThat(response.manualReviewStatus()).isEqualTo("rejected");
+    assertThat(account.getManualReviewedByUser()).isSameAs(reviewer);
+    assertThat(account.getManualReviewedAt()).isEqualTo(NOW);
+    verify(accountDao).saveAndFlush(account);
+    ArgumentCaptor<AuditLogEntry> entry = ArgumentCaptor.forClass(AuditLogEntry.class);
+    verify(audit).record(entry.capture());
+    assertThat(entry.getValue().action()).isEqualTo("business_account.manual_rejected");
+    assertThat(entry.getValue().beforeJson())
+        .containsEntry("businessVerificationStatus", "pending_review");
+    assertThat(entry.getValue().afterJson())
+        .containsEntry("businessVerificationStatus", "rejected")
+        .containsEntry("reason", "Identidad no acreditada");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"accepted", "rejected"})
+  void acceptsOrRejectsPendingDocumentAndAuditsDecision(String decision) {
+    BusinessVerificationDocumentDao documentDao = mock(BusinessVerificationDocumentDao.class);
+    UserDao userDao = mock(UserDao.class);
+    AuditLogService audit = mock(AuditLogService.class);
+    UserEntity reviewer = user(ACTOR_ID, "admin@example.com");
+    BusinessVerificationDocumentEntity document = pendingDocument();
+    when(documentDao.findByIdForAdminReview(document.getId())).thenReturn(Optional.of(document));
+    when(userDao.findById(ACTOR_ID)).thenReturn(Optional.of(reviewer));
+    var service =
+        new AdminDocumentServiceImpl(
+            documentDao,
+            userDao,
+            audit,
+            fixedClock(),
+            mock(PrivateObjectStorage.class),
+            mock(DocumentEncryptionService.class));
+
+    var response =
+        service.review(
+            ACTOR_ID,
+            document.getId(),
+            new AdminDocumentReviewRequest(decision, "Evidencia revisada"),
+            CONTEXT);
+
+    assertThat(response.status()).isEqualTo(decision);
+    assertThat(response.reviewedAt()).isEqualTo(NOW);
+    assertThat(response.reviewNotes()).isEqualTo("Evidencia revisada");
+    assertThat(document.getReviewedByUser()).isSameAs(reviewer);
+    verify(documentDao).saveAndFlush(document);
+    ArgumentCaptor<AuditLogEntry> entry = ArgumentCaptor.forClass(AuditLogEntry.class);
+    verify(audit).record(entry.capture());
+    assertThat(entry.getValue().action()).isEqualTo("business_document." + decision);
+    assertThat(entry.getValue().beforeJson()).containsEntry("status", "pending_review");
+    assertThat(entry.getValue().afterJson())
+        .containsEntry("status", decision)
+        .containsEntry("reason", "Evidencia revisada");
   }
 
   @Test
@@ -86,8 +174,7 @@ class AdminDecisionServicesTests {
     document.setDocumentType("census_certificate");
     document.setStatus("pending_review");
     document.setCreatedAt(NOW.minusSeconds(60));
-    when(documentDao.findByIdForAdminReview(document.getId()))
-        .thenReturn(Optional.of(document));
+    when(documentDao.findByIdForAdminReview(document.getId())).thenReturn(Optional.of(document));
     when(userDao.findById(ACTOR_ID)).thenReturn(Optional.of(user(ACTOR_ID, "admin@example.com")));
     var service =
         new AdminDocumentServiceImpl(
@@ -153,6 +240,17 @@ class AdminDecisionServicesTests {
     account.setManualReviewStatus("pending_review");
     account.setUpdatedAt(NOW.minusSeconds(60));
     return account;
+  }
+
+  private BusinessVerificationDocumentEntity pendingDocument() {
+    BusinessVerificationDocumentEntity document = new BusinessVerificationDocumentEntity();
+    document.setId(UUID.randomUUID());
+    document.setBusinessAccount(pendingAccount());
+    document.setDocumentType("census_certificate");
+    document.setStatus("pending_review");
+    document.setCreatedAt(NOW.minusSeconds(60));
+    document.setUpdatedAt(NOW.minusSeconds(60));
+    return document;
   }
 
   private UserEntity user(UUID id, String email) {
