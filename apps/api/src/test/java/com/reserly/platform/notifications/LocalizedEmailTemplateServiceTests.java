@@ -39,6 +39,7 @@ class LocalizedEmailTemplateServiceTests {
   void rendersCompleteSpanishReservationAndEscapesAllDynamicHtml() {
     ReservationConfirmationTemplateData data =
         new ReservationConfirmationTemplateData(
+            "María",
             "Salón <Central>",
             "Calle Mayor 1 & 2",
             LocalDate.of(2026, 8, 4),
@@ -56,6 +57,7 @@ class LocalizedEmailTemplateServiceTests {
 
     assertThat(rendered.subject()).contains("Salón <Central>");
     assertThat(rendered.textBody())
+        .contains("Hola María")
         .contains("4 de agosto de 2026")
         .contains("Personas: 3")
         .contains("Alergias <confirmadas>: Ninguna & sin gluten")
@@ -66,6 +68,8 @@ class LocalizedEmailTemplateServiceTests {
         .contains("Calle Mayor 1 &amp; 2")
         .contains("Alergias &lt;confirmadas&gt;")
         .contains("Ninguna &amp; sin gluten")
+        .contains("background:#f5f7fb")
+        .contains("Ver o gestionar mi reserva")
         .doesNotContain("Salón <Central>")
         .doesNotContain("{{");
   }
@@ -74,6 +78,7 @@ class LocalizedEmailTemplateServiceTests {
   void rendersEnglishReservationWithoutCustomAnswers() {
     ReservationConfirmationTemplateData data =
         new ReservationConfirmationTemplateData(
+            "Alex",
             "North Studio",
             "1 Main Street",
             LocalDate.of(2026, 8, 4),

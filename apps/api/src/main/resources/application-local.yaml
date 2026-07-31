@@ -18,3 +18,7 @@ reserly:
     secureCookies: ${RESERLY_SECURE_COOKIES:false}
   features:
     realPaymentsEnabled: false
+  development:
+    # Fixtures idempotentes para recorrer el flujo público completo sin registrar propietarios.
+    # Solo se evalúan con el perfil Spring "local" y pueden desactivarse explícitamente.
+    demoVenuesEnabled: ${RESERLY_DEMO_VENUES_ENABLED:true}

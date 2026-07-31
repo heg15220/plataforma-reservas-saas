@@ -50,13 +50,13 @@ export const baseTheme = createTheme({
   typography: {
     fontFamily: visualTokens.typography.family,
     h1: {
-      fontSize: "clamp(1.5rem, 1.25rem + 1.2vw, 2rem)",
+      fontSize: "clamp(1.75rem, 1.4rem + 1.25vw, 2.5rem)",
       fontWeight: visualTokens.typography.weight.bold,
       letterSpacing: "-0.025em",
       lineHeight: 1.25,
     },
     h2: {
-      fontSize: "1.25rem",
+      fontSize: "1.125rem",
       fontWeight: visualTokens.typography.weight.semibold,
       letterSpacing: "-0.015em",
       lineHeight: 1.4,
@@ -67,15 +67,15 @@ export const baseTheme = createTheme({
       lineHeight: 1.5,
     },
     body1: {
-      fontSize: "0.875rem",
+      fontSize: "0.8125rem",
       lineHeight: 1.5,
     },
     body2: {
-      fontSize: "0.75rem",
+      fontSize: "0.725rem",
       lineHeight: 1.5,
     },
     button: {
-      fontSize: "0.875rem",
+      fontSize: "0.75rem",
       fontWeight: visualTokens.typography.weight.semibold,
       lineHeight: 1.25,
       textTransform: "none",
@@ -96,6 +96,7 @@ export const baseTheme = createTheme({
         body: {
           backgroundColor: visualTokens.color.surface.page,
           color: visualTokens.color.text.primary,
+          WebkitFontSmoothing: "antialiased",
         },
       },
     },
@@ -112,7 +113,7 @@ export const baseTheme = createTheme({
         root: {
           borderRadius: visualTokens.radius.control,
           fontWeight: visualTokens.typography.weight.semibold,
-          minHeight: 44,
+          minHeight: 38,
           textTransform: "none",
           transition: "background-color 120ms ease, border-color 120ms ease, color 120ms ease",
           "&:focus-visible": {
@@ -150,7 +151,7 @@ export const baseTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: visualTokens.radius.control,
-          minHeight: 44,
+          minHeight: 40,
           "&:hover .MuiOutlinedInput-notchedOutline": {
             borderColor: visualTokens.color.border.strong,
           },

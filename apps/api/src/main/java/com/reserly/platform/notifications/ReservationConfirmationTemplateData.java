@@ -9,6 +9,7 @@ import java.util.Objects;
 
 /** Datos mínimos para la confirmación dirigida al usuario; nunca incluye credenciales del local. */
 public record ReservationConfirmationTemplateData(
+    String customerName,
     String venueName,
     String venueAddress,
     LocalDate date,
@@ -21,6 +22,7 @@ public record ReservationConfirmationTemplateData(
     List<Answer> answers) {
 
   public ReservationConfirmationTemplateData {
+    Objects.requireNonNull(customerName);
     Objects.requireNonNull(venueName);
     Objects.requireNonNull(venueAddress);
     Objects.requireNonNull(date);

@@ -65,6 +65,7 @@ public class LocalizedEmailTemplateServiceImpl implements LocalizedEmailTemplate
         DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(javaLocale);
 
     Map<String, String> textValues = new LinkedHashMap<>();
+    textValues.put("customerName", data.customerName());
     textValues.put("venueName", data.venueName());
     textValues.put("venueAddress", data.venueAddress());
     textValues.put("reservationDate", dateFormatter.format(data.date()));
@@ -92,6 +93,7 @@ public class LocalizedEmailTemplateServiceImpl implements LocalizedEmailTemplate
     textValues.put("venueName", data.venueName());
     textValues.put("customerName", data.customerName());
     textValues.put("customerEmail", data.customerEmail());
+    textValues.put("panelUrl", data.panelUrl().toASCIIString());
     textValues.put("responses", textVenueResponses(resolved, data));
 
     Map<String, String> htmlValues = escapedValues(textValues);

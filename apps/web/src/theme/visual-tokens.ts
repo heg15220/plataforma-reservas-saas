@@ -7,24 +7,24 @@
 export const visualTokens = {
   color: {
     brand: {
-      primary: "#075FE4",
-      primaryHover: "#064FC0",
+      primary: "#075CD6",
+      primaryHover: "#064DB5",
       primarySoft: "#EAF2FF",
     },
     text: {
-      primary: "#111827",
-      secondary: "#5F6B7A",
+      primary: "#111C33",
+      secondary: "#5B677A",
       inverse: "#FFFFFF",
     },
     surface: {
-      page: "#F7F9FC",
+      page: "#F8FAFD",
       card: "#FFFFFF",
       raised: "#FFFFFF",
-      inverse: "#172033",
+      inverse: "#10203A",
     },
     border: {
-      default: "#DFE5EE",
-      strong: "#B8C2D1",
+      default: "#E3E9F1",
+      strong: "#C7D0DE",
     },
     status: {
       success: "#0AA968",
@@ -44,14 +44,14 @@ export const visualTokens = {
     },
   },
   radius: {
-    control: 8,
-    card: 12,
-    panel: 16,
+    control: 7,
+    card: 10,
+    panel: 12,
     round: 999,
   },
   shadow: {
-    floating: "0 12px 32px rgba(17, 24, 39, 0.12)",
-    card: "0 4px 16px rgba(17, 24, 39, 0.06)",
+    floating: "0 18px 48px rgba(18, 39, 78, 0.14)",
+    card: "0 3px 14px rgba(18, 39, 78, 0.055)",
   },
   typography: {
     family: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',

@@ -150,7 +150,20 @@
   },
   "HomePage": {
     "actions": {
-      "search": "Search availability"
+      "search": "Search",
+      "viewAll": "View all",
+      "viewAvailability": "View availability",
+      "viewMap": "View on map"
+    },
+    "card": {
+      "imageAlt": "Image of {name}"
+    },
+    "discovery": {
+      "empty": "Explore the categories to find available venues.",
+      "featured": "Featured venues",
+      "mapLabel": "Indicative view of nearby venues",
+      "nearby": "Near you",
+      "recommended": "Recommended for you"
     },
     "hero": {
       "eyebrow": "ONLINE BOOKINGS",
@@ -179,7 +192,10 @@
       "localAccess": "Venue access",
       "mobileNavigation": "Public mobile navigation",
       "primaryNavigation": "Primary public navigation",
-      "skipContent": "Skip to content"
+      "recommendations": "Recommendations",
+      "registerVenue": "Register your venue",
+      "skipContent": "Skip to content",
+      "venueQuestion": "Are you a venue?"
     },
     "venue": {
       "defaultVenueName": "My venue",
@@ -496,7 +512,7 @@
       "capacity": "{available} of {total} places available",
       "slotAvailable": "Available",
       "slotUnavailable": "Unavailable",
-      "bookingPending": "Booking coming soon",
+      "bookingPending": "Book",
       "legend": {
         "available": "Places available",
         "unavailable": "Closed, full or blocked",
@@ -509,7 +525,23 @@
       "chooseResource": "Select an option",
       "anyAvailableResource": "Any available professional or resource",
       "resourceWithSpecialty": "{name} · {specialty}",
-      "resourceNotRequired": "No assigned resource"
+      "resourceNotRequired": "No assigned resource",
+      "table": {
+        "time": "Time slot",
+        "capacity": "Capacity",
+        "available": "Available",
+        "status": "Status"
+      },
+      "facts": {
+        "capacity": "Maximum capacity",
+        "people": "{count, plural, one {# person} other {# people}}",
+        "duration": "Time per slot",
+        "minutes": "{count} min",
+        "availableSlots": "Available slots",
+        "confirmation": "Confirmation",
+        "byEmail": "By email",
+        "notAvailable": "To be confirmed"
+      }
     },
     "private": {
       "metadata": {
@@ -624,6 +656,18 @@
     }
   },
   "VenuePublicProfile": {
+    "actions": {
+      "book": "Book",
+      "save": "Save",
+      "viewGallery": "View gallery ({count})",
+      "howToGetThere": "Directions",
+      "viewSchedule": "View full schedule"
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Home",
+      "venues": "Venues"
+    },
     "booking": {
       "action": "Bookings coming soon",
       "description": "Online booking will be enabled when the venue publishes its availability.",
@@ -636,7 +680,11 @@
     },
     "mainImageAlt": "Main image of {name}",
     "metadata": {
-      "notFoundTitle": "Venue unavailable"
+      "notFoundTitle": "Venue unavailable",
+      "published": "Published profile",
+      "bookingOpen": "Accepts online bookings",
+      "availabilityTitle": "Check availability",
+      "availabilityDescription": "Choose a date to see published times and remaining places."
     },
     "reviews": {
       "empty": "This venue has not received any verified reviews yet.",
@@ -684,7 +732,19 @@
       "additional": "Additional information",
       "gallery": "Gallery",
       "rules": "Rules",
-      "services": "Services"
+      "services": "Services",
+      "information": "Venue information",
+      "publicText": "Additional information",
+      "contact": "Contact",
+      "website": "Visit website",
+      "noAdditionalInformation": "The venue has not published additional information yet."
+    },
+    "tabs": {
+      "label": "Venue sections",
+      "availability": "Availability",
+      "information": "Information",
+      "reviews": "Reviews",
+      "gallery": "Gallery"
     }
   },
   "VenueProfileEditor": {
@@ -1178,11 +1238,18 @@
   "ReservationBooking": {
     "form": {
       "title": "Complete your booking",
+      "formDescription": "Enter your details to confirm the selected places.",
+      "selectionTitle": "How many people will attend?",
+      "selectionDescription": "We will hold the places for a few minutes while you enter your details.",
       "loading": "Preparing your booking",
       "expired": "Your booking time has expired. Please choose a slot again.",
       "remaining": "Time remaining: {time}",
       "start": "Start booking",
+      "preparing": "Holding places",
+      "confirming": "Confirming booking",
       "submit": "Confirm booking",
+      "holdExplanation": "You will not be charged when you continue.",
+      "additionalDetails": "Additional information",
       "error": "We could not prepare the booking.",
       "activeRestriction": "This email address has a temporary booking restriction until {date} due to previous reported no-show incidents.",
       "name": "Name",
@@ -1192,20 +1259,32 @@
       "timeSlot": "Time slot",
       "selectPlaceholder": "Select an option",
       "privacy": "I accept the privacy policy",
-      "rules": "I accept the booking rules"
+      "rules": "I accept the booking rules",
+      "steps": {
+        "ariaLabel": "Booking progress",
+        "select": "Select",
+        "form": "Form",
+        "confirmation": "Confirmation"
+      },
+      "summary": {
+        "title": "Your booking details",
+        "people": "{count, plural, one {# person} other {# people}}",
+        "policyTitle": "Booking policy",
+        "policyFallback": "Contact the venue about any booking changes or cancellation."
+      }
     },
     "confirmation": {
       "loading": "Loading confirmation",
       "eyebrow": "Booking confirmed",
-      "title": "Your booking is ready",
-      "description": "We sent the details to {email}.",
+      "title": "Booking confirmed!",
+      "description": "We sent all the details to {email}.",
       "details": {
         "title": "Summary",
         "venue": "Venue",
         "date": "Date",
         "time": "Time",
         "partySize": "Party size",
-        "people": "{count} people"
+        "people": "{count, plural, one {# person} other {# people}}"
       },
       "emailNotice": "Check {email} to manage your booking.",
       "privacyNotice": "For privacy, the management link is only sent by email.",
@@ -1217,7 +1296,8 @@
       },
       "actions": {
         "explore": "Explore more venues",
-        "home": "Back to home"
+        "home": "Back to home",
+        "calendar": "Add to calendar"
       },
       "missing": {
         "title": "Confirmation unavailable",

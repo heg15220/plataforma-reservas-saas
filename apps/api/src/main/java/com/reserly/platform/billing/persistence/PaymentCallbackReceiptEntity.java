@@ -10,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Evidencia minimizada de un callback aceptado.
@@ -77,7 +79,9 @@ public class PaymentCallbackReceiptEntity {
     channel = value;
   }
 
-  @Column(name = "\"payloadHash\"", nullable = false, length = 64)
+  /** SHA-256 hexadecimal de longitud fija, alineado con el tipo físico {@code char(64)} de V34. */
+  @JdbcTypeCode(SqlTypes.CHAR)
+  @Column(name = "\"payloadHash\"", nullable = false, length = 64, columnDefinition = "char(64)")
   public String getPayloadHash() {
     return payloadHash;
   }

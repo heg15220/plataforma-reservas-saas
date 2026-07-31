@@ -1,6 +1,5 @@
 package com.reserly.platform.billing.payment;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reserly.platform.billing.payment.redsys.RedsysPaymentProvider;
 import com.reserly.platform.billing.payment.redsys.RedsysSignatureService;
 import com.reserly.platform.configuration.RedsysProperties;
@@ -8,6 +7,7 @@ import com.reserly.platform.configuration.ReserlyEnvironment;
 import com.reserly.platform.configuration.ReserlyProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Selecciona un adaptador seguro por entorno.

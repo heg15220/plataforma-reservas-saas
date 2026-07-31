@@ -83,7 +83,13 @@ Estas convenciones deben aplicarse en toda la implementación backend y en todas
 
 - Las entidades JPA deben usar acceso por propiedades cuando haya relaciones: las anotaciones de persistencia de relaciones (`@OneToMany`, `@ManyToOne`, `@OneToOne`, `@ManyToMany`, `@JoinColumn`, `@JoinTable`, `@OrderBy` y equivalentes) deben declararse en los métodos `get` correspondientes.
 - Los métodos `set` correspondientes deben existir y mantener la consistencia de la relación cuando haya invariantes bidireccionales, aunque la anotación JPA se coloque en el `get` por el modo de acceso de Hibernate/JPA.
+- Los setters de colecciones persistentes deben conservar la instancia entregada por Hibernate. No
+  deben copiar un `PersistentCollection` a `HashSet`, `ArrayList` u otra colección, porque se
+  perdería el wrapper encargado del estado, la carga y el seguimiento de cambios.
 - Si una entidad combina relaciones con atributos simples, el patrón de acceso debe ser consistente dentro de la entidad para evitar que Hibernate mezcle acceso por campo y por propiedad sin intención.
+- Las columnas físicas `CHAR(n)` deben declarar explícitamente `@JdbcTypeCode(SqlTypes.CHAR)`,
+  longitud y `columnDefinition`; no se consideran equivalentes a `VARCHAR(n)` bajo
+  `ddl-auto=validate`.
 - Las relaciones con impacto de negocio, concurrencia, borrado en cascada, orphan removal o carga diferida deben documentar su intención mediante comentarios técnicos cuando no sea evidente y en la entrada de `technical-implementation.md` de la tarea correspondiente.
 
 #### DAOs y consultas
@@ -2543,14 +2549,14 @@ La interfaz observada usa una base blanca y gris muy clara con azul intenso como
 
 | Token | Valor inicial | Uso |
 | --- | --- | --- |
-| `color.brand.primary` | `#075FE4` | Botones principales, enlaces activos, selección y foco |
-| `color.brand.primaryHover` | `#064FC0` | Hover y pressed de acciones primarias |
+| `color.brand.primary` | `#075CD6` | Botones principales, enlaces activos, selección y foco |
+| `color.brand.primaryHover` | `#064DB5` | Hover y pressed de acciones primarias |
 | `color.brand.primarySoft` | `#EAF2FF` | Fondos seleccionados, navegación activa y etiquetas suaves |
-| `color.text.primary` | `#111827` | Títulos y texto principal |
-| `color.text.secondary` | `#5F6B7A` | Metadatos, ayudas y texto secundario |
-| `color.surface.page` | `#F7F9FC` | Fondo general de paneles y páginas |
+| `color.text.primary` | `#111C33` | Títulos y texto principal |
+| `color.text.secondary` | `#5B677A` | Metadatos, ayudas y texto secundario |
+| `color.surface.page` | `#F8FAFD` | Fondo general de paneles y páginas |
 | `color.surface.card` | `#FFFFFF` | Tarjetas, formularios, modales y paneles |
-| `color.border.default` | `#DFE5EE` | Bordes de campos, tarjetas y divisores |
+| `color.border.default` | `#E3E9F1` | Bordes de campos, tarjetas y divisores |
 | `color.status.success` | `#0AA968` | Disponible, abierto, confirmado y asistido |
 | `color.status.warning` | `#F59E0B` | Pendiente, riesgo moderado y avisos |
 | `color.status.danger` | `#E53935` | No asistencia, error, restricción y acción destructiva |
@@ -2609,6 +2615,25 @@ El prototipo móvil define una experiencia de una sola columna y navegación cen
 - Panel del local mediante tarjetas y listas; no se trasladarán tablas de escritorio a móvil.
 
 Los breakpoints iniciales serán los definidos por MUI y podrán ajustarse tras pruebas visuales: móvil `< 600 px`, tablet `600–899 px`, escritorio `900–1199 px` y escritorio amplio `>= 1200 px`.
+
+##### Inicio público responsive implementado
+
+La tarea `15.1` concreta el prototipo en una composición reutilizable:
+
+- cabecera pública de `58 px` en escritorio y `60 px` en móvil, con acciones de acceso y alta;
+- hero fotográfico alimentado por la primera imagen pública disponible, protegido por gradiente
+  para mantener contraste; si el API no responde se usa un fondo abstracto, no datos simulados;
+- búsqueda única con `q` y `location`, apilada en móvil y horizontal desde escritorio;
+- categorías táctiles que enlazan a filtros reales del explorador;
+- recomendados y destacados construidos desde `GET /api/public/venues/search`, sin hardcodear
+  nombres, imágenes, estados ni direcciones;
+- bloque cercano con lista accesible y mapa decorativo explícitamente identificado como
+  orientativo hasta disponer de un proveedor cartográfico;
+- navegación inferior pública conservada en móvil.
+
+La carga SSR degrada a categorías y buscador si el API no está disponible. No se reenvían cookies
+ni sesión. Las fotografías usan `16:9`, `object-fit: cover`, alt text localizado y enlaces a la
+ficha canónica. A `390 × 844` no debe existir desbordamiento horizontal.
 
 ##### Imágenes y contenido
 
@@ -2896,3 +2921,32 @@ scripts manuales o futuros errores de servicio.
   especialmente el caso de pestañas activas.
 - `ixVenueCustomTabsVenueUpdatedAt` facilita sincronización, auditorías simples y futuras vistas de
   administración por local.
+
+### Publicaciones y disponibilidad de demostración en desarrollo local
+
+El perfil Spring `local` incorpora un inicializador condicional gobernado por
+`reserly.development.demoVenuesEnabled`. Su valor predeterminado es `true` únicamente en
+`application-local.yaml`; staging, producción y tests no cargan el componente porque además exige
+`@Profile("local")`. `RESERLY_DEMO_VENUES_ENABLED=false` permite arrancar una base local sin datos
+de demostración.
+
+El inicializador empaqueta las imágenes facilitadas, las escribe en el bucket privado con claves
+deterministas y ejecuta después un script SQL. Esta secuencia evita publicar referencias a objetos
+ausentes. El script reserva UUID, emails y slugs bajo un namespace de desarrollo y usa operaciones
+idempotentes para dos usuarios propietarios internos, roles, cuentas verificadas, publicaciones,
+galerías, horarios y servicios. Esas cuentas satisfacen integridad referencial, pero el recorrido
+público no requiere registro ni autenticación. Como el estado `verified` exige vigencia, el fixture
+fija y renueva `businessVerificationExpiresAt` a un año desde cada inicialización.
+
+Las publicaciones `ames-padel-center` y `let-padel-ames` están publicadas en la categoría pista de
+pádel, abren de 10:00 a 22:00 y exponen el formulario público base. Cada reinicio inserta, sin
+reemplazar filas existentes, ocho franjas de 90 minutos y cuatro plazas para cada uno de los
+siguientes 31 días. El horizonte se desplaza con `CURRENT_DATE` sin borrar reservas ni duplicar
+slots. Los contactos empresariales terminan en `@reserly.local`; Mailpit captura tanto el correo al
+usuario como el aviso al local y ningún mensaje sale a Internet.
+
+La disponibilidad pública descuenta ocupación real mediante una consulta agregada para todas las
+franjas del día. Suma reservas `confirmed`, `attended`, `no_show` y `reported`, además de holds
+vigentes. El servicio resta la ocupación con límite inferior cero, combina capacidad con estado y
+recursos, y publica `full` cuando no quedan plazas. La lectura comparte las reglas de la validación
+transaccional de reserva, evita N+1 y nunca delega el cálculo al frontend.

@@ -184,6 +184,28 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
   long sumOccupiedCapacity(@Param("timeSlotId") UUID timeSlotId, @Param("now") Instant now);
 
   /**
+   * Calcula en una consulta la ocupación visible de todas las franjas de una respuesta pública.
+   *
+   * <p>Comparte exactamente la semántica transaccional de capacidad: incluye estados confirmados
+   * y holds todavía vigentes, y omite cancelaciones y expiraciones.
+   */
+  @Query(
+      """
+      select new com.reserly.platform.reservations.persistence.TimeSlotCapacityOccupancy(
+        reservation.timeSlot.id, sum(reservation.partySize)
+      )
+      from ReservationEntity reservation
+      where reservation.timeSlot.id in :timeSlotIds
+        and (
+          reservation.status in ('confirmed', 'attended', 'no_show', 'reported')
+          or (reservation.status = 'hold' and reservation.holdExpiresAt > :now)
+        )
+      group by reservation.timeSlot.id
+      """)
+  List<TimeSlotCapacityOccupancy> sumOccupiedCapacityByTimeSlotIds(
+      @Param("timeSlotIds") Collection<UUID> timeSlotIds, @Param("now") Instant now);
+
+  /**
    * Suma la ocupación ajena al hold que se está confirmando. Debe ejecutarse con la franja
    * bloqueada para que la comprobación y la transición compartan una única instantánea.
    */

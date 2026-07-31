@@ -148,9 +148,12 @@ public class ServiceEntity {
     return compatibleResources;
   }
 
+  /**
+   * Conserva la instancia entregada por Hibernate para no sustituir su {@code PersistentSet}
+   * durante la hidratacion. La capa de servicio es responsable de entregar una coleccion mutable.
+   */
   public void setCompatibleResources(Set<EmployeeResourceEntity> compatibleResources) {
-    this.compatibleResources =
-        compatibleResources == null ? new HashSet<>() : new HashSet<>(compatibleResources);
+    this.compatibleResources = compatibleResources == null ? new HashSet<>() : compatibleResources;
   }
 
   @Column(name = "\"createdAt\"", nullable = false)

@@ -34,6 +34,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 0.13. Definir patrón para textos localizados en base de datos mediante campos `*_i18n` o JSON `{ es, en }`.
 - [x] 0.14. Definir y automatizar convenciones backend: tablas `UpperCamelCase`, clases Java `UpperCamelCase`, atributos `lowerCamelCase`, JPA por getters/setters, DAOs con `@Query`, interfaces separadas de servicios/controladores, DTOs REST y conversores.
 - [x] 0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.
+- [x] 0.16. Añadir tres publicaciones idempotentes exclusivas del perfil local, con imágenes, disponibilidad móvil, reserva anónima, correo capturable y actualización real de plazas.
 
 ## 3. Fase 1 - Identidad, roles y base SaaS
 
@@ -271,13 +272,13 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 17. Fase 15 - Responsive y experiencia móvil
 
-- [ ] 15.1. Validar inicio móvil con buscador, ubicación y categorías.
+- [x] 15.1. Validar inicio móvil con buscador, ubicación y categorías.
 - [ ] 15.2. Validar resultados móviles con tarjetas.
 - [ ] 15.3. Validar filtros móviles como panel o modal.
-- [ ] 15.4. Validar ficha móvil con pestañas y botón fijo de reserva.
-- [ ] 15.5. Validar calendario compacto y franjas táctiles.
-- [ ] 15.6. Validar formulario móvil por bloques con contador.
-- [ ] 15.7. Validar pantalla móvil de confirmación.
+- [x] 15.4. Validar ficha móvil con pestañas y botón fijo de reserva.
+- [x] 15.5. Validar calendario compacto y franjas táctiles.
+- [x] 15.6. Validar formulario móvil por bloques con contador.
+- [x] 15.7. Validar pantalla móvil de confirmación.
 - [ ] 15.8. Validar login móvil de locales.
 - [ ] 15.9. Validar panel resumen móvil del local.
 - [ ] 15.10. Validar reservas del día y detalle móvil.

@@ -150,7 +150,20 @@
   },
   "HomePage": {
     "actions": {
-      "search": "Buscar disponibilidad"
+      "search": "Buscar",
+      "viewAll": "Ver todos",
+      "viewAvailability": "Ver disponibilidad",
+      "viewMap": "Ver en mapa"
+    },
+    "card": {
+      "imageAlt": "Imagen de {name}"
+    },
+    "discovery": {
+      "empty": "Explora las categorías para encontrar locales disponibles.",
+      "featured": "Locales destacados",
+      "mapLabel": "Vista orientativa de locales cercanos",
+      "nearby": "Cerca de ti",
+      "recommended": "Recomendados para ti"
     },
     "hero": {
       "eyebrow": "RESERVAS ONLINE",
@@ -179,7 +192,10 @@
       "localAccess": "Acceso local",
       "mobileNavigation": "Navegación pública móvil",
       "primaryNavigation": "Navegación pública principal",
-      "skipContent": "Saltar al contenido"
+      "recommendations": "Recomendaciones",
+      "registerVenue": "Registra tu local",
+      "skipContent": "Saltar al contenido",
+      "venueQuestion": "¿Eres un local?"
     },
     "venue": {
       "defaultVenueName": "Mi local",
@@ -496,7 +512,7 @@
       "capacity": "{available} de {total} plazas disponibles",
       "slotAvailable": "Disponible",
       "slotUnavailable": "No disponible",
-      "bookingPending": "Reserva próximamente",
+      "bookingPending": "Reservar",
       "legend": {
         "available": "Con plazas",
         "unavailable": "Cerrado, completo o bloqueado",
@@ -509,7 +525,23 @@
       "chooseResource": "Selecciona una opción",
       "anyAvailableResource": "Cualquier profesional o recurso disponible",
       "resourceWithSpecialty": "{name} · {specialty}",
-      "resourceNotRequired": "Sin recurso asignado"
+      "resourceNotRequired": "Sin recurso asignado",
+      "table": {
+        "time": "Franja horaria",
+        "capacity": "Capacidad",
+        "available": "Disponibles",
+        "status": "Estado"
+      },
+      "facts": {
+        "capacity": "Capacidad máxima",
+        "people": "{count, plural, one {# persona} other {# personas}}",
+        "duration": "Tiempo por franja",
+        "minutes": "{count} min",
+        "availableSlots": "Franjas disponibles",
+        "confirmation": "Confirmación",
+        "byEmail": "Por email",
+        "notAvailable": "Por confirmar"
+      }
     },
     "private": {
       "metadata": {
@@ -624,6 +656,18 @@
     }
   },
   "VenuePublicProfile": {
+    "actions": {
+      "book": "Reservar",
+      "save": "Guardar",
+      "viewGallery": "Ver galería ({count})",
+      "howToGetThere": "Cómo llegar",
+      "viewSchedule": "Ver horario completo"
+    },
+    "breadcrumbs": {
+      "label": "Ruta de navegación",
+      "home": "Inicio",
+      "venues": "Locales"
+    },
     "booking": {
       "action": "Reservas próximamente",
       "description": "La reserva online se habilitará cuando el local publique su disponibilidad.",
@@ -636,7 +680,11 @@
     },
     "mainImageAlt": "Imagen principal de {name}",
     "metadata": {
-      "notFoundTitle": "Local no disponible"
+      "notFoundTitle": "Local no disponible",
+      "published": "Perfil publicado",
+      "bookingOpen": "Acepta reservas online",
+      "availabilityTitle": "Consulta la disponibilidad",
+      "availabilityDescription": "Elige una fecha para ver las plazas y horarios publicados."
     },
     "reviews": {
       "empty": "Este local todavía no ha recibido reseñas verificadas.",
@@ -684,7 +732,19 @@
       "additional": "Información adicional",
       "gallery": "Galería",
       "rules": "Normas",
-      "services": "Servicios"
+      "services": "Servicios",
+      "information": "Información del local",
+      "publicText": "Información adicional",
+      "contact": "Contacto",
+      "website": "Visitar sitio web",
+      "noAdditionalInformation": "El local todavía no ha publicado información adicional."
+    },
+    "tabs": {
+      "label": "Secciones del local",
+      "availability": "Disponibilidad",
+      "information": "Información",
+      "reviews": "Reseñas",
+      "gallery": "Galería"
     }
   },
   "VenueProfileEditor": {
@@ -1178,11 +1238,18 @@
   "ReservationBooking": {
     "form": {
       "title": "Completa tu reserva",
+      "formDescription": "Introduce tus datos para confirmar la plaza seleccionada.",
+      "selectionTitle": "¿Cuántas personas asistirán?",
+      "selectionDescription": "Bloquearemos las plazas durante unos minutos mientras completas tus datos.",
       "loading": "Preparando tu reserva",
       "expired": "El tiempo de reserva ha terminado. Vuelve a elegir una franja.",
       "remaining": "Tiempo para completar: {time}",
       "start": "Empezar reserva",
+      "preparing": "Bloqueando plazas",
+      "confirming": "Confirmando reserva",
       "submit": "Confirmar reserva",
+      "holdExplanation": "No se realizará ningún cargo al continuar.",
+      "additionalDetails": "Información adicional",
       "error": "No hemos podido preparar la reserva.",
       "activeRestriction": "Este correo electrónico tiene una restricción temporal para realizar reservas hasta el {date} debido a incidencias previas de no asistencia.",
       "name": "Nombre",
@@ -1192,20 +1259,32 @@
       "timeSlot": "Franja horaria",
       "selectPlaceholder": "Selecciona una opción",
       "privacy": "Acepto la política de privacidad",
-      "rules": "Acepto las normas de reserva"
+      "rules": "Acepto las normas de reserva",
+      "steps": {
+        "ariaLabel": "Progreso de la reserva",
+        "select": "Seleccionar",
+        "form": "Formulario",
+        "confirmation": "Confirmación"
+      },
+      "summary": {
+        "title": "Datos de tu reserva",
+        "people": "{count, plural, one {# persona} other {# personas}}",
+        "policyTitle": "Política de reserva",
+        "policyFallback": "Consulta con el local cualquier cambio o cancelación de la reserva."
+      }
     },
     "confirmation": {
       "loading": "Cargando confirmación",
       "eyebrow": "Reserva confirmada",
-      "title": "Tu reserva está lista",
-      "description": "Hemos enviado los detalles a {email}.",
+      "title": "¡Reserva confirmada!",
+      "description": "Hemos enviado todos los detalles a {email}.",
       "details": {
         "title": "Resumen",
         "venue": "Local",
         "date": "Fecha",
         "time": "Hora",
         "partySize": "Personas",
-        "people": "{count} personas"
+        "people": "{count, plural, one {# persona} other {# personas}}"
       },
       "emailNotice": "Revisa {email} para gestionar la reserva.",
       "privacyNotice": "Por privacidad, el enlace de gestión solo se envía por email.",
@@ -1217,7 +1296,8 @@
       },
       "actions": {
         "explore": "Explorar más locales",
-        "home": "Volver al inicio"
+        "home": "Volver al inicio",
+        "calendar": "Añadir al calendario"
       },
       "missing": {
         "title": "Confirmación no disponible",

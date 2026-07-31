@@ -1,17 +1,31 @@
 "use client";
 
-import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import MenuItem from "@mui/material/MenuItem";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  CircularProgress,
+  FormControlLabel,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import {
+  CalendarDays,
+  Check,
+  Clock3,
+  MapPin,
+  ShieldCheck,
+  TimerReset,
+  UsersRound,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { Surface } from "@/components/layout";
+import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { storeReservationConfirmation } from "@/features/reservation-booking/reservation-confirmation-storage";
 
 import {
@@ -23,21 +37,42 @@ import {
   type ReservationHold,
 } from "./public-reservation-api";
 
+export type ReservationSummary = {
+  venueName: string;
+  venueCategory: string;
+  venueAddress: string;
+  venueImageUrl: string | null;
+  date: string;
+  startsAt: string;
+  endsAt: string;
+  serviceName: string | null;
+  resourceName: string | null;
+  bookingRules: string | null;
+};
+
 interface PublicReservationFormViewProps {
   venueSlug: string;
   timeSlotId: string;
   serviceId?: string;
   employeeResourceId?: string;
   assignmentPreference?: string;
+  reservationSummary?: ReservationSummary;
 }
 
-/** Flujo público: crea el hold, localiza restricciones y conserva su cuenta atrás real. */
+/**
+ * Anonymous booking journey with a server-verified summary and expiring hold.
+ *
+ * The first block collects capacity before creating the hold. Once held, base
+ * and custom fields are grouped visually without changing their published
+ * order or backend identifiers.
+ */
 export function PublicReservationFormView({
   venueSlug,
   timeSlotId,
   serviceId,
   employeeResourceId,
   assignmentPreference,
+  reservationSummary,
 }: PublicReservationFormViewProps) {
   const locale = useLocale() === "es" ? "es" : "en";
   const t = useTranslations("ReservationBooking.form");
@@ -113,6 +148,7 @@ export function PublicReservationFormView({
           ? []
           : [{ fieldId: field.id!, value }];
       });
+    setBusy(true);
     try {
       const response = await confirmReservation(hold.reservationId, {
         holdToken: hold.holdToken,
@@ -136,76 +172,338 @@ export function PublicReservationFormView({
       } else {
         setFailed(true);
       }
+    } finally {
+      setBusy(false);
     }
   }
 
-  if (failed) return <Alert severity="error">{t("error")}</Alert>;
-  if (!schema) {
-    return (
-      <Stack role="status" sx={{ alignItems: "center" }}>
-        <CircularProgress aria-label={t("loading")} />
-      </Stack>
-    );
-  }
-  if (!hold) {
-    return (
-      <Surface>
-        <Stack spacing={2.5}>
-          <Typography component="h1" variant="h1">
+  return (
+    <PublicShell>
+      <PageContainer compact sx={{ pb: { xs: 12, md: 7 }, pt: { xs: 2, md: 3 } }}>
+        <Stack spacing={{ xs: 2.5, md: 3 }}>
+          <BookingSteps activeStep={hold ? 2 : 1} />
+
+          {failed ? <Alert severity="error">{t("error")}</Alert> : null}
+          {!schema ? (
+            <Stack
+              role="status"
+              sx={{ alignItems: "center", minHeight: 320, justifyContent: "center" }}
+            >
+              <CircularProgress aria-label={t("loading")} />
+            </Stack>
+          ) : (
+            <Box
+              sx={{
+                alignItems: "start",
+                display: "grid",
+                gap: { xs: 2, md: 2.5 },
+                gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "300px minmax(0, 1fr)" },
+              }}
+            >
+              <ReservationSummaryCard
+                locale={locale}
+                partySize={partySize}
+                summary={reservationSummary}
+              />
+
+              {!hold ? (
+                <Surface padding="lg">
+                  <Stack spacing={2.5}>
+                    <Box>
+                      <Typography component="h1" sx={{ fontWeight: 800 }} variant="h5">
+                        {t("selectionTitle")}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                        {t("selectionDescription")}
+                      </Typography>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      label={t("party")}
+                      onChange={(event) => setPartySize(Math.max(1, Number(event.target.value)))}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                      type="number"
+                      value={partySize}
+                    />
+                    <Button
+                      disabled={busy}
+                      onClick={() => void startHold()}
+                      size="large"
+                      variant="contained"
+                    >
+                      {busy ? t("preparing") : t("start")}
+                    </Button>
+                    <Typography
+                      color="text.secondary"
+                      sx={{ textAlign: "center" }}
+                      variant="caption"
+                    >
+                      {t("holdExplanation")}
+                    </Typography>
+                  </Stack>
+                </Surface>
+              ) : (
+                <Surface padding="lg">
+                  <Stack component="form" onSubmit={submit} spacing={2.5}>
+                    <Box>
+                      <Typography component="h1" sx={{ fontWeight: 800 }} variant="h5">
+                        {t("title")}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                        {t("formDescription")}
+                      </Typography>
+                    </Box>
+
+                    {restrictedUntil ? (
+                      <Alert severity="warning">
+                        {t("activeRestriction", {
+                          date: formatRestrictionDate(restrictedUntil, locale),
+                        })}
+                      </Alert>
+                    ) : null}
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gap: 2,
+                        gridTemplateColumns: { sm: "repeat(2, minmax(0, 1fr))" },
+                      }}
+                    >
+                      {schema.fields
+                        .filter((field) => field.source === "base")
+                        .map((field) => (
+                          <Control
+                            field={field}
+                            key={field.key}
+                            labels={labels}
+                            locale={locale}
+                            partySize={partySize}
+                          />
+                        ))}
+                    </Box>
+
+                    {schema.fields.some((field) => field.source === "custom") ? (
+                      <Stack spacing={2}>
+                        <Typography component="h2" variant="h6">
+                          {t("additionalDetails")}
+                        </Typography>
+                        {schema.fields
+                          .filter((field) => field.source === "custom")
+                          .map((field) => (
+                            <Control
+                              field={field}
+                              key={field.key}
+                              labels={labels}
+                              locale={locale}
+                              partySize={partySize}
+                            />
+                          ))}
+                      </Stack>
+                    ) : null}
+
+                    <Surface padding="sm" tone="muted">
+                      <Stack spacing={0.5}>
+                        <FormControlLabel
+                          control={<Checkbox name="acceptsPrivacyPolicy" required />}
+                          label={t("privacy")}
+                        />
+                        <FormControlLabel
+                          control={<Checkbox name="acceptsBookingRules" required />}
+                          label={t("rules")}
+                        />
+                      </Stack>
+                    </Surface>
+
+                    <Button
+                      disabled={seconds <= 0 || restrictedUntil !== null || busy}
+                      size="large"
+                      type="submit"
+                      variant="contained"
+                    >
+                      {busy ? t("confirming") : t("submit")}
+                    </Button>
+                    <Stack
+                      role="timer"
+                      direction="row"
+                      sx={{
+                        alignItems: "center",
+                        color:
+                          seconds <= 0
+                            ? "error.main"
+                            : seconds <= 60
+                              ? "warning.main"
+                              : "text.secondary",
+                        gap: 0.75,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <TimerReset aria-hidden size={16} />
+                      <Typography variant="caption">
+                        {seconds <= 0
+                          ? t("expired")
+                          : t("remaining", { time: formatRemaining(seconds) })}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Surface>
+              )}
+            </Box>
+          )}
+        </Stack>
+      </PageContainer>
+    </PublicShell>
+  );
+}
+
+function BookingSteps({ activeStep }: { activeStep: 1 | 2 | 3 }) {
+  const t = useTranslations("ReservationBooking.form.steps");
+  const steps = [t("select"), t("form"), t("confirmation")];
+  return (
+    <Box
+      aria-label={t("ariaLabel")}
+      role="list"
+      sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+    >
+      {steps.map((label, index) => {
+        const number = index + 1;
+        const completed = number < activeStep;
+        const active = number === activeStep;
+        return (
+          <Stack
+            key={label}
+            role="listitem"
+            spacing={0.75}
+            sx={{ alignItems: "center", minWidth: 0, position: "relative" }}
+          >
+            {index > 0 ? (
+              <Box
+                aria-hidden
+                sx={{
+                  bgcolor: completed || active ? "primary.main" : "divider",
+                  height: "1px",
+                  position: "absolute",
+                  right: "50%",
+                  top: 15,
+                  width: "100%",
+                  zIndex: 0,
+                }}
+              />
+            ) : null}
+            <Box
+              sx={{
+                alignItems: "center",
+                bgcolor: active ? "primary.main" : completed ? "primary.50" : "background.paper",
+                border: 1,
+                borderColor: active || completed ? "primary.main" : "divider",
+                borderRadius: "50%",
+                color: active ? "primary.contrastText" : "primary.main",
+                display: "flex",
+                fontSize: "0.75rem",
+                fontWeight: 800,
+                height: 30,
+                justifyContent: "center",
+                position: "relative",
+                width: 30,
+                zIndex: 1,
+              }}
+            >
+              {completed ? <Check aria-hidden size={15} /> : number}
+            </Box>
+            <Typography
+              color={active ? "primary.main" : "text.secondary"}
+              noWrap
+              sx={{
+                fontSize: { xs: "0.69rem", sm: "0.8rem" },
+                fontWeight: active ? 800 : 500,
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              {label}
+            </Typography>
+          </Stack>
+        );
+      })}
+    </Box>
+  );
+}
+
+function ReservationSummaryCard({
+  locale,
+  partySize,
+  summary,
+}: {
+  locale: "es" | "en";
+  partySize: number;
+  summary?: ReservationSummary;
+}) {
+  const t = useTranslations("ReservationBooking.form.summary");
+  if (!summary) return null;
+  return (
+    <Stack spacing={1.5} sx={{ position: { md: "sticky" }, top: { md: 88 } }}>
+      <Surface padding="md">
+        <Stack spacing={2}>
+          <Typography component="h2" variant="h6">
             {t("title")}
           </Typography>
-          <TextField
-            label={t("party")}
-            onChange={(event) => setPartySize(Math.max(1, Number(event.target.value)))}
-            slotProps={{ htmlInput: { min: 1 } }}
-            type="number"
-            value={partySize}
+          <Stack direction="row" sx={{ alignItems: "center", gap: 1.25 }}>
+            {summary.venueImageUrl ? (
+              <Box
+                component="img"
+                src={summary.venueImageUrl}
+                alt=""
+                sx={{ borderRadius: 2, height: 56, objectFit: "cover", width: 72 }}
+              />
+            ) : null}
+            <Box sx={{ minWidth: 0 }}>
+              <Typography noWrap sx={{ fontWeight: 800 }}>
+                {summary.venueName}
+              </Typography>
+              <Typography color="text.secondary" variant="caption">
+                {summary.venueCategory}
+              </Typography>
+            </Box>
+          </Stack>
+          <SummaryLine icon={<CalendarDays />} value={formatDate(summary.date, locale)} />
+          <SummaryLine
+            icon={<Clock3 />}
+            value={formatTimeRange(summary.startsAt, summary.endsAt)}
           />
-          <Button disabled={busy} onClick={() => void startHold()} variant="contained">
-            {t("start")}
-          </Button>
+          <SummaryLine icon={<UsersRound />} value={t("people", { count: partySize })} />
+          {summary.serviceName ? (
+            <SummaryLine icon={<ShieldCheck />} value={summary.serviceName} />
+          ) : null}
+          {summary.resourceName ? (
+            <SummaryLine icon={<Check />} value={summary.resourceName} />
+          ) : null}
+          <SummaryLine icon={<MapPin />} value={summary.venueAddress} />
         </Stack>
       </Surface>
-    );
-  }
+      <Surface padding="md" tone="muted">
+        <Stack spacing={0.75}>
+          <Typography sx={{ fontWeight: 800 }} variant="body2">
+            {t("policyTitle")}
+          </Typography>
+          <Typography color="text.secondary" variant="body2">
+            {summary.bookingRules || t("policyFallback")}
+          </Typography>
+        </Stack>
+      </Surface>
+    </Stack>
+  );
+}
 
-  const expired = seconds <= 0;
+function SummaryLine({ icon, value }: { icon: React.ReactNode; value: string }) {
   return (
-    <Surface>
-      <Stack component="form" onSubmit={submit} spacing={2.5}>
-        <Typography component="h1" variant="h1">
-          {t("title")}
-        </Typography>
-        {restrictedUntil && (
-          <Alert severity="warning">
-            {t("activeRestriction", {
-              date: formatRestrictionDate(restrictedUntil, locale),
-            })}
-          </Alert>
-        )}
-        <Alert role="timer" severity={expired ? "error" : seconds <= 60 ? "warning" : "info"}>
-          {expired ? t("expired") : t("remaining", { time: formatRemaining(seconds) })}
-        </Alert>
-        {schema.fields.map((field) => (
-          <Control
-            field={field}
-            key={field.key}
-            labels={labels}
-            locale={locale}
-            partySize={partySize}
-          />
-        ))}
-        <label>
-          <input name="acceptsPrivacyPolicy" required type="checkbox" /> {t("privacy")}
-        </label>
-        <label>
-          <input name="acceptsBookingRules" required type="checkbox" /> {t("rules")}
-        </label>
-        <Button disabled={expired || restrictedUntil !== null} type="submit" variant="contained">
-          {t("submit")}
-        </Button>
-      </Stack>
-    </Surface>
+    <Stack direction="row" sx={{ alignItems: "flex-start", color: "text.secondary", gap: 1 }}>
+      <Box
+        aria-hidden
+        sx={{ color: "primary.main", display: "flex", pt: 0.2, "& svg": { height: 17, width: 17 } }}
+      >
+        {icon}
+      </Box>
+      <Typography variant="body2">{value}</Typography>
+    </Stack>
   );
 }
 
@@ -273,9 +571,10 @@ function Control({
   }
   if (field.type === "checkbox") {
     return (
-      <label>
-        <input name={field.key} required={field.required} type="checkbox" /> {label}
-      </label>
+      <FormControlLabel
+        control={<Checkbox name={field.key} required={field.required} />}
+        label={label}
+      />
     );
   }
   const inputType =
@@ -301,10 +600,18 @@ function formatRemaining(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-/** Formatea la fecha de dominio sin desplazarla por la zona horaria del dispositivo. */
-function formatRestrictionDate(value: string, locale: "es" | "en") {
+function formatDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "long",
     timeZone: "UTC",
   }).format(new Date(`${value}T12:00:00Z`));
+}
+
+function formatTimeRange(start: string, end: string) {
+  return `${start.slice(0, 5)} – ${end.slice(0, 5)}`;
+}
+
+/** Formatea la fecha de dominio sin desplazarla por la zona horaria del dispositivo. */
+function formatRestrictionDate(value: string, locale: "es" | "en") {
+  return formatDate(value, locale);
 }

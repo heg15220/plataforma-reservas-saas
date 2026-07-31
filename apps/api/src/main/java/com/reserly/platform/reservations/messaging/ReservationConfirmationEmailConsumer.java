@@ -98,6 +98,7 @@ public class ReservationConfirmationEmailConsumer {
     return templates.renderReservationConfirmation(
         event.customerLocale(),
         new ReservationConfirmationTemplateData(
+            event.customerName(),
             event.venueName(),
             event.venueAddress(),
             event.date(),
@@ -128,7 +129,8 @@ public class ReservationConfirmationEmailConsumer {
             event.startsAt(),
             event.endsAt(),
             event.partySize(),
-            answers));
+            answers,
+            URI.create(webBaseUrl + "/panel/reservas/" + event.reservationId())));
   }
 
   private void deliver(

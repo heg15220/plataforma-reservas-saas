@@ -3,7 +3,6 @@ package com.reserly.platform.billing.payment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reserly.platform.billing.payment.redsys.RedsysPaymentProvider;
 import com.reserly.platform.billing.payment.redsys.RedsysSignatureServiceImpl;
 import com.reserly.platform.configuration.RedsysProperties;
@@ -14,6 +13,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /** Acredita que el simulador nunca se selecciona en producción. */
 class PaymentProviderConfigurationTests {

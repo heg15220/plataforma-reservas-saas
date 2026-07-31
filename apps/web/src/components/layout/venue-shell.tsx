@@ -112,22 +112,22 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
           display: { xs: "none", md: "flex" },
           flexDirection: "column",
           left: 0,
-          p: 6,
+          p: 4,
           position: "fixed",
           top: 0,
-          width: 256,
+          width: 224,
         }}
       >
         <NavigationLink aria-label={brand("panelHomeAria")} className="unstyled-link" href="/panel">
           <Brand inverse />
         </NavigationLink>
-        <Typography sx={{ color: "grey.400", fontSize: "0.75rem", mt: 8 }}>
+        <Typography sx={{ color: "grey.400", fontSize: "0.6875rem", mt: 6 }}>
           {resolvedVenueName}
         </Typography>
         <Box
           component="nav"
           aria-label={layout("navigation")}
-          sx={{ display: "grid", gap: 1.5, mt: 4 }}
+          sx={{ display: "grid", gap: 0.5, mt: 3 }}
         >
           {venueNavigation.map((item) => {
             const Icon = item.icon;
@@ -143,6 +143,8 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
                   bgcolor: currentPath === item.href ? "primary.main" : "transparent",
                   color: "common.white",
                   justifyContent: "flex-start",
+                  minHeight: 36,
+                  px: 2.5,
                   "&:hover": {
                     bgcolor: currentPath === item.href ? "primary.dark" : "rgba(255,255,255,0.08)",
                   },
@@ -172,7 +174,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
       <Box
         component="main"
         id="venue-main-content"
-        sx={{ ml: { md: "256px" }, py: { xs: 6, md: 10 } }}
+        sx={{ ml: { md: "224px" }, py: { xs: 5, md: 6 } }}
       >
         <PageContainer compact>{children}</PageContainer>
       </Box>

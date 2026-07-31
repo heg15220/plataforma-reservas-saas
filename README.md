@@ -53,7 +53,27 @@ scripts de desarrollo omiten los controles Maven de formato y estilo para no blo
 el arranque; `npm run lint`, `npm run format:check` y `npm run verify` siguen
 ejecutándolos de forma explícita.
 
-PostgreSQL/PostGIS, Redis y RabbitMQ se ejecutan localmente con Docker Compose. El almacenamiento S3 se incorporará en una tarea posterior.
+PostgreSQL/PostGIS, Redis, RabbitMQ, MinIO, Mailpit y ClamAV se ejecutan localmente con Docker
+Compose.
+
+### Publicaciones de demostración local
+
+Al arrancar la API con el perfil `local` se preparan automáticamente tres publicaciones anónimas,
+sin pasar por el registro de propietarios:
+
+- [Ames Padel Center](http://localhost:3000/locales/ames-padel-center).
+- [LET Padel Ames](http://localhost:3000/locales/let-padel-ames).
+- [Lume de Brétema](http://localhost:3000/locales/lume-de-bretema), restaurante ficticio con
+  carrusel editorial y turnos de almuerzo y cena.
+
+Cada una incluye imágenes, horario, servicio reservable y franjas de 90 minutos durante los
+siguientes 31 días. Los centros de pádel publican ocho franjas de cuatro plazas; el restaurante
+publica cuatro turnos de 18 comensales. La ficha descuenta reservas confirmadas y retenciones
+vigentes. Los correos de usuario y local se capturan en
+[Mailpit](http://localhost:8025); no salen a Internet.
+
+Los fixtures son idempotentes y exclusivos de desarrollo. Se pueden desactivar antes de arrancar
+con `RESERLY_DEMO_VENUES_ENABLED=false`.
 
 La matriz y las políticas de variables están en [`docs/configuration.md`](docs/configuration.md).
 

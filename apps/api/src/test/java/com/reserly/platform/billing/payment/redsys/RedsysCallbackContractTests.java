@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reserly.platform.billing.PaymentStatus;
 import com.reserly.platform.billing.payment.PaymentCallbackProcessingServiceImpl;
 import com.reserly.platform.billing.persistence.PaymentCallbackReceiptDao;
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Prueba el contrato completo firma-verificación-correlación-idempotencia sin red ni base real.

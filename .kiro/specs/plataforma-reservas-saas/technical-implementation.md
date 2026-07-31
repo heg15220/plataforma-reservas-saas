@@ -7,11 +7,11 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 ## Estado actual
 
 - Fecha de creación: 2026-06-06
-- Tareas implementadas documentadas y cerradas: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`,
+- Tareas implementadas documentadas y cerradas: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a
-  `13.12` y `14.1` a `14.3`.
-- Siguiente tarea pendiente recomendada: `14.4. Implementar suspensión de local`.
+  `13.12`, `14.1` a `14.14`, `15.1`, `15.4` y `15.5`.
+- Siguiente tarea pendiente recomendada: `15.2. Validar resultados móviles con tarjetas`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -28288,3 +28288,794 @@ frontend, Docker, Testcontainers, PostgreSQL ni servicios externos.
 
 La fase 14 queda completa. La siguiente tarea fuente de verdad es `15.1`, validación móvil del
 inicio con buscador, ubicación y categorías.
+
+## Tarea 0.16 - Publicaciones reservables de demostración local
+
+### Iteración, objetivo y trazabilidad
+
+- Fecha: 2026-07-31.
+- Estado: completada y verificada de forma focalizada.
+- Objetivo técnico: disponer en `localhost` de dos publicaciones completas para recorrer ficha,
+  disponibilidad, reserva anónima, correo y consumo de plazas sin registrar cuentas.
+- Requisitos relacionados: `RF-003`, `RF-004`, `RF-006`, `RF-013`, `RF-014`, `RF-015`, `RF-016`,
+  `RNF-003`, `RNF-005`, `RNF-006` y `RB-004`.
+- Diseño relacionado: perfil `local` aislado, imágenes privadas mediadas, SMTP con Mailpit y
+  capacidad calculada en backend.
+
+### Inicialización, recursos y aislamiento
+
+Se creó `LocalDemoVenueInitializer`, un `ApplicationRunner` limitado por `@Profile("local")` y
+`reserly.development.demoVenuesEnabled`. La propiedad se declara solo en `application-local.yaml`
+y acepta `RESERLY_DEMO_VENUES_ENABLED`; no se activa en staging, producción ni test.
+
+El inicializador documenta responsabilidad, entradas y efectos. Lee los recursos empaquetados y
+llama a `VenueImageStorage.put` con claves deterministas. La imagen común de pistas se escribe bajo
+una clave diferente para cada galería. Después ejecuta `local-demo-venues.sql` mediante
+`ResourceDatabasePopulator`, evitando que una publicación nazca antes que su imagen. Un error de
+lectura se convierte en `UncheckedIOException`; un fallo MinIO o SQL conserva la excepción de
+infraestructura y detiene el modo demo, que puede desactivarse explícitamente.
+
+Recursos incorporados:
+
+- `ames-padel-center.png`: 901862 bytes, 907 × 808;
+- `let-padel-ames.jpg`: 368039 bytes, 1360 × 1020;
+- `padel-courts.jpg`: 249898 bytes, 1360 × 1016, reutilizada en ambas galerías.
+
+`README.md` documenta URLs, Mailpit, horizonte de franjas y desactivación.
+
+### Modelo de datos e idempotencia
+
+No se añadió migración Flyway porque los fixtures no pertenecen a otros entornos. El script se
+ejecuta después de migrar y usa UUID reservados con prefijo `d...`. Por publicación provisiona:
+
+- `User` activo y verificado, `venue_business`, con rol `venue_owner`;
+- `BusinessAccount` verificado por el proveedor ficticio `local_fixture`;
+- `Venue` publicado en la categoría estable `pista-de-padel`;
+- imagen principal y galería con metadatos binarios reales;
+- siete horarios semanales, de 10:00 a 22:00;
+- un servicio activo de 90 minutos y formulario público base;
+- ocho franjas diarias de 90 minutos y capacidad cuatro desde hoy hasta hoy + 30 días.
+
+Las cuentas internas no se ofrecen como credenciales: únicamente mantienen las fronteras de
+propiedad, verificación y publicación. Los `UPSERT` restauran el perfil sin duplicarlo. Las franjas
+usan el índice único de local, fecha, inicio y servicio con `ON CONFLICT DO NOTHING`: el reinicio
+extiende el horizonte pero conserva IDs referenciados, estados y reservas. No se borran datos.
+
+Ambas fichas usan la dirección y teléfono aportados. Sus destinatarios `@reserly.local` permiten
+inspeccionar en Mailpit el aviso empresarial; el email del cliente se introduce en la reserva.
+
+### Cálculo real de plazas y flujo
+
+La implementación anterior devolvía `availableCapacity=capacity` para toda franja disponible,
+ocultando el consumo aunque la confirmación sí evitase sobreventa.
+
+Se creó el record documentado `TimeSlotCapacityOccupancy` y
+`ReservationDao.sumOccupiedCapacityByTimeSlotIds`. La consulta JPQL agrupa todas las franjas de la
+respuesta en una sola lectura y suma `partySize` para estados `confirmed`, `attended`, `no_show` y
+`reported`, junto con holds cuyo `holdExpiresAt` supera el instante del `Clock`. Omite
+cancelaciones y expiraciones.
+
+`PublicVenueAvailabilityServiceImpl` transforma la proyección en mapa y calcula
+`max(capacity - occupied, 0)`. Una franja exige plazas, estado disponible y recursos compatibles
+para admitir reserva; al agotarse publica `full`. El resumen diario usa estos estados efectivos.
+La confirmación bajo lock sigue siendo la autoridad contra carreras; esta lectura coherente es
+informativa y no sustituye la validación transaccional.
+
+### Seguridad, errores, observabilidad y verificación
+
+No se añadieron endpoints ni se relajaron permisos. Los DAOs públicos mantienen
+`status=published`; las claves MinIO no salen en DTOs. Los datos son ficticios y ningún email
+empresarial es entregable externamente. El inicializador emite un único `INFO` al completar, sin
+bytes, contraseñas, tokens ni secretos.
+
+`LocalDemoVenueFixtureContractTests` valida ambos slugs, formulario, horizonte móvil, idempotencia,
+estado reservable, Mailpit y dimensiones reales de las imágenes. El test de disponibilidad añade
+una franja parcialmente ocupada y otra agotada y verifica plazas, `full` y contador diario.
+
+Evidencia:
+
+- primera ejecución focalizada: 12 de 13 casos correctos; detectó diferencias entre dimensiones
+  visuales declaradas y dimensiones binarias de dos adjuntos;
+- tras corregir metadatos: 13 tests, 0 fallos, 0 errores y 0 omitidos; compilaron 806 fuentes
+  principales y 189 de test;
+- Spotless aplicado con `spotlessFiles` solo a los siete Java afectados;
+- Checkstyle ejecutado durante Maven sin incidencias nuevas;
+- el validador global de español no señaló los archivos incorporados, pero finalizó por incidencias
+  históricas de tildes y signos de apertura en documentación, migraciones, plantillas y catálogos.
+
+Docker Desktop no estaba iniciado, por lo que no se levantaron PostgreSQL, MinIO, RabbitMQ ni
+Mailpit y no hubo prueba manual HTTP/SMTP. No se ejecutaron suite global, frontend, Testcontainers
+ni validación visual. El SQL usa únicamente capacidades PostgreSQL ya requeridas (`jsonb`,
+`generate_series`, `gen_random_uuid`, `ON CONFLICT`). La siguiente tarea sigue siendo `15.1`.
+
+## Corrección técnica de las tareas 13.8 y 0.16 - Arranque local verificable
+
+### Iteración, objetivo y causa raíz
+
+- Fecha: 2026-07-31.
+- Estado: corrección implementada y verificada.
+- Objetivo técnico: eliminar el fallo de `ApplicationContext` comunicado por el usuario y recorrer
+  los perfiles y la disponibilidad demo contra la infraestructura local real.
+- Tareas relacionadas: `13.8` (callbacks y estados de pago) y `0.16` (publicaciones locales).
+- Requisitos relacionados: `RF-006`, `RF-014`, `RF-016`, `RF-025`, `RF-032`, `RNF-003`,
+  `RNF-005`, `RNF-006` y `RNF-011`.
+
+La primera causa era una diferencia de tipo exacto durante `ddl-auto=validate`:
+`PaymentCallbackReceipts.payloadHash` existe como `CHAR(64)` desde V34, mientras
+`PaymentCallbackReceiptEntity` infería `VARCHAR(64)`. La auditoría de V32 localizó los otros dos
+valores de ancho fijo, `Payments.currency CHAR(3)` y `Payments.requestPayloadHash CHAR(64)`, que
+habrían fallado de forma sucesiva.
+
+Una vez superada la validación de esquema, Spring Boot 4 no pudo construir Redsys porque la
+aplicación solicitaba `com.fasterxml.jackson.databind.ObjectMapper` (Jackson 2), pero el framework
+autoconfigura `tools.jackson.databind.ObjectMapper` (Jackson 3). Finalmente, el flujo HTTP de
+disponibilidad expuso que `ServiceEntity.setCompatibleResources` copiaba el wrapper
+`PersistentSet` de Hibernate a un `HashSet`, provocando `ClassCastException` durante la
+hidratación.
+
+### Cambios de persistencia, serialización y fixtures
+
+`PaymentEntity` declara `currency` y `requestPayloadHash` con
+`@JdbcTypeCode(SqlTypes.CHAR)`, sus longitudes exactas y `columnDefinition`. El mismo contrato se
+aplica a `PaymentCallbackReceiptEntity.payloadHash`. No se añadió ni alteró una migración: el
+esquema era correcto y la corrección pertenece al mapeo ORM.
+
+`PaymentProviderConfiguration`, `RedsysPaymentProvider` y
+`RedsysCallbackVerificationServiceImpl` usan ahora exclusivamente `tools.jackson`. El proveedor
+captura `JacksonException` al serializar la solicitud. El verificador captura tanto
+`JacksonException` como errores de E/S y Base64, y conserva el contrato de traducir payloads
+malformados a `InvalidPaymentCallbackException`; no cambian firma, validación criptográfica,
+idempotencia, logs ni datos almacenados.
+
+`ServiceEntity.setCompatibleResources` conserva la referencia no nula recibida. Esto permite que
+Hibernate 7 mantenga su `PersistentCollection` y su seguimiento de estado. El catálogo sigue
+creando un `HashSet` mutable al aplicar una asignación desde negocio, por lo que no se introduce
+mutabilidad accidental ni se cambia la tabla `ServiceEmployeeResources`.
+
+El fixture de `BusinessAccounts` añade `businessVerificationExpiresAt` y lo renueva a
+`CURRENT_TIMESTAMP + INTERVAL '365 days'` en el `UPSERT`. Así cumple
+`ckBusinessAccountsVerifiedEvidence` sin desactivar la restricción ni rebajar el estado publicado.
+
+### Seguridad, errores y compatibilidad
+
+La reparación no añade endpoints, credenciales, permisos ni datos públicos. Los hashes mantienen
+su ancho fijo, la firma Redsys sigue calculándose sobre los mismos bytes y los callbacks inválidos
+siguen fallando de forma controlada. La fecha de verificación solo pertenece a datos ficticios del
+perfil `local`. Conservar la colección administrada evita un fallo ORM sin hacerla accesible desde
+el contrato REST.
+
+No se modificaron índices, locks, límites de capacidad ni transacciones. El arranque temporal se
+realizó en `18080` para no interferir con un proceso que ocupó `8080`. Los procesos de la
+comprobación en `18080` se cerraron, pero la investigación posterior acreditó que una JVM hija del
+primer intento en `8080` permaneció activa; se eliminó expresamente en la conversación 131.
+
+### Tests y evidencia verificable
+
+Tests creados o ampliados:
+
+- `PaymentCallbackMigrationTests.mapsEveryFixedLengthPaymentValueAsSqlChar` inspecciona los tres
+  mapeos `CHAR`, longitudes y definiciones de columna;
+- los contratos Redsys usan el `ObjectMapper` Jackson 3 real;
+- `LocalDemoVenueFixtureContractTests` exige la caducidad de verificación;
+- `ServiceEntityTests` acredita que el setter preserva la colección entregada por el proveedor.
+
+Ejecuciones realizadas:
+
+- `PaymentCallbackMigrationTests`: 3 tests correctos;
+- conjunto de cinco clases focalizadas de migración/configuración/proveedor/callback Redsys: 13
+  tests correctos, incluidos los 3 anteriores; un primer intento detectó que
+  `StreamReadException` de Jackson 3 es runtime y, tras ampliar la traducción de errores, la clase
+  afectada pasó sus 2 casos;
+- `DatabaseMigrationIntegrationTests#migratesEmptyPostgisDatabaseToLatestVersion`: 1 test correcto,
+  34 migraciones aplicadas en PostgreSQL/PostGIS mediante Testcontainers, validación Hibernate
+  correcta y contexto Spring iniciado;
+- `ServiceEntityTests`: 1 test, 0 fallos, acreditado por el informe Surefire;
+- `LocalDemoVenueFixtureContractTests`: 2 tests, 0 fallos, incluida la caducidad empresarial;
+- ejecución local en `18080`: arranque de Tomcat y `ReserlyApplication`, carga idempotente de
+  fixtures, respuesta correcta de `ames-padel-center`, `let-padel-ames` y disponibilidad de Ames
+  para la fecha actual, sin `ClassCastException`.
+
+El proceso Maven del último test unitario agotó el límite externo durante el cierre, después de
+haber escrito el informe de éxito. No se ejecutaron suites globales, frontend ni build completo.
+Spotless se aplicó solo a los Java afectados. Los goals globales de formato y Checkstyle continúan
+fallando por deuda histórica fuera de estos módulos; Checkstyle señaló además una línea de esta
+corrección, que se ajustó antes del cierre.
+
+Riesgo residual: no se completó una reserva ni se inspeccionó Mailpit en esta reparación; los
+endpoints de perfil y disponibilidad sí quedaron probados contra infraestructura real. La siguiente
+tarea fuente de verdad permanece `15.1`.
+
+### Corrección operativa posterior: proceso residual en 8080
+
+El 31 de julio de 2026 una nueva ejecución de `npm run dev` volvió a fallar exclusivamente por
+ocupación del puerto. `netstat -ano` resolvió el listener a PID `7348`. La inspección de WMI
+confirmó:
+
+- proceso: `java.exe`;
+- clase principal: `com.reserly.platform.ReserlyApplication`;
+- perfil: `local`;
+- creación: `2026-07-31 10:30:52`;
+- origen: primer arranque temporal de esta iteración.
+
+El proceso lanzador había finalizado, pero Spring Boot Maven había dejado viva la JVM hija. Se
+detuvo únicamente el PID `7348`. Una comprobación inmediata y otra cinco segundos después
+devolvieron `PORT_8080_FREE` y `PORT_8080_STILL_FREE`. No se modificó configuración ni código de
+aplicación, porque el conflicto no era reproducible una vez eliminado el proceso residual.
+
+## Tarea 15.1 - Inicio móvil con buscador, ubicación y categorías
+
+### Iteración, objetivo y alcance
+
+- Fecha: 2026-07-31.
+- Estado: completada y verificada.
+- Objetivo técnico: aplicar al inicio el arte de `Prototipos_ReservaYa.png` y acreditar que búsqueda,
+  ubicación, categorías, descubrimiento y navegación funcionan en móvil sin perder escritorio.
+- Requisitos relacionados: `RF-003`, `RF-004`, `RF-006`, `RF-031`, `RNF-004`, `RNF-005`,
+  `RNF-006` y `RNF-009`.
+- Diseño relacionado: sistema visual Reserly, composición pública de escritorio y móvil,
+  internacionalización ES/EN y accesibilidad WCAG 2.2 AA.
+
+No se rediseñaron todavía resultados, filtros, ficha, reserva ni pantallas privadas completas; esas
+superficies se recorrerán en `15.2` a `15.16`. Sí se actualizaron fundamentos compartidos para que
+las siguientes tareas partan de la misma densidad visual.
+
+### Archivos y arquitectura aplicada
+
+Modificados:
+
+- `apps/web/src/theme/visual-tokens.ts`;
+- `apps/web/src/theme/base-theme.ts`;
+- `apps/web/src/components/layout/public-shell.tsx`;
+- `apps/web/src/components/layout/venue-shell.tsx`;
+- `apps/web/src/components/layout/surface.tsx`;
+- `apps/web/src/app/page.tsx`;
+- `apps/web/src/app/page.test.tsx`;
+- `apps/web/locales/es.json` y `en.json`;
+- los cuatro documentos `.kiro` de estado, diseño y evidencia.
+
+`visualTokens` continúa siendo la única fuente de colores, radios y sombras. Se ajustaron azul,
+textos, fondo, bordes, radios y elevación a la referencia. `baseTheme` traduce esos valores a MUI,
+reduce densidad tipográfica y alturas de escritorio, conserva foco de tres píxeles y mantiene una
+base mínima de control de 38–40 px. Los controles del hero ocupan todo el ancho en móvil y superan
+44 px al sumar el padding del contenedor.
+
+`PublicShell` adopta una cabecera translúcida compacta con `Explorar`, `Recomendaciones`,
+`¿Eres un local?`, acceso y alta. En móvil oculta acciones no esenciales y conserva la navegación
+inferior existente. `VenueShell` reduce su ancho a `224 px` y compacta filas sin cambiar rutas,
+permisos ni semántica activa. `Surface` añade sombra mínima y admite landmark `main`, necesario por
+una pantalla administrativa preexistente.
+
+### Datos y flujo del inicio
+
+`HomePage` es ahora un Server Component asíncrono. Resuelve locale y llama a
+`searchPublicVenues(locale, {size: 8, sort: "availability"})`, que ya limita parámetros, no reenvía
+cookies y valida la respuesta con Zod. La llamada usa `no-store`; los estados de publicación y
+privacidad siguen filtrados en backend.
+
+Si la API falla durante SSR se entrega el hero, buscador y categorías con una lista vacía. No se
+captura ni muestra el mensaje interno. `HomePageView` recibe la proyección validada y presenta:
+
+1. hero con gradiente y primera imagen pública disponible;
+2. formulario GET a `/explorar` con `q` y `location`;
+3. cuatro accesos de categoría reales;
+4. recomendados y destacados mediante tarjetas;
+5. bloque cercano con enlaces de ficha y mapa orientativo.
+
+No se hardcodean locales, ratings, distancias ni horarios del prototipo. Las tarjetas muestran
+únicamente nombre, categoría, ciudad/provincia, estado resumido e imagen retornados por API. Con
+solo dos fixtures, la segunda sección reutiliza la misma colección ordenada; no duplica datos en
+persistencia ni inventa resultados.
+
+### Responsive, accesibilidad e internacionalización
+
+El hero usa búsqueda horizontal desde `md` y tres filas táctiles en móvil. Las tarjetas pasan de
+cuatro columnas potenciales a dos y después una. El bloque cercano cambia de lista/mapa a dos filas.
+La cabecera móvil conserva logo y acceso; el alta se ofrece en navegación/flujo sin saturar el ancho.
+
+Los campos tienen nombres accesibles mediante `slotProps.htmlInput`, aunque el diseño visual use
+placeholder compacto. El formulario conserva `role=search`; categorías forman un `nav`; secciones
+usan headings y regiones; tarjetas son `article`; el mapa declarativo usa `role=img`. Imágenes
+informativas reciben alt localizado y miniaturas redundantes alt vacío. El corazón es decorativo y
+no simula un favorito funcional.
+
+Se añadieron las mismas claves en español e inglés para acciones, secciones, alt y navegación.
+Ningún texto de la tarea quedó marcado por el validador i18n tras reemplazar separadores JSX por
+composición de cadenas.
+
+### Errores, seguridad y efectos secundarios
+
+No existen mutaciones, geolocalización del navegador, cookies nuevas ni almacenamiento local. La
+ubicación es texto enviado por GET. El fondo remoto procede del mediador de imágenes público
+existente. El mapa es deliberadamente decorativo/orientativo y no realiza peticiones a terceros.
+
+La excepción de búsqueda SSR degrada a contenido navegable; no genera toast persistente ni filtra
+la URL interna del API. La navegación a registro y acceso conserva endpoints y permisos previos.
+
+### Tests y evidencia de verificación
+
+Comandos y resultados:
+
+- Prettier sobre los once archivos de frontend: correcto;
+- Vitest focalizado sobre `page.test.tsx` y `layout-system.test.tsx`: 4 tests, 0 fallos;
+- primer Vitest: un fallo útil detectó que `aria-label` estaba en la raíz de `TextField`; se movió
+  al input nativo y la reejecución pasó;
+- navegador en `1440 × 1000`: cabecera, hero, búsqueda, dos secciones y bloque cercano visibles con
+  imágenes reales;
+- navegador en `390 × 844`: composición de una columna, controles apilados, tarjetas y navegación
+  inferior; `clientWidth=375` y `scrollWidth=375`, sin overflow horizontal;
+- interacción real: `padel` + `Ames` navegó a
+  `/explorar?q=padel&location=Ames`;
+- consola del navegador: 0 warnings y 0 errores;
+- `git diff --check`: correcto antes del cierre documental.
+
+Validaciones globales acotadas por deuda previa:
+
+- `tsc --noEmit` terminó con errores históricos en administración, confirmación, formularios,
+  equipo, incidencias y reservas; no mencionó archivos de esta tarea;
+- `npm run i18n:check` no mencionó `page.tsx` tras la corrección, pero conserva 24 incidencias
+  históricas fuera de alcance;
+- ESLint focalizado superó 120 segundos sin producir diagnóstico y se detuvo por timeout; no se
+  reintentó.
+
+Para la revisión se levantó la infraestructura Docker y se arrancó `npm run dev`. Al terminar se
+cerró el árbol común PID `14672`, incluyendo Next, Maven y la JVM Spring, y se verificó ausencia de
+listeners en `3000` y `8080`. PostgreSQL, Redis, RabbitMQ, Mailpit, MinIO y ClamAV permanecen
+activos para desarrollo local.
+
+### Riesgos y siguiente paso
+
+El mapa todavía no es geográfico y la disponibilidad resumida de los fixtures aparece pendiente
+porque la búsqueda pública no integra aún la consulta diaria detallada. No se ejecutó validación en
+tablet ni locale inglés; corresponden a `15.14` y `15.15`. La siguiente tarea fuente de verdad es
+`15.2`, resultados móviles con tarjetas.
+
+## Tarea 15.4 - Ficha móvil con pestañas y botón fijo de reserva
+
+- Fecha: 2026-07-31.
+- Commit o referencia: cambios locales de la conversación 133.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Recomponer la ficha pública para que la jerarquía, densidad y recorrido visual se correspondan con
+el prototipo aprobado, especialmente en una pantalla móvil estrecha. La ficha debía permitir
+reconocer el local, evaluar sus señales de confianza y alcanzar la disponibilidad sin registro,
+manteniendo siempre visible una entrada clara al flujo de reserva.
+
+### Requisitos y diseño relacionados
+
+- `RF-004`: ficha pública y contenido editorial publicado.
+- `RF-006`: galería e imagen principal.
+- `RF-031`: experiencia responsive.
+- `RNF-004`: accesibilidad e internacionalización.
+- `RNF-005` y `RNF-006`: rendimiento y mantenibilidad.
+- `RNF-009`: coherencia visual.
+- `design.md`: navegación pública, ficha de local, responsive e identidad visual.
+
+### Archivos y arquitectura
+
+- `apps/web/src/features/public-venue/public-venue-profile.tsx`: composición completa de la ficha.
+- `apps/web/src/features/public-venue/public-venue-profile.test.tsx`: contrato de contenido,
+  contactos, reseñas y CTA.
+- `apps/web/src/components/layout/page-container.tsx`: soporte compatible para ancho máximo y `sx`.
+- `apps/web/src/components/layout/surface.tsx`: variantes de padding, tono y extensión `sx`.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`: acciones, breadcrumb, pestañas, estado e
+  información secundaria.
+
+`PublicVenueProfileView` conserva el DTO público existente como única fuente de datos. La pantalla
+se divide en breadcrumb, `VenueGallery`, cabecera de identidad, navegación anclada, disponibilidad,
+información/contacto, pestañas editoriales y reseñas. Los helpers `ProfileSection` y `ContactLink`
+reducen duplicación sin ocultar permisos ni decisiones de negocio.
+
+La galería usa una cuadrícula asimétrica en escritorio y `flex` con `scroll-snap` en móvil. Solo
+renderiza imágenes realmente publicadas. La última miniatura muestra el total real y no rellena
+huecos con duplicados. Los medios se resuelven contra `NEXT_PUBLIC_API_BASE_URL` y se presentan con
+`img` nativo: esto permite recursos servidos por el API local, staging o producción sin convertir
+el host de cada entorno en una dependencia de la allowlist de `next/image`.
+
+### Flujo, estado y comportamiento responsive
+
+Los botones superiores y el CTA móvil navegan a `#availability`. Las pestañas son enlaces internos
+con `scrollMarginTop`, de modo que siguen funcionando con cabecera sticky, teclado y sin JavaScript
+adicional. A menos de `md`, el CTA se fija a 68 px del borde inferior para quedar por encima de la
+navegación móvil; el contenedor reserva espacio inferior para que el final de la ficha sea
+alcanzable.
+
+La acción Guardar se muestra deshabilitada. El prototipo la exige visualmente, pero no existe aún
+contrato de favoritos; habilitarla habría creado una mutación ficticia. Tampoco se muestra
+“abierto ahora”: la ficha no recibe horario operativo. En su lugar se comunica, con precisión, que
+acepta reservas online y se invita a consultar disponibilidad.
+
+### Validación, permisos, seguridad, privacidad e i18n
+
+No se añaden endpoints, cookies, almacenamiento local ni permisos. El mapa usa coordenadas públicas
+ya autorizadas y abre Google Maps únicamente por acción explícita. Teléfono y correo solo aparecen
+si el DTO público los entrega. Las pestañas editoriales usan el HTML seguro contractual producido
+por el backend; no se transforman entradas privadas.
+
+Las nuevas claves existen en español e inglés. La navegación tiene nombres accesibles; el badge
+publicado, el rating, la galería y los enlaces conservan etiquetas semánticas. El orden visual y el
+orden del DOM coinciden.
+
+### Tests y evidencia de verificación
+
+- `npx vitest run src/features/public-venue/public-venue-profile.test.tsx
+  src/i18n/messages.test.ts --reporter=dot`: 6 tests correctos.
+- `npx tsc --noEmit --pretty false` filtrado a perfil, calendario y layout: ninguna incidencia en
+  los módulos afectados; el comando global conserva errores históricos ajenos.
+- Navegador real, `localhost`, escritorio: breadcrumb, galería 2/3 + miniatura, identidad, acciones,
+  pestañas y disponibilidad correctamente alineados.
+- Navegador real, `390 × 844`: galería horizontal, una columna, pestañas desplazables, CTA fijo
+  sobre la navegación inferior y ausencia visual de overflow.
+
+### Riesgos, limitaciones y deuda
+
+Favoritos continúa sin persistencia y por eso Guardar no es interactivo. El estado exacto de
+apertura requerirá incorporar horario operativo al DTO público o una proyección específica. La
+matriz tablet y la revisión bilingüe visual completa permanecen en `15.14` y `15.15`.
+
+## Tarea 15.5 - Calendario compacto y franjas táctiles
+
+- Fecha: 2026-07-31.
+- Commit o referencia: cambios locales de la conversación 133.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Transformar el calendario público de siete tarjetas grandes en una composición compacta semejante
+al prototipo: selector temporal lateral o superior, detalle del día y filas de reserva. En móvil,
+cada franja debía conservar un área táctil clara, toda la información de capacidad y una acción
+real hacia el formulario.
+
+### Requisitos y diseño relacionados
+
+- `RF-014`: disponibilidad pública por fecha y franja.
+- `RF-015`: selección e inicio de reserva anónima.
+- `RF-031`: experiencia móvil.
+- `RNF-003`: respeto de capacidad y disponibilidad calculada en servidor.
+- `RNF-004`, `RNF-005`, `RNF-006` y `RNF-009`.
+
+### Archivos, contratos y flujo de ejecución
+
+- `apps/web/src/features/availability/public-availability-calendar.tsx`.
+- `apps/web/src/features/availability/availability-ui.test.tsx`.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+
+El componente sigue solicitando siete fechas con `fetchPublicAvailability`. Un `AbortController`
+evita publicar resultados después de desmontaje o cambio de rango. La fecha seleccionada, el
+servicio efectivo y la selección de recurso se mantienen localmente; estado, capacidad,
+`bookingAvailable` y recursos proceden siempre del API.
+
+En escritorio, el bloque es una cuadrícula de 280 px más una tabla fluida con columnas de horario,
+capacidad, disponibles, estado y acción. En móvil, la misma estructura cae a una columna; cada fila
+se convierte en tarjeta sin duplicar la fuente de datos. El selector semanal muestra siete días,
+estado mediante punto cromático, fecha nativa accesible, navegación anterior/siguiente y leyenda.
+
+`bookingHref` conserva `slotId` y `serviceId`. Cuando el servicio exige recurso, la acción permanece
+deshabilitada hasta escoger uno; `any_available` y `specific` generan las preferencias y el
+`employeeResourceId` esperados por el flujo existente. Una franja no reservable nunca produce un
+enlace activo.
+
+Los cuatro hechos inferiores se derivan de datos verificables: capacidad máxima visible, duración
+de la primera franja, número de franjas disponibles y confirmación por email. No se inventa una
+política de cancelación ausente del contrato.
+
+### Errores, observabilidad, seguridad e i18n
+
+Los fallos de red muestran un `Alert` localizado y las peticiones abortadas no se tratan como
+errores. El loading usa `role=status`. No se registran PII ni se exponen identificadores internos
+fuera de los ya requeridos por el flujo de reserva. Los controles de servicio y recurso mantienen
+etiquetas y navegación por teclado. Tabla, hechos y estados disponen de claves equivalentes ES/EN.
+
+### Tests y evidencia de verificación
+
+- `npx vitest run src/features/availability/availability-ui.test.tsx -t
+  PublicAvailabilityCalendar --reporter=dot`: 2 tests correctos y 3 casos ajenos omitidos.
+- La prueba acredita siete consultas, capacidad real, recurso obligatorio, habilitación posterior,
+  parámetros de asignación y filtro de servicio.
+- Navegador real, escritorio: ocho franjas de Ames, columnas alineadas, estados y enlaces
+  reservables; hechos operativos visibles debajo.
+- Navegador real, `390 × 844`: selector semanal táctil, fecha, leyenda, servicio, capacidad,
+  disponibles, estado y botón de reserva accesibles en una sola columna.
+- TypeScript filtrado no señaló el calendario ni los componentes de layout relacionados.
+
+### Riesgos, limitaciones y siguiente paso
+
+El selector representa siete días porque ese es el contrato y el horizonte que ya usa el
+componente; no dibuja días mensuales no consultados. La duración resumida toma la primera franja
+visible y presupone homogeneidad del servicio seleccionado. La siguiente tarea fuente de verdad
+sigue siendo `15.2`, resultados móviles con tarjetas, porque `15.4` y `15.5` se priorizaron por
+petición expresa del usuario.
+
+## Tarea 15.6 - Formulario móvil por bloques con contador
+
+- Fecha de iteración: 2026-07-31.
+- Estado: completada y verificada.
+- Requisitos relacionados: `RF-013`, `RF-014`, `RF-015`, `RF-031`, `RNF-002`, `RNF-004`,
+  `RNF-006`, `RNF-007` y `RNF-009`.
+
+### Objetivo técnico y decisión de diseño
+
+El objetivo fue llevar el tramo Seleccionar → Formulario del prototipo al flujo anónimo real, sin
+reemplazar la concurrencia existente por estado visual ficticio. La composición usa un indicador
+de tres pasos, un resumen persistente de la selección, una primera acción para fijar el número de
+personas y un segundo bloque para los datos obligatorios, campos configurables y consentimientos.
+En móvil los bloques se apilan; desde `md`, el resumen queda en una columna sticky de 300 px y el
+formulario ocupa el espacio restante.
+
+### Archivos y componentes modificados
+
+- `apps/web/src/app/locales/[slug]/reservar/page.tsx`: Server Component que valida la selección y
+  construye `ReservationSummary`.
+- `apps/web/src/features/public-reservation/public-reservation-form.tsx`: recorrido, bloques,
+  indicador de pasos, contador, resumen y envío.
+- `apps/web/src/features/availability/public-availability-calendar.tsx`: añade la fecha efectiva al
+  enlace de reserva.
+- `apps/web/src/components/layout/page-container.tsx`: cálculo explícito `border-box` y ancho fluido
+  para evitar que el padding aumente el ancho útil en breakpoints estrechos.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`: títulos, pasos, ayudas, resumen, política,
+  estados de carga y pluralización.
+
+No se añadieron tablas, migraciones, índices ni endpoints. Se reutilizan
+`GET /api/public/venues/{slug}`, `GET /api/public/venues/{slug}/availability`,
+`GET /api/public/venues/{slug}/reservation-form`, `POST /api/public/reservations/holds` y
+`POST /api/public/reservations/{id}/confirm`.
+
+### Arquitectura y flujo de ejecución
+
+1. El enlace de la franja transporta `date`, `slotId` y, cuando aplica, `serviceId`, recurso y
+   preferencia de asignación.
+2. El Server Component consulta en paralelo ficha y disponibilidad para esa fecha, localiza el
+   `slotId` exacto y deriva servicio/recurso únicamente de la respuesta del API. Si la combinación
+   no existe, termina con `notFound()`.
+3. El cliente obtiene el esquema publicado del formulario. La selección de personas no crea datos
+   definitivos: al pulsar “Empezar reserva” solicita el hold transaccional existente.
+4. Solo tras recibir `reservationId`, `holdToken` y `expiresAt` se habilitan los campos y se inicia
+   el contador con el tiempo absoluto del servidor; no se reinicia localmente al renderizar.
+5. Los campos base conservan sus claves contractuales. Fecha y franja se muestran en el resumen y
+   no se permiten como entradas editables; el número de personas queda bloqueado al valor del hold.
+   Los campos custom mantienen identificador, orden, tipo, obligatoriedad e i18n del esquema.
+6. La confirmación envía token, datos base, respuestas, locale y consentimientos. El snapshot de
+   confirmación solo se guarda cuando el API responde `confirmed`.
+
+### Validaciones, seguridad, privacidad, accesibilidad e i18n
+
+Los datos descriptivos de la reserva no se confían a query params. La ruta solo admite una franja
+presente en la disponibilidad pública de la fecha consultada. La capacidad y la vigencia vuelven a
+validarse transaccionalmente en backend al crear el hold y al confirmar. El token permanece en
+memoria del componente y no aparece en la UI, URL ni logs.
+
+Los consentimientos son checkboxes requeridos; loading, error y timer poseen roles semánticos; el
+progreso se expone como lista con nombre accesible. Los textos y plurales tienen claves equivalentes
+ES/EN. El grid declara `minmax(0, 1fr)` también en móvil para que controles y textos puedan reducirse
+sin imponer ancho intrínseco. El contador cambia a advertencia en el último minuto y a error al
+caducar; una restricción activa conserva únicamente su fecha pública.
+
+### Errores, observabilidad y efectos secundarios
+
+La carga del esquema se cancela mediante `AbortController`. Los errores públicos siguen
+minimizándose a indisponibilidad genérica salvo `ACTIVE_BOOKING_RESTRICTION`. No se añadieron logs
+con PII. El hold local creado durante la comprobación visual no fue confirmado y expira por la
+política existente, por lo que su capacidad se libera automáticamente.
+
+### Tests y evidencia de verificación
+
+- Prettier focalizado sobre formulario, ruta, calendario, layout, confirmación y catálogos: sin
+  cambios pendientes de formato.
+- `npx vitest run src/features/public-reservation/public-reservation-form.test.tsx
+  --reporter=dot --testTimeout=15000`: 3 tests correctos en la ejecución aislada.
+- Ejecución combinada de formulario, confirmación y calendario: 6 tests correctos, 3 omitidos y un
+  caso del formulario agotó el timeout de 5 s; el mismo archivo aislado terminó 3/3.
+- TypeScript filtrado por los módulos afectados: ninguna incidencia; permanecen errores globales
+  históricos fuera de alcance.
+- Navegador integrado en localhost: selección verificada de Ames Padel Center, resumen con fecha,
+  18:30–20:00, servicio, dirección y normas; creación real de hold; transición al paso Formulario y
+  contador visible desde 04:50.
+- Las repeticiones de Vitest y ESLint posteriores se cancelaron al alcanzar sus límites de 35–60 s.
+  No se reintentaron ni se ejecutaron build o suites globales para evitar validaciones
+  interminables.
+
+### Riesgos, limitaciones y deuda técnica
+
+El proceso API que permanecía abierto en localhost era anterior a esta iteración; por ello sirvió
+para comprobar contratos compatibles y holds, pero no para renderizar las plantillas nuevas. Una
+franja ya pasada seguía apareciendo reservable en esa instancia y fue rechazada correctamente por
+el endpoint de hold; la validación visual se repitió con una franja futura. La revisión transversal
+de franjas pasadas queda fuera de 15.6. La matriz completa móvil/tablet/escritorio y ES/EN sigue en
+15.14 y 15.15.
+
+## Tarea 15.7 - Pantalla móvil de confirmación y emails transaccionales
+
+- Fecha de iteración: 2026-07-31.
+- Estado: completada y verificada.
+- Requisitos relacionados: `RF-015`, `RF-016`, `RF-031`, `RNF-002`, `RNF-004`, `RNF-006`,
+  `RNF-007` y `RNF-009`.
+- Tareas relacionadas refinadas: 8.3 y 8.4, previamente completadas.
+
+### Objetivo técnico y decisión de diseño
+
+Se reconstruyó el último paso del prototipo como un recibo móvil centrado: progreso completo,
+confirmación visual verde, destinatario del email, resumen de local/fecha/franja/personas, acción de
+calendario y CTA para continuar explorando. Paralelamente, los dos mensajes emitidos tras la
+confirmación adoptan una jerarquía equivalente para que la confirmación visible y la recibida por
+correo comuniquen el mismo estado y los mismos datos autorizados.
+
+### Archivos, contratos y servicios modificados
+
+- `public-reservation-confirmation.tsx` y `public-reservation-confirmation.test.tsx`.
+- `ReservationConfirmationTemplateData.java`: añade `customerName` obligatorio.
+- `VenueReservationNotificationTemplateData.java`: añade `panelUrl` obligatorio y documenta que
+  es una ruta autenticada, no una credencial pública.
+- `LocalizedEmailTemplateServiceImpl.java`: expone las nuevas variables a texto y HTML.
+- `ReservationConfirmationEmailConsumer.java`: pasa el nombre al mensaje del usuario y construye
+  `/panel/reservas/{reservationId}` para el local.
+- `email-templates/es.properties` y `en.properties`: texto plano y HTML rediseñados.
+- `LocalizedEmailTemplateServiceTests.java` y `ReservationLifecycleEmailTemplateTests.java`.
+
+No cambia el evento de dominio, la serialización outbox, el esquema de base de datos, los índices,
+el proveedor SMTP ni la política de reintentos. Se conserva el mismo procesamiento idempotente del
+evento de confirmación.
+
+### Flujo de confirmación y calendario
+
+La pantalla lee `ReservationConfirmation` exclusivamente del snapshot de `sessionStorage` escrito
+por el formulario. El UUID de la ruta solo selecciona ese estado efímero: no consulta una reserva
+pública, no se renderiza y no concede acceso. Si falta el snapshot, se muestra un estado seguro con
+salida a explorar.
+
+“Añadir al calendario” genera en el navegador un `text/calendar` con UID, fecha, horas, nombre del
+local y estado confirmado, dispara la descarga y revoca inmediatamente el object URL. El archivo no
+contiene `manageUrl`, token, email ni respuestas del formulario.
+
+Al procesar `reservation.confirmed`, el consumidor crea dos trabajos ya existentes. El usuario
+recibe saludo, resumen operativo, respuestas autorizadas, política, caducidad y CTA con el enlace de
+gestión de un solo uso. El local recibe usuario, email, fecha, franja, personas, respuestas y un CTA
+al detalle del panel protegido por sesión profesional. Nunca se reutiliza el token del usuario para
+el enlace del local.
+
+### Compatibilidad de email, errores y seguridad
+
+El HTML usa una tabla exterior, tarjeta de 600 px, estilos inline, fondos simples y botones como
+enlaces; no depende de JavaScript, hojas externas, imágenes remotas ni características modernas
+frágiles. Cada plantilla conserva versión de texto plano. La interpolación continúa pasando por el
+escape HTML central; las URLs se validan como `URI` en el contrato.
+
+Los fallos de render o SMTP mantienen la estrategia previa: reserva confirmada inmutable, trabajo
+de notificación reintentable y error observable sin duplicar la reserva. No se añadió logging de
+nombre, email, token o respuestas. Los asuntos, saludos, CTA, avisos y plurales existen en español e
+inglés.
+
+### Tests y evidencia de verificación
+
+- `LocalizedEmailTemplateServiceTests`: 3 tests, 0 fallos, 0 errores; comprueba saludo localizado,
+  estructura HTML y CTA de gestión.
+- `ReservationLifecycleEmailTemplateTests`: 4 tests, 0 fallos, 0 errores; comprueba contenido de
+  usuario/local y enlace autenticado al panel.
+- `ReservationConfirmationEmailConsumerTests`: 5 tests, 0 fallos y 0 errores en la ejecución
+  focalizada previa del consumidor con los contratos ampliados.
+- Los informes Surefire actualizados a las 17:24 confirman 7/7 pruebas finales de plantillas. Maven
+  alcanzó el límite externo después de escribir los informes; se detuvo el proceso residual y no se
+  amplió a la suite completa.
+- `public-reservation-confirmation.test.tsx` acreditó el nuevo título, hora, personas, destinatario,
+  acción de calendario, ausencia del UUID y estado sin snapshot dentro de la ejecución combinada.
+- La inspección visual del formulario se realizó en escritorio y viewport móvil; la confirmación
+  final no se forzó contra la JVM antigua para no presentar como validada una plantilla que ese
+  proceso aún no había cargado.
+
+### Riesgos, limitaciones y siguientes tareas
+
+Los clientes de correo pueden variar en tipografía y redondeado, aunque la estructura esencial usa
+el subconjunto compatible de tablas e inline CSS. El calendario usa hora local sin zona IANA porque
+el contrato público todavía no expone la zona del local. La validación visual bilingüe completa
+permanece en 15.15 y la matriz exhaustiva de breakpoints en 15.14. La siguiente tarea pendiente por
+orden de `tasks.md` continúa siendo 15.2.
+
+## Ampliación de la tarea 0.16 - Restaurante local Lume de Brétema
+
+- Fecha de iteración: 2026-07-31.
+- Estado: ampliación implementada y verificada; la tarea 0.16 continúa completada.
+- Requisitos relacionados: `RF-002`, `RF-004`, `RF-006`, `RF-013`, `RF-014`, `RF-015`,
+  `RF-016`, `RNF-004`, `RNF-006`, `RNF-007` y `RNF-009`.
+
+### Objetivo técnico
+
+Añadir una tercera publicación íntegramente ficticia al entorno `local` para disponer de un caso de
+restaurante visualmente creíble y funcionalmente distinto de los centros de pádel. La publicación
+debía poder encontrarse y abrirse sin registrar una cuenta, mostrar un carrusel profesional,
+ofrecer turnos con capacidad de comensales y recorrer el flujo anónimo y los emails ya existentes.
+
+### Identidad, contenido y modelo de datos
+
+La identidad escogida es `Lume de Brétema`, slug estable `lume-de-bretema`, categoría Restaurante y
+propietario técnico `reservas@lume-de-bretema.local`. La dirección `Rúa da Lúa Nova 18` y el teléfono
+`981 00 00 31` son datos de demostración; el texto público declara expresamente que se trata de un
+restaurante ficticio. Se usa el bloque reservado de UUID con sufijo `...0003` para usuario, rol,
+cuenta, local y servicio, y `...0003`/`...0004` para galería.
+
+El script inserta o actualiza:
+
+- usuario técnico activo, rol de local y cuenta empresarial verificada solo para desarrollo;
+- `Venue` publicado con textos ES/EN, coordenadas aproximadas, contacto visible, portada y
+  formulario base publicado;
+- dos `VenueImages` ordenadas, con URL pública, object key, media type, bytes y dimensiones;
+- horario semanal simplificado de 12:30 a 23:30;
+- servicio `Reserva de mesa`/`Table booking`, duración de 90 minutos y capacidad por persona;
+- cuatro franjas diarias durante 31 días, capacidad 18 y estado `available`.
+
+No se añadió una migración: son datos regenerables y exclusivos del perfil `local`. Los UPSERT
+mantienen identificadores estables y `ON CONFLICT DO NOTHING` preserva reservas y holds ya creados.
+Una limpieza estrecha elimina únicamente la franja obsoleta 22:00–23:30 cuando no existe ninguna
+reserva que la referencie; evita referencias rotas y hace idempotente la corrección del turno final.
+
+### Imágenes generadas y almacenamiento
+
+Se utilizó el generador de imágenes integrado con el caso `photorealistic-natural`. Los tres prompts
+compartieron la identidad de un restaurante gallego contemporáneo, materiales de castaño, granito y
+cerámica, iluminación cálida y restricciones de ausencia de logos, texto y marcas de agua:
+
+1. Sala principal preparada para el servicio, encuadre arquitectónico 3:2 y luz de atardecer.
+2. Merluza gallega con verduras de temporada, fotografía gastronómica editorial 3:2.
+3. Cocina abierta y barra del chef, encuadre documental premium 3:2.
+
+Los resultados finales son PNG 1536×1024:
+
+- `lume-de-bretema-main.png`, 2.222.649 bytes;
+- `lume-de-bretema-dish.png`, 2.213.991 bytes;
+- `lume-de-bretema-kitchen.png`, 2.247.272 bytes.
+
+`LocalDemoVenueInitializer` copia primero los tres recursos del classpath al almacenamiento de
+imágenes mediante object keys estables y ejecuta después el SQL. Este orden impide publicar URLs
+rotas. Los assets quedan dentro del repositorio y no dependen del servicio de generación al volver
+a arrancar.
+
+### Componentes, contratos y flujo
+
+- `apps/api/src/main/java/com/reserly/platform/development/LocalDemoVenueInitializer.java` amplía
+  la lista inmutable de `DemoImage` y el log de resultado.
+- `apps/api/src/main/resources/dev-fixtures/local-demo-venues.sql` contiene todo el dominio del
+  tercer local y su horizonte móvil.
+- `apps/api/src/main/resources/dev-fixtures/images/lume-de-bretema-*.png` contiene los medios.
+- `LocalDemoVenueFixtureContractTests.java` protege slug, categoría, servicio, turnos, capacidad y
+  dimensiones reales de los tres archivos.
+
+Se reutilizan sin cambios los endpoints públicos de búsqueda, ficha, imágenes, galería,
+disponibilidad, formulario, hold y confirmación. Tras reiniciar con perfil `local`, el inicializador
+sube los objetos, repone los UPSERT y amplía las fechas ausentes. La ficha pública recibe una portada
+y dos entradas de galería, por lo que muestra `Ver galería (3)` con la composición asimétrica ya
+implementada.
+
+### Seguridad, privacidad, errores e internacionalización
+
+La clase continúa limitada por `@Profile("local")` y la propiedad
+`reserly.development.demo-venues-enabled`; no se ejecuta en staging o producción. El password hash
+no corresponde a una contraseña conocida, el correo usa `.local` y la verificación empresarial es
+un proveedor marcado `local_fixture`. No se introducen secretos, personas identificables ni URLs
+de terceros en imágenes o datos.
+
+Los textos de descripción, servicio, normas e información adicional incluyen valores español e
+inglés con fallback explícito. Los alt text describen plato y cocina; la portada hereda el nombre
+accesible del local. Un fallo al leer cualquier imagen sigue abortando el inicializador con
+`UncheckedIOException`, evitando una ficha parcialmente cargada. El log final solo contiene slugs,
+sin PII ni credenciales.
+
+### Verificación focalizada
+
+- `mvn -f apps/api/pom.xml -Dtest=LocalDemoVenueFixtureContractTests
+  -Dspotless.check.skip=true -Dcheckstyle.skip=true test`: 2 tests, 0 fallos, 0 errores y build
+  correcto. Maven compiló 806 fuentes principales y 190 fuentes de test; no se lanzó la suite.
+- Arranque temporal con perfil `local` en 18081: migraciones validadas, initializer completado y log
+  de los tres slugs. El proceso se cerró tras cargar el fixture y no se interrumpieron 8080/18080.
+- API activo en 8080: ficha 200, galería con 2 elementos, portada y dos imágenes 200 `image/png`
+  con tamaños exactos, servicio localizado, 4 franjas y capacidad 18.
+- Navegador local: título `Lume de Brétema | Reserly`, categoría Restaurante, carrusel 3/3,
+  dirección, contenido, contacto, servicio `Reserva de mesa` y disponibilidad renderizados.
+
+### Riesgos y limitaciones
+
+Las imágenes PNG priorizan fidelidad visual y suman aproximadamente 6,7 MB; una optimización futura
+podrá generar derivados WebP/AVIF desde el almacenamiento sin sustituir los originales. El horario
+semanal admite un único intervalo continuo, por lo que el corte entre almuerzo y cena se expresa en
+las franjas publicadas, no en dos aperturas separadas. La dirección, teléfono y coordenadas no deben
+reutilizarse fuera de desarrollo.

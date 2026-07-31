@@ -12,13 +12,18 @@ import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
 import com.reserly.platform.localization.LocalizedText;
 import com.reserly.platform.localization.SupportedLocale;
+import com.reserly.platform.reservations.persistence.ReservationDao;
+import com.reserly.platform.reservations.persistence.TimeSlotCapacityOccupancy;
 import com.reserly.platform.services.persistence.ServiceDao;
 import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,9 +44,12 @@ class PublicVenueAvailabilityServiceTests {
   @Mock private AvailabilityBlockDao blockDao;
   @Mock private TimeSlotDao slotDao;
   @Mock private ServiceDao serviceDao;
+  @Mock private ReservationDao reservationDao;
 
   private PublicVenueAvailabilityServiceImpl service;
   private VenueEntity venue;
+  private final Clock clock =
+      Clock.fixed(Instant.parse("2026-07-31T10:00:00Z"), ZoneOffset.UTC);
 
   @BeforeEach
   void setUp() {
@@ -52,6 +60,8 @@ class PublicVenueAvailabilityServiceTests {
             blockDao,
             slotDao,
             serviceDao,
+            reservationDao,
+            clock,
             (venueId, weekday, slots) ->
                 slots.stream()
                     .collect(
@@ -61,6 +71,35 @@ class PublicVenueAvailabilityServiceTests {
     venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
     venue.setSlug("casa-luz");
+  }
+
+  @Test
+  void discountsConfirmedReservationsAndActiveHoldsFromPublicCapacity() {
+    LocalDate date = LocalDate.of(2026, 7, 31);
+    TimeSlotEntity partiallyOccupied = slot(date, "available", 4);
+    TimeSlotEntity fullyOccupied = slot(date, "available", 4);
+    when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
+    when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
+        .thenReturn(List.of(partiallyOccupied, fullyOccupied));
+    when(reservationDao.sumOccupiedCapacityByTimeSlotIds(
+            Set.of(partiallyOccupied.getId(), fullyOccupied.getId()), clock.instant()))
+        .thenReturn(
+            List.of(
+                new TimeSlotCapacityOccupancy(partiallyOccupied.getId(), 2L),
+                new TimeSlotCapacityOccupancy(fullyOccupied.getId(), 4L)));
+    when(blockDao.findPublishedDayOverride(venue.getId(), date)).thenReturn(Optional.empty());
+    when(openingHourDao.findPublishedByVenueIdAndWeekday(venue.getId(), 5))
+        .thenReturn(Optional.of(openingHour(false, true)));
+
+    var response = service.findBySlug("casa-luz", date, SupportedLocale.ES);
+
+    assertThat(response.statusCode()).isEqualTo("open");
+    assertThat(response.availableSlotCount()).isEqualTo(1);
+    assertThat(response.slots().get(0).availableCapacity()).isEqualTo(2);
+    assertThat(response.slots().get(0).bookingAvailable()).isTrue();
+    assertThat(response.slots().get(1).availableCapacity()).isZero();
+    assertThat(response.slots().get(1).status()).isEqualTo("full");
+    assertThat(response.slots().get(1).bookingAvailable()).isFalse();
   }
 
   @Test
@@ -217,6 +256,8 @@ class PublicVenueAvailabilityServiceTests {
             blockDao,
             slotDao,
             serviceDao,
+            reservationDao,
+            clock,
             (venueId, weekday, slots) ->
                 java.util.Map.of(
                     resourceSlot.getId(),

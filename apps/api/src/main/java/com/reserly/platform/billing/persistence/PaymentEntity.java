@@ -99,7 +99,9 @@ public class PaymentEntity {
     amount = value;
   }
 
-  @Column(name = "\"currency\"", nullable = false, length = 3)
+  /** Código ISO 4217 de longitud fija, alineado con el tipo físico {@code char(3)} de V32. */
+  @JdbcTypeCode(SqlTypes.CHAR)
+  @Column(name = "\"currency\"", nullable = false, length = 3, columnDefinition = "char(3)")
   public String getCurrency() {
     return currency;
   }
@@ -119,7 +121,12 @@ public class PaymentEntity {
   }
 
   /** Hash SHA-256 hexadecimal del payload canónico, nunca el payload firmado completo. */
-  @Column(name = "\"requestPayloadHash\"", nullable = false, length = 64)
+  @JdbcTypeCode(SqlTypes.CHAR)
+  @Column(
+      name = "\"requestPayloadHash\"",
+      nullable = false,
+      length = 64,
+      columnDefinition = "char(64)")
   public String getRequestPayloadHash() {
     return requestPayloadHash;
   }

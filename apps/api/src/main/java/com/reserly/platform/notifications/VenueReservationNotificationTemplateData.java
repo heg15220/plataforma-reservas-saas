@@ -1,5 +1,6 @@
 package com.reserly.platform.notifications;
 
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -10,6 +11,9 @@ import java.util.Objects;
  *
  * <p>No contiene el token de gestión del usuario ni enlaces públicos. Las respuestas se copian para
  * impedir mutaciones durante el renderizado asíncrono.
+ *
+ * <p>{@code panelUrl} solo apunta al panel autenticado; nunca incorpora el token público del
+ * usuario.
  */
 public record VenueReservationNotificationTemplateData(
     String venueName,
@@ -19,7 +23,8 @@ public record VenueReservationNotificationTemplateData(
     LocalTime startsAt,
     LocalTime endsAt,
     int partySize,
-    List<Answer> answers) {
+    List<Answer> answers,
+    URI panelUrl) {
 
   public VenueReservationNotificationTemplateData {
     Objects.requireNonNull(venueName);
@@ -28,6 +33,7 @@ public record VenueReservationNotificationTemplateData(
     Objects.requireNonNull(date);
     Objects.requireNonNull(startsAt);
     Objects.requireNonNull(endsAt);
+    Objects.requireNonNull(panelUrl);
     if (partySize < 1) {
       throw new IllegalArgumentException("partySize debe ser positivo");
     }

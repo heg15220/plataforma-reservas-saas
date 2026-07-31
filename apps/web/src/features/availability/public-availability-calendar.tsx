@@ -1,20 +1,22 @@
 "use client";
 
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import MenuItem from "@mui/material/MenuItem";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { CalendarCheck, ChevronLeft, ChevronRight, Clock3, Mail, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { Surface } from "@/components/layout";
 import { StatusChip } from "@/components/visual";
+import { Surface } from "@/components/layout";
 
 import { fetchPublicAvailability, type PublicAvailability } from "./availability-api";
 
@@ -24,11 +26,11 @@ interface PublicAvailabilityCalendarProps {
 }
 
 /**
- * Calendario público responsive de siete días.
+ * Seven-day public availability selector backed exclusively by API results.
  *
- * Consulta cada fecha al backend para que cierres, bloqueos y capacidad nunca
- * se deduzcan en el navegador. La acción de reserva permanece deshabilitada
- * hasta que la Fase 7 implemente holds y confirmación.
+ * The compact calendar and slot table are two views over the same payload. A
+ * booking link is enabled only when the slot is bookable and any mandatory
+ * employee selection has been resolved.
  */
 export function PublicAvailabilityCalendar({
   venueSlug,
@@ -47,6 +49,8 @@ export function PublicAvailabilityCalendar({
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
+    setFailed(false);
     Promise.all(
       dates.map((date) => fetchPublicAvailability(venueSlug, date, locale, controller.signal)),
     )
@@ -77,275 +81,438 @@ export function PublicAvailabilityCalendar({
     }
     return Array.from(uniqueServices, ([id, name]) => ({ id, name }));
   }, [selected]);
-  const effectiveServiceId =
-    serviceOptions.some((service) => service.id === selectedServiceId)
-      ? selectedServiceId
-      : (serviceOptions[0]?.id ?? null);
+  const effectiveServiceId = serviceOptions.some((service) => service.id === selectedServiceId)
+    ? selectedServiceId
+    : (serviceOptions[0]?.id ?? null);
   const visibleSlots =
     effectiveServiceId === null
       ? (selected?.slots ?? [])
       : (selected?.slots.filter((slot) => slot.serviceId === effectiveServiceId) ?? []);
+  const maximumCapacity = visibleSlots.reduce(
+    (maximum, slot) => Math.max(maximum, slot.capacity),
+    0,
+  );
+  const firstDuration = visibleSlots[0]
+    ? durationMinutes(visibleSlots[0].startsAt, visibleSlots[0].endsAt)
+    : null;
 
   return (
-    <Box component="section" aria-labelledby="public-availability-title">
-      <Stack spacing={3}>
+    <Box
+      id="availability"
+      component="section"
+      aria-labelledby="public-availability-title"
+      sx={{ scrollMarginTop: 96 }}
+    >
+      <Stack spacing={2}>
         <Box>
-          <Typography id="public-availability-title" component="h2" variant="h2">
+          <Typography id="public-availability-title" component="h2" variant="h4">
             {t("title")}
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 1 }}>
+          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             {t("description")}
           </Typography>
         </Box>
 
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
-        >
-          <Stack direction="row" spacing={1}>
-            <Button
-              aria-label={t("previousWeek")}
-              onClick={() => shiftRange(-7)}
-              startIcon={<ChevronLeft aria-hidden="true" size={17} />}
-              variant="outlined"
-            >
-              {t("previous")}
-            </Button>
-            <Button
-              aria-label={t("nextWeek")}
-              endIcon={<ChevronRight aria-hidden="true" size={17} />}
-              onClick={() => shiftRange(7)}
-              variant="outlined"
-            >
-              {t("next")}
-            </Button>
-          </Stack>
-          <Box
-            aria-label={t("chooseDate")}
-            component="input"
-            min={todayIso()}
-            onChange={(event) => {
-              setLoading(true);
-              setFailed(false);
-              setRangeStart(event.target.value);
-              setSelectedDate(event.target.value);
-            }}
-            type="date"
-            value={selectedDate}
-            sx={{
-              border: 1,
-              borderColor: "divider",
-              borderRadius: 1.5,
-              color: "text.primary",
-              font: "inherit",
-              minHeight: 42,
-              px: 1.5,
-            }}
-          />
-        </Stack>
+        {failed ? <Alert severity="error">{t("error")}</Alert> : null}
 
-        {failed && <Alert severity="error">{t("error")}</Alert>}
-        {loading ? (
-          <Stack
-            aria-label={t("loading")}
-            role="status"
-            sx={{ alignItems: "center", minHeight: 140, justifyContent: "center" }}
-          >
-            <CircularProgress size={30} />
-          </Stack>
-        ) : (
-          <>
-            <Box
-              aria-label={t("daysLabel")}
-              role="group"
+        <Surface padding="none">
+          {loading ? (
+            <Stack
+              aria-label={t("loading")}
+              role="status"
               sx={{
-                display: "grid",
-                gap: 1,
-                gridTemplateColumns: {
-                  xs: "repeat(2, minmax(0, 1fr))",
-                  sm: "repeat(4, minmax(0, 1fr))",
-                  md: "repeat(7, minmax(0, 1fr))",
-                },
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 330,
               }}
             >
-              {dates.map((date) => {
-                const day = days[date];
-                const selectedDay = date === selectedDate;
-                return (
-                  <Button
-                    aria-pressed={selectedDay}
-                    color={selectedDay ? "primary" : "inherit"}
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    sx={{
-                      alignItems: "stretch",
-                      border: 1,
-                      borderColor: selectedDay ? "primary.main" : "divider",
-                      flexDirection: "column",
-                      gap: 0.75,
-                      minHeight: 96,
-                      textTransform: "none",
-                    }}
-                    variant={selectedDay ? "contained" : "outlined"}
-                  >
-                    <Typography component="span" sx={{ fontSize: "0.75rem" }}>
-                      {formatWeekday(date, locale)}
-                    </Typography>
-                    <Typography component="span" sx={{ fontWeight: 800 }}>
-                      {formatDay(date, locale)}
-                    </Typography>
-                    <Typography component="span" sx={{ fontSize: "0.6875rem" }}>
-                      {day?.statusLabel ?? t("unavailable")}
-                    </Typography>
-                  </Button>
-                );
-              })}
-            </Box>
-
-            {selected && (
-              <Surface>
-                <Stack spacing={3}>
+              <CircularProgress size={30} />
+            </Stack>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { md: "280px minmax(0, 1fr)" },
+                minHeight: 360,
+              }}
+            >
+              <Box
+                sx={{
+                  borderBottom: { xs: 1, md: 0 },
+                  borderColor: "divider",
+                  borderRight: { md: 1 },
+                  p: { xs: 2, md: 2.5 },
+                }}
+              >
+                <Stack spacing={2}>
                   <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1.5}
-                    sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
+                    direction="row"
+                    sx={{ alignItems: "center", justifyContent: "space-between" }}
                   >
-                    <Typography component="h3" variant="h3">
-                      {t("slotsFor", { date: formatLongDate(selected.date, locale) })}
+                    <Button
+                      aria-label={t("previousWeek")}
+                      disabled={addDays(rangeStart, -7) < todayIso()}
+                      onClick={() => shiftRange(-7)}
+                      size="small"
+                      sx={{ minWidth: 36, px: 0 }}
+                      variant="text"
+                    >
+                      <ChevronLeft aria-hidden size={18} />
+                    </Button>
+                    <Typography sx={{ fontWeight: 800 }}>
+                      {formatMonth(rangeStart, locale)}
                     </Typography>
-                    <StatusChip
-                      label={selected.statusLabel}
-                      tone={selected.bookingAvailable ? "success" : "neutral"}
-                    />
+                    <Button
+                      aria-label={t("nextWeek")}
+                      onClick={() => shiftRange(7)}
+                      size="small"
+                      sx={{ minWidth: 36, px: 0 }}
+                      variant="text"
+                    >
+                      <ChevronRight aria-hidden size={18} />
+                    </Button>
                   </Stack>
 
-                  {serviceOptions.length > 1 ? (
-                    <TextField
-                      label={t("serviceFilter")}
-                      onChange={(event) => setSelectedServiceId(event.target.value)}
-                      select
-                      value={effectiveServiceId ?? ""}
-                    >
-                      {serviceOptions.map((service) => (
-                        <MenuItem key={service.id} value={service.id}>
-                          {service.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  ) : serviceOptions.length === 1 ? (
-                    <Typography color="text.secondary">
-                      {t("selectedService", { name: serviceOptions[0].name })}
-                    </Typography>
-                  ) : null}
-
-                  {visibleSlots.length === 0 ? (
-                    <Typography color="text.secondary">{t("empty")}</Typography>
-                  ) : (
-                    <Stack spacing={1.5}>
-                      {visibleSlots.map((slot) => (
-                        <Box
-                          key={slot.slotId}
+                  <Box
+                    aria-label={t("daysLabel")}
+                    role="group"
+                    sx={{
+                      display: "grid",
+                      gap: 0.75,
+                      gridTemplateColumns: {
+                        xs: "repeat(7, minmax(42px, 1fr))",
+                        md: "repeat(7, minmax(0, 1fr))",
+                      },
+                      overflowX: "auto",
+                    }}
+                  >
+                    {dates.map((date) => {
+                      const day = days[date];
+                      const selectedDay = date === selectedDate;
+                      return (
+                        <Button
+                          key={date}
+                          aria-label={`${formatLongDate(date, locale)} · ${day?.statusLabel ?? t("unavailable")}`}
+                          aria-pressed={selectedDay}
+                          onClick={() => setSelectedDate(date)}
                           sx={{
-                            alignItems: { sm: "center" },
                             border: 1,
-                            borderColor: "divider",
+                            borderColor: selectedDay ? "primary.main" : "divider",
                             borderRadius: 2,
-                            display: "grid",
-                            gap: 2,
-                            gridTemplateColumns: {
-                              md: "minmax(0, 1fr) minmax(220px, 0.85fr) auto auto",
-                            },
-                            p: 2,
+                            color: selectedDay ? "primary.contrastText" : "text.primary",
+                            flexDirection: "column",
+                            gap: 0.25,
+                            minWidth: 0,
+                            px: 0.35,
+                            py: 0.8,
+                            textTransform: "none",
+                          }}
+                          variant={selectedDay ? "contained" : "text"}
+                        >
+                          <Typography
+                            component="span"
+                            sx={{ fontSize: "0.65rem", textTransform: "uppercase" }}
+                          >
+                            {formatWeekday(date, locale)}
+                          </Typography>
+                          <Typography
+                            component="span"
+                            sx={{ fontSize: "0.875rem", fontWeight: 800 }}
+                          >
+                            {formatDayNumber(date, locale)}
+                          </Typography>
+                          <Box
+                            aria-hidden
+                            sx={{
+                              bgcolor: day?.bookingAvailable
+                                ? selectedDay
+                                  ? "common.white"
+                                  : "success.main"
+                                : "grey.400",
+                              borderRadius: "50%",
+                              height: 5,
+                              width: 5,
+                            }}
+                          />
+                        </Button>
+                      );
+                    })}
+                  </Box>
+
+                  <Box
+                    aria-label={t("chooseDate")}
+                    component="input"
+                    min={todayIso()}
+                    onChange={(event) => {
+                      setRangeStart(event.target.value);
+                      setSelectedDate(event.target.value);
+                    }}
+                    type="date"
+                    value={selectedDate}
+                    sx={{
+                      bgcolor: "background.paper",
+                      border: 1,
+                      borderColor: "divider",
+                      borderRadius: 2,
+                      color: "text.primary",
+                      font: "inherit",
+                      minHeight: 42,
+                      px: 1.25,
+                    }}
+                  />
+
+                  <Stack spacing={0.75}>
+                    <Legend color="success.main" label={t("legend.available")} />
+                    <Legend color="grey.400" label={t("legend.unavailable")} />
+                    <Legend color="primary.main" label={t("legend.selected")} />
+                  </Stack>
+                </Stack>
+              </Box>
+
+              <Box sx={{ minWidth: 0, p: { xs: 2, md: 2.5 } }}>
+                {selected ? (
+                  <Stack spacing={2}>
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      sx={{
+                        alignItems: { xs: "flex-start", sm: "center" },
+                        gap: 1,
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Typography component="h3" variant="h6">
+                        {formatLongDate(selected.date, locale)}
+                      </Typography>
+                      <StatusChip
+                        label={selected.statusLabel}
+                        tone={selected.bookingAvailable ? "success" : "neutral"}
+                      />
+                    </Stack>
+
+                    {serviceOptions.length > 1 ? (
+                      <TextField
+                        label={t("serviceFilter")}
+                        onChange={(event) => setSelectedServiceId(event.target.value)}
+                        select
+                        size="small"
+                        value={effectiveServiceId ?? ""}
+                      >
+                        {serviceOptions.map((service) => (
+                          <MenuItem key={service.id} value={service.id}>
+                            {service.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    ) : serviceOptions.length === 1 ? (
+                      <Typography color="text.secondary" variant="body2">
+                        {t("selectedService", { name: serviceOptions[0].name })}
+                      </Typography>
+                    ) : null}
+
+                    {visibleSlots.length === 0 ? (
+                      <Typography color="text.secondary">{t("empty")}</Typography>
+                    ) : (
+                      <Box sx={{ overflowX: "auto" }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            display: { xs: "none", md: "grid" },
+                            fontSize: "0.75rem",
+                            fontWeight: 800,
+                            gap: 1,
+                            gridTemplateColumns: "1.05fr .65fr .65fr .8fr minmax(104px, auto)",
+                            pb: 1,
+                            px: 1.25,
                           }}
                         >
-                          <Box>
-                            <Typography sx={{ fontWeight: 800 }}>
-                              {formatTimeRange(slot.startsAt, slot.endsAt)}
-                            </Typography>
-                            <Typography color="text.secondary" variant="body2">
-                              {t("capacity", {
-                                available: slot.availableCapacity,
-                                total: slot.capacity,
-                              })}
-                            </Typography>
-                            {slot.serviceName && (
-                              <Typography color="text.secondary" variant="body2">
-                                {t("slotService", { name: slot.serviceName })}
-                              </Typography>
-                            )}
-                          </Box>
-                          {slot.bookingAvailable && slot.employeeResourceRequired ? (
-                            <TextField
-                              label={t("resourceLabel")}
-                              onChange={(event) =>
-                                setResourceSelections((current) => ({
-                                  ...current,
-                                  [slot.slotId]: event.target.value,
-                                }))
-                              }
-                              select
-                              value={resourceSelections[slot.slotId] ?? ""}
-                            >
-                              <MenuItem disabled value="">
-                                {t("chooseResource")}
-                              </MenuItem>
-                              {slot.anyAvailableResourceAllowed && (
-                                <MenuItem value="any_available">
-                                  {t("anyAvailableResource")}
-                                </MenuItem>
-                              )}
-                              {slot.availableEmployeeResources.map((resource) => (
-                                <MenuItem
-                                  key={resource.employeeResourceId}
-                                  value={resource.employeeResourceId}
-                                >
-                                  {resource.specialty
-                                    ? t("resourceWithSpecialty", {
-                                        name: resource.displayName,
-                                        specialty: resource.specialty,
-                                      })
-                                    : resource.displayName}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          ) : (
-                            <Typography color="text.secondary" variant="body2">
-                              {t("resourceNotRequired")}
-                            </Typography>
-                          )}
-                          <StatusChip
-                            label={
-                              slot.bookingAvailable ? t("slotAvailable") : t("slotUnavailable")
-                            }
-                            tone={slot.bookingAvailable ? "success" : "neutral"}
-                          />
-                          <Button component={Link} href={bookingHref(slot)} variant="contained">{t("bookingPending")}</Button>
+                          <span>{t("table.time")}</span>
+                          <span>{t("table.capacity")}</span>
+                          <span>{t("table.available")}</span>
+                          <span>{t("table.status")}</span>
+                          <span />
                         </Box>
-                      ))}
-                    </Stack>
-                  )}
-                </Stack>
-              </Surface>
-            )}
-          </>
-        )}
+                        <Stack divider={<Box sx={{ borderTop: 1, borderColor: "divider" }} />}>
+                          {visibleSlots.map((slot) => {
+                            const selectedResource = resourceSelections[slot.slotId];
+                            const canBook =
+                              slot.bookingAvailable &&
+                              (!slot.employeeResourceRequired || Boolean(selectedResource));
+                            return (
+                              <Box
+                                key={slot.slotId}
+                                sx={{
+                                  alignItems: { md: "center" },
+                                  display: "grid",
+                                  gap: { xs: 1.25, md: 1 },
+                                  gridTemplateColumns: {
+                                    md: "1.05fr .65fr .65fr .8fr minmax(104px, auto)",
+                                  },
+                                  py: 1.25,
+                                  px: 1.25,
+                                }}
+                              >
+                                <Box>
+                                  <Typography sx={{ fontWeight: 800 }} variant="body2">
+                                    {formatTimeRange(slot.startsAt, slot.endsAt)}
+                                  </Typography>
+                                  <Typography
+                                    color="text.secondary"
+                                    sx={{ display: { md: "none" } }}
+                                    variant="caption"
+                                  >
+                                    {t("capacity", {
+                                      available: slot.availableCapacity,
+                                      total: slot.capacity,
+                                    })}
+                                  </Typography>
+                                  {slot.serviceName ? (
+                                    <Typography color="text.secondary" variant="caption">
+                                      {t("slotService", { name: slot.serviceName })}
+                                    </Typography>
+                                  ) : null}
+                                  {slot.employeeResourceRequired ? (
+                                    <TextField
+                                      fullWidth
+                                      label={t("resourceLabel")}
+                                      onChange={(event) =>
+                                        setResourceSelections((current) => ({
+                                          ...current,
+                                          [slot.slotId]: event.target.value,
+                                        }))
+                                      }
+                                      select
+                                      size="small"
+                                      sx={{ mt: 1 }}
+                                      value={selectedResource ?? ""}
+                                    >
+                                      <MenuItem disabled value="">
+                                        {t("chooseResource")}
+                                      </MenuItem>
+                                      {slot.anyAvailableResourceAllowed ? (
+                                        <MenuItem value="any_available">
+                                          {t("anyAvailableResource")}
+                                        </MenuItem>
+                                      ) : null}
+                                      {slot.availableEmployeeResources.map((resource) => (
+                                        <MenuItem
+                                          key={resource.employeeResourceId}
+                                          value={resource.employeeResourceId}
+                                        >
+                                          {resource.specialty
+                                            ? t("resourceWithSpecialty", {
+                                                name: resource.displayName,
+                                                specialty: resource.specialty,
+                                              })
+                                            : resource.displayName}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                  ) : null}
+                                </Box>
+                                <SlotDatum
+                                  label={t("table.capacity")}
+                                  value={String(slot.capacity)}
+                                />
+                                <SlotDatum
+                                  label={t("table.available")}
+                                  tone={slot.availableCapacity > 0 ? "success.main" : "error.main"}
+                                  value={String(slot.availableCapacity)}
+                                />
+                                <StatusChip
+                                  label={
+                                    slot.bookingAvailable
+                                      ? t("slotAvailable")
+                                      : t("slotUnavailable")
+                                  }
+                                  tone={slot.bookingAvailable ? "success" : "neutral"}
+                                />
+                                {canBook ? (
+                                  <Button
+                                    component={Link}
+                                    href={bookingHref(slot)}
+                                    size="small"
+                                    variant="contained"
+                                  >
+                                    {t("bookingPending")}
+                                  </Button>
+                                ) : (
+                                  <Button disabled size="small" variant="contained">
+                                    {t("bookingPending")}
+                                  </Button>
+                                )}
+                              </Box>
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                    )}
+                  </Stack>
+                ) : null}
+              </Box>
+            </Box>
+          )}
+        </Surface>
 
-        <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
-          <Legend color="success.main" label={t("legend.available")} />
-          <Legend color="grey.500" label={t("legend.unavailable")} />
-          <Legend color="primary.main" label={t("legend.selected")} />
-        </Stack>
+        {!loading && selected ? (
+          <Box
+            sx={{
+              display: "grid",
+              gap: 1,
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(4, minmax(0, 1fr))",
+              },
+            }}
+          >
+            <AvailabilityFact
+              icon={<Users aria-hidden size={19} />}
+              label={t("facts.capacity")}
+              value={
+                maximumCapacity > 0
+                  ? t("facts.people", { count: maximumCapacity })
+                  : t("facts.notAvailable")
+              }
+            />
+            <AvailabilityFact
+              icon={<Clock3 aria-hidden size={19} />}
+              label={t("facts.duration")}
+              value={
+                firstDuration
+                  ? t("facts.minutes", { count: firstDuration })
+                  : t("facts.notAvailable")
+              }
+            />
+            <AvailabilityFact
+              icon={<CalendarCheck aria-hidden size={19} />}
+              label={t("facts.availableSlots")}
+              value={String(selected.availableSlotCount)}
+            />
+            <AvailabilityFact
+              icon={<Mail aria-hidden size={19} />}
+              label={t("facts.confirmation")}
+              value={t("facts.byEmail")}
+            />
+          </Box>
+        ) : null}
       </Stack>
     </Box>
   );
 
   function bookingHref(slot: PublicAvailability["slots"][number]) {
     const selectedResource = resourceSelections[slot.slotId];
-    const query = new URLSearchParams({ slotId: slot.slotId });
-    if (slot.serviceId) query.set("serviceId", slot.serviceId);
-    if (selectedResource === "any_available") query.set("assignmentPreference", "any_available");
-    else if (selectedResource) { query.set("assignmentPreference", "specific"); query.set("employeeResourceId", selectedResource); }
+    const query = new URLSearchParams({
+      date: selectedDate,
+      slotId: slot.slotId,
+    });
+    if (slot.serviceId) {
+      query.set("serviceId", slot.serviceId);
+    }
+    if (selectedResource === "any_available") {
+      query.set("assignmentPreference", "any_available");
+    } else if (selectedResource) {
+      query.set("assignmentPreference", "specific");
+      query.set("employeeResourceId", selectedResource);
+    }
     return `/locales/${encodeURIComponent(venueSlug)}/reservar?${query.toString()}`;
   }
 
@@ -354,18 +521,75 @@ export function PublicAvailabilityCalendar({
     if (next < todayIso()) {
       return;
     }
-    setLoading(true);
-    setFailed(false);
     setRangeStart(next);
     setSelectedDate(next);
   }
 }
 
+function AvailabilityFact({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Surface padding="sm" tone="muted">
+      <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+        <Box color="primary.main">{icon}</Box>
+        <Box>
+          <Typography color="text.secondary" variant="caption">
+            {label}
+          </Typography>
+          <Typography sx={{ fontWeight: 800 }} variant="body2">
+            {value}
+          </Typography>
+        </Box>
+      </Stack>
+    </Surface>
+  );
+}
+
+function SlotDatum({
+  label,
+  tone = "text.primary",
+  value,
+}: {
+  label: string;
+  tone?: string;
+  value: string;
+}) {
+  return (
+    <Box>
+      <Typography
+        color="text.secondary"
+        sx={{ display: { xs: "block", md: "none" } }}
+        variant="caption"
+      >
+        {label}
+      </Typography>
+      <Typography color={tone} sx={{ fontWeight: 800 }} variant="body2">
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
 function Legend({ color, label }: { color: string; label: string }) {
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-      <Box aria-hidden="true" sx={{ bgcolor: color, borderRadius: "50%", height: 10, width: 10 }} />
-      <Typography color="text.secondary" variant="body2">
+    <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+      <Box
+        aria-hidden
+        sx={{
+          bgcolor: color,
+          borderRadius: "50%",
+          height: 8,
+          width: 8,
+        }}
+      />
+      <Typography color="text.secondary" variant="caption">
         {label}
       </Typography>
     </Stack>
@@ -394,15 +618,20 @@ function toIsoDate(date: Date) {
 }
 
 function formatWeekday(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(
+  return new Intl.DateTimeFormat(locale, { weekday: "narrow" }).format(
     new Date(`${value}T12:00:00`),
   );
 }
 
-function formatDay(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
-    new Date(`${value}T12:00:00`),
-  );
+function formatDayNumber(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, { day: "numeric" }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatMonth(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
 }
 
 function formatLongDate(value: string, locale: string) {
@@ -418,5 +647,11 @@ function formatTime(value: string) {
 }
 
 function formatTimeRange(start: string, end: string) {
-  return formatTime(start) + " " + String.fromCharCode(8211) + " " + formatTime(end);
+  return `${formatTime(start)} – ${formatTime(end)}`;
+}
+
+function durationMinutes(start: string, end: string) {
+  const [startHour, startMinute] = start.split(":").map(Number);
+  const [endHour, endMinute] = end.split(":").map(Number);
+  return endHour * 60 + endMinute - (startHour * 60 + startMinute);
 }

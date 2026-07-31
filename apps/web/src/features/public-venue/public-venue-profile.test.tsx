@@ -6,6 +6,12 @@ import { renderWithIntl } from "@/test-utils/render-with-intl";
 import type { PublicVenueProfile } from "./public-venue-api";
 import { PublicVenueProfileView } from "./public-venue-profile";
 
+vi.mock("@/features/availability/public-availability-calendar", () => ({
+  PublicAvailabilityCalendar: () => (
+    <section aria-label="Disponibilidad de prueba">Calendario</section>
+  ),
+}));
+
 const venue: PublicVenueProfile = {
   slug: "casa-luz",
   locale: "es",
@@ -85,7 +91,11 @@ describe("PublicVenueProfileView", () => {
   it("muestra valoración agregada y reseñas verificadas sin identidad", () => {
     renderWithIntl(<PublicVenueProfileView venue={venue} />);
 
-    expect(screen.getByRole("button", { name: "Reservas próximamente" })).toBeDisabled();
+    expect(screen.getAllByRole("link", { name: "Reservar" })[0]).toHaveAttribute(
+      "href",
+      "#availability",
+    );
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
     expect(screen.getByLabelText("Valoración media: 4,5 de 5")).toBeVisible();
     expect(screen.getByText("2 reseñas verificadas")).toBeVisible();
     expect(screen.getByText("Atención excelente.")).toBeVisible();

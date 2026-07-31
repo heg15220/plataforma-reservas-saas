@@ -11,14 +11,296 @@ Fuente de verdad del avance:
 ## Estado actual
 
 - Fecha de última actualización: 2026-07-31
-- Tareas completadas en `tasks.md`: `0.1` a `0.15`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
+- Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.14`.
-- Siguiente tarea pendiente recomendada: `15.1. Validar inicio móvil con buscador, ubicación y
-  categorías`.
-- Observación: la fase 14 queda completa, incluidos permisos HTTP y decisiones manuales de cuentas
-  y documentos con evidencia auditada.
+  `14.1` a `14.14`, `15.1`, `15.4`, `15.5`, `15.6` y `15.7`.
+- Siguiente tarea pendiente recomendada: `15.2. Validar resultados móviles con tarjetas`.
+- Observación: la fase 14 queda completa y el perfil local dispone de tres publicaciones
+  reservables de demostración sin registro.
+
+## Conversación 135 - Restaurante ficticio con carrusel profesional en modo local
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se amplió el fixture idempotente del perfil `local` con `Lume de Brétema`, un restaurante
+    gallego contemporáneo completamente ficticio y publicado sin registro manual.
+  - Se generaron tres fotografías originales coherentes entre sí: sala principal, plato de merluza
+    y cocina abierta. La ficha las presenta como portada y dos elementos de galería.
+  - El restaurante publica información ES/EN, contacto `.local`, dirección ficticia, horario,
+    servicio de reserva de mesa y cuatro turnos diarios de 18 comensales durante 31 días.
+  - Se cargó el fixture en PostgreSQL y el almacenamiento de imágenes mediante un arranque aislado
+    en el puerto 18081, sin interrumpir los procesos existentes en 8080 y 18080.
+- Archivos modificados:
+  - `LocalDemoVenueInitializer.java`.
+  - `dev-fixtures/local-demo-venues.sql`.
+  - Tres PNG bajo `dev-fixtures/images/lume-de-bretema-*.png`.
+  - `LocalDemoVenueFixtureContractTests.java`.
+  - `README.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-002`, `RF-004`, `RF-006`, `RF-013`, `RF-014`, `RF-015` y `RF-016`.
+  - `RNF-004`, `RNF-006`, `RNF-007` y `RNF-009`.
+- Tareas impactadas:
+  - 0.16 mantiene estado completado y amplía su alcance de dos a tres publicaciones locales.
+- Tareas completadas:
+  - No se cierra una tarea nueva; se extiende y verifica la tarea 0.16 ya completada.
+- Siguiente tarea pendiente recomendada:
+  - `15.2. Validar resultados móviles con tarjetas`.
+- Decisiones o aclaraciones relevantes:
+  - Todos los datos de identidad y contacto del restaurante son ficticios y el correo usa el TLD
+    `.local`, por lo que ninguna notificación de desarrollo sale a un destinatario real.
+  - Las imágenes se generaron sin personas identificables, logos, texto ni marcas de agua y se
+    empaquetan en el classpath; no dependen de URLs externas.
+  - El carrusel tiene tres imágenes reales, alt text descriptivo y posiciones estables 0 y 1 para
+    las dos imágenes secundarias.
+  - La prueba focalizada terminó con 2 tests correctos; la ficha, las tres imágenes y cuatro franjas
+    se comprobaron además por HTTP y en navegador local.
+
+## Conversación 134 - Formulario, confirmación y emails de reserva fieles al prototipo
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se completó el recorrido visual de reserva anónima con indicador de tres pasos, resumen de la
+    selección, formulario agrupado, bloqueo temporal y contador visible.
+  - La ruta de reserva vuelve a consultar perfil y disponibilidad en servidor; fecha, franja,
+    servicio, recurso, dirección, imagen y normas no se aceptan como datos libres de la URL.
+  - La confirmación adopta el arte del prototipo, muestra un recibo minimizado, confirma el envío
+    al correo y permite descargar un evento de calendario sin exponer el token de gestión.
+  - Se rediseñaron en español e inglés el email de confirmación al usuario y el aviso al local. El
+    primero incorpora saludo, resumen, política y CTA seguro; el segundo incluye datos operativos
+    y una ruta autenticada al panel, nunca el token público del usuario.
+  - Se validó en localhost el recorrido hasta un hold real de una franja futura y el contador
+    activo. Se creó una reserva de prueba incompleta que caduca automáticamente; la confirmación
+    contra el proceso API antiguo no se utilizó como evidencia de la nueva plantilla.
+- Archivos modificados:
+  - `apps/web/src/app/locales/[slug]/reservar/page.tsx`.
+  - `public-reservation-form.tsx`, `public-reservation-confirmation.tsx` y su test.
+  - `public-availability-calendar.tsx`, `page-container.tsx`, `locales/es.json` y
+    `locales/en.json`.
+  - Contratos, consumidor y servicio de plantillas de `apps/api/src/main/java/.../notifications`
+    y `.../reservations/messaging`.
+  - `apps/api/src/main/resources/email-templates/es.properties` y `en.properties`.
+  - Tests focalizados de plantillas de notificaciones.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-013`, `RF-014`, `RF-015`, `RF-016` y `RF-031`.
+  - `RNF-002`, `RNF-004`, `RNF-006`, `RNF-007` y `RNF-009`.
+- Tareas impactadas:
+  - 15.6 y 15.7, completadas.
+  - 8.3 y 8.4, ya completadas, refinadas visualmente y con contratos más explícitos.
+- Tareas completadas:
+  - `15.6. Validar formulario móvil por bloques con contador`.
+  - `15.7. Validar pantalla móvil de confirmación`.
+- Siguiente tarea pendiente recomendada:
+  - `15.2. Validar resultados móviles con tarjetas`.
+- Decisiones o aclaraciones relevantes:
+  - La selección se reconstruye desde el API en el Server Component y una combinación
+    fecha/franja inválida devuelve 404; solo los identificadores mínimos viajan en la URL.
+  - La confirmación sigue leyendo exclusivamente el snapshot de sesión creado tras confirmar; el
+    UUID de la ruta no se usa como credencial ni se muestra.
+  - El enlace del correo del usuario conserva su token de un solo propósito. El correo del local
+    enlaza a `/panel/reservas/{id}`, protegido por autenticación profesional.
+  - Las plantillas usan HTML compatible con clientes de correo, tablas e inline CSS, sin scripts,
+    recursos remotos ni interpolación HTML sin escapar.
+  - Las pruebas backend focalizadas finalizaron con 7 tests, 0 fallos y 0 errores. Los tests
+    frontend focalizados habían acreditado 6 casos y el formulario aislado 3/3; las repeticiones
+    posteriores se detuvieron por timeout del runner para respetar el límite de validación. No se
+    ejecutaron suites globales.
+
+## Conversación 133 - Ficha pública y disponibilidad fieles al prototipo
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se reconstruyó la ficha del local tomando como referencia el panel central de
+    `Prototipos_ReservaYa.png`: breadcrumb, galería asimétrica, identidad, señales de confianza,
+    acciones, navegación por secciones e información secundaria.
+  - En móvil, la galería pasa a carrusel horizontal, las pestañas permiten desplazamiento y el
+    botón de reserva permanece fijo sobre la navegación inferior.
+  - La disponibilidad se compactó en selector semanal y tabla de franjas con capacidad, plazas,
+    estado y reserva real; en móvil se transforma en tarjetas táctiles.
+  - Se conservaron exclusivamente datos del API. El estado comunica que el local acepta reservas,
+    pero no inventa horarios de apertura. Guardar permanece deshabilitado hasta disponer de
+    persistencia de favoritos.
+- Archivos modificados:
+  - `public-venue-profile.tsx` y `public-venue-profile.test.tsx`.
+  - `public-availability-calendar.tsx`.
+  - `page-container.tsx` y `surface.tsx`.
+  - `locales/es.json` y `locales/en.json`.
+  - `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004`, `RF-006`, `RF-014`, `RF-015` y `RF-031`.
+  - `RNF-004`, `RNF-005`, `RNF-006` y `RNF-009`.
+- Tareas impactadas y completadas:
+  - `15.4. Validar ficha móvil con pestañas y botón fijo de reserva`.
+  - `15.5. Validar calendario compacto y franjas táctiles`.
+- Siguiente tarea pendiente recomendada:
+  - `15.2. Validar resultados móviles con tarjetas`.
+- Decisiones o aclaraciones relevantes:
+  - Las acciones `Reservar` desplazan a disponibilidad real; cada franja crea el enlace al flujo
+    existente y exige seleccionar recurso cuando el contrato lo requiere.
+  - Las imágenes públicas se muestran con `img` nativo porque proceden del API local y no deben
+    depender de una allowlist de optimización de Next por entorno.
+  - Evidencia focalizada: 8 tests correctos entre ficha, disponibilidad e i18n; TypeScript no
+    señaló los cuatro módulos de implementación, aunque continúa fallando globalmente por deuda
+    histórica ajena.
+  - Validación real en `localhost`: escritorio con galería 2/3 + miniatura, tabla completa y cuatro
+    hechos operativos; móvil a `390 × 844` con carrusel, pestañas, CTA fijo, calendario de siete
+    días y franjas reservables.
+  - La infraestructura y los procesos locales que ya estaban activos se conservaron para el
+    desarrollador. Un intento redundante de `npm run dev` se cerró automáticamente al detectar
+    los listeners existentes; no se detuvo ninguna JVM ni servidor perteneciente al usuario.
+
+## Conversación 132 - Dirección visual del prototipo e inicio responsive
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se adoptó `Prototipos_ReservaYa.png` como referencia visual, manteniendo la marca `Reserly`.
+  - Se compactaron tokens, tipografía, controles, superficies, cabecera pública y sidebar privado
+    para aproximar densidad, jerarquía y geometría al prototipo.
+  - Se reconstruyó el inicio con hero fotográfico, búsqueda real, categorías, tarjetas públicas y
+    bloque cercano.
+  - Se validó el inicio con los dos locales demo en escritorio y móvil mediante navegador.
+- Archivos modificados:
+  - `visual-tokens.ts`, `base-theme.ts`.
+  - `public-shell.tsx`, `venue-shell.tsx`, `surface.tsx`.
+  - `app/page.tsx`, `app/page.test.tsx`.
+  - `locales/es.json`, `locales/en.json`.
+  - `tasks.md`, `design.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003`, `RF-004`, `RF-006` y `RF-031`.
+  - `RNF-004`, `RNF-005`, `RNF-006` y `RNF-009`.
+- Tareas impactadas y completadas:
+  - `15.1. Validar inicio móvil con buscador, ubicación y categorías`.
+- Siguiente tarea pendiente recomendada:
+  - `15.2. Validar resultados móviles con tarjetas`.
+- Decisiones o aclaraciones relevantes:
+  - La imagen es dirección artística, no fuente de datos ni permiso para hardcodear sus ejemplos.
+  - El inicio consulta el endpoint público desde SSR y degrada sin romperse si el API está caído.
+  - Evidencia focalizada: 4 tests correctos, formato correcto, navegación real a `/explorar`,
+    ausencia de overflow a `390 px` y cero errores de consola.
+  - TypeScript global continúa fallando por deuda previa en administración, confirmación,
+    formularios, equipo e incidencias; no señaló archivos de esta tarea.
+  - El validador i18n ya no señala `page.tsx`; permanece bloqueado por 24 incidencias previas.
+  - ESLint focalizado no finalizó dentro de 120 segundos y no se reintentó para evitar una
+    validación interminable.
+  - La infraestructura Docker se dejó activa para uso local; los procesos temporales de Next y
+    Spring se cerraron como árbol completo y `3000`/`8080` quedaron sin listeners.
+
+## Conversación 131 - Liberación de la JVM local residual en el puerto 8080
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se diagnosticó la repetición de `Web server failed to start. Port 8080 was already in use`.
+  - `netstat` identificó el PID `7348`; su comando confirmó que era
+    `com.reserly.platform.ReserlyApplication --spring.profiles.active=local`, iniciada durante la
+    validación temporal de la conversación 130.
+  - El proceso lanzador había terminado, pero la JVM hija de Spring Boot permaneció escuchando.
+  - Se detuvo exclusivamente el PID residual y se comprobó dos veces que `8080` seguía libre.
+- Archivos modificados:
+  - `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RNF-005` y `RNF-006`.
+- Tareas impactadas:
+  - `0.16`, únicamente en su verificación operativa local.
+- Tareas completadas:
+  - Ninguna tarea nueva.
+- Siguiente tarea pendiente recomendada:
+  - `15.1. Validar inicio móvil con buscador, ubicación y categorías`.
+- Decisiones o aclaraciones relevantes:
+  - El fallo no procedía de Hibernate, PostgreSQL ni los fixtures; la inicialización JPA había
+    finalizado correctamente.
+  - `HHH000489` es un mensaje informativo y no requiere configurar JTA para este monolito.
+  - La afirmación previa de que todos los procesos temporales habían sido detenidos queda corregida:
+    la JVM hija del primer intento en `8080` permaneció activa hasta esta conversación.
+
+## Conversación 130 - Reparación del arranque y validación HTTP de los locales demo
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se reprodujo el fallo adjunto de `ApplicationContext`: Hibernate esperaba `varchar(64)` para
+    `PaymentCallbackReceipts.payloadHash`, mientras Flyway había creado `char(64)`.
+  - Se alinearon con PostgreSQL los tres valores de longitud fija de pagos y se migró la integración
+    Redsys a Jackson 3, que es el `ObjectMapper` autoconfigurado por Spring Boot 4.
+  - La ejecución real local descubrió y corrigió dos contratos adicionales: una cuenta empresarial
+    `verified` necesita caducidad futura y Hibernate 7 debe conservar su colección gestionada de
+    recursos compatibles.
+  - Se levantó la API temporalmente en el puerto aislado `18080`; ambos perfiles públicos y la
+    disponibilidad de Ames respondieron correctamente. Sus procesos se detuvieron, pero una JVM
+    anterior del primer intento en `8080` quedó residual y se eliminó en la conversación 131.
+- Archivos modificados:
+  - `PaymentEntity.java`, `PaymentCallbackReceiptEntity.java` y
+    `PaymentCallbackMigrationTests.java`.
+  - `PaymentProviderConfiguration.java`, `RedsysPaymentProvider.java`,
+    `RedsysCallbackVerificationServiceImpl.java` y sus cuatro clases de test focalizadas.
+  - `ServiceEntity.java` y `ServiceEntityTests.java`.
+  - `local-demo-venues.sql` y `LocalDemoVenueFixtureContractTests.java`.
+  - `design.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-006`, `RF-014`, `RF-016`, `RF-025` y `RF-032`.
+  - `RNF-003`, `RNF-005`, `RNF-006` y `RNF-011`.
+- Tareas impactadas:
+  - `0.16. Añadir dos publicaciones idempotentes exclusivas del perfil local`.
+  - `13.8. Implementar callbacks idempotentes y estados de pago`.
+- Tareas completadas:
+  - No se cerró una tarea nueva; se reparó y verificó en infraestructura real trabajo ya marcado.
+- Siguiente tarea pendiente recomendada:
+  - `15.1. Validar inicio móvil con buscador, ubicación y categorías`.
+- Decisiones o aclaraciones relevantes:
+  - Los hashes y la moneda conservan `CHAR(n)` en base de datos; el mapeo JPA declara
+    `SqlTypes.CHAR` en lugar de alterar migraciones aplicadas.
+  - Todo el código Redsys usa `tools.jackson` para evitar depender de un bean Jackson 2 inexistente.
+  - El setter ORM conserva la instancia de colección; la capa de catálogo continúa entregando una
+    colección mutable al modificar asignaciones.
+  - Evidencia: 34 migraciones correctas sobre PostgreSQL/PostGIS, contexto Spring iniciado, 17
+    casos automatizados correctos entre pagos, migración, ORM y fixture, y tres lecturas HTTP
+    locales correctas. No se ejecutaron suites globales ni frontend.
+  - Spotless y Checkstyle globales siguen señalando deuda histórica ajena; las validaciones de esta
+    corrección se limitaron a los módulos de pagos, fixtures, servicios y disponibilidad.
+
+## Conversación 129 - Publicaciones reservables de demostración local
+
+- Fecha: 2026-07-31.
+- Resumen de la conversación:
+  - Se añadió un modo de fixtures exclusivo del perfil `local` para recorrer búsqueda, ficha,
+    disponibilidad, hold, confirmación anónima, correo y actualización de plazas sin registrar
+    propietarios.
+  - La información y las tres imágenes aportadas se distribuyeron entre dos publicaciones de
+    desarrollo: `Ames Padel Center` y `LET Padel Ames`.
+  - Los fixtures son idempotentes, usan UUID y claves de objeto estables y generan un horizonte
+    móvil de 31 días.
+  - Se corrigió la disponibilidad pública para descontar reservas activas y holds vigentes mediante
+    una única consulta agregada.
+- Archivos modificados:
+  - `application-local.yaml`, `local-demo-venues.sql` y las imágenes bajo `dev-fixtures/images/`.
+  - `LocalDemoVenueInitializer.java`.
+  - `ReservationDao.java` y `TimeSlotCapacityOccupancy.java`.
+  - `PublicVenueAvailabilityServiceImpl.java` y `PublicTimeSlotAvailabilityResponse.java`.
+  - `PublicVenueAvailabilityServiceTests.java` y `LocalDemoVenueFixtureContractTests.java`.
+  - `README.md`, `tasks.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003`, `RF-004`, `RF-006`, `RF-013`, `RF-014`, `RF-015` y `RF-016`.
+  - `RNF-003`, `RNF-005` y `RNF-006`.
+- Tareas impactadas y completadas:
+  - `0.16. Añadir dos publicaciones idempotentes exclusivas del perfil local, con imágenes,
+    disponibilidad móvil, reserva anónima, correo capturable y actualización real de plazas`.
+- Siguiente tarea pendiente recomendada:
+  - `15.1. Validar inicio móvil con buscador, ubicación y categorías`.
+- Decisiones o aclaraciones relevantes:
+  - Al existir una sola ficha de datos pero dos identidades visibles en las imágenes, la segunda
+    publicación usa el nombre `LET Padel Ames`; ambas comparten dirección y teléfono y se señalan
+    expresamente como datos de demostración.
+  - No se proporciona contraseña de propietario: las cuentas internas solo satisfacen integridad
+    referencial y el objetivo es comprobar el recorrido público sin cuenta.
+  - Los correos empresariales `@reserly.local` están reservados para Mailpit.
+  - Evidencia final: 13 tests focalizados correctos, compilación de 806 fuentes principales y 189
+    de test, y Checkstyle ejecutado durante Maven sin incidencias nuevas.
+  - Docker Desktop no estaba iniciado; no se realizó comprobación manual HTTP/SMTP. El contrato SQL
+    y los metadatos binarios reales de las tres imágenes sí quedaron cubiertos.
+  - Spotless global detectó 125 archivos históricos fuera de alcance. Se aplicó el formateador solo
+    a los siete Java modificados.
+  - La validación global de español no señaló los archivos nuevos, pero continuó fallando por
+    incidencias históricas en documentación, migraciones, plantillas y catálogos ajenos.
 
 ## Conversación 128 - Permisos admin y decisiones manuales verificadas
 

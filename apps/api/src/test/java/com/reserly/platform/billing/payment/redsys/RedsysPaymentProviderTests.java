@@ -3,8 +3,6 @@ package com.reserly.platform.billing.payment.redsys;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reserly.platform.billing.PaymentStatus;
 import com.reserly.platform.billing.payment.PaymentOrderCommand;
 import com.reserly.platform.billing.payment.PaymentProviderUnavailableException;
@@ -18,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /** Verifica el contrato de redireccion sin red, tarjeta ni persistencia de firma. */
 class RedsysPaymentProviderTests {

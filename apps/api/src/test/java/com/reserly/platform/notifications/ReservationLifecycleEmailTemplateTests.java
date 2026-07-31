@@ -26,7 +26,8 @@ class ReservationLifecycleEmailTemplateTests {
             2,
             List.of(
                 new VenueReservationNotificationTemplateData.Answer(
-                    "Observaciones", "Mesa <ventana> & trona")));
+                    "Observaciones", "Mesa <ventana> & trona")),
+            java.net.URI.create("https://reserly.example/panel/reservas/id"));
 
     RenderedEmailTemplate spanish = service.renderVenueReservationNotification("es", data);
     RenderedEmailTemplate english = service.renderVenueReservationNotification("en", data);
@@ -35,10 +36,12 @@ class ReservationLifecycleEmailTemplateTests {
     assertThat(spanish.textBody())
         .contains("Correo electrónico: maria@example.com")
         .contains("Personas: 2")
-        .contains("Mesa <ventana> & trona");
+        .contains("Mesa <ventana> & trona")
+        .contains("https://reserly.example/panel/reservas/id");
     assertThat(spanish.htmlBody())
         .contains("María &lt;López&gt;")
         .contains("Mesa &lt;ventana&gt; &amp; trona")
+        .contains("Ver reserva en el panel")
         .doesNotContain("{{");
     assertThat(english.subject()).contains("New booking");
     assertThat(english.textBody()).contains("Guests: 2").contains("Email address");

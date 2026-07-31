@@ -1,7 +1,5 @@
 package com.reserly.platform.billing.payment.redsys;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reserly.platform.billing.PaymentStatus;
 import com.reserly.platform.billing.payment.PaymentOrderCommand;
 import com.reserly.platform.billing.payment.PaymentOrderResult;
@@ -19,6 +17,8 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Construye el formulario de redireccion RedSys sin realizar I/O.
@@ -103,7 +103,7 @@ public final class RedsysPaymentProvider implements PaymentProvider {
     try {
       byte[] json = objectMapper.writeValueAsBytes(parameters);
       return Base64.getUrlEncoder().withoutPadding().encodeToString(json);
-    } catch (JsonProcessingException exception) {
+    } catch (JacksonException exception) {
       throw new IllegalStateException("Unable to encode RedSys order", exception);
     }
   }

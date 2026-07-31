@@ -9,13 +9,14 @@ import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
 import com.reserly.platform.localization.SupportedLocale;
-import com.reserly.platform.services.persistence.ServiceDao;
-import com.reserly.platform.services.persistence.ServiceEntity;
+import com.reserly.platform.reservations.persistence.ReservationDao;
+import com.reserly.platform.reservations.persistence.TimeSlotCapacityOccupancy;
 import com.reserly.platform.services.persistence.ServiceDao;
 import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,8 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
   private final AvailabilityBlockDao blockDao;
   private final TimeSlotDao timeSlotDao;
   private final ServiceDao serviceDao;
+  private final ReservationDao reservationDao;
+  private final Clock clock;
   private final EmployeeResourceAvailabilityService employeeResourceAvailabilityService;
 
   public PublicVenueAvailabilityServiceImpl(
@@ -50,12 +53,16 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
       AvailabilityBlockDao blockDao,
       TimeSlotDao timeSlotDao,
       ServiceDao serviceDao,
+      ReservationDao reservationDao,
+      Clock clock,
       EmployeeResourceAvailabilityService employeeResourceAvailabilityService) {
     this.venueDao = venueDao;
     this.openingHourDao = openingHourDao;
     this.blockDao = blockDao;
     this.timeSlotDao = timeSlotDao;
     this.serviceDao = serviceDao;
+    this.reservationDao = reservationDao;
+    this.clock = clock;
     this.employeeResourceAvailabilityService = employeeResourceAvailabilityService;
   }
 
@@ -72,6 +79,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
     int weekday = date.getDayOfWeek().getValue();
     List<TimeSlotEntity> slots = timeSlotDao.findPublishedByVenueIdAndDate(venue.getId(), date);
     Map<UUID, String> serviceNames = loadServiceNames(venue.getId(), slots, resolvedLocale);
+    Map<UUID, Long> occupiedCapacity = loadOccupiedCapacity(slots);
     var resourceAvailability =
         employeeResourceAvailabilityService.resolve(venue.getId(), weekday, slots);
     List<PublicTimeSlotAvailabilityResponse> publicSlots =
@@ -81,6 +89,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
                     toSlotResponse(
                         slot,
                         slot.getServiceId() == null ? null : serviceNames.get(slot.getServiceId()),
+                        occupiedCapacity.getOrDefault(slot.getId(), 0L),
                         resourceAvailability.getOrDefault(
                             slot.getId(), EmployeeResourceSlotAvailability.unrestricted())))
             .toList();
@@ -98,7 +107,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
             resolvedLocale,
             dayOverride,
             openingHour,
-            slots,
+            publicSlots,
             availableSlotCount);
     return new PublicVenueAvailabilityResponse(
         venue.getSlug(),
@@ -112,6 +121,19 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         status.source(),
         Math.toIntExact(availableSlotCount),
         publicSlots);
+  }
+
+  private Map<UUID, Long> loadOccupiedCapacity(List<TimeSlotEntity> slots) {
+    Set<UUID> slotIds =
+        slots.stream().map(TimeSlotEntity::getId).collect(Collectors.toUnmodifiableSet());
+    if (slotIds.isEmpty()) {
+      return Map.of();
+    }
+    return reservationDao.sumOccupiedCapacityByTimeSlotIds(slotIds, clock.instant()).stream()
+        .collect(
+            Collectors.toUnmodifiableMap(
+                TimeSlotCapacityOccupancy::timeSlotId,
+                occupancy -> occupancy.occupiedCapacity().longValue()));
   }
 
   private Map<UUID, String> loadServiceNames(
@@ -142,11 +164,15 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
   private PublicTimeSlotAvailabilityResponse toSlotResponse(
       TimeSlotEntity slot,
       String serviceName,
+      long occupiedCapacity,
       EmployeeResourceSlotAvailability resourceAvailability) {
     boolean slotAvailable = STATUS_AVAILABLE.equals(slot.getStatus());
-    boolean bookingAvailable = slotAvailable && resourceAvailability.requirementsSatisfied();
+    int availableCapacity =
+        Math.max(slot.getCapacity() - Math.toIntExact(occupiedCapacity), 0);
+    boolean bookingAvailable =
+        slotAvailable && availableCapacity > 0 && resourceAvailability.requirementsSatisfied();
     String effectiveStatus =
-        bookingAvailable || !slotAvailable ? slot.getStatus() : STATUS_UNAVAILABLE;
+        effectiveStatus(slot, availableCapacity, resourceAvailability.requirementsSatisfied());
     return new PublicTimeSlotAvailabilityResponse(
         slot.getId(),
         slot.getServiceId(),
@@ -154,12 +180,23 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         slot.getStartsAt(),
         slot.getEndsAt(),
         slot.getCapacity(),
-        bookingAvailable ? slot.getCapacity() : 0,
+        bookingAvailable ? availableCapacity : 0,
         effectiveStatus,
         bookingAvailable,
         resourceAvailability.employeeResourceRequired(),
         resourceAvailability.anyAvailableResourceAllowed(),
         resourceAvailability.availableEmployeeResources());
+  }
+
+  private String effectiveStatus(
+      TimeSlotEntity slot, int availableCapacity, boolean resourceRequirementsSatisfied) {
+    if (!STATUS_AVAILABLE.equals(slot.getStatus())) {
+      return slot.getStatus();
+    }
+    if (availableCapacity == 0) {
+      return STATUS_FULL;
+    }
+    return resourceRequirementsSatisfied ? STATUS_AVAILABLE : STATUS_UNAVAILABLE;
   }
 
   private StatusSummary summarizeStatus(
@@ -168,7 +205,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
       SupportedLocale locale,
       AvailabilityBlockEntity dayOverride,
       VenueOpeningHourEntity openingHour,
-      List<TimeSlotEntity> slots,
+      List<PublicTimeSlotAvailabilityResponse> slots,
       long availableSlotCount) {
     boolean spanish = locale == SupportedLocale.ES;
     if (dayOverride != null) {
@@ -188,7 +225,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
     if (availableSlotCount > 0) {
       return open(spanish);
     }
-    if (!slots.isEmpty() && slots.stream().allMatch(slot -> STATUS_FULL.equals(slot.getStatus()))) {
+    if (!slots.isEmpty() && slots.stream().allMatch(slot -> STATUS_FULL.equals(slot.status()))) {
       return full(spanish);
     }
     if (!slots.isEmpty()) {

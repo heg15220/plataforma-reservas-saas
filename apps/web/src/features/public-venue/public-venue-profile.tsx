@@ -1,338 +1,627 @@
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { CalendarClock, ExternalLink, Mail, MapPin, Phone, Star } from "lucide-react";
+"use client";
+
+import { Box, Button, Chip, Divider, Rating, Stack, Typography } from "@mui/material";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Heart,
+  Images,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { PublicAvailabilityCalendar } from "@/features/availability/public-availability-calendar";
 
-import { type PublicVenueProfile, resolvePublicAssetUrl } from "./public-venue-api";
+import type { PublicVenueProfile } from "./public-venue-api";
 import { ReviewEntryDialog } from "./review-entry-dialog";
 
-export interface PublicVenueProfileViewProps {
+type PublicVenueProfileProps = {
   venue: PublicVenueProfile;
-}
+};
 
-/** Presentación responsive y accesible de los datos públicos ya filtrados por el backend. */
-export function PublicVenueProfileView({ venue }: PublicVenueProfileViewProps) {
+/**
+ * Public venue storefront.
+ *
+ * The screen follows the same decision order as the booking journey: visual
+ * recognition, venue confidence signals, availability, supporting information
+ * and reviews. Every booking entry point scrolls to real availability; no
+ * action fabricates a reservation or an opening-hours claim.
+ */
+export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
   const t = useTranslations("VenuePublicProfile");
-  const currentPath = `/locales/${venue.slug}`;
-  const mapUrl = `https://www.openstreetmap.org/?mlat=${venue.latitude}&mlon=${venue.longitude}#map=16/${venue.latitude}/${venue.longitude}`;
-  const phoneHref = venue.phone ? `tel:${venue.phone}` : "";
-  const emailHref = venue.contactEmail ? `mailto:${venue.contactEmail}` : "";
-  const location = [venue.address, venue.postalCode, venue.city, venue.province, venue.country]
-    .filter(Boolean)
-    .join(", ");
+  const galleryImages = [
+    ...(venue.mainImageUrl
+      ? [
+          {
+            id: "main",
+            imageUrl: publicAssetUrl(venue.mainImageUrl),
+            altText: t("mainImageAlt", { name: venue.name }),
+          },
+        ]
+      : []),
+    ...venue.gallery.map((item) => ({
+      id: `${item.position}-${item.url}`,
+      imageUrl: publicAssetUrl(item.url),
+      altText: item.altText ?? t("galleryImageAlt", { name: venue.name }),
+    })),
+  ];
+  const visibleGallery = galleryImages.slice(0, 5);
+  const hasContact = Boolean(venue.contactEmail || venue.phone);
 
   return (
-    <PublicShell currentPath={currentPath}>
-      <PageContainer compact>
-        <Stack spacing={{ xs: 4, md: 6 }}>
+    <PublicShell>
+      <PageContainer maxWidth="lg" sx={{ pb: { xs: 18, md: 8 }, pt: 2 }}>
+        <Stack spacing={{ xs: 2.5, md: 3 }}>
           <Box
-            component="img"
-            src={venue.mainImageUrl ? resolvePublicAssetUrl(venue.mainImageUrl) : undefined}
-            alt={t("mainImageAlt", { name: venue.name })}
+            component="nav"
+            aria-label={t("breadcrumbs.label")}
             sx={{
-              aspectRatio: { xs: "4 / 3", md: "16 / 7" },
-              bgcolor: "action.hover",
-              borderRadius: 3,
-              objectFit: "cover",
-              width: "100%",
+              alignItems: "center",
+              color: "text.secondary",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 0.5,
             }}
+          >
+            <Link href="/" style={{ color: "inherit" }}>
+              {t("breadcrumbs.home")}
+            </Link>
+            <ChevronRight aria-hidden size={14} />
+            <Link href="/explorar" style={{ color: "inherit" }}>
+              {t("breadcrumbs.venues")}
+            </Link>
+            <ChevronRight aria-hidden size={14} />
+            <Typography color="text.primary" variant="caption">
+              {venue.name}
+            </Typography>
+          </Box>
+
+          <VenueGallery
+            images={visibleGallery}
+            total={galleryImages.length}
+            venueName={venue.name}
+            viewGalleryLabel={t("actions.viewGallery", {
+              count: galleryImages.length,
+            })}
           />
 
           <Box
             sx={{
+              alignItems: { md: "flex-start" },
               display: "grid",
-              gap: { xs: 4, md: 6 },
-              gridTemplateColumns: { md: "minmax(0, 2fr) minmax(280px, 1fr)" },
+              gap: 2.5,
+              gridTemplateColumns: { md: "minmax(0, 1fr) 280px" },
             }}
           >
-            <Stack spacing={4}>
-              <Stack spacing={2}>
-                <Chip
-                  label={venue.categoryName}
-                  color="primary"
-                  size="small"
-                  sx={{ alignSelf: "flex-start" }}
-                />
-                <Typography component="h1" variant="h1">
+            <Stack spacing={1.35}>
+              <Stack direction="row" sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+                <Typography component="h1" variant="h3">
                   {venue.name}
                 </Typography>
-                {venue.reviews.averageRating !== null && (
-                  <ReviewScore
-                    average={venue.reviews.averageRating}
-                    count={venue.reviews.reviewsCount}
-                    locale={venue.locale}
+                <CheckCircle2
+                  aria-label={t("metadata.published")}
+                  color="var(--mui-palette-primary-main)"
+                  fill="var(--mui-palette-primary-main)"
+                  stroke="white"
+                  size={22}
+                />
+              </Stack>
+
+              <Typography color="text.secondary" variant="body2">
+                {venue.categoryName}
+              </Typography>
+
+              <Stack direction="row" sx={{ alignItems: "center", flexWrap: "wrap", gap: 1.25 }}>
+                <Chip
+                  color="success"
+                  icon={<CalendarDays size={15} />}
+                  label={t("metadata.bookingOpen")}
+                  size="small"
+                  variant="outlined"
+                />
+                <Stack direction="row" sx={{ alignItems: "center", gap: 0.5 }}>
+                  <Rating
+                    aria-label={t("reviews.scoreLabel", {
+                      rating: (venue.reviews.averageRating ?? 0).toLocaleString(venue.locale),
+                    })}
+                    precision={0.1}
+                    readOnly
+                    size="small"
+                    value={venue.reviews.averageRating}
                   />
-                )}
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{ alignItems: "flex-start", color: "text.secondary" }}
-                >
-                  <MapPin aria-hidden="true" size={19} />
-                  <Typography>{location}</Typography>
+                  <Typography sx={{ fontWeight: 700 }} variant="body2">
+                    {venue.reviews.averageRating?.toFixed(1) ?? "—"}
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    ({venue.reviews.reviewsCount})
+                  </Typography>
                 </Stack>
               </Stack>
 
-              {venue.description && (
-                <TextSection title={t("sections.about")} body={venue.description} />
-              )}
-              {venue.services && (
-                <TextSection title={t("sections.services")} body={venue.services} />
-              )}
-              {venue.rules && <TextSection title={t("sections.rules")} body={venue.rules} />}
-              {venue.publicText && (
-                <TextSection title={t("sections.additional")} body={venue.publicText} />
-              )}
-              <PublicAvailabilityCalendar venueSlug={venue.slug} />
-              <PublicReviews
-                reviews={venue.reviews}
-                locale={venue.locale}
-                venueSlug={venue.slug}
-              />
-
-              {venue.customTabs.map((tab) => (
-                <CustomTabSection key={`${tab.position}-${tab.title}`} tab={tab} />
-              ))}
-
-              {venue.gallery.length > 0 && (
-                <Box component="section" aria-labelledby="venue-gallery-title">
-                  <Typography id="venue-gallery-title" component="h2" variant="h2" sx={{ mb: 3 }}>
-                    {t("sections.gallery")}
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                sx={{ alignItems: { xs: "flex-start", sm: "center" }, gap: 1 }}
+              >
+                <Stack
+                  color="text.secondary"
+                  direction="row"
+                  sx={{ alignItems: "center", gap: 0.75 }}
+                >
+                  <MapPin aria-hidden size={16} />
+                  <Typography variant="body2">
+                    {[venue.address, venue.city, venue.province].filter(Boolean).join(", ")}
                   </Typography>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gap: 2,
-                      gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" },
-                    }}
-                  >
-                    {venue.gallery.map((image) => (
-                      <Box
-                        component="img"
-                        src={resolvePublicAssetUrl(image.url)}
-                        alt={image.altText ?? t("galleryImageAlt", { name: venue.name })}
-                        key={`${image.position}-${image.url}`}
-                        sx={{
-                          aspectRatio: "4 / 3",
-                          borderRadius: 2,
-                          objectFit: "cover",
-                          width: "100%",
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
-            </Stack>
-
-            <Stack spacing={3}>
-              <Surface component="aside">
-                <Stack spacing={3}>
-                  <Typography component="h2" variant="h2">
-                    {t("booking.title")}
-                  </Typography>
-                  <Typography color="text.secondary">{t("booking.description")}</Typography>
-                  <Button
-                    disabled
-                    fullWidth
-                    startIcon={<CalendarClock aria-hidden="true" />}
-                    variant="contained"
-                  >
-                    {t("booking.action")}
-                  </Button>
                 </Stack>
-              </Surface>
-
-              <Surface component="aside">
-                <Stack spacing={3}>
-                  <Typography component="h2" variant="h2">
-                    {t("location.title")}
-                  </Typography>
-                  <Typography color="text.secondary">{location}</Typography>
+                {venue.latitude != null && venue.longitude != null ? (
                   <Button
                     component="a"
-                    href={mapUrl}
+                    href={`https://www.google.com/maps/search/?api=1&query=${venue.latitude},${venue.longitude}`}
                     rel="noreferrer"
+                    size="small"
                     target="_blank"
-                    endIcon={<ExternalLink aria-hidden="true" />}
-                    variant="outlined"
+                    variant="text"
                   >
-                    {t("location.openMap")}
+                    {t("actions.howToGetThere")}
                   </Button>
-                  {(venue.phone || venue.contactEmail) && <Divider />}
-                  {venue.phone && (
-                    <Contact
-                      href={phoneHref}
-                      icon={<Phone aria-hidden="true" size={18} />}
-                      label={venue.phone}
-                    />
-                  )}
-                  {venue.contactEmail && (
-                    <Contact
-                      href={emailHref}
-                      icon={<Mail aria-hidden="true" size={18} />}
-                      label={venue.contactEmail}
-                    />
-                  )}
+                ) : null}
+              </Stack>
+
+              {venue.description ? (
+                <Typography color="text.secondary" sx={{ maxWidth: 760 }}>
+                  {venue.description}
+                </Typography>
+              ) : null}
+            </Stack>
+
+            <Stack spacing={1.25}>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  component="a"
+                  href="#availability"
+                  size="large"
+                  sx={{ flex: 1 }}
+                  variant="contained"
+                >
+                  {t("actions.book")}
+                </Button>
+                <Button
+                  aria-label={t("actions.save")}
+                  disabled
+                  size="large"
+                  startIcon={<Heart size={17} />}
+                  variant="outlined"
+                >
+                  {t("actions.save")}
+                </Button>
+              </Stack>
+              <Surface padding="md" tone="muted">
+                <Stack spacing={0.75}>
+                  <Stack
+                    color="success.main"
+                    direction="row"
+                    sx={{ alignItems: "center", gap: 0.75 }}
+                  >
+                    <Clock3 aria-hidden size={17} />
+                    <Typography sx={{ fontWeight: 800 }} variant="body2">
+                      {t("metadata.availabilityTitle")}
+                    </Typography>
+                  </Stack>
+                  <Typography color="text.secondary" variant="body2">
+                    {t("metadata.availabilityDescription")}
+                  </Typography>
+                  <Button
+                    component="a"
+                    href="#availability"
+                    size="small"
+                    sx={{ alignSelf: "flex-start", px: 0 }}
+                    variant="text"
+                  >
+                    {t("actions.viewSchedule")}
+                  </Button>
                 </Stack>
               </Surface>
-
             </Stack>
+          </Box>
+
+          <VenueSectionNav
+            ariaLabel={t("tabs.label")}
+            links={[
+              ["#availability", t("tabs.availability")],
+              ["#information", t("tabs.information")],
+              ["#reviews", t("tabs.reviews")],
+              ["#gallery", t("tabs.gallery")],
+            ]}
+          />
+
+          <PublicAvailabilityCalendar venueSlug={venue.slug} />
+
+          <Box
+            id="information"
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                md: hasContact ? "minmax(0, 1fr) minmax(280px, 0.45fr)" : "1fr",
+              },
+              scrollMarginTop: 96,
+            }}
+          >
+            <Surface padding="lg">
+              <Stack spacing={2.5}>
+                <Typography component="h2" variant="h5">
+                  {t("sections.information")}
+                </Typography>
+                {venue.services ? (
+                  <ProfileSection
+                    icon={<Star aria-hidden size={19} />}
+                    title={t("sections.services")}
+                    value={venue.services}
+                  />
+                ) : null}
+                {venue.rules ? (
+                  <ProfileSection
+                    icon={<ShieldCheck aria-hidden size={19} />}
+                    title={t("sections.rules")}
+                    value={venue.rules}
+                  />
+                ) : null}
+                {venue.publicText ? (
+                  <ProfileSection
+                    icon={<Images aria-hidden size={19} />}
+                    title={t("sections.publicText")}
+                    value={venue.publicText}
+                  />
+                ) : null}
+                {!venue.services && !venue.rules && !venue.publicText ? (
+                  <Typography color="text.secondary">
+                    {t("sections.noAdditionalInformation")}
+                  </Typography>
+                ) : null}
+              </Stack>
+            </Surface>
+
+            {hasContact ? (
+              <Surface padding="lg" tone="muted">
+                <Stack spacing={2}>
+                  <Typography component="h2" variant="h5">
+                    {t("sections.contact")}
+                  </Typography>
+                  {venue.phone ? (
+                    <ContactLink
+                      href={`tel:${venue.phone}`}
+                      icon={<Phone aria-hidden size={17} />}
+                      label={venue.phone}
+                    />
+                  ) : null}
+                  {venue.contactEmail ? (
+                    <ContactLink
+                      href={`mailto:${venue.contactEmail}`}
+                      icon={<Mail aria-hidden size={17} />}
+                      label={venue.contactEmail}
+                    />
+                  ) : null}
+                </Stack>
+              </Surface>
+            ) : null}
+          </Box>
+
+          {venue.customTabs.length > 0 ? (
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: {
+                  md: "repeat(2, minmax(0, 1fr))",
+                },
+              }}
+            >
+              {venue.customTabs.map((tab) => (
+                <Surface key={`${tab.position}-${tab.title}`} padding="lg">
+                  <Stack spacing={1}>
+                    <Typography component="h2" variant="h5">
+                      {tab.title}
+                    </Typography>
+                    <Box
+                      color="text.secondary"
+                      dangerouslySetInnerHTML={{ __html: tab.content }}
+                      sx={{
+                        "& > :first-of-type": { mt: 0 },
+                        "& > :last-of-type": { mb: 0 },
+                      }}
+                    />
+                  </Stack>
+                </Surface>
+              ))}
+            </Box>
+          ) : null}
+
+          <Box id="reviews" sx={{ scrollMarginTop: 96 }}>
+            <Surface padding="lg">
+              <Stack spacing={2}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  sx={{
+                    alignItems: { xs: "flex-start", sm: "center" },
+                    gap: 1,
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography component="h2" variant="h5">
+                    {t("reviews.title")}
+                  </Typography>
+                  <ReviewEntryDialog venueSlug={venue.slug} />
+                </Stack>
+                <Typography color="text.secondary" variant="body2">
+                  {t("reviews.summary", { count: venue.reviews.reviewsCount })}
+                </Typography>
+                {venue.reviews.items.length === 0 ? (
+                  <Typography color="text.secondary">{t("reviews.empty")}</Typography>
+                ) : (
+                  <Stack divider={<Divider flexItem />} spacing={2}>
+                    {venue.reviews.items.map((review) => (
+                      <Stack key={review.id} spacing={0.75}>
+                        <Stack
+                          direction="row"
+                          sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}
+                        >
+                          <Typography sx={{ fontWeight: 800 }}>
+                            {t("reviews.verifiedGuest")}
+                          </Typography>
+                          <Rating readOnly size="small" value={review.rating} />
+                        </Stack>
+                        {review.comment ? (
+                          <Typography color="text.secondary">{review.comment}</Typography>
+                        ) : null}
+                        <Typography color="text.secondary" variant="caption">
+                          {t("reviews.publishedOn", {
+                            date: new Intl.DateTimeFormat(venue.locale, {
+                              dateStyle: "medium",
+                            }).format(new Date(review.createdAt)),
+                          })}
+                        </Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+            </Surface>
           </Box>
         </Stack>
       </PageContainer>
+
+      <Box
+        sx={{
+          bgcolor: "background.paper",
+          borderTop: 1,
+          borderColor: "divider",
+          bottom: 68,
+          display: { xs: "block", md: "none" },
+          left: 0,
+          p: 1.25,
+          position: "fixed",
+          right: 0,
+          zIndex: 1200,
+        }}
+      >
+        <Button component="a" fullWidth href="#availability" size="large" variant="contained">
+          {t("actions.book")}
+        </Button>
+      </Box>
     </PublicShell>
   );
 }
 
-function ReviewScore({
-  average,
-  count,
-  locale,
-}: {
-  average: number;
-  count: number;
-  locale: string;
-}) {
-  const t = useTranslations("VenuePublicProfile.reviews");
-  const formatted = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(average);
+type VenueGalleryProps = {
+  images: Array<{ id: string; imageUrl: string; altText: string }>;
+  total: number;
+  venueName: string;
+  viewGalleryLabel: string;
+};
+
+function VenueGallery({ images, total, venueName, viewGalleryLabel }: VenueGalleryProps) {
+  if (images.length === 0) {
+    return (
+      <Surface
+        padding="none"
+        sx={{
+          alignItems: "center",
+          aspectRatio: "16 / 6",
+          display: "flex",
+          justifyContent: "center",
+          minHeight: 220,
+        }}
+        tone="muted"
+      >
+        <Stack color="text.secondary" spacing={1} sx={{ alignItems: "center" }}>
+          <Images aria-hidden size={28} />
+          <Typography>{venueName}</Typography>
+        </Stack>
+      </Surface>
+    );
+  }
+
   return (
-    <Stack
-      aria-label={t("scoreLabel", { rating: formatted })}
-      direction="row"
-      spacing={1}
-      sx={{ alignItems: "center", color: "text.secondary" }}
+    <Box
+      id="gallery"
+      sx={{
+        display: { xs: "flex", md: "grid" },
+        gap: { xs: 1.25, md: 1 },
+        gridTemplateColumns: "minmax(0, 1.85fr) minmax(280px, 0.75fr)",
+        gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+        height: { md: 350 },
+        mx: { xs: -2, sm: 0 },
+        overflowX: { xs: "auto", md: "hidden" },
+        px: { xs: 2, sm: 0 },
+        scrollMarginTop: 96,
+        scrollSnapType: { xs: "x mandatory", md: "none" },
+        scrollbarWidth: "none",
+      }}
     >
-      <Star aria-hidden="true" fill="currentColor" size={19} />
-      <Typography component="span" sx={{ color: "text.primary", fontWeight: 700 }}>
-        {formatted}
+      {images.map((image, index) => {
+        const isMain = index === 0;
+        const isLast = index === images.length - 1;
+        return (
+          <Box
+            key={image.id}
+            sx={{
+              borderRadius: 3,
+              boxShadow: "inset 0 0 0 1px rgba(15, 23, 42, 0.06)",
+              flex: { xs: "0 0 86%", sm: "0 0 70%" },
+              gridRow: isMain ? "1 / 3" : "auto",
+              minHeight: { xs: 245, md: 0 },
+              overflow: "hidden",
+              position: "relative",
+              scrollSnapAlign: "center",
+            }}
+          >
+            <Box
+              component="img"
+              alt={image.altText}
+              src={image.imageUrl}
+              sx={{
+                height: "100%",
+                inset: 0,
+                objectFit: "cover",
+                position: "absolute",
+                width: "100%",
+              }}
+            />
+            {isLast && total > 1 ? (
+              <Box
+                sx={{
+                  alignItems: "center",
+                  background: "linear-gradient(180deg, transparent 30%, rgba(15, 23, 42, 0.76))",
+                  bottom: 0,
+                  color: "common.white",
+                  display: "flex",
+                  inset: 0,
+                  justifyContent: "center",
+                  position: "absolute",
+                }}
+              >
+                <Stack direction="row" sx={{ alignItems: "center", gap: 0.75 }}>
+                  <Images aria-hidden size={18} />
+                  <Typography sx={{ fontWeight: 800 }} variant="body2">
+                    {viewGalleryLabel}
+                  </Typography>
+                </Stack>
+              </Box>
+            ) : null}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+function VenueSectionNav({
+  ariaLabel,
+  links,
+}: {
+  ariaLabel: string;
+  links: Array<[string, string]>;
+}) {
+  return (
+    <Box
+      component="nav"
+      aria-label={ariaLabel}
+      sx={{
+        borderBottom: 1,
+        borderColor: "divider",
+        display: "flex",
+        gap: 3,
+        overflowX: "auto",
+        scrollbarWidth: "none",
+      }}
+    >
+      {links.map(([href, label], index) => (
+        <Button
+          key={href}
+          component="a"
+          href={href}
+          sx={{
+            borderBottom: 2,
+            borderColor: index === 0 ? "primary.main" : "transparent",
+            borderRadius: 0,
+            color: index === 0 ? "primary.main" : "text.secondary",
+            flexShrink: 0,
+            minWidth: 0,
+            px: 0,
+            py: 1.25,
+          }}
+          variant="text"
+        >
+          {label}
+        </Button>
+      ))}
+    </Box>
+  );
+}
+
+function ProfileSection({
+  icon,
+  title,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+}) {
+  return (
+    <Stack spacing={0.75}>
+      <Stack direction="row" sx={{ alignItems: "center", gap: 0.75 }}>
+        {icon}
+        <Typography sx={{ fontWeight: 800 }}>{title}</Typography>
+      </Stack>
+      <Typography color="text.secondary" sx={{ whiteSpace: "pre-line" }}>
+        {value}
       </Typography>
-      <Typography component="span">{t("summary", { count })}</Typography>
     </Stack>
   );
 }
 
-function PublicReviews({
-  reviews,
-  locale,
-  venueSlug,
+function ContactLink({
+  href,
+  icon,
+  label,
 }: {
-  reviews: PublicVenueProfile["reviews"];
-  locale: string;
-  venueSlug: string;
+  href: string;
+  icon: React.ReactNode;
+  label: string;
 }) {
-  const t = useTranslations("VenuePublicProfile.reviews");
-  const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
-  return (
-    <Box component="section" aria-labelledby="venue-reviews-title">
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", mb: 3 }}
-      >
-        <Typography id="venue-reviews-title" component="h2" variant="h2">
-          {t("title")}
-        </Typography>
-        <ReviewEntryDialog venueSlug={venueSlug} />
-      </Stack>
-      {reviews.items.length === 0 ? (
-        <Surface>
-          <Typography color="text.secondary">{t("empty")}</Typography>
-        </Surface>
-      ) : (
-        <Stack spacing={2}>
-          {reviews.items.map((review) => (
-            <Surface component="article" key={review.id}>
-              <Stack spacing={2}>
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1}
-                  sx={{ justifyContent: "space-between" }}
-                >
-                  <Typography sx={{ fontWeight: 700 }}>{t("verifiedGuest")}</Typography>
-                  <Typography
-                    aria-label={t("itemRating", { rating: review.rating })}
-                    color="text.secondary"
-                  >
-                    <Star
-                      aria-hidden="true"
-                      fill="currentColor"
-                      size={17}
-                      style={{ verticalAlign: "text-bottom" }}
-                    />{" "}
-                    {review.rating}/5
-                  </Typography>
-                </Stack>
-                {review.comment && <Typography>{review.comment}</Typography>}
-                <Typography color="text.secondary" variant="body2">
-                  {t("publishedOn", { date: dateFormatter.format(new Date(review.createdAt)) })}
-                </Typography>
-              </Stack>
-            </Surface>
-          ))}
-          {reviews.truncated && (
-            <Typography color="text.secondary">{t("recentOnly")}</Typography>
-          )}
-        </Stack>
-      )}
-    </Box>
-  );
-}
-
-function TextSection({ title, body }: { title: string; body: string }) {
-  return (
-    <Box component="section">
-      <Typography component="h2" variant="h2" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <Typography sx={{ color: "text.secondary", whiteSpace: "pre-line" }}>{body}</Typography>
-    </Box>
-  );
-}
-
-function CustomTabSection({ tab }: { tab: PublicVenueProfile["customTabs"][number] }) {
-  const titleId = `venue-custom-tab-${tab.position}`;
-  return (
-    <Box component="section" aria-labelledby={titleId}>
-      <Typography component="h2" id={titleId} variant="h2" sx={{ mb: 2 }}>
-        {tab.title}
-      </Typography>
-      <Box
-        sx={{
-          color: "text.secondary",
-          "& p": { mb: 1.5, mt: 0 },
-          "& ul, & ol": { mb: 1.5, mt: 0, pl: 3 },
-          "& li": { mb: 0.75 },
-          "& strong, & b": { color: "text.primary", fontWeight: 700 },
-        }}
-        dangerouslySetInnerHTML={{ __html: tab.content }}
-      />
-    </Box>
-  );
-}
-
-function Contact({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
     <Stack
       component="a"
       direction="row"
       href={href}
-      spacing={1.5}
-      sx={{ alignItems: "center", color: "primary.main", textDecoration: "none" }}
+      sx={{
+        alignItems: "center",
+        color: "text.primary",
+        gap: 1,
+        textDecoration: "none",
+      }}
     >
       {icon}
-      <Typography>{label}</Typography>
+      <Typography variant="body2">{label}</Typography>
     </Stack>
   );
+}
+
+/**
+ * Resolves API media using the public variable that Next.js embeds at build
+ * time. The local fallback only applies to the documented developer runtime.
+ */
+function publicAssetUrl(path: string) {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  return new URL(path, process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").toString();
 }

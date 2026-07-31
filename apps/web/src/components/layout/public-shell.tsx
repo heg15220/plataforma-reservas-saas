@@ -3,7 +3,15 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Toolbar from "@mui/material/Toolbar";
-import { CalendarDays, Heart, House, Search, UserRound, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  Heart,
+  House,
+  Search,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -49,49 +57,62 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
         color="inherit"
         elevation={0}
         position="sticky"
-        sx={{ borderBottom: 1, borderColor: "divider" }}
+        sx={{
+          bgcolor: "rgba(255,255,255,0.96)",
+          borderBottom: 1,
+          borderColor: "divider",
+          backdropFilter: "blur(14px)",
+        }}
       >
         <PageContainer>
-          <Toolbar disableGutters sx={{ gap: 4, minHeight: { xs: 64, md: 72 } }}>
+          <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 60, md: 58 } }}>
             <NavigationLink aria-label={brand("homeAria")} className="unstyled-link" href="/">
               <Brand />
             </NavigationLink>
             <Box
               component="nav"
               aria-label={layout("primaryNavigation")}
-              sx={{ display: { xs: "none", md: "flex" }, gap: 1, ml: "auto" }}
+              sx={{ display: { xs: "none", md: "flex" }, gap: 0.5, ml: 5 }}
             >
-              {publicNavigation.slice(0, 3).map((item) => {
-                const Icon = item.icon;
-                const label = navigation(item.labelKey);
-                return (
-                  <Button
-                    aria-current={currentPath === item.href ? "page" : undefined}
-                    color={currentPath === item.href ? "primary" : "inherit"}
-                    component={NavigationLink}
-                    href={item.href}
-                    key={item.href}
-                    startIcon={<Icon aria-hidden="true" size={17} strokeWidth={1.9} />}
-                  >
-                    {label}
-                  </Button>
-                );
-              })}
+              <Button
+                aria-current={currentPath === "/explorar" ? "page" : undefined}
+                color={currentPath === "/explorar" ? "primary" : "inherit"}
+                component={NavigationLink}
+                endIcon={<ChevronDown aria-hidden="true" size={14} />}
+                href="/explorar"
+              >
+                {navigation("explore")}
+              </Button>
+              <Button color="inherit" component={NavigationLink} href="/explorar?sort=rating">
+                {layout("recommendations")}
+              </Button>
+              <Button color="inherit" component={NavigationLink} href="/locales/registro">
+                {layout("venueQuestion")}
+              </Button>
             </Box>
             <Button
               component={NavigationLink}
               href="/locales/acceso"
               size="small"
-              sx={{ ml: { xs: "auto", md: 2 } }}
+              sx={{ ml: "auto" }}
               variant="outlined"
             >
               {layout("localAccess")}
+            </Button>
+            <Button
+              component={NavigationLink}
+              href="/locales/registro"
+              size="small"
+              sx={{ display: { xs: "none", sm: "inline-flex" } }}
+              variant="contained"
+            >
+              {layout("registerVenue")}
             </Button>
           </Toolbar>
         </PageContainer>
       </AppBar>
 
-      <Box component="main" id="main-content" sx={{ py: { xs: 6, md: 10 } }}>
+      <Box component="main" id="main-content">
         {children}
       </Box>
 
