@@ -145,4 +145,41 @@ describe("VenueSubscriptionDashboard", () => {
     expect(screen.getByText("Sin confirmación de cobro")).toBeVisible();
     expect(screen.queryByText(/\b(CVV|firma|payload)\b/i)).not.toBeInTheDocument();
   });
+
+  it("renderiza nombres, funciones y referencias máximas sin truncar el contrato", async () => {
+    const longPlanName =
+      "Plan profesional para equipos con múltiples recursos y reservas recurrentes";
+    const longFeature =
+      "Automatización operativa con disponibilidad coordinada para todos los profesionales del local";
+    const longReference = `ORDER-${"A".repeat(90)}`;
+    vi.mocked(fetchVenueSubscription).mockResolvedValue({
+      ...disabledSubscription,
+      currentPlan: {
+        ...freePlan,
+        name: longPlanName,
+        features: [{ code: "automation", label: longFeature }],
+      },
+      availablePlans: [
+        { ...freePlan, name: longPlanName, features: [{ code: "automation", label: longFeature }] },
+      ],
+    });
+    vi.mocked(fetchVenuePaymentHistory).mockResolvedValue({
+      payments: [
+        {
+          orderReference: longReference,
+          amount: 29,
+          currency: "EUR",
+          status: "pending_confirmation",
+          createdAt: "2026-07-30T11:00:00Z",
+          paidAt: null,
+        },
+      ],
+    });
+
+    renderWithIntl(<VenueSubscriptionDashboard />);
+
+    expect((await screen.findAllByText(longPlanName)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(longFeature).length).toBeGreaterThan(0);
+    expect(screen.getByText(longReference)).toBeVisible();
+  });
 });

@@ -99,21 +99,25 @@ export function VenueSubscriptionDashboard() {
   }
 
   return (
-    <Stack spacing={4} sx={{ mt: 6 }}>
+    <Stack spacing={4} sx={{ mt: { xs: 4, sm: 6 }, minWidth: 0 }}>
       <Surface component="section">
         <Stack
-          direction={{ xs: "column", sm: "row" }}
+          direction="column"
           spacing={3}
-          sx={{ alignItems: { sm: "flex-start" }, justifyContent: "space-between" }}
+          sx={{ alignItems: "flex-start", justifyContent: "space-between" }}
         >
-          <Box>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-              <CreditCard aria-hidden="true" size={22} />
-              <Typography component="h2" variant="h2">
+          <Box sx={{ minWidth: 0 }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start", minWidth: 0 }}>
+              <CreditCard aria-hidden="true" size={22} style={{ flexShrink: 0 }} />
+              <Typography component="h2" sx={{ overflowWrap: "anywhere" }} variant="h2">
                 {t("current.title")}
               </Typography>
             </Stack>
-            <Typography component="p" sx={{ fontWeight: 800, mt: 3 }} variant="h1">
+            <Typography
+              component="p"
+              sx={{ fontWeight: 800, mt: 3, overflowWrap: "anywhere" }}
+              variant="h1"
+            >
               {data.currentPlan.name}
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>
@@ -123,6 +127,7 @@ export function VenueSubscriptionDashboard() {
           <Chip
             color={STATUS_TONES[data.subscriptionStatus]}
             label={t(`status.${data.subscriptionStatus}.label`)}
+            sx={responsiveChipSx}
           />
         </Stack>
         <Typography color="text.secondary" sx={{ mt: 3 }}>
@@ -179,9 +184,14 @@ export function VenueSubscriptionDashboard() {
       )}
 
       <Box component="section" aria-labelledby="subscription-plans-title">
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <Sparkles aria-hidden="true" size={22} />
-          <Typography component="h2" id="subscription-plans-title" variant="h2">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start", minWidth: 0 }}>
+          <Sparkles aria-hidden="true" size={22} style={{ flexShrink: 0 }} />
+          <Typography
+            component="h2"
+            id="subscription-plans-title"
+            sx={{ overflowWrap: "anywhere" }}
+            variant="h2"
+          >
             {t("plans.title")}
           </Typography>
         </Stack>
@@ -192,7 +202,11 @@ export function VenueSubscriptionDashboard() {
           sx={{
             display: "grid",
             gap: 3,
-            gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" },
+            gridTemplateColumns: {
+              xs: "minmax(0, 1fr)",
+              md: "repeat(2, minmax(0, 1fr))",
+              xl: "repeat(3, minmax(0, 1fr))",
+            },
             mt: 4,
           }}
         >
@@ -208,9 +222,9 @@ export function VenueSubscriptionDashboard() {
       </Box>
 
       <Surface component="section">
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <History aria-hidden="true" size={22} />
-          <Typography component="h2" variant="h2">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start", minWidth: 0 }}>
+          <History aria-hidden="true" size={22} style={{ flexShrink: 0 }} />
+          <Typography component="h2" sx={{ overflowWrap: "anywhere" }} variant="h2">
             {t("history.title")}
           </Typography>
         </Stack>
@@ -249,12 +263,16 @@ function PaymentHistoryItem({ locale, payment }: { locale: string; payment: Venu
         borderRadius: 3,
         display: "grid",
         gap: 2,
-        gridTemplateColumns: { md: "minmax(0, 1fr) repeat(3, auto)" },
+        gridTemplateColumns: {
+          lg: "minmax(0, 1fr) minmax(6rem, auto) auto minmax(0, 0.8fr)",
+        },
         p: 2.5,
       }}
     >
-      <Box>
-        <Typography sx={{ fontWeight: 800 }}>{payment.orderReference}</Typography>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography sx={{ fontWeight: 800, overflowWrap: "anywhere" }}>
+          {payment.orderReference}
+        </Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
           {t("history.createdAt", { date: formatDate(payment.createdAt, locale) })}
         </Typography>
@@ -266,9 +284,13 @@ function PaymentHistoryItem({ locale, payment }: { locale: string; payment: Venu
         color={PAYMENT_STATUS_TONES[payment.status]}
         label={t(`history.status.${payment.status}`)}
         size="small"
-        sx={{ alignSelf: "center", justifySelf: "start" }}
+        sx={{ ...responsiveChipSx, alignSelf: "center", justifySelf: "start" }}
       />
-      <Typography color="text.secondary" sx={{ alignSelf: "center" }} variant="body2">
+      <Typography
+        color="text.secondary"
+        sx={{ alignSelf: "center", overflowWrap: "anywhere" }}
+        variant="body2"
+      >
         {payment.paidAt
           ? t("history.paidAt", { date: formatDate(payment.paidAt, locale) })
           : t("history.notPaid")}
@@ -290,14 +312,16 @@ function PlanCard({
   return (
     <Surface component="article">
       <Stack
-        direction="row"
+        direction="column"
         spacing={2}
-        sx={{ alignItems: "center", justifyContent: "space-between" }}
+        sx={{ alignItems: "flex-start", justifyContent: "space-between" }}
       >
-        <Typography component="h3" variant="h2">
+        <Typography component="h3" sx={{ overflowWrap: "anywhere" }} variant="h2">
           {plan.name}
         </Typography>
-        {current && <Chip color="primary" label={t("plans.current")} size="small" />}
+        {current && (
+          <Chip color="primary" label={t("plans.current")} size="small" sx={responsiveChipSx} />
+        )}
       </Stack>
       <Typography sx={{ fontWeight: 800, mt: 3 }} variant="h2">
         {t("plans.monthlyPrice", { price: currency.format(plan.priceMonthly) })}
@@ -329,8 +353,8 @@ function FeatureList({ features }: { features: SubscriptionPlan["features"] }) {
           spacing={1.5}
           sx={{ alignItems: "flex-start" }}
         >
-          <Check aria-hidden="true" color="currentColor" size={18} />
-          <Typography>{feature.label}</Typography>
+          <Check aria-hidden="true" color="currentColor" size={18} style={{ flexShrink: 0 }} />
+          <Typography sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{feature.label}</Typography>
         </Stack>
       ))}
     </Stack>
@@ -340,7 +364,7 @@ function FeatureList({ features }: { features: SubscriptionPlan["features"] }) {
 function Limit({ label, value }: { label: string; value: number | null }) {
   const t = useTranslations("VenueSubscription");
   return (
-    <Typography color="text.secondary">
+    <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
       {t("limits.value", { label, value: value ?? t("limits.unlimited") })}
     </Typography>
   );
@@ -349,10 +373,10 @@ function Limit({ label, value }: { label: string; value: number | null }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ borderBottom: 1, borderColor: "divider", pb: 2 }}>
-      <Typography component="dt" color="text.secondary">
+      <Typography component="dt" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
         {label}
       </Typography>
-      <Typography component="dd" sx={{ fontWeight: 800, m: 0, mt: 1 }}>
+      <Typography component="dd" sx={{ fontWeight: 800, m: 0, mt: 1, overflowWrap: "anywhere" }}>
         {value}
       </Typography>
     </Box>
@@ -362,3 +386,15 @@ function Detail({ label, value }: { label: string; value: string }) {
 function formatDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(value));
 }
+
+/** Permite que estados traducidos largos se ajusten sin ampliar tarjetas o paneles. */
+const responsiveChipSx = {
+  height: "auto",
+  maxWidth: "100%",
+  "& .MuiChip-label": {
+    display: "block",
+    overflowWrap: "anywhere",
+    py: 0.5,
+    whiteSpace: "normal",
+  },
+};

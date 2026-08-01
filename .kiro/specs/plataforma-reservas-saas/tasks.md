@@ -283,9 +283,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 15.9. Validar panel resumen móvil del local.
 - [x] 15.10. Validar reservas del día y detalle móvil.
 - [x] 15.11. Validar asistencia e incidencias móvil.
-- [ ] 15.12. Validar estadísticas y suscripción móvil.
-- [ ] 15.13. Corregir textos que desborden botones, tarjetas o paneles.
-- [ ] 15.14. Ejecutar pruebas visuales en móvil, tablet y escritorio.
+- [x] 15.12. Validar estadísticas y suscripción móvil.
+- [x] 15.13. Corregir textos que desborden botones, tarjetas o paneles.
+- [x] 15.14. Ejecutar pruebas visuales en móvil, tablet y escritorio.
 - [ ] 15.15. Ejecutar pruebas visuales con locale español e inglés.
 - [ ] 15.16. Validar ficha móvil con pestañas personalizadas y flujo de reseña por email desde el botón de detalles.
 

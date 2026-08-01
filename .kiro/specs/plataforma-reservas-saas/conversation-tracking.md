@@ -14,10 +14,63 @@ Fuente de verdad del avance:
 - Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.14`, `15.1` a `15.11`.
-- Siguiente tarea pendiente recomendada: `15.12. Validar estadísticas y suscripción móvil`.
+  `14.1` a `14.14`, `15.1` a `15.14`.
+- Siguiente tarea pendiente recomendada: `15.15. Ejecutar pruebas visuales con locale español e inglés`.
 - Observación: la fase 14 queda completa y el perfil local dispone de tres publicaciones
   reservables de demostración sin registro.
+
+## Conversación 138 - Estadísticas, suscripción y validación visual responsive
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se completaron las tres siguientes tareas de la fase responsive: estadísticas/suscripción móvil,
+    corrección de textos desbordados y pruebas visuales en móvil, tablet y escritorio.
+  - Estadísticas presenta filtros táctiles de 44 px, cuadrículas reducibles y etiquetas/valores que
+    admiten traducciones o cifras extensas sin ampliar la página.
+  - Suscripción protege nombres de plan, funciones, límites, estados y referencias de pago largas;
+    las tarjetas se distribuyen en una, dos o tres columnas según el ancho disponible.
+  - La inspección visual detectó que `Pago pendiente` se comprimía al lado de un nombre de plan
+    máximo en tablet y escritorio. Se corrigió colocando el estado bajo el bloque principal en todos
+    los breakpoints y se revalidó después del cambio.
+  - Se revisaron recursivamente los cinco documentos de `.kiro` y se contrastaron requisitos,
+    diseño responsive, tareas, historial y registro técnico antes de implementar.
+- Archivos modificados:
+  - `apps/web/src/features/venue-statistics/venue-statistics-dashboard.tsx`.
+  - `apps/web/src/features/venue-statistics/venue-statistics-dashboard.test.tsx`.
+  - `apps/web/src/features/venue-subscription/venue-subscription-dashboard.tsx`.
+  - `apps/web/src/features/venue-subscription/venue-subscription-dashboard.test.tsx`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-025 Estadísticas básicas para locales`.
+  - `RF-028 Planes SaaS y pagos RedSys`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-004 Rendimiento`, `RNF-006 Disponibilidad operativa`,
+    `RNF-007 Usabilidad` y `RNF-009 Internacionalización y localización`.
+- Tareas impactadas y completadas:
+  - `15.12. Validar estadísticas y suscripción móvil`.
+  - `15.13. Corregir textos que desborden botones, tarjetas o paneles`.
+  - `15.14. Ejecutar pruebas visuales en móvil, tablet y escritorio`.
+- Siguiente tarea pendiente recomendada:
+  - `15.15. Ejecutar pruebas visuales con locale español e inglés`.
+- Decisiones o aclaraciones relevantes:
+  - No se cambiaron endpoints, esquemas Zod, estados financieros, reglas de monetización ni cálculos
+    estadísticos. La iteración se limita a presentación y tests de los dos módulos implicados.
+  - Los gráficos conservan scroll horizontal interno para series de 31–366 puntos; el documento no
+    adquiere scroll horizontal y cada barra mantiene su alternativa accesible.
+  - Las referencias de pago se pueden partir en cualquier punto, pero nunca se truncan ni se
+    exponen payloads, firmas o datos de tarjeta. Los chips aceptan varias líneas sin crecer fuera de
+    sus superficies.
+  - Vitest focalizado de estadísticas y suscripción terminó con 7 pruebas correctas en 19,96 s. Tras
+    el ajuste visual final, la suite de suscripción se repitió una sola vez: 4 pruebas correctas en
+    9,28 s. Oxc transformó los cuatro TSX focales, Prettier quedó correcto y `git diff --check` no
+    detectó incidencias.
+  - La validación real usó datos máximos no sensibles y viewports `390 × 844`, `768 × 1024` y
+    `1440 × 900` para `/panel/estadisticas` y `/panel/suscripcion`. Las seis combinaciones tuvieron
+    `scrollWidth === clientWidth`, controles de periodo de 44 px, tarjetas adaptadas y cero errores
+    o avisos de consola. El API temporal y Next se cerraron al finalizar.
 
 ## Conversación 137 - Resumen, reservas, asistencia e incidencias del local en móvil
 

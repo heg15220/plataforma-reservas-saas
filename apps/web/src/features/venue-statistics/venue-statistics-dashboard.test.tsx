@@ -81,4 +81,20 @@ describe("VenueStatisticsDashboard", () => {
       ),
     );
   });
+
+  it("mantiene legibles valores amplios y el estado sin valoración", async () => {
+    vi.mocked(fetchVenueStatistics).mockResolvedValue({
+      ...statistics,
+      averageRating: null,
+      reservationsCount: 123_456_789,
+    });
+
+    renderWithIntl(<VenueStatisticsDashboard />);
+
+    expect(await screen.findByText("123.456.789")).toBeVisible();
+    expect(screen.getByText("Sin valoración")).toBeVisible();
+    expect(
+      screen.getByRole("group", { name: "Seleccionar periodo de estadísticas" }),
+    ).toBeVisible();
+  });
 });

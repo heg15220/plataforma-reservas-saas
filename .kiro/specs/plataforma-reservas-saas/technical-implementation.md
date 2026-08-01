@@ -10,8 +10,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a
-  `13.12`, `14.1` a `14.14` y `15.1` a `15.11`.
-- Siguiente tarea pendiente recomendada: `15.12. Validar estadísticas y suscripción móvil`.
+  `13.12`, `14.1` a `14.14` y `15.1` a `15.14`.
+- Siguiente tarea pendiente recomendada: `15.15. Ejecutar pruebas visuales con locale español e inglés`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -29456,3 +29456,170 @@ sus tareas originales. El switch de Material UI conserva su área táctil compue
 `input` interno sea menor; no debe evaluarse por la caja invisible aislada. La revisión completa de
 escritorio, tablet, ES/EN y fallback continúa en 15.14 y 15.15, evitando convertir esta iteración en
 una validación global interminable.
+
+## Tarea 15.12 - Validar estadísticas y suscripción móvil
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico, requisitos y diseño
+
+La tarea valida en móvil las dos últimas áreas operativas principales del panel del local:
+estadísticas básicas (`RF-025`) y plan/facturación (`RF-028`), dentro del acceso privado de `RF-008`.
+Se aplican además `RF-031`, `RNF-002`, `RNF-004`, `RNF-006`, `RNF-007` y `RNF-009`. El diseño exige
+tarjetas y gráficos simples en lugar de tablas, controles táctiles, una columna en móvil y estados de
+suscripción comprensibles sin simular un cobro cuando la monetización está desactivada.
+
+### Archivos afectados, arquitectura y flujos
+
+- Modificado `apps/web/src/features/venue-statistics/venue-statistics-dashboard.tsx`.
+- Modificado `apps/web/src/features/venue-statistics/venue-statistics-dashboard.test.tsx`.
+- Modificado `apps/web/src/features/venue-subscription/venue-subscription-dashboard.tsx`.
+- Modificado `apps/web/src/features/venue-subscription/venue-subscription-dashboard.test.tsx`.
+- No se crearon ni eliminaron archivos de aplicación.
+
+En estadísticas, el grupo de periodos pasa de `flex` libre a cuadrícula de dos columnas en móvil y
+vuelve a `flex` desde tablet. Cada periodo tiene 44 px mínimos, ancho reducible y nombre adaptable.
+El rango personalizado apila fechas y CTA en `xs`; Aplicar ocupa todo el ancho disponible. Las
+tarjetas, títulos de gráficos y detalles establecen `minWidth: 0`, iconos no reducibles y ruptura de
+texto segura. El gráfico conserva su scroll horizontal interno para no comprimir series largas.
+
+En suscripción, el bloque del plan actual y su estado se ordenan verticalmente. Los planes usan una
+columna en móvil, dos desde `md` y tres desde `xl`; el historial solo adopta su composición de cuatro
+columnas cuando existe ancho `lg`. Nombre, estado, precios, funciones y límites conservan orden de
+lectura. La ausencia de botones de contratación continúa determinada exclusivamente por el estado
+de monetización devuelto por backend.
+
+### Modelo de datos, contratos y permisos
+
+No hay cambios de tablas, migraciones, índices, restricciones ni datos persistidos. Se mantienen:
+
+- `GET /api/venue/me/statistics` con `period=today|week|month|year|custom` y `from/to` para rango.
+- `GET /api/venue/me/subscription` para plan, estado, fechas, límites y monetización.
+- `GET /api/venue/me/payments` para un máximo de cincuenta movimientos minimizados.
+
+Los tres contratos usan cookie HttpOnly, `credentials: include`, `cache: no-store`, autorización por
+propietario y esquemas Zod estrictos. Estadísticas admite hasta 366 puntos y no devuelve PII.
+Suscripción valida coherencia entre estado de monetización, proveedor y aviso de pago externo; el
+historial no contiene tarjeta, CVV, firma, payload de proveedor ni identificadores internos.
+
+### Errores, seguridad, privacidad, i18n y accesibilidad
+
+Se conservan `AbortController`, estados de carga con `role=status`, alertas localizadas y errores
+normalizados de sesión, permisos, local inexistente, rango inválido o indisponibilidad. Los filtros
+usan `role=group`, `aria-pressed` y etiquetas de fecha persistentes. Cada barra sigue exponiendo
+fecha y valor por `aria-label`, aunque el gráfico tenga desplazamiento interno. Todos los textos
+proceden de `VenueStatistics` y `VenueSubscription` en ES/EN; no se añadieron strings de sistema ni
+logs con información personal o financiera.
+
+### Tests, evidencia, decisiones y riesgos
+
+Se añadieron casos para cifras de nueve dígitos, ausencia de valoración, nombres y funciones largos,
+y referencias de pago cercanas al máximo contractual. La ejecución focal de ambas suites terminó
+con 7/7 pruebas correctas en 19,96 s, un worker y límite de diez segundos por test. Oxc transformó
+los cuatro TSX y Prettier los dejó conformes.
+
+La prueba visual a `390 × 844` confirmó controles de periodo de 153 × 44 px, métricas en tarjetas,
+gráficos accesibles y plan/estado/funciones en una columna, sin scroll horizontal documental. El
+riesgo restante es el volumen visual de una serie anual; se mitiga con scroll local y etiquetas
+diarias ocultas cuando existen más de 31 puntos. La validación ES/EN conjunta permanece en 15.15.
+
+## Tarea 15.13 - Corregir textos que desborden botones, tarjetas o paneles
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico y alcance
+
+El objetivo es impedir que textos traducidos o datos válidos de longitud máxima amplíen botones,
+tarjetas o paneles de los módulos objeto de esta iteración. El alcance verificable comprende
+estadísticas, suscripción y sus contenedores directos; las pantallas anteriores de la fase ya habían
+sido corregidas en 15.1–15.11. Se relaciona con `RF-025`, `RF-028`, `RF-031`, `RNF-007` y `RNF-009`.
+
+### Implementación técnica
+
+Se aplicó una estrategia coherente basada en:
+
+- `minWidth: 0` en hijos de flex/grid que deben poder reducirse.
+- `overflowWrap: anywhere` en etiquetas, cifras, nombres de plan, funciones, límites y referencias.
+- iconos con `flexShrink: 0` para que mantengan reconocimiento mientras el texto fluye.
+- `responsiveChipSx` documentado: altura automática, ancho máximo del contenedor y etiqueta
+  multilínea sin recorte.
+- encabezados de plan y estado en columna para no repartir un ancho impredecible entre dos textos.
+- cuadrículas `minmax(0, 1fr)` que no heredan el ancho mínimo intrínseco de su contenido.
+
+La referencia de pago se muestra completa y puede partirse; no se usa elipsis porque es un dato que
+el local puede necesitar para soporte. Los estados se muestran completos en chips multilínea cuando
+sea necesario. El gráfico es la única excepción deliberada: su lista puede superar el viewport,
+pero queda contenida por `overflowX: auto` y no amplía el documento.
+
+### Datos, contratos, seguridad y errores
+
+No cambian modelos, APIs, payloads, validaciones Zod ni persistencia. Los límites ya existentes
+siguen siendo la defensa contractual: plan 120 caracteres, función 160 y referencia 128. La UI no
+transforma ni oculta los valores recibidos y no introduce HTML sin sanear. No se modifican mensajes
+de error, permisos, pagos, auditoría ni observabilidad.
+
+### Tests y evidencia
+
+Los tests nuevos renderizan un nombre profesional largo, una función operativa extensa, una
+referencia `ORDER-` de noventa caracteres, `123.456.789` reservas y `Sin valoración`. Los datos se
+mantienen visibles y el contrato no se trunca. Durante la inspección visual se detectó que el estado
+`Pago pendiente` quedaba en tres líneas muy estrechas al situarse lateralmente. Se cambió el
+encabezado a columna y se revalidó: el chip pasó a 117 × 28 px en tablet y escritorio.
+
+Tras esa corrección se ejecutó únicamente la suite dependiente de suscripción: 4/4 pruebas correctas
+en 9,28 s. No se ejecutaron lint, build, tests API, backend ni suite global. La deuda futura queda
+limitada a traducciones distintas de ES/EN o nuevos campos que excedan los máximos actuales.
+
+## Tarea 15.14 - Ejecutar pruebas visuales en móvil, tablet y escritorio
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo, diseño y estrategia
+
+Se verifican los breakpoints definidos por diseño —móvil `<600`, tablet `600–899` y escritorio
+`>=900`— sobre las dos rutas implementadas en 15.12–15.13. Para evitar una validación interminable,
+se eligieron tres viewports representativos: `390 × 844`, `768 × 1024` y `1440 × 900`. El alcance
+incluye `/panel/estadisticas`, `/panel/suscripcion`, `VenueShell`, catálogos ES activos y contratos API
+directos; no se recorrieron rutas no modificadas ni se ejecutó un E2E global.
+
+### Entorno y datos de prueba
+
+Se inició Next local contra un servidor HTTP temporal en `127.0.0.1:18090`. Este simuló únicamente
+los tres GET privados necesarios, con CORS limitado a `http://localhost:3000`, sin cookies reales ni
+escrituras. Los fixtures usaron 31 puntos estadísticos, una cifra de nueve dígitos, valoración nula,
+dos planes con nombres/funciones extensos y dos movimientos sin datos financieros sensibles. No se
+modificó base de datos, almacenamiento, cola ni proveedor de pagos.
+
+### Evidencia por breakpoint
+
+- Móvil `390 × 844`: ancho documental 375/375 px; filtros 153 × 44 px; métricas, gráficos, plan,
+  aviso, planes e historial en una columna. Nombre y referencia largos tuvieron
+  `scrollWidth === clientWidth`.
+- Tablet `768 × 1024`: ancho documental 753/753 px; métricas en dos columnas de 348 px; botones de
+  44 px; planes de 705 px en una columna. El estado corregido midió 117 × 28 px.
+- Escritorio `1440 × 900`: ancho documental 1425/1425 px; sidebar persistente; estadísticas en dos
+  columnas y gráficos amplios; planes en dos columnas de 522 px. Nombre/referencia no excedieron sus
+  cajas y el estado corrigió su tamaño a 117 × 28 px.
+
+En las seis combinaciones se revisó composición visible, jerarquía, tarjetas, controles, contenido
+largo, ancho del documento y consola. No hubo overflow documental, textos cortados, solapamientos,
+errores ni avisos de consola. El scroll observado en las series es interno, intencional y accesible.
+
+### Archivos, verificación y cierre
+
+La tarea no crea capturas persistentes ni código específico de test visual; documenta la ejecución
+real y las correcciones incorporadas a los cuatro archivos de 15.12–15.13. Prettier, Oxc y
+`git diff --check` completaron correctamente. Next y el API temporal se cerraron al terminar y el
+viewport del navegador se restableció.
+
+La validación se realizó con locale español, que es suficiente para el eje de breakpoints de 15.14.
+La matriz explícita español/inglés corresponde a la siguiente tarea 15.15 y no se adelanta aquí.

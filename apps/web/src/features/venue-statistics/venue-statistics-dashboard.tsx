@@ -86,7 +86,7 @@ export function VenueStatisticsDashboard() {
     : "";
 
   return (
-    <Stack spacing={4} sx={{ mt: 6 }}>
+    <Stack spacing={4} sx={{ mt: { xs: 4, sm: 6 }, minWidth: 0 }}>
       <Surface component="section">
         <Stack spacing={3}>
           <Stack
@@ -105,7 +105,14 @@ export function VenueStatisticsDashboard() {
             <Box
               aria-label={t("filters.periodAria")}
               role="group"
-              sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}
+              sx={{
+                display: { xs: "grid", sm: "flex" },
+                flexWrap: "wrap",
+                gap: 1,
+                gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))" },
+                minWidth: 0,
+                width: { xs: "100%", lg: "auto" },
+              }}
             >
               {PERIODS.map((period) => (
                 <Button
@@ -113,6 +120,7 @@ export function VenueStatisticsDashboard() {
                   key={period}
                   onClick={() => selectPeriod(period)}
                   size="small"
+                  sx={{ minHeight: 44, minWidth: 0, overflowWrap: "anywhere" }}
                   variant={pendingPeriod === period ? "contained" : "outlined"}
                 >
                   {t(`filters.periods.${period}`)}
@@ -138,7 +146,11 @@ export function VenueStatisticsDashboard() {
                 type="date"
                 value={to}
               />
-              <Button onClick={applyCustomRange} sx={{ minHeight: 44 }} variant="contained">
+              <Button
+                onClick={applyCustomRange}
+                sx={{ flexShrink: 0, minHeight: 44, width: { xs: "100%", sm: "auto" } }}
+                variant="contained"
+              >
                 {t("filters.apply")}
               </Button>
             </Stack>
@@ -271,11 +283,13 @@ function MetricCard({
 }) {
   return (
     <Surface>
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <Icon aria-hidden="true" size={20} />
-        <Typography color="text.secondary">{label}</Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start", minWidth: 0 }}>
+        <Icon aria-hidden="true" size={20} style={{ flexShrink: 0 }} />
+        <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+          {label}
+        </Typography>
       </Stack>
-      <Typography component="p" sx={{ mt: 2 }} variant="h2">
+      <Typography component="p" sx={{ mt: 2, overflowWrap: "anywhere" }} variant="h2">
         {value}
       </Typography>
     </Surface>
@@ -303,9 +317,9 @@ function EvolutionChart({
   const hasValues = points.some((point) => point.value > 0);
   return (
     <Surface aria-label={ariaLabel} component="section">
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <ChartNoAxesColumnIncreasing aria-hidden="true" size={20} />
-        <Typography component="h2" variant="h2">
+      <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start", minWidth: 0 }}>
+        <ChartNoAxesColumnIncreasing aria-hidden="true" size={20} style={{ flexShrink: 0 }} />
+        <Typography component="h2" sx={{ overflowWrap: "anywhere" }} variant="h2">
           {label}
         </Typography>
       </Stack>
@@ -376,10 +390,10 @@ function EvolutionChart({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ borderBottom: 1, borderColor: "divider", pb: 2 }}>
-      <Typography component="dt" color="text.secondary">
+      <Typography component="dt" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
         {label}
       </Typography>
-      <Typography component="dd" sx={{ fontWeight: 800, m: 0, mt: 1 }}>
+      <Typography component="dd" sx={{ fontWeight: 800, m: 0, mt: 1, overflowWrap: "anywhere" }}>
         {value}
       </Typography>
     </Box>
