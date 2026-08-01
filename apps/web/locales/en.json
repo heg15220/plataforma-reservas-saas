@@ -187,6 +187,11 @@
       "queryPlaceholder": "Name, service or category"
     }
   },
+  "SearchSuggestions": {
+    "loading": "Loading suggestions…",
+    "minimumCharacters": "Type at least two characters",
+    "noOptions": "No matching suggestions"
+  },
   "Layout": {
     "public": {
       "localAccess": "Venue access",

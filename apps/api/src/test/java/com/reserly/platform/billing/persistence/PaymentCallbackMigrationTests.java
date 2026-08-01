@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import org.junit.jupiter.api.Test;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.junit.jupiter.api.Test;
 
 /** Comprueba la idempotencia estructural de V34 sin iniciar PostgreSQL ni Docker. */
 class PaymentCallbackMigrationTests {
@@ -37,8 +37,7 @@ class PaymentCallbackMigrationTests {
   @Test
   void mapsEveryFixedLengthPaymentValueAsSqlChar() throws Exception {
     assertFixedCharMapping(PaymentEntity.class.getMethod("getCurrency"), 3, "char(3)");
-    assertFixedCharMapping(
-        PaymentEntity.class.getMethod("getRequestPayloadHash"), 64, "char(64)");
+    assertFixedCharMapping(PaymentEntity.class.getMethod("getRequestPayloadHash"), 64, "char(64)");
     assertFixedCharMapping(
         PaymentCallbackReceiptEntity.class.getMethod("getPayloadHash"), 64, "char(64)");
   }

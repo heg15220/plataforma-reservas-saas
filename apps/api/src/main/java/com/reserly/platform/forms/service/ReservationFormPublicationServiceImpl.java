@@ -25,7 +25,8 @@ public class ReservationFormPublicationServiceImpl implements ReservationFormPub
   private final VenueDao venueDao;
   private final ReservationFormFieldDao fieldDao;
 
-  public ReservationFormPublicationServiceImpl(VenueDao venueDao, ReservationFormFieldDao fieldDao) {
+  public ReservationFormPublicationServiceImpl(
+      VenueDao venueDao, ReservationFormFieldDao fieldDao) {
     this.venueDao = venueDao;
     this.fieldDao = fieldDao;
   }
@@ -95,8 +96,7 @@ public class ReservationFormPublicationServiceImpl implements ReservationFormPub
       missing.add(path + ".en");
       return;
     }
-    text.missingTranslations(REQUIRED_LOCALES)
-        .stream()
+    text.missingTranslations(REQUIRED_LOCALES).stream()
         .map(locale -> path + "." + locale.languageTag())
         .sorted()
         .forEach(missing::add);

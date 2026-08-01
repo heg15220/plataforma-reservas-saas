@@ -45,8 +45,7 @@ class ReservationFormPublicationServiceTests {
   @Test
   void publishesFullyTranslatedLabelsAndOptionsWithoutFallback() {
     ReservationFormFieldEntity field = selectField(localized("Zona", "Area"));
-    field.setOptionsI18n(
-        List.of(localized("Interior", "Inside"), localized("Terraza", "Terrace")));
+    field.setOptionsI18n(List.of(localized("Interior", "Inside"), localized("Terraza", "Terrace")));
     when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(fieldDao.findAllOwnedForUpdate(ownerId)).thenReturn(List.of(field));
 
@@ -63,13 +62,10 @@ class ReservationFormPublicationServiceTests {
   @Test
   void blocksPublicationWhenTranslationsAreMissingAndFallbackIsNotApproved() {
     ReservationFormFieldEntity field =
-        selectField(
-            new LocalizedText(
-                SupportedLocale.ES, Map.of(SupportedLocale.ES, "Zona")));
+        selectField(new LocalizedText(SupportedLocale.ES, Map.of(SupportedLocale.ES, "Zona")));
     field.setOptionsI18n(
         List.of(
-            new LocalizedText(
-                SupportedLocale.ES, Map.of(SupportedLocale.ES, "Interior")),
+            new LocalizedText(SupportedLocale.ES, Map.of(SupportedLocale.ES, "Interior")),
             localized("Terraza", "Terrace")));
     when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(fieldDao.findAllOwnedForUpdate(ownerId)).thenReturn(List.of(field));

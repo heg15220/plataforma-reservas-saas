@@ -186,8 +186,8 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
   /**
    * Calcula en una consulta la ocupación visible de todas las franjas de una respuesta pública.
    *
-   * <p>Comparte exactamente la semántica transaccional de capacidad: incluye estados confirmados
-   * y holds todavía vigentes, y omite cancelaciones y expiraciones.
+   * <p>Comparte exactamente la semántica transaccional de capacidad: incluye estados confirmados y
+   * holds todavía vigentes, y omite cancelaciones y expiraciones.
    */
   @Query(
       """

@@ -83,7 +83,8 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
   @Override
   public ResponseEntity<List<ReservationFormFieldResponse>> reorder(
       AuthenticatedAccount account, ReservationFormFieldOrderRequest request) {
-    return ResponseEntity.ok(toResponses(fieldService.reorder(account.userId(), request.fieldIds())));
+    return ResponseEntity.ok(
+        toResponses(fieldService.reorder(account.userId(), request.fieldIds())));
   }
 
   @Override
@@ -92,8 +93,7 @@ public class ReservationFormFieldControllerImpl implements ReservationFormFieldC
     return ResponseEntity.noContent().build();
   }
 
-  private List<ReservationFormFieldResponse> toResponses(
-      List<ReservationFormFieldEntity> fields) {
+  private List<ReservationFormFieldResponse> toResponses(List<ReservationFormFieldEntity> fields) {
     return fields.stream().map(converter::toResponse).toList();
   }
 }

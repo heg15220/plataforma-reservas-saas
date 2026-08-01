@@ -148,8 +148,7 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
         order,
         persistedOutcome.persistedValue(),
         subscriptionUpdated);
-    return new PaymentCallbackProcessingResult(
-        order, persistedOutcome, false, subscriptionUpdated);
+    return new PaymentCallbackProcessingResult(order, persistedOutcome, false, subscriptionUpdated);
   }
 
   /**

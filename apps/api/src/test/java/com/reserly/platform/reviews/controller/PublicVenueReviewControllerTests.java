@@ -49,13 +49,7 @@ class PublicVenueReviewControllerTests {
     when(creationService.createForVenue("casa-luz", request))
         .thenReturn(
             new ReviewCreateResponse(
-                "created",
-                reviewId,
-                venueId,
-                privateReservationId,
-                5,
-                new BigDecimal("4.8"),
-                12));
+                "created", reviewId, venueId, privateReservationId, 5, new BigDecimal("4.8"), 12));
 
     var result = controller.create("casa-luz", request);
 

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { searchPublicVenues } from "./public-search-api";
+import {
+  fetchPublicSearchCategories,
+  fetchPublicSearchSuggestions,
+  searchPublicVenues,
+} from "./public-search-api";
 
 const apiResponse = {
   locale: "es",
@@ -38,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
 
@@ -98,6 +103,59 @@ describe("searchPublicVenues", () => {
 
     await expect(searchPublicVenues("es", {})).rejects.toThrow(
       "No se pudo cargar la búsqueda pública (503).",
+    );
+  });
+
+  it("consulta sugerencias acotadas por ámbito y término", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        locale: "es",
+        suggestions: [{ kind: "location", value: "Madrid", label: "Madrid", context: "Ciudad" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPublicSearchSuggestions("es", "location", "  Mad  ")).resolves.toEqual([
+      { kind: "location", value: "Madrid", label: "Madrid", context: "Ciudad" },
+    ]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL(
+        "http://public-api.test/api/public/venues/suggestions?locale=es&kind=location&term=mad&limit=8",
+      ),
+      {
+        credentials: "omit",
+        headers: { Accept: "application/json" },
+        signal: undefined,
+      },
+    );
+  });
+
+  it("no consulta sugerencias con menos de dos caracteres", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPublicSearchSuggestions("es", "query", "a")).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("carga categorías activas desde el catálogo público", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          id: "20000000-0000-4000-8000-000000000001",
+          slug: "restaurante",
+          name: "Restaurante",
+        },
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPublicSearchCategories("es")).resolves.toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL("http://internal-api.test/api/public/categories?locale=es"),
+      { next: { revalidate: 300 } },
     );
   });
 });

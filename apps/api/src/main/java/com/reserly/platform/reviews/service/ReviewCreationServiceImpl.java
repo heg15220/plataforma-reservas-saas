@@ -86,12 +86,7 @@ public class ReviewCreationServiceImpl implements ReviewCreationService {
     LocalTime currentTime = LocalTime.now(clock);
     List<ReservationEntity> candidates =
         reservationDao.findLatestUnreviewedPastReviewEligibleReservationForUpdate(
-            venueId,
-            normalizedEmail,
-            ELIGIBLE_STATUSES,
-            today,
-            currentTime,
-            PageRequest.of(0, 1));
+            venueId, normalizedEmail, ELIGIBLE_STATUSES, today, currentTime, PageRequest.of(0, 1));
     if (candidates.isEmpty()) {
       if (reservationDao.existsPastReviewEligibleReservation(
           venueId, normalizedEmail, ELIGIBLE_STATUSES, today, currentTime)) {

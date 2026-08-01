@@ -47,11 +47,9 @@ class DailyVenueStatsAggregationServiceTests {
   @Test
   void rejectsNullAndFutureDatesBeforePersistence() {
     StatsDailyVenueDao statsDao = mock(StatsDailyVenueDao.class);
-    var service =
-        new DailyVenueStatsAggregationServiceImpl(statsDao, Clock.fixed(NOW, ZONE));
+    var service = new DailyVenueStatsAggregationServiceImpl(statsDao, Clock.fixed(NOW, ZONE));
 
-    assertThatThrownBy(() -> service.aggregate(null))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> service.aggregate(null)).isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> service.aggregate(LocalDate.of(2026, 3, 31)))
         .isInstanceOf(IllegalArgumentException.class);
     verifyNoInteractions(statsDao);

@@ -15,8 +15,8 @@ import org.hibernate.type.SqlTypes;
 /**
  * Evidencia inmutable y minimizada de una acción crítica.
  *
- * <p>Los snapshots solo describen transiciones de estado. El servicio rechaza valores incompletos
- * y el llamador es responsable de no incluir secretos ni PII no necesaria.
+ * <p>Los snapshots solo describen transiciones de estado. El servicio rechaza valores incompletos y
+ * el llamador es responsable de no incluir secretos ni PII no necesaria.
  */
 @Entity
 @Table(name = "\"AuditLogs\"")

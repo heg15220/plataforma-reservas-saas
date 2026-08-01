@@ -3,8 +3,8 @@ package com.reserly.platform.incidents.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.LockModeType;
-import java.time.Instant;
 import java.lang.reflect.Method;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -25,16 +25,12 @@ class PenaltyDaoTests {
   }
 
   @Test
-  void activePenaltyUpdateIsPessimisticAndResetRequiresCompletedSixtyDayTier()
-      throws Exception {
-    Method active =
-        PenaltyDao.class.getMethod("findActiveGlobalForUpdate", String.class);
+  void activePenaltyUpdateIsPessimisticAndResetRequiresCompletedSixtyDayTier() throws Exception {
+    Method active = PenaltyDao.class.getMethod("findActiveGlobalForUpdate", String.class);
     Method reset =
-        PenaltyDao.class.getMethod(
-            "findLatestCompletedResetBoundary", String.class, Instant.class);
+        PenaltyDao.class.getMethod("findLatestCompletedResetBoundary", String.class, Instant.class);
 
-    assertThat(active.getAnnotation(Lock.class).value())
-        .isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+    assertThat(active.getAnnotation(Lock.class).value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
     assertThat(active.getAnnotation(Query.class).value())
         .contains("penalty.scope = 'global'")
         .contains("penalty.status = 'active'");

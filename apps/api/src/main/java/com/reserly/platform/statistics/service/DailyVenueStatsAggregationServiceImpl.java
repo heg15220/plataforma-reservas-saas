@@ -7,12 +7,9 @@ import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Delimita una fecha en la zona IANA del reloj de negocio y delega una sola agregación atómica.
- */
+/** Delimita una fecha en la zona IANA del reloj de negocio y delega una sola agregación atómica. */
 @Service
-public class DailyVenueStatsAggregationServiceImpl
-    implements DailyVenueStatsAggregationService {
+public class DailyVenueStatsAggregationServiceImpl implements DailyVenueStatsAggregationService {
 
   private final StatsDailyVenueDao statsDao;
   private final Clock clock;

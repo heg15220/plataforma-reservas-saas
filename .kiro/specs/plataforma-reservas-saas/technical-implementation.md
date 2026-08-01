@@ -29786,3 +29786,220 @@ conservan contenido completo mediante scroll interno en lugar de truncarlo.
 El riesgo residual se limita a HTML editorial futuro con elementos no contemplados por las reglas
 responsive; la sanitización y el contenedor acotado reducen el impacto. No se añadió deuda de API,
 base de datos, jobs, auditoría ni observabilidad.
+
+## Corrección transversal posterior a 15.8 - Alineación del foco de campos MUI
+
+- Fecha: 2026-08-01.
+- Referencia: corrección solicitada después del cierre de la fase 15.
+- Estado: implementada; no altera checkboxes de `tasks.md`.
+
+### Objetivo y causa técnica
+
+Los campos de acceso, registro y demás formularios basados en `TextField` mostraban dos indicadores
+azules al recibir foco. `MuiOutlinedInput` dibujaba correctamente el borde sobre su `fieldset`, pero
+la regla accesible global `*:focus-visible` añadía otro `outline` sobre el elemento `<input>` interno.
+En la reproducción de `/locales/acceso`, el contenedor visible medía 48 px de alto y el nodo interior
+33 px; por ello el segundo rectángulo quedaba verticalmente desplazado respecto de la casilla.
+
+### Implementación y alcance
+
+Inicialmente se incorporó en `apps/web/src/theme/base-theme.ts` un `styleOverride` de
+`MuiInputBase.input`. La comprobación posterior demostró que `MuiOutlinedInput` genera un slot de
+entrada especializado y no aplicaba ese override: el estilo calculado conservaba el outline global.
+Este enfoque se retiró y quedó sustituido por la rectificación documentada a continuación.
+
+La corrección centralizada alcanza login de propietarios, login administrativo, registro, búsqueda,
+reserva y formularios privados sin duplicar estilos por pantalla. No cambia componentes, props,
+validación, valores, autocompletado, gestión de errores, i18n, permisos ni comportamiento responsive.
+
+### Datos, contratos, seguridad y accesibilidad
+
+No existen cambios de base de datos, migraciones, endpoints, payloads, sesiones ni tratamiento de
+credenciales. Se preserva navegación por teclado y un indicador de foco visible alineado con el
+control real. No se sustituyó el foco por color de relleno ni se redujo el contraste del borde.
+
+### Verificación, riesgos y deuda
+
+La causa se confirmó mediante DOM y estilos computados del campo de correo autoenfocado: outline
+interior azul de 2,4 px y offset de 2,4 px frente al borde exterior de 1,6 px. Prettier focalizado
+terminó correctamente. ESLint focalizado no produjo diagnóstico antes del límite de 60 s y no se
+repitió. La suite `design-system/page.test.tsx` tampoco inició casos antes del límite de 45 s y se
+detuvo sin nuevos intentos; `git diff --check` no detecta errores.
+
+La recarga final del navegador local agotó el tiempo de navegación en dos pestañas y se detuvo para
+evitar validaciones interminables. El riesgo residual es visual y bajo: conviene confirmar el foco
+en acceso y registro cuando el servidor de desarrollo vuelva a responder con normalidad.
+
+## Corrección evolutiva de 3.1–3.11 - Autocompletado público indexado y catálogos del sistema
+
+- Fecha: 2026-08-01.
+- Referencia: ampliación del buscador público solicitada tras completar la fase 3.
+- Estado: implementada y verificada de forma focalizada; no altera checkboxes de `tasks.md`.
+- Responsable: Codex.
+
+### Objetivo técnico y requisitos relacionados
+
+Mostrar sugerencias coincidentes mientras el usuario escribe en los campos de texto y ubicación,
+usando exclusivamente datos públicos existentes y manteniendo latencia, carga de base de datos y
+memoria del cliente acotadas. El cambio desarrolla el autocompletado parcial previsto en `RF-001`,
+los criterios geográficos de `RF-002`, la localización de `RF-031` y las exigencias de privacidad,
+escalabilidad, rendimiento y usabilidad de `RNF-002`, `RNF-004`, `RNF-005` y `RNF-007`.
+
+### Archivos, contratos y arquitectura
+
+Se incorpora `GET /api/public/venues/suggestions` al controlador público de `venues`. Acepta
+`locale`, `kind=query|location`, `term` y `limit`; resuelve el idioma mediante el mismo mecanismo que
+el listado y devuelve `VenueSearchSuggestionsResponse`, compuesto por opciones mínimas con
+`kind`, `value`, `label` y `context`. Un término de menos de dos caracteres devuelve una colección
+vacía sin tocar la base de datos. El servicio recorta a 80 caracteres, normaliza mayúsculas y
+diacríticos, escapa metacaracteres de `LIKE`, aplica 8 como límite por defecto y un máximo absoluto
+de 10.
+
+`VenueDao` usa consultas nativas y `VenueSearchSuggestionProjection`, evitando hidratar entidades,
+ejecutar `COUNT`, cargar imágenes o calcular disponibilidad. Las sugerencias de texto filtran el
+documento normalizado nombre + descripción, devuelven el nombre canónico del local y contextualizan
+con categoría localizada y localidad. Las de ubicación materializan como máximo 128 locales
+coincidentes y generan candidatos distintos de ciudad, provincia, dirección y código postal. En
+ambos casos se prioriza prefijo, luego similitud trigram y finalmente un orden determinista.
+
+El endpoint emite `Cache-Control: public, max-age=30, stale-while-revalidate=120`. No reutiliza el
+servicio paginado porque esa ruta incorpora joins, ordenación de negocio y conteo total innecesarios
+para cada pulsación.
+
+### Modelo de datos, migración, índices y restricciones
+
+La migración V35 crea `reserlyUnaccent(text)` como función SQL `IMMUTABLE`, `STRICT` y
+`PARALLEL SAFE`, fijando explícitamente el diccionario `public.unaccent`. Esto hace indexables las
+expresiones normalizadas sin duplicar columnas persistidas.
+
+`ixVenuesPublishedSuggestionTextTrigram` es un GIN `gin_trgm_ops` parcial sobre nombre y
+descripción concatenados; `ixVenuesPublishedSuggestionLocationTrigram` aplica la misma estrategia a
+ciudad, provincia, dirección y código postal. Ambos contienen solo filas `status = 'published'`, lo
+que reduce tamaño, evita recorrer borradores y coincide exactamente con el predicado de consulta.
+No se modifican tablas, claves, relaciones ni datos existentes. La prueba de migración actualiza la
+versión esperada a 35 y exige ambos nombres de índice.
+
+### Integración web, estados, accesibilidad e i18n
+
+`PublicSearchAutocomplete` encapsula MUI `Autocomplete` en modo `freeSolo`, por lo que elegir una
+sugerencia es opcional y el formulario sigue enviando `q` o `location` mediante GET. Se reutiliza en
+inicio, filtros desktop y diálogo móvil. Conserva etiquetas accesibles, iconos decorativos, foco de
+teclado, resaltado automático, texto de carga, estado sin coincidencias y contexto secundario. Los
+mensajes se añaden a `SearchSuggestions` en español e inglés.
+
+La consulta empieza tras dos caracteres y 160 ms sin cambios. Cada edición cancela la solicitud
+anterior con `AbortController`; las respuestas canceladas no alteran la interfaz. Un `Map` de hasta
+100 claves conserva respuestas durante 60 segundos y elimina por orden de inserción cuando alcanza
+el límite. El contrato Zod valida idioma, tipo y un máximo de diez opciones. Los valores iniciales de
+la URL no disparan consultas hasta que el usuario edita el campo.
+
+El selector de categoría se alimenta de `GET /api/public/categories`, con caché SSR de cinco
+minutos. La pantalla explorar tolera indisponibilidad del catálogo con una lista vacía y preserva
+temporalmente cualquier slug activo de la URL, evitando que un filtro válido desaparezca durante una
+actualización concurrente.
+
+### Seguridad, privacidad, errores y observabilidad
+
+Las consultas imponen `published` en base de datos y la respuesta no contiene UUID de local,
+propietario, email, coordenadas ni datos de reserva. El cliente usa `credentials: omit`; el endpoint
+es público y no amplía permisos. Longitudes y cardinalidades se validan de nuevo en servidor. Los
+fallos remotos vacían discretamente las opciones sin bloquear la escritura ni el submit; las
+categorías degradan a lista vacía. No se registran términos de usuario ni se añade telemetría con
+posibles datos personales.
+
+### Tests, comandos y evidencia
+
+- `mvn -f apps/api/pom.xml "-Dcheckstyle.skip=true"
+  "-Dtest=VenuePublicSearchControllerTests,VenueSearchSuggestionServiceTests" test`: 6 tests, 0
+  fallos, 0 errores. Verifica mínimo de caracteres, normalización, límites, localización,
+  delegación HTTP y cabecera de caché.
+- `vitest` focalizado de `public-search-api.test.ts`: 6/6. Cubre URL, ámbito, normalización,
+  respuesta, omisión bajo dos caracteres y catálogo activo.
+- `vitest` focalizado de `public-search-autocomplete.test.tsx`: 1/1. Comprueba debounce,
+  coincidencias, selección y nombre real del control de formulario.
+- Durante el diagnóstico de `public-search-results.test.tsx`, los tres casos de estados vacíos
+  pasaron. Se corrigieron el uso de `slotProps` requerido por MUI 9 y las esperas de transiciones en
+  los otros dos casos; su repetición quedó detenida por el límite de arranque del runner.
+- La suite focalizada de integración PostGIS se detuvo al alcanzar 120 segundos sin producir
+  diagnóstico. Checkstyle global detectó 26 incidencias preexistentes fuera del cambio. No se
+  ejecutaron build ni suites globales.
+
+### Riesgos, limitaciones y deuda técnica
+
+Queda pendiente corroborar V35 y las consultas nativas contra una instancia PostGIS limpia cuando
+Testcontainers complete dentro de un tiempo razonable, además de repetir los dos casos visuales de
+resultados y la interacción manual en Next. La implementación, sus contratos unitarios y el cliente
+de sugerencias están verificados, pero esas tres comprobaciones no deben presentarse como superadas.
+
+Spotless alcanzó archivos Java ajenos al cambio al aplicar el formato global. La lista funcional
+intencional está identificada, pero la protección del entorno rechazó restaurar masivamente el ruido
+sin autorización explícita. Es obligatorio retirarlo antes de considerar el diff listo para commit.
+
+## Corrección de fixtures 2.12/3.13/15.1 - Cuatro locales demo multicategoría
+
+- Fecha: 2026-08-01.
+- Estado: implementada; no altera `tasks.md`.
+
+El inicializador local sustituye de forma idempotente el fixture `LET Padel Ames` por `Brisa
+Studio`, reutilizando sus UUID reservados para eliminar nombre y slug en bases ya pobladas. Añade
+`Campo do Sar`, `Norte Fitness Lab` y `Aura Atlántica`; las categorías respectivas son peluquería,
+campo de fútbol, centro deportivo y centro de estética. Cada publicación incluye propietario con rol,
+cuenta empresarial verificada, textos ES/EN, contacto, coordenadas, formulario publicado, servicio,
+horario semanal y franjas para 31 días.
+
+Se generó mediante ImageGen un mosaico editorial sin marcas ni personas identificables y se separó
+en ocho JPG optimizados de 440/444 px: una imagen principal y otra de galería por local. El
+inicializador copia los objetos antes de ejecutar SQL para no publicar referencias rotas. Los
+metadatos persistidos coinciden con dimensiones y bytes de cada recurso. El JPG antiguo de LET se
+elimina; las posibles claves antiguas del almacenamiento quedan inaccesibles al no existir referencias
+en `Venues` ni `VenueImages`.
+
+El contrato de fixtures exige los seis slugs finales, las cuatro categorías nuevas, ausencia del
+slug LET en la sección efectiva y dimensiones de los ocho recursos. `git diff --check` queda limpio.
+La prueba Maven focalizada encontró y permitió corregir un único formato; el segundo intento alcanzó
+el límite de 60 segundos sin emitir resultado, por lo que no se ejecutaron suites adicionales.
+
+## Rectificación de la corrección de foco - Selector global específico y evidencia visual
+
+- Fecha: 2026-08-01.
+- Referencia: revisión solicitada de la corrección transversal posterior a 15.8.
+- Estado: corregida y comprobada visualmente.
+
+### Diagnóstico verificado
+
+Se cerró el proceso Next obsoleto que retenía el puerto y se levantó una instancia limpia. En
+`/locales/acceso?locale=es`, la captura mostró todavía dos rectángulos azules. Los estilos computados
+confirmaron que el `<input>` seguía recibiendo `outline: 2.4px solid rgb(7, 95, 228)` y
+`outline-offset: 2.4px`, mientras el `fieldset` exterior dibujaba el borde de foco de MUI.
+
+La causa no era ya una hipótesis: `MuiOutlinedInput` usa su propio slot estilizado para la entrada y
+el override temático dirigido a `MuiInputBase.input` no aparecía en la cascada efectiva.
+
+### Solución definitiva y alcance
+
+`apps/web/src/app/globals.css` conserva la regla accesible general `*:focus-visible` e incorpora
+inmediatamente después `.MuiInputBase-input:focus-visible { outline: none; }`. La clase
+`MuiInputBase-input` forma parte del contrato público de clases de MUI y está presente en las
+entradas outlined, filled y standard. La mayor especificidad y el orden posterior hacen que la
+excepción prevalezca de forma determinista.
+
+Solo se elimina el marco duplicado del nodo interior. `MuiOutlinedInput` mantiene el borde azul del
+`fieldset`; otras variantes conservan sus indicadores propios, y enlaces, botones, checkbox y
+controles nativos ajenos a `MuiInputBase` siguen cubiertos por la regla global.
+
+No cambian datos, migraciones, endpoints, validación, credenciales, permisos, i18n, contratos ni
+estructura de los formularios. `base-theme.ts` vuelve a su estado anterior para no conservar una
+regla ineficaz.
+
+### Evidencia visual y limitaciones
+
+- Acceso: el correo autoenfocado muestra un único borde azul que recorre el ancho y alto completos.
+- Registro: el correo seleccionado muestra un solo borde exterior, alineado con su etiqueta.
+- Multilínea: `Dirección registral` conserva el mismo comportamiento en toda su altura.
+- Checkbox: la casilla legal seleccionada conserva icono, color y alineación sin verse afectada por
+  la excepción de `MuiInputBase`.
+
+Se intentó ajustar el viewport a `390 × 844`, pero la API de navegador disponible no expuso los tres
+métodos probados y se detuvo sin recurrir a CDP directo ni mecanismos alternativos. Esta limitación
+no afecta a la corrección de cascada, que es independiente del breakpoint, pero la evidencia visual
+de esta rectificación corresponde al layout de escritorio.

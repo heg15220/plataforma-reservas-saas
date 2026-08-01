@@ -12,16 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /** Contrato REST anónimo para confirmar el hold que posee el cliente. */
-@RequestMapping(
-    path = "/api/public/reservations",
-    produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/api/public/reservations", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface ReservationConfirmationController {
 
   /** Confirma la reserva sin exponer si el identificador o el token concreto eran incorrectos. */
-  @PostMapping(
-      path = "/{reservationId}/confirm",
-      consumes = MediaType.APPLICATION_JSON_VALUE)
+  @PostMapping(path = "/{reservationId}/confirm", consumes = MediaType.APPLICATION_JSON_VALUE)
   ResponseEntity<ReservationConfirmResponse> confirm(
-      @PathVariable UUID reservationId,
-      @Valid @RequestBody ReservationConfirmRequest request);
+      @PathVariable UUID reservationId, @Valid @RequestBody ReservationConfirmRequest request);
 }

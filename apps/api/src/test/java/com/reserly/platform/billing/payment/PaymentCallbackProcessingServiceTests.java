@@ -143,14 +143,8 @@ class PaymentCallbackProcessingServiceTests {
   @ParameterizedTest
   @EnumSource(
       value = PaymentStatus.class,
-      names = {
-        "REJECTED",
-        "CANCELLED_BY_USER",
-        "COMMUNICATION_ERROR",
-        "PENDING_CONFIRMATION"
-      })
-  void persistsEveryNonConfirmedOutcomeWithoutPaidDateOrSubscriptionChange(
-      PaymentStatus outcome) {
+      names = {"REJECTED", "CANCELLED_BY_USER", "COMMUNICATION_ERROR", "PENDING_CONFIRMATION"})
+  void persistsEveryNonConfirmedOutcomeWithoutPaidDateOrSubscriptionChange(PaymentStatus outcome) {
     Fixture fixture = fixture();
     when(fixture.redsysVerifier().verify(fixture.message()))
         .thenReturn(

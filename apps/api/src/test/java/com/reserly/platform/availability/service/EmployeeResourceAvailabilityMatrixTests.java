@@ -80,8 +80,7 @@ class EmployeeResourceAvailabilityMatrixTests {
     TimeSlotEntity slot = slot(UUID.randomUUID(), LocalTime.of(10, 0), LocalTime.of(11, 0));
     EmployeeResourceEntity equipment = resource("equipment", "Equipo laser");
     when(serviceDao.findPublishedActiveWithResources(venueId, Set.of(slot.getServiceId())))
-        .thenReturn(
-            List.of(configuredService(slot.getServiceId(), true, Set.of(equipment))));
+        .thenReturn(List.of(configuredService(slot.getServiceId(), true, Set.of(equipment))));
     when(hourDao.findPublishedAvailableHours(venueId, 1))
         .thenReturn(List.of(hour(equipment, LocalTime.of(10, 0), LocalTime.of(11, 0))));
 
@@ -94,10 +93,8 @@ class EmployeeResourceAvailabilityMatrixTests {
   @Test
   void rejectsResourcesThatMissEitherScheduleBoundary() {
     UUID serviceId = UUID.randomUUID();
-    TimeSlotEntity startsTooEarly =
-        slot(serviceId, LocalTime.of(9, 59), LocalTime.of(10, 30));
-    TimeSlotEntity endsTooLate =
-        slot(serviceId, LocalTime.of(10, 30), LocalTime.of(11, 1));
+    TimeSlotEntity startsTooEarly = slot(serviceId, LocalTime.of(9, 59), LocalTime.of(10, 30));
+    TimeSlotEntity endsTooLate = slot(serviceId, LocalTime.of(10, 30), LocalTime.of(11, 1));
     EmployeeResourceEntity court = resource("court", "Pista central");
     when(serviceDao.findPublishedActiveWithResources(venueId, Set.of(serviceId)))
         .thenReturn(List.of(configuredService(serviceId, true, Set.of(court))));

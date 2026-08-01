@@ -5,9 +5,4 @@ import java.util.UUID;
 
 /** Categoría administrativa sin exponer el documento JSONB interno. */
 public record AdminCategoryResponse(
-    UUID id,
-    String slug,
-    String nameEs,
-    String nameEn,
-    boolean active,
-    Instant updatedAt) {}
+    UUID id, String slug, String nameEs, String nameEn, boolean active, Instant updatedAt) {}

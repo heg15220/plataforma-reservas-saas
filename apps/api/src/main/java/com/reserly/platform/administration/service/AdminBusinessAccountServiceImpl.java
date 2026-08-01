@@ -48,13 +48,16 @@ public class AdminBusinessAccountServiceImpl implements AdminBusinessAccountServ
   public AdminBusinessAccountListResponse listPending() {
     return new AdminBusinessAccountListResponse(
         accountDao.findPendingAdminReview(PageRequest.of(0, LIST_LIMIT)).stream()
-            .map(this::response).toList());
+            .map(this::response)
+            .toList());
   }
 
   @Override
   @Transactional(readOnly = true)
   public AdminBusinessAccountResponse getPending(UUID accountId) {
-    return accountDao.findPendingAdminReviewById(accountId).map(this::response)
+    return accountDao
+        .findPendingAdminReviewById(accountId)
+        .map(this::response)
         .orElseThrow(AdminResourceNotFoundException::new);
   }
 
@@ -67,11 +70,11 @@ public class AdminBusinessAccountServiceImpl implements AdminBusinessAccountServ
       AdminBusinessDecisionRequest request,
       AdminRequestContext context) {
     BusinessAccountEntity account =
-        accountDao.findByIdForStateUpdate(accountId)
+        accountDao
+            .findByIdForStateUpdate(accountId)
             .orElseThrow(AdminResourceNotFoundException::new);
     requirePending(account);
-    var reviewer =
-        userDao.findById(actorUserId).orElseThrow(AdminResourceNotFoundException::new);
+    var reviewer = userDao.findById(actorUserId).orElseThrow(AdminResourceNotFoundException::new);
     Map<String, Object> before = snapshot(account);
     account.setManualReviewStatus(request.decision());
     account.setManualReviewedByUser(reviewer);
@@ -145,15 +148,23 @@ public class AdminBusinessAccountServiceImpl implements AdminBusinessAccountServ
     after.put("reason", reason.strip());
     auditLogService.record(
         new AuditLogEntry(
-            actorUserId, "admin", "business_account", account.getId(), action,
-            before, after, context.ipAddress(), context.userAgent()));
+            actorUserId,
+            "admin",
+            "business_account",
+            account.getId(),
+            action,
+            before,
+            after,
+            context.ipAddress(),
+            context.userAgent()));
   }
 
   private Map<String, Object> snapshot(BusinessAccountEntity account) {
     return Map.of(
-        "businessVerificationStatus", account.getBusinessVerificationStatus(),
+        "businessVerificationStatus",
+        account.getBusinessVerificationStatus(),
         "manualReviewStatus",
-            account.getManualReviewStatus() == null ? "none" : account.getManualReviewStatus());
+        account.getManualReviewStatus() == null ? "none" : account.getManualReviewStatus());
   }
 
   private String optional(String value) {
@@ -162,11 +173,17 @@ public class AdminBusinessAccountServiceImpl implements AdminBusinessAccountServ
 
   private AdminBusinessAccountResponse response(BusinessAccountEntity account) {
     return new AdminBusinessAccountResponse(
-        account.getId(), account.getOwnerUser().getId(), account.getOwnerUser().getEmail(),
-        account.getTaxCountry(), account.getBusinessLegalName(),
-        account.getBusinessTaxIdentifier(), account.getBusinessAddress(),
-        account.getBusinessVerificationStatus(), account.getBusinessVerificationProvider(),
-        account.getBusinessVerificationReference(), account.getManualReviewStatus(),
+        account.getId(),
+        account.getOwnerUser().getId(),
+        account.getOwnerUser().getEmail(),
+        account.getTaxCountry(),
+        account.getBusinessLegalName(),
+        account.getBusinessTaxIdentifier(),
+        account.getBusinessAddress(),
+        account.getBusinessVerificationStatus(),
+        account.getBusinessVerificationProvider(),
+        account.getBusinessVerificationReference(),
+        account.getManualReviewStatus(),
         account.getUpdatedAt());
   }
 }

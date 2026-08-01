@@ -13,15 +13,22 @@ import org.springframework.core.io.ClassPathResource;
 class LocalDemoVenueFixtureContractTests {
 
   @Test
-  void scriptPublishesThreeStableVenuesAndRollingCapacity() throws Exception {
+  void scriptPublishesSixStableVenuesAcrossDistinctCategoriesAndRollingCapacity() throws Exception {
     String sql =
         new ClassPathResource("dev-fixtures/local-demo-venues.sql")
             .getContentAsString(StandardCharsets.UTF_8);
 
     assertThat(sql)
         .contains("'ames-padel-center'")
-        .contains("'let-padel-ames'")
         .contains("'lume-de-bretema'")
+        .contains("'brisa-studio'")
+        .contains("'campo-do-sar'")
+        .contains("'norte-fitness-lab'")
+        .contains("'aura-atlantica'")
+        .contains("'20000000-0000-0000-0000-000000000002'")
+        .contains("'20000000-0000-0000-0000-000000000003'")
+        .contains("'20000000-0000-0000-0000-000000000006'")
+        .contains("'20000000-0000-0000-0000-000000000007'")
         .contains("'20000000-0000-0000-0000-000000000001'")
         .contains("'Reserva de mesa'")
         .contains("TIME '13:00', TIME '14:30'")
@@ -33,6 +40,9 @@ class LocalDemoVenueFixtureContractTests {
         .contains("ON CONFLICT DO NOTHING")
         .contains("'available'")
         .contains("Mailpit");
+
+    assertThat(sql.substring(sql.indexOf("-- Sustituye el fixture histórico")))
+        .doesNotContain("'let-padel-ames'");
   }
 
   @Test
@@ -41,7 +51,14 @@ class LocalDemoVenueFixtureContractTests {
         List.of(
             new ExpectedImage("dev-fixtures/images/ames-padel-center.png", 907, 808),
             new ExpectedImage("dev-fixtures/images/padel-courts.jpg", 1360, 1016),
-            new ExpectedImage("dev-fixtures/images/let-padel-ames.jpg", 1360, 1020),
+            new ExpectedImage("dev-fixtures/images/brisa-studio-main.jpg", 440, 440),
+            new ExpectedImage("dev-fixtures/images/brisa-studio-gallery.jpg", 440, 443),
+            new ExpectedImage("dev-fixtures/images/campo-do-sar-main.jpg", 440, 440),
+            new ExpectedImage("dev-fixtures/images/campo-do-sar-gallery.jpg", 440, 443),
+            new ExpectedImage("dev-fixtures/images/norte-fitness-lab-main.jpg", 440, 440),
+            new ExpectedImage("dev-fixtures/images/norte-fitness-lab-gallery.jpg", 440, 443),
+            new ExpectedImage("dev-fixtures/images/aura-atlantica-main.jpg", 444, 440),
+            new ExpectedImage("dev-fixtures/images/aura-atlantica-gallery.jpg", 444, 443),
             new ExpectedImage("dev-fixtures/images/lume-de-bretema-main.png", 1536, 1024),
             new ExpectedImage("dev-fixtures/images/lume-de-bretema-dish.png", 1536, 1024),
             new ExpectedImage("dev-fixtures/images/lume-de-bretema-kitchen.png", 1536, 1024));

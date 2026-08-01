@@ -43,12 +43,36 @@ public class LocalDemoVenueInitializer implements ApplicationRunner {
               "dev-fixtures/venues/ames-padel-center/gallery-1.jpg",
               "image/jpeg"),
           new DemoImage(
-              "dev-fixtures/images/let-padel-ames.jpg",
-              "dev-fixtures/venues/let-padel-ames/main.jpg",
+              "dev-fixtures/images/brisa-studio-main.jpg",
+              "dev-fixtures/venues/brisa-studio/main.jpg",
               "image/jpeg"),
           new DemoImage(
-              "dev-fixtures/images/padel-courts.jpg",
-              "dev-fixtures/venues/let-padel-ames/gallery-1.jpg",
+              "dev-fixtures/images/brisa-studio-gallery.jpg",
+              "dev-fixtures/venues/brisa-studio/gallery-1.jpg",
+              "image/jpeg"),
+          new DemoImage(
+              "dev-fixtures/images/campo-do-sar-main.jpg",
+              "dev-fixtures/venues/campo-do-sar/main.jpg",
+              "image/jpeg"),
+          new DemoImage(
+              "dev-fixtures/images/campo-do-sar-gallery.jpg",
+              "dev-fixtures/venues/campo-do-sar/gallery-1.jpg",
+              "image/jpeg"),
+          new DemoImage(
+              "dev-fixtures/images/norte-fitness-lab-main.jpg",
+              "dev-fixtures/venues/norte-fitness-lab/main.jpg",
+              "image/jpeg"),
+          new DemoImage(
+              "dev-fixtures/images/norte-fitness-lab-gallery.jpg",
+              "dev-fixtures/venues/norte-fitness-lab/gallery-1.jpg",
+              "image/jpeg"),
+          new DemoImage(
+              "dev-fixtures/images/aura-atlantica-main.jpg",
+              "dev-fixtures/venues/aura-atlantica/main.jpg",
+              "image/jpeg"),
+          new DemoImage(
+              "dev-fixtures/images/aura-atlantica-gallery.jpg",
+              "dev-fixtures/venues/aura-atlantica/gallery-1.jpg",
               "image/jpeg"),
           new DemoImage(
               "dev-fixtures/images/lume-de-bretema-main.png",
@@ -83,13 +107,14 @@ public class LocalDemoVenueInitializer implements ApplicationRunner {
     IMAGES.forEach(this::store);
     new ResourceDatabasePopulator(new ClassPathResource(SQL_RESOURCE)).execute(dataSource);
     LOGGER.info(
-        "Fixtures locales preparados: /locales/ames-padel-center, /locales/let-padel-ames y "
-            + "/locales/lume-de-bretema");
+        "Fixtures locales preparados: Ames Padel Center, Lume de Brétema, Brisa Studio, "
+            + "Campo do Sar, Norte Fitness Lab y Aura Atlántica");
   }
 
   private void store(DemoImage image) {
     try {
-      byte[] content = new ClassPathResource(image.classpathLocation()).getInputStream().readAllBytes();
+      byte[] content =
+          new ClassPathResource(image.classpathLocation()).getInputStream().readAllBytes();
       imageStorage.put(image.objectKey(), content, image.mediaType());
     } catch (IOException exception) {
       throw new UncheckedIOException(

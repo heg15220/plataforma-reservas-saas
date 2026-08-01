@@ -21,9 +21,7 @@ class ReservationHoldExpirationJobTests {
   void expiresAgainstOneUtcBoundaryAndReportsAffectedRows() {
     ReservationDao reservationDao = mock(ReservationDao.class);
     when(reservationDao.expireHoldsBefore(NOW)).thenReturn(3);
-    var job =
-        new ReservationHoldExpirationJob(
-            reservationDao, Clock.fixed(NOW, ZoneOffset.UTC));
+    var job = new ReservationHoldExpirationJob(reservationDao, Clock.fixed(NOW, ZoneOffset.UTC));
 
     int expiredCount = job.expireOverdueHolds();
 

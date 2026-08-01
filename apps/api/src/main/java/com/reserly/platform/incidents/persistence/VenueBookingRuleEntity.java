@@ -103,9 +103,7 @@ public class VenueBookingRuleEntity {
   }
 
   @JdbcTypeCode(SqlTypes.JSON)
-  @Column(
-      name = "\"lateCancellationPolicyTextI18n\"",
-      columnDefinition = "jsonb")
+  @Column(name = "\"lateCancellationPolicyTextI18n\"", columnDefinition = "jsonb")
   public LocalizedText getLateCancellationPolicyTextI18n() {
     return lateCancellationPolicyTextI18n;
   }

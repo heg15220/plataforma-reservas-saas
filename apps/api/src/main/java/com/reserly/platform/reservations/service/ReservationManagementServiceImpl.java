@@ -121,7 +121,6 @@ public class ReservationManagementServiceImpl implements ReservationManagementSe
   private VenueBookingRuleService.CancellationRule resolvedCancellationRule(
       ReservationEntity reservation) {
     return bookingRuleService.resolveCancellation(
-        reservation.getVenue().getId(),
-        reservation.getVenue().getCancellationNoticeMinutes());
+        reservation.getVenue().getId(), reservation.getVenue().getCancellationNoticeMinutes());
   }
 }

@@ -11,10 +11,7 @@ public interface AdminVenueService {
   AdminVenueListResponse list();
 
   AdminVenueResponse update(
-      UUID actorUserId,
-      UUID venueId,
-      AdminVenueUpdateRequest request,
-      AdminRequestContext context);
+      UUID actorUserId, UUID venueId, AdminVenueUpdateRequest request, AdminRequestContext context);
 
   /** Suspende un local con motivo obligatorio, sin cambiar su cuenta propietaria. */
   AdminVenueResponse suspend(

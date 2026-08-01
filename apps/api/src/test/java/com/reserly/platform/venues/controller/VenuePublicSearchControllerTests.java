@@ -6,7 +6,9 @@ import static org.mockito.Mockito.when;
 
 import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.venues.dto.VenueSearchResponse;
+import com.reserly.platform.venues.dto.VenueSearchSuggestionsResponse;
 import com.reserly.platform.venues.service.VenuePublicSearchService;
+import com.reserly.platform.venues.service.VenueSearchSuggestionService;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,12 +21,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class VenuePublicSearchControllerTests {
 
   @Mock private VenuePublicSearchService service;
+  @Mock private VenueSearchSuggestionService suggestionService;
 
   private VenuePublicSearchControllerImpl controller;
 
   @BeforeEach
   void setUp() {
-    controller = new VenuePublicSearchControllerImpl(service);
+    controller = new VenuePublicSearchControllerImpl(service, suggestionService);
   }
 
   @Test
@@ -86,6 +89,19 @@ class VenuePublicSearchControllerTests {
 
     verify(service).search(SupportedLocale.ES, null, null, null, null, null, null, null, 0, 20);
     verify(service).search(SupportedLocale.EN, null, null, null, null, null, null, null, 0, 20);
+  }
+
+  @Test
+  void delegatesBoundedSuggestionsAndPublishesShortCacheHeader() {
+    VenueSearchSuggestionsResponse response = new VenueSearchSuggestionsResponse("es", List.of());
+    when(suggestionService.suggest(SupportedLocale.ES, "location", "mad", 8)).thenReturn(response);
+
+    var result = controller.suggestions("es", "location", "mad", 8, "en-US");
+
+    assertThat(result.getBody()).isSameAs(response);
+    assertThat(result.getHeaders().getCacheControl())
+        .isEqualTo("public, max-age=30, stale-while-revalidate=120");
+    verify(suggestionService).suggest(SupportedLocale.ES, "location", "mad", 8);
   }
 
   private static VenueSearchResponse response(String locale) {

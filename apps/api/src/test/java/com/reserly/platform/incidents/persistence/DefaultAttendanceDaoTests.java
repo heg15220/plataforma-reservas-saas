@@ -12,8 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 class DefaultAttendanceDaoTests {
 
   @Test
-  void updateIsNativeAtomicIdempotentAndUsesConfiguredGracePeriod()
-      throws NoSuchMethodException {
+  void updateIsNativeAtomicIdempotentAndUsesConfiguredGracePeriod() throws NoSuchMethodException {
     var method =
         ReservationDao.class.getMethod(
             "markUnresolvedFinishedReservationsAttended", Instant.class, String.class);

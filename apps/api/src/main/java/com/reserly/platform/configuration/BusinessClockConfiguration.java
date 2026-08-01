@@ -22,8 +22,7 @@ public class BusinessClockConfiguration {
    * @throws IllegalStateException si la zona configurada no es una zona IANA válida
    */
   @Bean
-  Clock businessClock(
-      @Value("${reserly.business-clock.zone-id:Europe/Madrid}") String zoneId) {
+  Clock businessClock(@Value("${reserly.business-clock.zone-id:Europe/Madrid}") String zoneId) {
     try {
       return Clock.system(ZoneId.of(zoneId));
     } catch (DateTimeException exception) {

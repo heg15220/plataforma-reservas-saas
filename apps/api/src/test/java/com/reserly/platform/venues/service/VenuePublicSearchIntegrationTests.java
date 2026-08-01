@@ -34,6 +34,7 @@ class VenuePublicSearchIntegrationTests {
   @Autowired private VenueProfileService venueProfileService;
   @Autowired private VenuePublicationService venuePublicationService;
   @Autowired private VenuePublicSearchService searchService;
+  @Autowired private VenueSearchSuggestionService suggestionService;
   @Autowired private EntityManager entityManager;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -146,6 +147,9 @@ class VenuePublicSearchIntegrationTests {
     var byAvailabilitySort =
         searchService.search(
             SupportedLocale.ES, null, null, null, null, null, null, "availability", 0, 20);
+    var querySuggestions = suggestionService.suggest(SupportedLocale.ES, "query", "cafe", 8);
+    var locationSuggestions =
+        suggestionService.suggest(SupportedLocale.ES, "location", "xativa", 8);
 
     assertThat(byName.results()).extracting("name").containsExactly("Café Central");
     assertThat(byKeyword.results()).extracting("name").containsExactly("Pista Norte");
@@ -169,6 +173,13 @@ class VenuePublicSearchIntegrationTests {
     assertThat(byAvailabilitySort.results())
         .extracting("bookingAvailable")
         .containsExactly(true, false);
+    assertThat(querySuggestions.suggestions()).extracting("label").containsExactly("Café Central");
+    assertThat(locationSuggestions.suggestions())
+        .extracting("label")
+        .containsExactly("Carrer de Xàtiva, 5");
+    assertThat(locationSuggestions.suggestions())
+        .extracting("context")
+        .containsExactly("Dirección");
   }
 
   private VenueEntity createPublishableVenue(

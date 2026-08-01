@@ -25,17 +25,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.access.ExceptionTranslationFilter;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.access.intercept.RequestMatcherDelegatingAuthorizationManager;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,9 +44,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 /**
  * Verifica la frontera HTTP del panel sin arrancar infraestructura ni una base de datos.
  *
- * <p>La cadena focalizada reproduce la regla central de {@code SecurityConfiguration}: todo
- * {@code /api/venue/me/**} exige {@code ROLE_VENUE_OWNER}. Las pruebas de servicio y DAO verifican
- * por separado que ese propietario se aplica a cada consulta.
+ * <p>La cadena focalizada reproduce la regla central de {@code SecurityConfiguration}: todo {@code
+ * /api/venue/me/**} exige {@code ROLE_VENUE_OWNER}. Las pruebas de servicio y DAO verifican por
+ * separado que ese propietario se aplica a cada consulta.
  */
 @ExtendWith(MockitoExtension.class)
 class VenueReservationPermissionTests {
@@ -60,8 +60,7 @@ class VenueReservationPermissionTests {
   @BeforeEach
   void setUp() {
     var controller =
-        new VenueReservationControllerImpl(
-            reservationService, new VenueReservationConverter());
+        new VenueReservationControllerImpl(reservationService, new VenueReservationConverter());
     mockMvc =
         MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new VenueReservationExceptionHandler())
@@ -88,8 +87,7 @@ class VenueReservationPermissionTests {
   void authorizesVenueOwnerAndUsesOnlyPrincipalIdentityForList() throws Exception {
     AuthenticatedAccount principal = principal("venue_owner");
     LocalDate date = LocalDate.of(2026, 7, 24);
-    when(reservationService.list(
-            principal.userId(), "day", date, null, "confirmed", "ana", 0, 25))
+    when(reservationService.list(principal.userId(), "day", date, null, "confirmed", "ana", 0, 25))
         .thenReturn(Page.empty());
 
     mockMvc
@@ -131,8 +129,7 @@ class VenueReservationPermissionTests {
                 PathPatternRequestMatcher.pathPattern("/api/venue/me/**"),
                 AuthorityAuthorizationManager.hasRole("VENUE_OWNER"))
             .build();
-    var exceptionTranslation =
-        new ExceptionTranslationFilter(new RestAuthenticationEntryPoint());
+    var exceptionTranslation = new ExceptionTranslationFilter(new RestAuthenticationEntryPoint());
     exceptionTranslation.setAccessDeniedHandler(new RestAccessDeniedHandler());
     var chain =
         new DefaultSecurityFilterChain(

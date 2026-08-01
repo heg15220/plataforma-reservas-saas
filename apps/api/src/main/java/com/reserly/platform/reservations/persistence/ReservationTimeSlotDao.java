@@ -32,6 +32,5 @@ public interface ReservationTimeSlotDao extends Repository<TimeSlotEntity, UUID>
       select slot from TimeSlotEntity slot
       where slot.id = :timeSlotId
       """)
-  Optional<TimeSlotEntity> findByIdForUpdate(
-      @Param("timeSlotId") UUID timeSlotId);
+  Optional<TimeSlotEntity> findByIdForUpdate(@Param("timeSlotId") UUID timeSlotId);
 }

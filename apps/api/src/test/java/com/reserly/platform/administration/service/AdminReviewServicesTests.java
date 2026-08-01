@@ -109,7 +109,8 @@ class AdminReviewServicesTests {
                 fixedClock())
             .listPending();
 
-    assertThat(response.accounts()).singleElement()
+    assertThat(response.accounts())
+        .singleElement()
         .satisfies(item -> assertThat(item.ownerEmail()).isEqualTo("owner@example.com"));
   }
 
@@ -118,8 +119,7 @@ class AdminReviewServicesTests {
     category.setId(UUID.randomUUID());
     category.setName("Categoría");
     category.setNameI18n(
-        LocalizedText.fromLanguageTagValues(
-            "es", Map.of("es", "Categoría", "en", "Category")));
+        LocalizedText.fromLanguageTagValues("es", Map.of("es", "Categoría", "en", "Category")));
     VenueEntity venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
     venue.setName("Local");

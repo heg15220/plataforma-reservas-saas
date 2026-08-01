@@ -10,5 +10,4 @@ import jakarta.validation.constraints.Size;
  *     ambigua
  * @param notes contexto profesional opcional, almacenado como texto plano
  */
-public record NoShowReportRequest(
-    @AssertTrue boolean confirmed, @Size(max = 2000) String notes) {}
+public record NoShowReportRequest(@AssertTrue boolean confirmed, @Size(max = 2000) String notes) {}

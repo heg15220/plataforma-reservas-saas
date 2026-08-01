@@ -16,11 +16,7 @@ class ReservationBaseFieldCatalogTests {
     assertThat(fields)
         .extracting(ReservationBaseFieldDefinition::key)
         .containsExactly(
-            "customer_name",
-            "customer_email",
-            "party_size",
-            "reservation_date",
-            "time_slot");
+            "customer_name", "customer_email", "party_size", "reservation_date", "time_slot");
     assertThat(fields)
         .extracting(ReservationBaseFieldDefinition::inputType)
         .containsExactly("short_text", "email", "number", "date", "time_slot");
@@ -32,10 +28,13 @@ class ReservationBaseFieldCatalogTests {
   void keepsKeysLabelsAndPositionsUnique() {
     var fields = ReservationBaseFieldCatalog.fields();
 
-    assertThat(fields).extracting(ReservationBaseFieldDefinition::position).containsExactly(0, 1, 2, 3, 4);
+    assertThat(fields)
+        .extracting(ReservationBaseFieldDefinition::position)
+        .containsExactly(0, 1, 2, 3, 4);
     assertThat(new HashSet<>(fields.stream().map(ReservationBaseFieldDefinition::key).toList()))
         .hasSameSizeAs(fields);
-    assertThat(new HashSet<>(fields.stream().map(ReservationBaseFieldDefinition::labelKey).toList()))
+    assertThat(
+            new HashSet<>(fields.stream().map(ReservationBaseFieldDefinition::labelKey).toList()))
         .hasSameSizeAs(fields);
   }
 
@@ -55,8 +54,7 @@ class ReservationBaseFieldCatalogTests {
     assertThatThrownBy(
             () -> new ReservationBaseFieldDefinition("", "short_text", "reservation.form.name", 0))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(
-            () -> new ReservationBaseFieldDefinition("name", "short_text", "", 0))
+    assertThatThrownBy(() -> new ReservationBaseFieldDefinition("name", "short_text", "", 0))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->

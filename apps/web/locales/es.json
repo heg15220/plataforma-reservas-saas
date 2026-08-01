@@ -187,6 +187,11 @@
       "queryPlaceholder": "Nombre, servicio o categoría"
     }
   },
+  "SearchSuggestions": {
+    "loading": "Buscando sugerencias…",
+    "minimumCharacters": "Escribe al menos dos caracteres",
+    "noOptions": "No hay sugerencias coincidentes"
+  },
   "Layout": {
     "public": {
       "localAccess": "Acceso local",

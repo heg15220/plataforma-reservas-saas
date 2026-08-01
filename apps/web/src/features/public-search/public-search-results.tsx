@@ -7,12 +7,11 @@ import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
-import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { Filter, MapPin, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { Filter, MapPin, SlidersHorizontal, Star, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -22,29 +21,21 @@ import { StatusChip, type StatusTone } from "@/components/visual";
 import { visualTokens } from "@/theme/visual-tokens";
 
 import {
+  type PublicSearchCategory,
   type PublicVenueSearchFilters,
   type PublicVenueSearchItem,
   type PublicVenueSearchResponse,
   resolveSearchImageUrl,
   searchSortOptions,
 } from "./public-search-api";
+import { PublicSearchAutocomplete } from "./public-search-autocomplete";
 
 const EXPLORE_PATH = "/explorar";
 const VENUE_PATH_PREFIX = "/locales/";
 const REGISTRATION_PATH = "/locales/registro";
 
-const categoryOptions = [
-  "restaurante",
-  "peluqueria",
-  "campo-de-futbol",
-  "pista-de-padel",
-  "instalacion-municipal",
-  "centro-deportivo",
-  "centro-de-estetica",
-  "otros",
-] as const;
-
 export interface PublicSearchResultsViewProps {
+  categories?: PublicSearchCategory[];
   discoverySections?: PublicSearchDiscoverySections;
   filters: PublicVenueSearchFilters;
   response: PublicVenueSearchResponse;
@@ -58,6 +49,7 @@ export interface PublicSearchDiscoverySections {
 
 /** Pantalla pública de resultados con tarjetas y filtros soportados por el endpoint actual. */
 export function PublicSearchResultsView({
+  categories = [],
   discoverySections,
   filters,
   response,
@@ -88,12 +80,12 @@ export function PublicSearchResultsView({
             }}
           >
             <Box sx={{ display: { xs: "none", lg: "block" } }}>
-              <SearchFilters filters={filters} mode="desktop" />
+              <SearchFilters categories={categories} filters={filters} mode="desktop" />
             </Box>
 
             <Stack spacing={3}>
               <Box sx={{ display: { xs: "block", lg: "none" } }}>
-                <SearchFilters filters={filters} mode="mobile" />
+                <SearchFilters categories={categories} filters={filters} mode="mobile" />
               </Box>
 
               {response.results.length === 0 ? (
@@ -256,17 +248,19 @@ function CompactVenueLink({ venue }: { venue: PublicVenueSearchItem }) {
 }
 
 function SearchFilters({
+  categories,
   filters,
   mode,
 }: {
+  categories: PublicSearchCategory[];
   filters: PublicVenueSearchFilters;
   mode: "desktop" | "mobile";
 }) {
   const t = useTranslations("PublicSearch");
-  const content = <SearchFilterFields filters={filters} />;
+  const content = <SearchFilterFields categories={categories} filters={filters} />;
 
   if (mode === "mobile") {
-    return <MobileSearchFilters filters={filters} />;
+    return <MobileSearchFilters categories={categories} filters={filters} />;
   }
 
   return (
@@ -288,7 +282,13 @@ function SearchFilters({
  * Abre los filtros en un diálogo táctil sin duplicar el formulario en el flujo móvil.
  * Los valores activos proceden de la URL y el submit conserva el contrato GET de búsqueda.
  */
-function MobileSearchFilters({ filters }: { filters: PublicVenueSearchFilters }) {
+function MobileSearchFilters({
+  categories,
+  filters,
+}: {
+  categories: PublicSearchCategory[];
+  filters: PublicVenueSearchFilters;
+}) {
   const t = useTranslations("PublicSearch");
   const [open, setOpen] = useState(false);
   const activeCount = [
@@ -353,14 +353,20 @@ function MobileSearchFilters({ filters }: { filters: PublicVenueSearchFilters })
           </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ py: 4 }}>
-          <SearchFilterFields filters={filters} />
+          <SearchFilterFields categories={categories} filters={filters} />
         </DialogContent>
       </Dialog>
     </>
   );
 }
 
-function SearchFilterFields({ filters }: { filters: PublicVenueSearchFilters }) {
+function SearchFilterFields({
+  categories,
+  filters,
+}: {
+  categories: PublicSearchCategory[];
+  filters: PublicVenueSearchFilters;
+}) {
   const t = useTranslations("PublicSearch");
 
   return (
@@ -372,37 +378,21 @@ function SearchFilterFields({ filters }: { filters: PublicVenueSearchFilters }) 
       aria-label={t("filters.ariaLabel")}
     >
       <Stack spacing={3}>
-        <TextField
-          fullWidth
+        <PublicSearchAutocomplete
+          ariaLabel={t("filters.queryLabel")}
+          defaultValue={filters.q}
+          kind="query"
           label={t("filters.queryLabel")}
           name="q"
-          defaultValue={filters.q ?? ""}
           placeholder={t("filters.queryPlaceholder")}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search aria-hidden="true" size={18} strokeWidth={1.9} />
-                </InputAdornment>
-              ),
-            },
-          }}
         />
-        <TextField
-          fullWidth
+        <PublicSearchAutocomplete
+          ariaLabel={t("filters.locationLabel")}
+          defaultValue={filters.location}
+          kind="location"
           label={t("filters.locationLabel")}
           name="location"
-          defaultValue={filters.location ?? ""}
           placeholder={t("filters.locationPlaceholder")}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <MapPin aria-hidden="true" size={18} strokeWidth={1.9} />
-                </InputAdornment>
-              ),
-            },
-          }}
         />
         <TextField
           select
@@ -412,9 +402,13 @@ function SearchFilterFields({ filters }: { filters: PublicVenueSearchFilters }) 
           defaultValue={filters.category ?? ""}
         >
           <MenuItem value="">{t("filters.anyCategory")}</MenuItem>
-          {categoryOptions.map((category) => (
-            <MenuItem key={category} value={category}>
-              {t(`categories.${category}`)}
+          {filters.category &&
+          !categories.some((category) => category.slug === filters.category) ? (
+            <MenuItem value={filters.category}>{filters.category}</MenuItem>
+          ) : null}
+          {categories.map((category) => (
+            <MenuItem key={category.id} value={category.slug}>
+              {category.name}
             </MenuItem>
           ))}
         </TextField>

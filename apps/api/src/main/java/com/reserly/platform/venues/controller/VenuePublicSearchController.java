@@ -1,6 +1,7 @@
 package com.reserly.platform.venues.controller;
 
 import com.reserly.platform.venues.dto.VenueSearchResponse;
+import com.reserly.platform.venues.dto.VenueSearchSuggestionsResponse;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,5 +32,14 @@ public interface VenuePublicSearchController {
       @RequestParam(name = "sort", required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
+      @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);
+
+  /** Devuelve sugerencias públicas acotadas para texto o ubicación sin ejecutar el listado. */
+  @GetMapping("/suggestions")
+  ResponseEntity<VenueSearchSuggestionsResponse> suggestions(
+      @RequestParam(required = false) String locale,
+      @RequestParam(defaultValue = "query") String kind,
+      @RequestParam String term,
+      @RequestParam(defaultValue = "8") int limit,
       @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);
 }

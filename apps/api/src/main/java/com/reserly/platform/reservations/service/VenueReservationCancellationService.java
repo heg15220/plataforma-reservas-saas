@@ -7,9 +7,7 @@ import java.util.UUID;
 /** Caso de uso transaccional de cancelación preventiva iniciada por un propietario. */
 public interface VenueReservationCancellationService {
 
-  /**
-   * Cancela una reserva futura propia, audita el motivo y solicita la notificación post-commit.
-   */
+  /** Cancela una reserva futura propia, audita el motivo y solicita la notificación post-commit. */
   ReservationEntity cancel(
       UUID ownerUserId,
       UUID reservationId,

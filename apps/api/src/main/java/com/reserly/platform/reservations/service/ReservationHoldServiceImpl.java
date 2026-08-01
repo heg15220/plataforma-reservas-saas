@@ -65,8 +65,8 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
   }
 
   /**
-   * Bloquea la franja, descuenta ocupación efectiva y persiste el secreto exclusivamente como
-   * hash. La suma se ejecuta después de adquirir el lock y antes de asignar recursos.
+   * Bloquea la franja, descuenta ocupación efectiva y persiste el secreto exclusivamente como hash.
+   * La suma se ejecuta después de adquirir el lock y antes de asignar recursos.
    */
   @Override
   @Transactional
@@ -117,10 +117,7 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
     ReservationEntity saved = reservationDao.save(reservation);
 
     return new ReservationHoldResponse(
-        saved.getId(),
-        rawToken,
-        expiresAt,
-        expirationPolicy.remainingSeconds(expiresAt, now));
+        saved.getId(), rawToken, expiresAt, expirationPolicy.remainingSeconds(expiresAt, now));
   }
 
   private void validateSlot(ReservationHoldRequest request, TimeSlotEntity slot, Instant now) {

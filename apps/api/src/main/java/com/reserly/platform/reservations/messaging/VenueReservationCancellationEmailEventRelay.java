@@ -46,9 +46,7 @@ public class VenueReservationCancellationEmailEventRelay {
           message);
     } catch (AmqpException | JacksonException exception) {
       LOGGER.error(
-          "No se pudo encolar el aviso de cancelación con eventId={}",
-          event.eventId(),
-          exception);
+          "No se pudo encolar el aviso de cancelación con eventId={}", event.eventId(), exception);
     }
   }
 }

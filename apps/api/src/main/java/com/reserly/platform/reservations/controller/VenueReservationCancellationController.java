@@ -16,9 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 /** Contrato privado de cancelación preventiva por causa operativa. */
 public interface VenueReservationCancellationController {
 
-  /**
-   * Cancela una reserva futura propia. Actor y local se derivan de la sesión autenticada.
-   */
+  /** Cancela una reserva futura propia. Actor y local se derivan de la sesión autenticada. */
   @PostMapping(
       path = "/api/venue/me/reservations/{reservationId}/cancel",
       consumes = MediaType.APPLICATION_JSON_VALUE,

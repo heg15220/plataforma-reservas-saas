@@ -19,6 +19,152 @@ Fuente de verdad del avance:
 - Observación: la fase 15 queda completa con validación responsive bilingüe y del flujo móvil de
   reseñas de la ficha pública.
 
+## Conversación 143 - Sustitución de LET Padel y ampliación de locales demo
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - El fixture local sustituye `LET Padel Ames` por `Brisa Studio` y elimina su slug público.
+  - Se añaden `Campo do Sar`, `Norte Fitness Lab` y `Aura Atlántica`, dejando cuatro locales
+    nuevos en peluquería, campo de fútbol, centro deportivo y centro de estética.
+  - Cada nuevo local recibe una imagen principal y una imagen de galería exclusivas, generadas para
+    esta demostración, además de propietario, verificación, servicio, horario y franjas móviles.
+- Archivos modificados:
+  - `local-demo-venues.sql`, `LocalDemoVenueInitializer.java` y
+    `LocalDemoVenueFixtureContractTests.java`.
+  - Ocho imágenes JPG nuevas bajo `dev-fixtures/images`; se elimina `let-padel-ames.jpg`.
+  - Documentación `.kiro` de seguimiento e implementación.
+- Requisitos impactados: `RF-001`, `RF-002`, `RF-004`, `RF-031`, `RNF-005` y `RNF-007`.
+- Tareas impactadas: corrección de fixtures sobre `2.12`, `3.13` y `15.1`; sin cambios de estado.
+- Tareas completadas: ninguna; `tasks.md` permanece sin cambios.
+- Siguiente tarea pendiente recomendada: `16.1`.
+- Decisiones o aclaraciones relevantes:
+  - Se reutiliza el UUID reservado de LET para que los entornos ya inicializados sustituyan el local
+    en vez de conservarlo duplicado. Los tres restantes usan UUID y slugs nuevos e idempotentes.
+  - Evidencia: ocho imágenes verificadas estructuralmente y `git diff --check` limpio en el alcance.
+    Maven corrigió el único formato detectado, pero su repetición focalizada agotó 60 segundos sin
+    resultado y no se prolongó por el límite solicitado.
+
+## Conversación 142 - Sugerencias públicas rápidas basadas en datos existentes
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Los campos de texto y ubicación de inicio, filtros de escritorio y modal móvil incorporan
+    autocompletado remoto con coincidencias de locales publicados existentes.
+  - Se añadió un endpoint específico de sugerencias que evita ejecutar el listado paginado y su
+    conteo en cada pulsación, limita estrictamente entrada y salida y devuelve proyecciones mínimas.
+  - La migración V35 crea una función inmutable de normalización y dos índices GIN trigram
+    parciales para texto y ubicación de locales publicados.
+  - El cliente aplica debounce de 160 ms, cancelación de solicitudes obsoletas, caché breve
+    acotada y un mínimo de dos caracteres; el endpoint añade caché HTTP reutilizable.
+  - El filtro de categoría deja de depender de slugs hardcodeados y carga el catálogo activo del
+    sistema con revalidación del servidor.
+- Archivos modificados:
+  - Backend de `venues`: controlador público, `VenueDao`, DTOs, proyección y servicio de
+    sugerencias.
+  - Migración `V35__add_public_search_suggestion_indexes.sql`.
+  - Tests focalizados de controlador, servicio, búsqueda integrada y migraciones.
+  - Frontend: `public-search-api`, `public-search-autocomplete`, `public-search-results`, inicio,
+    explorar, catálogos `es`/`en` y sus tests focalizados.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md` y
+    `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-001 Búsqueda por texto`, `RF-002 Filtros de búsqueda`, `RF-031 Internacionalización`,
+    `RNF-002 Seguridad y privacidad`, `RNF-004 Escalabilidad`, `RNF-005 Rendimiento` y
+    `RNF-007 Usabilidad`.
+- Tareas impactadas:
+  - Corrección evolutiva sobre `3.1`, `3.2`, `3.3`, `3.4`, `3.5`, `3.6`, `3.9`, `3.10` y
+    `3.11`; no modifica sus estados ni completa una tarea nueva.
+- Tareas completadas:
+  - Ninguna; `tasks.md` permanece sin cambios.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Solo se sugieren datos procedentes de locales con estado `published`; no se exponen borradores,
+    propietarios, emails ni otra información privada.
+  - Nombre/descripción se buscan en un documento indexado; ubicación proyecta valores distintos
+    de ciudad, provincia, dirección y código postal desde un máximo de 128 locales coincidentes.
+  - El backend limita el término a 80 caracteres y la respuesta a 10 elementos. El cliente solicita
+    8, conserva escritura libre y mantiene el contrato GET del formulario.
+  - Evidencia automatizada final disponible: backend 6/6 tests y frontend 7/7 tests entre API y
+    componente de autocompletado. Tres casos no afectados de resultados pasaron durante el primer
+    diagnóstico; los dos casos ajustados no terminaron una repetición posterior antes del límite.
+  - La suite de integración PostGIS y la inspección visual con Next se detuvieron en sus límites
+    de 120 y 30 segundos respectivamente, sin diagnóstico funcional. No se ampliaron ni se
+    ejecutaron suites globales.
+  - Checkstyle global sigue bloqueado por 26 incidencias previas ajenas en plantillas de correo e
+    imports. Spotless verificó los archivos, pero también produjo cambios mecánicos accidentales
+    fuera del alcance; su retirada queda pendiente de autorización explícita por la protección del
+    entorno.
+
+## Conversación 141 - Rectificación verificada del foco en campos MUI
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se reprodujo de nuevo el defecto con una instancia limpia de Next y se confirmó visualmente que
+    el primer arreglo no eliminaba el segundo marco azul.
+  - El estilo calculado seguía mostrando el `outline` global sobre el `<input>` de
+    `MuiOutlinedInput`: el override de `MuiInputBase` no alcanzaba el slot especializado que MUI
+    genera para esa variante.
+  - Se retiró el override ineficaz del tema y se añadió después de la regla global un selector
+    `.MuiInputBase-input:focus-visible` con mayor especificidad.
+  - Las capturas posteriores muestran un único borde azul alineado en acceso, correo de registro y
+    dirección registral multilínea. La casilla legal seleccionada conserva su representación.
+- Archivos modificados:
+  - `apps/web/src/app/globals.css`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`, `RF-008 Acceso y panel privado del local` y `RNF-007 Usabilidad`.
+- Tareas impactadas:
+  - Rectificación posterior sobre `0.8`, `1.18`, `1.19` y `15.8`; no modifica checkboxes.
+- Tareas completadas:
+  - Ninguna; `tasks.md` permanece sin cambios.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La solución se ubica junto a `*:focus-visible` para que la excepción y su motivo sean visibles y
+    su precedencia CSS resulte inequívoca. Se usa una clase pública y estable de MUI.
+  - Antes del arreglo, la captura y los estilos computados demostraron que el `<input>` mantenía un
+    outline azul de 2,4 px con offset de 2,4 px. Después, las capturas de acceso y registro muestran
+    solo el `fieldset` enfocado, alineado con el control completo.
+  - La API de navegador disponible no aceptó los tres métodos documentados recordados para cambiar
+    el viewport; no se intentó manipular el navegador por vías alternativas. La validación visual
+    efectiva se realizó en escritorio sobre campos de una línea, multilínea y checkbox.
+
+## Conversación 140 - Alineación del indicador de foco en formularios
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se corrigió el doble contorno azul que aparecía al enfocar campos MUI en inicio de sesión,
+    registro y el resto de formularios compartidos.
+  - La causa era la combinación del borde de foco de `MuiOutlinedInput` con la regla global
+    `*:focus-visible`, aplicada también al `<input>` interior de menor altura.
+  - `MuiInputBase` elimina únicamente el contorno duplicado del nodo interior. El contenedor MUI
+    conserva su borde azul alineado y la regla global continúa protegiendo enlaces, botones y
+    controles no gestionados por MUI.
+- Archivos modificados:
+  - `apps/web/src/theme/base-theme.ts`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`, `RF-008 Acceso y panel privado del local` y `RNF-007 Usabilidad`.
+- Tareas impactadas:
+  - Corrección posterior sobre `0.8`, `1.18`, `1.19` y `15.8`; no cambia sus estados ni completa una
+    tarea nueva.
+- Tareas completadas:
+  - Ninguna; `tasks.md` permanece sin cambios.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La reproducción en `/locales/acceso` midió un campo exterior de 48 px y un `<input>` interior de
+    33 px que recibía un contorno azul propio, confirmando el desplazamiento visual.
+  - Tras la recarga en caliente, dos intentos de comprobación final del navegador agotaron su tiempo
+    de navegación y no se reiteraron. Prettier focalizado terminó correctamente; ESLint focalizado
+    alcanzó el límite de 60 s sin diagnóstico y se detuvo. La suite focalizada del sistema de diseño
+    tampoco inició casos antes de su límite de 45 s. `git diff --check` queda limpio.
+  - Esta implementación quedó sustituida por la conversación 141 al comprobarse que
+    `MuiOutlinedInput` no heredaba el override de slot propuesto en `MuiInputBase`.
+
 ## Conversación 139 - Ficha pública móvil bilingüe, pestañas personalizadas y reseñas
 
 - Fecha: 2026-08-01.

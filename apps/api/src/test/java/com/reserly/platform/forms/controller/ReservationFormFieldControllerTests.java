@@ -63,8 +63,7 @@ class ReservationFormFieldControllerTests {
   @Test
   void managesLocalizedFieldsAndPublicationUsingAuthenticatedOwner() {
     ReservationFormLocalizedTextDto label =
-        new ReservationFormLocalizedTextDto(
-            "es", Map.of("es", "Preferencia", "en", "Preference"));
+        new ReservationFormLocalizedTextDto("es", Map.of("es", "Preferencia", "en", "Preference"));
     ReservationFormFieldRequest request =
         new ReservationFormFieldRequest(
             label,
@@ -72,8 +71,7 @@ class ReservationFormFieldControllerTests {
             "select",
             true,
             List.of(
-                new ReservationFormLocalizedTextDto(
-                    "es", Map.of("es", "Interior", "en", "Inside")),
+                new ReservationFormLocalizedTextDto("es", Map.of("es", "Interior", "en", "Inside")),
                 new ReservationFormLocalizedTextDto(
                     "es", Map.of("es", "Terraza", "en", "Terrace"))));
     ReservationFormFieldEntity field = field();
@@ -152,19 +150,12 @@ class ReservationFormFieldControllerTests {
     field.setLabelI18n(
         new LocalizedText(
             SupportedLocale.ES,
-            Map.of(
-                SupportedLocale.ES,
-                "Preferencia",
-                SupportedLocale.EN,
-                "Preference")));
+            Map.of(SupportedLocale.ES, "Preferencia", SupportedLocale.EN, "Preference")));
     field.setKey("preference");
     field.setType(ReservationFormFieldType.SELECT);
     field.setRequired(true);
     field.setOptions(List.of("Interior", "Terraza"));
-    field.setOptionsI18n(
-        List.of(
-            localized("Interior", "Inside"),
-            localized("Terraza", "Terrace")));
+    field.setOptionsI18n(List.of(localized("Interior", "Inside"), localized("Terraza", "Terrace")));
     field.setPosition(0);
     field.setActive(true);
     field.setCreatedAt(now);

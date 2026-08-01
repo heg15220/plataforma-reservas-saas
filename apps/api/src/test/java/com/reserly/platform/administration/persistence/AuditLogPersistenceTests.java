@@ -28,19 +28,10 @@ class AuditLogPersistenceTests {
 
   @Test
   void entityMapsUpperCamelTableAndLowerCamelColumns() throws Exception {
-    assertThat(AuditLogEntity.class.getAnnotation(Table.class).name())
-        .isEqualTo("\"AuditLogs\"");
-    assertThat(
-            AuditLogEntity.class
-                .getMethod("getActorUserId")
-                .getAnnotation(Column.class)
-                .name())
+    assertThat(AuditLogEntity.class.getAnnotation(Table.class).name()).isEqualTo("\"AuditLogs\"");
+    assertThat(AuditLogEntity.class.getMethod("getActorUserId").getAnnotation(Column.class).name())
         .isEqualTo("\"actorUserId\"");
-    assertThat(
-            AuditLogEntity.class
-                .getMethod("getAfterJson")
-                .getAnnotation(Column.class)
-                .name())
+    assertThat(AuditLogEntity.class.getMethod("getAfterJson").getAnnotation(Column.class).name())
         .isEqualTo("\"afterJson\"");
   }
 

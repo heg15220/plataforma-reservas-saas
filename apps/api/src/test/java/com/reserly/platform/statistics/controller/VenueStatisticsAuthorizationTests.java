@@ -26,8 +26,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.FilterChainProxy;
@@ -79,8 +79,7 @@ class VenueStatisticsAuthorizationTests {
   @Test
   void permitsVenueOwnerAndUsesPrincipalIdentity() throws Exception {
     AuthenticatedAccount principal = principal(AccountType.VENUE_BUSINESS);
-    when(service.findOwned(principal.userId(), "month", null, null))
-        .thenReturn(emptyResponse());
+    when(service.findOwned(principal.userId(), "month", null, null)).thenReturn(emptyResponse());
 
     mockMvc
         .perform(
@@ -122,8 +121,7 @@ class VenueStatisticsAuthorizationTests {
                 AnyRequestMatcher.INSTANCE,
                 (authentication, context) -> new AuthorizationDecision(true))
             .build();
-    var exceptionTranslation =
-        new ExceptionTranslationFilter(new RestAuthenticationEntryPoint());
+    var exceptionTranslation = new ExceptionTranslationFilter(new RestAuthenticationEntryPoint());
     exceptionTranslation.setAccessDeniedHandler(new RestAccessDeniedHandler());
     var chain =
         new DefaultSecurityFilterChain(

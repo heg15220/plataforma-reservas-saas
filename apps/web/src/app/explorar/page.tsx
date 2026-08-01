@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import {
+  fetchPublicSearchCategories,
   type PublicVenueSearchFilters,
   searchPublicVenues,
   searchSortOptions,
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const locale = await getLocale();
   const filters = normalizeSearchParams(await searchParams);
-  const [response, recommended, featured, nearby] = await Promise.all([
+  const [response, recommended, featured, nearby, categories] = await Promise.all([
     searchPublicVenues(locale, filters),
     searchPublicVenues(locale, { size: 3, sort: "availability" }),
     searchPublicVenues(locale, { size: 3, sort: "rating" }),
@@ -34,6 +35,7 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
       size: 3,
       sort: filters.location ? "newest" : "availability",
     }),
+    fetchPublicSearchCategories(locale).catch(() => []),
   ]);
 
   return (
@@ -43,6 +45,7 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
         nearby: nearby.results,
         recommended: recommended.results,
       }}
+      categories={categories}
       filters={filters}
       response={response}
     />

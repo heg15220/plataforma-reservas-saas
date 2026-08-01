@@ -37,6 +37,5 @@ public interface PaymentDao extends JpaRepository<PaymentEntity, UUID> {
       where payment.venueId = :venueId
       order by payment.createdAt desc, payment.id desc
       """)
-  List<PaymentEntity> findHistoryByVenueId(
-      @Param("venueId") UUID venueId, Pageable pageable);
+  List<PaymentEntity> findHistoryByVenueId(@Param("venueId") UUID venueId, Pageable pageable);
 }

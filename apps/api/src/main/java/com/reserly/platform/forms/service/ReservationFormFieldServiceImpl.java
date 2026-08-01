@@ -47,8 +47,7 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
 
   @Override
   @Transactional
-  public ReservationFormFieldEntity create(
-      UUID ownerUserId, ReservationFormFieldCommand command) {
+  public ReservationFormFieldEntity create(UUID ownerUserId, ReservationFormFieldCommand command) {
     VenueEntity venue = requireVenue(ownerUserId, true);
     int lastPosition = fieldDao.findLastActivePosition(venue.getId());
     if (lastPosition == Integer.MAX_VALUE) {
@@ -201,8 +200,7 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
     return value.values().get(value.sourceLocale());
   }
 
-  private void validateCompleteOrder(
-      List<ReservationFormFieldEntity> fields, List<UUID> fieldIds) {
+  private void validateCompleteOrder(List<ReservationFormFieldEntity> fields, List<UUID> fieldIds) {
     if (fieldIds == null
         || fieldIds.size() != fields.size()
         || fieldIds.stream().anyMatch(id -> id == null)) {
@@ -234,7 +232,9 @@ public class ReservationFormFieldServiceImpl implements ReservationFormFieldServ
         .orElseThrow(ReservationFormFieldNotFoundException::new);
   }
 
-  /** Cualquier cambio exige una nueva decisión editorial para evitar publicar un snapshot obsoleto. */
+  /**
+   * Cualquier cambio exige una nueva decisión editorial para evitar publicar un snapshot obsoleto.
+   */
   private void invalidatePublication(VenueEntity venue) {
     venue.setReservationFormPublished(false);
     venue.setReservationFormFallbackApproved(false);

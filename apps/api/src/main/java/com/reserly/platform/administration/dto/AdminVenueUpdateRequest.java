@@ -7,9 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
-/**
- * Edición administrativa básica; excluye estado, propiedad, slug y contenido editorial.
- */
+/** Edición administrativa básica; excluye estado, propiedad, slug y contenido editorial. */
 public record AdminVenueUpdateRequest(
     @NotBlank @Size(max = 160) String name,
     @NotNull UUID categoryId,

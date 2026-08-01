@@ -34,8 +34,7 @@ class StatsDailyVenueAggregationContractTests {
   }
 
   @Test
-  void ownedRangeAggregationIsBoundedAndCreatesZeroActivityDays()
-      throws NoSuchMethodException {
+  void ownedRangeAggregationIsBoundedAndCreatesZeroActivityDays() throws NoSuchMethodException {
     Method method =
         StatsDailyVenueDao.class.getMethod(
             "aggregateVenueRange",

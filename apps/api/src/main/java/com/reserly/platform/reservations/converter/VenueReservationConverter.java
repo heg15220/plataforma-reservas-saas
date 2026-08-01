@@ -1,7 +1,7 @@
 package com.reserly.platform.reservations.converter;
 
-import com.reserly.platform.reservations.dto.VenueReservationDetailResponse;
 import com.reserly.platform.reservations.dto.VenueReservationAssignedResourceResponse;
+import com.reserly.platform.reservations.dto.VenueReservationDetailResponse;
 import com.reserly.platform.reservations.dto.VenueReservationFormAnswerResponse;
 import com.reserly.platform.reservations.dto.VenueReservationIncidentHistoryResponse;
 import com.reserly.platform.reservations.dto.VenueReservationIncidentResponse;
@@ -48,9 +48,7 @@ public class VenueReservationConverter {
             .map(
                 incident ->
                     new VenueReservationIncidentResponse(
-                        incident.getIncidentType(),
-                        incident.getReportedAt(),
-                        incident.getStatus()))
+                        incident.getIncidentType(), incident.getReportedAt(), incident.getStatus()))
             .toList();
     return new VenueReservationDetailResponse(
         reservation.getId(),

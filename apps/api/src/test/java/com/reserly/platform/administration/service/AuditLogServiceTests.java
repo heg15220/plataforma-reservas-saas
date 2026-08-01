@@ -24,8 +24,7 @@ class AuditLogServiceTests {
 
   private final AuditLogDao auditLogDao = mock(AuditLogDao.class);
   private final AuditLogService service =
-      new AuditLogServiceImpl(
-          auditLogDao, Clock.fixed(NOW, ZoneOffset.UTC));
+      new AuditLogServiceImpl(auditLogDao, Clock.fixed(NOW, ZoneOffset.UTC));
 
   @BeforeEach
   void returnSavedAudit() {
@@ -72,8 +71,7 @@ class AuditLogServiceTests {
             null,
             null);
 
-    assertThatThrownBy(() -> service.record(invalid))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> service.record(invalid)).isInstanceOf(IllegalArgumentException.class);
     verifyNoInteractions(auditLogDao);
   }
 }

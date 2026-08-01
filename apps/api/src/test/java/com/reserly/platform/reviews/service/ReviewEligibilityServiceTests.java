@@ -43,8 +43,7 @@ class ReviewEligibilityServiceTests {
             LocalTime.of(14, 0)))
         .thenReturn(true);
 
-    var response =
-        service.check("casa-luz", new ReviewEligibilityRequest(" Guest@Example.COM "));
+    var response = service.check("casa-luz", new ReviewEligibilityRequest(" Guest@Example.COM "));
 
     assertThat(response.eligible()).isTrue();
     assertThat(response.canReview()).isTrue();
@@ -56,8 +55,7 @@ class ReviewEligibilityServiceTests {
 
   @Test
   void returnsOpaqueNotEligibleForMissingVenueOrPastReservation() {
-    var missingVenue =
-        service.check("oculto", new ReviewEligibilityRequest("guest@example.com"));
+    var missingVenue = service.check("oculto", new ReviewEligibilityRequest("guest@example.com"));
 
     assertThat(missingVenue.error()).isEqualTo("REVIEW_NOT_ELIGIBLE");
     verify(reservationDao, never())
@@ -90,8 +88,7 @@ class ReviewEligibilityServiceTests {
             LocalTime.of(14, 0)))
         .thenReturn(true);
 
-    var response =
-        service.check("casa-luz", new ReviewEligibilityRequest("guest@example.com"));
+    var response = service.check("casa-luz", new ReviewEligibilityRequest("guest@example.com"));
 
     assertThat(response.eligible()).isFalse();
     assertThat(response.canReview()).isFalse();

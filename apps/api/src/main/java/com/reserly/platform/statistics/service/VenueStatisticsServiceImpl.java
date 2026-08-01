@@ -32,8 +32,7 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
   private final StatsDailyVenueDao statsDao;
   private final Clock clock;
 
-  public VenueStatisticsServiceImpl(
-      VenueDao venueDao, StatsDailyVenueDao statsDao, Clock clock) {
+  public VenueStatisticsServiceImpl(VenueDao venueDao, StatsDailyVenueDao statsDao, Clock clock) {
     this.venueDao = venueDao;
     this.statsDao = statsDao;
     this.clock = clock;
@@ -148,9 +147,7 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
     BigDecimal weightedSum =
         days.stream()
             .filter(day -> day.getAverageRating() != null && day.getReviewsCount() > 0)
-            .map(
-                day ->
-                    day.getAverageRating().multiply(BigDecimal.valueOf(day.getReviewsCount())))
+            .map(day -> day.getAverageRating().multiply(BigDecimal.valueOf(day.getReviewsCount())))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     return weightedSum.divide(BigDecimal.valueOf(reviews), 2, RoundingMode.HALF_UP);
   }

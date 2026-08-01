@@ -25,8 +25,7 @@ public class ReviewEligibilityServiceImpl implements ReviewEligibilityService {
 
   static final Set<String> ELIGIBLE_STATUSES =
       Set.of("confirmed", "attended", "no_show", "reported");
-  private static final Pattern EMAIL_PATTERN =
-      Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+  private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
   private final VenueDao venueDao;
   private final ReservationDao reservationDao;
@@ -44,8 +43,7 @@ public class ReviewEligibilityServiceImpl implements ReviewEligibilityService {
   public ReviewEligibilityResponse check(String venueSlug, ReviewEligibilityRequest request) {
     validate(venueSlug, request);
     String normalizedEmail = normalizeEmail(request.customerEmail());
-    UUID venueId =
-        venueDao.findPublishedBySlug(venueSlug).map(venue -> venue.getId()).orElse(null);
+    UUID venueId = venueDao.findPublishedBySlug(venueSlug).map(venue -> venue.getId()).orElse(null);
     if (venueId == null) {
       return ReviewEligibilityResponse.notEligible();
     }

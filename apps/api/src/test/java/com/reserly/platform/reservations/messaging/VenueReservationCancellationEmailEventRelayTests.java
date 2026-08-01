@@ -24,9 +24,7 @@ class VenueReservationCancellationEmailEventRelayTests {
   @Test
   void publishesPersistentJsonAfterCommitListenerReceivesEvent() {
     RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
-    var relay =
-        new VenueReservationCancellationEmailEventRelay(
-            rabbitTemplate, new ObjectMapper());
+    var relay = new VenueReservationCancellationEmailEventRelay(rabbitTemplate, new ObjectMapper());
     var event =
         new VenueReservationCancellationEmailRequestedEvent(
             UUID.randomUUID(),

@@ -10,6 +10,8 @@ public interface AdminIncidentService {
   AdminIncidentListResponse list();
 
   AdminIncidentResponse review(
-      UUID actorUserId, UUID incidentId, AdminIncidentReviewRequest request,
+      UUID actorUserId,
+      UUID incidentId,
+      AdminIncidentReviewRequest request,
       AdminRequestContext context);
 }

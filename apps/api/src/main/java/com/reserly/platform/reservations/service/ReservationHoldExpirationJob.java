@@ -20,8 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class ReservationHoldExpirationJob {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ReservationHoldExpirationJob.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ReservationHoldExpirationJob.class);
 
   private final ReservationDao reservationDao;
   private final Clock clock;

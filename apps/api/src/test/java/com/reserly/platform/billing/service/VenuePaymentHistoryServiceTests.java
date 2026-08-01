@@ -42,8 +42,7 @@ class VenuePaymentHistoryServiceTests {
 
     assertThat(response.payments()).hasSize(1);
     assertThat(response.payments().getFirst())
-        .extracting(
-            "orderReference", "amount", "currency", "status", "createdAt", "paidAt")
+        .extracting("orderReference", "amount", "currency", "status", "createdAt", "paidAt")
         .containsExactly(
             "ORDER12345",
             new BigDecimal("29.00"),

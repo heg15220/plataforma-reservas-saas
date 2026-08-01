@@ -48,8 +48,7 @@ class PublicVenueAvailabilityServiceTests {
 
   private PublicVenueAvailabilityServiceImpl service;
   private VenueEntity venue;
-  private final Clock clock =
-      Clock.fixed(Instant.parse("2026-07-31T10:00:00Z"), ZoneOffset.UTC);
+  private final Clock clock = Clock.fixed(Instant.parse("2026-07-31T10:00:00Z"), ZoneOffset.UTC);
 
   @BeforeEach
   void setUp() {
@@ -282,8 +281,7 @@ class PublicVenueAvailabilityServiceTests {
     configuredService.setId(serviceSlot.getServiceId());
     configuredService.setName("Corte");
     configuredService.setNameI18n(
-        LocalizedText.fromLanguageTagValues(
-            "es", Map.of("es", "Corte", "en", "Haircut")));
+        LocalizedText.fromLanguageTagValues("es", Map.of("es", "Corte", "en", "Haircut")));
     when(venueDao.findPublishedBySlug("casa-luz")).thenReturn(Optional.of(venue));
     when(slotDao.findPublishedByVenueIdAndDate(venue.getId(), date))
         .thenReturn(List.of(serviceSlot));

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
@@ -51,6 +51,14 @@ const response: PublicVenueSearchResponse = {
   ],
 };
 
+const categories = [
+  {
+    id: "20000000-0000-4000-8000-000000000001",
+    slug: "restaurante",
+    name: "Restaurante del sistema",
+  },
+];
+
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_APP_ENV", "test");
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080/");
@@ -65,6 +73,7 @@ describe("PublicSearchResultsView", () => {
   it("muestra tarjetas de locales y filtros públicos soportados", () => {
     renderWithIntl(
       <PublicSearchResultsView
+        categories={categories}
         discoverySections={{
           featured: [response.results[1]],
           nearby: [response.results[0]],
@@ -85,6 +94,10 @@ describe("PublicSearchResultsView", () => {
     );
     expect(screen.getByRole("heading", { level: 2, name: "Casa Luz" })).toBeVisible();
     expect(screen.getByText("Disponible")).toBeVisible();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Categoría" }));
+    const systemCategory = screen.getByRole("option", { name: "Restaurante del sistema" });
+    expect(systemCategory).toBeVisible();
+    fireEvent.click(systemCategory);
     expect(screen.getByText("Imagen pendiente")).toBeVisible();
     expect(screen.getAllByRole("link", { name: "Ver local" })[0]).toHaveAttribute(
       "href",
@@ -103,9 +116,10 @@ describe("PublicSearchResultsView", () => {
     expect(screen.getByText("Locales vinculados a Madrid según la búsqueda actual.")).toBeVisible();
   });
 
-  it("abre y cierra un panel modal móvil con los filtros activos", () => {
+  it("abre y cierra un panel modal móvil con los filtros activos", async () => {
     renderWithIntl(
       <PublicSearchResultsView
+        categories={categories}
         filters={{ category: "restaurante", location: "Madrid", q: "cafe" }}
         response={response}
       />,
@@ -122,12 +136,15 @@ describe("PublicSearchResultsView", () => {
     expect(within(dialog).getByLabelText("Ubicación")).toHaveValue("Madrid");
 
     fireEvent.click(screen.getByRole("button", { name: "Cerrar filtros" }));
-    expect(screen.queryByRole("dialog", { name: "Filtrar resultados" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Filtrar resultados" })).not.toBeInTheDocument(),
+    );
   });
 
   it("presenta estado vacío y acción para limpiar filtros", () => {
     renderWithIntl(
       <PublicSearchResultsView
+        categories={categories}
         filters={{ q: "sin resultados" }}
         response={{ ...response, results: [], totalElements: 0, totalPages: 0 }}
       />,
@@ -149,6 +166,7 @@ describe("PublicSearchResultsView", () => {
   it("usa estado vacío genérico cuando no hay texto de búsqueda", () => {
     renderWithIntl(
       <PublicSearchResultsView
+        categories={categories}
         filters={{ category: "restaurante" }}
         response={{ ...response, results: [], totalElements: 0, totalPages: 0 }}
       />,
@@ -163,6 +181,7 @@ describe("PublicSearchResultsView", () => {
   it("muestra el estado vacío de cada carril cuando no hay descubrimiento inicial", () => {
     renderWithIntl(
       <PublicSearchResultsView
+        categories={categories}
         discoverySections={{ featured: [], nearby: [], recommended: [] }}
         filters={{}}
         response={response}

@@ -9,8 +9,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class PublicReservationFormControllerImpl implements PublicReservationFormController {
   private final PublicReservationFormService service;
-  public PublicReservationFormControllerImpl(PublicReservationFormService service) { this.service = service; }
-  @Override public ResponseEntity<PublicReservationFormResponse> find(String slug) {
+
+  public PublicReservationFormControllerImpl(PublicReservationFormService service) {
+    this.service = service;
+  }
+
+  @Override
+  public ResponseEntity<PublicReservationFormResponse> find(String slug) {
     return ResponseEntity.ok(service.findPublishedByVenueSlug(slug));
   }
 }

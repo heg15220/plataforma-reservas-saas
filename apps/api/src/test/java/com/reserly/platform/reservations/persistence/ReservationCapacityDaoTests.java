@@ -11,11 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 class ReservationCapacityDaoTests {
 
   @Test
-  void countsConfirmedLifecycleAndOnlyStrictlyActiveHolds()
-      throws NoSuchMethodException {
-    var method =
-        ReservationDao.class.getMethod(
-            "sumOccupiedCapacity", UUID.class, Instant.class);
+  void countsConfirmedLifecycleAndOnlyStrictlyActiveHolds() throws NoSuchMethodException {
+    var method = ReservationDao.class.getMethod("sumOccupiedCapacity", UUID.class, Instant.class);
     Query query = method.getAnnotation(Query.class);
 
     assertThat(query).isNotNull();
@@ -27,14 +24,10 @@ class ReservationCapacityDaoTests {
   }
 
   @Test
-  void confirmationCapacityExcludesOnlyTheOwnedHold()
-      throws NoSuchMethodException {
+  void confirmationCapacityExcludesOnlyTheOwnedHold() throws NoSuchMethodException {
     var method =
         ReservationDao.class.getMethod(
-            "sumOccupiedCapacityExcluding",
-            UUID.class,
-            UUID.class,
-            Instant.class);
+            "sumOccupiedCapacityExcluding", UUID.class, UUID.class, Instant.class);
     Query query = method.getAnnotation(Query.class);
 
     assertThat(query).isNotNull();

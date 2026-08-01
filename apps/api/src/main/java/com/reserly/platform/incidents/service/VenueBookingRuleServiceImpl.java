@@ -22,8 +22,7 @@ public class VenueBookingRuleServiceImpl implements VenueBookingRuleService {
   private final VenueDao venueDao;
   private final Clock clock;
 
-  public VenueBookingRuleServiceImpl(
-      VenueBookingRuleDao ruleDao, VenueDao venueDao, Clock clock) {
+  public VenueBookingRuleServiceImpl(VenueBookingRuleDao ruleDao, VenueDao venueDao, Clock clock) {
     this.ruleDao = ruleDao;
     this.venueDao = venueDao;
     this.clock = clock;
@@ -45,8 +44,7 @@ public class VenueBookingRuleServiceImpl implements VenueBookingRuleService {
 
   @Override
   @Transactional
-  public VenueBookingRuleEntity update(
-      UUID ownerUserId, VenueBookingRuleUpdateRequest request) {
+  public VenueBookingRuleEntity update(UUID ownerUserId, VenueBookingRuleUpdateRequest request) {
     requireOwner(ownerUserId);
     validate(request);
     VenueBookingRuleEntity rule =
@@ -60,13 +58,12 @@ public class VenueBookingRuleServiceImpl implements VenueBookingRuleService {
                             .orElseThrow(VenueProfileNotFoundException::new)));
     Instant now = clock.instant();
     rule.setCancellationAllowed(request.cancellationAllowed());
-    rule.setFreeCancellationUntilMinutesBefore(
-        request.freeCancellationUntilMinutesBefore());
+    rule.setFreeCancellationUntilMinutesBefore(request.freeCancellationUntilMinutesBefore());
     rule.setUpdatedAt(now);
 
-    // V25 sigue siendo leído por plantillas existentes; mantenerlo sincronizado evita dos políticas.
-    rule.getVenue()
-        .setCancellationNoticeMinutes(request.freeCancellationUntilMinutesBefore());
+    // V25 sigue siendo leído por plantillas existentes; mantenerlo sincronizado evita dos
+    // políticas.
+    rule.getVenue().setCancellationNoticeMinutes(request.freeCancellationUntilMinutesBefore());
     return ruleDao.saveAndFlush(rule);
   }
 
@@ -81,8 +78,7 @@ public class VenueBookingRuleServiceImpl implements VenueBookingRuleService {
         .map(
             rule ->
                 new CancellationRule(
-                    rule.isCancellationAllowed(),
-                    rule.getFreeCancellationUntilMinutesBefore()))
+                    rule.isCancellationAllowed(), rule.getFreeCancellationUntilMinutesBefore()))
         .orElseGet(() -> new CancellationRule(true, legacyNoticeMinutes));
   }
 
@@ -95,8 +91,7 @@ public class VenueBookingRuleServiceImpl implements VenueBookingRuleService {
   private void validate(VenueBookingRuleUpdateRequest request) {
     if (request == null
         || request.freeCancellationUntilMinutesBefore() < 0
-        || request.freeCancellationUntilMinutesBefore()
-            > MAX_CANCELLATION_NOTICE_MINUTES) {
+        || request.freeCancellationUntilMinutesBefore() > MAX_CANCELLATION_NOTICE_MINUTES) {
       throw new VenueBookingRuleInvalidException();
     }
   }

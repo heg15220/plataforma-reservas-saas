@@ -13,8 +13,5 @@ public interface AdminCategoryService {
       UUID actorUserId, AdminCategoryRequest request, AdminRequestContext context);
 
   AdminCategoryResponse update(
-      UUID actorUserId,
-      UUID categoryId,
-      AdminCategoryRequest request,
-      AdminRequestContext context);
+      UUID actorUserId, UUID categoryId, AdminCategoryRequest request, AdminRequestContext context);
 }

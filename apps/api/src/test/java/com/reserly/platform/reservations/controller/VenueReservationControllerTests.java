@@ -41,8 +41,7 @@ class VenueReservationControllerTests {
   @BeforeEach
   void setUp() {
     controller =
-        new VenueReservationControllerImpl(
-            reservationService, new VenueReservationConverter());
+        new VenueReservationControllerImpl(reservationService, new VenueReservationConverter());
     account =
         new AuthenticatedAccount(
             UUID.randomUUID(),
@@ -57,39 +56,19 @@ class VenueReservationControllerTests {
     ReservationEntity reservation = reservation();
     UUID timeSlotId = reservation.getTimeSlot().getId();
     LocalDate date = reservation.getDate();
-    var page =
-        new PageImpl<>(
-            List.of(reservation), PageRequest.of(0, 25), 31);
+    var page = new PageImpl<>(List.of(reservation), PageRequest.of(0, 25), 31);
     when(reservationService.list(
-            account.userId(),
-            "day",
-            date,
-            timeSlotId,
-            "confirmed",
-            "ana",
-            0,
-            25))
+            account.userId(), "day", date, timeSlotId, "confirmed", "ana", 0, 25))
         .thenReturn(page);
 
-    var response =
-        controller.list(
-            account, "day", date, timeSlotId, "confirmed", "ana", 0, 25);
+    var response = controller.list(account, "day", date, timeSlotId, "confirmed", "ana", 0, 25);
 
     assertThat(response.getBody().items()).hasSize(1);
     assertThat(response.getBody().totalElements()).isEqualTo(31);
     assertThat(response.getBody().totalPages()).isEqualTo(2);
-    assertThat(response.getBody().items().getFirst().customerEmail())
-        .isEqualTo("ana@example.com");
+    assertThat(response.getBody().items().getFirst().customerEmail()).isEqualTo("ana@example.com");
     verify(reservationService)
-        .list(
-            account.userId(),
-            "day",
-            date,
-            timeSlotId,
-            "confirmed",
-            "ana",
-            0,
-            25);
+        .list(account.userId(), "day", date, timeSlotId, "confirmed", "ana", 0, 25);
   }
 
   @Test
@@ -110,7 +89,8 @@ class VenueReservationControllerTests {
     assertThat(response.getBody().id()).isEqualTo(reservation.getId());
     assertThat(response.getBody().serviceId()).isEqualTo(reservation.getServiceId());
     assertThat(response.getBody().customerName()).isEqualTo("Ana");
-    assertThat(response.getBody().formAnswers()).singleElement()
+    assertThat(response.getBody().formAnswers())
+        .singleElement()
         .satisfies(
             item -> {
               assertThat(item.fieldKey()).isEqualTo("allergies");
@@ -122,7 +102,8 @@ class VenueReservationControllerTests {
     assertThat(response.getBody().assignedResource().firstName()).isEqualTo("Lucía");
     assertThat(response.getBody().incidentHistory().totalElements()).isEqualTo(3);
     assertThat(response.getBody().incidentHistory().truncated()).isTrue();
-    assertThat(response.getBody().incidentHistory().items()).singleElement()
+    assertThat(response.getBody().incidentHistory().items())
+        .singleElement()
         .satisfies(
             item -> {
               assertThat(item.incidentType()).isEqualTo("no_show");
@@ -139,8 +120,7 @@ class VenueReservationControllerTests {
     assertThat(handler.handleInvalidFilter().getBody().code())
         .isEqualTo("VENUE_RESERVATION_FILTER_INVALID");
     assertThat(handler.handleNotFound().getStatusCode().value()).isEqualTo(404);
-    assertThat(handler.handleNotFound().getBody().code())
-        .isEqualTo("VENUE_RESERVATION_NOT_FOUND");
+    assertThat(handler.handleNotFound().getBody().code()).isEqualTo("VENUE_RESERVATION_NOT_FOUND");
   }
 
   private ReservationEntity reservation() {

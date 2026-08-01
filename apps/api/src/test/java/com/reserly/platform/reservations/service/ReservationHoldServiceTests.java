@@ -66,8 +66,7 @@ class ReservationHoldServiceTests {
     UUID resourceId = UUID.randomUUID();
     TimeSlotEntity slot = slot(venueId, slotId, serviceId, 4);
     ReservationHoldRequest request =
-        new ReservationHoldRequest(
-            venueId, slotId, serviceId, null, "any_available", 2);
+        new ReservationHoldRequest(venueId, slotId, serviceId, null, "any_available", 2);
     when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
     when(reservationDao.sumOccupiedCapacity(slotId, NOW)).thenReturn(1L);
     when(assignmentService.assign(
@@ -110,9 +109,7 @@ class ReservationHoldServiceTests {
     when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
 
     assertThatThrownBy(
-            () ->
-                service.create(
-                    new ReservationHoldRequest(venueId, slotId, null, null, null, 2)))
+            () -> service.create(new ReservationHoldRequest(venueId, slotId, null, null, null, 2)))
         .isInstanceOf(ReservationHoldInvalidException.class);
     verify(reservationDao, never()).save(any());
   }
@@ -126,10 +123,7 @@ class ReservationHoldServiceTests {
     when(reservationDao.sumOccupiedCapacity(slotId, NOW)).thenReturn(3L);
 
     assertThatThrownBy(
-            () ->
-                service.create(
-                    new ReservationHoldRequest(
-                        venueId, slotId, null, null, null, 2)))
+            () -> service.create(new ReservationHoldRequest(venueId, slotId, null, null, null, 2)))
         .isInstanceOf(ReservationHoldInvalidException.class);
 
     verify(assignmentService, never()).assign(any(), anyInt(), any(), any(), any());
@@ -178,8 +172,7 @@ class ReservationHoldServiceTests {
     assertThatThrownBy(
             () ->
                 service.create(
-                    new ReservationHoldRequest(
-                        venueId, slotId, UUID.randomUUID(), null, null, 1)))
+                    new ReservationHoldRequest(venueId, slotId, UUID.randomUUID(), null, null, 1)))
         .isInstanceOf(ReservationHoldInvalidException.class);
     verify(assignmentService, never()).assign(any(), anyInt(), any(), any(), any());
   }

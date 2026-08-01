@@ -30,8 +30,8 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
    * Regenera una fecha para todos los locales desde reservas, franjas y reseñas.
    *
    * <p>Una reserva contabilizable ya recopiló identidad y conserva uno de los estados posteriores a
-   * la confirmación. Las canceladas forman parte del total, pero no de la ocupación. {@code reported}
-   * sigue siendo una no asistencia y evita perder el dato al evolucionar el workflow.
+   * la confirmación. Las canceladas forman parte del total, pero no de la ocupación. {@code
+   * reported} sigue siendo una no asistencia y evita perder el dato al evolucionar el workflow.
    *
    * @param statsDate fecha local agregada
    * @param dayStart inicio inclusivo de la fecha en la zona del negocio

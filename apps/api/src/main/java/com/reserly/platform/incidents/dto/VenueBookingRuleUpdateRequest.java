@@ -10,5 +10,4 @@ import jakarta.validation.constraints.Min;
  * @param freeCancellationUntilMinutesBefore antelación mínima inclusiva respecto al inicio
  */
 public record VenueBookingRuleUpdateRequest(
-    boolean cancellationAllowed,
-    @Min(0) @Max(525600) int freeCancellationUntilMinutesBefore) {}
+    boolean cancellationAllowed, @Min(0) @Max(525600) int freeCancellationUntilMinutesBefore) {}

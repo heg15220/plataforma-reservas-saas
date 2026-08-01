@@ -24,13 +24,10 @@ import org.junit.jupiter.api.Test;
 /** Verifica filtros, aislamiento por propietario y cálculos derivados del periodo. */
 class VenueStatisticsServiceTests {
 
-  private static final UUID OWNER_ID =
-      UUID.fromString("10000000-0000-4000-8000-000000000001");
-  private static final UUID VENUE_ID =
-      UUID.fromString("20000000-0000-4000-8000-000000000001");
+  private static final UUID OWNER_ID = UUID.fromString("10000000-0000-4000-8000-000000000001");
+  private static final UUID VENUE_ID = UUID.fromString("20000000-0000-4000-8000-000000000001");
   private static final Instant NOW = Instant.parse("2026-07-29T10:00:00Z");
-  private static final Clock CLOCK =
-      Clock.fixed(NOW, ZoneId.of("Europe/Madrid"));
+  private static final Clock CLOCK = Clock.fixed(NOW, ZoneId.of("Europe/Madrid"));
 
   @Test
   void recalculatesCurrentMonthAndBuildsWeightedMetrics() {
@@ -43,8 +40,7 @@ class VenueStatisticsServiceTests {
         List.of(
             stats(LocalDate.of(2026, 7, 1), 4, 3, 1, 1, 2, 6, 10, 1, "5.00"),
             stats(LocalDate.of(2026, 7, 2), 6, 5, 1, 2, 3, 9, 20, 3, "3.00"));
-    when(statsDao.findRange(
-            VENUE_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 29)))
+    when(statsDao.findRange(VENUE_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 29)))
         .thenReturn(days);
     var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
 
@@ -64,11 +60,7 @@ class VenueStatisticsServiceTests {
     assertThat(response.series()).hasSize(2);
     verify(statsDao)
         .aggregateVenueRange(
-            VENUE_ID,
-            LocalDate.of(2026, 7, 1),
-            LocalDate.of(2026, 7, 29),
-            "Europe/Madrid",
-            NOW);
+            VENUE_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 29), "Europe/Madrid", NOW);
   }
 
   @Test
@@ -85,18 +77,11 @@ class VenueStatisticsServiceTests {
         .thenReturn(List.of());
     var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
 
-    assertThat(service.findOwned(OWNER_ID, "today", null, null).fromDate())
-        .isEqualTo("2026-07-29");
-    assertThat(service.findOwned(OWNER_ID, "week", null, null).fromDate())
-        .isEqualTo("2026-07-27");
-    assertThat(service.findOwned(OWNER_ID, "year", null, null).fromDate())
-        .isEqualTo("2026-01-01");
+    assertThat(service.findOwned(OWNER_ID, "today", null, null).fromDate()).isEqualTo("2026-07-29");
+    assertThat(service.findOwned(OWNER_ID, "week", null, null).fromDate()).isEqualTo("2026-07-27");
+    assertThat(service.findOwned(OWNER_ID, "year", null, null).fromDate()).isEqualTo("2026-01-01");
     var custom =
-        service.findOwned(
-            OWNER_ID,
-            "custom",
-            LocalDate.of(2026, 6, 1),
-            LocalDate.of(2026, 6, 30));
+        service.findOwned(OWNER_ID, "custom", LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30));
     assertThat(custom.fromDate()).isEqualTo("2026-06-01");
     assertThat(custom.toDate()).isEqualTo("2026-06-30");
     assertThat(custom.occupancyRate()).isEqualByComparingTo("0.0");
@@ -114,26 +99,17 @@ class VenueStatisticsServiceTests {
     assertThatThrownBy(
             () ->
                 service.findOwned(
-                    OWNER_ID,
-                    "custom",
-                    LocalDate.of(2026, 1, 1),
-                    LocalDate.of(2027, 1, 2)))
+                    OWNER_ID, "custom", LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 2)))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     assertThatThrownBy(
             () ->
                 service.findOwned(
-                    OWNER_ID,
-                    "custom",
-                    LocalDate.of(2026, 7, 2),
-                    LocalDate.of(2026, 7, 1)))
+                    OWNER_ID, "custom", LocalDate.of(2026, 7, 2), LocalDate.of(2026, 7, 1)))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     assertThatThrownBy(
             () ->
                 service.findOwned(
-                    OWNER_ID,
-                    "today",
-                    LocalDate.of(2026, 7, 29),
-                    LocalDate.of(2026, 7, 29)))
+                    OWNER_ID, "today", LocalDate.of(2026, 7, 29), LocalDate.of(2026, 7, 29)))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     verifyNoInteractions(venueDao, statsDao);
   }

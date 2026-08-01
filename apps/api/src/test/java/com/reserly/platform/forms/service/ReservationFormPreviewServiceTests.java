@@ -102,7 +102,6 @@ class ReservationFormPreviewServiceTests {
 
   private LocalizedText localized(String value) {
     return new LocalizedText(
-        SupportedLocale.ES,
-        Map.of(SupportedLocale.ES, value, SupportedLocale.EN, value + " EN"));
+        SupportedLocale.ES, Map.of(SupportedLocale.ES, value, SupportedLocale.EN, value + " EN"));
   }
 }

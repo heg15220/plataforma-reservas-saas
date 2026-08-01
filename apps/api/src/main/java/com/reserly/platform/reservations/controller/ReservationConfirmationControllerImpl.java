@@ -9,8 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Adaptador HTTP de confirmación; no contiene reglas de estado ni secretos. */
 @RestController
-public class ReservationConfirmationControllerImpl
-    implements ReservationConfirmationController {
+public class ReservationConfirmationControllerImpl implements ReservationConfirmationController {
 
   private final ReservationConfirmationService service;
 

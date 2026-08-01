@@ -45,7 +45,8 @@ public class AdminPenaltyServiceImpl implements AdminPenaltyService {
       AdminPenaltyUpdateRequest request,
       AdminRequestContext context) {
     PenaltyEntity penalty =
-        penaltyDao.findByIdForAdminUpdate(penaltyId)
+        penaltyDao
+            .findByIdForAdminUpdate(penaltyId)
             .orElseThrow(AdminResourceNotFoundException::new);
     if (!"active".equals(penalty.getStatus())) {
       throw new AdminResourceConflictException();

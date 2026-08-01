@@ -39,29 +39,16 @@ class VenueStatisticsControllerTests {
             2,
             new BigDecimal("4.50"),
             List.of());
-    when(service.findOwned(
-            ownerId,
-            "custom",
-            LocalDate.of(2026, 7, 1),
-            LocalDate.of(2026, 7, 10)))
+    when(service.findOwned(ownerId, "custom", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 10)))
         .thenReturn(expected);
     var controller = new VenueStatisticsControllerImpl(service);
 
     var response =
-        controller.get(
-            account,
-            "custom",
-            LocalDate.of(2026, 7, 1),
-            LocalDate.of(2026, 7, 10));
+        controller.get(account, "custom", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 10));
 
     assertThat(response.getBody()).isSameAs(expected);
-    assertThat(response.getBody().toString())
-        .doesNotContain("email", "reservationId", "customer");
+    assertThat(response.getBody().toString()).doesNotContain("email", "reservationId", "customer");
     verify(service)
-        .findOwned(
-            ownerId,
-            "custom",
-            LocalDate.of(2026, 7, 1),
-            LocalDate.of(2026, 7, 10));
+        .findOwned(ownerId, "custom", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 10));
   }
 }

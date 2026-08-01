@@ -44,11 +44,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     Instant now = clock.instant();
     Instant reservationEnd =
-        reservation
-            .getDate()
-            .atTime(reservation.getEndsAt())
-            .atZone(clock.getZone())
-            .toInstant();
+        reservation.getDate().atTime(reservation.getEndsAt()).atZone(clock.getZone()).toInstant();
     if (now.isBefore(reservationEnd)) {
       throw new AttendanceTooEarlyException();
     }

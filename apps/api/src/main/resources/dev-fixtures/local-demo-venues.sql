@@ -392,6 +392,247 @@ CROSS JOIN generate_series(CURRENT_DATE, CURRENT_DATE + 30, INTERVAL '1 day') AS
 CROSS JOIN generate_series(0, 7) AS slots(slot_number)
 ON CONFLICT DO NOTHING;
 
+-- Sustituye el fixture histórico LET Padel Ames por una peluquería y añade tres
+-- publicaciones de categorías distintas. Se reutilizan identificadores reservados
+-- para que un entorno local existente pierda también el slug antiguo al reiniciar.
+UPDATE "Users" SET
+  "email" = 'reservas@brisa-studio.local',
+  "emailNormalized" = 'reservas@brisa-studio.local',
+  "updatedAt" = CURRENT_TIMESTAMP
+WHERE "id" = 'd0000000-0000-4000-8000-000000000002'::uuid;
+
+UPDATE "BusinessAccounts" SET
+  "businessLegalName" = 'Brisa Studio · Demostración local',
+  "businessAddress" = 'Rúa do Hórreo 72, 15701 Santiago de Compostela, A Coruña',
+  "updatedAt" = CURRENT_TIMESTAMP
+WHERE "id" = 'd2000000-0000-4000-8000-000000000002'::uuid;
+
+UPDATE "Venues" SET
+  "categoryId" = '20000000-0000-0000-0000-000000000002'::uuid,
+  "name" = 'Brisa Studio',
+  "slug" = 'brisa-studio',
+  "description" = 'Peluquería contemporánea especializada en corte, color y cuidado capilar.',
+  "descriptionI18n" = '{"sourceLocale":"es","values":{"es":"Peluquería contemporánea especializada en corte, color y cuidado capilar.","en":"Contemporary hair salon specialising in cuts, colour and hair care."}}'::jsonb,
+  "servicesI18n" = '{"sourceLocale":"es","values":{"es":"Corte, peinado, color y tratamientos capilares con cita previa.","en":"Cuts, styling, colour and hair treatments by appointment."}}'::jsonb,
+  "rulesI18n" = '{"sourceLocale":"es","values":{"es":"Llega 5 minutos antes e indica alergias a productos cosméticos.","en":"Arrive 5 minutes early and disclose cosmetic product allergies."}}'::jsonb,
+  "publicTextI18n" = '{"sourceLocale":"es","values":{"es":"Peluquería ficticia para demostración local.","en":"Fictional hair salon for local demonstration."}}'::jsonb,
+  "contactEmail" = 'reservas@brisa-studio.local',
+  "phone" = '981 00 00 42', "address" = 'Rúa do Hórreo 72',
+  "city" = 'Santiago de Compostela', "province" = 'A Coruña', "postalCode" = '15701',
+  "latitude" = 42.870910, "longitude" = -8.545110,
+  "mainImageUrl" = '/api/public/venue-images/d3000000-0000-4000-8000-000000000002/main',
+  "mainImageObjectKey" = 'dev-fixtures/venues/brisa-studio/main.jpg',
+  "mainImageMediaType" = 'image/jpeg', "mainImageSizeBytes" = 39434,
+  "mainImageWidth" = 440, "mainImageHeight" = 440, "updatedAt" = CURRENT_TIMESTAMP
+WHERE "id" = 'd3000000-0000-4000-8000-000000000002'::uuid;
+
+UPDATE "Services" SET
+  "name" = 'Cita de peluquería',
+  "nameI18n" = '{"sourceLocale":"es","values":{"es":"Cita de peluquería","en":"Hair salon appointment"}}'::jsonb,
+  "description" = 'Servicio personalizado de 60 minutos.',
+  "descriptionI18n" = '{"sourceLocale":"es","values":{"es":"Servicio personalizado de 60 minutos.","en":"Personalised 60-minute service."}}'::jsonb,
+  "durationMinutes" = 60, "capacityRequired" = 1, "updatedAt" = CURRENT_TIMESTAMP
+WHERE "id" = 'd5000000-0000-4000-8000-000000000002'::uuid;
+
+UPDATE "VenueImages" SET
+  "url" = '/api/public/venue-gallery-images/d4000000-0000-4000-8000-000000000002',
+  "altText" = 'Zona de lavado y cuidado capilar de Brisa Studio',
+  "objectKey" = 'dev-fixtures/venues/brisa-studio/gallery-1.jpg',
+  "mediaType" = 'image/jpeg', "sizeBytes" = 33626, "width" = 440, "height" = 443
+WHERE "id" = 'd4000000-0000-4000-8000-000000000002'::uuid;
+
+INSERT INTO "Users" (
+  "id", "email", "emailNormalized", "passwordHash", "preferredLocale",
+  "emailVerifiedAt", "status", "accountType", "createdAt", "updatedAt"
+) VALUES
+  ('d0000000-0000-4000-8000-000000000004', 'reservas@campo-do-sar.local',
+   'reservas@campo-do-sar.local', '$2a$10$localDemoAccountCannotAuthenticateWithoutKnownPassword000000000',
+   'es', CURRENT_TIMESTAMP, 'active', 'venue_business', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d0000000-0000-4000-8000-000000000005', 'reservas@norte-fitness-lab.local',
+   'reservas@norte-fitness-lab.local', '$2a$10$localDemoAccountCannotAuthenticateWithoutKnownPassword000000000',
+   'es', CURRENT_TIMESTAMP, 'active', 'venue_business', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d0000000-0000-4000-8000-000000000006', 'reservas@aura-atlantica.local',
+   'reservas@aura-atlantica.local', '$2a$10$localDemoAccountCannotAuthenticateWithoutKnownPassword000000000',
+   'es', CURRENT_TIMESTAMP, 'active', 'venue_business', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO UPDATE SET
+  "email" = EXCLUDED."email", "emailNormalized" = EXCLUDED."emailNormalized",
+  "emailVerifiedAt" = CURRENT_TIMESTAMP, "status" = 'active', "updatedAt" = CURRENT_TIMESTAMP;
+
+INSERT INTO "UserRoles" ("id", "userId", "roleId", "assignedAt") VALUES
+  ('d1000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000004', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP),
+  ('d1000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000005', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP),
+  ('d1000000-0000-4000-8000-000000000006', 'd0000000-0000-4000-8000-000000000006', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP)
+ON CONFLICT ("userId", "roleId") DO NOTHING;
+
+INSERT INTO "BusinessAccounts" (
+  "id", "ownerUserId", "taxCountry", "businessLegalName", "businessTaxIdentifier",
+  "businessTaxIdentifierNormalized", "businessAddress", "businessVerificationStatus",
+  "businessVerifiedAt", "businessVerificationExpiresAt", "businessVerificationProvider",
+  "businessVerificationReference", "createdAt", "updatedAt"
+) VALUES
+  ('d2000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000004',
+   'ES', 'Campo do Sar · Demostración local', 'LOCAL-SAR-004', 'LOCALSAR004',
+   'Rúa das Brañas do Sar 9, 15702 Santiago de Compostela, A Coruña', 'verified',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture', 'local-sar-004',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d2000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000005',
+   'ES', 'Norte Fitness Lab · Demostración local', 'LOCAL-NFL-005', 'LOCALNFL005',
+   'Rúa de Fernando III 12, 15701 Santiago de Compostela, A Coruña', 'verified',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture', 'local-nfl-005',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d2000000-0000-4000-8000-000000000006', 'd0000000-0000-4000-8000-000000000006',
+   'ES', 'Aura Atlántica · Demostración local', 'LOCAL-AUR-006', 'LOCALAUR006',
+   'Rúa Nova de Abaixo 21, 15706 Santiago de Compostela, A Coruña', 'verified',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture', 'local-aur-006',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO UPDATE SET
+  "businessLegalName" = EXCLUDED."businessLegalName", "businessAddress" = EXCLUDED."businessAddress",
+  "businessVerificationStatus" = 'verified', "businessVerifiedAt" = CURRENT_TIMESTAMP,
+  "businessVerificationExpiresAt" = EXCLUDED."businessVerificationExpiresAt", "updatedAt" = CURRENT_TIMESTAMP;
+
+INSERT INTO "Venues" (
+  "id", "ownerUserId", "businessAccountId", "categoryId", "name", "slug", "description",
+  "descriptionI18n", "defaultLocale", "servicesI18n", "rulesI18n", "publicTextI18n",
+  "contactEmail", "phone", "address", "city", "province", "country", "postalCode",
+  "latitude", "longitude", "mainImageUrl", "mainImageObjectKey", "mainImageMediaType",
+  "mainImageSizeBytes", "mainImageWidth", "mainImageHeight", "status", "manualAvailabilityStatus",
+  "showPhone", "showEmail", "publishedAt", "reservationFormPublished",
+  "reservationFormFallbackApproved", "reservationFormPublishedAt", "createdAt", "updatedAt"
+) VALUES
+  ('d3000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000004',
+   'd2000000-0000-4000-8000-000000000004', '20000000-0000-0000-0000-000000000003',
+   'Campo do Sar', 'campo-do-sar', 'Campo de fútbol de césped artificial para equipos y grupos.',
+   '{"sourceLocale":"es","values":{"es":"Campo de fútbol de césped artificial para equipos y grupos.","en":"Artificial turf football pitch for teams and groups."}}'::jsonb, 'es',
+   '{"sourceLocale":"es","values":{"es":"Reserva del campo completo durante 90 minutos.","en":"Book the full pitch for 90 minutes."}}'::jsonb,
+   '{"sourceLocale":"es","values":{"es":"Usa calzado adecuado y respeta la hora de salida.","en":"Wear suitable footwear and respect the finishing time."}}'::jsonb,
+   '{"sourceLocale":"es","values":{"es":"Instalación ficticia para demostración local.","en":"Fictional facility for local demonstration."}}'::jsonb,
+   'reservas@campo-do-sar.local', '981 00 00 53', 'Rúa das Brañas do Sar 9',
+   'Santiago de Compostela', 'A Coruña', 'ES', '15702', 42.873340, -8.534820,
+   '/api/public/venue-images/d3000000-0000-4000-8000-000000000004/main',
+   'dev-fixtures/venues/campo-do-sar/main.jpg', 'image/jpeg', 44335, 440, 440,
+   'published', 'automatic', true, true, CURRENT_TIMESTAMP, true, true, CURRENT_TIMESTAMP,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d3000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000005',
+   'd2000000-0000-4000-8000-000000000005', '20000000-0000-0000-0000-000000000006',
+   'Norte Fitness Lab', 'norte-fitness-lab', 'Centro deportivo con sala de fuerza y entrenamiento funcional.',
+   '{"sourceLocale":"es","values":{"es":"Centro deportivo con sala de fuerza y entrenamiento funcional.","en":"Sports centre with strength and functional training areas."}}'::jsonb, 'es',
+   '{"sourceLocale":"es","values":{"es":"Sesiones de entrenamiento guiado y acceso por franjas.","en":"Guided training sessions and time-slot access."}}'::jsonb,
+   '{"sourceLocale":"es","values":{"es":"Trae toalla y sigue las indicaciones del entrenador.","en":"Bring a towel and follow the coach instructions."}}'::jsonb,
+   '{"sourceLocale":"es","values":{"es":"Centro deportivo ficticio para demostración local.","en":"Fictional sports centre for local demonstration."}}'::jsonb,
+   'reservas@norte-fitness-lab.local', '981 00 00 64', 'Rúa de Fernando III 12',
+   'Santiago de Compostela', 'A Coruña', 'ES', '15701', 42.872110, -8.551640,
+   '/api/public/venue-images/d3000000-0000-4000-8000-000000000005/main',
+   'dev-fixtures/venues/norte-fitness-lab/main.jpg', 'image/jpeg', 49991, 440, 440,
+   'published', 'automatic', true, true, CURRENT_TIMESTAMP, true, true, CURRENT_TIMESTAMP,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d3000000-0000-4000-8000-000000000006', 'd0000000-0000-4000-8000-000000000006',
+   'd2000000-0000-4000-8000-000000000006', '20000000-0000-0000-0000-000000000007',
+   'Aura Atlántica', 'aura-atlantica', 'Centro de estética y bienestar con tratamientos faciales y corporales.',
+   '{"sourceLocale":"es","values":{"es":"Centro de estética y bienestar con tratamientos faciales y corporales.","en":"Beauty and wellness centre offering facial and body treatments."}}'::jsonb, 'es',
+   '{"sourceLocale":"es","values":{"es":"Tratamientos personalizados de belleza y relajación.","en":"Personalised beauty and relaxation treatments."}}'::jsonb,
+   '{"sourceLocale":"es","values":{"es":"Comunica alergias o contraindicaciones antes de la cita.","en":"Disclose allergies or contraindications before the appointment."}}'::jsonb,
+   '{"sourceLocale":"es","values":{"es":"Centro de estética ficticio para demostración local.","en":"Fictional beauty centre for local demonstration."}}'::jsonb,
+   'reservas@aura-atlantica.local', '981 00 00 75', 'Rúa Nova de Abaixo 21',
+   'Santiago de Compostela', 'A Coruña', 'ES', '15706', 42.869680, -8.553110,
+   '/api/public/venue-images/d3000000-0000-4000-8000-000000000006/main',
+   'dev-fixtures/venues/aura-atlantica/main.jpg', 'image/jpeg', 32714, 444, 440,
+   'published', 'automatic', true, true, CURRENT_TIMESTAMP, true, true, CURRENT_TIMESTAMP,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO UPDATE SET
+  "categoryId" = EXCLUDED."categoryId", "name" = EXCLUDED."name", "slug" = EXCLUDED."slug",
+  "description" = EXCLUDED."description", "descriptionI18n" = EXCLUDED."descriptionI18n",
+  "servicesI18n" = EXCLUDED."servicesI18n", "rulesI18n" = EXCLUDED."rulesI18n",
+  "publicTextI18n" = EXCLUDED."publicTextI18n", "contactEmail" = EXCLUDED."contactEmail",
+  "phone" = EXCLUDED."phone", "address" = EXCLUDED."address", "city" = EXCLUDED."city",
+  "province" = EXCLUDED."province", "postalCode" = EXCLUDED."postalCode",
+  "latitude" = EXCLUDED."latitude", "longitude" = EXCLUDED."longitude",
+  "mainImageUrl" = EXCLUDED."mainImageUrl", "mainImageObjectKey" = EXCLUDED."mainImageObjectKey",
+  "mainImageMediaType" = EXCLUDED."mainImageMediaType", "mainImageSizeBytes" = EXCLUDED."mainImageSizeBytes",
+  "mainImageWidth" = EXCLUDED."mainImageWidth", "mainImageHeight" = EXCLUDED."mainImageHeight",
+  "status" = 'published', "updatedAt" = CURRENT_TIMESTAMP;
+
+INSERT INTO "VenueImages" (
+  "id", "venueId", "url", "altText", "position", "objectKey", "mediaType",
+  "sizeBytes", "width", "height", "createdAt"
+) VALUES
+  ('d4000000-0000-4000-8000-000000000005', 'd3000000-0000-4000-8000-000000000004',
+   '/api/public/venue-gallery-images/d4000000-0000-4000-8000-000000000005',
+   'Portería y grada del Campo do Sar', 0, 'dev-fixtures/venues/campo-do-sar/gallery-1.jpg',
+   'image/jpeg', 55547, 440, 443, CURRENT_TIMESTAMP),
+  ('d4000000-0000-4000-8000-000000000006', 'd3000000-0000-4000-8000-000000000005',
+   '/api/public/venue-gallery-images/d4000000-0000-4000-8000-000000000006',
+   'Sala de entrenamiento funcional de Norte Fitness Lab', 0,
+   'dev-fixtures/venues/norte-fitness-lab/gallery-1.jpg', 'image/jpeg', 39956, 440, 443, CURRENT_TIMESTAMP),
+  ('d4000000-0000-4000-8000-000000000007', 'd3000000-0000-4000-8000-000000000006',
+   '/api/public/venue-gallery-images/d4000000-0000-4000-8000-000000000007',
+   'Cabina de tratamientos de Aura Atlántica', 0,
+   'dev-fixtures/venues/aura-atlantica/gallery-1.jpg', 'image/jpeg', 32567, 444, 443, CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO UPDATE SET
+  "altText" = EXCLUDED."altText", "objectKey" = EXCLUDED."objectKey", "mediaType" = EXCLUDED."mediaType",
+  "sizeBytes" = EXCLUDED."sizeBytes", "width" = EXCLUDED."width", "height" = EXCLUDED."height";
+
+INSERT INTO "Services" (
+  "id", "venueId", "name", "nameI18n", "description", "descriptionI18n",
+  "durationMinutes", "capacityRequired", "isActive", "allowsAnyAvailableResource",
+  "createdAt", "updatedAt"
+) VALUES
+  ('d5000000-0000-4000-8000-000000000004', 'd3000000-0000-4000-8000-000000000004',
+   'Reserva de campo 90 min', '{"sourceLocale":"es","values":{"es":"Reserva de campo 90 min","en":"90-minute pitch booking"}}'::jsonb,
+   'Campo completo para entrenamiento o partido.', '{"sourceLocale":"es","values":{"es":"Campo completo para entrenamiento o partido.","en":"Full pitch for training or a match."}}'::jsonb,
+   90, 1, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d5000000-0000-4000-8000-000000000005', 'd3000000-0000-4000-8000-000000000005',
+   'Entrenamiento funcional', '{"sourceLocale":"es","values":{"es":"Entrenamiento funcional","en":"Functional training"}}'::jsonb,
+   'Sesión guiada para un grupo reducido.', '{"sourceLocale":"es","values":{"es":"Sesión guiada para un grupo reducido.","en":"Guided small-group session."}}'::jsonb,
+   60, 1, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('d5000000-0000-4000-8000-000000000006', 'd3000000-0000-4000-8000-000000000006',
+   'Tratamiento de bienestar', '{"sourceLocale":"es","values":{"es":"Tratamiento de bienestar","en":"Wellness treatment"}}'::jsonb,
+   'Tratamiento facial o corporal personalizado.', '{"sourceLocale":"es","values":{"es":"Tratamiento facial o corporal personalizado.","en":"Personalised facial or body treatment."}}'::jsonb,
+   60, 1, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO UPDATE SET
+  "name" = EXCLUDED."name", "nameI18n" = EXCLUDED."nameI18n",
+  "description" = EXCLUDED."description", "descriptionI18n" = EXCLUDED."descriptionI18n",
+  "durationMinutes" = EXCLUDED."durationMinutes", "isActive" = true, "updatedAt" = CURRENT_TIMESTAMP;
+
+INSERT INTO "VenueOpeningHours" (
+  "id", "venueId", "weekday", "isClosed", "reservationsEnabled",
+  "opensAt", "closesAt", "createdAt", "updatedAt"
+)
+SELECT (
+    substr(md5(venue_id::text || ':' || weekday::text), 1, 8) || '-' ||
+    substr(md5(venue_id::text || ':' || weekday::text), 9, 4) || '-4' ||
+    substr(md5(venue_id::text || ':' || weekday::text), 14, 3) || '-8' ||
+    substr(md5(venue_id::text || ':' || weekday::text), 18, 3) || '-' ||
+    substr(md5(venue_id::text || ':' || weekday::text), 21, 12)
+  )::uuid, venue_id, weekday, false, true, TIME '09:00', TIME '22:00',
+  CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM (VALUES
+  ('d3000000-0000-4000-8000-000000000004'::uuid),
+  ('d3000000-0000-4000-8000-000000000005'::uuid),
+  ('d3000000-0000-4000-8000-000000000006'::uuid)
+) AS venues(venue_id)
+CROSS JOIN generate_series(1, 7) AS weekdays(weekday)
+ON CONFLICT ("venueId", "weekday") DO UPDATE SET
+  "isClosed" = false, "reservationsEnabled" = true, "opensAt" = TIME '09:00',
+  "closesAt" = TIME '22:00', "updatedAt" = CURRENT_TIMESTAMP;
+
+INSERT INTO "TimeSlots" (
+  "id", "venueId", "serviceId", "date", "weekday", "startsAt", "endsAt",
+  "capacity", "status", "createdByRule", "version", "createdAt", "updatedAt"
+)
+SELECT gen_random_uuid(), fixture."venueId", fixture."serviceId", day_value::date,
+  extract(isodow from day_value)::integer,
+  (TIME '09:00' + slot_number * INTERVAL '2 hours')::time,
+  (TIME '10:00' + slot_number * INTERVAL '2 hours')::time,
+  fixture.capacity, 'available', true, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM (VALUES
+  ('d3000000-0000-4000-8000-000000000004'::uuid, 'd5000000-0000-4000-8000-000000000004'::uuid, 22),
+  ('d3000000-0000-4000-8000-000000000005'::uuid, 'd5000000-0000-4000-8000-000000000005'::uuid, 12),
+  ('d3000000-0000-4000-8000-000000000006'::uuid, 'd5000000-0000-4000-8000-000000000006'::uuid, 1)
+) AS fixture("venueId", "serviceId", capacity)
+CROSS JOIN generate_series(CURRENT_DATE, CURRENT_DATE + 30, INTERVAL '1 day') AS days(day_value)
+CROSS JOIN generate_series(0, 5) AS slots(slot_number)
+ON CONFLICT DO NOTHING;
+
 -- Dos turnos de almuerzo y dos de cena durante 31 días. La capacidad representa
 -- comensales y permite verificar visualmente su reducción después de cada reserva.
 DELETE FROM "TimeSlots" AS obsolete

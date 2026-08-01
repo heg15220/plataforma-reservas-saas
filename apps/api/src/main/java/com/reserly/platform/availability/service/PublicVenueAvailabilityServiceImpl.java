@@ -167,8 +167,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
       long occupiedCapacity,
       EmployeeResourceSlotAvailability resourceAvailability) {
     boolean slotAvailable = STATUS_AVAILABLE.equals(slot.getStatus());
-    int availableCapacity =
-        Math.max(slot.getCapacity() - Math.toIntExact(occupiedCapacity), 0);
+    int availableCapacity = Math.max(slot.getCapacity() - Math.toIntExact(occupiedCapacity), 0);
     boolean bookingAvailable =
         slotAvailable && availableCapacity > 0 && resourceAvailability.requirementsSatisfied();
     String effectiveStatus =

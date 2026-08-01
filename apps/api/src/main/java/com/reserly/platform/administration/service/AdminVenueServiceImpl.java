@@ -15,9 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Edita solo identidad comercial y contacto; suspensión, propiedad y publicación quedan fuera.
- */
+/** Edita solo identidad comercial y contacto; suspensión, propiedad y publicación quedan fuera. */
 @Service
 public class AdminVenueServiceImpl implements AdminVenueService {
 
@@ -29,10 +27,7 @@ public class AdminVenueServiceImpl implements AdminVenueService {
   private final Clock clock;
 
   public AdminVenueServiceImpl(
-      VenueDao venueDao,
-      CategoryDao categoryDao,
-      AuditLogService auditLogService,
-      Clock clock) {
+      VenueDao venueDao, CategoryDao categoryDao, AuditLogService auditLogService, Clock clock) {
     this.venueDao = venueDao;
     this.categoryDao = categoryDao;
     this.auditLogService = auditLogService;
@@ -56,9 +51,7 @@ public class AdminVenueServiceImpl implements AdminVenueService {
       AdminVenueUpdateRequest request,
       AdminRequestContext context) {
     VenueEntity venue =
-        venueDao
-            .findByIdForAdminUpdate(venueId)
-            .orElseThrow(AdminResourceNotFoundException::new);
+        venueDao.findByIdForAdminUpdate(venueId).orElseThrow(AdminResourceNotFoundException::new);
     CategoryEntity category =
         categoryDao
             .findActiveById(request.categoryId())
@@ -103,9 +96,7 @@ public class AdminVenueServiceImpl implements AdminVenueService {
       AdminVenueSuspensionRequest request,
       AdminRequestContext context) {
     VenueEntity venue =
-        venueDao
-            .findByIdForAdminUpdate(venueId)
-            .orElseThrow(AdminResourceNotFoundException::new);
+        venueDao.findByIdForAdminUpdate(venueId).orElseThrow(AdminResourceNotFoundException::new);
     if ("suspended".equals(venue.getStatus()) || "archived".equals(venue.getStatus())) {
       throw new AdminResourceConflictException();
     }

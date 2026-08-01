@@ -104,10 +104,7 @@ public class VenueReservationCancellationEmailConsumer {
                   event.cancellationReason()));
       provider.send(
           new TransactionalEmailMessage(
-              event.customerEmail(),
-              rendered.subject(),
-              rendered.textBody(),
-              rendered.htmlBody()));
+              event.customerEmail(), rendered.subject(), rendered.textBody(), rendered.htmlBody()));
       delivery.setStatus("delivered");
       delivery.setDeliveredAt(clock.instant());
       delivery.setLastErrorCode(null);
@@ -121,8 +118,7 @@ public class VenueReservationCancellationEmailConsumer {
     }
   }
 
-  private EmailDeliveryEntity newDelivery(
-      VenueReservationCancellationEmailRequestedEvent event) {
+  private EmailDeliveryEntity newDelivery(VenueReservationCancellationEmailRequestedEvent event) {
     Instant now = clock.instant();
     EmailDeliveryEntity delivery = new EmailDeliveryEntity();
     delivery.setEventId(event.eventId());

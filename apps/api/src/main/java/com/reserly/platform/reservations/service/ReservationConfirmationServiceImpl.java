@@ -121,9 +121,7 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     reservation.setCustomerEmail(customerEmail);
     reservation.setCustomerEmailNormalized(customerEmailNormalized);
     reservation.setCustomerLocale(
-        SupportedLocale.fromLanguageTag(request.locale())
-            .orElse(SupportedLocale.EN)
-            .languageTag());
+        SupportedLocale.fromLanguageTag(request.locale()).orElse(SupportedLocale.EN).languageTag());
     reservation.setStatus("confirmed");
     reservation.setHoldExpiresAt(null);
     reservation.setHoldTokenHash(null);

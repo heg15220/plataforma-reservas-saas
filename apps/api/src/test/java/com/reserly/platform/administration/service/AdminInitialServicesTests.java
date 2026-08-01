@@ -98,8 +98,7 @@ class AdminInitialServicesTests {
     category.setSlug(slug);
     category.setName(name);
     category.setNameI18n(
-        LocalizedText.fromLanguageTagValues(
-            "es", Map.of("es", name, "en", name + " EN")));
+        LocalizedText.fromLanguageTagValues("es", Map.of("es", name, "en", name + " EN")));
     category.setActive(true);
     category.setCreatedAt(NOW);
     category.setUpdatedAt(NOW);

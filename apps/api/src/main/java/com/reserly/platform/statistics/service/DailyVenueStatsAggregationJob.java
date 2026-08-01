@@ -10,14 +10,13 @@ import org.springframework.stereotype.Component;
 /**
  * Consolida cada madrugada la jornada local anterior.
  *
- * <p>El servicio usa UPSERT, por lo que una repetición manual o un solapamiento entre nodos converge
- * en la misma instantánea. Los logs contienen solo fecha y número de locales.
+ * <p>El servicio usa UPSERT, por lo que una repetición manual o un solapamiento entre nodos
+ * converge en la misma instantánea. Los logs contienen solo fecha y número de locales.
  */
 @Component
 public class DailyVenueStatsAggregationJob {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(DailyVenueStatsAggregationJob.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DailyVenueStatsAggregationJob.class);
 
   private final DailyVenueStatsAggregationService aggregationService;
   private final Clock clock;

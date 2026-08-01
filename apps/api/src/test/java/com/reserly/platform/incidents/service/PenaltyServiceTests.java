@@ -114,8 +114,7 @@ class PenaltyServiceTests {
         .thenReturn(Optional.of(completed));
     when(penaltyDao.findLatestCompletedResetBoundary("user@example.com", NOW))
         .thenReturn(Optional.of(completedBoundary));
-    when(incidentDao.countOperationalNoShows("user@example.com", completedBoundary))
-        .thenReturn(1L);
+    when(incidentDao.countOperationalNoShows("user@example.com", completedBoundary)).thenReturn(1L);
 
     PenaltyEntity next = service.applyFor(incident);
 
@@ -137,8 +136,7 @@ class PenaltyServiceTests {
         .thenReturn(Optional.of(retentionCutoff.minusSeconds(1)));
     when(incidentDao.countOperationalNoShows("user@example.com", retentionCutoff)).thenReturn(0L);
 
-    assertThatThrownBy(() -> service.applyFor(incident))
-        .isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> service.applyFor(incident)).isInstanceOf(IllegalStateException.class);
 
     verify(incidentDao).countOperationalNoShows("user@example.com", retentionCutoff);
   }

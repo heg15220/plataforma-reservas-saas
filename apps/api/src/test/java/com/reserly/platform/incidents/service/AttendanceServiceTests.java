@@ -105,8 +105,7 @@ class AttendanceServiceTests {
         .thenReturn(Optional.of(cancelled));
     assertThatThrownBy(
             () ->
-                service.update(
-                    ownerId, cancelled.getId(), new AttendanceUpdateRequest("no_show")))
+                service.update(ownerId, cancelled.getId(), new AttendanceUpdateRequest("no_show")))
         .isInstanceOf(AttendanceInvalidException.class);
   }
 

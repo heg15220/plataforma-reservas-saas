@@ -1,9 +1,9 @@
 package com.reserly.platform.reservations.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.reserly.platform.reservations.dto.ReservationHoldRequest;
 import com.reserly.platform.reservations.service.ReservationHoldServiceImpl;
-
 import jakarta.persistence.LockModeType;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,8 +16,7 @@ class ReservationTimeSlotDaoLockTests {
   @Test
   void locksPublishedTimeSlotForWrite() throws NoSuchMethodException {
     var method =
-        ReservationTimeSlotDao.class.getMethod(
-            "findPublishedForUpdate", UUID.class, UUID.class);
+        ReservationTimeSlotDao.class.getMethod("findPublishedForUpdate", UUID.class, UUID.class);
 
     Lock lock = method.getAnnotation(Lock.class);
 
@@ -27,9 +26,7 @@ class ReservationTimeSlotDaoLockTests {
 
   @Test
   void createsHoldInsideTransactionThatOwnsTheLock() throws NoSuchMethodException {
-    var method =
-        ReservationHoldServiceImpl.class.getMethod(
-            "create", ReservationHoldRequest.class);
+    var method = ReservationHoldServiceImpl.class.getMethod("create", ReservationHoldRequest.class);
 
     assertThat(method.getAnnotation(Transactional.class)).isNotNull();
   }

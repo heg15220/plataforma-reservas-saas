@@ -29,8 +29,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.FilterChainProxy;
@@ -49,8 +49,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
  * Verifica la frontera de autorización de reseñas sin arrancar persistencia ni infraestructura.
  *
  * <p>Reproduce la política central: la creación bajo {@code /api/public/**} admite al usuario
- * anónimo y revalida email/reserva en el servicio, mientras {@code /api/venue/me/**} exige
- * {@code ROLE_VENUE_OWNER} y deriva el propietario exclusivamente del principal.
+ * anónimo y revalida email/reserva en el servicio, mientras {@code /api/venue/me/**} exige {@code
+ * ROLE_VENUE_OWNER} y deriva el propietario exclusivamente del principal.
  */
 @ExtendWith(MockitoExtension.class)
 class ReviewAuthorizationTests {
@@ -66,8 +66,7 @@ class ReviewAuthorizationTests {
         MockMvcBuilders.standaloneSetup(
                 new ReviewCreationControllerImpl(creationService),
                 new VenueReviewControllerImpl(queryService))
-            .setControllerAdvice(
-                new ReviewExceptionHandler(), new VenueReviewExceptionHandler())
+            .setControllerAdvice(new ReviewExceptionHandler(), new VenueReviewExceptionHandler())
             .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
             .apply(springSecurity(securityFilter()))
             .build();
@@ -79,17 +78,10 @@ class ReviewAuthorizationTests {
     UUID reviewId = UUID.randomUUID();
     UUID venueId = UUID.randomUUID();
     when(creationService.create(
-            reservationId,
-            new ReviewCreateRequest("guest@example.com", 5, "Excelente.", true)))
+            reservationId, new ReviewCreateRequest("guest@example.com", 5, "Excelente.", true)))
         .thenReturn(
             new ReviewCreateResponse(
-                "created",
-                reviewId,
-                venueId,
-                reservationId,
-                5,
-                new BigDecimal("4.8"),
-                12));
+                "created", reviewId, venueId, reservationId, 5, new BigDecimal("4.8"), 12));
 
     mockMvc
         .perform(
@@ -131,9 +123,7 @@ class ReviewAuthorizationTests {
   void permitsVenueOwnerAndUsesOnlyPrincipalIdentity() throws Exception {
     AuthenticatedAccount principal = principal(AccountType.VENUE_BUSINESS);
     when(queryService.findOwned(principal.userId(), 0, 20))
-        .thenReturn(
-            new VenueReviewListResponse(
-                null, 0, List.of(), 0, 20, 0));
+        .thenReturn(new VenueReviewListResponse(null, 0, List.of(), 0, 20, 0));
 
     mockMvc
         .perform(
@@ -155,8 +145,7 @@ class ReviewAuthorizationTests {
                 AnyRequestMatcher.INSTANCE,
                 (authentication, context) -> new AuthorizationDecision(true))
             .build();
-    var exceptionTranslation =
-        new ExceptionTranslationFilter(new RestAuthenticationEntryPoint());
+    var exceptionTranslation = new ExceptionTranslationFilter(new RestAuthenticationEntryPoint());
     exceptionTranslation.setAccessDeniedHandler(new RestAccessDeniedHandler());
     var chain =
         new DefaultSecurityFilterChain(

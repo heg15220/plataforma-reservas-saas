@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Resuelve periódicamente reservas finalizadas sin decisión de asistencia.
  *
- * <p>La actualización masiva es idempotente: solo toca {@code confirmed} con
- * {@code attendanceMarkedAt IS NULL}. No publica identificadores ni datos de clientes en logs.
+ * <p>La actualización masiva es idempotente: solo toca {@code confirmed} con {@code
+ * attendanceMarkedAt IS NULL}. No publica identificadores ni datos de clientes en logs.
  */
 @Component
 public class DefaultAttendanceJob {
@@ -40,8 +40,7 @@ public class DefaultAttendanceJob {
   public int markAttendedByDefault() {
     Instant now = clock.instant();
     int updated =
-        reservationDao.markUnresolvedFinishedReservationsAttended(
-            now, clock.getZone().getId());
+        reservationDao.markUnresolvedFinishedReservationsAttended(now, clock.getZone().getId());
     if (updated > 0) {
       LOGGER.info("Marked {} finished reservations attended by default at {}", updated, now);
     }

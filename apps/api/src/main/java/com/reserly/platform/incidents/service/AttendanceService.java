@@ -18,6 +18,5 @@ public interface AttendanceService {
    * @throws AttendanceTooEarlyException si la reserva todavía no finalizó
    * @throws AttendanceInvalidException si el estado o la transición no son válidos
    */
-  ReservationEntity update(
-      UUID ownerUserId, UUID reservationId, AttendanceUpdateRequest request);
+  ReservationEntity update(UUID ownerUserId, UUID reservationId, AttendanceUpdateRequest request);
 }

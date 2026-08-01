@@ -47,13 +47,7 @@ class ReservationFormMigrationIntegrationTests {
             "reservationFormPublishedAt");
     assertThat(columns("ReservationFormResponses"))
         .containsExactly(
-            "id",
-            "reservationId",
-            "fieldId",
-            "fieldKey",
-            "fieldLabel",
-            "valueJson",
-            "createdAt");
+            "id", "reservationId", "fieldId", "fieldKey", "fieldLabel", "valueJson", "createdAt");
   }
 
   @Test

@@ -23,14 +23,12 @@ class DefaultAttendanceJobTests {
     ReservationDao reservationDao = mock(ReservationDao.class);
     when(reservationDao.markUnresolvedFinishedReservationsAttended(NOW, ZONE.getId()))
         .thenReturn(4);
-    DefaultAttendanceJob job =
-        new DefaultAttendanceJob(reservationDao, Clock.fixed(NOW, ZONE));
+    DefaultAttendanceJob job = new DefaultAttendanceJob(reservationDao, Clock.fixed(NOW, ZONE));
 
     int updated = job.markAttendedByDefault();
 
     assertThat(updated).isEqualTo(4);
-    verify(reservationDao)
-        .markUnresolvedFinishedReservationsAttended(NOW, "Europe/Madrid");
+    verify(reservationDao).markUnresolvedFinishedReservationsAttended(NOW, "Europe/Madrid");
   }
 
   @Test

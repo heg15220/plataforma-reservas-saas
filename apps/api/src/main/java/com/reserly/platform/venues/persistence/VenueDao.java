@@ -186,6 +186,71 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
           )
         )
       """;
+  String PUBLIC_QUERY_SUGGESTIONS =
+      """
+      select
+        v."name" as "value",
+        v."name" as "label",
+        concat_ws(
+          ' · ',
+          coalesce(jsonb_extract_path_text(c."nameI18n", 'values', :locale), c."name"),
+          nullif(concat_ws(', ', nullif(v."city", ''), nullif(v."province", '')), '')
+        ) as "context"
+      from "Venues" v
+      join "Categories" c on c."id" = v."categoryId"
+      where v."status" = 'published'
+        and lower("reserlyUnaccent"(
+          v."name" || ' ' || coalesce(v."description", '')
+        )) like :pattern escape '\\'
+      order by
+        case
+          when lower("reserlyUnaccent"(v."name")) like :prefixPattern escape '\\' then 0
+          else 1
+        end,
+        similarity(lower("reserlyUnaccent"(v."name")), :term) desc,
+        v."publishedAt" desc,
+        v."name" asc
+      limit :limit
+      """;
+  String PUBLIC_LOCATION_SUGGESTIONS =
+      """
+      with matching_venues as materialized (
+        select v."city", v."province", v."address", v."postalCode", v."publishedAt"
+        from "Venues" v
+        where v."status" = 'published'
+          and lower("reserlyUnaccent"(
+            coalesce(v."city", '') || ' ' || coalesce(v."province", '') || ' '
+            || coalesce(v."address", '') || ' ' || coalesce(v."postalCode", '')
+          )) like :pattern escape '\\'
+        order by v."publishedAt" desc
+        limit 128
+      ), candidates as (
+        select "city" as candidate, 'city' as kind, 0 as priority from matching_venues
+        union all
+        select "province", 'province', 1 from matching_venues
+        union all
+        select "address", 'address', 2 from matching_venues
+        union all
+        select "postalCode", 'postalCode', 3 from matching_venues
+      ), distinct_candidates as (
+        select distinct on (lower("reserlyUnaccent"(candidate)))
+          candidate,
+          kind,
+          lower("reserlyUnaccent"(candidate)) as normalized
+        from candidates
+        where candidate is not null
+          and btrim(candidate) <> ''
+          and lower("reserlyUnaccent"(candidate)) like :pattern escape '\\'
+        order by lower("reserlyUnaccent"(candidate)), priority
+      )
+      select candidate as "value", candidate as "label", kind as "context"
+      from distinct_candidates
+      order by
+        case when normalized like :prefixPattern escape '\\' then 0 else 1 end,
+        similarity(normalized, :term) desc,
+        candidate asc
+      limit :limit
+      """;
 
   /** Carga el perfil vigente y su categoría para lectura privada. */
   @Query(
@@ -345,4 +410,21 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       @Param("latitude") Double latitude,
       @Param("longitude") Double longitude,
       @Param("radiusMeters") Double radiusMeters);
+
+  /** Sugiere nombres publicados mediante una proyección limitada, sin conteo ni hidratación. */
+  @Query(value = PUBLIC_QUERY_SUGGESTIONS, nativeQuery = true)
+  List<VenueSearchSuggestionProjection> findPublishedQuerySuggestions(
+      @Param("pattern") String pattern,
+      @Param("prefixPattern") String prefixPattern,
+      @Param("term") String term,
+      @Param("locale") String locale,
+      @Param("limit") int limit);
+
+  /** Sugiere valores de ubicación distintos extraídos solo de perfiles publicados coincidentes. */
+  @Query(value = PUBLIC_LOCATION_SUGGESTIONS, nativeQuery = true)
+  List<VenueSearchSuggestionProjection> findPublishedLocationSuggestions(
+      @Param("pattern") String pattern,
+      @Param("prefixPattern") String prefixPattern,
+      @Param("term") String term,
+      @Param("limit") int limit);
 }

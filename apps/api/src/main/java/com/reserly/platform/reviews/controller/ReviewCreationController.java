@@ -12,15 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /** Contrato REST anónimo para valorar una reserva pasada propia. */
-@RequestMapping(
-    path = "/api/public/reservations",
-    produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/api/public/reservations", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface ReviewCreationController {
 
   /** Crea una reseña sin devolver identidad ni datos históricos de la reserva. */
-  @PostMapping(
-      path = "/{reservationId}/reviews",
-      consumes = MediaType.APPLICATION_JSON_VALUE)
+  @PostMapping(path = "/{reservationId}/reviews", consumes = MediaType.APPLICATION_JSON_VALUE)
   ResponseEntity<ReviewCreateResponse> create(
       @PathVariable UUID reservationId, @Valid @RequestBody ReviewCreateRequest request);
 }

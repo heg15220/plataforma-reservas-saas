@@ -30,9 +30,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
-/**
- * Prueba el contrato completo firma-verificación-correlación-idempotencia sin red ni base real.
- */
+/** Prueba el contrato completo firma-verificación-correlación-idempotencia sin red ni base real. */
 class RedsysCallbackContractTests {
 
   private static final UUID PAYMENT_ID = UUID.fromString("30000000-0000-4000-8000-000000000001");
@@ -80,17 +78,13 @@ class RedsysCallbackContractTests {
 
     assertThatThrownBy(() -> fixture.service().processRedsysNotification(tampered))
         .isInstanceOf(InvalidPaymentCallbackException.class);
-    verifyNoInteractions(
-        fixture.paymentDao(), fixture.receiptDao(), fixture.subscriptionService());
+    verifyNoInteractions(fixture.paymentDao(), fixture.receiptDao(), fixture.subscriptionService());
   }
 
   private Fixture fixture() throws Exception {
     RedsysProperties properties =
         new RedsysProperties(
-            URI.create("https://sis-t.redsys.es:25443/sis/realizarPago"),
-            "999008881",
-            "1",
-            KEY);
+            URI.create("https://sis-t.redsys.es:25443/sis/realizarPago"), "999008881", "1", KEY);
     RedsysSignatureService signer = new RedsysSignatureServiceImpl();
     ObjectMapper objectMapper = new ObjectMapper();
     RedsysCallbackVerificationService verifier =
@@ -114,8 +108,7 @@ class RedsysCallbackContractTests {
             receiptDao,
             subscriptionService,
             Clock.fixed(NOW, ZoneOffset.UTC));
-    return new Fixture(
-        service, paymentDao, receiptDao, subscriptionService, payment, message);
+    return new Fixture(service, paymentDao, receiptDao, subscriptionService, payment, message);
   }
 
   private PaymentEntity payment() {

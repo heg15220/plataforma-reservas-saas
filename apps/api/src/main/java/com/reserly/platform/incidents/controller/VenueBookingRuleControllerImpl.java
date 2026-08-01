@@ -29,7 +29,6 @@ public class VenueBookingRuleControllerImpl implements VenueBookingRuleControlle
   @Override
   public ResponseEntity<VenueBookingRuleResponse> update(
       AuthenticatedAccount account, VenueBookingRuleUpdateRequest request) {
-    return ResponseEntity.ok(
-        converter.toResponse(ruleService.update(account.userId(), request)));
+    return ResponseEntity.ok(converter.toResponse(ruleService.update(account.userId(), request)));
   }
 }

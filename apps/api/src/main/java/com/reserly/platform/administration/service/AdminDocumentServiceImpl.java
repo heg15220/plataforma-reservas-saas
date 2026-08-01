@@ -3,9 +3,9 @@ package com.reserly.platform.administration.service;
 import com.reserly.platform.administration.dto.AdminDocumentListResponse;
 import com.reserly.platform.administration.dto.AdminDocumentResponse;
 import com.reserly.platform.administration.dto.AdminDocumentReviewRequest;
-import com.reserly.platform.businessverification.persistence.BusinessAccountEntity;
 import com.reserly.platform.businessverification.document.DocumentEncryptionService;
 import com.reserly.platform.businessverification.document.PrivateObjectStorage;
+import com.reserly.platform.businessverification.persistence.BusinessAccountEntity;
 import com.reserly.platform.businessverification.persistence.BusinessVerificationDocumentDao;
 import com.reserly.platform.businessverification.persistence.BusinessVerificationDocumentEntity;
 import com.reserly.platform.identity.persistence.UserDao;
@@ -56,17 +56,17 @@ public class AdminDocumentServiceImpl implements AdminDocumentService {
    * Descifra bajo demanda después de resolver un documento de la cola administrativa.
    *
    * <p>Los bytes solo viven en memoria durante la respuesta y nunca forman parte de auditoría.
-  */
+   */
   @Override
   public AdminDocumentContent content(UUID documentId) {
     BusinessVerificationDocumentEntity document =
-        documentDao.findByIdForAdminContent(documentId)
+        documentDao
+            .findByIdForAdminContent(documentId)
             .orElseThrow(AdminResourceNotFoundException::new);
     long expectedMaximum =
         document.getFileSizeBytes() == null ? 10_485_760L : document.getFileSizeBytes() + 64L;
     byte[] encrypted = objectStorage.get(document.getFileUrl(), expectedMaximum);
-    byte[] plaintext =
-        encryptionService.decrypt(encrypted, document.getEncryptionKeyId());
+    byte[] plaintext = encryptionService.decrypt(encrypted, document.getEncryptionKeyId());
     return new AdminDocumentContent(plaintext, document.getMediaType());
   }
 
@@ -78,13 +78,13 @@ public class AdminDocumentServiceImpl implements AdminDocumentService {
       AdminDocumentReviewRequest request,
       AdminRequestContext context) {
     BusinessVerificationDocumentEntity document =
-        documentDao.findByIdForAdminReview(documentId)
+        documentDao
+            .findByIdForAdminReview(documentId)
             .orElseThrow(AdminResourceNotFoundException::new);
     if (!"pending_review".equals(document.getStatus())) {
       throw new AdminResourceConflictException();
     }
-    var reviewer =
-        userDao.findById(actorUserId).orElseThrow(AdminResourceNotFoundException::new);
+    var reviewer = userDao.findById(actorUserId).orElseThrow(AdminResourceNotFoundException::new);
     Instant now = clock.instant();
     document.setStatus(request.decision());
     document.setReviewedByUser(reviewer);

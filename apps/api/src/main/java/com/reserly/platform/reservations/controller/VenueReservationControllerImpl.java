@@ -43,7 +43,6 @@ public class VenueReservationControllerImpl implements VenueReservationControlle
   public ResponseEntity<VenueReservationDetailResponse> findDetail(
       AuthenticatedAccount account, UUID reservationId) {
     return ResponseEntity.ok(
-        converter.toDetailResponse(
-            reservationService.findDetail(account.userId(), reservationId)));
+        converter.toDetailResponse(reservationService.findDetail(account.userId(), reservationId)));
   }
 }

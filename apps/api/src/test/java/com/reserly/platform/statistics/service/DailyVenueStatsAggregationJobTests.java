@@ -17,13 +17,10 @@ class DailyVenueStatsAggregationJobTests {
 
   @Test
   void aggregatesPreviousBusinessDayOnce() {
-    DailyVenueStatsAggregationService service =
-        mock(DailyVenueStatsAggregationService.class);
+    DailyVenueStatsAggregationService service = mock(DailyVenueStatsAggregationService.class);
     LocalDate previousDay = LocalDate.of(2026, 7, 28);
     when(service.aggregate(previousDay)).thenReturn(5);
-    Clock clock =
-        Clock.fixed(
-            Instant.parse("2026-07-29T00:30:00Z"), ZoneId.of("Europe/Madrid"));
+    Clock clock = Clock.fixed(Instant.parse("2026-07-29T00:30:00Z"), ZoneId.of("Europe/Madrid"));
     var job = new DailyVenueStatsAggregationJob(service, clock);
 
     int result = job.aggregatePreviousDay();
@@ -40,9 +37,7 @@ class DailyVenueStatsAggregationJobTests {
             .getAnnotation(Scheduled.class);
 
     assertThat(scheduled).isNotNull();
-    assertThat(scheduled.cron())
-        .isEqualTo("${reserly.statistics.daily.cron:0 15 0 * * *}");
-    assertThat(scheduled.zone())
-        .isEqualTo("${reserly.business-clock.zone-id:Europe/Madrid}");
+    assertThat(scheduled.cron()).isEqualTo("${reserly.statistics.daily.cron:0 15 0 * * *}");
+    assertThat(scheduled.zone()).isEqualTo("${reserly.business-clock.zone-id:Europe/Madrid}");
   }
 }

@@ -8,5 +8,4 @@ import jakarta.validation.constraints.Size;
  *
  * <p>Se persiste y audita como texto plano; el email lo renderiza escapado.
  */
-public record VenueReservationCancellationRequest(
-    @NotBlank @Size(max = 500) String reason) {}
+public record VenueReservationCancellationRequest(@NotBlank @Size(max = 500) String reason) {}

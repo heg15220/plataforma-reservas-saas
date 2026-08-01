@@ -63,9 +63,7 @@ class VenueBookingRuleServiceTests {
   void rejectsInvalidNoticeBeforeReadingPersistence() {
     assertThatThrownBy(
             () ->
-                service.update(
-                    UUID.randomUUID(),
-                    new VenueBookingRuleUpdateRequest(true, 525601)))
+                service.update(UUID.randomUUID(), new VenueBookingRuleUpdateRequest(true, 525601)))
         .isInstanceOf(VenueBookingRuleInvalidException.class);
 
     verify(ruleDao, never()).findOwnedForUpdate(any());
@@ -95,8 +93,7 @@ class VenueBookingRuleServiceTests {
     venue.setId(UUID.randomUUID());
     venue.setCancellationNoticeMinutes(90);
     when(ruleDao.findOwnedForUpdate(ownerUserId)).thenReturn(Optional.empty());
-    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerUserId))
-        .thenReturn(Optional.of(venue));
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerUserId)).thenReturn(Optional.of(venue));
 
     VenueBookingRuleEntity updated =
         service.update(ownerUserId, new VenueBookingRuleUpdateRequest(true, 120));

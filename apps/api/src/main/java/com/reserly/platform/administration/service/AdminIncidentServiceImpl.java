@@ -35,8 +35,10 @@ public class AdminIncidentServiceImpl implements AdminIncidentService {
   public AdminIncidentListResponse list() {
     var incidents = incidentDao.findAdminPage(PageRequest.of(0, LIST_LIMIT));
     var venues =
-        venueDao.findAllById(incidents.stream().map(NoShowIncidentEntity::getVenueId).toList())
-            .stream().collect(Collectors.toMap(VenueEntity::getId, Function.identity()));
+        venueDao
+            .findAllById(incidents.stream().map(NoShowIncidentEntity::getVenueId).toList())
+            .stream()
+            .collect(Collectors.toMap(VenueEntity::getId, Function.identity()));
     return new AdminIncidentListResponse(
         incidents.stream().map(item -> response(item, venues.get(item.getVenueId()))).toList());
   }
@@ -44,10 +46,13 @@ public class AdminIncidentServiceImpl implements AdminIncidentService {
   @Override
   @Transactional
   public AdminIncidentResponse review(
-      UUID actorUserId, UUID incidentId, AdminIncidentReviewRequest request,
+      UUID actorUserId,
+      UUID incidentId,
+      AdminIncidentReviewRequest request,
       AdminRequestContext context) {
     NoShowIncidentEntity incident =
-        incidentDao.findByIdForAdminReview(incidentId)
+        incidentDao
+            .findByIdForAdminReview(incidentId)
             .orElseThrow(AdminResourceNotFoundException::new);
     if (!"reported".equals(incident.getStatus())) {
       throw new AdminResourceConflictException();
@@ -57,10 +62,15 @@ public class AdminIncidentServiceImpl implements AdminIncidentService {
     incidentDao.saveAndFlush(incident);
     auditLogService.record(
         new AuditLogEntry(
-            actorUserId, "admin", "incident", incident.getId(), "incident.reviewed",
+            actorUserId,
+            "admin",
+            "incident",
+            incident.getId(),
+            "incident.reviewed",
             Map.of("status", beforeStatus),
             Map.of("status", incident.getStatus(), "reason", request.reason().strip()),
-            context.ipAddress(), context.userAgent()));
+            context.ipAddress(),
+            context.userAgent()));
     VenueEntity venue =
         venueDao.findById(incident.getVenueId()).orElseThrow(AdminResourceNotFoundException::new);
     return response(incident, venue);
@@ -68,9 +78,15 @@ public class AdminIncidentServiceImpl implements AdminIncidentService {
 
   private AdminIncidentResponse response(NoShowIncidentEntity incident, VenueEntity venue) {
     return new AdminIncidentResponse(
-        incident.getId(), incident.getReservationId(), incident.getVenueId(),
-        venue == null ? null : venue.getName(), incident.getCustomerEmailNormalized(),
-        incident.getIncidentType(), incident.getReportedByUserId(), incident.getReportedAt(),
-        incident.getNotes(), incident.getStatus());
+        incident.getId(),
+        incident.getReservationId(),
+        incident.getVenueId(),
+        venue == null ? null : venue.getName(),
+        incident.getCustomerEmailNormalized(),
+        incident.getIncidentType(),
+        incident.getReportedByUserId(),
+        incident.getReportedAt(),
+        incident.getNotes(),
+        incident.getStatus());
   }
 }

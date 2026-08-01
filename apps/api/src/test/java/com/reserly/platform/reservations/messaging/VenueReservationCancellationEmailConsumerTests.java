@@ -53,9 +53,7 @@ class VenueReservationCancellationEmailConsumerTests {
         .consume(new Message(new byte[] {1}, new MessageProperties()));
 
     verify(provider)
-        .send(
-            new TransactionalEmailMessage(
-                "ana@example.com", "Asunto", "Texto", "<p>Texto</p>"));
+        .send(new TransactionalEmailMessage("ana@example.com", "Asunto", "Texto", "<p>Texto</p>"));
     verify(deliveries, org.mockito.Mockito.atLeast(2)).save(any(EmailDeliveryEntity.class));
   }
 

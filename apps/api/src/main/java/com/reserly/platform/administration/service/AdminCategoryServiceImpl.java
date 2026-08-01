@@ -61,15 +61,14 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
       AdminCategoryRequest request,
       AdminRequestContext context) {
     CategoryEntity category =
-        categoryDao
-            .findByIdForUpdate(categoryId)
-            .orElseThrow(AdminResourceNotFoundException::new);
+        categoryDao.findByIdForUpdate(categoryId).orElseThrow(AdminResourceNotFoundException::new);
     categoryDao
         .findBySlug(request.slug().strip())
         .filter(existing -> !existing.getId().equals(categoryId))
-        .ifPresent(existing -> {
-          throw new AdminResourceConflictException();
-        });
+        .ifPresent(
+            existing -> {
+              throw new AdminResourceConflictException();
+            });
     Map<String, Object> before = snapshot(category);
     apply(category, request, clock.instant());
     categoryDao.saveAndFlush(category);

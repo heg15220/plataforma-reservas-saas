@@ -45,6 +45,11 @@ body {
   outline-offset: 3px;
 }
 
+/* Los campos MUI representan el foco en su contenedor; evita un segundo marco interior. */
+.MuiInputBase-input:focus-visible {
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

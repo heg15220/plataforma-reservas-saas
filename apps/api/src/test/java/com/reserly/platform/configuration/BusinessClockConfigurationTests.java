@@ -9,8 +9,7 @@ import org.junit.jupiter.api.Test;
 /** Protege la zona explícita usada por asistencia, cancelación y auditoría. */
 class BusinessClockConfigurationTests {
 
-  private final BusinessClockConfiguration configuration =
-      new BusinessClockConfiguration();
+  private final BusinessClockConfiguration configuration = new BusinessClockConfiguration();
 
   @Test
   void createsClockForConfiguredIanaZone() {

@@ -37,14 +37,10 @@ class VenueReservationCancellationServiceTests {
 
   private final ReservationDao reservationDao = mock(ReservationDao.class);
   private final AuditLogService auditLogService = mock(AuditLogService.class);
-  private final ApplicationEventPublisher eventPublisher =
-      mock(ApplicationEventPublisher.class);
+  private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
   private final VenueReservationCancellationService service =
       new VenueReservationCancellationServiceImpl(
-          reservationDao,
-          auditLogService,
-          eventPublisher,
-          Clock.fixed(NOW, ZoneOffset.UTC));
+          reservationDao, auditLogService, eventPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
 
   @BeforeEach
   void returnSavedReservation() {
@@ -97,8 +93,7 @@ class VenueReservationCancellationServiceTests {
     verify(eventPublisher).publishEvent(event.capture());
     assertThat(event.getValue().customerEmail()).isEqualTo("ana@example.com");
     assertThat(event.getValue().customerLocale()).isEqualTo("es");
-    assertThat(event.getValue().cancellationReason())
-        .isEqualTo("Cierre operativo imprevisto.");
+    assertThat(event.getValue().cancellationReason()).isEqualTo("Cierre operativo imprevisto.");
 
     var ordered = inOrder(reservationDao, auditLogService, eventPublisher);
     ordered.verify(reservationDao).saveAndFlush(reservation);
@@ -126,10 +121,7 @@ class VenueReservationCancellationServiceTests {
     assertThatThrownBy(
             () ->
                 service.cancel(
-                    ownerId,
-                    past.getId(),
-                    new VenueReservationCancellationRequest("Motivo"),
-                    null))
+                    ownerId, past.getId(), new VenueReservationCancellationRequest("Motivo"), null))
         .isInstanceOf(VenueReservationCancellationInvalidException.class);
     verify(reservationDao, never()).saveAndFlush(past);
     verifyNoInteractions(auditLogService);

@@ -32,9 +32,7 @@ public class PublicReservationFormServiceImpl implements PublicReservationFormSe
   @Transactional(readOnly = true)
   public PublicReservationFormResponse findPublishedByVenueSlug(String venueSlug) {
     var venue =
-        venueDao
-            .findPublishedBySlug(venueSlug)
-            .orElseThrow(VenueProfileNotFoundException::new);
+        venueDao.findPublishedBySlug(venueSlug).orElseThrow(VenueProfileNotFoundException::new);
     if (!venue.isReservationFormPublished()) {
       throw new VenueProfileNotFoundException();
     }

@@ -36,10 +36,8 @@ public class ReservationFormResponseValidatorImpl implements ReservationFormResp
           "phone",
           "email",
           "time_slot");
-  private static final Pattern EMAIL_PATTERN =
-      Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-  private static final Pattern PHONE_PATTERN =
-      Pattern.compile("^\\+?[0-9][0-9 .()\\-]{6,30}$");
+  private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+  private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?[0-9][0-9 .()\\-]{6,30}$");
 
   @Override
   public List<ValidatedReservationFormAnswer> validate(
@@ -85,8 +83,7 @@ public class ReservationFormResponseValidatorImpl implements ReservationFormResp
               && (field.options() == null || field.options().isEmpty()))
           || fieldsByKey.putIfAbsent(field.key(), field) != null) {
         throw invalid(
-            ReservationFormResponseViolation.INVALID_SCHEMA,
-            field == null ? null : field.key());
+            ReservationFormResponseViolation.INVALID_SCHEMA, field == null ? null : field.key());
       }
     }
     return fieldsByKey;
@@ -96,6 +93,7 @@ public class ReservationFormResponseValidatorImpl implements ReservationFormResp
     return (field.label() != null && !field.label().isBlank())
         || (field.labelKey() != null && !field.labelKey().isBlank());
   }
+
   private Map<String, JsonNode> indexAnswers(
       Map<String, ReservationFormPreviewFieldResponse> fieldsByKey,
       List<ReservationFormAnswerCommand> answers) {
@@ -143,8 +141,7 @@ public class ReservationFormResponseValidatorImpl implements ReservationFormResp
     return JsonNodeFactory.instance.textNode(normalized);
   }
 
-  private JsonNode normalizedNumber(
-      ReservationFormPreviewFieldResponse field, JsonNode value) {
+  private JsonNode normalizedNumber(ReservationFormPreviewFieldResponse field, JsonNode value) {
     if (!value.isNumber()) {
       throw invalid(ReservationFormResponseViolation.INVALID_TYPE, field.key());
     }
@@ -155,8 +152,7 @@ public class ReservationFormResponseValidatorImpl implements ReservationFormResp
     return value.deepCopy();
   }
 
-  private JsonNode normalizedSelect(
-      ReservationFormPreviewFieldResponse field, JsonNode value) {
+  private JsonNode normalizedSelect(ReservationFormPreviewFieldResponse field, JsonNode value) {
     String normalized = requiredText(field.key(), value);
     if (field.options() == null || !field.options().contains(normalized)) {
       throw invalid(ReservationFormResponseViolation.INVALID_VALUE, field.key());

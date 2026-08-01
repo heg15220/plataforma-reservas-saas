@@ -48,9 +48,7 @@ class NoShowIncidentPersistenceTests {
 
   private String migration() throws IOException {
     try (InputStream input =
-        getClass()
-            .getResourceAsStream(
-                "/db/migration/V26__create_no_show_incidents.sql")) {
+        getClass().getResourceAsStream("/db/migration/V26__create_no_show_incidents.sql")) {
       assertThat(input).isNotNull();
       return new String(input.readAllBytes(), StandardCharsets.UTF_8);
     }

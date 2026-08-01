@@ -1,16 +1,12 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import InputAdornment from "@mui/material/InputAdornment";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import {
   ArrowRight,
   Dumbbell,
   Heart,
-  MapPin,
   Scissors,
-  Search,
   Sparkles,
   Utensils,
   type LucideIcon,
@@ -25,6 +21,7 @@ import {
   resolveSearchImageUrl,
   searchPublicVenues,
 } from "@/features/public-search/public-search-api";
+import { PublicSearchAutocomplete } from "@/features/public-search/public-search-autocomplete";
 import { visualTokens } from "@/theme/visual-tokens";
 
 const quickCategories = [
@@ -115,39 +112,17 @@ export function HomePageView({ venues = [] }: { venues?: PublicVenueSearchItem[]
                 width: "100%",
               }}
             >
-              <TextField
-                fullWidth
+              <PublicSearchAutocomplete
+                ariaLabel={t("search.queryLabel")}
+                kind="query"
                 name="q"
                 placeholder={t("search.queryPlaceholder")}
-                slotProps={{
-                  htmlInput: {
-                    "aria-label": t("search.queryLabel"),
-                  },
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search aria-hidden="true" size={17} strokeWidth={1.9} />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
               />
-              <TextField
-                fullWidth
+              <PublicSearchAutocomplete
+                ariaLabel={t("search.locationLabel")}
+                kind="location"
                 name="location"
                 placeholder={t("search.locationPlaceholder")}
-                slotProps={{
-                  htmlInput: {
-                    "aria-label": t("search.locationLabel"),
-                  },
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <MapPin aria-hidden="true" size={17} strokeWidth={1.9} />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
               />
               <Button
                 endIcon={<ArrowRight aria-hidden="true" size={16} />}

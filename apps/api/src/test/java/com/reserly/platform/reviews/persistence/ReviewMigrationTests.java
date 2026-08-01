@@ -6,13 +6,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
-/** Verificación rápida del contrato SQL de reseñas sin arrancar contenedores ni toda la aplicación. */
+/**
+ * Verificación rápida del contrato SQL de reseñas sin arrancar contenedores ni toda la aplicación.
+ */
 class ReviewMigrationTests {
 
   @Test
   void migrationDefinesReviewConstraintsAndQueryIndexes() throws IOException {
-    try (var input =
-        getClass().getResourceAsStream("/db/migration/V30__create_reviews.sql")) {
+    try (var input = getClass().getResourceAsStream("/db/migration/V30__create_reviews.sql")) {
       assertThat(input).isNotNull();
       String sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 

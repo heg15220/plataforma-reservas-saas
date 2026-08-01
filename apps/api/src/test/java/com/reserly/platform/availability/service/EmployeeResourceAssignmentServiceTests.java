@@ -53,18 +53,12 @@ class EmployeeResourceAssignmentServiceTests {
     when(availabilityService.resolve(venueId, 1, List.of(slot)))
         .thenReturn(Map.of(slot.getId(), available(false, first, selected)));
 
-    assertThat(
-            service.assign(
-                venueId, 1, slot, ResourceAssignmentPreference.SPECIFIC, selected))
+    assertThat(service.assign(venueId, 1, slot, ResourceAssignmentPreference.SPECIFIC, selected))
         .contains(selected);
     assertThatThrownBy(
             () ->
                 service.assign(
-                    venueId,
-                    1,
-                    slot,
-                    ResourceAssignmentPreference.SPECIFIC,
-                    UUID.randomUUID()))
+                    venueId, 1, slot, ResourceAssignmentPreference.SPECIFIC, UUID.randomUUID()))
         .isInstanceOf(EmployeeResourceAssignmentException.class);
   }
 
@@ -75,8 +69,7 @@ class EmployeeResourceAssignmentServiceTests {
 
     assertThatThrownBy(
             () ->
-                service.assign(
-                    venueId, 1, slot, ResourceAssignmentPreference.ANY_AVAILABLE, null))
+                service.assign(venueId, 1, slot, ResourceAssignmentPreference.ANY_AVAILABLE, null))
         .isInstanceOf(EmployeeResourceAssignmentException.class);
   }
 
@@ -85,13 +78,11 @@ class EmployeeResourceAssignmentServiceTests {
     when(availabilityService.resolve(venueId, 1, List.of(slot)))
         .thenReturn(
             Map.of(
-                slot.getId(),
-                new EmployeeResourceSlotAvailability(false, true, false, List.of())));
+                slot.getId(), new EmployeeResourceSlotAvailability(false, true, false, List.of())));
 
     assertThatThrownBy(
             () ->
-                service.assign(
-                    venueId, 1, slot, ResourceAssignmentPreference.ANY_AVAILABLE, null))
+                service.assign(venueId, 1, slot, ResourceAssignmentPreference.ANY_AVAILABLE, null))
         .isInstanceOf(EmployeeResourceAssignmentException.class);
   }
 
@@ -106,7 +97,9 @@ class EmployeeResourceAssignmentServiceTests {
   private EmployeeResourceSlotAvailability available(boolean anyAllowed, UUID... ids) {
     List<PublicEmployeeResourceAvailabilityResponse> resources =
         java.util.Arrays.stream(ids)
-            .map(id -> new PublicEmployeeResourceAvailabilityResponse(id, "professional", "Ana", null))
+            .map(
+                id ->
+                    new PublicEmployeeResourceAvailabilityResponse(id, "professional", "Ana", null))
             .toList();
     return new EmployeeResourceSlotAvailability(true, true, anyAllowed, resources);
   }

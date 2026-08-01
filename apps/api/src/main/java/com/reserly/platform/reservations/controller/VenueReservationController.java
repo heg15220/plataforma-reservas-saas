@@ -33,6 +33,5 @@ public interface VenueReservationController {
   /** Devuelve el detalle solo si la reserva pertenece al local de la cuenta autenticada. */
   @GetMapping(path = "/api/venue/me/reservations/{reservationId}")
   ResponseEntity<VenueReservationDetailResponse> findDetail(
-      @AuthenticationPrincipal AuthenticatedAccount account,
-      @PathVariable UUID reservationId);
+      @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable UUID reservationId);
 }
