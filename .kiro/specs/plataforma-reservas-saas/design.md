@@ -261,6 +261,11 @@ Responsabilidades:
 
 La disponibilidad publicada nunca debe depender solo de cache. La confirmación de reserva debe validar contra la base de datos transaccional.
 
+La ficha pública representa la disponibilidad en una cuadrícula mensual real, alineada de lunes a
+domingo y con 28 a 31 días según el mes. La cuadrícula mantiene un único día seleccionado y el
+detalle de franjas se deriva exclusivamente de la respuesta pública del backend. Los días pasados
+permanecen visibles como contexto, pero no son interactivos ni reservables.
+
 ### 3.5 Reservas
 
 Responsabilidades:

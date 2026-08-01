@@ -3,6 +3,7 @@ import { getRequestConfig } from "next-intl/server";
 
 import {
   appLocaleHeaderName,
+  defaultTimeZone,
   explicitLocaleHeaderName,
   localeCookieName,
   type Messages,
@@ -39,5 +40,6 @@ export default getRequestConfig(async () => {
   return {
     locale,
     messages: await loadMessages(locale),
+    timeZone: defaultTimeZone,
   };
 });

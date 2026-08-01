@@ -123,11 +123,11 @@ afterEach(() => {
 });
 
 describe("PublicAvailabilityCalendar", () => {
-  it("muestra siete días, capacidad real y reserva aún protegida", async () => {
+  it("muestra el mes completo, capacidad real y reserva aún protegida", async () => {
     renderWithIntl(<PublicAvailabilityCalendar startDate="2026-07-13" venueSlug="casa-luz" />);
 
     expect(await screen.findByText("3 de 4 plazas disponibles")).toBeVisible();
-    expect(fetchPublicAvailability).toHaveBeenCalledTimes(7);
+    expect(fetchPublicAvailability).toHaveBeenCalledTimes(31);
     expect(screen.getByRole("button", { name: /Reserva/ })).toBeDisabled();
     expect(screen.getByText("Con plazas")).toBeVisible();
     expect(screen.getAllByText("Servicio: Corte")).toHaveLength(2);
@@ -142,6 +142,11 @@ describe("PublicAvailabilityCalendar", () => {
       }),
     ).toBeVisible();
     expect(screen.getByRole("option", { name: /Ana/ })).toBeVisible();
+
+    expect(screen.getByText("julio de 2026")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar el mes siguiente" }));
+    expect(await screen.findByText("agosto de 2026")).toBeVisible();
+    await waitFor(() => expect(fetchPublicAvailability).toHaveBeenCalledTimes(62));
   });
 
   it("muestra selector de servicio cuando una fecha ofrece varias alternativas", async () => {
@@ -197,9 +202,7 @@ describe("PublicAvailabilityCalendar", () => {
     fireEvent.mouseDown(serviceSelector);
     fireEvent.click(await screen.findByRole("option", { name: "Masaje" }));
 
-    expect(
-      await screen.findByText("11:00 " + String.fromCharCode(8211) + " 12:00"),
-    ).toBeVisible();
+    expect(await screen.findByText("11:00 " + String.fromCharCode(8211) + " 12:00")).toBeVisible();
   });
 });
 

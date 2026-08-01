@@ -26,9 +26,9 @@ interface PublicAvailabilityCalendarProps {
 }
 
 /**
- * Seven-day public availability selector backed exclusively by API results.
+ * Monthly public availability selector backed exclusively by API results.
  *
- * The compact calendar and slot table are two views over the same payload. A
+ * The month grid and slot table are two views over the same payload. A
  * booking link is enabled only when the slot is bookable and any mandatory
  * employee selection has been resolved.
  */
@@ -38,14 +38,16 @@ export function PublicAvailabilityCalendar({
 }: PublicAvailabilityCalendarProps) {
   const t = useTranslations("Availability.public");
   const locale = useLocale();
-  const [rangeStart, setRangeStart] = useState(startDate ?? todayIso());
+  const [visibleMonth, setVisibleMonth] = useState(() => monthStart(startDate ?? todayIso()));
   const [selectedDate, setSelectedDate] = useState(startDate ?? todayIso());
   const [days, setDays] = useState<Record<string, PublicAvailability>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [resourceSelections, setResourceSelections] = useState<Record<string, string>>({});
-  const dates = useMemo(() => createDateRange(rangeStart, 7), [rangeStart]);
+  const dates = useMemo(() => createMonthDates(visibleMonth), [visibleMonth]);
+  const leadingEmptyDays = useMemo(() => monthLeadingEmptyDays(visibleMonth), [visibleMonth]);
+  const weekdayLabels = useMemo(() => createWeekdayLabels(locale), [locale]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,7 +134,7 @@ export function PublicAvailabilityCalendar({
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: { md: "280px minmax(0, 1fr)" },
+                gridTemplateColumns: { md: "340px minmax(0, 1fr)" },
                 minHeight: 360,
               }}
             >
@@ -150,9 +152,9 @@ export function PublicAvailabilityCalendar({
                     sx={{ alignItems: "center", justifyContent: "space-between" }}
                   >
                     <Button
-                      aria-label={t("previousWeek")}
-                      disabled={addDays(rangeStart, -7) < todayIso()}
-                      onClick={() => shiftRange(-7)}
+                      aria-label={t("previousMonth")}
+                      disabled={monthEnd(addMonths(visibleMonth, -1)) < todayIso()}
+                      onClick={() => shiftMonth(-1)}
                       size="small"
                       sx={{ minWidth: 36, px: 0 }}
                       variant="text"
@@ -160,11 +162,11 @@ export function PublicAvailabilityCalendar({
                       <ChevronLeft aria-hidden size={18} />
                     </Button>
                     <Typography sx={{ fontWeight: 800 }}>
-                      {formatMonth(rangeStart, locale)}
+                      {formatMonth(visibleMonth, locale)}
                     </Typography>
                     <Button
-                      aria-label={t("nextWeek")}
-                      onClick={() => shiftRange(7)}
+                      aria-label={t("nextMonth")}
+                      onClick={() => shiftMonth(1)}
                       size="small"
                       sx={{ minWidth: 36, px: 0 }}
                       variant="text"
@@ -173,70 +175,93 @@ export function PublicAvailabilityCalendar({
                     </Button>
                   </Stack>
 
-                  <Box
-                    aria-label={t("daysLabel")}
-                    role="group"
-                    sx={{
-                      display: "grid",
-                      gap: 0.75,
-                      gridTemplateColumns: {
-                        xs: "repeat(7, minmax(42px, 1fr))",
-                        md: "repeat(7, minmax(0, 1fr))",
-                      },
-                      overflowX: "auto",
-                    }}
-                  >
-                    {dates.map((date) => {
-                      const day = days[date];
-                      const selectedDay = date === selectedDate;
-                      return (
-                        <Button
-                          key={date}
-                          aria-label={`${formatLongDate(date, locale)} · ${day?.statusLabel ?? t("unavailable")}`}
-                          aria-pressed={selectedDay}
-                          onClick={() => setSelectedDate(date)}
+                  <Box aria-label={t("daysLabel")} role="grid">
+                    <Box
+                      aria-hidden
+                      sx={{
+                        display: "grid",
+                        gap: 0.5,
+                        gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                        mb: 0.5,
+                      }}
+                    >
+                      {weekdayLabels.map((label, index) => (
+                        <Typography
+                          component="span"
+                          key={`${label}-${index}`}
                           sx={{
-                            border: 1,
-                            borderColor: selectedDay ? "primary.main" : "divider",
-                            borderRadius: 2,
-                            color: selectedDay ? "primary.contrastText" : "text.primary",
-                            flexDirection: "column",
-                            gap: 0.25,
-                            minWidth: 0,
-                            px: 0.35,
-                            py: 0.8,
-                            textTransform: "none",
+                            color: "text.secondary",
+                            fontSize: "0.67rem",
+                            fontWeight: 800,
+                            textAlign: "center",
+                            textTransform: "uppercase",
                           }}
-                          variant={selectedDay ? "contained" : "text"}
                         >
-                          <Typography
-                            component="span"
-                            sx={{ fontSize: "0.65rem", textTransform: "uppercase" }}
-                          >
-                            {formatWeekday(date, locale)}
-                          </Typography>
-                          <Typography
-                            component="span"
-                            sx={{ fontSize: "0.875rem", fontWeight: 800 }}
-                          >
-                            {formatDayNumber(date, locale)}
-                          </Typography>
-                          <Box
-                            aria-hidden
+                          {label}
+                        </Typography>
+                      ))}
+                    </Box>
+                    <Box
+                      role="row"
+                      sx={{
+                        display: "grid",
+                        gap: 0.5,
+                        gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                      }}
+                    >
+                      {Array.from({ length: leadingEmptyDays }, (_, index) => (
+                        <Box aria-hidden key={`empty-${index}`} />
+                      ))}
+                      {dates.map((date) => {
+                        const day = days[date];
+                        const selectedDay = date === selectedDate;
+                        const pastDay = date < todayIso();
+                        return (
+                          <Button
+                            key={date}
+                            aria-label={`${formatLongDate(date, locale)} · ${day?.statusLabel ?? t("unavailable")}`}
+                            aria-pressed={selectedDay}
+                            disabled={pastDay}
+                            onClick={() => setSelectedDate(date)}
+                            role="gridcell"
                             sx={{
-                              bgcolor: day?.bookingAvailable
-                                ? selectedDay
-                                  ? "common.white"
-                                  : "success.main"
-                                : "grey.400",
-                              borderRadius: "50%",
-                              height: 5,
-                              width: 5,
+                              border: 1,
+                              borderColor: selectedDay ? "primary.main" : "divider",
+                              borderRadius: 2,
+                              color: selectedDay ? "primary.contrastText" : "text.primary",
+                              flexDirection: "column",
+                              gap: 0.15,
+                              minHeight: 48,
+                              minWidth: 0,
+                              px: 0.2,
+                              py: 0.45,
+                              textTransform: "none",
                             }}
-                          />
-                        </Button>
-                      );
-                    })}
+                            variant={selectedDay ? "contained" : "text"}
+                          >
+                            <Typography
+                              component="span"
+                              sx={{ fontSize: "0.875rem", fontWeight: 800 }}
+                            >
+                              {formatDayNumber(date, locale)}
+                            </Typography>
+                            <Box
+                              aria-hidden
+                              sx={{
+                                bgcolor: day?.bookingAvailable
+                                  ? selectedDay
+                                    ? "common.white"
+                                    : "success.main"
+                                  : "grey.400",
+                                borderRadius: "50%",
+                                height: 5,
+                                width: 5,
+                              }}
+                            />
+                          </Button>
+                        );
+                      })}
+                    </Box>
                   </Box>
 
                   <Box
@@ -244,7 +269,7 @@ export function PublicAvailabilityCalendar({
                     component="input"
                     min={todayIso()}
                     onChange={(event) => {
-                      setRangeStart(event.target.value);
+                      setVisibleMonth(monthStart(event.target.value));
                       setSelectedDate(event.target.value);
                     }}
                     type="date"
@@ -516,13 +541,14 @@ export function PublicAvailabilityCalendar({
     return `/locales/${encodeURIComponent(venueSlug)}/reservar?${query.toString()}`;
   }
 
-  function shiftRange(daysToAdd: number) {
-    const next = addDays(rangeStart, daysToAdd);
-    if (next < todayIso()) {
+  function shiftMonth(monthsToAdd: number) {
+    const nextMonth = addMonths(visibleMonth, monthsToAdd);
+    if (monthEnd(nextMonth) < todayIso()) {
       return;
     }
-    setRangeStart(next);
-    setSelectedDate(next);
+    const nextSelectedDate = nextMonth === monthStart(todayIso()) ? todayIso() : nextMonth;
+    setVisibleMonth(nextMonth);
+    setSelectedDate(nextSelectedDate);
   }
 }
 
@@ -596,8 +622,41 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function createDateRange(start: string, count: number) {
-  return Array.from({ length: count }, (_, index) => addDays(start, index));
+function createMonthDates(firstDay: string) {
+  const count = daysInMonth(firstDay);
+  return Array.from({ length: count }, (_, index) => addDays(firstDay, index));
+}
+
+function monthStart(value: string) {
+  return `${value.slice(0, 7)}-01`;
+}
+
+function monthEnd(value: string) {
+  return addDays(addMonths(monthStart(value), 1), -1);
+}
+
+function daysInMonth(value: string) {
+  return Number(monthEnd(value).slice(8, 10));
+}
+
+function monthLeadingEmptyDays(value: string) {
+  const nativeWeekday = new Date(`${monthStart(value)}T12:00:00`).getDay();
+  return (nativeWeekday + 6) % 7;
+}
+
+function addMonths(value: string, months: number) {
+  const date = new Date(`${monthStart(value)}T12:00:00`);
+  date.setMonth(date.getMonth() + months);
+  return toIsoDate(date);
+}
+
+function createWeekdayLabels(locale: string) {
+  const monday = new Date("2026-07-13T12:00:00");
+  return Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(locale, { weekday: "narrow" }).format(
+      new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index, 12),
+    ),
+  );
 }
 
 function addDays(value: string, days: number) {
@@ -615,12 +674,6 @@ function toIsoDate(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function formatWeekday(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, { weekday: "narrow" }).format(
-    new Date(`${value}T12:00:00`),
-  );
 }
 
 function formatDayNumber(value: string, locale: string) {

@@ -19,6 +19,60 @@ Fuente de verdad del avance:
 - Observación: la fase 15 queda completa con validación responsive bilingüe y del flujo móvil de
   reseñas de la ficha pública.
 
+## Conversación 145 - Oferta detallada por local y calendario público mensual
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se añadió a los seis locales demo una pestaña editorial bilingüe con información inventada y
+    específica de su categoría: carta, estilos, tratamientos, modalidades, cuotas o alquileres,
+    siempre con precios visibles.
+  - El calendario público dejó de presentar ventanas semanales y pasó a representar meses naturales
+    completos de 28 a 31 días, alineados de lunes a domingo y con navegación mensual.
+  - Se materializaron los fixtures reiniciando la API local y se comprobó el resultado en navegador.
+- Archivos modificados:
+  - `apps/api/src/main/resources/dev-fixtures/local-demo-venues.sql` y su test de contrato.
+  - `apps/web/src/features/availability/public-availability-calendar.tsx` y su test focalizado.
+  - `apps/web/locales/es.json`, `apps/web/locales/en.json`, `requirements.md`, `design.md` y la
+    documentación `.kiro`.
+- Requisitos impactados: `RF-004`, `RF-006`, `RF-027`, `RF-031`, `RNF-004`, `RNF-006` y `RNF-007`.
+- Tareas impactadas: evolución posterior a `2.16`, `5.8`, `15.1` y `15.2`; sin cambio de estado.
+- Tareas completadas: ninguna; `tasks.md` permanece sin cambios.
+- Siguiente tarea pendiente recomendada: `16.1`.
+- Decisiones o aclaraciones relevantes:
+  - Se reutilizan `VenueCustomTabs` y `safe_html`; no se introduce un campo de precio en servicios
+    porque esta información es editorial y no interviene todavía en cobro ni confirmación.
+  - Los días pasados se muestran como contexto mensual, pero quedan deshabilitados.
+  - Evidencia: 5 tests frontend y 2 tests del fixture correctos; las seis respuestas públicas
+    contienen su pestaña; navegador confirma 31 celdas, siete cabeceras, contenido de restaurante y
+    peluquería y ausencia de errores de consola.
+  - El typecheck global se detuvo a los 60 segundos sin diagnóstico y no se repitió.
+
+## Conversación 144 - Corrección del bucle de renderizado en desarrollo
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se reprodujo el inicio desde `127.0.0.1` y se comprobó que Next bloqueaba su propio canal HMR
+    por origen cruzado, provocando reconexiones y reevaluaciones continuas del árbol.
+  - `next.config.ts` autoriza expresamente `localhost` y `127.0.0.1` como orígenes de desarrollo.
+  - Se fijó `UTC` como zona horaria común de `next-intl` en servidor y cliente para eliminar
+    diferencias potenciales de hidratación.
+- Archivos modificados:
+  - `apps/web/next.config.ts`, `src/i18n/config.ts`, `src/i18n/request.ts` y
+    `src/app/providers.tsx`.
+  - Documentación `.kiro` de seguimiento e implementación.
+- Requisitos impactados: `RF-031`, `RNF-004`, `RNF-005` y `RNF-007`.
+- Tareas impactadas: corrección transversal posterior a `0.10`, `0.11` y `15.1`; sin cambios de
+  estado.
+- Tareas completadas: ninguna; `tasks.md` permanece sin cambios.
+- Siguiente tarea pendiente recomendada: `16.1`.
+- Decisiones o aclaraciones relevantes:
+  - Evidencia previa: log `Blocked cross-origin request ... /_next/webpack-hmr from 127.0.0.1` y
+    aviso `ENVIRONMENT_FALLBACK` sin `timeZone`.
+  - Evidencia posterior: dos respuestas consecutivas `200`, 223726/223725 bytes, sin bloqueo HMR ni
+    aviso de zona horaria; el log limpio contiene solo el arranque normal.
+  - Prettier focalizado pasa. Vitest focalizado no inició casos antes del límite de 70 segundos y
+    se detuvo sin ejecutar suites globales.
+
 ## Conversación 143 - Sustitución de LET Padel y ampliación de locales demo
 
 - Fecha: 2026-08-01.

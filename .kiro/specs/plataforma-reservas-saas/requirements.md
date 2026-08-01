@@ -194,6 +194,8 @@ La ficha del local debe incluir un módulo de calendario para consultar fechas y
 #### Criterios de aceptación
 
 - WHEN el usuario abre el calendario, THEN ve días disponibles, cerrados, completos, sin disponibilidad y día seleccionado.
+- WHEN el usuario consulta la disponibilidad, THEN el selector presenta el mes natural completo en una cuadrícula de siete columnas y 28 a 31 días, no una única semana.
+- WHEN el usuario cambia de mes, THEN puede avanzar o retroceder por meses completos sin navegar a un mes enteramente pasado.
 - WHEN selecciona un día, THEN se listan las franjas de ese día.
 - WHEN una franja tiene plazas, THEN muestra hora de inicio, hora de fin, capacidad total, plazas disponibles y botón de reserva.
 - WHEN una franja está completa o bloqueada, THEN aparece deshabilitada con estado claro.

@@ -671,3 +671,67 @@ CROSS JOIN (
     (TIME '21:00', TIME '22:30')
 ) AS turn("startsAt", "endsAt")
 ON CONFLICT DO NOTHING;
+
+-- Información editorial inventada para que cada categoría pueda demostrar su oferta y precios.
+-- Se publica como HTML seguro localizado mediante el mismo contrato que usan los propietarios.
+DELETE FROM "VenueCustomTabs"
+WHERE "venueId" IN (
+  'd3000000-0000-4000-8000-000000000001'::uuid,
+  'd3000000-0000-4000-8000-000000000002'::uuid,
+  'd3000000-0000-4000-8000-000000000003'::uuid,
+  'd3000000-0000-4000-8000-000000000004'::uuid,
+  'd3000000-0000-4000-8000-000000000005'::uuid,
+  'd3000000-0000-4000-8000-000000000006'::uuid
+);
+
+INSERT INTO "VenueCustomTabs" (
+  "id", "venueId", "position", "isActive", "titleI18n", "contentI18n",
+  "contentFormat", "createdAt", "updatedAt"
+) VALUES
+  (
+    'd6000000-0000-4000-8000-000000000001',
+    'd3000000-0000-4000-8000-000000000001', 0, true,
+    '{"sourceLocale":"es","values":{"es":"Tarifas y alquiler","en":"Rates and equipment hire"}}'::jsonb,
+    '{"sourceLocale":"es","values":{"es":"<h3>Pistas y material</h3><ul><li><strong>Pista cubierta, 90 min:</strong> 28 &euro;</li><li><strong>Hora valle, 90 min:</strong> 22 &euro;</li><li><strong>Bono de 5 reservas:</strong> 125 &euro;</li><li><strong>Alquiler de pala:</strong> 3 &euro;</li><li><strong>Bote de pelotas:</strong> 6,50 &euro;</li></ul><p>La reserva incluye vestuario y aparcamiento.</p>","en":"<h3>Courts and equipment</h3><ul><li><strong>Indoor court, 90 min:</strong> &euro;28</li><li><strong>Off-peak court, 90 min:</strong> &euro;22</li><li><strong>Five-booking pass:</strong> &euro;125</li><li><strong>Racket hire:</strong> &euro;3</li><li><strong>Ball tube:</strong> &euro;6.50</li></ul><p>Changing rooms and parking are included.</p>"}}'::jsonb,
+    'safe_html', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  ),
+  (
+    'd6000000-0000-4000-8000-000000000002',
+    'd3000000-0000-4000-8000-000000000002', 0, true,
+    '{"sourceLocale":"es","values":{"es":"Estilos y precios","en":"Styles and prices"}}'::jsonb,
+    '{"sourceLocale":"es","values":{"es":"<h3>Cortes, color y acabado</h3><ul><li><strong>Corte clásico o degradado:</strong> 18 &euro;</li><li><strong>Corte bob o capas largas:</strong> 29 &euro;</li><li><strong>Peinado con ondas:</strong> 24 &euro;</li><li><strong>Balayage luminoso:</strong> desde 72 &euro;</li><li><strong>Color completo:</strong> desde 48 &euro;</li><li><strong>Tratamiento de hidratación:</strong> 22 &euro;</li></ul><p>El diagnóstico previo y el lavado están incluidos.</p>","en":"<h3>Cuts, colour and finish</h3><ul><li><strong>Classic cut or fade:</strong> &euro;18</li><li><strong>Bob or long layers:</strong> &euro;29</li><li><strong>Wavy blow-dry:</strong> &euro;24</li><li><strong>Luminous balayage:</strong> from &euro;72</li><li><strong>Full colour:</strong> from &euro;48</li><li><strong>Hydration treatment:</strong> &euro;22</li></ul><p>Consultation and wash are included.</p>"}}'::jsonb,
+    'safe_html', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  ),
+  (
+    'd6000000-0000-4000-8000-000000000003',
+    'd3000000-0000-4000-8000-000000000003', 0, true,
+    '{"sourceLocale":"es","values":{"es":"Carta y precios","en":"Menu and prices"}}'::jsonb,
+    '{"sourceLocale":"es","values":{"es":"<h3>Entrantes</h3><ul><li><strong>Croquetas de centollo:</strong> 12 &euro;</li><li><strong>Tomate, queso de Arzúa y albahaca:</strong> 11 &euro;</li></ul><h3>Principales</h3><ul><li><strong>Merluza atlántica con verduras:</strong> 24 &euro;</li><li><strong>Arroz meloso de setas:</strong> 19 &euro;</li><li><strong>Carrillera de ternera gallega:</strong> 23 &euro;</li></ul><h3>Postres</h3><ul><li><strong>Tarta cremosa de Santiago:</strong> 7 &euro;</li><li><strong>Menú degustación de cinco pases:</strong> 46 &euro;</li></ul>","en":"<h3>Starters</h3><ul><li><strong>Spider crab croquettes:</strong> &euro;12</li><li><strong>Tomato, Arzúa cheese and basil:</strong> &euro;11</li></ul><h3>Main courses</h3><ul><li><strong>Atlantic hake with vegetables:</strong> &euro;24</li><li><strong>Creamy mushroom rice:</strong> &euro;19</li><li><strong>Galician beef cheek:</strong> &euro;23</li></ul><h3>Desserts</h3><ul><li><strong>Creamy Santiago cake:</strong> &euro;7</li><li><strong>Five-course tasting menu:</strong> &euro;46</li></ul>"}}'::jsonb,
+    'safe_html', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  ),
+  (
+    'd6000000-0000-4000-8000-000000000004',
+    'd3000000-0000-4000-8000-000000000004', 0, true,
+    '{"sourceLocale":"es","values":{"es":"Modalidades y tarifas","en":"Formats and rates"}}'::jsonb,
+    '{"sourceLocale":"es","values":{"es":"<h3>Alquiler del campo</h3><ul><li><strong>Fútbol 7, 90 min:</strong> 68 &euro;</li><li><strong>Fútbol 11, 90 min:</strong> 118 &euro;</li><li><strong>Entrenamiento escolar, 60 min:</strong> 44 &euro;</li><li><strong>Iluminación nocturna:</strong> 12 &euro;</li><li><strong>Petos y balones:</strong> 8 &euro;</li></ul><p>Incluye dos vestuarios y acceso 15 minutos antes.</p>","en":"<h3>Pitch hire</h3><ul><li><strong>Seven-a-side, 90 min:</strong> &euro;68</li><li><strong>Eleven-a-side, 90 min:</strong> &euro;118</li><li><strong>School training, 60 min:</strong> &euro;44</li><li><strong>Floodlights:</strong> &euro;12</li><li><strong>Bibs and balls:</strong> &euro;8</li></ul><p>Two changing rooms and access 15 minutes early are included.</p>"}}'::jsonb,
+    'safe_html', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  ),
+  (
+    'd6000000-0000-4000-8000-000000000005',
+    'd3000000-0000-4000-8000-000000000005', 0, true,
+    '{"sourceLocale":"es","values":{"es":"Entrenamientos y cuotas","en":"Training and memberships"}}'::jsonb,
+    '{"sourceLocale":"es","values":{"es":"<h3>Sesiones y bonos</h3><ul><li><strong>Entrenamiento funcional en grupo:</strong> 12 &euro;</li><li><strong>Sesión personal, 60 min:</strong> 38 &euro;</li><li><strong>Valoración inicial:</strong> 25 &euro;</li><li><strong>Bono de 8 sesiones:</strong> 82 &euro;</li><li><strong>Cuota mensual libre:</strong> 39 &euro;</li></ul><p>Las sesiones guiadas admiten un máximo de 12 personas.</p>","en":"<h3>Sessions and passes</h3><ul><li><strong>Group functional training:</strong> &euro;12</li><li><strong>Personal session, 60 min:</strong> &euro;38</li><li><strong>Initial assessment:</strong> &euro;25</li><li><strong>Eight-session pass:</strong> &euro;82</li><li><strong>Open monthly membership:</strong> &euro;39</li></ul><p>Guided sessions are limited to 12 people.</p>"}}'::jsonb,
+    'safe_html', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  ),
+  (
+    'd6000000-0000-4000-8000-000000000006',
+    'd3000000-0000-4000-8000-000000000006', 0, true,
+    '{"sourceLocale":"es","values":{"es":"Tratamientos y precios","en":"Treatments and prices"}}'::jsonb,
+    '{"sourceLocale":"es","values":{"es":"<h3>Facial y corporal</h3><ul><li><strong>Higiene facial atlántica:</strong> 42 &euro;</li><li><strong>Ritual hidratante con algas:</strong> 55 &euro;</li><li><strong>Masaje relajante, 50 min:</strong> 48 &euro;</li><li><strong>Tratamiento corporal drenante:</strong> 62 &euro;</li><li><strong>Diseño y laminado de cejas:</strong> 31 &euro;</li></ul><p>Cada cita comienza con una valoración de piel y contraindicaciones.</p>","en":"<h3>Face and body</h3><ul><li><strong>Atlantic facial cleanse:</strong> &euro;42</li><li><strong>Seaweed hydration ritual:</strong> &euro;55</li><li><strong>Relaxing massage, 50 min:</strong> &euro;48</li><li><strong>Draining body treatment:</strong> &euro;62</li><li><strong>Brow design and lamination:</strong> &euro;31</li></ul><p>Each appointment starts with a skin and contraindication assessment.</p>"}}'::jsonb,
+    'safe_html', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  )
+ON CONFLICT ("id") DO UPDATE SET
+  "venueId" = EXCLUDED."venueId", "position" = EXCLUDED."position",
+  "isActive" = true, "titleI18n" = EXCLUDED."titleI18n",
+  "contentI18n" = EXCLUDED."contentI18n", "contentFormat" = 'safe_html',
+  "updatedAt" = CURRENT_TIMESTAMP;

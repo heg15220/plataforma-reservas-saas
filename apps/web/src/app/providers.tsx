@@ -6,7 +6,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 
-import type { Messages, SupportedLocale } from "@/i18n/config";
+import { defaultTimeZone, type Messages, type SupportedLocale } from "@/i18n/config";
 import { baseTheme } from "@/theme/base-theme";
 
 export interface AppProvidersProps {
@@ -23,7 +23,7 @@ export interface AppProvidersProps {
 export function AppProviders({ children, locale, messages }: Readonly<AppProvidersProps>) {
   return (
     <AppRouterCacheProvider options={{ enableCssLayer: true }}>
-      <NextIntlClientProvider locale={locale} messages={messages}>
+      <NextIntlClientProvider locale={locale} messages={messages} timeZone={defaultTimeZone}>
         <ThemeProvider theme={baseTheme}>
           <CssBaseline />
           {children}

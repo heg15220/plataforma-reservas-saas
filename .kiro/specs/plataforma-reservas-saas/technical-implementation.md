@@ -29959,6 +29959,114 @@ slug LET en la sección efectiva y dimensiones de los ocho recursos. `git diff -
 La prueba Maven focalizada encontró y permitió corregir un único formato; el segundo intento alcanzó
 el límite de 60 segundos sin emitir resultado, por lo que no se ejecutaron suites adicionales.
 
+## Evolución de 2.16/5.8/15.1 - Oferta editorial por categoría y calendario mensual
+
+- Fecha: 2026-08-01.
+- Estado: implementada y verificada de forma focalizada; no altera `tasks.md`.
+
+### Objetivo, requisitos y decisiones de diseño
+
+La iteración completa los datos demostrativos de la ficha pública y sustituye el selector semanal de
+disponibilidad por una vista mensual. Desarrolla `RF-004`, `RF-006`, `RF-027` y `RF-031`, además de
+los requisitos no funcionales de internacionalización, mantenibilidad y usabilidad.
+
+Los precios se modelan como contenido editorial dentro de `VenueCustomTabs`, no como un atributo de
+`Services`. Esta decisión evita otorgar semántica económica a importes que todavía no participan en
+reservas, facturación ni RedSys, y reutiliza el contrato existente de HTML saneado y localizado.
+Cuando el producto necesite cobrar servicios individuales deberá añadirse un modelo monetario con
+moneda, impuestos, vigencia y snapshot de precio en la reserva.
+
+### Datos, contenido y seguridad
+
+`local-demo-venues.sql` publica una pestaña estable por cada uno de los seis locales: tarifas de
+pista y material para Ames Padel Center, estilos y precios para Brisa Studio, carta completa para
+Lume de Brétema, modalidades de campo para Campo do Sar, entrenamientos y cuotas para Norte Fitness
+Lab, y tratamientos para Aura Atlántica. Todos los títulos y contenidos tienen versión española e
+inglesa, importes explícitos y estructura semántica con encabezados, listas y texto.
+
+El fixture elimina primero las pestañas de esos seis UUID reservados para producir un snapshot
+determinista en cada arranque local. La operación queda restringida a publicaciones demo y no afecta
+a locales creados por usuarios. Los IDs de las nuevas filas también son reservados y estables. El
+contenido usa exclusivamente etiquetas admitidas, `contentFormat = safe_html`, no incluye scripts,
+eventos inline, estilos, URLs ni datos personales. Las restricciones de `VenueCustomTabs` siguen
+validando localización completa, longitud, posición y patrones peligrosos.
+
+No se crean migraciones, endpoints, permisos, cookies, logs ni contratos REST. La lectura pública ya
+existente filtra local publicado y pestaña activa, resuelve el locale y entrega solamente título,
+contenido, posición y formato.
+
+### Calendario, estados y comportamiento responsive
+
+`PublicAvailabilityCalendar` mantiene un `visibleMonth` normalizado al primer día y un
+`selectedDate` independiente. `createMonthDates` calcula 28, 29, 30 o 31 fechas mediante límites de
+mes; `monthLeadingEmptyDays` convierte el weekday nativo a una cuadrícula ISO lunes-domingo. Las
+cabeceras se generan con `Intl.DateTimeFormat` y las flechas desplazan meses naturales completos.
+No se permite retroceder a un mes enteramente pasado; dentro del mes actual, los días anteriores a
+hoy permanecen visibles pero deshabilitados.
+
+La cuadrícula usa roles `grid`, `row` y `gridcell`, `aria-pressed` para el día seleccionado y nombres
+accesibles que combinan fecha larga y estado del backend. Conserva indicadores de disponible,
+no disponible y seleccionado, selector nativo de fecha, detalle de franjas, capacidades, servicios,
+recursos y enlaces de reserva. En escritorio la columna crece de 280 a 340 px; en móvil conserva
+siete columnas fluidas sin scroll horizontal obligatorio.
+
+Cada cambio de mes cancela las solicitudes anteriores mediante `AbortController`; una respuesta
+obsoleta no actualiza el estado. La implementación actual reutiliza el endpoint diario y carga en
+paralelo entre 28 y 31 respuestas. Es correcto funcionalmente y no bloquea la interfaz, pero queda
+como deuda crear una proyección mensual agregada si el tráfico del calendario exige reducir
+peticiones HTTP y consultas de disponibilidad.
+
+### Archivos y verificación
+
+Se modificaron el fixture SQL y `LocalDemoVenueFixtureContractTests`, el componente mensual y
+`availability-ui.test.tsx`, ambos catálogos i18n, requisitos, diseño y documentación técnica.
+
+- Vitest focalizado de `availability-ui.test.tsx`: 5 tests, 0 fallos; comprueba mes completo,
+  capacidad, reserva, recursos, servicios y el resto del módulo dependiente.
+- Maven focalizado de `LocalDemoVenueFixtureContractTests`: 2 tests, 0 fallos y 0 errores. El primer
+  intento no obtuvo acceso de red; el segundo, autorizado, finalizó correctamente en 72 segundos.
+- Reinicio de la API: Flyway permaneció en V35 y el inicializador terminó correctamente. Las seis
+  respuestas públicas devolvieron la pestaña esperada y contenido no vacío.
+- Navegador local: Lume muestra carta y merluza con precio; Brisa muestra estilos y balayage; agosto
+  representa 31 celdas y siete cabeceras, con el 1 de agosto seleccionado. No hubo errores de
+  consola.
+- Prettier focalizado y `git diff --check` finalizaron correctamente. El typecheck global no produjo
+  diagnóstico antes del límite de 60 segundos y no se repitió para evitar una validación
+  interminable. No se ejecutaron suites globales, build, Docker ni Testcontainers.
+
+## Corrección transversal - Estabilidad de HMR e hidratación en la web local
+
+- Fecha: 2026-08-01.
+- Estado: corregida y verificada en servidor local; no altera `tasks.md`.
+
+### Diagnóstico
+
+El componente de autocompletado no producía un bucle de estado: una instancia limpia permanecía
+estable y aceptaba escritura. El log de Next identificó la causa real: al abrir la web mediante
+`http://127.0.0.1:3000`, el servidor anunciado como `localhost` bloqueaba
+`/_next/webpack-hmr` por origen cruzado. El cliente de desarrollo reconectaba repetidamente y React
+volvía a evaluar el árbol. Simultáneamente, `next-intl` emitía `ENVIRONMENT_FALLBACK` porque servidor
+y navegador no compartían una zona horaria explícita, con riesgo adicional de markup distinto.
+
+### Implementación
+
+`next.config.ts` declara `allowedDevOrigins: ["localhost", "127.0.0.1"]`. Esta opción solo gobierna
+los recursos del servidor de desarrollo y no amplía CORS de la API ni orígenes de producción.
+`defaultTimeZone = "UTC"` se centraliza en `i18n/config.ts`; `getRequestConfig` la entrega durante SSR
+y `NextIntlClientProvider` durante hidratación. UTC coincide con el tratamiento neutro ya usado al
+formatear fechas de dominio y evita depender de la zona del proceso o dispositivo.
+
+No cambian endpoints, datos, cookies, sesiones, permisos ni contratos de búsqueda. La corrección
+afecta solo al runtime web y conserva `reactStrictMode`.
+
+### Evidencia y límites
+
+Antes del cambio, el log mostraba el bloqueo HMR y `ENVIRONMENT_FALLBACK`. Tras reiniciar Next, dos
+peticiones consecutivas a `127.0.0.1` devolvieron `200` con contenido estable y el log no registró
+warnings ni errores. Los cuatro archivos pasan Prettier focalizado. Vitest focalizado de inicio,
+resolución de locale y autocompletado alcanzó 70 segundos antes de iniciar casos; se detuvo para no
+convertir la validación en una ejecución interminable.
+
 ## Rectificación de la corrección de foco - Selector global específico y evidencia visual
 
 - Fecha: 2026-08-01.
