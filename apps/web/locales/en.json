@@ -362,6 +362,7 @@
     },
     "form": {
       "description": "Enter the credentials of the person responsible for the venue.",
+      "regionLabel": "Venue sign-in form",
       "title": "Sign in"
     },
     "hero": {
@@ -948,6 +949,7 @@
   "PublicSearch": {
     "actions": {
       "apply": "Apply filters",
+      "book": "Book",
       "clear": "Clear filters",
       "registerVenue": "Register this venue",
       "viewVenue": "View venue"
@@ -975,13 +977,16 @@
     },
     "eyebrow": "DISCOVERY",
     "filters": {
+      "activeCount": "{count, plural, one {# active} other {# active}}",
       "anyCategory": "All categories",
       "ariaLabel": "Public search filters",
       "categoryLabel": "Category",
+      "close": "Close filters",
       "desktopTitle": "Filters",
       "locationLabel": "Location",
       "locationPlaceholder": "City, area or address",
       "mobileTitle": "Show filters",
+      "panelTitle": "Filter results",
       "queryLabel": "What are you looking for?",
       "queryPlaceholder": "Name, service or category",
       "sortLabel": "Sort by"

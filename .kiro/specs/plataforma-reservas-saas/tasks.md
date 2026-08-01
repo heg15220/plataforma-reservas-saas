@@ -273,13 +273,13 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 ## 17. Fase 15 - Responsive y experiencia móvil
 
 - [x] 15.1. Validar inicio móvil con buscador, ubicación y categorías.
-- [ ] 15.2. Validar resultados móviles con tarjetas.
-- [ ] 15.3. Validar filtros móviles como panel o modal.
+- [x] 15.2. Validar resultados móviles con tarjetas.
+- [x] 15.3. Validar filtros móviles como panel o modal.
 - [x] 15.4. Validar ficha móvil con pestañas y botón fijo de reserva.
 - [x] 15.5. Validar calendario compacto y franjas táctiles.
 - [x] 15.6. Validar formulario móvil por bloques con contador.
 - [x] 15.7. Validar pantalla móvil de confirmación.
-- [ ] 15.8. Validar login móvil de locales.
+- [x] 15.8. Validar login móvil de locales.
 - [ ] 15.9. Validar panel resumen móvil del local.
 - [ ] 15.10. Validar reservas del día y detalle móvil.
 - [ ] 15.11. Validar asistencia e incidencias móvil.

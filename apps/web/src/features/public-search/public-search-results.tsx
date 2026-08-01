@@ -1,13 +1,20 @@
+"use client";
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { Filter, MapPin, Search, SlidersHorizontal, Star } from "lucide-react";
+import { Filter, MapPin, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { NavigationLink } from "@/components/navigation-link";
@@ -259,34 +266,7 @@ function SearchFilters({
   const content = <SearchFilterFields filters={filters} />;
 
   if (mode === "mobile") {
-    return (
-      <Box
-        component="details"
-        sx={{
-          bgcolor: "background.paper",
-          border: 1,
-          borderColor: "divider",
-          borderRadius: `${visualTokens.radius.card}px`,
-          p: 3,
-        }}
-      >
-        <Box
-          component="summary"
-          sx={{
-            alignItems: "center",
-            cursor: "pointer",
-            display: "flex",
-            fontWeight: 700,
-            gap: 1.5,
-            listStyle: "none",
-          }}
-        >
-          <SlidersHorizontal aria-hidden="true" size={18} strokeWidth={1.9} />
-          {t("filters.mobileTitle")}
-        </Box>
-        <Box sx={{ mt: 3 }}>{content}</Box>
-      </Box>
-    );
+    return <MobileSearchFilters filters={filters} />;
   }
 
   return (
@@ -301,6 +281,82 @@ function SearchFilters({
         {content}
       </Stack>
     </Surface>
+  );
+}
+
+/**
+ * Abre los filtros en un diálogo táctil sin duplicar el formulario en el flujo móvil.
+ * Los valores activos proceden de la URL y el submit conserva el contrato GET de búsqueda.
+ */
+function MobileSearchFilters({ filters }: { filters: PublicVenueSearchFilters }) {
+  const t = useTranslations("PublicSearch");
+  const [open, setOpen] = useState(false);
+  const activeCount = [
+    filters.q,
+    filters.location,
+    filters.category,
+    filters.sort && filters.sort !== "relevance" ? filters.sort : undefined,
+  ].filter(Boolean).length;
+
+  return (
+    <>
+      <Button
+        aria-haspopup="dialog"
+        fullWidth
+        onClick={() => setOpen(true)}
+        startIcon={<SlidersHorizontal aria-hidden="true" size={18} strokeWidth={1.9} />}
+        sx={{
+          bgcolor: "background.paper",
+          justifyContent: "space-between",
+          minHeight: 48,
+          px: 3,
+        }}
+        variant="outlined"
+      >
+        <Box component="span" sx={{ alignItems: "center", display: "flex", gap: 1.5 }}>
+          {t("filters.mobileTitle")}
+          {activeCount > 0 ? (
+            <Chip label={t("filters.activeCount", { count: activeCount })} size="small" />
+          ) : null}
+        </Box>
+      </Button>
+
+      <Dialog
+        aria-labelledby="mobile-search-filters-heading"
+        fullWidth
+        maxWidth="sm"
+        onClose={() => setOpen(false)}
+        open={open}
+        slotProps={{
+          paper: {
+            sx: {
+              height: { xs: "100dvh", sm: "auto" },
+              m: { xs: 0, sm: 4 },
+              maxHeight: { xs: "100dvh", sm: "calc(100dvh - 32px)" },
+              width: { xs: "100%", sm: "calc(100% - 32px)" },
+            },
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", pr: 2 }}
+        >
+          <Box component="span" id="mobile-search-filters-heading">
+            {t("filters.panelTitle")}
+          </Box>
+          <IconButton
+            aria-label={t("filters.close")}
+            onClick={() => setOpen(false)}
+            sx={{ minHeight: 44, minWidth: 44 }}
+          >
+            <X aria-hidden="true" size={20} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ py: 4 }}>
+          <SearchFilterFields filters={filters} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -394,17 +450,19 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
   const venueHref = `${VENUE_PATH_PREFIX}${venue.slug}`;
 
   return (
-    <Surface component="article" padded={false}>
+    <Surface
+      component="article"
+      padded={false}
+      sx={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+    >
       {venue.mainImageUrl ? (
         <Box
           component="img"
           src={resolveSearchImageUrl(venue.mainImageUrl)}
           alt={t("card.imageAlt", { name: venue.name })}
           sx={{
-            aspectRatio: "4 / 3",
+            aspectRatio: { xs: "16 / 9", sm: "4 / 3" },
             bgcolor: "action.hover",
-            borderTopLeftRadius: `${visualTokens.radius.card}px`,
-            borderTopRightRadius: `${visualTokens.radius.card}px`,
             objectFit: "cover",
             width: "100%",
           }}
@@ -413,10 +471,8 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
         <Box
           sx={{
             alignItems: "center",
-            aspectRatio: "4 / 3",
+            aspectRatio: { xs: "16 / 9", sm: "4 / 3" },
             bgcolor: "action.hover",
-            borderTopLeftRadius: `${visualTokens.radius.card}px`,
-            borderTopRightRadius: `${visualTokens.radius.card}px`,
             display: "flex",
             justifyContent: "center",
             width: "100%",
@@ -425,11 +481,14 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
           <Typography sx={{ color: "text.secondary" }}>{t("card.noImage")}</Typography>
         </Box>
       )}
-      <Stack spacing={2.5} sx={{ p: { xs: 3, md: 4 } }}>
+      <Stack spacing={2.5} sx={{ flex: 1, minWidth: 0, p: { xs: 2.5, sm: 3, md: 4 } }}>
         <Stack
-          direction="row"
+          direction={{ xs: "column", sm: "row" }}
           spacing={1.5}
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
+          sx={{
+            alignItems: { xs: "flex-start", sm: "center" },
+            justifyContent: "space-between",
+          }}
         >
           <Chip label={venue.categoryName} size="small" />
           <StatusChip label={venue.statusLabel} tone={statusTone(venue.statusCode)} />
@@ -440,7 +499,7 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
           </Typography>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center", color: "text.secondary" }}>
             <MapPin aria-hidden="true" size={17} strokeWidth={1.9} />
-            <Typography>{location}</Typography>
+            <Typography sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{location}</Typography>
           </Stack>
         </Stack>
         {venue.descriptionExcerpt && (
@@ -454,10 +513,31 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
           <Star aria-hidden="true" size={17} strokeWidth={1.9} />
           <Typography>{t("card.ratingPending")}</Typography>
         </Stack>
-        <Typography sx={{ color: "text.secondary" }}>{venue.availabilitySummary}</Typography>
-        <Button component={NavigationLink} href={venueHref} variant="outlined">
-          {t("actions.viewVenue")}
-        </Button>
+        <Typography sx={{ color: "text.secondary", mt: "auto" }}>
+          {venue.availabilitySummary}
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+          <Button
+            component={NavigationLink}
+            fullWidth
+            href={venueHref}
+            sx={{ minHeight: 44 }}
+            variant={venue.bookingAvailable ? "outlined" : "contained"}
+          >
+            {t("actions.viewVenue")}
+          </Button>
+          {venue.bookingAvailable ? (
+            <Button
+              component={NavigationLink}
+              fullWidth
+              href={`${venueHref}#availability`}
+              sx={{ minHeight: 44 }}
+              variant="contained"
+            >
+              {t("actions.book")}
+            </Button>
+          ) : null}
+        </Stack>
       </Stack>
     </Surface>
   );

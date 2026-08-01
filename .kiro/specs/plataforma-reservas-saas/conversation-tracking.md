@@ -10,14 +10,70 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-07-31
+- Fecha de última actualización: 2026-08-01
 - Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.14`, `15.1`, `15.4`, `15.5`, `15.6` y `15.7`.
-- Siguiente tarea pendiente recomendada: `15.2. Validar resultados móviles con tarjetas`.
+  `14.1` a `14.14`, `15.1` a `15.8`.
+- Siguiente tarea pendiente recomendada: `15.9. Validar panel resumen móvil del local`.
 - Observación: la fase 14 queda completa y el perfil local dispone de tres publicaciones
   reservables de demostración sin registro.
+
+## Conversación 136 - Resultados, filtros y acceso de locales en móvil
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se completaron las tres primeras tareas pendientes de la fase responsive: tarjetas de
+    resultados, filtros como modal y acceso móvil de locales.
+  - Las tarjetas usan una lista vertical en móvil, imagen panorámica, contenido reducible, estados
+    visibles y acciones táctiles de 44 px; los locales reservables ofrecen un CTA directo a su
+    disponibilidad real.
+  - El formulario de filtros dejó de duplicarse dentro de un bloque `details`: ahora se abre en un
+    diálogo de altura completa en móvil, conserva los valores de URL, muestra el número de filtros
+    activos y mantiene el submit GET existente.
+  - El acceso profesional reduce narrativa secundaria en móvil, prioriza el formulario, evita
+    desbordes y aplica objetivos táctiles de 48 px a campos/submit y 44 px al control de contraseña.
+  - Se añadió y ajustó cobertura focalizada para reserva desde tarjeta y apertura/cierre accesible
+    del modal.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-search-results.tsx`.
+  - `apps/web/src/features/public-search/public-search-results.test.tsx`.
+  - `apps/web/src/features/venue-login/venue-login-form.tsx`.
+  - `apps/web/src/app/locales/acceso/page.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-002 Filtros avanzados`.
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-004 Rendimiento`, `RNF-007 Usabilidad`, `RNF-009 Internacionalización y localización`.
+- Tareas impactadas y completadas:
+  - `15.2. Validar resultados móviles con tarjetas`.
+  - `15.3. Validar filtros móviles como panel o modal`.
+  - `15.8. Validar login móvil de locales`.
+- Siguiente tarea pendiente recomendada:
+  - `15.9. Validar panel resumen móvil del local`.
+- Decisiones o aclaraciones relevantes:
+  - No se cambiaron endpoints, esquemas, filtros soportados ni reglas de autenticación; la iteración
+    se limita a presentación e interacción frontend sobre contratos existentes.
+  - La reserva desde tarjeta enlaza a `/locales/{slug}#availability`; no crea holds ni confía en
+    datos de la tarjeta para confirmar capacidad.
+  - El diálogo referencia un nodo de título independiente del botón de cierre para que su nombre
+    accesible sea únicamente “Filtrar resultados”.
+  - Prettier focalizado, `git diff --check`, parseo de ambos catálogos y transformación Oxc de los
+    cuatro TSX afectados finalizaron correctamente.
+  - Vitest focalizado y el typecheck de alcance temporal no llegaron a ejecutar/completar dentro de
+    45 segundos; se detuvieron una sola vez y no se reintentaron para evitar validaciones
+    interminables. La cobertura actualizada permanece preparada para el pipeline.
+  - La validación real en `390 × 844` se realizó con Next y un API de búsqueda temporal aislado:
+    dos tarjetas verticales, documento de 375 px dentro de viewport de 390 px, acciones de 44 px,
+    modal único con tres filtros activos, login de 390 px sin overflow, inputs/submit de 48 px,
+    icono de contraseña de 44 px y cero errores de consola.
+  - Docker Desktop no estaba disponible. El API simulado no escribió datos y tanto este como Next
+    se cerraron al finalizar; los puertos `3000` y `18088` quedaron sin listeners.
 
 ## Conversación 135 - Restaurante ficticio con carrusel profesional en modo local
 

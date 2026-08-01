@@ -29079,3 +29079,189 @@ podrá generar derivados WebP/AVIF desde el almacenamiento sin sustituir los ori
 semanal admite un único intervalo continuo, por lo que el corte entre almuerzo y cena se expresa en
 las franjas publicadas, no en dos aperturas separadas. La dirección, teléfono y coordenadas no deben
 reutilizarse fuera de desarrollo.
+
+## Tarea 15.2 - Resultados móviles con tarjetas
+
+- Fecha de iteración: 2026-08-01.
+- Estado: completada y verificada.
+- Requisitos relacionados: `RF-003`, `RF-031`, `RNF-004`, `RNF-007` y `RNF-009`.
+
+### Objetivo técnico y alcance
+
+Se validó y endureció la presentación de resultados públicos para convertir cada local en una
+unidad vertical escaneable y accionable en pantallas estrechas. La intervención no altera la
+búsqueda SSR, el esquema Zod, los parámetros de URL ni el endpoint
+`GET /api/public/venues/search`; actúa exclusivamente sobre la representación de cada
+`PublicVenueSearchItem` ya validado.
+
+La tarjeta conserva todos los datos exigidos que hoy expone el contrato: imagen o estado vacío,
+categoría, estado operativo, nombre, ubicación, descripción breve y disponibilidad resumida. La
+valoración sigue mostrando el estado localizado “próximamente” porque el DTO todavía no transporta
+media ni número de reseñas; no se inventaron cifras para cerrar una validación visual.
+
+### Archivos, componentes y arquitectura
+
+- `apps/web/src/features/public-search/public-search-results.tsx`: composición responsive de
+  `VenueResultCard`, acciones y vínculo con disponibilidad.
+- `apps/web/src/features/public-search/public-search-results.test.tsx`: contrato de CTA reservable
+  y destino exacto.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`: acción `PublicSearch.actions.book`.
+
+`Surface` continúa siendo el límite semántico `article`, ahora con layout flex vertical, altura
+completa y `overflow: hidden`. La imagen usa relación `16/9` en móvil y `4/3` desde `sm`; el
+contenido declara `minWidth: 0` y la ubicación permite `overflowWrap: anywhere`, de modo que un
+nombre geográfico largo no impone ancho al grid. Categoría y estado se apilan en `xs` y recuperan
+la fila desde `sm`. La disponibilidad se empuja hacia el final con `margin-top: auto`, alineando
+las acciones entre tarjetas de distinta longitud.
+
+### Flujo, validaciones y accesibilidad
+
+Para cualquier resultado se ofrece “Ver local”. Cuando `bookingAvailable=true`, se añade
+“Reservar” y se navega a `/locales/{slug}#availability`. Este enlace solo abre la disponibilidad
+pública: la franja, capacidad, hold y confirmación siguen validándose mediante los endpoints
+transaccionales existentes. Cuando `bookingAvailable=false`, no se presenta una acción que el
+backend no autoriza.
+
+Los CTA ocupan todo el ancho en móvil, se apilan y garantizan 44 px de alto. Desde `sm` se sitúan en
+fila. El orden DOM coincide con el visual; imagen, artículo, heading y enlaces conservan semántica
+nativa. Todos los textos nuevos proceden de catálogos equivalentes ES/EN. No se introducen cookies,
+PII, almacenamiento local, logs ni efectos secundarios.
+
+### Evidencia, errores y limitaciones
+
+- Prettier focalizado: correcto.
+- `git diff --check`: correcto.
+- Parseo JSON de ambos catálogos: correcto.
+- Transformación Oxc del TSX y su test: correcta.
+- Navegador real a `390 × 844`: dos artículos de 343 px situados entre x=16 y x=359; el documento
+  mide 375 px dentro de un viewport de 390 px y no presenta overflow horizontal.
+- El resultado reservable mostró dos enlaces de 322 × 44 px y destino
+  `/locales/lume-de-bretema#availability`; el resultado completo mostró solo “Ver local”.
+- La captura visual confirmó lista vertical, jerarquía, estados y navegación inferior sin solapar
+  las acciones de la primera tarjeta.
+
+Vitest focalizado quedó en el arranque sin ejecutar casos y se canceló a los 45 segundos. No se
+repitió ni se lanzó una suite global. La puntuación real continúa limitada por el contrato de
+búsqueda y deberá sustituir el estado pendiente cuando el endpoint la exponga.
+
+## Tarea 15.3 - Filtros móviles como panel o modal
+
+- Fecha de iteración: 2026-08-01.
+- Estado: completada y verificada.
+- Requisitos relacionados: `RF-002`, `RF-003`, `RF-031`, `RNF-007` y `RNF-009`.
+
+### Objetivo técnico y decisión de interacción
+
+El bloque móvil anterior era un `<details>` que expandía un segundo formulario dentro del flujo y
+desplazaba los resultados. Se sustituyó por un diálogo táctil que ocupa `100dvh` en `xs` y se
+convierte en modal centrado desde `sm`. El filtro de escritorio continúa en el aside original a
+partir de `lg`; ambos reutilizan `SearchFilterFields`, por lo que no existen dos implementaciones de
+parámetros, defaults o submit.
+
+### Archivos, estado y contratos
+
+- `apps/web/src/features/public-search/public-search-results.tsx`: límite cliente, estado local de
+  apertura, `MobileSearchFilters` y diálogo Material UI.
+- `apps/web/src/features/public-search/public-search-results.test.tsx`: apertura, valores activos,
+  formulario accesible y cierre.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`: contador, título y cierre localizados.
+
+La pantalla pasa a ser Client Component para mantener el único booleano efímero `open`. Los
+resultados y filtros siguen llegando serializados desde `ExplorePage`; no se vuelve a consultar la
+API desde el navegador. El formulario conserva `action=/explorar`, `method=get`, nombres `q`,
+`location`, `category` y `sort`, y defaults derivados de la URL normalizada por el Server
+Component. Aplicar filtros provoca navegación GET y limpiar enlaza a `/explorar`.
+
+### Accesibilidad, responsive, seguridad e i18n
+
+El disparador declara `aria-haspopup=dialog`, ocupa todo el ancho y tiene 48 px de alto. Un chip
+informa cuántos filtros no triviales están activos; `sort=relevance` no aumenta el contador. El
+diálogo dispone de heading independiente `mobile-search-filters-heading`: esta separación evita
+que el botón “Cerrar filtros” forme parte del nombre accesible del propio diálogo. El cierre tiene
+objetivo de 44 × 44 px y `Dialog` mantiene escape, focus trap y restauración de foco de Material UI.
+
+No se aceptan parámetros nuevos, HTML libre ni estado remoto. Los valores se presentan como
+defaults escapados por React y vuelven al normalizador de servidor. Los textos nuevos usan ICU
+plural en español e inglés. El modal tiene contenido desplazable; no depende de la altura física
+del dispositivo ni queda oculto tras la navegación inferior fija.
+
+### Tests, evidencia y riesgos
+
+- El test focalizado añadido abre el botón con tres filtros activos, localiza el diálogo por el
+  nombre exacto “Filtrar resultados”, verifica `q=\"cafe\"` y `location=\"Madrid\"` dentro de su
+  propio formulario y comprueba el desmontaje al cerrar.
+- Prettier, JSON, `git diff --check` y transformación Oxc: correctos.
+- Navegador a `390 × 844`: un único disparador “Mostrar filtros 3 activos”, un único diálogo con
+  formulario `role=search`, valores `mesa`, `Ames`, `restaurante` y orden `relevance`, más acciones
+  de aplicar y limpiar.
+- La primera inspección detectó que el título y el control de cierre compartían el nodo referenciado
+  por `aria-labelledby`; se separó el heading y la segunda inspección obtuvo exactamente un diálogo
+  con nombre “Filtrar resultados”.
+- Cero errores de consola durante resultados, apertura de modal y navegación a login.
+
+Vitest no ejecutó casos dentro del límite ya descrito y no se reintentó. Una evolución futura puede
+cerrar el diálogo tras detectar navegación si Next llegara a conservar el árbol cliente entre URLs;
+en el flujo actual la navegación GET reemplaza la página y descarta el estado local.
+
+## Tarea 15.8 - Login móvil de locales
+
+- Fecha de iteración: 2026-08-01.
+- Estado: completada y verificada.
+- Requisitos relacionados: `RF-008`, `RF-031`, `RNF-001`, `RNF-007` y `RNF-009`.
+
+### Objetivo y composición responsive
+
+Se priorizó la autenticación profesional en móvil sin modificar su contrato de seguridad. En `xs`
+la página muestra identidad, título y explicación compactos seguidos inmediatamente del formulario;
+los beneficios secundarios de sesión y verificación se ocultan y reaparecen desde `md`. El grid
+mantiene una columna hasta `md` y dos columnas a partir de ese breakpoint.
+
+`PageContainer` usa padding horizontal de 10 px en `xs` y vertical de 20 px; la `Surface` del
+formulario reduce su padding a 12 px en móvil y conserva 20 px desde `sm`. El formulario adapta sus
+espaciados, fija 48 px de altura mínima para las raíces de email/contraseña y submit, y 44 × 44 px
+para mostrar u ocultar contraseña. No se altera el tamaño del texto ni se ocultan recuperación o
+registro.
+
+### Archivos, contrato y flujo de ejecución
+
+- `apps/web/src/app/locales/acceso/page.tsx`: grid, densidad, visibilidad de beneficios y región
+  accesible.
+- `apps/web/src/features/venue-login/venue-login-form.tsx`: espaciado y objetivos táctiles.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`: nombre accesible de la región.
+
+Se conserva el flujo documentado en la tarea 1.20: validación Zod local como ayuda, POST directo a
+`/api/auth/login` con `credentials: include`, cookie `HttpOnly`, cancelación al desmontar, bloqueo de
+doble submit, error no enumerable y redirección a `/panel?locale={preferredLocale}`. El cambio no
+lee la cookie, no persiste credenciales, no añade autocompletado inseguro y mantiene
+`email/current-password` como hints del navegador.
+
+### Accesibilidad, privacidad, errores e internacionalización
+
+La tarjeta es una región denominada “Formulario de acceso para locales” o “Venue sign-in form”.
+Los controles conservan labels, required, helper text y foco sobre el primer error. El icono ocular
+mantiene etiqueta dinámica y ahora cumple objetivo táctil sin ampliar el input. Loading y errores
+siguen bloqueando reenvíos y usando mensajes localizados genéricos; no se registran email,
+contraseña, respuesta ni cookie.
+
+La cabecera y navegación inferior existentes permanecen visibles. La página no usa unidades `vh`
+para comprimir el formulario ni fuerza que todo el contenido quepa sin scroll, evitando recortes con
+teclado virtual o fuentes ampliadas.
+
+### Evidencia de verificación y deuda
+
+- Prettier focalizado, catálogos JSON, `git diff --check` y transformación Oxc de página,
+  formulario y test existente: correctos.
+- Navegador real a `390 × 844`: documento y viewport de 390 px, región entre x=10 y x=380, form
+  entre x=23 y x=368, sin overflow horizontal.
+- Ambas raíces de input midieron 345 × 48 px; submit 345 × 48 px; el control ocular, tras corrección
+  guiada por la inspección, midió 44 × 44 px.
+- La captura visual confirmó título, explicación, formulario completo, recuperación, registro y CTA
+  antes de la navegación inferior, sin beneficios secundarios interpuestos ni panel cortado.
+- Cero errores de consola. Next y el servidor HTTP temporal se cerraron y los puertos `3000` y
+  `18088` quedaron libres.
+
+La lógica de login ya disponía de seis tests focalizados; el runner conjunto con resultados no
+alcanzó a ejecutarlos dentro de 45 segundos. El typecheck temporal de imports afectados tampoco
+finalizó dentro de ese límite. Ambos procesos se cancelaron una sola vez, el archivo temporal se
+eliminó y no se ampliaron suite, lint o build globales. La siguiente validación transversal de
+breakpoints y locales sigue correspondiendo a 15.14 y 15.15.

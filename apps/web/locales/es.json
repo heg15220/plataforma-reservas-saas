@@ -362,6 +362,7 @@
     },
     "form": {
       "description": "Introduce las credenciales de la persona responsable del local.",
+      "regionLabel": "Formulario de acceso para locales",
       "title": "Inicia sesión"
     },
     "hero": {
@@ -948,6 +949,7 @@
   "PublicSearch": {
     "actions": {
       "apply": "Aplicar filtros",
+      "book": "Reservar",
       "clear": "Limpiar filtros",
       "registerVenue": "Registrar este local",
       "viewVenue": "Ver local"
@@ -975,13 +977,16 @@
     },
     "eyebrow": "DESCUBRIMIENTO",
     "filters": {
+      "activeCount": "{count, plural, one {# activo} other {# activos}}",
       "anyCategory": "Todas las categorías",
       "ariaLabel": "Filtros de búsqueda pública",
       "categoryLabel": "Categoría",
+      "close": "Cerrar filtros",
       "desktopTitle": "Filtros",
       "locationLabel": "Ubicación",
       "locationPlaceholder": "Ciudad, zona o dirección",
       "mobileTitle": "Mostrar filtros",
+      "panelTitle": "Filtrar resultados",
       "queryLabel": "Qué buscas",
       "queryPlaceholder": "Nombre, servicio o categoría",
       "sortLabel": "Ordenar por"

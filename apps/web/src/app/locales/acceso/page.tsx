@@ -29,16 +29,16 @@ export default async function VenueLoginPage() {
 
   return (
     <PublicShell currentPath="/locales/acceso">
-      <PageContainer compact>
+      <PageContainer compact sx={{ px: { xs: 2.5, sm: 6 }, py: { xs: 5, md: 8 } }}>
         <Box
           sx={{
-            alignItems: "center",
+            alignItems: { xs: "stretch", md: "center" },
             display: "grid",
-            gap: { xs: 6, md: 10 },
+            gap: { xs: 4, md: 10 },
             gridTemplateColumns: { xs: "1fr", md: "minmax(0, 0.9fr) minmax(400px, 1.1fr)" },
           }}
         >
-          <Stack spacing={6}>
+          <Stack spacing={{ xs: 2, md: 6 }}>
             <Box>
               <Typography color="primary" variant="overline">
                 {t("hero.eyebrow")}
@@ -46,12 +46,12 @@ export default async function VenueLoginPage() {
               <Typography component="h1" sx={{ mt: 1 }} variant="h1">
                 {t("hero.title")}
               </Typography>
-              <Typography color="text.secondary" sx={{ mt: 3, maxWidth: 560 }}>
+              <Typography color="text.secondary" sx={{ mt: { xs: 1.5, md: 3 }, maxWidth: 560 }}>
                 {t("hero.description")}
               </Typography>
             </Box>
 
-            <Stack spacing={3}>
+            <Stack spacing={3} sx={{ display: { xs: "none", md: "flex" } }}>
               {(["private", "verification"] as const).map((item) => {
                 const Icon = item === "private" ? LockKeyhole : ShieldCheck;
                 return (
@@ -85,7 +85,12 @@ export default async function VenueLoginPage() {
             </Stack>
           </Stack>
 
-          <Surface component="section">
+          <Surface
+            aria-label={t("form.regionLabel")}
+            component="section"
+            padding="none"
+            sx={{ p: { xs: 3, sm: 5 } }}
+          >
             <VenueLoginForm />
           </Surface>
         </Box>

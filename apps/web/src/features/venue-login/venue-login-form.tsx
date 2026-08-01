@@ -117,7 +117,13 @@ export function VenueLoginForm() {
   const submitting = submissionState !== "idle";
 
   return (
-    <Stack component="form" noValidate onSubmit={handleSubmit} ref={formRef} spacing={5}>
+    <Stack
+      component="form"
+      noValidate
+      onSubmit={handleSubmit}
+      ref={formRef}
+      spacing={{ xs: 4, sm: 5 }}
+    >
       <Stack spacing={1}>
         <Typography component="h2" variant="h2">
           {t("form.title")}
@@ -131,7 +137,7 @@ export function VenueLoginForm() {
         </Alert>
       ) : null}
 
-      <Stack spacing={4}>
+      <Stack spacing={{ xs: 3, sm: 4 }}>
         <TextField
           autoComplete="email"
           autoFocus
@@ -143,6 +149,7 @@ export function VenueLoginForm() {
           onChange={() => clearFieldError("email")}
           required
           slotProps={{ htmlInput: { maxLength: 320 } }}
+          sx={{ "& .MuiOutlinedInput-root": { minHeight: 48 } }}
           type="email"
         />
         <TextField
@@ -164,6 +171,7 @@ export function VenueLoginForm() {
                     }
                     edge="end"
                     onClick={() => setShowPassword((current) => !current)}
+                    sx={{ minHeight: 44, minWidth: 44 }}
                     type="button"
                   >
                     {showPassword ? (
@@ -177,6 +185,7 @@ export function VenueLoginForm() {
             },
             htmlInput: { maxLength: 72 },
           }}
+          sx={{ "& .MuiOutlinedInput-root": { minHeight: 48 } }}
           type={showPassword ? "text" : "password"}
         />
         <Link
@@ -188,7 +197,14 @@ export function VenueLoginForm() {
         </Link>
       </Stack>
 
-      <Button disabled={submitting} fullWidth size="large" type="submit" variant="contained">
+      <Button
+        disabled={submitting}
+        fullWidth
+        size="large"
+        sx={{ minHeight: 48 }}
+        type="submit"
+        variant="contained"
+      >
         {submitting ? (
           <>
             <CircularProgress aria-hidden="true" color="inherit" size={18} sx={{ mr: 2 }} />

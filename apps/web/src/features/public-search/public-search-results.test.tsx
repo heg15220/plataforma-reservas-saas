@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
@@ -90,9 +90,10 @@ describe("PublicSearchResultsView", () => {
       "href",
       "/locales/casa-luz",
     );
-    expect(screen.getAllByRole("search", { name: "Filtros de búsqueda pública" })).toHaveLength(2);
-    expect(screen.getAllByLabelText("Qué buscas")[0]).toHaveValue("cafe");
-    expect(screen.getAllByLabelText("Ubicación")[0]).toHaveValue("Madrid");
+    expect(screen.getByRole("link", { name: "Reservar" })).toHaveAttribute(
+      "href",
+      "/locales/casa-luz#availability",
+    );
     expect(
       screen.getByRole("heading", { level: 2, name: "También puedes explorar" }),
     ).toBeVisible();
@@ -100,6 +101,28 @@ describe("PublicSearchResultsView", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Destacados" })).toBeVisible();
     expect(screen.getByRole("heading", { level: 3, name: "Cercanos" })).toBeVisible();
     expect(screen.getByText("Locales vinculados a Madrid según la búsqueda actual.")).toBeVisible();
+  });
+
+  it("abre y cierra un panel modal móvil con los filtros activos", () => {
+    renderWithIntl(
+      <PublicSearchResultsView
+        filters={{ category: "restaurante", location: "Madrid", q: "cafe" }}
+        response={response}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Mostrar filtros.*3 activos/ }));
+
+    const dialog = screen.getByRole("dialog", { name: "Filtrar resultados" });
+    expect(dialog).toBeVisible();
+    expect(
+      within(dialog).getByRole("search", { name: "Filtros de búsqueda pública" }),
+    ).toBeVisible();
+    expect(within(dialog).getByLabelText("Qué buscas")).toHaveValue("cafe");
+    expect(within(dialog).getByLabelText("Ubicación")).toHaveValue("Madrid");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar filtros" }));
+    expect(screen.queryByRole("dialog", { name: "Filtrar resultados" })).not.toBeInTheDocument();
   });
 
   it("presenta estado vacío y acción para limpiar filtros", () => {
