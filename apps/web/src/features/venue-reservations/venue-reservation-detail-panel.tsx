@@ -224,9 +224,12 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
                 {detail.incidentHistory.items.map((incident) => (
                   <Box key={`${incident.reportedAt}-${incident.incidentType}`}>
                     <Stack
-                      direction="row"
+                      direction={{ xs: "column", sm: "row" }}
                       spacing={2}
-                      sx={{ alignItems: "center", justifyContent: "space-between" }}
+                      sx={{
+                        alignItems: { xs: "flex-start", sm: "center" },
+                        justifyContent: "space-between",
+                      }}
                     >
                       <Typography sx={{ fontWeight: 800 }}>
                         {incidentType(incident.incidentType, t)}
@@ -264,7 +267,7 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
         component={NavigationLink}
         href={reservationIncidentsHref(detail.id)}
         startIcon={<ShieldAlert aria-hidden="true" size={18} />}
-        sx={{ alignSelf: "flex-start" }}
+        sx={{ alignSelf: "flex-start", minHeight: 44, width: { xs: "100%", sm: "auto" } }}
         variant="outlined"
       >
         {t("actions.openIncidentSection")}

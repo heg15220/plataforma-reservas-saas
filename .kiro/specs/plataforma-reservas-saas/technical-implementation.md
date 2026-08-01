@@ -10,8 +10,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a
-  `13.12`, `14.1` a `14.14`, `15.1`, `15.4` y `15.5`.
-- Siguiente tarea pendiente recomendada: `15.2. Validar resultados móviles con tarjetas`.
+  `13.12`, `14.1` a `14.14` y `15.1` a `15.11`.
+- Siguiente tarea pendiente recomendada: `15.12. Validar estadísticas y suscripción móvil`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -29265,3 +29265,194 @@ alcanzó a ejecutarlos dentro de 45 segundos. El typecheck temporal de imports a
 finalizó dentro de ese límite. Ambos procesos se cancelaron una sola vez, el archivo temporal se
 eliminó y no se ampliaron suite, lint o build globales. La siguiente validación transversal de
 breakpoints y locales sigue correspondiendo a 15.14 y 15.15.
+
+## Tarea 15.9 - Validar panel resumen móvil del local
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo, requisitos y diseño
+
+La tarea convierte `/panel` en el punto de entrada operativo móvil definido por `RF-008` y por el
+apartado de panel privado responsive del diseño. Antes de esta iteración la ruta solo redirigía a
+`/panel/reservas`, por lo que no existía el resumen del día solicitado. Se aplican además `RF-018`,
+`RF-031`, `RNF-002`, `RNF-004`, `RNF-006`, `RNF-007` y `RNF-009`. La vista debía priorizar actividad
+inmediata, evitar tablas y conservar exactamente cuatro destinos en la navegación inferior:
+Inicio, Reservas, Calendario y Más.
+
+### Archivos afectados y arquitectura
+
+- Creado `apps/web/src/features/venue-dashboard/venue-dashboard-overview.tsx` como componente
+  cliente responsable de cargar, resumir y refrescar la actividad diaria.
+- Creado `apps/web/src/features/venue-dashboard/venue-dashboard-overview.test.tsx` con cobertura del
+  contrato de lectura, minimización de datos, accesos rápidos y refresco acotado.
+- Modificados `apps/web/src/app/panel/page.tsx` y
+  `apps/web/src/components/layout/venue-shell.tsx` para componer la página privada y la navegación.
+- Modificados `apps/web/locales/es.json` y `apps/web/locales/en.json` con el espacio
+  `VenueDashboard`, incluyendo metadata, estados, métricas, acciones y errores.
+- No se crearon, modificaron ni eliminaron tablas, migraciones, índices, restricciones o datos.
+
+`VenueDashboardOverview` reutiliza `fetchVenueReservationsForDay` y su esquema Zod. La carga inicial
+usa `AbortController`; el desmontaje cancela la petición y el refresco manual reutiliza el mismo
+flujo sin intervalos ni polling. `useMemo` deriva reservas, personas, pendientes e incidencias y
+ordena solo las tres próximas reservas. La pantalla no duplica acciones críticas: agenda, detalle,
+calendario, incidencias y perfil son enlaces explícitos. Esto mantiene una única fuente de verdad y
+evita un endpoint agregado cuyo contenido pudiera divergir.
+
+### Contratos, seguridad, privacidad y errores
+
+Se conserva `GET /api/venue/me/reservations?period=day&date=YYYY-MM-DD&page=0&size=100`, con cookie
+HttpOnly mediante `credentials: include`, `cache: no-store`, acreditación del propietario en backend
+y validación Zod de la respuesta. No se añadieron endpoints ni payloads. Los errores normalizados
+`unauthenticated`, `forbidden`, `invalid`, `notFound` y `unavailable` se traducen a claves de UI sin
+mostrar cuerpos del API. La vista de resumen omite el email del cliente deliberadamente; solo expone
+nombre, hora y número de personas necesarios para orientar la operativa. No hay persistencia local,
+logs de PII ni observabilidad adicional.
+
+### UI, accesibilidad e i18n
+
+Las métricas y acciones rápidas usan cuadrículas `minmax(0, 1fr)` de dos columnas en móvil. Las
+acciones miden al menos 44 px, los textos admiten ruptura segura y la próxima reserva usa un nombre
+accesible específico. El estado de carga tiene `role=status`; los errores usan `Alert`; metadata
+privada declara `robots: noindex,nofollow`. `VenueShell` distribuye cuatro enlaces en una cuadrícula
+fija, elimina el scroll horizontal y conserva sus destinos de escritorio. Todos los textos nuevos
+están disponibles en español e inglés y la fecha usa el locale activo.
+
+### Tests, evidencia, decisiones y riesgos
+
+La prueba focal verifica el día solicitado, métricas, navegación, ausencia de email en el resumen y
+una segunda lectura al pulsar actualizar. Prettier, parseo JSON, Oxc y `git diff --check` finalizaron
+correctamente. En navegador real a `390 × 844`, el resumen mostró 1 reserva, 2 personas, 1 pendiente
+y 0 incidencias; el documento no tuvo overflow, los cuatro enlaces inferiores midieron 64 px de
+alto y las acciones principales entre 44 y 52 px. La consola no produjo errores ni avisos.
+
+Vitest focalizado emitió cuatro indicadores de prueba correcta pero no cerró dentro del límite de
+45 segundos; se detuvo y no se repitió para respetar la validación acotada. La suite queda preparada
+para el pipeline. El resumen depende de la lista diaria de hasta cien elementos, límite ya impuesto
+por el contrato; si el volumen operativo futuro supera ese máximo deberá introducirse un agregado
+servidor explícito, no aumentar silenciosamente el tamaño.
+
+## Tarea 15.10 - Validar reservas del día y detalle móvil
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo, requisitos y diseño
+
+Se valida y refuerza el flujo móvil de `RF-018`: seleccionar día, leer métricas, recorrer reservas en
+tarjetas y abrir el detalle privado con cliente, formulario, cita, recurso e historial. La solución
+respeta `RF-013`, `RF-019`, `RF-022`, `RNF-002`, `RNF-006` y `RNF-007`. No se introduce una tabla
+reducida; la información mantiene jerarquía vertical, legibilidad y acciones táctiles.
+
+### Archivos, implementación y modelo de datos
+
+- Modificado `apps/web/src/features/venue-reservations/venue-reservations-dashboard.tsx`.
+- Modificado `apps/web/src/features/venue-reservations/venue-reservation-detail-panel.tsx`.
+- Se reutilizan, sin cambios, `venue-reservations-api.ts`, sus esquemas Zod y el contrato backend.
+- No hay migraciones ni cambios sobre `Reservations`, respuestas, recursos o incidencias.
+
+Los botones de día anterior/siguiente tienen área mínima de 44 × 44 px; el selector ocupa el ancho
+restante sin forzar overflow. Hoy y Actualizar comparten el ancho móvil y mantienen su semántica. Las
+cuatro métricas usan columnas reducibles, las etiquetas pueden envolver y cada reserva conserva una
+tarjeta con CTA de detalle a ancho completo. En el detalle, los encabezados de incidencias cambian a
+columna en `xs`, el estado queda alineado al inicio y el enlace final a reglas/incidencias ocupa todo
+el ancho móvil. El orden de lectura sigue cliente/formulario antes de la información operativa.
+
+### Contratos, permisos, privacidad y errores
+
+La agenda conserva `GET /api/venue/me/reservations` y el detalle
+`GET /api/venue/me/reservations/{reservationId}`. Ambos usan cookie privada, no aceptan email como
+acreditación y validan UUID, fechas, horas, respuestas, recurso e historial antes de renderizar. La
+lista contiene email porque forma parte del trabajo operativo acreditado; el resumen de la tarea
+15.9 lo omite. Las respuestas abortadas no generan error visible, los fallos se normalizan sin
+mostrar cuerpos del API y los refrescos por foco/manual siguen limitados a la fecha activa.
+
+### Tests y evidencia verificable
+
+La suite existente cubre tarjeta y métricas diarias, refresco por foco, detalle privado, respuestas,
+recurso, historial y recarga posterior a asistencia. La transformación Oxc de dashboard y detalle,
+Prettier y `git diff --check` finalizaron correctamente. La ejecución conjunta de las tres suites se
+limitó a un worker y diez segundos por test, con timeout externo de 45 segundos; produjo cuatro
+indicadores correctos y se detuvo al no cerrar, sin reintentos ni suite global.
+
+En `390 × 844`, la agenda mostró sus cinco controles principales con 44 px de alto, CTA de detalle a
+284 × 44 px y ausencia de overflow horizontal. El detalle mostró cliente, formulario, cita, recurso,
+historial y acciones en el orden esperado. El mock temporal replicó exclusivamente los contratos
+privados necesarios; no tocó base de datos ni servicios externos y se cerró tras la comprobación.
+
+### Decisiones, limitaciones y deuda
+
+Se preserva email en agenda/detalle porque el diseño lo requiere para identificar una reserva en un
+contexto autenticado; no se replica en la portada. No se cambiaron formatos de estado ni paginación.
+La validación transversal de todos los breakpoints y ambos locales sigue asignada a 15.14 y 15.15;
+esta tarea acredita únicamente el viewport móvil y los módulos/dependencias directas del flujo.
+
+## Tarea 15.11 - Validar asistencia e incidencias móvil
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo, requisitos y diseño
+
+La tarea valida la operativa móvil definida por `RF-019`, `RF-020`, `RF-021`, `RF-022` y `RF-023`:
+marcar asistencia, convertir una ausencia en incidencia mediante confirmación explícita, revisar el
+historial y editar reglas. También aplica privacidad, auditabilidad, lenguaje profesional y objetivos
+táctiles de `RNF-002`, `RNF-006`, `RNF-007`, `RNF-008` y `RNF-009`.
+
+### Archivos afectados e implementación
+
+- Modificado `apps/web/src/features/venue-reservations/venue-reservation-actions.tsx`.
+- Modificado `apps/web/src/features/venue-incidents/venue-incidents-dashboard.tsx`.
+- Modificado el bloque de historial en
+  `apps/web/src/features/venue-reservations/venue-reservation-detail-panel.tsx`.
+- No se modificaron APIs, jobs, entidades, migraciones, penalizaciones ni auditoría backend.
+
+Los diálogos de reporte y cancelación apilan sus acciones en móvil, dan a cada botón ancho completo y
+44 px mínimos, y conservan orden visual seguro con la acción destructiva separada. Las notas del
+reporte quedan limitadas a 2000 caracteres en cliente sin sustituir la validación servidor. El
+historial del detalle y el dashboard de incidencias apilan título y estado en `xs`; Guardar reglas
+usa ancho completo. El rango de antelación continúa limitado a enteros entre 0 y 525 600 minutos.
+
+### Contratos, flujos, seguridad y observabilidad
+
+Se conservan los siguientes contratos privados: `POST .../{id}/attendance` con
+`attended|no_show|pending`; `POST .../{id}/report-no-show` con `confirmed: true` y notas opcionales;
+`POST .../{id}/cancel`; `GET/PUT /api/venue/me/booking-rules`; y
+`GET /api/venue/me/incident-history?reservationId={id}&page=0&size=50`. Las escrituras permanecen
+acreditadas, validadas, auditadas e idempotentes según su backend existente. La UI no busca por email
+libre, no calcula penalizaciones ni revela notas del historial. Conflictos, permisos, validación,
+sesión caducada y disponibilidad se traducen a mensajes profesionales; no se añadieron logs con PII.
+
+El flujo verificado fue: detalle confirmado → pulsar Marcar no asistida → respuesta `no_show` →
+recarga acreditada del detalle → aparición de Reportar no asistencia → apertura del diálogo con
+advertencia sobre auditoría/restricción. No se confirmó el reporte final durante la inspección, pues
+la tarea requería validar su interfaz y el servidor usado era temporal. Incidencias cargó en paralelo
+reglas e historial de la reserva y presentó una cancelación tardía reportada.
+
+### Tests y evidencia verificable
+
+Las suites focales existentes comprueban actualización de asistencia, recarga posterior, reglas,
+historial y límites del formulario; la nueva suite del resumen cubre su consumo dependiente. Oxc
+transformó los ocho módulos TSX/TS relevantes y Prettier comprobó los diez archivos de aplicación.
+Los dos catálogos se parsearon y `git diff --check` fue correcto. Vitest se acotó a las tres suites,
+un worker, diez segundos por test y 45 segundos externos; al no cerrar después de cuatro indicadores
+correctos fue cancelado una vez y no se amplió.
+
+En navegador real a `390 × 844`, el cambio a no asistencia se reflejó correctamente; el diálogo de
+reporte mostró dos botones de 302 × 44 px, sin overflow. Reglas e historial cargaron sin overflow,
+Guardar reglas midió 44 px y la consola terminó con cero errores/avisos. El API simulado y Next se
+cerraron al finalizar, sin datos persistidos.
+
+### Riesgos y deuda técnica
+
+La comprobación no sustituye los tests integrados de auditoría y penalización backend ya asociados a
+sus tareas originales. El switch de Material UI conserva su área táctil compuesta aunque el elemento
+`input` interno sea menor; no debe evaluarse por la caja invisible aislada. La revisión completa de
+escritorio, tablet, ES/EN y fallback continúa en 15.14 y 15.15, evitando convertir esta iteración en
+una validación global interminable.

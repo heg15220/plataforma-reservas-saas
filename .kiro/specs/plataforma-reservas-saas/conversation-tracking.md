@@ -14,10 +14,69 @@ Fuente de verdad del avance:
 - Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.14`, `15.1` a `15.8`.
-- Siguiente tarea pendiente recomendada: `15.9. Validar panel resumen móvil del local`.
+  `14.1` a `14.14`, `15.1` a `15.11`.
+- Siguiente tarea pendiente recomendada: `15.12. Validar estadísticas y suscripción móvil`.
 - Observación: la fase 14 queda completa y el perfil local dispone de tres publicaciones
   reservables de demostración sin registro.
+
+## Conversación 137 - Resumen, reservas, asistencia e incidencias del local en móvil
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se completaron las tres siguientes tareas pendientes de la fase responsive: resumen privado del
+    local, reservas del día con detalle, y asistencia e incidencias en móvil.
+  - `/panel` dejó de redirigir directamente a la agenda y ahora ofrece métricas del día, próximas
+    reservas y accesos rápidos apoyados en el contrato privado ya existente.
+  - La navegación inferior se alineó con el diseño: cuatro destinos estables —Inicio, Reservas,
+    Calendario y Más— distribuidos sin desplazamiento horizontal.
+  - Se reforzaron selectores de fecha, métricas, tarjetas, acciones, historial y diálogos críticos
+    para anchos pequeños, objetivos táctiles y textos largos.
+  - Se revisó recursivamente toda la carpeta `.kiro`; requisitos y diseño relevantes se usaron como
+    fuente de verdad y se corrigió el estado obsoleto de este registro técnico.
+- Archivos modificados:
+  - `apps/web/src/app/panel/page.tsx`.
+  - `apps/web/src/components/layout/venue-shell.tsx`.
+  - `apps/web/src/features/venue-dashboard/venue-dashboard-overview.tsx`.
+  - `apps/web/src/features/venue-dashboard/venue-dashboard-overview.test.tsx`.
+  - `apps/web/src/features/venue-reservations/venue-reservations-dashboard.tsx`.
+  - `apps/web/src/features/venue-reservations/venue-reservation-detail-panel.tsx`.
+  - `apps/web/src/features/venue-reservations/venue-reservation-actions.tsx`.
+  - `apps/web/src/features/venue-incidents/venue-incidents-dashboard.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-018 Panel de reservas del local`.
+  - `RF-019 Control de asistencia`.
+  - `RF-020 Reporte de no asistencia`.
+  - `RF-021 Penalizaciones temporales` y `RF-022 Incidencias y reglas de reserva`.
+  - `RF-031 Internacionalización de textos`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-004 Rendimiento`, `RNF-005 Escalabilidad`,
+    `RNF-006 Mantenibilidad`, `RNF-007 Usabilidad` y `RNF-009 Internacionalización`.
+- Tareas impactadas y completadas:
+  - `15.9. Validar panel resumen móvil del local`.
+  - `15.10. Validar reservas del día y detalle móvil`.
+  - `15.11. Validar asistencia e incidencias móvil`.
+- Siguiente tarea pendiente recomendada:
+  - `15.12. Validar estadísticas y suscripción móvil`.
+- Decisiones o aclaraciones relevantes:
+  - El resumen reutiliza `GET /api/venue/me/reservations` para el día actual; no crea un agregado
+    paralelo ni amplía la superficie privada del backend.
+  - Las próximas reservas no muestran correo electrónico, reduciendo datos personales en la vista
+    de vistazo; el dato permanece disponible únicamente en agenda y detalle operativo.
+  - Las acciones críticas permanecen en el detalle y conservan validación, acreditación y auditoría
+    del servidor. El resumen solo navega y actualiza lecturas.
+  - La verificación automatizada se limitó a las tres suites de dashboard, reservas e incidencias.
+    Vitest emitió cuatro pruebas correctas, pero el proceso no cerró dentro de 45 segundos; se
+    detuvo una sola vez y no se reintentó. Oxc transformó los ocho TSX/TS focales, Prettier comprobó
+    los diez archivos de aplicación, los catálogos JSON se parsearon y `git diff --check` terminó
+    sin incidencias.
+  - La validación real se ejecutó en `390 × 844` con Next y un API temporal aislado: resumen, agenda,
+    detalle, cambio a no asistencia, diálogo de reporte e historial/reglas no presentaron overflow;
+    navegación y acciones principales midieron entre 44 y 64 px, y la consola quedó sin errores ni
+    avisos. Next y el API temporal se cerraron al finalizar.
 
 ## Conversación 136 - Resultados, filtros y acceso de locales en móvil
 

@@ -1311,6 +1311,50 @@
       }
     }
   },
+  "VenueDashboard": {
+    "metadata": {
+      "title": "Resumen del día | Reserly",
+      "description": "Consulta la actividad de hoy y accede a la operativa principal de tu local."
+    },
+    "hero": {
+      "eyebrow": "Panel del local",
+      "title": "Resumen del día",
+      "summary": "Revisa la agenda, las personas previstas y las incidencias de hoy desde un único punto."
+    },
+    "loading": "Cargando resumen del día",
+    "today": { "title": "Actividad de hoy" },
+    "actions": {
+      "refresh": "Actualizar resumen",
+      "openSchedule": "Ver agenda"
+    },
+    "metrics": {
+      "aria": "Resumen de métricas del día",
+      "reservations": "Reservas",
+      "people": "Personas",
+      "pending": "Por atender",
+      "incidents": "Incidencias"
+    },
+    "upcoming": {
+      "title": "Próximas reservas",
+      "empty": "No hay próximas reservas para hoy.",
+      "partySize": "{count, plural, one {# persona} other {# personas}}",
+      "open": "Abrir reserva de {name}"
+    },
+    "quickActions": {
+      "title": "Acciones rápidas",
+      "reservations": "Reservas",
+      "calendar": "Calendario",
+      "incidents": "Incidencias",
+      "profile": "Perfil"
+    },
+    "errors": {
+      "authentication": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+      "authorization": "No tienes permisos para consultar este resumen.",
+      "validation": "No se pudo validar la fecha seleccionada.",
+      "notFound": "No se encontró la agenda del local.",
+      "unavailable": "No pudimos cargar el resumen. Inténtalo de nuevo."
+    }
+  },
   "VenueReservations": {
     "metadata": {
       "title": "Reservas del día | Reserly",

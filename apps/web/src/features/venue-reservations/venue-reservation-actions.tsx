@@ -186,17 +186,23 @@ export function VenueReservationActions({
             maxRows={5}
             multiline
             onChange={(event) => setNotes(event.target.value)}
+            slotProps={{ htmlInput: { maxLength: 2000 } }}
             value={notes}
           />
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button disabled={busy !== null} onClick={() => setDialog(null)}>
+        <DialogActions sx={mobileDialogActionsSx}>
+          <Button
+            disabled={busy !== null}
+            onClick={() => setDialog(null)}
+            sx={mobileDialogButtonSx}
+          >
             {t("common.keep")}
           </Button>
           <Button
             color="warning"
             disabled={busy !== null}
             onClick={() => void report()}
+            sx={mobileDialogButtonSx}
             variant="contained"
           >
             {busy === "report" && <CircularProgress aria-hidden="true" size={16} sx={{ mr: 1 }} />}
@@ -227,14 +233,19 @@ export function VenueReservationActions({
             value={reason}
           />
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button disabled={busy !== null} onClick={() => setDialog(null)}>
+        <DialogActions sx={mobileDialogActionsSx}>
+          <Button
+            disabled={busy !== null}
+            onClick={() => setDialog(null)}
+            sx={mobileDialogButtonSx}
+          >
             {t("common.keep")}
           </Button>
           <Button
             color="error"
             disabled={busy !== null || !reason.trim()}
             onClick={() => void cancel()}
+            sx={mobileDialogButtonSx}
             variant="contained"
           >
             {busy === "cancel" && <CircularProgress aria-hidden="true" size={16} sx={{ mr: 1 }} />}
@@ -252,3 +263,15 @@ function errorKind(value: unknown) {
   }
   return "unavailable";
 }
+
+const mobileDialogActionsSx = {
+  flexDirection: { xs: "column-reverse", sm: "row" },
+  gap: 1,
+  p: 3,
+};
+
+const mobileDialogButtonSx = {
+  marginLeft: { xs: "0 !important", sm: undefined },
+  minHeight: 44,
+  width: { xs: "100%", sm: "auto" },
+};

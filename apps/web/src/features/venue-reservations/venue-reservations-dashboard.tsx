@@ -35,11 +35,7 @@ import {
 const AUTO_REFRESH_MS = 30_000;
 
 /** Agenda diaria privada con refresco visible, navegación táctil y estados accesibles. */
-export function VenueReservationsDashboard({
-  initialDate = todayIso(),
-}: {
-  initialDate?: string;
-}) {
+export function VenueReservationsDashboard({ initialDate = todayIso() }: { initialDate?: string }) {
   const t = useTranslations("VenueReservations");
   const locale = useLocale();
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -110,11 +106,16 @@ export function VenueReservationsDashboard({
             spacing={2}
             sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
           >
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", width: { xs: "100%", sm: "auto" } }}
+            >
               <Tooltip title={t("actions.previousDay")}>
                 <IconButton
                   aria-label={t("actions.previousDay")}
                   onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+                  sx={{ minHeight: 44, minWidth: 44 }}
                 >
                   <ChevronLeft aria-hidden="true" size={20} />
                 </IconButton>
@@ -123,6 +124,7 @@ export function VenueReservationsDashboard({
                 label={t("filters.date")}
                 onChange={(event) => setSelectedDate(event.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ flex: 1, minWidth: 0 }}
                 type="date"
                 value={selectedDate}
               />
@@ -130,13 +132,18 @@ export function VenueReservationsDashboard({
                 <IconButton
                   aria-label={t("actions.nextDay")}
                   onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+                  sx={{ minHeight: 44, minWidth: 44 }}
                 >
                   <ChevronRight aria-hidden="true" size={20} />
                 </IconButton>
               </Tooltip>
             </Stack>
-            <Stack direction="row" spacing={1}>
-              <Button onClick={() => setSelectedDate(todayIso())} variant="outlined">
+            <Stack direction="row" spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
+              <Button
+                onClick={() => setSelectedDate(todayIso())}
+                sx={{ flex: { xs: 1, sm: "initial" }, minHeight: 44 }}
+                variant="outlined"
+              >
                 {t("actions.today")}
               </Button>
               <Button
@@ -149,6 +156,7 @@ export function VenueReservationsDashboard({
                     <RefreshCw aria-hidden="true" size={17} />
                   )
                 }
+                sx={{ flex: { xs: 1, sm: "initial" }, minHeight: 44 }}
                 variant="outlined"
               >
                 {t("actions.refresh")}
@@ -160,10 +168,14 @@ export function VenueReservationsDashboard({
             sx={{
               display: "grid",
               gap: 2,
-              gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+              gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, 1fr)" },
             }}
           >
-            <Metric icon={CalendarDays} label={t("metrics.total")} value={result?.totalElements ?? 0} />
+            <Metric
+              icon={CalendarDays}
+              label={t("metrics.total")}
+              value={result?.totalElements ?? 0}
+            />
             <Metric icon={Clock3} label={t("metrics.confirmed")} value={metrics.confirmed} />
             <Metric icon={UsersRound} label={t("metrics.people")} value={metrics.people} />
             <Metric icon={UserRound} label={t("metrics.customers")} value={metrics.customers} />
@@ -276,7 +288,7 @@ function ReservationRow({
       <Button
         component={NavigationLink}
         href={`/panel/reservas/${reservation.id}`}
-        sx={{ width: { xs: "100%", md: "auto" } }}
+        sx={{ minHeight: 44, width: { xs: "100%", md: "auto" } }}
         variant="outlined"
       >
         {t("actions.viewDetail")}
@@ -305,7 +317,7 @@ function Metric({
     >
       <Icon aria-hidden="true" size={18} />
       <Typography sx={{ fontSize: "1.35rem", fontWeight: 800, mt: 1 }}>{value}</Typography>
-      <Typography color="text.secondary" variant="body2">
+      <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="body2">
         {label}
       </Typography>
     </Box>

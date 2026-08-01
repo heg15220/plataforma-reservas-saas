@@ -63,24 +63,10 @@ const venueMobileNavigation = [
   { href: "/panel/reservas", icon: NotebookTabs, labelKey: "reservations" },
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
   { href: "/panel/incidencias", icon: MoreHorizontal, labelKey: "more" },
-  { href: "/panel/resenas", icon: Star, labelKey: "reviews" },
-  {
-    href: "/panel/estadisticas",
-    icon: ChartNoAxesColumnIncreasing,
-    labelKey: "statistics",
-  },
-  { href: "/panel/suscripcion", icon: CreditCard, labelKey: "subscription" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey:
-    | "home"
-    | "reservations"
-    | "calendar"
-    | "more"
-    | "reviews"
-    | "statistics"
-    | "subscription";
+  labelKey: "home" | "reservations" | "calendar" | "more";
 }>;
 
 export interface VenueShellProps {
@@ -186,9 +172,9 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         square
         sx={{
           bottom: 0,
-          display: { xs: "flex", md: "none" },
+          display: { xs: "grid", md: "none" },
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
           left: 0,
-          overflowX: "auto",
           position: "fixed",
           right: 0,
           zIndex: "appBar",
@@ -211,7 +197,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
                 fontSize: "0.75rem",
                 gap: 0.75,
                 minHeight: 64,
-                minWidth: 72,
+                minWidth: 0,
                 px: 1,
               }}
             >

@@ -1311,6 +1311,50 @@
       }
     }
   },
+  "VenueDashboard": {
+    "metadata": {
+      "title": "Today's overview | Reserly",
+      "description": "Review today's activity and access your venue's main operations."
+    },
+    "hero": {
+      "eyebrow": "Venue dashboard",
+      "title": "Today's overview",
+      "summary": "Review today's schedule, expected guests and incidents from one place."
+    },
+    "loading": "Loading today's overview",
+    "today": { "title": "Today's activity" },
+    "actions": {
+      "refresh": "Refresh overview",
+      "openSchedule": "View schedule"
+    },
+    "metrics": {
+      "aria": "Daily metrics overview",
+      "reservations": "Reservations",
+      "people": "People",
+      "pending": "To attend",
+      "incidents": "Incidents"
+    },
+    "upcoming": {
+      "title": "Upcoming reservations",
+      "empty": "There are no upcoming reservations today.",
+      "partySize": "{count, plural, one {# person} other {# people}}",
+      "open": "Open {name}'s reservation"
+    },
+    "quickActions": {
+      "title": "Quick actions",
+      "reservations": "Reservations",
+      "calendar": "Calendar",
+      "incidents": "Incidents",
+      "profile": "Profile"
+    },
+    "errors": {
+      "authentication": "Your session has expired. Sign in again.",
+      "authorization": "You do not have permission to view this overview.",
+      "validation": "The selected date could not be validated.",
+      "notFound": "The venue schedule could not be found.",
+      "unavailable": "We could not load the overview. Try again."
+    }
+  },
   "VenueReservations": {
     "metadata": {
       "title": "Today's reservations | Reserly",

@@ -150,7 +150,11 @@ export function VenueIncidentsDashboard({ reservationId }: { reservationId?: str
                   <Save aria-hidden="true" size={18} />
                 )
               }
-              sx={{ alignSelf: { sm: "flex-start" }, minHeight: 44 }}
+              sx={{
+                alignSelf: { sm: "flex-start" },
+                minHeight: 44,
+                width: { xs: "100%", sm: "auto" },
+              }}
               variant="contained"
             >
               {saving ? t("rules.saving") : t("rules.save")}
@@ -197,9 +201,12 @@ export function VenueIncidentsDashboard({ reservationId }: { reservationId?: str
                       }}
                     >
                       <Stack
-                        direction="row"
+                        direction={{ xs: "column", sm: "row" }}
                         spacing={2}
-                        sx={{ alignItems: "center", justifyContent: "space-between" }}
+                        sx={{
+                          alignItems: { xs: "flex-start", sm: "center" },
+                          justifyContent: "space-between",
+                        }}
                       >
                         <Typography sx={{ fontWeight: 800 }}>
                           {t(`incidentType.${safeIncidentType(incident.incidentType)}`)}
