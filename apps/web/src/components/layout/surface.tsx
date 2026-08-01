@@ -6,8 +6,10 @@ import { visualTokens } from "@/theme/visual-tokens";
 
 export interface SurfaceProps {
   "aria-label"?: string;
+  "aria-labelledby"?: string;
   children: ReactNode;
   component?: "article" | "aside" | "main" | "section";
+  id?: string;
   padding?: "none" | "sm" | "md" | "lg";
   padded?: boolean;
   sx?: SxProps<Theme>;
@@ -19,8 +21,10 @@ export interface SurfaceProps {
  */
 export function Surface({
   "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   children,
   component = "section",
+  id,
   padding,
   padded = true,
   sx,
@@ -41,8 +45,10 @@ export function Surface({
   return (
     <Paper
       aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       component={component}
       elevation={0}
+      id={id}
       sx={{
         bgcolor: tone === "muted" ? "grey.50" : "background.paper",
         border: 1,

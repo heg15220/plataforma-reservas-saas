@@ -55,6 +55,16 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
   ];
   const visibleGallery = galleryImages.slice(0, 5);
   const hasContact = Boolean(venue.contactEmail || venue.phone);
+  const sectionLinks: Array<[string, string]> = [
+    ["#availability", t("tabs.availability")],
+    ["#information", t("tabs.information")],
+    ...venue.customTabs.map((tab): [string, string] => [
+      `#${customTabId(tab.position)}`,
+      tab.title,
+    ]),
+    ["#reviews", t("tabs.reviews")],
+    ["#gallery", t("tabs.gallery")],
+  ];
 
   return (
     <PublicShell>
@@ -231,15 +241,7 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
             </Stack>
           </Box>
 
-          <VenueSectionNav
-            ariaLabel={t("tabs.label")}
-            links={[
-              ["#availability", t("tabs.availability")],
-              ["#information", t("tabs.information")],
-              ["#reviews", t("tabs.reviews")],
-              ["#gallery", t("tabs.gallery")],
-            ]}
-          />
+          <VenueSectionNav ariaLabel={t("tabs.label")} links={sectionLinks} />
 
           <PublicAvailabilityCalendar venueSlug={venue.slug} />
 
@@ -324,9 +326,21 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
               }}
             >
               {venue.customTabs.map((tab) => (
-                <Surface key={`${tab.position}-${tab.title}`} padding="lg">
+                <Surface
+                  aria-labelledby={`${customTabId(tab.position)}-title`}
+                  component="section"
+                  id={customTabId(tab.position)}
+                  key={`${tab.position}-${tab.title}`}
+                  padding="lg"
+                  sx={{ minWidth: 0, scrollMarginTop: 96 }}
+                >
                   <Stack spacing={1}>
-                    <Typography component="h2" variant="h5">
+                    <Typography
+                      component="h2"
+                      id={`${customTabId(tab.position)}-title`}
+                      sx={{ overflowWrap: "anywhere" }}
+                      variant="h5"
+                    >
                       {tab.title}
                     </Typography>
                     <Box
@@ -335,6 +349,16 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
                       sx={{
                         "& > :first-of-type": { mt: 0 },
                         "& > :last-of-type": { mb: 0 },
+                        "& a, & li, & p": { overflowWrap: "anywhere" },
+                        "& img, & video": { height: "auto", maxWidth: "100%" },
+                        "& pre, & table": {
+                          display: "block",
+                          maxWidth: "100%",
+                          overflowX: "auto",
+                        },
+                        "& pre": { whiteSpace: "pre-wrap" },
+                        minWidth: 0,
+                        overflowWrap: "anywhere",
                       }}
                     />
                   </Stack>
@@ -553,9 +577,12 @@ function VenueSectionNav({
             borderRadius: 0,
             color: index === 0 ? "primary.main" : "text.secondary",
             flexShrink: 0,
+            minHeight: 44,
             minWidth: 0,
+            overflowWrap: "anywhere",
             px: 0,
             py: 1.25,
+            whiteSpace: "normal",
           }}
           variant="text"
         >
@@ -624,4 +651,9 @@ function publicAssetUrl(path: string) {
     return path;
   }
   return new URL(path, process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").toString();
+}
+
+/** Construye anclas estables sin incorporar títulos editoriales a IDs o selectores. */
+function customTabId(position: number) {
+  return `custom-tab-${position}`;
 }

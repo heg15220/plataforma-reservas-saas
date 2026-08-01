@@ -77,11 +77,7 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
     const controller = new AbortController();
     controllerRef.current = controller;
     try {
-      const result = await checkPublicReviewEligibility(
-        venueSlug,
-        email.trim(),
-        controller.signal,
-      );
+      const result = await checkPublicReviewEligibility(venueSlug, email.trim(), controller.signal);
       if (result.eligible) {
         setEmail(email.trim());
         setStep("review");
@@ -149,6 +145,7 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
       <Button
         onClick={() => setOpen(true)}
         startIcon={<Star aria-hidden="true" />}
+        sx={{ minHeight: 44, width: { xs: "100%", sm: "auto" } }}
         variant="outlined"
       >
         {t("action")}
@@ -161,8 +158,19 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
         }}
         open={open}
         aria-describedby="review-entry-description"
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: { xs: 0, sm: 3 },
+              height: { xs: "100dvh", sm: "auto" },
+              m: { xs: 0, sm: 4 },
+              maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+              width: { xs: "100%", sm: "calc(100% - 64px)" },
+            },
+          },
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ overflowWrap: "anywhere" }}>
           {step === "success" ? t("successTitle") : t("dialogTitle")}
         </DialogTitle>
         {step === "email" && (
@@ -186,11 +194,16 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
                 />
               </Stack>
             </DialogContent>
-            <DialogActions sx={{ p: 3 }}>
-              <Button disabled={busy} onClick={resetAndClose}>
+            <DialogActions sx={responsiveDialogActionsSx}>
+              <Button disabled={busy} onClick={resetAndClose} sx={responsiveDialogButtonSx}>
                 {t("cancel")}
               </Button>
-              <Button disabled={busy} type="submit" variant="contained">
+              <Button
+                disabled={busy}
+                sx={responsiveDialogButtonSx}
+                type="submit"
+                variant="contained"
+              >
                 {busy ? t("checking") : t("checkAction")}
               </Button>
             </DialogActions>
@@ -234,14 +247,24 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
                     />
                   }
                   label={t("policyLabel")}
+                  sx={{ alignItems: "flex-start", m: 0, overflowWrap: "anywhere" }}
                 />
               </Stack>
             </DialogContent>
-            <DialogActions sx={{ p: 3 }}>
-              <Button disabled={busy} onClick={() => setStep("email")}>
+            <DialogActions sx={responsiveDialogActionsSx}>
+              <Button
+                disabled={busy}
+                onClick={() => setStep("email")}
+                sx={responsiveDialogButtonSx}
+              >
                 {t("back")}
               </Button>
-              <Button disabled={busy} type="submit" variant="contained">
+              <Button
+                disabled={busy}
+                sx={responsiveDialogButtonSx}
+                type="submit"
+                variant="contained"
+              >
                 {busy ? t("publishing") : t("publish")}
               </Button>
             </DialogActions>
@@ -263,8 +286,8 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
                 })}
               </DialogContentText>
             </DialogContent>
-            <DialogActions sx={{ p: 3 }}>
-              <Button onClick={resetAndClose} variant="contained">
+            <DialogActions sx={responsiveDialogActionsSx}>
+              <Button onClick={resetAndClose} sx={responsiveDialogButtonSx} variant="contained">
                 {t("close")}
               </Button>
             </DialogActions>
@@ -274,3 +297,16 @@ export function ReviewEntryDialog({ venueSlug }: { venueSlug: string }) {
     </>
   );
 }
+
+const responsiveDialogActionsSx = {
+  alignItems: "stretch",
+  flexDirection: { xs: "column", sm: "row" },
+  gap: 1,
+  p: 3,
+};
+
+const responsiveDialogButtonSx = {
+  marginLeft: { xs: "0 !important", sm: undefined },
+  minHeight: 44,
+  width: { xs: "100%", sm: "auto" },
+};

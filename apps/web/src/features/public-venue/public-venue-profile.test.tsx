@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { renderWithIntl } from "@/test-utils/render-with-intl";
+import { renderWithIntl, renderWithLocale } from "@/test-utils/render-with-intl";
 
 import type { PublicVenueProfile } from "./public-venue-api";
 import { PublicVenueProfileView } from "./public-venue-profile";
@@ -78,7 +78,10 @@ describe("PublicVenueProfileView", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Casa Luz" })).toBeVisible();
     expect(screen.getByText("Cocina de temporada")).toBeVisible();
-    expect(screen.getByRole("heading", { level: 2, name: "Carta" })).toBeVisible();
+    const customTabHeading = screen.getByRole("heading", { level: 2, name: "Carta" });
+    expect(customTabHeading).toBeVisible();
+    expect(screen.getByRole("link", { name: "Carta" })).toHaveAttribute("href", "#custom-tab-0");
+    expect(customTabHeading.closest("section")).toHaveAttribute("id", "custom-tab-0");
     expect(screen.getByText("Verduras de temporada")).toBeVisible();
     expect(screen.getByRole("img", { name: "Comedor principal" })).toBeVisible();
     expect(screen.getByRole("link", { name: "hola@casaluz.test" })).toHaveAttribute(
@@ -118,5 +121,33 @@ describe("PublicVenueProfileView", () => {
       "email",
     );
     expect(screen.queryByText("Tu puntuación")).not.toBeInTheDocument();
+  });
+
+  it("renderiza navegación, pestaña y reseña con el catálogo inglés real", () => {
+    const englishVenue: PublicVenueProfile = {
+      ...venue,
+      locale: "en",
+      categoryName: "Restaurant",
+      description: "Seasonal cuisine",
+      services: "Tasting menu",
+      customTabs: [
+        {
+          ...venue.customTabs[0],
+          title: "Menu and seasonal prices",
+          content: "<p>Chef's tasting menu</p><ul><li>Seasonal vegetables</li></ul>",
+        },
+      ],
+    };
+
+    renderWithLocale(<PublicVenueProfileView venue={englishVenue} />, "en");
+
+    expect(screen.getAllByRole("link", { name: "Book" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Menu and seasonal prices" })).toHaveAttribute(
+      "href",
+      "#custom-tab-0",
+    );
+    expect(screen.getByRole("heading", { name: "Reviews" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Write a review" })).toBeVisible();
+    expect(screen.getByText("2 verified reviews")).toBeVisible();
   });
 });

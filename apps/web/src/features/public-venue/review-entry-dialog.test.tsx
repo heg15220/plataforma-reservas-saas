@@ -1,12 +1,9 @@
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { renderWithIntl } from "@/test-utils/render-with-intl";
+import { renderWithIntl, renderWithLocale } from "@/test-utils/render-with-intl";
 
-import {
-  checkPublicReviewEligibility,
-  createPublicVenueReview,
-} from "./public-review-api";
+import { checkPublicReviewEligibility, createPublicVenueReview } from "./public-review-api";
 import { ReviewEntryDialog } from "./review-entry-dialog";
 
 vi.mock("./public-review-api", async (importOriginal) => {
@@ -89,8 +86,7 @@ describe("ReviewEntryDialog", () => {
     {
       error: "REVIEW_ALREADY_SUBMITTED" as const,
       messageKey: "reviews.alreadySubmittedForVenue" as const,
-      message:
-        "Todas las reservas pasadas que permiten valorar este local ya tienen una reseña.",
+      message: "Todas las reservas pasadas que permiten valorar este local ya tienen una reseña.",
     },
   ])("muestra el rechazo i18n $error sin revelar historial", async (decision) => {
     vi.mocked(checkPublicReviewEligibility).mockResolvedValue({
@@ -110,5 +106,28 @@ describe("ReviewEntryDialog", () => {
     await waitFor(() => expect(screen.getByText(decision.message)).toBeVisible());
     expect(screen.queryByText("Tu puntuación")).not.toBeInTheDocument();
     expect(screen.queryByText(/2026|reserva #|visita/i)).not.toBeInTheDocument();
+  });
+
+  it("presenta en inglés la comprobación y el rechazo minimizado", async () => {
+    vi.mocked(checkPublicReviewEligibility).mockResolvedValue({
+      eligible: false,
+      canReview: false,
+      error: "REVIEW_NOT_ELIGIBLE",
+      messageKey: "reviews.notEligibleForVenue",
+    });
+    renderWithLocale(<ReviewEntryDialog venueSlug="casa-luz" />, "en");
+
+    fireEvent.click(screen.getByRole("button", { name: "Write a review" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Booking email" }), {
+      target: { value: "guest@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+
+    expect(
+      await screen.findByText(
+        "We could not find a valid past booking for this venue with that email.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("Your rating")).not.toBeInTheDocument();
   });
 });

@@ -14,10 +14,62 @@ Fuente de verdad del avance:
 - Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
   `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
-  `14.1` a `14.14`, `15.1` a `15.14`.
-- Siguiente tarea pendiente recomendada: `15.15. Ejecutar pruebas visuales con locale español e inglés`.
-- Observación: la fase 14 queda completa y el perfil local dispone de tres publicaciones
-  reservables de demostración sin registro.
+  `14.1` a `14.14`, `15.1` a `15.16`.
+- Siguiente tarea pendiente recomendada: `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Observación: la fase 15 queda completa con validación responsive bilingüe y del flujo móvil de
+  reseñas de la ficha pública.
+
+## Conversación 139 - Ficha pública móvil bilingüe, pestañas personalizadas y reseñas
+
+- Fecha: 2026-08-01.
+- Resumen de la conversación:
+  - Se completaron las dos últimas tareas de la fase responsive mediante validación focalizada de la
+    ficha pública en español e inglés y del flujo de reseña por correo desde el detalle del local.
+  - La navegación de secciones incorpora las pestañas personalizadas en su orden editorial y cada
+    enlace apunta a una región semántica estable, independiente del título traducido.
+  - El contenido HTML saneado de las pestañas protege textos, enlaces, listas, imágenes, vídeos,
+    tablas y bloques preformateados frente a desbordamientos horizontales en móvil.
+  - El diálogo de reseña ocupa el viewport móvil, apila acciones de 44 px y mantiene utilizables la
+    selección de estrellas, el consentimiento, los errores minimizados y la confirmación.
+  - Se añadió soporte de test para usar los catálogos reales `es` y `en`, con cobertura inglesa del
+    perfil y del rechazo de elegibilidad sin revelar historial de reservas.
+  - Se revisó recursivamente toda `.kiro` y se contrastaron requisitos, diseño, tareas, historial y
+    documentación técnica antes de modificar el código.
+- Archivos modificados:
+  - `apps/web/src/components/layout/surface.tsx`.
+  - `apps/web/src/test-utils/render-with-intl.tsx`.
+  - `apps/web/src/features/public-venue/public-venue-profile.tsx`.
+  - `apps/web/src/features/public-venue/public-venue-profile.test.tsx`.
+  - `apps/web/src/features/public-venue/review-entry-dialog.tsx`.
+  - `apps/web/src/features/public-venue/review-entry-dialog.test.tsx`.
+  - `apps/web/src/features/public-venue/star-rating-input.tsx`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-004 Perfil público del local`, `RF-024 Reseñas verificadas` y `RF-031 Internacionalización
+    de textos`.
+  - `RNF-002 Seguridad y privacidad`, `RNF-007 Usabilidad` y `RNF-009 Internacionalización y
+    localización`.
+- Tareas impactadas y completadas:
+  - `15.15. Ejecutar pruebas visuales con locale español e inglés`.
+  - `15.16. Validar ficha móvil con pestañas personalizadas y flujo de reseña por email desde el
+    botón de detalles`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - No se cambiaron endpoints, contratos de elegibilidad/publicación, persistencia ni reglas de
+    negocio; el alcance se limita a presentación, semántica, accesibilidad y pruebas del flujo.
+  - La inspección real en `390 × 844` confirmó en español una sola columna, ausencia de scroll
+    horizontal, navegación y acciones de 44 px, diálogo a viewport completo y recorrido elegible
+    hasta la confirmación localizada. El intento de inspección inglesa quedó bloqueado después por
+    la política de URL local del navegador y no se intentó sortear; la evidencia inglesa se completa
+    con tests sobre el catálogo real.
+  - Vitest focalizado verificó inicialmente diálogo y estrellas y, tras corregir la propagación de
+    `id`/`aria-labelledby` de `Surface`, el perfil terminó con 4/4 pruebas correctas en 16,62 s. Una
+    repetición conjunta posterior alcanzó el límite de 60 s sin resultado y no se reiteró.
+  - Prettier focalizado terminó correcto. ESLint focalizado alcanzó el límite de 60 s sin devolver
+    diagnóstico y no se repitió. `git diff --check` terminó sin incidencias.
 
 ## Conversación 138 - Estadísticas, suscripción y validación visual responsive
 

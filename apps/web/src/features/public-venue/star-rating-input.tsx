@@ -33,10 +33,7 @@ export function StarRatingInput({
   const t = useTranslations("VenuePublicProfile.reviewForm");
   const labelId = useId();
 
-  const chooseFromKeyboard = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    currentRating: number,
-  ) => {
+  const chooseFromKeyboard = (event: KeyboardEvent<HTMLButtonElement>, currentRating: number) => {
     const nextRating = keyboardRating(event.key, currentRating);
     if (nextRating === null) return;
     event.preventDefault();
@@ -54,7 +51,7 @@ export function StarRatingInput({
       <Box
         aria-labelledby={labelId}
         role="radiogroup"
-        sx={{ display: "flex", gap: 0.25 }}
+        sx={{ display: "flex", flexWrap: "wrap", gap: 0.25 }}
       >
         {[1, 2, 3, 4, 5].map((rating) => (
           <IconButton
@@ -67,19 +64,18 @@ export function StarRatingInput({
             onKeyDown={(event) => chooseFromKeyboard(event, rating)}
             role="radio"
             tabIndex={value === rating || (value === null && rating === 1) ? 0 : -1}
-            sx={{ color: rating <= (value ?? 0) ? "warning.main" : "action.disabled" }}
+            sx={{
+              color: rating <= (value ?? 0) ? "warning.main" : "action.disabled",
+              minHeight: 44,
+              minWidth: 44,
+            }}
           >
-            <Star
-              aria-hidden="true"
-              fill={rating <= (value ?? 0) ? "currentColor" : "none"}
-            />
+            <Star aria-hidden="true" fill={rating <= (value ?? 0) ? "currentColor" : "none"} />
           </IconButton>
         ))}
       </Box>
       <input name={name} type="hidden" value={value ?? ""} />
-      <FormHelperText error={Boolean(error)}>
-        {error ?? t("ratingHelper")}
-      </FormHelperText>
+      <FormHelperText error={Boolean(error)}>{error ?? t("ratingHelper")}</FormHelperText>
     </Stack>
   );
 }

@@ -10,8 +10,8 @@ Debe actualizarse al finalizar cada tarea marcada como completada en `tasks.md`.
 - Tareas implementadas documentadas y cerradas: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`,
   `3.1` a `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a
   `8.14`, `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a
-  `13.12`, `14.1` a `14.14` y `15.1` a `15.14`.
-- Siguiente tarea pendiente recomendada: `15.15. Ejecutar pruebas visuales con locale español e inglés`.
+  `13.12`, `14.1` a `14.14` y `15.1` a `15.16`.
+- Siguiente tarea pendiente recomendada: `16.1. Revisar validación backend de todos los endpoints públicos`.
 - Convención Git vigente desde el 2026-06-23: GitFlow con una rama por fase, `develop` como integración y `main` como producción.
 
 ## Plantilla obligatoria por tarea
@@ -29623,3 +29623,166 @@ viewport del navegador se restableció.
 
 La validación se realizó con locale español, que es suficiente para el eje de breakpoints de 15.14.
 La matriz explícita español/inglés corresponde a la siguiente tarea 15.15 y no se adelanta aquí.
+
+## Tarea 15.15 - Ejecutar pruebas visuales con locale español e inglés
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada con la limitación de navegador descrita abajo.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Comprobar que la ficha pública y su entrada de reseña conservan jerarquía, legibilidad, acciones
+utilizables y textos correctos en los dos locales soportados. La validación se restringe al flujo
+afectado y a un viewport móvil representativo de `390 × 844`; no se repite la matriz global de
+breakpoints cerrada en 15.14.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-004`, `RF-024`, `RF-031`, `RNF-007` y `RNF-009`.
+- Diseño: resolución segura ES/EN, formato dependiente del locale, ficha pública en una columna y
+  tolerancia a traducciones de distinta longitud.
+- Tareas relacionadas: infraestructura i18n `0.10`–`0.12`, perfil público `2.5`–`2.17`, reseñas
+  `11.9`–`11.12`, formulario público `12.1`–`12.7` y validación responsive `15.14`.
+
+### Archivos afectados
+
+- Modificados: `render-with-intl.tsx`, `public-venue-profile.test.tsx`,
+  `review-entry-dialog.test.tsx`, además de los componentes responsive compartidos con 15.16.
+- Creados o eliminados: ninguno.
+
+### Implementación técnica y arquitectura
+
+`renderWithLocale` encapsula `NextIntlClientProvider` con un locale tipado `"es" | "en"` y carga
+los catálogos reales `locales/es.json` y `locales/en.json`. `renderWithIntl` conserva compatibilidad
+con las pruebas existentes delegando al locale español, por lo que no cambia el contrato anterior.
+La prueba inglesa del perfil aporta datos editoriales localizados y comprueba las etiquetas
+`Book`, `Reviews`, `Write a review`, el plural `2 verified reviews` y el enlace de la pestaña. La
+prueba inglesa del diálogo verifica formulario, correo y rechazo de elegibilidad minimizado.
+
+No se cambió el modelo de datos, no existen migraciones, índices ni restricciones nuevas. Tampoco
+se modificaron endpoints, DTO, esquemas Zod, claves de traducción o lógica de resolución del locale.
+Los contratos públicos de lectura, elegibilidad y publicación permanecen intactos.
+
+### Seguridad, privacidad, errores e i18n
+
+El caso negativo inglés conserva el contrato de minimización: presenta una razón traducida sin
+fechas, identificadores ni detalle del historial de reservas. Los datos del servidor visual fueron
+fixtures locales sin credenciales ni reservas reales. Los errores siguen resolviéndose mediante
+`messageKey`; no se incorporan textos de proveedor ni trazas al cliente.
+
+### UI y experiencia de usuario
+
+En español se inspeccionó la ficha completa a `390 × 844`: `lang=es`, una columna, ancho documental
+sin desbordamiento, navegación de secciones y acciones de al menos 44 px. El diálogo ocupó el
+viewport y el recorrido avanzó desde `Hacer reseña` y un correo elegible hasta cinco estrellas,
+consentimiento, publicación y `Reseña publicada`, con decimal `4,7` y plural español.
+
+La navegación posterior a `?locale=en` respondió HTTP 200 en Next, pero la herramienta rechazó la
+segunda inspección por su política de seguridad de URL local. No se intentó sortear el bloqueo. La
+comprobación inglesa queda respaldada por las pruebas con catálogo real, no por una afirmación de
+inspección visual no realizada.
+
+### Tests y verificación
+
+- Vitest focalizado verificó inicialmente las suites del diálogo y las estrellas; el perfil terminó
+  con 4/4 pruebas correctas en 16,62 s tras corregir la semántica de `Surface`.
+- Una ejecución posterior de las tres suites desde `apps/web` alcanzó el límite explícito de 60 s
+  antes de emitir resultados y se detuvo sin reintentos adicionales.
+- Prettier focalizado informó que los siete TSX afectados conservan el estilo esperado.
+- ESLint focalizado alcanzó el límite de 60 s sin diagnóstico; no se ejecutaron lint global, build,
+  backend ni suites ajenas. `git diff --check` no detectó errores de whitespace.
+
+### Riesgos, deuda y observabilidad
+
+La deuda concreta es repetir la inspección visual inglesa cuando el navegador permita acceder de
+nuevo a la URL local. No se añadió telemetría ni logging porque no se introducen operaciones nuevas.
+El aviso de desarrollo de `next-intl` sobre un `timeZone` global ya existente en el entorno queda
+fuera de este cambio visual y no afectó las aserciones localizadas.
+
+## Tarea 15.16 - Validar ficha móvil con pestañas personalizadas y flujo de reseña por email desde el botón de detalles
+
+- Fecha: 2026-08-01.
+- Commit o referencia: cambios de esta conversación, pendientes del commit de cierre.
+- Estado: completada y verificada.
+- Responsable: Codex.
+
+### Objetivo técnico
+
+Cerrar la experiencia móvil de la ficha pública garantizando que las pestañas editoriales sean
+navegables y que el flujo de reseña por correo siga siendo accesible, privado y operable desde el
+botón de detalles hasta su confirmación.
+
+### Requisitos y diseño relacionados
+
+- Requisitos: `RF-004` para orden y contenido de pestañas, `RF-024` para reseña verificada por email,
+  `RF-031` para textos localizados y `RNF-002`/`RNF-007` para privacidad y usabilidad.
+- Diseño: composición móvil de una columna, navegación por secciones, contenido HTML previamente
+  saneado, acciones táctiles y flujo elegibilidad → formulario → confirmación.
+- Tareas relacionadas: `2.14`–`2.17`, `11.9`–`11.12`, `12.1`–`12.7` y `15.4`.
+
+### Archivos afectados
+
+- Modificados: `surface.tsx`, `public-venue-profile.tsx`, `public-venue-profile.test.tsx`,
+  `review-entry-dialog.tsx`, `review-entry-dialog.test.tsx`, `star-rating-input.tsx` y
+  `render-with-intl.tsx`.
+- Creados o eliminados: ninguno.
+
+### Implementación técnica, componentes y flujo
+
+`PublicVenueProfileView` construye una única lista `sectionLinks`: disponibilidad, información,
+pestañas personalizadas en el orden recibido, reseñas y galería. Cada pestaña obtiene un ID estable
+`custom-tab-{position}` mediante `customTabId`; no se derivan IDs del título editorial y se evitan
+problemas con traducciones, espacios o caracteres especiales. La tarjeta se expone como `section`
+etiquetada por su `h2`. Para hacerlo efectivo, `Surface` amplía su contrato documentado y propaga
+`id` y `aria-labelledby` a `Paper`.
+
+El contenedor de HTML mantiene la sanitización ya existente y añade exclusivamente restricciones
+de presentación: corte seguro de palabras, medios fluidos, tablas y bloques `pre` con overflow
+interno. Los enlaces de navegación permiten varias líneas, tienen altura mínima de 44 px y usan
+`scrollMarginTop` para que el encabezado anclado no quede oculto.
+
+`ReviewEntryDialog` mantiene la máquina de estados existente (`email`, `review`, `success`). En
+móvil su `Paper` usa ancho completo, `100dvh`, margen cero y sin redondeo; a partir de `sm` recupera
+el diálogo convencional. Las acciones se apilan, ocupan todo el ancho y miden al menos 44 px. El
+botón de entrada aplica la misma superficie táctil. `StarRatingInput` permite wrap y cada radio de
+estrella mide al menos 44 × 44 px, conservando teclado, roving tabindex y valor oculto de formulario.
+
+### Modelo de datos, contratos y permisos
+
+No se altera almacenamiento, migraciones, índices, restricciones ni relaciones. Se reutilizan sin
+cambios `GET /api/public/venues/{slug}`, el endpoint de elegibilidad y el de creación de reseña.
+Tampoco se modifican payloads, idempotencia, selección de reserva elegible, permisos ni estados de
+moderación. El HTML mostrado continúa procediendo del campo saneado por el contrato vigente.
+
+### Seguridad, privacidad, errores y accesibilidad
+
+El cliente solo envía el email normalizado por el flujo preexistente y nunca muestra qué reserva
+motivó un rechazo. AbortController sigue cancelando solicitudes al cerrar o cambiar de paso. Los
+errores conservan claves i18n. Las regiones etiquetadas, el radiogroup, los radios, los títulos del
+diálogo, el consentimiento y el foco administrado por MUI mantienen semántica accesible; no se
+introduce HTML sin sanear ni nueva captura de datos personales.
+
+### Tests y evidencia de ejecución
+
+Las pruebas de perfil validan que el enlace personalizado apunta a `#custom-tab-0` y que el `h2`
+pertenece a la sección con ese ID. Las pruebas del diálogo cubren elegibilidad positiva, validación,
+publicación, confirmación y rechazos minimizados; estrellas cubre ratón y teclado. La evidencia
+automatizada y sus límites son los mismos consignados en 15.15.
+
+La inspección manual española recorrió la ficha a `390 × 844`, abrió el botón de detalles, comprobó
+un correo elegible, seleccionó cinco estrellas, aceptó la política y publicó contra un API temporal
+aislado. El diálogo midió el viewport completo, sus acciones fueron de 44 px y el documento no tuvo
+overflow horizontal. Next y el servidor mock se cerraron al terminar.
+
+### Decisiones técnicas, riesgos y deuda
+
+Se eligieron IDs basados en posición porque la posición ya expresa el orden contractual y permanece
+estable entre traducciones. No se convirtió la navegación en un widget ARIA `tablist`: los controles
+son enlaces a secciones simultáneamente visibles, no pestañas que alternen paneles. Tablas y `pre`
+conservan contenido completo mediante scroll interno en lugar de truncarlo.
+
+El riesgo residual se limita a HTML editorial futuro con elementos no contemplados por las reglas
+responsive; la sanitización y el contenedor acotado reducen el impacto. No se añadió deuda de API,
+base de datos, jobs, auditoría ni observabilidad.
