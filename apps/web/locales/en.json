@@ -495,11 +495,44 @@
       "reservations": "Bookings",
       "team": "Team",
       "form": "Form",
+      "emails": "Emails",
       "incidents": "Incidents",
       "more": "More",
+      "publicHome": "Go to home",
       "reviews": "Reviews",
       "statistics": "Statistics",
-      "subscription": "Subscription"
+      "subscription": "Subscription",
+      "logout": "Sign out",
+      "loggingOut": "Signing out…",
+      "logoutError": "We could not sign you out. Check your connection and try again."
+    }
+  },
+  "VenueEmails": {
+    "metadata": {
+      "title": "Venue emails | Reserly",
+      "description": "Private recipient management for published venues."
+    },
+    "hero": {
+      "eyebrow": "MULTI-VENUE ACCOUNT",
+      "title": "Venue emails",
+      "summary": "Assign each published venue the email that will receive its new bookings and operational notices."
+    },
+    "loading": "Loading published venues…",
+    "empty": "There are no published venues to assign an email to yet.",
+    "card": {
+      "help": "This email is private and is used for the venue's operational notifications.",
+      "emailLabel": "Notification email",
+      "emailHelp": "New bookings for this venue will be sent to this address.",
+      "save": "Save email",
+      "saving": "Saving…"
+    },
+    "success": "The email for {venue} has been updated.",
+    "errors": {
+      "invalid": "Enter a valid email address.",
+      "unauthenticated": "Your session has expired. Sign in again.",
+      "forbidden": "You do not have permission to manage these venues.",
+      "notFound": "The venue does not exist, is not published or does not belong to your account.",
+      "unavailable": "We cannot manage emails right now. Try again later."
     }
   },
   "Availability": {
@@ -1329,7 +1362,7 @@
     },
     "delete": {
       "title": "Delete field",
-      "body": "?{label}? will be removed from the booking form."
+      "body": "“{label}” will be removed from the booking form."
     },
     "publication": {
       "title": "Publication",

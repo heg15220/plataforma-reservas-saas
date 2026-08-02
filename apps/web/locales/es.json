@@ -495,11 +495,44 @@
       "reservations": "Reservas",
       "team": "Equipo",
       "form": "Formulario",
+      "emails": "Emails",
       "incidents": "Incidencias",
       "more": "Más",
+      "publicHome": "Ir al inicio",
       "reviews": "Reseñas",
       "statistics": "Estadísticas",
-      "subscription": "Suscripción"
+      "subscription": "Suscripción",
+      "logout": "Cerrar sesión",
+      "loggingOut": "Cerrando sesión…",
+      "logoutError": "No se pudo cerrar la sesión. Comprueba la conexión e inténtalo de nuevo."
+    }
+  },
+  "VenueEmails": {
+    "metadata": {
+      "title": "Emails de locales | Reserly",
+      "description": "Gestión privada de destinatarios para los locales publicados."
+    },
+    "hero": {
+      "eyebrow": "CUENTA MULTI-LOCAL",
+      "title": "Emails de los locales",
+      "summary": "Asocia cada local publicado al email que recibirá sus nuevas reservas y avisos operativos."
+    },
+    "loading": "Cargando locales publicados…",
+    "empty": "Todavía no hay locales publicados a los que asignar un email.",
+    "card": {
+      "help": "Este email es privado y se utiliza para las notificaciones operativas del local.",
+      "emailLabel": "Email de notificaciones",
+      "emailHelp": "Las nuevas reservas de este local se enviarán a esta dirección.",
+      "save": "Guardar email",
+      "saving": "Guardando…"
+    },
+    "success": "El email de {venue} se ha actualizado correctamente.",
+    "errors": {
+      "invalid": "Introduce un email válido.",
+      "unauthenticated": "Tu sesión ha caducado. Inicia sesión de nuevo.",
+      "forbidden": "No tienes permiso para gestionar estos locales.",
+      "notFound": "El local no existe, no está publicado o no pertenece a tu cuenta.",
+      "unavailable": "No podemos gestionar los emails en este momento. Inténtalo más tarde."
     }
   },
   "Availability": {
@@ -1243,25 +1276,25 @@
   "FormBuilder": {
     "metadata": {
       "title": "Formulario de reserva | Reserly",
-      "description": "Configuraci?n privada del formulario de reserva del local."
+      "description": "Configuración privada del formulario de reserva del local."
     },
     "hero": {
       "eyebrow": "Reservas",
       "title": "Formulario de reserva",
-      "summary": "Configura los campos que completar?n tus clientes y revisa el resultado final."
+      "summary": "Configura los campos que completarán tus clientes y revisa el resultado final."
     },
     "actions": {
       "refresh": "Actualizar",
-      "add": "A?adir campo",
+      "add": "Añadir campo",
       "edit": "Editar",
       "delete": "Eliminar",
       "moveUp": "Mover arriba",
       "moveDown": "Mover abajo",
       "cancel": "Cancelar",
       "save": "Guardar",
-      "saving": "Guardando...",
-      "addOption": "A?adir opci?n",
-      "removeOption": "Eliminar opci?n",
+      "saving": "Guardando…",
+      "addOption": "Añadir opción",
+      "removeOption": "Eliminar opción",
       "confirmDelete": "Eliminar campo",
       "publish": "Publicar",
       "unpublish": "Despublicar"
@@ -1273,7 +1306,7 @@
       "save": "No se pudo guardar el campo.",
       "delete": "No se pudo eliminar el campo.",
       "reorder": "No se pudo actualizar el orden.",
-      "publication": "No se pudo cambiar la publicaci?n.",
+      "publication": "No se pudo cambiar la publicación.",
       "publicationBlocked": "Completa las traducciones o aprueba el fallback antes de publicar."
     },
     "notices": {
@@ -1285,7 +1318,7 @@
     },
     "catalog": {
       "title": "Campos personalizados",
-      "empty": "Todav?a no hay campos personalizados."
+      "empty": "Todavía no hay campos personalizados."
     },
     "preview": {
       "title": "Vista previa",
@@ -1297,18 +1330,18 @@
     "types": {
       "short_text": "Texto corto",
       "long_text": "Texto largo",
-      "select": "Selecci?n",
+      "select": "Selección",
       "checkbox": "Casilla",
       "date": "Fecha",
-      "number": "N?mero",
+      "number": "Número",
       "email": "Correo",
-      "phone": "Tel?fono",
+      "phone": "Teléfono",
       "time_slot": "Franja horaria"
     },
     "base": {
       "customer_name": "Nombre",
-      "customer_email": "Correo electr?nico",
-      "party_size": "N?mero de personas",
+      "customer_email": "Correo electrónico",
+      "party_size": "Número de personas",
       "reservation_date": "Fecha",
       "time_slot": "Franja horaria"
     },
@@ -1316,30 +1349,30 @@
       "createTitle": "Nuevo campo",
       "editTitle": "Editar campo",
       "label": "Etiqueta",
-      "key": "Clave t?cnica",
+      "key": "Clave técnica",
       "type": "Tipo de campo",
       "required": "Campo obligatorio",
-      "option": "Opci?n {number}",
-      "keyInvalid": "Usa min?sculas, n?meros y guiones bajos; debe comenzar por una letra.",
-      "optionsInvalid": "A?ade opciones ?nicas y no vac?as.",
-      "labelEs": "Etiqueta en espa?ol",
-      "labelEn": "Etiqueta en ingl?s",
-      "optionEs": "Opci?n {number} en espa?ol",
-      "optionEn": "Opci?n {number} en ingl?s"
+      "option": "Opción {number}",
+      "keyInvalid": "Usa minúsculas, números y guiones bajos; debe comenzar por una letra.",
+      "optionsInvalid": "Añade opciones únicas y no vacías.",
+      "labelEs": "Etiqueta en español",
+      "labelEn": "Etiqueta en inglés",
+      "optionEs": "Opción {number} en español",
+      "optionEn": "Opción {number} en inglés"
     },
     "delete": {
       "title": "Eliminar campo",
-      "body": "Se eliminar? ?{label}? del formulario de reserva."
+      "body": "Se eliminará «{label}» del formulario de reserva."
     },
     "publication": {
-      "title": "Publicaci?n",
+      "title": "Publicación",
       "published": "Publicado",
       "draft": "Borrador",
-      "complete": "Los textos p?blicos est?n completos en espa?ol e ingl?s.",
-      "pending": "Hay {count} traducciones pendientes.",
+      "complete": "Los textos públicos están completos en español e inglés.",
+      "pending": "Hay {count, plural, one {# traducción pendiente} other {# traducciones pendientes}}.",
       "confirmTitle": "Publicar formulario",
-      "confirmComplete": "El formulario est? completo en espa?ol e ingl?s.",
-      "confirmPending": "Faltan {count} traducciones. Puedes publicar usando el idioma origen como fallback.",
+      "confirmComplete": "El formulario está completo en español e inglés.",
+      "confirmPending": "Faltan {count, plural, one {# traducción} other {# traducciones}}. Puedes publicar usando el idioma de origen como alternativa.",
       "approveFallback": "Aprobar el fallback al idioma origen"
     }
   },

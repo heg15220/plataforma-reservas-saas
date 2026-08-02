@@ -35,6 +35,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 0.14. Definir y automatizar convenciones backend: tablas `UpperCamelCase`, clases Java `UpperCamelCase`, atributos `lowerCamelCase`, JPA por getters/setters, DAOs con `@Query`, interfaces separadas de servicios/controladores, DTOs REST y conversores.
 - [x] 0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.
 - [x] 0.16. Añadir tres publicaciones idempotentes exclusivas del perfil local, con imágenes, disponibilidad móvil, reserva anónima, correo capturable y actualización real de plazas.
+- [x] 0.17. Crear una cuenta local autenticable con varios locales publicados para pruebas multi-local.
 
 ## 3. Fase 1 - Identidad, roles y base SaaS
 
@@ -60,6 +61,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.20. Crear pantalla de acceso para locales.
 - [x] 1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.
 - [x] 1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.
+- [x] 1.23. Añadir al menú privado acceso al inicio público y cierre de sesión responsive.
 
 ## 4. Fase 2 - Locales, categorías y perfil público
 
@@ -80,6 +82,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 2.15. Implementar CRUD de pestañas personalizadas del local para propietario.
 - [x] 2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local.
 - [x] 2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.
+- [x] 2.18. Gestionar desde el panel el email operativo asociado a cada local publicado propio.
 
 ## 5. Fase 3 - Búsqueda pública y descubrimiento
 
@@ -147,6 +150,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 6.10. Crear tests de validación de formularios.
 - [x] 6.11. Permitir labels y opciones de campos personalizados en español e inglés.
 - [x] 6.12. Bloquear publicación de formularios con textos públicos sin traducción obligatoria o fallback aprobado.
+- [x] 6.13. Corregir la localización española y las propiedades responsive del editor privado de formularios.
 
 ## 9. Fase 7 - Reservas, holds y concurrencia
 

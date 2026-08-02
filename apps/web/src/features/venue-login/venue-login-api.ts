@@ -69,6 +69,31 @@ export async function loginVenue(
   }
 }
 
+/**
+ * Revoca de forma idempotente la sesión opaca del propietario.
+ *
+ * La cookie nunca se manipula desde JavaScript: `credentials: include` permite
+ * que el backend la expire mediante `Set-Cookie` tras revocar su hash.
+ */
+export async function logoutVenue(signal?: AbortSignal): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${readPublicApiBaseUrl().replace(/\/$/, "")}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      signal,
+    });
+  } catch (error) {
+    throw new VenueLoginApiError("unavailable", { cause: error });
+  }
+
+  if (!response.ok) {
+    throw new VenueLoginApiError("unavailable");
+  }
+}
+
 function readPublicApiBaseUrl(): string {
   const value = process.env.NEXT_PUBLIC_API_BASE_URL;
 

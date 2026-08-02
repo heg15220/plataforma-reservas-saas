@@ -11,9 +11,9 @@ INSERT INTO "Users" (
 VALUES
   (
     'd0000000-0000-4000-8000-000000000001',
-    'ames-padel-center@reserly.local',
-    'ames-padel-center@reserly.local',
-    '$2a$10$localDemoAccountCannotAuthenticateWithoutKnownPassword000000000',
+    'multilocal@reserly.local',
+    'multilocal@reserly.local',
+    '$2a$12$pH0VBVdwFsKxmWkUjReHXeXjvKRSgFmGK/5rShDfWMri3LWJXi8Oe',
     'es', CURRENT_TIMESTAMP, 'active', 'venue_business', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
   ),
   (
@@ -33,6 +33,7 @@ VALUES
 ON CONFLICT ("id") DO UPDATE SET
   "email" = EXCLUDED."email",
   "emailNormalized" = EXCLUDED."emailNormalized",
+  "passwordHash" = EXCLUDED."passwordHash",
   "preferredLocale" = EXCLUDED."preferredLocale",
   "emailVerifiedAt" = EXCLUDED."emailVerifiedAt",
   "status" = EXCLUDED."status",
@@ -140,8 +141,8 @@ VALUES
   ),
   (
     'd3000000-0000-4000-8000-000000000002',
-    'd0000000-0000-4000-8000-000000000002',
-    'd2000000-0000-4000-8000-000000000002',
+    'd0000000-0000-4000-8000-000000000001',
+    'd2000000-0000-4000-8000-000000000001',
     '20000000-0000-0000-0000-000000000004',
     'LET Padel Ames', 'let-padel-ames',
     'Instalación de pádel en Ames preparada para probar reservas y capacidad en local.',
@@ -408,6 +409,8 @@ UPDATE "BusinessAccounts" SET
 WHERE "id" = 'd2000000-0000-4000-8000-000000000002'::uuid;
 
 UPDATE "Venues" SET
+  "ownerUserId" = 'd0000000-0000-4000-8000-000000000001'::uuid,
+  "businessAccountId" = 'd2000000-0000-4000-8000-000000000001'::uuid,
   "categoryId" = '20000000-0000-0000-0000-000000000002'::uuid,
   "name" = 'Brisa Studio',
   "slug" = 'brisa-studio',
@@ -425,6 +428,15 @@ UPDATE "Venues" SET
   "mainImageMediaType" = 'image/jpeg', "mainImageSizeBytes" = 39434,
   "mainImageWidth" = 440, "mainImageHeight" = 440, "updatedAt" = CURRENT_TIMESTAMP
 WHERE "id" = 'd3000000-0000-4000-8000-000000000002'::uuid;
+
+-- La cuenta multilocal autenticable gestiona Ames Padel Center y Brisa Studio.
+-- Credenciales exclusivas de desarrollo: multilocal@reserly.local / ReserlyLocal2026!
+UPDATE "Venues"
+SET "notificationEmail" = lower(btrim("contactEmail"))
+WHERE "id" IN (
+  'd3000000-0000-4000-8000-000000000001'::uuid,
+  'd3000000-0000-4000-8000-000000000002'::uuid
+);
 
 UPDATE "Services" SET
   "name" = 'Cita de peluquería',

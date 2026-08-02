@@ -78,6 +78,7 @@ class ReservationConfirmationServiceTests {
   void confirmsOwnedHoldPersistsManagementHashAndPublishesEmailWork() {
     UUID reservationId = UUID.randomUUID();
     ReservationEntity reservation = reservation(reservationId);
+    reservation.getVenue().setNotificationEmail("assigned@example.com");
     arrangeValidHold(reservation);
     UUID fieldId = UUID.randomUUID();
     var validated =
@@ -108,7 +109,7 @@ class ReservationConfirmationServiceTests {
     verify(eventPublisher).publishEvent(event.capture());
     assertThat(event.getValue().manageToken()).isEqualTo(MANAGE_TOKEN);
     assertThat(event.getValue().customerEmail()).isEqualTo("Maria@Example.COM");
-    assertThat(event.getValue().venueEmail()).isEqualTo("owner@example.com");
+    assertThat(event.getValue().venueEmail()).isEqualTo("assigned@example.com");
     assertThat(event.getValue().customerLocale()).isEqualTo("en");
     assertThat(event.getValue().venueLocale()).isEqualTo("es");
     assertThat(event.getValue().formResponses())

@@ -260,6 +260,12 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       join fetch venue.category
       where venue.ownerUser.id = :ownerUserId
         and venue.status <> 'archived'
+        and venue.slug = (
+          select min(candidate.slug)
+          from VenueEntity candidate
+          where candidate.ownerUser.id = :ownerUserId
+            and candidate.status <> 'archived'
+        )
       """)
   Optional<VenueEntity> findCurrentByOwnerUserId(@Param("ownerUserId") UUID ownerUserId);
 
@@ -272,8 +278,38 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       join fetch venue.category
       where venue.ownerUser.id = :ownerUserId
         and venue.status <> 'archived'
+        and venue.slug = (
+          select min(candidate.slug)
+          from VenueEntity candidate
+          where candidate.ownerUser.id = :ownerUserId
+            and candidate.status <> 'archived'
+        )
       """)
   Optional<VenueEntity> findCurrentByOwnerUserIdForUpdate(@Param("ownerUserId") UUID ownerUserId);
+
+  /** Lista todos los locales publicados del propietario para configuración explícita por ID. */
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      where venue.ownerUser.id = :ownerUserId
+        and venue.status = 'published'
+      order by venue.name asc, venue.id asc
+      """)
+  List<VenueEntity> findAllPublishedByOwnerUserId(@Param("ownerUserId") UUID ownerUserId);
+
+  /** Bloquea un local publicado propio sin revelar si un ID ajeno existe. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      where venue.id = :venueId
+        and venue.ownerUser.id = :ownerUserId
+        and venue.status = 'published'
+      """)
+  Optional<VenueEntity> findPublishedOwnedByIdForUpdate(
+      @Param("ownerUserId") UUID ownerUserId, @Param("venueId") UUID venueId);
 
   /** Resuelve exclusivamente imágenes de perfiles publicados para entrega anónima. */
   @Query(

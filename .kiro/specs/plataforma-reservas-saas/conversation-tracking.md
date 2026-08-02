@@ -7736,6 +7736,125 @@ Fuente de verdad del avance:
     no informa errores en los archivos nuevos, pero sigue fallando por incidencias históricas de
     MUI e i18n en administración, formularios, equipo, incidencias y reservas.
 
+## Conversación 169 - Franjas ampliadas y corrección del editor de formularios
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - Se corrigió el texto mal formateado de `Guardar excepción`, se ampliaron las duraciones
+    automáticas y se añadió la retirada segura de todas las franjas de una fecha.
+  - La retirada bloquea las franjas propias y devuelve un conflicto específico si alguna conserva
+    referencias de reservas, preservando el historial.
+  - Después de un aviso de React en Formularios, las propiedades responsive de `Stack` y
+    `Typography` se trasladaron a `sx` para impedir que lleguen como atributos inválidos al DOM.
+  - Se repararon todas las cadenas corruptas del namespace español `FormBuilder`, incluidos tildes,
+    eñes, signos tipográficos y la pluralización de traducciones pendientes.
+- Archivos modificados:
+  - Controlador, servicio, DAOs, manejador de errores y tests de `TimeSlot` y `Reservation` en API.
+  - `availability-api.ts`, `venue-availability-manager.tsx` y sus tests.
+  - `reservation-form-manager.tsx` y `reservation-form-manager.test.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-011 Gestión de franjas`.
+  - `RF-013 Formulario de reserva configurable`.
+  - `RNF-003 Concurrencia y consistencia`.
+  - `RNF-007 Usabilidad`.
+  - `RNF-009 Internacionalización y localización`.
+- Tareas impactadas y completadas:
+  - `4.17. Ampliar duraciones y permitir retirar de forma segura todas las franjas de una fecha`.
+  - `6.13. Corregir la localización española y las propiedades responsive del editor privado de
+    formularios`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Las duraciones visibles son 15, 30, 45, 60, 90, 120, 180 y 240 minutos y permanecen dentro
+    del contrato backend de 5 a 480 minutos.
+  - La eliminación es todo-o-nada: una referencia desde reservas produce
+    `409 TIME_SLOT_DELETE_CONFLICT`; el propietario puede bloquear la franja en su lugar.
+  - La pluralización española se delega a ICU y el test de catálogos protege la paridad de claves.
+  - Pasaron 17 tests backend focalizados de franjas y 14 tests frontend de disponibilidad e i18n;
+    tras la corrección del formulario pasaron además sus 8 tests focalizados sin fallos.
+
+## Conversación 170 - Inicio público y cierre de sesión desde el panel
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó un apartado común del menú privado para volver al inicio del sistema y otro
+    para cerrar sesión.
+  - Se añadieron ambas acciones al pie de la navegación lateral de escritorio y como acciones
+    esenciales de la cabecera móvil.
+  - El cierre utiliza el endpoint idempotente real, bloquea dobles pulsaciones, muestra progreso y
+    solo redirige al inicio después de confirmar la revocación.
+  - Los fallos HTTP o de red mantienen al propietario en el panel y muestran un error reintentable.
+- Archivos modificados:
+  - Nuevo `apps/web/src/components/layout/venue-panel-actions.tsx`.
+  - `venue-shell.tsx` y `layout-system.test.tsx`.
+  - `venue-login-api.ts` y `venue-login-api.test.ts`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RNF-001 Seguridad`.
+  - `RNF-007 Usabilidad`.
+  - `RNF-009 Internacionalización y localización`.
+- Tareas impactadas y completadas:
+  - `1.23. Añadir al menú privado acceso al inicio público y cierre de sesión responsive`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - No se lee ni elimina la cookie desde JavaScript; el servidor conserva la responsabilidad de
+    revocarla y expirar `reserly_session`.
+  - No se redirige de forma optimista cuando falla la red, porque eso podría aparentar que una
+    sesión todavía válida quedó cerrada.
+  - Pasaron 17 tests focalizados de layout, cliente de autenticación e integridad i18n. ESLint de los
+    cinco archivos TypeScript afectados terminó sin errores.
+  - El typecheck global sigue fallando exclusivamente por diagnósticos históricos de administración,
+    formulario, equipo, incidencias y reservas; no produjo errores en los archivos de esta tarea.
+
+## Conversación 171 - Cuenta multi-local y gestión de emails por local
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario pidió una cuenta de desarrollo capaz de representar más de un local publicado y una
+    sección privada para asociar un email elegido a cada local.
+  - Se eliminó mediante `V36` la restricción física histórica de un único local activo por
+    propietario y se añadió `notificationEmail`, separado del contacto público.
+  - El fixture local convierte la cuenta `multilocal@reserly.local` en propietaria de Ames Padel
+    Center y Brisa Studio, ambos publicados y con destinatarios independientes.
+  - Se añadieron endpoints de listado y actualización explícitos por `venueId`, con validación de
+    propietario y estado publicado bajo lock.
+  - El panel incorpora `/panel/emails`, accesible desde el menú, con una tarjeta y guardado
+    independiente por local. Las nuevas reservas priorizan el email asignado.
+- Archivos modificados:
+  - Migración `V36__enable_multi_venue_notification_emails.sql` y `VenueEntity`/`VenueDao`.
+  - DTOs, controlador y servicio `VenueEmailAssignment*` con tests.
+  - `ReservationConfirmationServiceImpl` y su test.
+  - Fixture SQL local y su test de contrato.
+  - Nuevo módulo web `venue-emails`, ruta `/panel/emails`, navegación y catálogos ES/EN.
+  - Especificación y documentación técnica `.kiro`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-016 Emails de reserva`.
+  - `RNF-001 Seguridad`, `RNF-002 Privacidad`, `RNF-003 Consistencia`, `RNF-007 Usabilidad` y
+    `RNF-009 Internacionalización`.
+- Tareas impactadas y completadas:
+  - `0.17. Crear una cuenta local autenticable con varios locales publicados para pruebas
+    multi-local`.
+  - `2.18. Gestionar desde el panel el email operativo asociado a cada local publicado propio`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El email operativo es privado y no altera el contacto que el negocio decide mostrar en público.
+  - Los flujos privados históricos continúan trabajando sobre un perfil principal determinista;
+    la gestión multi-local usa contratos explícitos por ID para evitar ambigüedad.
+  - Un local ajeno, no publicado o inexistente comparte 404 y no revela su existencia.
+  - Pasaron 15 tests backend focalizados y 12 tests frontend de API, UI, layout e i18n. Spotless y
+    ESLint focalizado finalizaron correctamente.
+  - El checkstyle global conserva 26 incidencias históricas en templates y un test no relacionado.
+
 ## Conversación 107 - Cobertura focalizada de permisos y filtros del panel
 
 - Fecha: 2026-07-26.

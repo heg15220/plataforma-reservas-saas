@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
       VenueMainImageControllerImpl.class,
       VenueGalleryControllerImpl.class,
       VenueCustomTabControllerImpl.class,
+      VenueEmailAssignmentControllerImpl.class,
       VenuePublicProfileControllerImpl.class
     })
 public class VenueProfileExceptionHandler {

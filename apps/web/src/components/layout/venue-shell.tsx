@@ -9,6 +9,7 @@ import {
   ChartNoAxesColumnIncreasing,
   CreditCard,
   Grid2X2,
+  Mail,
   ListChecks,
   MoreHorizontal,
   NotebookTabs,
@@ -26,6 +27,7 @@ import { visualTokens } from "@/theme/visual-tokens";
 
 import { Brand } from "./brand";
 import { PageContainer } from "./page-container";
+import { VenuePanelActions } from "./venue-panel-actions";
 
 const venueNavigation = [
   { href: "/panel", icon: Grid2X2, labelKey: "home" },
@@ -34,6 +36,7 @@ const venueNavigation = [
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
   { href: "/panel/equipo", icon: UsersRound, labelKey: "team" },
   { href: "/panel/formulario", icon: ListChecks, labelKey: "form" },
+  { href: "/panel/emails", icon: Mail, labelKey: "emails" },
   { href: "/panel/incidencias", icon: ShieldAlert, labelKey: "incidents" },
   { href: "/panel/resenas", icon: Star, labelKey: "reviews" },
   {
@@ -52,6 +55,7 @@ const venueNavigation = [
     | "calendar"
     | "team"
     | "form"
+    | "emails"
     | "incidents"
     | "reviews"
     | "statistics"
@@ -62,11 +66,12 @@ const venueMobileNavigation = [
   { href: "/panel", icon: Grid2X2, labelKey: "home" },
   { href: "/panel/reservas", icon: NotebookTabs, labelKey: "reservations" },
   { href: "/panel/calendario", icon: CalendarDays, labelKey: "calendar" },
+  { href: "/panel/emails", icon: Mail, labelKey: "emails" },
   { href: "/panel/incidencias", icon: MoreHorizontal, labelKey: "more" },
 ] satisfies ReadonlyArray<{
   href: string;
   icon: LucideIcon;
-  labelKey: "home" | "reservations" | "calendar" | "more";
+  labelKey: "home" | "reservations" | "calendar" | "emails" | "more";
 }>;
 
 export interface VenueShellProps {
@@ -141,6 +146,9 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
             );
           })}
         </Box>
+        <Box sx={{ borderTop: 1, borderColor: "rgba(255,255,255,0.16)", mt: "auto", pt: 2 }}>
+          <VenuePanelActions />
+        </Box>
       </Box>
 
       <AppBar
@@ -151,9 +159,10 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
       >
         <Toolbar sx={{ minHeight: 64 }}>
           <Brand />
-          <Typography sx={{ color: "text.secondary", fontSize: "0.75rem", ml: "auto" }}>
+          <Typography sx={{ color: "text.secondary", fontSize: "0.75rem", ml: "auto", mr: 1 }}>
             {resolvedVenueName}
           </Typography>
+          <VenuePanelActions compact />
         </Toolbar>
       </AppBar>
 
@@ -173,7 +182,7 @@ export function VenueShell({ children, currentPath = "/panel", venueName }: Venu
         sx={{
           bottom: 0,
           display: { xs: "grid", md: "none" },
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
           left: 0,
           position: "fixed",
           right: 0,

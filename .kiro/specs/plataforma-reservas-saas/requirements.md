@@ -256,6 +256,14 @@ El local debe iniciar sesión y acceder a un panel privado.
 - WHEN una cuenta de local autenticada todavía no dispone de un perfil vigente, THEN el panel
   muestra un estado de bienvenida con una acción directa para crear su primer local.
 - WHEN el local usa móvil, THEN el panel muestra una versión simplificada con resumen, reservas, calendario y más.
+- WHEN el local navega por cualquier sección privada, THEN dispone de una acción visible para
+  volver al inicio público tanto en escritorio como en móvil.
+- WHEN el local solicita cerrar sesión, THEN el panel revoca la sesión mediante backend antes de
+  dirigirlo al inicio y muestra un error reintentable si no puede confirmar la revocación.
+- WHEN una cuenta empresarial gestiona varios locales publicados, THEN el panel muestra una sección
+  de emails con todos sus locales y permite asignar a cada uno un destinatario operativo distinto.
+- WHEN el propietario cambia el email de un local, THEN el backend valida formato, pertenencia y
+  estado publicado usando el ID explícito del local sin permitir consultar o modificar locales ajenos.
 
 ### RF-009 Gestión de perfil público
 
@@ -337,6 +345,10 @@ Cada local debe poder definir campos adicionales para su formulario de reserva.
 - WHEN marca un campo obligatorio, THEN el usuario debe completarlo para confirmar.
 - WHEN se reserva, THEN nombre, email, número de personas, fecha y franja siempre son obligatorios.
 - WHEN el usuario envía el formulario, THEN las respuestas quedan asociadas a la reserva.
+- WHEN el propietario usa el editor privado en español, THEN todas las etiquetas, ayudas,
+  confirmaciones y estados deben mostrarse en UTF-8 correcto, con singular y plural gramaticales.
+- WHEN el editor se representa en cualquier breakpoint, THEN sus propiedades de maquetación deben
+  resolverse mediante la API de estilos de MUI sin propagarse como atributos DOM no válidos.
 
 ### RF-014 Bloqueo temporal de reserva
 
@@ -377,6 +389,8 @@ El sistema debe enviar notificaciones por email en eventos principales.
 
 - WHEN se confirma una reserva, THEN el usuario recibe email con local, dirección, fecha, franja, número de personas, respuestas del formulario, política de cancelación, enlace seguro y aviso de no asistencia.
 - WHEN se confirma una reserva, THEN el local recibe email con datos de reserva, usuario, email, número de personas, fecha, franja y respuestas.
+- WHEN el propietario haya asignado un email operativo al local reservado, THEN el aviso de la
+  reserva se envía a ese email; si no existe asignación se conserva el fallback seguro ya definido.
 - WHEN una reserva se cancela, THEN el usuario y el local reciben notificación según corresponda.
 - WHEN se reporta una no asistencia, THEN el usuario puede recibir aviso si la política activa lo contempla.
 

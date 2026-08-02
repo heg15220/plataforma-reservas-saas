@@ -204,6 +204,10 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
 
   /** Usa el email operativo y garantiza fallback a la cuenta propietaria verificada. */
   private String venueNotificationEmail(ReservationEntity reservation) {
+    String notificationEmail = reservation.getVenue().getNotificationEmail();
+    if (notificationEmail != null && !notificationEmail.isBlank()) {
+      return notificationEmail.strip();
+    }
     String contactEmail = reservation.getVenue().getContactEmail();
     if (contactEmail != null && !contactEmail.isBlank()) {
       return contactEmail.strip();

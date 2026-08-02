@@ -42,6 +42,7 @@ public class VenueEntity {
   private String defaultLocale;
   private int cancellationNoticeMinutes = 1440;
   private String contactEmail;
+  private String notificationEmail;
   private String phone;
   private String address;
   private String city;
@@ -209,6 +210,16 @@ public class VenueEntity {
 
   public void setContactEmail(String contactEmail) {
     this.contactEmail = contactEmail;
+  }
+
+  /** Destinatario operativo de reservas; no se expone en la ficha pública. */
+  @Column(name = "\"notificationEmail\"", length = 320)
+  public String getNotificationEmail() {
+    return notificationEmail;
+  }
+
+  public void setNotificationEmail(String notificationEmail) {
+    this.notificationEmail = notificationEmail;
   }
 
   @Column(name = "\"phone\"", length = 32)

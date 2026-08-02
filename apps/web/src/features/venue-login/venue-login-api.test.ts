@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { loginVenue } from "./venue-login-api";
+import { loginVenue, logoutVenue } from "./venue-login-api";
 
 const payload = {
   email: "local@example.com",
@@ -74,5 +74,24 @@ describe("loginVenue", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("detalle interno")));
 
     await expect(loginVenue(payload)).rejects.toMatchObject({ kind: "unavailable" });
+  });
+});
+
+describe("logoutVenue", () => {
+  it("revoca la sesión enviando la cookie HttpOnly", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(logoutVenue()).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/auth/logout",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
+  });
+
+  it.each([401, 503])("no simula un cierre correcto ante HTTP %i", async (status) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status })));
+
+    await expect(logoutVenue()).rejects.toMatchObject({ kind: "unavailable" });
   });
 });

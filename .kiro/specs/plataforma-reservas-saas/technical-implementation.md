@@ -31685,3 +31685,354 @@ propietario puede generar nuevas fechas desde el editor; una evolución deberá 
 materializarlas mediante job. Los festivos son fechas explícitas y no se importan desde calendarios
 oficiales. No se crean ni cancelan reservas confirmadas durante el alta. La siguiente tarea pendiente
 por orden sigue siendo `16.1`.
+
+## Tarea 4.17 - Duraciones ampliadas y retirada segura de franjas
+
+### Fecha y objetivo técnico
+
+- Fecha: 2026-08-02.
+- Objetivo: ampliar las duraciones habituales del generador y permitir vaciar las franjas de una
+  fecha sin romper reservas ni ocultar pérdida parcial de datos.
+- Requisitos relacionados: `RF-011`, `RF-012`, `RF-018`, `RNF-003`, `RNF-006` y `RNF-007`.
+
+### Arquitectura, contratos y flujo
+
+El editor ofrece 15, 30, 45, 60, 90, 120, 180 y 240 minutos; son atajos de interfaz y el backend
+mantiene como invariante el rango general de 5 a 480 minutos. La acción destructiva muestra la fecha,
+requiere confirmación y permanece deshabilitada cuando no existen franjas cargadas.
+
+Se incorporó `DELETE /api/venue/me/time-slots?date=YYYY-MM-DD` al contrato privado. El controlador
+extrae el propietario autenticado y nunca acepta un identificador de local. El servicio transaccional
+resuelve el local propio, obtiene con bloqueo pesimista todas sus franjas para la fecha y consulta
+`ReservationDao.existsByTimeSlotIds`. Si existe cualquier referencia lanza
+`TimeSlotDeleteConflictException`; el manejador devuelve `409` y el código estable
+`TIME_SLOT_DELETE_CONFLICT`. Si no hay referencias, `deleteAllInBatch` retira el conjunto completo y
+las relaciones dependientes no históricas se resuelven mediante las restricciones ya definidas.
+
+El cliente clasifica el conflicto como `referenced`, conserva la lista en pantalla y explica que las
+franjas pueden bloquearse en lugar de borrarse. Tras un `204`, limpia el estado de la fecha y emite
+confirmación accesible. La operación es atómica y no acepta eliminación parcial.
+
+### Archivos, seguridad y datos
+
+- API: contrato e implementación de `TimeSlotController`, `TimeSlotService` y
+  `TimeSlotServiceImpl`; consulta bloqueante en `TimeSlotDao`; comprobación de referencias en
+  `ReservationDao`; excepción de dominio y traducción HTTP en `AvailabilityExceptionHandler`.
+- Web: `availability-api.ts`, `venue-availability-manager.tsx`, catálogos ES/EN y tests de API/UI.
+- No hay migración ni cambio de modelo. Se preservan claves foráneas, reservas históricas y
+  aislamiento por propietario bajo `/api/venue/me/**`.
+
+### Validación y evidencia
+
+Los tests de servicio cubren fecha vacía, eliminación completa y rechazo con reservas; los de
+controlador cubren delegación y respuesta `409`. En web se verifican la clasificación del error, la
+confirmación, el borrado visual y los textos localizados.
+
+```text
+Maven focalizado: 17 tests, 0 fallos y 0 errores; 812 fuentes principales y 192 de test compiladas.
+Spotless Maven: check correcto.
+Vitest de disponibilidad/API/i18n: 14 tests, 0 fallos.
+ESLint focalizado de disponibilidad: exit code 0.
+```
+
+### Riesgos y deuda técnica
+
+No se permite borrar una franja que haya sido referenciada incluso si la reserva ya terminó; es una
+decisión conservadora de auditoría. Una evolución podría archivar franjas o separar definición de
+horario e instancia reservable, pero requiere migración y política explícita de retención.
+
+## Tarea 6.13 - Localización y layout del editor privado de formularios
+
+### Fecha y objetivo técnico
+
+- Fecha: 2026-08-02.
+- Objetivo: restaurar el español correcto del editor de formularios y eliminar la propagación de
+  propiedades de sistema MUI a nodos HTML.
+- Requisitos relacionados: `RF-013`, `RNF-007` y `RNF-009`.
+
+### Implementación y decisiones
+
+Se auditó íntegramente el namespace `FormBuilder` de `apps/web/locales/es.json`. Se sustituyeron los
+caracteres `?` que habían reemplazado tildes y eñes en metadatos, acciones, tipos, campos, validaciones,
+confirmaciones y publicación. Los signos de elipsis y comillas se normalizaron tipográficamente. El
+contador pendiente usa ICU:
+`{count, plural, one {# traducción pendiente} other {# traducciones pendientes}}`, por lo que el
+singular deja de renderizar una frase gramaticalmente incorrecta. El catálogo inglés conserva las
+mismas claves y normaliza las comillas del diálogo de eliminación.
+
+En `ReservationFormManager`, las propiedades de layout (`alignItems`, `justifyContent`, `gap`,
+`flexWrap`, `py`, `pt`, `mt`, `flex` y `fontWeight`) se movieron a `sx`. MUI interpreta allí los
+breakpoints y valores del sistema sin reenviarlos a `div`; se elimina el aviso de React y se mantiene
+el diseño responsive. No cambian contratos HTTP, persistencia, permisos ni datos personales.
+
+### Estados, accesibilidad e internacionalización
+
+La vista sigue anunciando errores y confirmaciones mediante `Alert`, mantiene etiquetas accesibles en
+acciones de icono y presenta controles deshabilitados durante carga o mutación. Todos los textos
+visibles continúan obteniéndose mediante `next-intl`; el plural es resuelto por ICU, no por lógica de
+presentación. La prueba del gestor usa una consulta plural cuando el mismo label aparece en catálogo y
+previsualización, reflejando el DOM real sin debilitar la comprobación del contenido.
+
+### Archivos y evidencia
+
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+- `apps/web/src/features/reservation-form/reservation-form-manager.tsx`.
+- `apps/web/src/features/reservation-form/reservation-form-manager.test.tsx`.
+- Especificación y documentación `.kiro` asociadas.
+
+```text
+npm test -- --run src/features/reservation-form/reservation-form-manager.test.tsx \
+  src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       8 passed (8)
+```
+
+### Riesgos y limitaciones
+
+La validación prueba contenido y paridad de catálogos, pero no realiza una captura visual de cada
+breakpoint. El lint focalizado del componente conserva una incidencia histórica
+`react-hooks/set-state-in-effect` en la carga inicial, independiente de este cambio; no se alteró el
+ciclo de carga para evitar introducir una modificación funcional no solicitada.
+
+## Tarea 1.23 - Navegación al inicio y cierre de sesión desde el panel
+
+### Fecha, objetivo y requisitos
+
+- Fecha: 2026-08-02.
+- Objetivo técnico: hacer accesibles desde todas las pantallas privadas del local la vuelta al inicio
+  público y la revocación segura de la sesión, con comportamiento equivalente en escritorio y móvil.
+- Requisitos relacionados: `RF-008`, `RNF-001`, `RNF-007` y `RNF-009`.
+
+### Componentes y arquitectura
+
+Se creó `VenuePanelActions`, componente cliente acotado que se monta dentro del `VenueShell`
+compartido. Esta separación evita convertir todo el shell y sus hijos en una frontera cliente. Admite
+una variante completa para el pie de la barra lateral y otra compacta para la cabecera móvil. Ambas
+incluyen etiqueta accesible y usan iconos lineales `House` y `LogOut` del sistema existente.
+
+La navegación a `/` usa `NavigationLink` y no modifica la sesión. El cierre mantiene un único
+`AbortController`, impide solicitudes duplicadas mientras está en curso y lo cancela al desmontar.
+Durante la operación sustituye el icono por progreso y actualiza la etiqueta accesible. Tras éxito
+ejecuta `router.replace("/")` para no dejar el panel como destino natural del botón Atrás y
+`router.refresh()` para invalidar cualquier árbol cacheado dependiente de autenticación. Un fallo abre
+un `Snackbar` con `Alert`, conserva la pantalla y permite reintentar.
+
+### Contrato HTTP, seguridad y errores
+
+`logoutVenue` se añadió al cliente de autenticación existente. Envía
+`POST /api/auth/logout`, `credentials: include` y `Accept: application/json`; no recibe payload, no
+intenta acceder a la cookie HttpOnly y no registra secretos. Solo una respuesta `2xx` se considera
+revocación confirmada. Fallos de transporte o estados no correctos se reducen a
+`VenueLoginApiError("unavailable")`, sin exponer detalles internos.
+
+El backend no cambia: su operación idempotente revoca el hash cuando existe, responde `204` y emite
+la cookie expirada. La nueva UI respeta esa frontera y evita declarar éxito de forma optimista ante
+una desconexión que podría dejar vigente la sesión del servidor.
+
+### Internacionalización, responsive y accesibilidad
+
+Los catálogos ES/EN incorporan `publicHome`, `logout`, `loggingOut` y `logoutError` bajo
+`Navigation.venue`. En escritorio las acciones se separan visualmente de las secciones mediante un
+borde y quedan ancladas al final de la barra. En móvil aparecen en el `Toolbar`, con `Tooltip`,
+`aria-label` y objetivos táctiles de `IconButton`. El botón deshabilitado se envuelve en `span` para
+que MUI conserve el tooltip durante el progreso.
+
+### Archivos modificados
+
+- Nuevo `apps/web/src/components/layout/venue-panel-actions.tsx`.
+- `apps/web/src/components/layout/venue-shell.tsx`.
+- `apps/web/src/components/layout/layout-system.test.tsx`.
+- `apps/web/src/features/venue-login/venue-login-api.ts` y su test.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+- Documentos fuente de verdad de `.kiro`.
+
+No hay cambios de modelo, migraciones, índices, endpoints backend ni permisos.
+
+### Tests y evidencia
+
+La cobertura de layout verifica que ambas acciones existen en las variantes desktop y móvil, pulsa
+el logout, comprueba la llamada autenticada y acredita `replace` y `refresh` posteriores. El test del
+cliente prueba `204`, envío de cookies y reducción segura de estados `401`/`503`. El test i18n protege
+la paridad entre idiomas.
+
+```text
+npm test -- --run src/components/layout/layout-system.test.tsx \
+  src/features/venue-login/venue-login-api.test.ts src/i18n/messages.test.ts \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  3 passed (3)
+Tests       17 passed (17)
+
+npm exec eslint -- src/components/layout/venue-panel-actions.tsx \
+  src/components/layout/venue-shell.tsx src/components/layout/layout-system.test.tsx \
+  src/features/venue-login/venue-login-api.ts \
+  src/features/venue-login/venue-login-api.test.ts --max-warnings=0
+Exit code: 0
+
+npm run typecheck
+Resultado: sin diagnósticos en los archivos de esta tarea; exit code 2 por errores históricos de
+MUI e i18n en administración, formularios, equipo, incidencias y reservas.
+```
+
+### Riesgos y evolución
+
+La variante móvil prioriza acciones directas en cabecera en lugar de añadir otro drawer, porque son
+operaciones globales y deben permanecer disponibles aunque la navegación inferior esté ocupada. Si
+el panel incorpora en el futuro un menú de cuenta con preferencias o multiusuario, estas acciones
+deberán migrarse a ese menú manteniendo el mismo componente y contrato de revocación.
+
+## Tareas 0.17 y 2.18 - Cuenta multi-local y emails operativos por local
+
+### Fecha, objetivos y requisitos
+
+- Fecha: 2026-08-02.
+- Tareas exactas: `0.17. Crear una cuenta local autenticable con varios locales publicados para
+  pruebas multi-local` y `2.18. Gestionar desde el panel el email operativo asociado a cada local
+  publicado propio`.
+- Objetivos: habilitar físicamente varias publicaciones bajo una cuenta empresarial, proporcionar
+  datos locales autenticables y permitir que cada publicación dirija sus avisos de reserva a un
+  destinatario privado independiente.
+- Requisitos: `RF-008`, `RF-009`, `RF-016`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-007` y `RNF-009`.
+
+### Evolución del modelo y migración V36
+
+`V36__enable_multi_venue_notification_emails.sql` elimina el índice parcial
+`uqVenuesOwnerCurrent`, que era incompatible con la cardinalidad ya prevista entre
+`BusinessAccounts` y `Venues`. No elimina la relación compuesta de propiedad: cada fila sigue
+obligada a referenciar la misma pareja `businessAccountId`/`ownerUserId`, por lo que habilitar varios
+locales no permite mezclar identidades empresariales y propietarios.
+
+La migración añade `Venues.notificationEmail varchar(320)`. El backfill prioriza el contacto del
+local normalizado con `lower(btrim(...))` y, si está vacío, usa el email de su propietario. Se añade
+un check contra valores blancos y `ixVenuesOwnerStatusName(ownerUserId, status, name, id)` para el
+listado estable. La columna es nullable para que una creación parcial o datos anteriores mantengan
+el fallback; los endpoints de gestión exigen un valor válido antes de actualizar.
+
+`VenueEntity` documenta `notificationEmail` como dato privado y separado de `contactEmail`. No se
+añade al DTO público ni al perfil público. `VenueDao` incorpora listado de publicaciones propias y
+una consulta bloqueante que exige simultáneamente `venueId`, `ownerUserId` y `status=published`.
+
+### Compatibilidad del local principal
+
+Los módulos históricos bajo `/api/venue/me/**` fueron construidos para una sola ficha y sus
+servicios reciben únicamente `ownerUserId`. Para evitar resultados múltiples tras V36, las consultas
+`findCurrentByOwnerUserId` y `findCurrentByOwnerUserIdForUpdate` resuelven un perfil principal
+determinista: el no archivado cuyo slug sea el mínimo lexicográfico. La nueva función no reutiliza
+esa selección implícita; siempre opera con un ID de local explícito y ownership conjunto.
+
+Esta compatibilidad mantiene perfil, calendario, reservas y demás pantallas antiguas operativas para
+la cuenta demo, pero no constituye todavía un selector global de local para todos los módulos. Esa
+generalización requerirá propagar un contexto de local explícito a disponibilidad, equipo,
+formularios, estadísticas, facturación e incidencias.
+
+### Cuenta y fixture de desarrollo
+
+`local-demo-venues.sql` configura una cuenta exclusiva del perfil `local`:
+
+```text
+Email: multilocal@reserly.local
+Contraseña: ReserlyLocal2026!
+Locales publicados: Ames Padel Center y Brisa Studio
+```
+
+La contraseña en claro solo figura como instrucción de desarrollo; PostgreSQL recibe el hash BCrypt
+con coste 12. Los UPSERT actualizan el hash para convertir también bases locales existentes. Ambos
+locales referencian el primer propietario y su cuenta empresarial verificada; una actualización
+explícita corrige esa propiedad en instalaciones donde el segundo local ya existía. Los demás
+usuarios demo continúan aislados. La inicialización asigna a los dos locales su contacto actual como
+email operativo y sigue siendo idempotente en cada arranque local.
+
+### API privada de asociaciones
+
+Se añadieron los contratos:
+
+```text
+GET /api/venue/me/email-assignments
+200 { "assignments": [{ "venueId", "venueName", "venueSlug", "email", "updatedAt" }] }
+
+PUT /api/venue/me/email-assignments/{venueId}
+Body: { "email": "equipo@local.example" }
+200 { "venueId", "venueName", "venueSlug", "email", "updatedAt" }
+```
+
+`VenueEmailAssignmentRequest` aplica `@NotBlank`, `@Email` y máximo 320. El controlador deriva
+`ownerUserId` de `AuthenticatedAccount`; no existe propietario en path o body. El servicio bloquea
+la publicación propia, normaliza con `strip()` y `Locale.ROOT`, actualiza timestamp y persiste. Un ID
+ajeno, no publicado o inexistente lanza el mismo `VenueProfileNotFoundException`, convertido a
+`404 VENUE_PROFILE_NOT_FOUND`, evitando enumeración horizontal. Las rutas heredan la política
+`/api/venue/me/** -> ROLE_VENUE_OWNER`.
+
+### Integración con emails de reserva
+
+`ReservationConfirmationServiceImpl.venueNotificationEmail` resuelve ahora en orden:
+
+1. `notificationEmail` del local;
+2. `contactEmail` para compatibilidad con filas o fixtures sin asignación;
+3. email de la cuenta propietaria.
+
+El destinatario se captura dentro del evento persistente de confirmación, por lo que un cambio
+posterior no altera trabajos ya encolados ni rompe su idempotencia. El consumidor, templates,
+reintentos y auditoría de entregas no cambian.
+
+### Frontend, estados y responsive
+
+La nueva ruta `/panel/emails` usa `VenueShell` y aparece como `Emails` en la barra lateral. El módulo
+`venue-email-api.ts` valida con Zod ambos contratos, usa `credentials: include` y reduce estados a
+categorías seguras. `VenueEmailManager` carga las asociaciones, conserva un draft por UUID y renderiza
+una tarjeta por publicación con nombre, slug, ayuda y campo email.
+
+Cada formulario usa validación HTML de email y longitud, deshabilita todas las mutaciones mientras
+una está activa para impedir carreras de edición, muestra progreso únicamente en el local guardado y
+reconcilia la respuesta del servidor. Los estados incluyen carga, lista vacía, éxito cerrable y
+errores diferenciados de entrada, sesión, permisos, no encontrado e indisponibilidad. Desde `sm` el
+campo y botón comparten fila; en móvil se apilan. Todos los textos se añadieron a ES y EN bajo
+`VenueEmails`, y `Navigation.venue.emails` mantiene la paridad del menú.
+
+### Archivos principales
+
+- Migración V36, `VenueEntity.java` y `VenueDao.java`.
+- `VenueEmailAssignmentRequest/Response/AssignmentsResponse`.
+- `VenueEmailAssignmentController*` y `VenueEmailAssignmentService*`.
+- `ReservationConfirmationServiceImpl.java`.
+- `local-demo-venues.sql` y tests de fixture/migración/servicio/reserva.
+- `venue-email-api.ts`, `venue-email-manager.tsx`, sus tests y `/panel/emails/page.tsx`.
+- `venue-shell.tsx` y catálogos `es.json`/`en.json`.
+
+### Tests y evidencia
+
+```text
+mvn -Dcheckstyle.skip=true -Dspotless.check.skip=true \
+  -Dtest=VenueEmailAssignmentServiceTests,MultiVenueMigrationContractTests,\
+LocalDemoVenueFixtureContractTests,ReservationConfirmationServiceTests test
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+npm test -- --run src/features/venue-emails/venue-email-api.test.ts \
+  src/features/venue-emails/venue-email-manager.test.tsx \
+  src/components/layout/layout-system.test.tsx src/i18n/messages.test.ts \
+  --testTimeout=30000 --maxWorkers=1
+Test Files 4 passed (4)
+Tests 12 passed (12)
+
+npm exec eslint -- [archivos TypeScript focalizados] --max-warnings=0
+Exit code: 0
+```
+
+Spotless formateó 1.013 fuentes Java sin incidencias nuevas. El checkstyle global no sirve como gate
+limpio porque conserva 26 fallos históricos: imports wildcard en un test previo y líneas largas en
+templates de email. La compilación y los tests focalizados se ejecutaron saltando únicamente esos
+gates históricos. No se ejecutó Testcontainers ni se aplicó V36 contra una base PostgreSQL real.
+
+### Seguridad, privacidad, riesgos y trabajo derivado
+
+- El email operativo no se devuelve en APIs públicas ni se mezcla con la visibilidad de contacto.
+- Ownership y publicación se verifican dentro de la misma consulta bloqueante; no hay patrón
+  consultar-primero/actualizar-después vulnerable a TOCTOU.
+- La cuenta demo y contraseña solo existen con `@Profile("local")`; staging, test y producción no
+  ejecutan el inicializador.
+- El sistema todavía confía en que el propietario controla el email elegido, igual que ocurría con
+  `contactEmail`. Antes de producción debe añadirse verificación por enlace del nuevo destinatario y
+  mantener el anterior activo hasta confirmación para evitar enviar datos de reservas a una dirección
+  equivocada.
+- La creación/editorial completa de un segundo local desde todas las pantallas no forma parte de
+  esta iteración. V36 y los contratos por ID preparan la base, pero un selector global de local y la
+  propagación explícita de `venueId` por todos los módulos siguen como evolución necesaria.

@@ -317,6 +317,19 @@ Campos base inmutables:
 - Fecha.
 - Franja seleccionada.
 
+#### Localización y maquetación del editor privado
+
+`ReservationFormManager` consume exclusivamente el namespace `FormBuilder` de los catálogos
+versionados. Las cadenas españolas se almacenan como UTF-8 real y los contadores variables usan
+pluralización ICU, evitando construir frases mediante concatenación o asumir siempre el plural. El
+test de mensajes acredita que los catálogos `es` y `en` mantienen las mismas claves.
+
+Las propiedades de sistema que no forman parte del contrato directo de los componentes MUI usados
+por esta vista (`alignItems`, `justifyContent`, `gap`, `flexWrap`, espaciado y flexibilidad) se
+declaran dentro de `sx`. Así, MUI resuelve los valores responsive y no reenvía atributos internos a
+los elementos HTML, lo que evita avisos de React y conserva el apilado móvil y la distribución de
+escritorio.
+
 ### 3.7 Equipo, recursos y servicios
 
 Responsabilidades:
@@ -854,6 +867,7 @@ Representa el local o negocio.
 - `public_text_i18n`
 - `default_locale`
 - `contact_email`
+- `notification_email`, destinatario privado de reservas y avisos operativos
 - `phone`
 - `address`
 - `city`
@@ -895,23 +909,42 @@ Restricciones físicas incorporadas en `V9`:
 - Los índices de nombre, categoría/estado, ubicación textual y punto geográfico preparan la
   búsqueda pública sin implementar todavía sus endpoints.
 
-Contrato privado incorporado en `2.4`:
+Contrato privado incorporado en `2.4` y evolución multi-local de `2.18`:
 
-- `/api/venue/me` representa el único perfil vigente del principal autenticado.
+- `/api/venue/me` conserva compatibilidad representando el perfil principal determinista del
+  principal autenticado. Cuando existen varios, se elige por slug ascendente; los contratos
+  multi-local nuevos siempre reciben `venueId` y validan conjuntamente ID y propietario.
 - `POST /api/venue/me/profile` crea un borrador; `GET /api/venue/me` lo consulta;
   `PATCH /api/venue/me/profile` sustituye el snapshot editable y
   `DELETE /api/venue/me/profile` lo archiva.
 - Propietario y cuenta empresarial se derivan siempre de la sesión. El cliente no puede editar
   slug, estado, publicación, disponibilidad manual ni imagen.
 - `PATCH` conserva identidad, slug y estado; los opcionales enviados como `null` se eliminan.
-- `V12` añade un índice único parcial por propietario cuando el estado no es `archived`. Evita
-  duplicados concurrentes, conserva historial y permite crear un perfil nuevo tras archivar.
+- `V12` añadió históricamente un índice único parcial por propietario. `V36` lo retira para permitir
+  varios locales activos bajo la misma identidad empresarial, añade `notificationEmail`, migra el
+  valor inicial desde el contacto o la cuenta propietaria e incorpora un índice de listado por
+  propietario, estado y nombre.
 - Si el resumen privado obtiene `404` porque la cuenta autenticada aún no tiene un perfil vigente,
   el panel lo interpreta como onboarding y enlaza a `/panel/perfil`; el editor cargará categorías y
   persistirá el primer borrador mediante `POST /api/venue/me/profile`.
 - Actualización y archivo toman lock pesimista del perfil vigente. La categoría debe existir y
   estar activa.
 - El borrado del CRUD es lógico. El borrado físico y sus cascadas quedan fuera del contrato normal.
+
+Gestión de emails operativos incorporada en `2.18`:
+
+- `GET /api/venue/me/email-assignments` lista solo locales `published` del propietario autenticado,
+  ordenados por nombre e ID.
+- `PUT /api/venue/me/email-assignments/{venueId}` acepta `{ "email": "..." }`, valida email no
+  vacío de hasta 320 caracteres, bloquea la fila y exige simultáneamente ID, propietario y estado
+  `published`; un ID ajeno, archivado o inexistente comparte `404 VENUE_PROFILE_NOT_FOUND`.
+- El email se normaliza mediante trim y minúsculas con `Locale.ROOT`. No sustituye `contactEmail`,
+  no se muestra en la ficha pública y queda reservado a notificaciones operativas.
+- La confirmación de reserva prioriza `notificationEmail`, conserva `contactEmail` como fallback de
+  compatibilidad y finalmente usa el email de la cuenta propietaria.
+- La ruta privada `/panel/emails` muestra una tarjeta independiente por local, validación nativa de
+  email, progreso por mutación, confirmación y errores localizados. La navegación lateral incorpora
+  la entrada `Emails`; el contenido se apila en móvil.
 
 Campos localizados incorporados en `2.5`:
 
@@ -1960,6 +1993,13 @@ completar su configuración, pero continúa bloqueada para publicar.
 y actualización de `lastSeenAt` en rutas privadas pertenecen al middleware de `1.17`; la protección
 CSRF se endurece en `16.3`.
 
+El shell compartido del panel expone dos acciones globales: `Ir al inicio`, que navega a `/`, y
+`Cerrar sesión`, que invoca el contrato anterior con `credentials: include`. En escritorio se ubican
+al pie de la barra lateral, separadas de las secciones de gestión; en móvil aparecen como acciones
+esenciales etiquetadas en la cabecera. Durante el cierre se bloquea el reenvío y se muestra progreso.
+La navegación y el refresco del router solo ocurren tras recibir una respuesta correcta; ante fallo
+HTTP o de red, el panel conserva su estado y presenta un aviso reintentable.
+
 La ruta pública `/locales/acceso` consume el login mediante un formulario cliente que:
 
 - valida email y los límites de entrada BCrypt únicamente como ayuda de interacción;
@@ -2906,6 +2946,20 @@ El panel `/panel/calendario` delega ahora tanto la detección como la transició
 guardar, muestra el calendario interno y todo el editor profesional sin recargar la página. El mismo
 asistente funciona en la pestaña de disponibilidad del espacio unificado de Reservas.
 
+#### Retirada segura y duraciones ampliadas de franjas
+
+El editor avanzado ofrece duraciones automáticas de 15, 30, 45, 60, 90, 120, 180 y 240 minutos,
+todas dentro del contrato backend de 5 a 480 minutos. La sección de franjas incorpora una acción de
+error visual `Quitar todas las franjas`, deshabilitada cuando la fecha está vacía, con confirmación
+explícita que incluye la fecha seleccionada.
+
+`DELETE /api/venue/me/time-slots?date=YYYY-MM-DD` resuelve exclusivamente el local del principal,
+bloquea las franjas propias de la fecha y consulta cualquier referencia desde `Reservations`. Si
+existe al menos una, aborta la transacción con `409 TIME_SLOT_DELETE_CONFLICT`; no se elimina un
+subconjunto. Sin referencias, `deleteAllInBatch` retira las franjas y las restricciones de base de
+datos eliminan sus bloqueos dependientes. El cliente distingue ese conflicto del genérico y explica
+que el propietario puede bloquear las franjas sin perder historial.
+
 ### Publicación atómica del perfil
 
 `POST /api/venue/me/publish` bloquea el perfil vigente y, dentro de la misma transacción, evalúa la
@@ -3055,13 +3109,18 @@ de demostración.
 El inicializador empaqueta las imágenes facilitadas, las escribe en el bucket privado con claves
 deterministas y ejecuta después un script SQL. Esta secuencia evita publicar referencias a objetos
 ausentes. El script reserva UUID, emails y slugs bajo un namespace de desarrollo y usa operaciones
-idempotentes para dos usuarios propietarios internos, roles, cuentas verificadas, publicaciones,
+idempotentes para usuarios propietarios internos, roles, cuentas verificadas, publicaciones,
 galerías, horarios y servicios. Esas cuentas satisfacen integridad referencial, pero el recorrido
 público no requiere registro ni autenticación. Como el estado `verified` exige vigencia, el fixture
 fija y renueva `businessVerificationExpiresAt` a un año desde cada inicialización.
 
-Las publicaciones `ames-padel-center` y `let-padel-ames` están publicadas en la categoría pista de
-pádel, abren de 10:00 a 22:00 y exponen el formulario público base. Cada reinicio inserta, sin
+La cuenta autenticable `multilocal@reserly.local` agrupa `ames-padel-center` y `brisa-studio` bajo
+la misma identidad empresarial verificada. Su contraseña fija existe solo en el comentario del
+fixture y en la documentación técnica local; el hash BCrypt de coste 12 es lo único persistido. Las
+dos publicaciones disponen de emails operativos independientes que pueden modificarse en el panel.
+
+Las publicaciones de demostración abren en sus horarios configurados y exponen el formulario
+público base. Cada reinicio inserta, sin
 reemplazar filas existentes, ocho franjas de 90 minutos y cuatro plazas para cada uno de los
 siguientes 31 días. El horizonte se desplaza con `CURRENT_DATE` sin borrar reservas ni duplicar
 slots. Los contactos empresariales terminan en `@reserly.local`; Mailpit captura tanto el correo al

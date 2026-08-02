@@ -48,6 +48,12 @@ class LocalDemoVenueFixtureContractTests {
         .contains("'available'")
         .contains("Mailpit");
 
+    assertThat(sql)
+        .contains("multilocal@reserly.local")
+        .contains("ReserlyLocal2026!")
+        .contains("\"notificationEmail\"")
+        .contains("La cuenta multilocal autenticable gestiona Ames Padel Center y Brisa Studio");
+
     assertThat(sql.substring(sql.indexOf("-- Sustituye el fixture histórico")))
         .doesNotContain("'let-padel-ames'");
   }
