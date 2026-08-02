@@ -21,6 +21,8 @@ const apiResponse = {
       categoryName: "Restaurante",
       descriptionExcerpt: "Cocina de temporada",
       mainImageUrl: null,
+      address: "Calle Mayor 1",
+      postalCode: "28013",
       city: "Madrid",
       province: "Madrid",
       country: "ES",
@@ -63,9 +65,10 @@ describe("searchPublicVenues", () => {
     });
 
     expect(response.results[0].statusCode).toBe("available");
+    expect(response.results[0]).toMatchObject({ address: "Calle Mayor 1", postalCode: "28013" });
     expect(fetchMock).toHaveBeenCalledWith(
       new URL(
-        "http://internal-api.test/api/public/venues/search?locale=es&q=cafe&location=Madrid&category=restaurante&sort=availability&size=3",
+        "http://public-api.test/api/public/venues/search?locale=es&q=cafe&location=Madrid&category=restaurante&sort=availability&size=3",
       ),
       { cache: "no-store" },
     );
@@ -87,7 +90,7 @@ describe("searchPublicVenues", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      new URL("http://internal-api.test/api/public/venues/search?locale=en&page=2&size=20"),
+      new URL("http://public-api.test/api/public/venues/search?locale=en&page=2&size=20"),
       { cache: "no-store" },
     );
   });
@@ -154,7 +157,7 @@ describe("searchPublicVenues", () => {
 
     await expect(fetchPublicSearchCategories("es")).resolves.toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      new URL("http://internal-api.test/api/public/categories?locale=es"),
+      new URL("http://public-api.test/api/public/categories?locale=es"),
       { next: { revalidate: 300 } },
     );
   });

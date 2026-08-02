@@ -31,6 +31,12 @@ public class TimeSlotControllerImpl implements TimeSlotController {
   }
 
   @Override
+  public ResponseEntity<Void> deleteByDate(AuthenticatedAccount account, LocalDate date) {
+    timeSlotService.deleteByDate(account.userId(), date);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
   public ResponseEntity<TimeSlotResponse> create(
       AuthenticatedAccount account, TimeSlotRequest request) {
     TimeSlotEntity slot = timeSlotService.create(account.userId(), request);

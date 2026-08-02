@@ -50,6 +50,10 @@ Stack por capa:
 - **UI y componentes:** MUI como sistema principal de componentes, `lucide-react` para iconos, FullCalendar o equivalente para calendarios complejos, y CSS modular o tokens propios para ajustes visuales. No se debe mezclar Bootstrap, MUI y estilos globales sin criterio como ocurre en OverCut.
 - **Estado y datos frontend:** TanStack Query para estado de servidor, Zustand o estado React local para estado de UI, React Hook Form y Zod para formularios y validación cliente.
 - **Internacionalización frontend:** `next-intl` con catálogos `es` y `en`, resolución por preferencia, parámetro seguro, navegador y fallback `en`.
+- **Configuración frontend:** los helpers compartidos por servidor y cliente deben referenciar cada
+  variable `NEXT_PUBLIC_*` de forma estática (`process.env.NEXT_PUBLIC_NOMBRE`) para que Next.js la
+  sustituya en el bundle del navegador; no deben pasar el objeto dinámico `process.env` completo a
+  validadores. Las variables sin prefijo público solo se leen tras comprobar ejecución de servidor.
 - **Backend API:** Spring Boot con Java 21, Spring MVC, Spring Security, Bean Validation, Spring Modulith o paquetes por contexto para mantener el monolito modular.
 - **Persistencia y ORM:** PostgreSQL como base de datos principal y Hibernate/JPA mediante Spring Data JPA. Las operaciones críticas de reservas deben usar transacciones explícitas, bloqueo pesimista `SELECT ... FOR UPDATE` o locks JPA equivalentes, e índices diseñados para concurrencia.
 - **Migraciones:** Flyway como fuente versionada de esquema y datos iniciales. No se deben usar `schema.sql` y `data.sql` como mecanismo principal de evolución de producción.
@@ -902,6 +906,9 @@ Contrato privado incorporado en `2.4`:
 - `PATCH` conserva identidad, slug y estado; los opcionales enviados como `null` se eliminan.
 - `V12` añade un índice único parcial por propietario cuando el estado no es `archived`. Evita
   duplicados concurrentes, conserva historial y permite crear un perfil nuevo tras archivar.
+- Si el resumen privado obtiene `404` porque la cuenta autenticada aún no tiene un perfil vigente,
+  el panel lo interpreta como onboarding y enlaza a `/panel/perfil`; el editor cargará categorías y
+  persistirá el primer borrador mediante `POST /api/venue/me/profile`.
 - Actualización y archivo toman lock pesimista del perfil vigente. La categoría debe existir y
   estar activa.
 - El borrado del CRUD es lógico. El borrado físico y sus cascadas quedan fuera del contrato normal.
@@ -2056,7 +2063,10 @@ sesión válida sin rol produce `403 AUTHORIZATION_DENIED`, sin publicar roles n
 
 `lastSeenAt` se actualiza como máximo cada cinco minutos por defecto, con un update condicionado que
 no modifica la caducidad absoluta. CORS admite credenciales solo desde `allowedOrigins`, con
-métodos y cabeceras cerrados. CSRF permanece explícitamente pendiente de `16.3`.
+métodos y cabeceras cerrados. El perfil `local` admite exactamente `http://localhost:3000` y
+`http://localhost:3001`, ya que Next puede seleccionar el segundo cuando el primero está ocupado;
+staging y producción conservan exclusivamente su URL HTTPS configurada. CSRF permanece
+explícitamente pendiente de `16.3`.
 
 ### 8.11 Consulta y carga privada de respaldo empresarial
 
@@ -2592,7 +2602,24 @@ Los estados no deben comunicarse solo mediante color. Siempre deben incluir text
 - **Botón secundario:** fondo blanco, borde neutro y texto azul o primario.
 - **Acción destructiva:** rojo únicamente para acciones irreversibles o de alto impacto, con confirmación cuando corresponda.
 - **Campos:** etiqueta persistente encima del control, ayuda y error próximos al campo; no se usará el placeholder como única etiqueta.
-- **Tarjetas de local:** imagen, nombre, categoría, distancia, valoración, estado y disponibilidad resumida, con jerarquía equivalente a los prototipos.
+- **Tarjetas de local:** imagen, nombre, categoría, distancia, valoración, estado y disponibilidad
+  resumida, con jerarquía equivalente a los prototipos. Toda la superficie libre de la tarjeta
+  enlaza a la ficha pública mediante un enlace extendido; los botones secundarios conservan su
+  destino y quedan por encima de ese enlace sin anidarlo. En los bloques de catálogo del inicio,
+  la categoría se materializa como chip independiente y el pie muestra un chip semántico
+  `Abierto`/`Cerrado` en lugar del botón redundante `Ver disponibilidad`. Solo el estado público
+  `available` se considera abierto; cualquier estado sin disponibilidad activa se presenta cerrado.
+  La categoría reutiliza el icono por slug y el estilo outlined de los filtros rápidos. La ubicación
+  concatena `address`, `postalCode`, `city`, `province` y `country`, sin separadores vacíos.
+  En `Explorar`, la imagen usa un marco estable 4:3 y `object-fit: contain`; se aceptan bandas del
+  fondo neutro cuando la proporción de origen difiere, porque se prioriza no cortar la fotografía.
+  El marco queda inset respecto a la tarjeta mediante 16 px en móvil y 20 px desde tablet, con
+  esquinas redondeadas; no se presenta de borde a borde. Desde `md`, además, se centra y limita a
+  360 px de ancho exterior para no dominar tarjetas más anchas en ordenador. La retícula principal
+  de resultados cambia de una columna a tres desde `md`; en escritorio con filtros laterales esto
+  mantiene tarjetas compactas y en móvil/tablet conserva la lista de una columna. En las columnas
+  compactas de `md` y `lg`, categoría y estado se apilan para que sus etiquetas no se recorten; solo
+  vuelven a compartir fila desde `xl`, cuando el ancho disponible vuelve a admitirlo.
 - **Tarjetas de métricas:** valor principal, etiqueta, variación y periodo; los gráficos deben ofrecer resumen textual accesible.
 - **Chips de estado:** fondo tonal suave, texto de alto contraste y semántica consistente en toda la aplicación.
 - **Calendario y franjas:** selección azul, disponibilidad verde, completo o cerrado neutro y conflictos/errores rojos. La leyenda debe estar visible.
@@ -2632,6 +2659,11 @@ La tarea `15.1` concreta el prototipo en una composición reutilizable:
 - categorías táctiles que enlazan a filtros reales del explorador;
 - recomendados y destacados construidos desde `GET /api/public/venues/search`, sin hardcodear
   nombres, imágenes, estados ni direcciones;
+- el carril "Recomendados para ti" mantiene cuatro posiciones fijas en escritorio, dos en tablet y
+  una en móvil; cuando recibe más de cuatro locales rota el contenido una posición cada cuatro
+  segundos y aplica a las nuevas tarjetas una entrada lateral de 12 px dentro del área segura. Las
+  tarjetas nunca cruzan ni quedan parcialmente recortadas por los límites del carril. La rotación
+  se pausa con `hover` o foco interno y se desactiva con `prefers-reduced-motion: reduce`;
 - bloque cercano con lista accesible y mapa decorativo explícitamente identificado como
   orientativo hasta disponer de un proveedor cartográfico;
 - navegación inferior pública conservada en móvil.
@@ -2828,6 +2860,52 @@ El borrado compacta posiciones y elimina el objeto después del commit. Un rollb
 el objeto nuevo. El límite produce `409 VENUE_GALLERY_LIMIT_REACHED`; orden, contenido o alt text
 inválidos producen `400 VENUE_IMAGE_INVALID`.
 
+### Espacio profesional unificado de reservas y disponibilidad
+
+La ruta `/panel/reservas` deja de limitarse a la agenda diaria y actúa como espacio operativo único
+con tres vistas: `Agenda y reservas`, `Calendario` y `Horarios y disponibilidad`. La composición
+reutiliza `VenueReservationsDashboard`, `VenueInternalCalendar` y `VenueAvailabilityManager`; no crea
+una capa paralela ni duplica endpoints. Cada vista se monta al visitarla por primera vez y permanece
+montada pero oculta al cambiar de pestaña, preservando fechas, filtros y ediciones todavía no guardadas
+sin cargar por adelantado todas las consultas privadas.
+
+Las pestañas usan la semántica WAI-ARIA `tab`/`tabpanel`, IDs y `aria-controls` estables. El layout es
+scrollable en anchos reducidos. El parámetro seguro `date` de la ruta se propaga como fecha inicial a
+las tres herramientas para mantener contexto entre agenda, semana y configuración operativa. La ruta
+histórica `/panel/calendario` se conserva como acceso directo compatible.
+
+`VenueAvailabilityManager` amplía las excepciones unitarias con una operación de rango inclusivo para
+festivos, vacaciones, días libres, mantenimiento o eventos. Admite `closed`,
+`reservations_disabled` y `restore_weekly`; cada estado se traduce al contrato existente
+`AvailabilityDayInput`. El intervalo se calcula en UTC para no sufrir saltos de horario de verano,
+valida forma ISO, fechas reales, orden y un máximo de 366 días. El motivo se normaliza, se limita a
+500 caracteres y se elimina al restaurar el horario semanal.
+
+El API privado continúa siendo unitario, por lo que el cliente aplica las fechas secuencialmente con
+`PUT /api/venue/me/availability-days`. Esto evita carreras de posición en franjas y hace cada fecha
+idempotente; si una llamada falla, las anteriores pueden haber quedado aplicadas y repetir el rango es
+seguro. La interfaz advierte expresamente que cerrar o pausar disponibilidad impide reservas nuevas
+pero nunca cancela confirmadas. Tras completar, reconcilia el día seleccionado si pertenece al rango.
+
+#### Asistente de primera configuración
+
+La ausencia de filas en `VenueOpeningHours` es el indicador persistente de que el local aún no ha
+creado su primera versión de reservas. `VenueAvailabilityManager` no usa `localStorage` ni una marca
+solo cliente: tras `GET /api/venue/me/opening-hours`, un snapshot vacío sustituye calendario y editor
+por `VenueAvailabilitySetupWizard`. En cuanto existe el snapshot de siete días, cualquier acceso
+posterior entra directamente en las herramientas avanzadas.
+
+El asistente presenta seis bloques numerados con desplegables para días abiertos, cierre habitual,
+festivos, jornada por día, duración de reserva y capacidad. Las jornadas predefinidas se traducen a
+rangos concretos (`09:00–20:00`, mañana `09:00–14:00`, tarde `14:00–20:00` y noche
+`20:00–23:59`). La opción sin rangos guarda únicamente la semana; con duración se generan franjas
+para un horizonte inicial de 28 días mediante el endpoint privado existente. Las fechas festivas
+elegidas se persisten como cierres completos y se excluyen de esa generación.
+
+El panel `/panel/calendario` delega ahora tanto la detección como la transición al manager. Tras
+guardar, muestra el calendario interno y todo el editor profesional sin recargar la página. El mismo
+asistente funciona en la pestaña de disponibilidad del espacio unificado de Reservas.
+
 ### Publicación atómica del perfil
 
 `POST /api/venue/me/publish` bloquea el perfil vigente y, dentro de la misma transacción, evalúa la
@@ -2840,6 +2918,12 @@ Solo `draft` y `pending_verification` pueden transicionar; repetir sobre `publis
 La transición fija conjuntamente `status=published`, `publishedAt` y `updatedAt`. Un rechazo devuelve
 HTTP `422`, código `VENUE_PUBLICATION_REJECTED` y requisitos cerrados ordenados, sin email,
 identificador fiscal, proveedor ni evidencia.
+
+El editor distingue publicación de guardado. Solo después de validar una respuesta correcta de
+`POST /api/venue/me/publish` activa un aviso de éxito con `aria-live="polite"` y un enlace primario a
+`/`, donde el propietario puede comprobar el local en el descubrimiento público. Antes de cada nuevo
+intento y al guardar cambios se limpia el éxito anterior. Un `422` conserva el tratamiento de
+requisitos accionables y nunca renderiza el mensaje ni el enlace de publicación completada.
 
 ### Ficha pública inicial localizada
 
@@ -2888,6 +2972,39 @@ normalización de blancos para feedback inmediato, pero las invariantes de domin
 backend: máximo de 350 palabras, categoría activa, pertenencia del perfil, requisitos de publicación,
 validación real de imágenes y límite de galería. Las subidas usan multipart sin fijar `Content-Type`
 para conservar el boundary generado por el navegador.
+
+Los toggles `showEmail` y `showPhone` son controles React desde su primer render. Se inicializan a
+`false`, se sincronizan con la carga del perfil y con la respuesta posterior a crear o guardar, y
+aportan sus valores al `FormData` mediante checkboxes con `checked`/`onChange`. Este modelo evita que
+MUI reciba cambios tardíos de `defaultChecked` cuando una cuenta pasa de no tener perfil a tenerlo y
+mantiene la elección del usuario alineada con el valor canónico devuelto por el API.
+
+La selección de imagen principal mantiene un `File` en estado cliente y crea una URL `blob:` temporal
+para ofrecer una vista previa inmediata antes de enviar datos. La interfaz muestra el nombre del
+archivo y diferencia explícitamente la selección local de una imagen ya persistida. El envío sigue
+siendo una acción separada y solo se habilita cuando existe un perfil y un archivo seleccionado; esto
+permite previsualizar durante el alta inicial sin intentar una operación inválida. Al reemplazar la
+selección, completar la subida o desmontar el componente se revoca la URL temporal para liberar sus
+recursos. Si la API rechaza la subida, el archivo y la vista previa permanecen disponibles para que el
+usuario pueda corregir el problema o reintentar sin volver a seleccionarlo.
+
+La subsección de galería presenta un contador localizado derivado directamente de
+`gallery.length`. Al no mantener un segundo estado numérico, el valor permanece sincronizado con la
+carga inicial y con las mutaciones optimistas posteriores a una subida o eliminación confirmada. El
+texto usa una región `aria-live="polite"` para comunicar las variaciones sin interrumpir al usuario.
+
+La selección de imágenes adicionales sigue el mismo patrón reactivo que la portada, pero admite varios
+`File` en una cola local. Cada elemento tiene identidad, preview `blob:`, nombre y texto alternativo
+independientes, y puede retirarse antes de confirmar. El selector acepta varios archivos en una sola
+operación y también permite añadir selecciones posteriores hasta completar las ocho plazas entre
+imágenes persistidas y pendientes. La acción de lote solo se habilita cuando existe perfil y todas las
+selecciones tienen texto alternativo no vacío.
+
+El API conserva su contrato unitario: el cliente procesa la cola secuencialmente para respetar orden,
+límite y respuestas individuales. Cada respuesta correcta agrega el contrato validado a la galería
+y retira solo ese pendiente. Si una operación falla, las ya completadas permanecen guardadas y la
+imagen fallida junto con las posteriores continúan disponibles para reintento. Cada tarjeta es dueña
+de su URL temporal y la revoca al subirse, retirarse o desmontarse.
 
 La navegación del panel incorpora `Perfil` como entrada principal en desktop y móvil. El antiguo
 acceso genérico `Más` queda sustituido hasta que existan suficientes secciones privadas para

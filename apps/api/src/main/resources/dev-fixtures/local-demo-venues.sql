@@ -135,7 +135,7 @@ VALUES
     '/api/public/venue-images/d3000000-0000-4000-8000-000000000001/main',
     'dev-fixtures/venues/ames-padel-center/main.png',
     'image/png', 901862, 907, 808,
-    'published', 'automatic', true, true, CURRENT_TIMESTAMP,
+    'published', 'available', true, true, CURRENT_TIMESTAMP,
     true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
   ),
   (
@@ -203,7 +203,7 @@ ON CONFLICT ("id") DO UPDATE SET
   "mainImageWidth" = EXCLUDED."mainImageWidth",
   "mainImageHeight" = EXCLUDED."mainImageHeight",
   "status" = 'published',
-  "manualAvailabilityStatus" = 'automatic',
+  "manualAvailabilityStatus" = EXCLUDED."manualAvailabilityStatus",
   "showPhone" = true,
   "showEmail" = true,
   "publishedAt" = COALESCE("Venues"."publishedAt", CURRENT_TIMESTAMP),

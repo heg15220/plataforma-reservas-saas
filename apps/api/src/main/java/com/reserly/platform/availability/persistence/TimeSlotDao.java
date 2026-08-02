@@ -28,6 +28,19 @@ public interface TimeSlotDao extends JpaRepository<TimeSlotEntity, UUID> {
   List<TimeSlotEntity> findAllOwnedByDate(
       @Param("ownerUserId") UUID ownerUserId, @Param("date") LocalDate date);
 
+  /** Bloquea las franjas propias de una fecha antes de comprobar referencias y eliminarlas. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select slot from TimeSlotEntity slot
+      where slot.venue.ownerUser.id = :ownerUserId
+        and slot.venue.status <> 'archived'
+        and slot.date = :date
+      order by slot.startsAt, slot.endsAt
+      """)
+  List<TimeSlotEntity> findAllOwnedByDateForUpdate(
+      @Param("ownerUserId") UUID ownerUserId, @Param("date") LocalDate date);
+
   /** Lista franjas de un local publicado para el calendario público de una fecha. */
   @Query(
       """

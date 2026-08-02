@@ -153,6 +153,23 @@ El sistema debe mostrar resultados como tarjetas de local.
 - WHEN un local tiene huecos disponibles, THEN la tarjeta muestra accesos para ver ficha y reservar.
 - WHEN un local no tiene huecos, THEN la tarjeta muestra estado completo o próxima disponibilidad.
 - WHEN el usuario está en móvil, THEN las tarjetas se muestran en una lista vertical táctil.
+- WHEN el usuario pulsa cualquier zona libre de una tarjeta de catálogo, THEN navega a la ficha
+  pública del local sin interferir con acciones secundarias como reservar.
+- WHEN una tarjeta se muestra en los bloques de catálogo del inicio, THEN presenta la categoría
+  como etiqueta visible y sustituye el botón redundante de disponibilidad por un estado binario
+  `Abierto` o `Cerrado`.
+- WHEN una tarjeta de catálogo presenta su categoría, THEN reutiliza la iconografía y el tratamiento
+  outlined de los filtros rápidos de categoría.
+- WHEN el local dispone de dirección pública, THEN la tarjeta muestra calle, código postal, ciudad,
+  provincia y país, omitiendo únicamente los fragmentos ausentes.
+- WHEN una imagen se muestra en una tarjeta de resultados de `Explorar`, THEN se encaja completa en
+  un marco interior con separación lateral, sin recortar su contenido, ocupar todo el ancho exterior
+  de la tarjeta ni desbordar el viewport.
+- WHEN la tarjeta se muestra desde el breakpoint de ordenador, THEN el marco queda centrado y limita
+  su ancho máximo para mantener una proporción equilibrada respecto al contenido del local.
+- WHEN los resultados de `Explorar` se muestran desde el breakpoint de ordenador, THEN el catálogo
+  usa tres columnas compactas para reducir el tamaño individual de las tarjetas sin afectar a la
+  lista vertical de móvil y tablet.
 
 ### RF-004 Ficha pública del local
 
@@ -236,6 +253,8 @@ El local debe iniciar sesión y acceder a un panel privado.
 - WHEN el enlace es inválido, expiró, fue revocado o ya se usó, THEN el sistema devuelve un error
   genérico sin cambiar la credencial.
 - WHEN el local está autenticado, THEN puede acceder solo a sus propios datos.
+- WHEN una cuenta de local autenticada todavía no dispone de un perfil vigente, THEN el panel
+  muestra un estado de bienvenida con una acción directa para crear su primer local.
 - WHEN el local usa móvil, THEN el panel muestra una versión simplificada con resumen, reservas, calendario y más.
 
 ### RF-009 Gestión de perfil público
@@ -247,7 +266,12 @@ El local debe poder editar los datos visibles de su ficha.
 #### Criterios de aceptación
 
 - WHEN el local edita nombre, descripción, categoría, dirección, ubicación, imagen o datos de contacto, THEN los cambios se guardan en su perfil.
+- WHEN el local selecciona una imagen principal desde su dispositivo, THEN el panel muestra de inmediato una vista previa local y el nombre del archivo, distingue que aún está pendiente de subida y solo la persiste tras una confirmación explícita.
+- WHEN el local consulta o modifica su galería, THEN el panel muestra el número actual de imágenes cargadas y lo actualiza tras cada alta o eliminación correcta.
+- WHEN el local selecciona una o varias imágenes para la galería desde su dispositivo, THEN el panel muestra la vista previa y nombre de cada una, solicita un texto alternativo individual y solo habilita el envío cuando existe un perfil y todas las selecciones están descritas.
 - WHEN el local desactiva visibilidad de un dato de contacto, THEN ese dato no aparece en la ficha pública.
+- WHEN el perfil se carga, crea o actualiza, THEN los controles de visibilidad de correo y teléfono conservan un estado React estable y reflejan el valor persistido sin advertencias de controles no controlados.
+- WHEN el backend confirma la publicación del local, THEN el panel muestra un mensaje inequívoco de éxito y una acción para volver a la página de inicio y observar el local; un rechazo no debe mostrar ese estado.
 - WHEN el local cambia su dirección o coordenadas, THEN las búsquedas por ubicación deben usar los nuevos datos.
 - WHEN el local crea, edita, ordena, activa o desactiva pestañas personalizadas de la ficha, THEN los cambios deben guardarse solo para su local y mostrarse públicamente según estado activo y locale resuelto.
 
@@ -263,6 +287,13 @@ El local debe configurar horario semanal y días cerrados.
 - WHEN el local define horario, THEN debe indicar hora de apertura y cierre válidas.
 - WHEN el local cambia horarios, THEN la disponibilidad pública se recalcula.
 - WHEN hay reservas confirmadas afectadas por un cambio, THEN el sistema debe avisar al local y no cancelarlas automáticamente sin acción explícita.
+- WHEN el local configura un festivo, vacaciones, mantenimiento o día libre, THEN puede aplicarlo a una fecha o a un intervalo inclusivo, indicar un motivo interno y elegir entre cierre completo o pausa de nuevas reservas.
+- WHEN el local elimina excepciones de varias fechas, THEN puede restaurar en bloque el horario semanal sin recrear manualmente cada día.
+- WHEN el intervalo es inverso, inválido o supera 366 días, THEN el panel bloquea la operación y muestra una explicación clara.
+- WHEN el local todavía no tiene un horario semanal persistido, THEN Calendario muestra un asistente de primera configuración en lugar del editor operativo.
+- WHEN el local completa la primera configuración, THEN debe escoger mediante desplegables los días abiertos, el cierre semanal opcional, la política de festivos, las jornadas de mañana/tarde/noche, la duración opcional y la capacidad por rango.
+- WHEN la primera configuración define duración y capacidad, THEN el sistema guarda el snapshot semanal y genera franjas para las cuatro semanas siguientes omitiendo cierres y festivos concretos.
+- WHEN ya existe un horario semanal persistido, THEN el asistente inicial no vuelve a mostrarse y el local puede editar libremente horario, fechas, rangos, festivos, capacidad y franjas.
 
 ### RF-011 Gestión de franjas
 
@@ -276,6 +307,10 @@ El local debe poder crear, editar, bloquear y reabrir franjas de reserva.
 - WHEN el local usa reglas automáticas, THEN puede generar franjas de 30 minutos, 1 hora o duración personalizada.
 - WHEN una franja se marca no disponible, THEN el sistema impide nuevas reservas en esa franja.
 - WHEN se modifica capacidad, THEN el sistema valida que no sea menor que las plazas ya confirmadas salvo que se gestione el conflicto.
+- WHEN la circunstancia afecta a horas concretas, THEN el local puede crear franjas con inicio y fin o generarlas por duración; WHEN afecta al día completo, THEN puede operar sin rango horario mediante una excepción de fecha.
+- WHEN el local genera franjas automáticas, THEN puede escoger al menos 15, 30, 45, 60, 90, 120, 180 o 240 minutos.
+- WHEN el local ya no quiere usar las franjas de una fecha, THEN puede retirar todas mediante una acción explícita con confirmación.
+- WHEN alguna franja conserva una reserva asociada, THEN la retirada completa se rechaza sin borrar ninguna franja y el panel explica que puede bloquearlas para preservar el historial.
 
 ### RF-012 Gestión de disponibilidad en tiempo real
 
@@ -370,6 +405,7 @@ El local debe consultar y gestionar reservas recibidas.
 - WHEN abre una reserva, THEN ve datos del usuario, email, personas, fecha, franja, respuestas del formulario e historial de incidencias.
 - WHEN una reserva se confirma, THEN aparece en el panel del local.
 - WHEN el local filtra por estado, THEN el listado se actualiza.
+- WHEN el local entra en Reservas, THEN dispone en el mismo espacio de agenda, calendario interno y gestión de horarios/disponibilidad, sin perder cambios locales al alternar entre herramientas ya visitadas.
 
 ### RF-019 Marcado de asistencia
 
@@ -526,6 +562,13 @@ La plataforma debe poder incorporar recomendaciones personalizadas y listas dest
 - WHEN no hay historial del usuario, THEN las recomendaciones usan popularidad, valoración, disponibilidad y cercanía.
 - WHEN exista suficiente historial, THEN se podrá usar factorización matricial con reservas, valoraciones, categorías y comportamiento.
 - WHEN se combinen filtros y recomendaciones, THEN los resultados deben respetar filtros activos.
+- WHEN "Recomendados para ti" contenga más tarjetas que su capacidad visible, THEN el carril
+  rota automáticamente una tarjeta completa por ciclo para mostrar progresivamente todos los
+  locales, con cuatro visibles en escritorio, dos en tablet y una en móvil.
+- WHEN el usuario interactúe con el carril o prefiera reducción de movimiento, THEN la rotación
+  automática se pausa o desactiva respectivamente.
+- WHEN las recomendaciones cambien durante una rotación, THEN ninguna tarjeta debe quedar
+  parcialmente recortada por los límites izquierdo o derecho del carril.
 
 ### RF-030 Administración de plataforma
 
@@ -599,6 +642,8 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - El sistema debe proteger contra SQL injection, XSS y CSRF cuando aplique.
 - Los endpoints sensibles deben aplicar rate limiting.
 - El acceso debe estar protegido por roles: usuario anonimo, local, admin.
+- CORS con credenciales debe limitarse a orígenes exactos por entorno; en desarrollo local debe
+  admitir los puertos web 3000 y 3001 usados por el arranque automático, sin comodines.
 - Las acciones críticas deben auditarse.
 - Los enlaces seguros de reserva deben usar tokens de alta entropía, expiración o revocación.
 

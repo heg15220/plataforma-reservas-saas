@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchPublicAvailability, saveOpeningHours } from "./availability-api";
+import { deleteTimeSlots, fetchPublicAvailability, saveOpeningHours } from "./availability-api";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -68,5 +68,24 @@ describe("availability api", () => {
     expect(init?.method).toBe("PUT");
     expect(JSON.parse(String(init?.body))).toEqual({ days });
     expect(result).toHaveLength(7);
+  });
+
+  it("deletes the authenticated venue slots for a single date", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await deleteTimeSlots("2026-07-13");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/api/venue/me/time-slots?date=2026-07-13");
+    expect(init?.credentials).toBe("include");
+    expect(init?.method).toBe("DELETE");
+  });
+
+  it("identifies a deletion blocked by reservation history", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({ error: "TIME_SLOT_DELETE_CONFLICT" }, { status: 409 }),
+    );
+
+    await expect(deleteTimeSlots("2026-07-13")).rejects.toMatchObject({ kind: "referenced" });
   });
 });

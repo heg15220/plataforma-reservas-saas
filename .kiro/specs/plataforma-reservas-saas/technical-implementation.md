@@ -30111,3 +30111,1577 @@ Se intentó ajustar el viewport a `390 × 844`, pero la API de navegador disponi
 métodos probados y se detuvo sin recurrir a CDP directo ni mecanismos alternativos. Esta limitación
 no afecta a la corrección de cascada, que es independiente del breakpoint, pero la evidencia visual
 de esta rectificación corresponde al layout de escritorio.
+
+## Tarea 15.17 - Animar recomendados y hacer navegables las tarjetas públicas de catálogo
+
+- Fecha: 2026-08-02.
+- Estado: completada.
+
+### Objetivo técnico y requisitos relacionados
+
+La iteración mejora el descubrimiento público con dos cambios coordinados: rotar tarjetas completas
+en el bloque `Recomendados para ti` para exponer resultados que exceden su capacidad visible y
+reducir la fricción de navegación haciendo pulsable toda zona libre de las tarjetas de local. Se
+relaciona con `RF-003`, `RF-029` y `RNF-007`, sin alterar cómo se calculan los locales.
+
+### Archivos creados, modificados o eliminados
+
+Modificados:
+
+- `apps/web/src/app/page.tsx`.
+- `apps/web/src/app/page.test.tsx`.
+- `apps/web/src/features/public-search/home-recommended-carousel.tsx`.
+- `apps/web/src/features/public-search/public-search-results.tsx`.
+- `apps/web/src/features/public-search/public-search-results.test.tsx`.
+- `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+- `.kiro/specs/plataforma-reservas-saas/design.md`.
+- `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+- `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+
+Se creó el componente cliente del carril. No se eliminaron archivos ni hay cambios de backend,
+modelo de datos, migraciones, endpoints, contratos REST, servicios, jobs o infraestructura.
+
+### Arquitectura y flujo de ejecución
+
+`VenueSection` recibe el indicador opcional `carousel`. Solo `Recomendados para ti` lo activa y le
+entrega los ocho resultados obtenidos por el inicio; destacados mantiene su cuadrícula estática.
+`HomeRecommendedCarousel` es una isla cliente con índice activo y un temporizador de cuatro
+segundos. Cada ciclo incrementa el índice y desplaza exactamente el ancho responsive de una tarjeta
+más el hueco de 24 px: `100 % + 24 px` en móvil, `50 % + 12 px` en tablet y `25 % + 6 px` en
+escritorio. Los `flex-basis` correspondientes mantienen una, dos o cuatro tarjetas visibles.
+
+Para cerrar el ciclo sin retroceder visualmente por las ocho tarjetas, se añaden al final copias de
+las primeras cuatro. Al llegar al índice ocho se ven esas copias durante la transición; el evento
+`transitionend` desactiva temporalmente la transición y restablece el índice a cero sobre el mismo
+contenido visual. El siguiente intervalo vuelve a habilitar la transición y continúa con normalidad.
+
+`HomeVenueCard` conserva `article` como contenedor semántico. El enlace del nombre genera un
+pseudoelemento absoluto que ocupa el artículo completo. El CTA visual se renderiza como `span`, por
+lo que no existe un enlace dentro de otro enlace y toda la tarjeta mantiene un único destino.
+
+`VenueResultCard` aplica el mismo patrón de enlace extendido desde el encabezado. Sus botones
+explícitos `Ver local` y `Reservar` conservan enlaces reales y se colocan en `z-index: 1`; así quedan
+por encima del pseudoelemento y mantienen sus destinos independientes. El artículo usa posición
+relativa como límite geométrico del enlace extendido.
+
+### Accesibilidad, interacción, seguridad e i18n
+
+- La animación se detiene con `hover` y `focus-within`, evitando movimiento durante lectura o
+  interacción deliberada.
+- `prefers-reduced-motion: reduce` elimina la animación sin depender de JavaScript.
+- El temporizador no se crea cuando hay cuatro o menos tarjetas, durante interacción o cuando el
+  sistema solicita reducción de movimiento.
+- Las cuatro copias de continuidad usan `aria-hidden` e `inert`, de modo que no duplican enlaces en
+  el árbol accesible ni en el orden de tabulación.
+- El enlace sigue siendo alcanzable por teclado y el foco se refuerza con contorno visible en la
+  tarjeta.
+- No se añaden roles artificiales ni manejadores `onClick` sobre contenedores no interactivos.
+- No hay enlaces anidados; las acciones de reserva continúan operables por teclado y lector de
+  pantalla.
+- La elevación visual en `hover` no modifica el flujo y usa transición breve de 180 ms.
+- No se incorporan textos visibles, claves i18n, datos personales, permisos ni superficies de
+  entrada nuevas.
+
+### Errores, observabilidad y riesgos
+
+La mejora es presentacional y no introduce flujos de error, logs o auditoría. Si no hay locales se
+mantiene el estado vacío; con cuatro o menos se muestra un carril estático. El carril rota solo los
+ocho resultados ya cargados y no pagina contra backend. Como deuda opcional quedan controles
+manuales anterior/siguiente e indicadores si producto los requiere en una iteración posterior.
+
+### Tests y evidencia de verificación
+
+Se añadió cobertura con ocho locales para comprobar el avance automático de índice 0 a 1, la
+presencia navegable del octavo resultado y el reinicio circular de índice 8 a 0 después de
+`transitionend`. La cobertura de resultados mantiene la comprobación de detalle y los CTA de ficha
+y reserva.
+
+Comando focalizado:
+
+```text
+npm test -- --run src/app/page.test.tsx src/features/public-search/public-search-results.test.tsx --testTimeout=20000
+Test Files  2 passed (2)
+Tests       7 passed (7)
+```
+
+Formato:
+
+```text
+npx prettier --check src/app/page.tsx src/app/page.test.tsx src/features/public-search/public-search-results.tsx src/features/public-search/public-search-results.test.tsx
+All matched files use Prettier code style!
+```
+
+El `typecheck` global no queda verde debido a errores anteriores y ajenos en componentes de admin,
+formularios, equipo, incidencias y reservas. Ningún diagnóstico mostrado señaló los cuatro archivos
+de esta iteración. El lint focalizado superó 120 segundos sin emitir resultado, por lo que se deja
+registrada esa limitación en vez de declarar una validación inexistente.
+
+### Criterio de cierre
+
+La tarea se cierra porque los ocho recomendados rotan por tarjetas completas en un carril responsive
+de cuatro, dos o una tarjeta visible; el ciclo es continuo, respeta reducción de movimiento y pausa
+interactiva; las tarjetas públicas abren su ficha desde toda su superficie libre; las acciones
+secundarias mantienen semántica y destino; y las pruebas focalizadas pasan.
+
+## Rectificación operativa de la tarea 0.4 - Entorno local del workspace web
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada.
+
+### Incidencia y causa raíz
+
+Un proceso `next dev` iniciado directamente mediante el script de `apps/web` fallaba durante la
+carga de `next.config.ts`. `loadWebEnvironment()` recibía `NEXT_PUBLIC_APP_ENV` y
+`NEXT_PUBLIC_API_BASE_URL` como `undefined`, por lo que el esquema Zod abortaba correctamente.
+
+El fichero real `.env.local` sí contenía ambos valores y `RESERLY_API_INTERNAL_URL`, pero vive en la
+raíz del monorepo. Next.js se ejecuta con `apps/web` como directorio de trabajo y su descubrimiento
+automático no asciende hasta el `.env.local` raíz. El comando raíz `npm run dev:web` ya usaba
+`dotenv-cli`, mientras `apps/web#dev` invocaba `next dev` directamente; por eso el resultado dependía
+del punto de entrada elegido.
+
+### Solución técnica
+
+`apps/web/package.json` define ahora:
+
+```text
+dotenv -e ../../.env.local -- next dev
+```
+
+La validación de `apps/web/environment.ts` permanece intacta y autoritativa. No se añadieron valores
+predeterminados a variables obligatorias ni se relajaron las reglas HTTPS de staging y producción.
+El comando raíz puede seguir precargando `.env.local`; la segunda carga usa el mismo fichero y no
+cambia su significado.
+
+`scripts/validate-environment-examples.mjs` comprueba también el comando de desarrollo del workspace.
+Esto evita que una simplificación futura a `next dev` reintroduzca un arranque dependiente del
+directorio. `apps/web/README.md` documenta tanto la ejecución desde raíz como desde el workspace y la
+necesidad de crear primero `.env.local` desde su plantilla.
+
+### Seguridad, errores y alcance
+
+- Solo se cargan valores locales ignorados por Git; no se versionaron secretos.
+- No se copió `.env.local` dentro del workspace ni se duplicaron configuraciones reales.
+- Staging, producción, `build` y `start` no cargan implícitamente el entorno local.
+- La aplicación continúa fallando temprano cuando faltan variables o una URL incumple su política.
+- No cambian backend, API, datos, migraciones, autenticación, permisos, i18n ni el carrusel.
+
+### Evidencia de verificación
+
+```text
+npm run env:check
+Plantillas de entorno válidas: .env.local.example, .env.staging.example, .env.production.example
+```
+
+El arranque directo del workspace mostró:
+
+```text
+@reserly/web dev
+dotenv -e ../../.env.local -- next dev
+Next.js 16.2.9 (Turbopack)
+Ready in 2.9s
+```
+
+Tras sustituir el proceso anterior, `Invoke-WebRequest http://localhost:3000` devolvió HTTP `200` y
+la respuesta no contenía `ZodError`. La corrección queda cerrada porque reproduce el punto de entrada
+que fallaba, preserva la validación estricta y verifica el runtime real.
+
+## Rectificación cliente de las tareas 0.4 y 15.17 - Sustitución estática de variables públicas
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada en navegador.
+
+### Síntoma y causa raíz
+
+El SSR de `/` terminaba con HTTP 200, pero React fallaba durante la hidratación de
+`HomeRecommendedCarousel`. `HomeVenueCard` resolvía la URL absoluta de cada imagen mediante
+`resolveSearchImageUrl`, que delega en `resolvePublicAssetUrl` y finalmente en
+`loadWebEnvironment()`. Al ejecutarse ahora dentro de una isla cliente, el loader recibía un
+`process.env` vacío y Zod rechazaba las dos variables públicas obligatorias.
+
+La presencia correcta de `.env.local` no resolvía este segundo problema. Next.js sustituye en el
+bundle del navegador expresiones estáticas como `process.env.NEXT_PUBLIC_API_BASE_URL`, pero no puede
+enumerar ni transformar de forma segura un acceso dinámico al objeto completo `process.env`.
+
+### Implementación
+
+`loadWebEnvironment()` construye ahora el mapa explícito:
+
+- `NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV`;
+- `NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL`;
+- `RESERLY_API_INTERNAL_URL` solo cuando `typeof window === "undefined"`.
+
+El mapa continúa pasando por `parseWebEnvironment`; no existe una ruta alternativa sin Zod. En
+navegador, la URL interna queda ausente y el conversor aplica el fallback documentado a la URL
+pública. En servidor, SSR, build y `next.config.ts` siguen pudiendo usar la URL interna cuando esté
+configurada.
+
+### Seguridad, privacidad y compatibilidad
+
+- Solo las dos variables con prefijo `NEXT_PUBLIC_` pueden ser sustituidas en JavaScript cliente.
+- `RESERLY_API_INTERNAL_URL` no se expone al bundle y nunca contiene un fallback hardcodeado.
+- Las reglas de URL válida y HTTPS para staging/producción permanecen sin cambios.
+- La solución sirve a cualquier helper isomórfico que reutilice `loadWebEnvironment`, no solo al
+  carrusel o a las imágenes.
+- No cambian endpoints, datos, migraciones, cookies, permisos, autenticación o textos visibles.
+
+### Tests y evidencia
+
+`environment.test.ts` añade una prueba del loader real con variables públicas e interna simuladas en
+entorno de navegador. Confirma que conserva entorno y URL pública, y que no utiliza la URL interna
+en cliente. Junto con la prueba de rotación del inicio:
+
+```text
+npm test -- --run environment.test.ts src/app/page.test.tsx --testTimeout=20000
+Test Files  2 passed (2)
+Tests       7 passed (7)
+```
+
+Prettier validó `environment.ts`, su test y el carrusel. Finalmente se recargó
+`http://localhost:3000/` en un navegador real conectado al servidor de desarrollo. La página mostró
+título `Reserly`, renderizó "Recomendados para ti" y la consulta de consola devolvió cero entradas de
+nivel error. Esta comprobación cubre la hidratación que una petición HTTP aislada no podía validar.
+
+## Rectificación visual de la tarea 15.17 - Posiciones fijas sin recorte lateral
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada visualmente.
+
+### Problema observado
+
+La pista flex anterior desplazaba físicamente toda la secuencia para avanzar una tarjeta. Aunque la
+posición final quedaba alineada, durante los 600 ms de transición la primera tarjeta atravesaba el
+límite con `overflow: hidden` y aparecía parcialmente cortada. Ese comportamiento era inherente al
+patrón de pista deslizante y no cumplía la aclaración visual del usuario.
+
+### Arquitectura sustituida
+
+`HomeRecommendedCarousel` mantiene ahora hasta cuatro posiciones estables en una cuadrícula:
+
+- una columna en móvil;
+- dos columnas en tablet;
+- cuatro columnas en escritorio.
+
+`visibleVenues` obtiene como máximo cuatro entradas consecutivas desde `activeIndex`, aplicando
+módulo sobre el total. Cada cuatro segundos el índice avanza con
+`(currentIndex + 1) % venues.length`; React reemplaza el contenido de las posiciones sin trasladar
+la cuadrícula fuera de su caja. El carril ya no usa clones, transformación porcentual de la pista,
+estado `transitionEnabled` ni evento `transitionend`.
+
+Cada tarjeta nueva ejecuta `recommended-card-enter` desde `translateX(12px)` y opacidad 0,55 hasta
+su posición y opacidad finales durante 420 ms. El contenedor reserva 16 px horizontales, por lo que
+la entrada ocurre dentro del área segura y ninguna tarjeta cruza los límites. Los retardos de 45 ms
+por posición mantienen una sensación de secuencia sin recortar contenido.
+
+### Accesibilidad y responsive
+
+- `prefers-reduced-motion: reduce` elimina la animación de entrada.
+- `hover` y foco interno siguen pausando el temporizador.
+- Solo los locales activos existen en el DOM, sin copias `aria-hidden` ni enlaces duplicados.
+- Las posiciones no aplicables se ocultan por breakpoint y no participan visualmente.
+- La tarjeta completa conserva su enlace extendido a la ficha pública.
+
+### Tests y evidencia
+
+La prueba de inicio avanza de índice 0 a 1, verifica que aparece el local 5, avanza hasta índice 4 y
+verifica el local 8, y finalmente comprueba el retorno modular a 0. Resultado focalizado:
+
+```text
+npm test -- --run src/app/page.test.tsx --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       2 passed (2)
+```
+
+La comprobación en navegador midió el carril de escritorio antes y después de la rotación. El
+contenedor ocupó `x = 32..1232,8 px`; las cuatro tarjetas completas ocuparon respectivamente
+`40..327,2`, `339,2..626,4`, `638,4..925,6` y `937,6..1224,8 px`. Ninguna cruzó los límites y la
+consola devolvió cero errores.
+
+## Rectificación visual de la tarea 15.17 - Categoría y estado operativo en tarjetas de inicio
+
+- Fecha: 2026-08-02.
+- Estado: implementada y verificada.
+- Tarea relacionada: `15.17`.
+
+### Objetivo técnico y requisitos relacionados
+
+La rectificación amplía `RF-003`, `RF-029` y `RNF-007`: todas las instancias de la tarjeta pública
+reutilizada en los bloques de catálogo del inicio deben mostrar explícitamente la categoría del
+local y comunicar su estado sin mantener el botón redundante `Ver disponibilidad`. La tarjeta
+completa continúa navegando a la ficha, por lo que retirar ese botón no elimina ninguna ruta de
+acceso.
+
+### Archivos y arquitectura aplicada
+
+- `apps/web/src/features/public-search/home-recommended-carousel.tsx`: `HomeVenueCard` renderiza un
+  `Chip` de categoría, conserva nombre y ubicación como bloque principal y coloca `StatusChip` en
+  el pie. Al ser el componente compartido por recomendados y destacados, el cambio se propaga a
+  cada ítem de catálogo del inicio sin duplicar presentación ni lógica.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`: se añadieron las claves
+  `HomePage.card.open` y `HomePage.card.closed` con traducciones ES/EN.
+- `apps/web/src/app/page.test.tsx`: los datos de prueba incluyen ocho locales, uno no disponible,
+  para cubrir ambos estados durante la rotación.
+
+El helper privado `homeVenueStatusTone` traduce `available` a tono `success` y cualquier estado sin
+disponibilidad activa a `neutral`. La etiqueta visible se resuelve de forma binaria por i18n:
+`available` se presenta como `Abierto`/`Open`, mientras que `unavailable` y
+`availability_pending` se presentan como `Cerrado`/`Closed`. Esto evita que el estado técnico
+pendiente reaparezca como una tercera categoría visual distinta de la solicitada.
+
+### Flujos, accesibilidad, responsive e i18n
+
+No cambia el contrato REST, el modelo de datos, las migraciones, los permisos ni la seguridad. El
+chip de categoría usa el nombre ya localizado por el endpoint público. El chip de estado reutiliza
+la semántica y contraste de `StatusChip`. La retirada del botón evita dos destinos equivalentes y
+mantiene un único enlace extendido con nombre accesible hacia `/locales/{slug}`. La cuadrícula y sus
+breakpoints no cambian, de modo que categoría y estado forman parte de la tarjeta completa en
+móvil, tablet y escritorio.
+
+### Tests, comandos y evidencia
+
+Se ejecutó:
+
+```text
+npm test -- --run src/app/page.test.tsx src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       5 passed (5)
+
+git diff --check
+Exit code: 0
+```
+
+La prueba de inicio verifica cuatro categorías, tres estados abiertos y un estado pendiente
+presentado como cerrado, ausencia de `Ver disponibilidad`, avance hasta el local 8, estado
+`Cerrado`, enlace a su ficha y retorno circular. La prueba de mensajes confirma la paridad
+estructural de los catálogos ES/EN.
+
+`npm run i18n:check` continúa fallando por textos JSX hardcodeados preexistentes en módulos admin,
+disponibilidad, ficha pública, equipo y reservas no modificados por esta rectificación. El cambio no
+añade incidencias nuevas al validador. Como limitación de contrato, `available`/`unavailable` expresa
+el estado publicado por la búsqueda y no incorpora todavía un cálculo horario adicional en el
+cliente; por seguridad visual, un estado no confirmado nunca se comunica como abierto.
+
+La recarga de `http://localhost:3000/` contra datos reales confirmó categorías visibles en
+recomendados y destacados, seis chips `Cerrado`, ningún botón `Ver disponibilidad` y ninguna
+etiqueta `Disponibilidad pendiente` dentro de las tarjetas.
+
+## Rectificación visual y contractual de la tarea 15.17 - Categorías ilustradas y dirección completa
+
+- Fecha: 2026-08-02.
+- Estado: implementada y verificada mediante tests focalizados.
+- Tarea relacionada: `15.17`.
+
+### Objetivo técnico y requisitos
+
+La iteración refina `RF-003`, `RF-029` y `RNF-007`: las tarjetas públicas deben reutilizar el
+lenguaje visual de los filtros rápidos de categoría, mostrar todos los fragmentos de ubicación
+pública disponibles y disponer de al menos un fixture que se proyecte como abierto. No se modifica
+el modelo persistente porque `Venues` ya almacenaba `address`, `postalCode`, `city`, `province` y
+`country`.
+
+### Contrato público y flujo de datos
+
+`VenueSearchItemResponse` añade `address` y `postalCode`. `VenuePublicSearchServiceImpl.toResponse`
+los toma directamente del local publicado, junto con la ubicación ya expuesta. La proyección sigue
+sin incluir identificadores internos, propietario, cuenta empresarial, email, teléfono ni datos de
+verificación. En web, el esquema Zod acepta ambos campos como cadenas opcionales y anulables para
+permitir una transición compatible si frontend y API se despliegan en momentos distintos.
+
+Las tarjetas de inicio, resultados y enlaces compactos forman la ubicación filtrando valores nulos
+antes de unirlos. Esto evita comas o separadores consecutivos y produce, cuando todos los datos
+existen: `calle · código postal · ciudad · provincia · país` en inicio y la misma secuencia separada
+por comas en resultados.
+
+### Componente visual de categoría
+
+`PublicCategoryLabel` centraliza la relación slug-icono:
+
+- restaurante: `Utensils`;
+- peluquería: `Scissors`;
+- campo de fútbol: `Goal`;
+- pista de pádel: `Dumbbell`;
+- instalación municipal: `Landmark`;
+- centro deportivo: `Building2`;
+- centro de estética: `Sparkles`;
+- otros o slug desconocido: `Shapes`.
+
+El componente reutiliza el tamaño pequeño, variante outlined, fondo blanco translúcido y trazo 1,9
+de los filtros rápidos mediante un `Chip` sin eventos. No introduce un segundo botón ni un foco
+adicional dentro del enlace extendido de la tarjeta. El texto permanece accesible como contenido de
+la tarjeta y el icono es decorativo mediante `aria-hidden`. La verificación en navegador descartó
+expresamente la primera aproximación basada en `Button component="span"`, porque MUI todavía le
+asignaba semántica interactiva.
+
+### Fixture local abierto e idempotencia
+
+`local-demo-venues.sql` define `Ames Padel Center` con
+`manualAvailabilityStatus = 'available'`. La cláusula `ON CONFLICT` copia ahora el valor declarado
+por cada fixture mediante `EXCLUDED.manualAvailabilityStatus`; así, reiniciar el entorno corrige
+bases ya inicializadas y no deja el registro antiguo en `automatic`. La búsqueda ordenada por
+disponibilidad puede devolver ese local con `statusCode = available`, que la tarjeta traduce a
+`Abierto`/`Open` y tono success.
+
+### Validación, seguridad, errores e i18n
+
+No cambian permisos, autenticación, cookies, migraciones, índices ni operaciones de escritura
+públicas. Calle y código postal ya eran campos públicos de la ficha; exponerlos en la proyección de
+búsqueda no amplía datos privados. La presentación usa nombres de categoría localizados procedentes
+del API y conserva las etiquetas ES/EN existentes para estado. Los slugs desconocidos degradan a un
+icono genérico sin impedir el renderizado.
+
+### Tests y evidencia
+
+```text
+npm test -- --run src/app/page.test.tsx src/features/public-search/public-search-api.test.ts \
+  src/features/public-search/public-search-results.test.tsx --testTimeout=30000 --maxWorkers=1
+Test Files  3 passed (3)
+Tests       13 passed (13)
+
+mvn -f apps/api/pom.xml "-Dtest=VenuePublicSearchServiceTests" \
+  "-Dcheckstyle.skip=true" "-Dspotless.check.skip=true" test
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+git diff --check
+Exit code: 0
+```
+
+Los tests web comprueban icono dentro de la etiqueta de categoría, dirección completa, contrato Zod,
+tarjetas, filtros y rotación. El test API verifica que la proyección devuelve calle y código postal.
+Spotless indicó cero archivos Java pendientes antes de que Checkstyle global fallara por 26
+incidencias preexistentes en plantillas de correo y un test de mensajería. El typecheck global sigue
+bloqueado por errores históricos MUI/i18n en admin, formularios, equipo y reservas; no reportó
+errores en los archivos de esta iteración.
+
+El proceso API que estaba activo durante la iteración conservaba las clases y datos anteriores,
+como confirmó una lectura HTTP. Para ver dirección completa y el local abierto en la portada real es
+necesario reiniciar `npm run dev`, lo que recompila el DTO/servicio y reaplica el fixture idempotente.
+La inspección posterior del DOM confirmó que el chip de categoría permanece visible como contenido
+genérico y no expone rol de botón; con el API antiguo, la composición degrada correctamente a ciudad,
+provincia y país porque los dos campos nuevos son opcionales durante la transición.
+
+## Rectificación runtime de la tarea 15.17 - Enriquecimiento SSR de tarjetas de inicio
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada en navegador.
+
+### Problema reproducido y decisión sustituida
+
+El API activo de búsqueda seguía serializando la versión anterior de `VenueSearchItemResponse`: no
+incluía `address` ni `postalCode` y devolvía `availability_pending` para los seis locales. Por tanto,
+la indicación anterior de reiniciar el entorno no garantizaba que la interfaz activa quedase
+corregida. Esta iteración sustituye expresamente esa dependencia: la portada compone los datos que
+necesita desde endpoints públicos ya disponibles en el proceso antiguo.
+
+### Arquitectura y flujo
+
+`enrichHomeVenueCards` recibe los resultados de búsqueda y la locale resuelta. Calcula la fecha
+`YYYY-MM-DD` mediante `Intl.DateTimeFormat.formatToParts` con zona `Europe/Madrid`, coherente con
+`BusinessClockConfiguration` del backend. Para cada slug ejecuta en paralelo:
+
+- `getPublicVenue`, que aporta calle, código postal, ciudad, provincia y país;
+- `fetchPublicAvailability`, que aporta el estado operativo calculado para el día, plazas y
+  habilitación de reserva.
+
+Cada pareja se resuelve con `Promise.allSettled`. Un fallo de perfil no invalida disponibilidad y
+viceversa; si ambos fallan, se devuelve exactamente el resultado base. Las parejas de todos los
+locales se resuelven también concurrentemente para no convertir seis tarjetas en doce esperas
+secuenciales. `HomePage` aplica el enriquecimiento inmediatamente después de la búsqueda SSR y
+antes de renderizar recomendados, destacados y cercanos.
+
+El estado `open` de disponibilidad se normaliza al `available` que entiende la tarjeta; cualquier
+otro estado operativo se normaliza a `unavailable`. Así `HomeVenueCard` sigue siendo presentacional
+y muestra `Abierto`/`Cerrado` sin conocer contratos adicionales.
+
+### Seguridad, privacidad, errores y rendimiento
+
+Solo se consultan endpoints anónimos que ya alimentan la ficha y el calendario públicos. No se
+reenvían cookies, sesiones ni credenciales, y no aparecen email o teléfono en la tarjeta. La
+degradación por local evita que una incidencia parcial o un perfil retirado elimine el catálogo
+completo. El coste queda limitado a la muestra de inicio de ocho locales y todas las lecturas se
+realizan en paralelo; no se aplica este fallback N+1 a la página paginada de resultados, cuyo
+contrato ampliado sigue siendo la solución estructural al reiniciar/desplegar el API.
+
+### Tests y evidencia
+
+```text
+npm test -- --run src/features/public-search/home-venue-enrichment.test.ts \
+  src/app/page.test.tsx --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       4 passed (4)
+
+git diff --check
+Exit code: 0
+```
+
+La prueba nueva fija el reloj en 2026-08-02, verifica consulta con fecha Madrid, dirección
+`Firmistáns 10A`, código postal `15895` y normalización `open -> available`. También prueba la
+degradación íntegra cuando fallan ambos endpoints complementarios.
+
+Finalmente se recargó `http://localhost:3000/` contra el API antiguo. El DOM mostró, entre otras,
+`Rúa Nova de Abaixo 21 · 15706 · Santiago de Compostela · A Coruña · ES`,
+`Rúa das Brañas do Sar 9 · 15702 · Santiago de Compostela · A Coruña · ES` y múltiples chips
+`Abierto` en las cuatro recomendaciones visibles. Esto confirma el flujo runtime que faltaba.
+
+## Rectificación visual de las tareas 15.2 y 15.14 - Imágenes sin recorte en Explorar
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada en navegador.
+
+### Diagnóstico
+
+`VenueResultCard` limitaba correctamente su geometría al viewport, pero forzaba la imagen a llenar
+un marco 16:9 en móvil y 4:3 desde tablet mediante `object-fit: cover`. Las imágenes locales mezclan
+proporciones cuadradas, 3:2 y próximas a 4:3; `cover` ampliaba cada fotografía hasta cubrir el marco
+y descartaba contenido en uno de sus ejes. La medición previa confirmó `scrollWidth == clientWidth`,
+por lo que no existía un desbordamiento real de página: el defecto era recorte interno.
+
+### Implementación
+
+La imagen y su placeholder comparten ahora un marco 4:3 en todos los breakpoints. La imagen aplica:
+
+- `display: block` para eliminar el espacio de línea de elementos reemplazados;
+- `width: 100%` y `maxWidth: 100%` para respetar la columna;
+- `object-fit: contain` para mostrar todos los píxeles de origen;
+- fondo `action.hover` como banda neutra cuando las proporciones difieren.
+
+`Surface` añade `minWidth: 0` y `width: 100%`, evitando que dimensiones intrínsecas o textos largos
+ensanchen la pista de grid. No cambian el enlace extendido, los botones secundarios, alt text,
+categoría, estado, dirección, contratos API, datos, permisos ni i18n.
+
+### Accesibilidad y responsive
+
+El alt text localizado permanece asociado al `img`. `contain` no altera el orden de lectura ni crea
+controles. El marco único 4:3 evita saltos de altura entre resultados y se aplica igualmente a móvil,
+tablet y escritorio. La banda neutra es decorativa y conserva contraste con la superficie.
+
+### Tests y evidencia
+
+```text
+npm test -- --run src/features/public-search/public-search-results.test.tsx \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       5 passed (5)
+
+git diff --check
+Exit code: 0
+```
+
+El test comprueba `objectFit: contain`, `width: 100%` y `maxWidth: 100%` sobre la imagen real. La
+verificación en `http://localhost:3000/explorar` midió las seis imágenes visibles: todas devolvieron
+proporción computada `4 / 3`, `objectFit = contain` y `insideViewport = true`. En un viewport de
+1280 px, el documento midió 1265 px tanto en `scrollWidth` como en `clientWidth`, sin scroll
+horizontal ni cortes contra la pantalla.
+
+## Rectificación visual de las tareas 15.2 y 15.14 - Marco de imagen inset
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada en navegador.
+
+### Aclaración visual
+
+La corrección anterior evitaba el recorte, pero mantenía la superficie 4:3 de borde a borde. El
+usuario aclaró que el propio marco tampoco debía consumir todo el ancho disponible de la tarjeta.
+La fotografía completa debe percibirse como un bloque interior centrado, separado de la envolvente.
+
+### Implementación responsive
+
+`VenueResultCard` envuelve imagen y placeholder en un `Box` común identificado para pruebas. El
+contenedor aplica `box-sizing: border-box`, padding superior y lateral de 16 px en móvil y 20 px
+desde `sm`. Se usan valores de píxel explícitos porque el tema del proyecto configura un paso de
+spacing de 4 px; expresar `2`/`2.5` habría producido solo 8/10 px y no la separación diseñada.
+
+La imagen interior conserva 4:3, `object-fit: contain`, anchura máxima del 100% de su contenedor y
+añade el radio semántico `visualTokens.radius.control`. El placeholder comparte exactamente la misma
+geometría. El padding inferior queda a cargo del bloque de contenido, evitando duplicar espacio
+vertical entre fotografía y categoría.
+
+### Accesibilidad, contratos y efectos laterales
+
+No cambian alt text, enlace extendido, acciones, orden de lectura, datos, contratos, API, permisos o
+i18n. El wrapper no es interactivo ni añade roles. El inset reduce el ancho visual de la fotografía
+sin alterar el ancho de la tarjeta o la cuadrícula, y `contain` sigue mostrando la imagen completa.
+
+### Tests y evidencia
+
+```text
+npm test -- --run src/features/public-search/public-search-results.test.tsx \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       5 passed (5)
+
+git diff --check
+Exit code: 0
+```
+
+El test verifica que la imagen pertenece al wrapper específico y mantiene `contain`, `width: 100%`
+y `max-width: 100%`. La primera ejecución no inició el worker de Vitest; la segunda ejecutó las
+aserciones y detectó que JSDOM no materializa las media queries de Emotion en `toHaveStyle`, por lo
+que la prueba se centró en la estructura y la geometría responsive se validó en navegador real.
+
+En `/explorar`, las seis tarjetas devolvieron padding computado de 20 px a izquierda y derecha. La
+distancia entre borde exterior e imagen fue 20,8 px por lado al incluir el borde de 0,8 px de
+`Surface`; todas conservaron `objectFit = contain` y quedaron centradas.
+
+## Rectificación visual de las tareas 15.2 y 15.14 - Límite del marco en escritorio
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada en navegador.
+
+### Objetivo y diagnóstico
+
+El inset responsive de 16/20 px resolvía la unión del marco con el borde, pero no controlaba el
+crecimiento del bloque en tarjetas anchas. En la cuadrícula de escritorio, una tarjeta de 422,4 px
+dejaba un marco de aproximadamente 380 px y la imagen seguía dominando la composición vertical y
+horizontal. El objetivo de esta rectificación es que el contenido visual conserve un tamaño estable
+en ordenador sin reducir el ancho útil de categoría, nombre, dirección, estado ni acciones.
+
+### Implementación y arquitectura responsive
+
+El `Box` que agrupa la imagen o su placeholder mantiene `width: 100%` para móvil y tablet. Desde el
+breakpoint `md` incorpora `maxWidth: 360px` y `margin-inline: auto`. El límite se aplica al wrapper
+visual, no a `Surface` ni al artículo enlazable, por estas razones:
+
+- conserva intacta la geometría de la cuadrícula y el área pulsable completa de la tarjeta;
+- centra imagen y placeholder con exactamente la misma regla;
+- evita condicionar el contenido textual a un ancho artificial;
+- permite que tarjetas más estrechas sigan reduciéndose de forma fluida gracias a `width: 100%` y
+  `box-sizing: border-box`.
+
+Dentro del marco de 360 px, el padding lateral de 20 px produce una imagen de 320 px. La proporción
+4:3, `object-fit: contain`, el fondo neutro y el radio de control no cambian, por lo que continúa
+mostrándose la fotografía completa sin deformación ni recorte. No se modifican modelos de datos,
+endpoints, contratos, permisos, validaciones, logs, auditoría, i18n ni migraciones.
+
+### Accesibilidad y comportamiento
+
+El wrapper sigue siendo puramente presentacional y no añade roles ni controles. Se conserva el alt
+text localizado, el enlace extendido sobre toda la tarjeta, el foco de teclado y las acciones
+secundarias. Al estar el marco centrado mediante márgenes automáticos, no depende de la dirección del
+texto ni introduce desplazamiento horizontal.
+
+### Tests y evidencia de verificación
+
+```text
+npm test -- --run src/features/public-search/public-search-results.test.tsx \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       5 passed (5)
+
+git diff --check
+Exit code: 0
+```
+
+La comprobación manual se realizó en `http://localhost:3000/explorar` con un viewport de 1280 px.
+Las medidas computadas de la primera tarjeta fueron: tarjeta 422,4 px, marco 360 px, imagen 320 px,
+`max-width` efectivo de 360 px y diferencia de centrado de 0 px. La distancia desde la imagen hasta
+el borde exterior fue simétrica, 51,2 px a izquierda y derecha. Esto acredita que el marco ya no se
+optimiza para llenar la tarjeta en ordenador y que permanece centrado.
+
+### Riesgos y limitaciones
+
+El límite de 360 px es una decisión visual deliberada para la cuadrícula actual. Si en el futuro se
+introducen tarjetas de escritorio sustancialmente más estrechas, `width: 100%` permite que el marco
+se contraiga; si se crean variantes mucho más anchas, deberá revisarse si comparten este mismo límite
+o requieren un token específico de variante. No queda deuda funcional ni una tarea nueva derivada.
+
+## Rectificación visual de las tareas 15.2 y 15.14 - Tarjetas compactas en ordenador
+
+- Fecha: 2026-08-02.
+- Estado: implementada y verificada en navegador.
+
+### Objetivo técnico y diagnóstico
+
+La cuadrícula principal de `Explorar` utilizaba dos columnas desde `md`. Con el filtro lateral
+visible en escritorio, cada resultado alcanzaba aproximadamente 422,4 px en un viewport de 1280 px.
+Aunque el marco de la imagen ya estaba limitado, la tarjeta completa conservaba una escala más
+propia de un resultado destacado que de un catálogo denso. El objetivo fue reducir el ancho y la
+presencia visual de cada item sin modificar datos, acciones ni la lista táctil de anchos menores.
+
+### Implementación responsive
+
+El contenedor semántico `section` de resultados cambia ahora entre:
+
+- `xs` y `sm`: una columna de ancho fluido, preservando la lista vertical para móvil y tablet;
+- desde `md`: `repeat(3, minmax(0, 1fr))`, con tres pistas iguales que pueden contraerse sin provocar
+  overflow por contenido intrínseco.
+
+Se conserva el gap definido por el tema. El `Stack` de contenido mantiene el padding de `sm` también
+en escritorio en lugar de aumentarlo en `md`, reforzando la densidad sin reducir alturas táctiles de
+44 px ni eliminar información. La categoría y el estado usan disposición vertical en `md` y `lg`,
+porque sus anchos combinados pueden superar la pista compacta; desde `xl` vuelven a una fila cuando
+el espacio lo permite. Esta regla evita truncamiento o solapamiento y mantiene visibles icono y texto
+de estado, requisito necesario para no depender únicamente del color.
+
+El marco de imagen continúa usando `width: 100%`, padding lateral de 20 px, proporción 4:3 y
+`object-fit: contain`. Su `max-width: 360px` permanece como techo, mientras que la pista de grid pasa
+a determinar un ancho menor cuando corresponde. No cambian el enlace extendido, botones de ficha y
+reserva, foco, alt text, dirección completa, contratos API, modelo de datos, permisos, seguridad,
+i18n, logs, auditoría ni migraciones.
+
+### Tests y evidencia de verificación
+
+```text
+npm test -- --run src/features/public-search/public-search-results.test.tsx \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       5 passed (5)
+
+git diff --check
+Exit code: 0
+```
+
+La comprobación visual se realizó en `http://localhost:3000/explorar` con viewport de 1280 px. La
+sección de 856,8 px produjo tres pistas computadas de 277,6 px. La primera tarjeta midió igualmente
+277,6 px, frente a los 422,4 px registrados antes de esta rectificación, y el documento devolvió 0 px
+de overflow horizontal. Tras apilar los metadatos, los chips `Centro de estética` (137,3 px) y
+`Disponibilidad pendiente` (184,5 px) quedaron íntegramente dentro de la tarjeta.
+
+### Riesgos, limitaciones y deuda técnica
+
+Tres columnas con filtro lateral constituyen el mínimo de densidad aprobado para la composición
+actual. Los textos excepcionalmente largos pueden aumentar la altura, pero no el ancho, gracias a la
+disposición vertical de metadatos y a `minmax(0, 1fr)`. Si se añadiesen nuevas acciones horizontales
+o información más extensa, deberán revisarse como parte de la tarjeta compacta en vez de fijar una
+altura que pueda ocultar contenido. No se deriva ninguna tarea funcional nueva.
+
+## Rectificación funcional de las tareas 2.4, 2.11, 3.14, 9.7 y 15.10 - Onboarding del primer local
+
+- Fecha: 2026-08-02.
+- Estado: implementada y verificada mediante tests focalizados.
+
+### Objetivo técnico y diagnóstico
+
+Una cuenta empresarial registrada y autenticada puede existir antes que su primer `Venue`. El
+contrato privado ya contemplaba esta transición: `GET /api/venue/me` devuelve 404 cuando no existe
+perfil vigente y `POST /api/venue/me/profile` crea un borrador derivando propietario y cuenta
+empresarial de la sesión. Sin embargo, la ruta inicial `/panel` cargaba directamente la agenda. El
+404 opaco de reservas se presentaba como `No se encontró la agenda del local`, sin explicar que la
+cuenta era válida ni ofrecer el siguiente paso. Aunque `/panel/perfil` era navegable, esta capacidad
+quedaba oculta y parecía un rechazo de permisos.
+
+### Arquitectura y flujo implementado
+
+`VenueDashboardOverview` conserva ahora el tipo normalizado del error en estado en vez de almacenar
+el texto traducido. El flujo es:
+
+1. La cuenta autenticada abre `/panel`.
+2. El dashboard consulta la agenda privada del día.
+3. Si el API devuelve 404 por ausencia de un local vigente, el cliente clasifica el resultado como
+   `notFound`.
+4. Cuando termina la carga, se renderiza un `Surface` de onboarding con título, descripción y un
+   enlace real a `/panel/perfil`.
+5. El editor consulta en paralelo categorías y `GET /api/venue/me`; el 404 se convierte en
+   `profile = null`, no en error de carga.
+6. El formulario muestra una alerta informativa y etiqueta su submit como `Crear local`.
+7. `saveVenueProfile(payload, false)` conserva el contrato existente y envía
+   `POST /api/venue/me/profile`; tras recibir el perfil, el mismo componente pasa automáticamente al
+   modo edición y las acciones vuelven a `Guardar perfil`.
+
+Los demás errores no entran en onboarding: sesión caducada, rol insuficiente, petición inválida o API
+no disponible mantienen alerta de error. No se confía en el frontend para decidir propiedad o
+existencia; backend vuelve a derivar `ownerUserId`, consulta `BusinessAccounts` y protege concurrencia
+con el índice parcial `uqVenuesOwnerCurrent`.
+
+### Seguridad, permisos y publicación
+
+No se creó una puerta trasera, un rol especial ni una excepción condicionada por email. El
+comportamiento beneficia a cualquier cuenta `venue_business` autenticada sin local vigente, incluida
+la cuenta usada en desarrollo, y permanece sometido a las mismas reglas en todos los entornos. La
+creación produce estado `draft`; no concede publicación automática ni recepción de reservas.
+
+La publicación continúa verificando email, cuenta empresarial, categoría, traducciones, dirección,
+coordenadas e imagen. Un perfil vigente existente sigue produciendo conflicto en un segundo POST y
+la restricción física impide duplicados concurrentes. No se modificaron base de datos, migraciones,
+endpoints, cookies, CSRF, CORS, logs ni datos personales. Ningún identificador de usuario o cuenta se
+envía desde el navegador.
+
+### UI, accesibilidad e internacionalización
+
+El onboarding usa encabezado semántico `h2`, icono decorativo oculto a tecnologías de asistencia y
+un enlace con texto explícito. La acción conserva tamaño grande y foco de botón/enlace del sistema.
+El editor usa una alerta informativa accesible antes del formulario y estados verbales distintos
+para reposo y envío. Se añadieron catálogos completos ES/EN para título, descripción, CTA, creación
+y progreso; no se introdujeron textos hardcodeados en componentes.
+
+### Tests y evidencia
+
+```text
+npm test -- --run \
+  src/features/venue-dashboard/venue-dashboard-overview.test.tsx \
+  src/features/venue-profile/venue-profile-api.test.ts \
+  src/features/venue-profile/venue-profile-editor.test.tsx \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  3 passed (3)
+Tests       10 passed (10)
+
+git diff --check
+Exit code: 0
+```
+
+La cobertura nueva fuerza `VenueReservationsApiError("notFound")`, comprueba el título de onboarding,
+el enlace `/panel/perfil` y la ausencia del antiguo error genérico. El editor se prueba con categorías
+válidas y `GET /api/venue/me` en 404, acreditando la alerta y el botón `Crear local`. La cobertura API
+existente sigue verificando que `exists = false` utiliza POST y que un perfil existente utiliza
+PATCH.
+
+`npm run typecheck` se ejecutó como comprobación adicional. Falló por deuda histórica en archivos no
+modificados de administración, formulario de reserva, equipo, incidencias y reservas, principalmente
+por props antiguas de MUI y claves dinámicas de `next-intl`; no listó el dashboard ni el editor de
+perfil afectados. El lint focalizado no emitió diagnósticos antes de alcanzar el timeout de 120
+segundos, por lo que no se usa como evidencia positiva.
+
+### Riesgos y trabajo pendiente
+
+El dashboard infiere ausencia de local a partir del 404 de la agenda, cuya semántica actual es
+equivalente. Si ese endpoint incorporase otros motivos de 404, convendría exponer un contrato privado
+ligero de contexto de cuenta para distinguirlos sin inferencia. La creación inicial sigue siendo un
+formulario extenso de una sola página; dividirlo en pasos podría mejorar conversión, pero no es
+necesario para habilitar la capacidad solicitada y no genera una tarea nueva en esta rectificación.
+
+## Rectificación funcional de 0.4, 2.4, 2.11, 3.14 y 15.10 - Carga del editor en local
+
+- Fecha: 2026-08-02.
+- Estado: corregida y verificada mediante contratos HTTP y tests focalizados.
+
+### Síntoma y diagnóstico reproducible
+
+Al abrir `/panel/perfil`, `VenueProfileEditor` carga en paralelo las categorías públicas y el perfil
+privado. Cualquier excepción de transporte o parseo se normalizaba como `VenueProfileApiError` de
+tipo `unavailable`, mostrando el mensaje genérico de conexión.
+
+La comprobación directa produjo:
+
+```text
+GET http://localhost:8080/api/public/categories?locale=es -> 200 application/json
+GET http://localhost:8080/api/venue/me sin cookie          -> 401 AUTHENTICATION_REQUIRED
+```
+
+El primer cuerpo incluía categorías con identificadores reservados como
+`20000000-0000-0000-0000-000000000001`. PostgreSQL almacena y devuelve ese valor en su tipo `uuid`,
+pero `z.uuid()` de Zod 4 valida además bits RFC de versión y variante. Como el bloque estable del
+fixture no declara esos bits, la respuesta correcta fallaba en `venueCategorySchema`; el catch del
+cliente ocultaba razonablemente el detalle técnico, pero lo presentaba como fallo de conexión. El
+mismo problema habría reaparecido al validar `categoryId` antes de crear el borrador.
+
+En paralelo se reprodujo un segundo camino de fallo ya observado en el arranque local:
+
+```text
+OPTIONS /api/venue/me Origin: http://localhost:3000 -> 200
+OPTIONS /api/venue/me Origin: http://localhost:3001 -> 403 Invalid CORS request
+```
+
+Next selecciona 3001 cuando existe otro proceso en 3000. El navegador bloqueaba entonces incluso
+una respuesta válida del API y `fetch` lanzaba una excepción de red indistinguible para la UI.
+
+### Contrato UUID alineado con PostgreSQL
+
+`venue-profile-schema.ts` exporta `databaseUuidSchema`, documentado como el formato UUID real de
+persistencia. La expresión exige exactamente cinco grupos hexadecimales `8-4-4-4-12`, admite
+mayúsculas/minúsculas y no impone bits de versión o variante. Se reutiliza en:
+
+- identificadores de categorías devueltos por el endpoint público;
+- `id` y `categoryId` del perfil privado;
+- identificadores de imágenes de galería;
+- `categoryId` del payload que el formulario envía al crear o actualizar.
+
+No se relaja el backend: el request Java continúa deserializando a `UUID`, la categoría debe existir
+y estar activa, y propietario/cuenta se derivan de la sesión. Valores no hexadecimales, grupos con
+longitud incorrecta o texto adicional siguen rechazándose antes del POST.
+
+### CORS local con puertos alternativos
+
+`.env.local`, `.env.local.example` y el fallback de `application-local.yaml` definen ahora:
+
+```text
+RESERLY_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+```
+
+Spring enlaza el valor separado por coma a `List<URI>`. `SecurityConfiguration` no cambia: sigue
+transfiriendo la lista a `setAllowedOrigins`, habilita credenciales y conserva métodos y cabeceras
+cerrados. No se usa `allowedOriginPatterns` ni `*`. Los ejemplos de staging y producción no cambian
+y mantienen su único origen HTTPS. La API ya iniciada debe reiniciarse para volver a enlazar la
+variable; el frontend sí incorpora el esquema nuevo mediante recarga de desarrollo.
+
+### Seguridad, privacidad, errores e i18n
+
+No se exponen cookies, cuerpos privados, UUID de propietario ni datos empresariales. El 401 privado
+sigue distinguiéndose como sesión caducada y un 404 sigue representando ausencia editable. El error
+genérico continúa siendo adecuado para caídas reales o JSON corrupto; esta rectificación elimina dos
+falsos positivos sin publicar detalles internos al usuario. No se añaden textos visibles, logs,
+migraciones ni cambios de datos.
+
+### Tests y evidencia
+
+```text
+npm test -- --run \
+  src/features/venue-profile/venue-profile-api.test.ts \
+  src/features/venue-profile/venue-profile-schema.test.ts \
+  src/features/venue-profile/venue-profile-editor.test.tsx \
+  src/features/venue-dashboard/venue-dashboard-overview.test.tsx \
+  --testTimeout=30000 --maxWorkers=1
+Test Files  4 passed (4)
+Tests       13 passed (13)
+
+mvn -f apps/api/pom.xml "-Dtest=SecurityConfigurationTests" \
+  "-Dspotless.check.skip=true" "-Dcheckstyle.skip=true" test
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+npm run env:check
+Plantillas de entorno válidas: local, staging y producción
+
+git diff --check
+Exit code: 0
+```
+
+El test API usa ahora el identificador real `20000000-0000-0000-0000-000000000001` y acredita su
+parseo. El test de formulario confirma que puede incluirse en el payload de creación manteniendo las
+traducciones obligatorias. `SecurityConfigurationTests` comprueba que ambos orígenes locales aparecen
+en la configuración con `allowCredentials = true` y que la lista no contiene comodines.
+
+### Riesgos y deuda técnica
+
+Otros clientes web aún usan `z.uuid()` para dominios que pueden recibir bloques reservados de
+fixtures. No se cambiaron de forma masiva porque esta incidencia estaba acotada al editor y una
+relajación transversal exige revisar cada contrato; conviene consolidar `databaseUuidSchema` en un
+módulo compartido si aparecen nuevos falsos rechazos. La inferencia de indisponibilidad todavía
+agrupa transporte y parseo para no filtrar detalles, por lo que la observabilidad cliente podría
+añadir códigos internos sin PII en una tarea futura. Ninguno de estos puntos bloquea la creación del
+primer local corregida aquí.
+
+## Rectificación de 2.7 y 2.11 - Vista previa reactiva de imagen principal
+
+### Identificación, fecha y objetivo
+
+- Tareas rectificadas: `2.7. Implementar carga segura de imagen principal` y `2.11. Crear panel de
+  edición de perfil`.
+- Fecha: 2026-08-02.
+- Objetivo: hacer visible y verificable la selección de una imagen principal antes de enviarla,
+  conservando una confirmación explícita y el contrato multipart existente.
+- Requisito relacionado: `RF-009 Gestión de perfil público`.
+
+### Archivos y arquitectura aplicada
+
+- `venue-profile-editor.tsx` incorpora `selectedMainImage` como estado del `File` elegido y
+  `mainImagePreviewUrl` como URL temporal de representación. El input oculto deja de ser la fuente
+  única de verdad, por lo que React puede actualizar la imagen, el mensaje y el estado del botón.
+- `handleMainImageSelection` obtiene un único archivo JPEG/PNG del evento, limpia errores API
+  anteriores y construye la URL mediante `URL.createObjectURL`. Un efecto revoca la URL anterior
+  mediante `URL.revokeObjectURL` cuando cambia o se desmonta el componente.
+- La imagen visible se resuelve con prioridad `preview blob -> URL persistida -> estado vacío`.
+  Esto permite reemplazar visualmente una portada existente sin ocultar que el cambio sigue pendiente.
+- `handleMainImageUpload` consume el `File` reactivo. Tras `POST /api/venue/me/main-image` correcto,
+  actualiza el perfil con la respuesta validada, limpia el input y el estado temporal y deja visible
+  la URL persistida devuelta por el API. Ante error conserva archivo y preview para permitir reintento.
+- El botón de subida exige estado inactivo, perfil ya creado y archivo seleccionado. Durante el alta
+  inicial se permite inspeccionar el archivo, pero se muestra que primero debe guardarse el perfil.
+- Los catálogos `es.json` y `en.json` añaden textos para alt de preview, archivo pendiente y requisito
+  de creación previa; no se introducen textos visibles hardcodeados.
+
+### Datos, contratos, permisos y seguridad
+
+No hay cambios de modelo, migraciones, índices ni endpoints. La persistencia continúa usando un
+`FormData` con part `file` contra `POST /api/venue/me/main-image`; el navegador conserva el boundary y
+la cookie HttpOnly. La previsualización es exclusivamente local y no elude las validaciones backend de
+MIME real, tamaño, dimensiones, re-encoding, pertenencia ni autenticación. La URL `blob:` no se guarda,
+no se registra y no se expone al servidor. El mensaje usa `aria-live="polite"` y la imagen temporal
+recibe un alt localizado con el nombre seleccionado.
+
+### Errores, observabilidad y flujo de ejecución
+
+El flujo es `seleccionar -> crear preview -> confirmar -> multipart -> validar respuesta -> sustituir
+preview`. Los errores conservan la selección para no obligar a repetir una acción local; el mensaje de
+error preexistente mantiene sus códigos y traducciones. No se añaden logs porque el nombre del archivo
+puede contener información personal y el cliente no necesita telemetría para completar la operación.
+
+### Tests y evidencia de verificación
+
+`venue-profile-editor.test.tsx` añade una prueba de integración de componente que simula un PNG,
+comprueba la URL de preview y su alt, el mensaje con nombre, la habilitación del botón, el `POST` y el
+`FormData`, la sustitución por la imagen persistida, la limpieza del estado y la revocación de la URL.
+
+```text
+npm test -- --run src/features/venue-profile/venue-profile-editor.test.tsx \
+  src/features/venue-profile/venue-profile-api.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       8 passed (8)
+
+npm test -- --run src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+npm exec eslint -- src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+### Riesgos, limitaciones y deuda técnica
+
+La validación profunda sigue ocurriendo al subir, por lo que un archivo con extensión aceptada pero
+contenido inválido puede previsualizarse o fallar en el navegador antes de que el backend lo rechace;
+el API permanece como autoridad. La galería conserva su selección basada en ref y no forma parte de
+esta incidencia. No se modifica el estado de tareas: la siguiente pendiente continúa siendo `16.1`.
+
+## Rectificación de 2.8 y 2.11 - Contador reactivo de galería
+
+### Identificación, fecha y objetivo
+
+- Tareas rectificadas: `2.8. Implementar galería opcional` y `2.11. Crear panel de edición de perfil`.
+- Fecha: 2026-08-02.
+- Objetivo: mostrar de forma permanente cuántas imágenes adicionales contiene la galería privada.
+- Requisito relacionado: `RF-009 Gestión de perfil público`.
+
+### Implementación y flujo
+
+`VenueProfileEditor` renderiza bajo el encabezado de galería el mensaje localizado
+`images.loadedCount`, interpolando `gallery.length`. No se crea un contador independiente: la misma
+colección validada que renderiza las tarjetas constituye la fuente de verdad. La carga inicial asigna
+la respuesta de `GET /api/venue/me/gallery`; una subida correcta agrega y ordena el nuevo elemento; una
+eliminación correcta filtra el identificador eliminado. Cada una de esas transiciones provoca el
+renderizado inmediato del nuevo total.
+
+El texto se presenta con color secundario para mantener la jerarquía visual y `aria-live="polite"`
+para que tecnologías de asistencia anuncien cambios sin interrumpir. Los catálogos añaden
+`Imágenes cargadas: {count}` en español y `Images uploaded: {count}` en inglés. El valor cero también
+se muestra junto al estado vacío, evitando que la ausencia de tarjetas sea ambigua.
+
+### Datos, contratos, seguridad y errores
+
+No se modifican modelos, migraciones, endpoints, permisos ni payloads. El contador solo expone la
+longitud de una colección que el propietario ya puede consultar. Las operaciones fallidas no mutan
+`gallery`, por lo que tampoco alteran el total y continúan usando el manejo de errores existente.
+
+### Tests y evidencia
+
+La nueva prueba carga dos imágenes con el contrato completo, verifica `Imágenes cargadas: 2`, elimina
+una mediante la acción real del componente y comprueba la actualización a `Imágenes cargadas: 1`.
+Los tests i18n confirman que ambas variantes de locale conservan las mismas claves.
+
+```text
+npm test -- --run src/features/venue-profile/venue-profile-editor.test.tsx \
+  src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       8 passed (8)
+
+npm exec prettier -- --write src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx locales/es.json locales/en.json
+Exit code: 0
+
+npm exec eslint -- src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+### Riesgos y deuda técnica
+
+El límite máximo de ocho imágenes sigue validándose en backend y no se muestra como denominador
+porque el usuario solicitó el formato de total cargado. No se modifica el estado de tareas; `16.1`
+continúa siendo la siguiente pendiente.
+
+## Rectificación funcional de 2.8 y 2.11 - Preview y subida de galería
+
+### Identificación, fecha y objetivo
+
+- Tareas rectificadas: `2.8. Implementar galería opcional` y `2.11. Crear panel de edición de perfil`.
+- Fecha: 2026-08-02.
+- Objetivo: hacer observable y fiable el flujo desde la selección local hasta la persistencia de una
+  imagen adicional.
+- Requisito relacionado: `RF-009 Gestión de perfil público`.
+
+### Arquitectura y archivos
+
+`VenueProfileEditor` incorpora `selectedGalleryImage: File | null` y
+`galleryPreviewUrl: string | null`. `handleGalleryImageSelection` transforma el `change` del input
+oculto en estado reactivo, limpia errores API antiguos y crea la URL local mediante
+`URL.createObjectURL`. Un efecto dedicado ejecuta `URL.revokeObjectURL` en cada sustitución y al
+desmontar para no retener memoria del blob.
+
+`handleGalleryUpload` deja de consultar el archivo directamente desde el DOM y consume
+`selectedGalleryImage`, que es la misma instancia mostrada y posteriormente incluida en `FormData`.
+Mantiene la lectura normalizada de `galleryAltText`. Si falta archivo o texto alternativo, no envía y
+marca el campo requerido. Cuando `uploadGalleryImage(file, altText)` devuelve un contrato válido, el
+componente agrega y ordena la imagen por `position`, limpia `File`, URL, input y texto alternativo. Si
+la llamada falla, conserva archivo y preview para que el propietario pueda reintentar.
+
+La UI muestra una imagen 4:3 con `object-fit: contain`, ancho máximo de 480 px, alt localizado basado
+en el nombre y un aviso `aria-live="polite"`. El botón exige `submitState === idle`, perfil creado y
+archivo seleccionado. Los catálogos ES/EN documentan que la preview todavía es local y que son
+necesarios texto alternativo y confirmación.
+
+### Contratos, datos, permisos, seguridad y errores
+
+No existen cambios de base de datos, migraciones ni backend. La operación continúa siendo
+`POST /api/venue/me/gallery` con parts `file` y `altText`, cookie HttpOnly y propietario derivado de la
+sesión. MIME, bytes, dimensiones, re-encoding, límite de ocho, pertenencia y disponibilidad del
+almacenamiento siguen bajo autoridad del API. La preview no se persiste, registra ni transmite antes
+de la confirmación. Los errores existentes conservan su taxonomía y no alteran el contador.
+
+### Tests y evidencia
+
+La prueba nueva selecciona un PNG, valida URL `blob:`, alt y nombre visibles, completa el texto
+alternativo, confirma la subida y verifica URL, método `POST` y ambos parts del `FormData`. Finalmente
+acredita que aparece la tarjeta persistida, el contador sube a uno, el botón vuelve a deshabilitarse y
+la URL temporal se revoca.
+
+```text
+npm test -- --run src/features/venue-profile/venue-profile-editor.test.tsx \
+  --testTimeout=30000 --maxWorkers=1 --reporter=verbose
+Test Files  1 passed (1)
+Tests       6 passed (6)
+
+npm test -- --run src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+npm exec prettier -- --write src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx locales/es.json locales/en.json
+Exit code: 0
+
+npm exec eslint -- src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+Una primera ejecución conjunta de tres archivos de test alcanzó el timeout externo de 120 segundos
+antes de emitir resultados o fallos. Se repitieron de forma aislada los dos archivos afectados y
+ambos finalizaron correctamente; `venue-profile-api.test.ts` no se modificó.
+
+### Riesgos y deuda técnica
+
+El navegador puede no renderizar una preview de contenido corrupto aunque la extensión sea JPEG/PNG;
+el backend conserva la validación definitiva. La limitación inicial de una sola selección queda
+sustituida por la cola múltiple documentada en la rectificación siguiente. No se modifica el estado de
+tareas; `16.1` continúa siendo la siguiente pendiente.
+
+## Rectificación funcional de 2.8 y 2.11 - Cola múltiple de galería
+
+### Identificación, fecha y objetivo
+
+- Tareas rectificadas: `2.8. Implementar galería opcional` y `2.11. Crear panel de edición de perfil`.
+- Fecha: 2026-08-02.
+- Objetivo: permitir seleccionar, describir, previsualizar y cargar varias imágenes adicionales sin
+  abandonar el editor ni repetir el selector para cada una.
+- Requisito relacionado: `RF-009 Gestión de perfil público`.
+
+### Modelo cliente y componentes
+
+El estado singular `selectedGalleryImage` se sustituye por `pendingGalleryImages`, una colección de
+`PendingGalleryImage { id, file, altText }`. El identificador local procede de un contador monotónico
+del montaje y solo estabiliza claves y actualizaciones; no cruza el contrato REST. El input incorpora
+`multiple`, transforma `FileList` a array y agrega archivos hasta `MAX_GALLERY_IMAGES = 8`, descontando
+tanto `gallery.length` como los pendientes. Limpiar el valor del input permite volver a elegir el
+mismo fichero en una selección posterior.
+
+`PendingGalleryImageCard` encapsula la preview y es responsable del ciclo de vida de su URL `blob:`.
+La crea una vez mediante inicialización perezosa de estado y la revoca en el cleanup del efecto. Cada
+tarjeta muestra el nombre con wrapping seguro, un `TextField` controlado cuyo label incorpora el
+nombre del archivo y una acción para retirar el elemento. De este modo las descripciones accesibles no
+se mezclan entre archivos y eliminar una selección libera inmediatamente su recurso local.
+
+El botón de lote requiere perfil, estado inactivo, al menos un pendiente y todos los `altText`
+normalizados no vacíos. `handleGalleryUpload` itera de forma secuencial y llama al contrato unitario
+por cada elemento. Tras cada respuesta validada agrega la imagen persistida ordenada por `position` y
+retira exclusivamente el pendiente completado. La estrategia produce progreso parcial recuperable:
+si el elemento N falla, los anteriores quedan guardados y N junto con los posteriores siguen en la
+cola para reintento.
+
+### Contratos, datos, seguridad y observabilidad
+
+No se modifican backend, esquema, migraciones, permisos ni almacenamiento. Cada petición continúa
+siendo `POST /api/venue/me/gallery` con un `file` y un `altText`; la cookie HttpOnly identifica al
+propietario. El procesamiento secuencial evita carreras de posición y respeta la validación autoritativa
+del límite de ocho, MIME, dimensiones, contenido, re-encoding y tamaño. Los nombres solo se muestran
+localmente y no se registran. El aviso del número pendiente usa `aria-live="polite"`.
+
+### Internacionalización, responsive y accesibilidad
+
+La acción se renombra `Seleccionar imágenes`/`Select images`; se añaden mensajes de total pendiente,
+label individual y retirada. Las previews se distribuyen en una columna móvil y dos desde escritorio,
+con `minmax(0, 1fr)` para evitar overflow. Cada fotografía conserva `object-fit: contain` y alt derivado
+de su nombre mientras está pendiente; al persistirse usa el texto alternativo editorial.
+
+### Tests y evidencia
+
+La prueba del editor selecciona simultáneamente PNG y JPEG, verifica dos URLs y previews, confirma que
+el botón permanece deshabilitado hasta describir ambas, y valida dos `POST` secuenciales con los pares
+correctos de `file`/`altText`. Finalmente acredita dos tarjetas persistidas, contador en dos, cola
+vacía, botón deshabilitado y revocación de ambas URLs temporales.
+
+```text
+npm test -- --run src/features/venue-profile/venue-profile-editor.test.tsx \
+  src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       9 passed (9)
+
+npm exec prettier -- --write src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx locales/es.json locales/en.json
+Exit code: 0
+
+npm exec eslint -- src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+### Riesgos, límites y deuda técnica
+
+La operación no es atómica a nivel de lote porque el API solo acepta un archivo; el diseño comunica
+el progreso parcial conservando pendientes. El límite cliente reduce selecciones sobrantes sin un
+mensaje específico adicional; el contador cargado y la cota documentada continúan visibles. Una futura
+evolución podría incorporar reordenación previa del lote. No se modifica el estado de tareas; `16.1`
+continúa siendo la siguiente pendiente.
+
+## Rectificación de 2.11 - Controles estables de visibilidad de contacto
+
+### Identificación, fecha y objetivo
+
+- Tarea rectificada: `2.11. Crear panel de edición de perfil`.
+- Fecha: 2026-08-02.
+- Objetivo: eliminar la advertencia runtime de MUI y garantizar que `showEmail` y `showPhone`
+  mantienen un estado consistente durante carga, creación y actualización.
+- Requisito relacionado: `RF-009 Gestión de perfil público`.
+
+### Causa y arquitectura aplicada
+
+Los `Checkbox` se renderizaban con `defaultChecked={profile?.showEmail ?? false}` y su equivalente de
+teléfono. Aunque el formulario aparece tras la carga inicial, una cuenta sin perfil lo monta con
+`false`; después de `POST /api/venue/me`, `profile` pasa a contener los flags devueltos y MUI observa
+que ha cambiado el valor por defecto de un `SwitchBase` ya inicializado. React no considera
+`defaultChecked` una fuente reactiva, por lo que MUI emitía la advertencia y el estado visible podía
+divergir del perfil.
+
+`VenueProfileEditor` incorpora ahora `showEmail` y `showPhone`, inicializados siempre como booleanos.
+El flujo `load` los asigna desde `nextProfile` o `false` cuando no existe; `handleSave` vuelve a
+sincronizarlos desde la respuesta canónica. Cada `Checkbox` recibe `checked` y actualiza su estado con
+`onChange(event.target.checked)`. Se conserva el atributo `name`, de modo que `FormData` sigue
+incluyendo `on` solo cuando corresponde y `parseVenueProfileForm` genera los booleanos existentes sin
+cambios contractuales.
+
+### Datos, API, permisos, seguridad e i18n
+
+No hay cambios en modelo, migraciones, DTO, endpoint, permisos ni textos. Los flags continúan viajando
+en `POST/PATCH /api/venue/me/profile` y controlan exclusivamente la proyección pública de datos de
+contacto. La corrección no expone valores nuevos ni altera la autoridad del backend.
+
+### Tests y evidencia
+
+La prueba nueva parte de `GET profile -> 404`, monta ambos checkboxes desmarcados, introduce el nombre,
+activa correo y teléfono y crea el local. Verifica que el payload contiene ambos flags en `true`, que
+los controles permanecen marcados tras recibir el perfil y que `console.error` no contiene la
+advertencia `changing the default checked state of an uncontrolled SwitchBase`.
+
+```text
+npm test -- --run src/features/venue-profile/venue-profile-editor.test.tsx \
+  --testTimeout=30000 --maxWorkers=1 --reporter=verbose
+Test Files  1 passed (1)
+Tests       7 passed (7)
+
+npm exec prettier -- --write src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx
+Exit code: 0
+
+npm exec eslint -- src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+### Riesgos y deuda técnica
+
+Los demás campos usan valores iniciales no controlados, pero no emplean `SwitchBase` ni cambian su
+semántica controlada durante este recorrido. Si en el futuro necesitan reflejar actualizaciones
+remotas en vivo, deberán migrarse deliberadamente a estado controlado. No se modifica el estado de
+tareas; `16.1` continúa siendo la siguiente pendiente.
+
+## Rectificación de 2.9 y 2.11 - Confirmación visible de publicación
+
+### Identificación, fecha y objetivo
+
+- Tareas rectificadas: `2.9. Implementar publicación de local` y `2.11. Crear panel de edición de
+  perfil`.
+- Fecha: 2026-08-02.
+- Objetivo: cerrar el flujo editorial con feedback inequívoco y una navegación voluntaria al inicio.
+- Requisito relacionado: `RF-009 Gestión de perfil público`.
+
+### Estado y flujo de interfaz
+
+`VenueProfileEditor` incorpora `publishedSuccessfully`, separado de `saved`. Antes de publicar se
+limpian ambos indicadores. Solo cuando `publishVenueProfile()` resuelve y su respuesta supera el
+esquema `VenueProfile`, se actualiza el perfil y se activa el éxito de publicación; ya no se reutiliza
+el mensaje genérico `Cambios guardados correctamente`. Al iniciar un guardado se limpia el estado para
+evitar que sobreviva a ediciones posteriores.
+
+El resultado se renderiza como `Alert severity="success"` con una región `aria-live="polite"`, texto
+localizado y un `Button` compuesto con `NavigationLink` hacia `/`. No existe redirección automática:
+el usuario conserva el contexto y activa el enlace cuando quiere comprobar la portada. Los catálogos
+ES/EN añaden `status.published` y `actions.viewHome` con paridad de claves.
+
+### Contratos, seguridad, errores y datos
+
+No cambian endpoint, payload, modelo, migraciones, permisos ni caché. La confirmación depende de
+`POST /api/venue/me/publish` y nunca se infiere optimistamente. Un error conserva `false`; el rechazo
+`VENUE_PUBLICATION_REJECTED` sigue mostrando sus requisitos y no presenta el CTA público. El enlace
+apunta a una ruta interna conocida y no incorpora slug, entrada del usuario ni datos sensibles.
+
+### Tests y evidencia
+
+La nueva prueba simula una respuesta con `status=published`, pulsa `Publicar local` y verifica el texto
+completo, el rol de enlace, `href="/"` y ausencia del mensaje ordinario de guardado. La prueba negativa
+de publicación rechazada se amplía para asegurar que el texto de éxito no está en el documento.
+
+```text
+npm test -- --run src/features/venue-profile/venue-profile-editor.test.tsx \
+  src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       11 passed (11)
+
+npm exec prettier -- --write src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx locales/es.json locales/en.json
+Exit code: 0
+
+npm exec eslint -- src/features/venue-profile/venue-profile-editor.tsx \
+  src/features/venue-profile/venue-profile-editor.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+### Riesgos y deuda técnica
+
+La presencia inmediata en los bloques de inicio depende de la consulta pública y de su política de
+ordenación; el mensaje afirma que el local puede observarse desde inicio, no que ocupará una posición
+concreta. Si se introduce caché de descubrimiento, deberá definirse invalidación de publicación. No se
+modifica el estado de tareas; `16.1` continúa siendo la siguiente pendiente.
+
+## Tareas 4.15 y 9.11 - Espacio profesional de reservas y excepciones por rango
+
+### Identificación, fecha y objetivo
+
+- Tareas completadas: `4.15. Implementar gestión profesional de festivos, días libres y
+  excepciones por rango de fechas desde el panel privado` y `9.11. Unificar agenda, calendario,
+  horarios, excepciones y franjas en el espacio profesional de Reservas`.
+- Fecha: 2026-08-02.
+- Objetivo: convertir la sección Reservas en el centro operativo del local y cubrir situaciones con
+  rango horario o de día completo, individualmente o por intervalo.
+- Requisitos: `RF-008`, `RF-010`, `RF-011`, `RF-012`, `RF-018`, `RNF-002` y `RNF-007`.
+
+### Archivos creados y modificados
+
+- Nuevos `venue-reservations-workspace.tsx` y `venue-reservations-workspace.test.tsx`.
+- Modificados `app/panel/reservas/page.tsx`, `venue-availability-manager.tsx` y
+  `availability-ui.test.tsx`.
+- Ampliados `locales/es.json` y `locales/en.json`.
+- Actualizados `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+- No se eliminan archivos y no se modifica `/panel/calendario`, que permanece como acceso compatible.
+
+### Arquitectura del espacio unificado
+
+`VenueReservationsWorkspace` es un componente cliente que compone, sin duplicarlos, tres módulos:
+
+1. `VenueReservationsDashboard`: agenda diaria, métricas, refresco automático, listado y acceso a
+   detalle, asistencia, cancelación e incidencias.
+2. `VenueInternalCalendar`: semana operativa, estados diarios, franjas, bloqueos y capacidad.
+3. `VenueAvailabilityManager`: horario semanal, excepciones, franjas manuales, generación automática,
+   capacidad, bloqueos y la nueva operación de rango.
+
+El workspace usa tabs scrollables con roles, IDs, `aria-controls` y paneles asociados. Solo monta la
+agenda al entrar; cada herramienta adicional se monta al visitarla y luego permanece en DOM bajo
+`hidden`. Esta estrategia evita coste inicial de las consultas semanales, pero conserva selecciones y
+ediciones no guardadas al alternar. `initialDate` procede del `searchParam` ya validado y se propaga a
+los tres módulos. La página y metadatos ES/EN pasan de agenda diaria a gestión profesional.
+
+### Modelo y flujo de excepciones por rango
+
+El estado `range` contiene `startsOn`, `endsOn`, `operation` y `reason`. `RangeOperation` es un tipo
+cerrado con:
+
+- `closed` -> `{ closed: true, reservationsEnabled: false }`;
+- `reservations_disabled` -> `{ closed: false, reservationsEnabled: false }`;
+- `restore_weekly` -> `{ closed: false, reservationsEnabled: true, reason: null }`.
+
+`buildDateRange` valida formato `YYYY-MM-DD`, parseo real mediante round-trip ISO, orden e intervalo
+inclusivo máximo de 366 días. Opera en UTC y suma milisegundos de día fijo, evitando desfases DST de
+`Europe/Madrid`. La UI muestra el total antes de aplicar, bloquea rangos inválidos y limita el motivo a
+500 caracteres conforme al DTO.
+
+`persistRange` ejecuta las fechas en orden con `saveAvailabilityDay`. El contrato actual es unitario,
+por lo que no se finge atomicidad de lote. Cada `PUT /api/venue/me/availability-days` bloquea el local,
+crea/actualiza `AvailabilityBlock` o elimina la excepción, y marca/reabre franjas mediante el servicio
+existente. Repetir un rango tras un fallo parcial es idempotente. Si la fecha activa pertenece al
+intervalo completado, `loadDay` reconcilia excepción y franjas con backend.
+
+### Modelo de datos, contratos, permisos y seguridad
+
+No hay migraciones ni cambios de entidades. Se reutilizan `VenueOpeningHours`, `AvailabilityBlocks`,
+`TimeSlots` y `Reservations`, con sus restricciones, locks y ownership existentes. Todas las llamadas
+viajan a `/api/venue/me/**` con cookie HttpOnly y rol `venue_owner`; la UI nunca acepta `venueId` ni
+propietario. El motivo es interno y no aparece en endpoints públicos.
+
+Los cierres impiden demanda nueva, pero no cancelan reservas confirmadas ni reducen capacidad ocupada.
+La advertencia visible dirige al propietario a revisar Agenda. Cualquier cancelación continúa usando
+el flujo específico con motivo, auditoría, liberación de capacidad y notificación por email.
+
+### Errores, observabilidad, responsive e i18n
+
+El rango reutiliza `runMutation`: deshabilita operaciones concurrentes, limpia avisos anteriores y
+traduce `AvailabilityApiError` a las categorías cerradas existentes. Una operación parcial puede
+completarse hasta la primera fecha fallida; no se registran motivos ni datos de clientes en frontend.
+La cuadrícula usa una columna en móvil y tres desde `md`; las tabs permiten scroll horizontal. Todos
+los textos nuevos tienen equivalentes ES/EN y pluralización ICU.
+
+### Tests y evidencia de verificación
+
+`venue-reservations-workspace.test.tsx` verifica las tres tabs, propagación de fecha, montaje bajo
+demanda y conservación oculta de una vista visitada. `availability-ui.test.tsx` aplica un rango de tres
+días, comprueba las tres fechas inclusivas, flags de cierre y motivo, y valida el aviso final. También
+se cerró correctamente un menú MUI abierto en una prueba pública previa para mantener aislamiento.
+
+```text
+npm test -- --run \
+  src/features/venue-reservations/venue-reservations-workspace.test.tsx \
+  src/features/availability/availability-ui.test.tsx \
+  src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  3 passed (3)
+Tests       10 passed (10)
+
+npm exec prettier -- --write \
+  src/app/panel/reservas/page.tsx \
+  src/features/venue-reservations/venue-reservations-workspace.tsx \
+  src/features/venue-reservations/venue-reservations-workspace.test.tsx \
+  src/features/availability/venue-availability-manager.tsx \
+  src/features/availability/availability-ui.test.tsx locales/es.json locales/en.json
+Exit code: 0
+
+npm exec eslint -- src/app/panel/reservas/page.tsx \
+  src/features/venue-reservations/venue-reservations-workspace.tsx \
+  src/features/venue-reservations/venue-reservations-workspace.test.tsx \
+  src/features/availability/venue-availability-manager.tsx \
+  src/features/availability/availability-ui.test.tsx --max-warnings=0
+Exit code: 0
+
+git diff --check
+Exit code: 0
+```
+
+### Riesgos, limitaciones y deuda técnica
+
+El lote no es transaccional entre fechas porque no existe endpoint bulk; una evolución con alta carga
+debería añadir contrato batch idempotente y resumen de éxitos/fallos. Los festivos se configuran como
+fechas o rangos concretos, no como recurrencia anual automática ni calendario oficial externo, que
+continúa fuera del MVP. La vista semanal consulta siete endpoints y la operación de rango hasta 366;
+un endpoint agregado reduciría latencia futura. Estas limitaciones no bloquean fechas, festivos, días
+libres, cierre sin horas ni gestión de franjas solicitados. La siguiente tarea pendiente continúa
+siendo `16.1`.
+
+## Tarea 4.16 - Asistente de primera configuración de reservas
+
+### Identificación, fecha y objetivo
+
+- Tarea completada: `4.16. Crear asistente de primera configuración de reservas y generar el
+  calendario inicial del local`.
+- Fecha: 2026-08-02.
+- Objetivo técnico: distinguir de forma persistente un calendario aún no configurado, recopilar las
+  seis decisiones operativas mínimas y materializar una primera semana más sus franjas iniciales.
+- Requisitos relacionados: `RF-010`, `RF-011`, `RF-012`, `RF-018`, `RNF-006` y `RNF-007`.
+
+### Archivos y componentes
+
+- Nuevo `venue-availability-setup-wizard.tsx`, componente cliente responsable únicamente del alta
+  inicial y documentado con entradas, salida y efectos persistentes.
+- `venue-availability-manager.tsx` detecta el snapshot vacío, transiciona al editor y puede incluir
+  `VenueInternalCalendar` mediante `includeCalendar`.
+- `/panel/calendario/page.tsx` delega la composición al manager para no renderizar un calendario
+  vacío antes del asistente.
+- `availability-ui.test.tsx` cubre detección, seis controles, snapshot y generación inicial.
+- Catálogos ES/EN amplían `Availability.private.setup` y los avisos posteriores al guardado.
+
+### Detección y flujo de ejecución
+
+`GET /api/venue/me/opening-hours` ya devuelve las filas reales propias. Un array vacío significa que
+el propietario todavía no ha reemplazado el snapshot; siete elementos significan que el backend ya
+aceptó una versión completa. Esta decisión evita nuevas columnas, cookies, `localStorage` y estados
+que pudieran contradecir la base de datos.
+
+Mientras carga se muestra un estado accesible. Si el resultado está vacío, el manager solo monta
+`VenueAvailabilitySetupWizard`. El asistente mantiene `openDays`, `weeklyClosedDay`,
+`holidayMode`, `specialDaysMode`, un mapa de turnos, duración y capacidad. El selector múltiple de
+días abiertos y los cinco selectores restantes proporcionan las seis respuestas solicitadas. La
+selección de cierre sincroniza el conjunto de días abiertos para no crear estados contradictorios.
+
+`buildSchedule` produce siempre siete `OpeningHourInput`. Los días cerrados llevan horas nulas y
+reservas desactivadas; los abiertos llevan reservas activas y uno de cuatro rangos predefinidos. La
+primera mutación es `PUT /api/venue/me/opening-hours`, cuyo servicio valida los siete días, orden,
+horas y cierre dentro de una transacción con lock del local.
+
+Las fechas festivas opcionales se validan como ISO real, se ordenan, no se duplican y se guardan con
+`PUT /api/venue/me/availability-days`, cierre completo y motivo interno localizado. Si existe
+duración, `buildDates` crea en UTC un horizonte inclusivo de 28 fechas desde `initialDate`; se
+eliminan días semanales cerrados y festivos, y cada fecha restante usa
+`POST /api/venue/me/time-slots/generate`. El backend vuelve a validar horario, excepción, solapes,
+duración entre 5 y 480 minutos y capacidad positiva. El contador final suma las franjas confirmadas
+por las respuestas del servidor.
+
+Al completarse, el callback instala el snapshot devuelto, reconcilia el día activo y cambia sin
+recarga al calendario/editor. En visitas posteriores, la existencia de filas evita el asistente. El
+editor conserva horario semanal, excepción concreta, rangos de hasta 366 días, franjas manuales o
+automáticas, capacidad, bloqueo y reapertura.
+
+### Seguridad, errores, accesibilidad, responsive e i18n
+
+No se acepta `venueId`: todas las mutaciones continúan bajo `/api/venue/me/**`, cookie HttpOnly y rol
+`venue_owner`. Las fechas se calculan en UTC para evitar DST. La UI deshabilita el guardado sin días
+abiertos, la capacidad cuando se elige “sin rangos” y la inserción de festivos inválidos o repetidos.
+Cada pregunta tiene encabezado numerado y control etiquetado; los selects son navegables por teclado,
+las agrupaciones se apilan en móvil y usan dos columnas desde `md`. Todo texto visible existe en ES
+y EN con pluralización ICU.
+
+El flujo reutiliza contratos unitarios y no afirma atomicidad global: si falla una operación
+posterior, horario, festivos o franjas anteriores pueden permanecer guardados. El error explica que
+los cambios confirmados se conservan. Un endpoint bulk idempotente y transaccional es deuda técnica
+para eliminar estados parciales y reducir hasta 29 viajes HTTP iniciales.
+
+### Tests y evidencia
+
+La prueba nueva simula horario vacío, verifica que aparezcan los seis desplegables, guarda el
+snapshot completo por defecto (lunes a sábado `09:00–20:00`, domingo cerrado), acredita 24 fechas
+abiertas dentro de cuatro semanas y comprueba la transición al editor con mensaje de éxito.
+
+```text
+npm test -- --run src/features/availability/availability-ui.test.tsx \
+  src/i18n/messages.test.ts --testTimeout=30000 --maxWorkers=1
+Test Files  2 passed (2)
+Tests       10 passed (10)
+
+npm exec eslint -- src/features/availability/venue-availability-setup-wizard.tsx \
+  src/features/availability/venue-availability-manager.tsx \
+  src/app/panel/calendario/page.tsx --max-warnings=0
+Exit code: 0
+
+npm run typecheck
+Resultado: sin diagnósticos en los archivos de esta tarea; exit code 2 por errores históricos de
+MUI e i18n en administración, formularios, equipo, incidencias y reservas.
+```
+
+### Riesgos y evolución
+
+La generación inicial cubre 28 días, no es una regla recurrente persistida. Pasado el horizonte, el
+propietario puede generar nuevas fechas desde el editor; una evolución deberá persistir reglas y
+materializarlas mediante job. Los festivos son fechas explícitas y no se importan desde calendarios
+oficiales. No se crean ni cancelan reservas confirmadas durante el alta. La siguiente tarea pendiente
+por orden sigue siendo `16.1`.

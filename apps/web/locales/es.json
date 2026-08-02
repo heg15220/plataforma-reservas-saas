@@ -156,7 +156,9 @@
       "viewMap": "Ver en mapa"
     },
     "card": {
-      "imageAlt": "Imagen de {name}"
+      "closed": "Cerrado",
+      "imageAlt": "Imagen de {name}",
+      "open": "Abierto"
     },
     "discovery": {
       "empty": "Explora las categorías para encontrar locales disponibles.",
@@ -560,6 +562,62 @@
         "summary": "Configura cuándo abre el local, aplica excepciones por fecha y gestiona cada franja."
       },
       "loading": "Cargando disponibilidad",
+      "setup": {
+        "badge": "Configuración inicial",
+        "title": "Crea la primera versión de tus reservas",
+        "description": "Responde estas seis preguntas. Prepararemos el horario semanal, los festivos y las primeras franjas del calendario.",
+        "versionNotice": "Este asistente solo aparece antes del primer guardado. Después podrás modificar cada día, rango, horario y franja desde el editor profesional.",
+        "questions": {
+          "openDays": "¿Qué días de la semana abre el local?",
+          "closedDay": "¿Qué día de la semana cierra habitualmente, si lo hay?",
+          "holidays": "¿Qué días festivos se libran?",
+          "specialDays": "¿Hay días abiertos solo de mañana, tarde o noche?",
+          "duration": "¿Qué duración tendrá cada reserva?",
+          "capacity": "¿Cuántas personas se admiten como máximo en cada rango?"
+        },
+        "fields": {
+          "openDays": "Días abiertos",
+          "closedDay": "Día habitual de cierre",
+          "holidays": "Política inicial de festivos",
+          "holidayDate": "Fecha festiva",
+          "specialDays": "Horario distinto según el día",
+          "duration": "Rango horario por reserva",
+          "capacity": "Personas máximas por rango"
+        },
+        "weekdays": {
+          "1": "Lunes",
+          "2": "Martes",
+          "3": "Miércoles",
+          "4": "Jueves",
+          "5": "Viernes",
+          "6": "Sábado",
+          "7": "Domingo"
+        },
+        "options": {
+          "noFixedClosedDay": "No hay un día fijo de cierre",
+          "noHolidays": "No añadir festivos ahora",
+          "chooseHolidayDates": "Elegir fechas festivas concretas",
+          "sameSchedule": "No, todos los días usan el horario completo",
+          "configureShifts": "Sí, configurar la jornada de cada día",
+          "noTimeSlots": "Sin rangos: gestionar solo por día",
+          "minutes": "{minutes} minutos por reserva",
+          "people": "{count, plural, one {# persona} other {# personas}}"
+        },
+        "shifts": {
+          "full": "Horario completo · 09:00–20:00",
+          "morning": "Solo mañana · 09:00–14:00",
+          "afternoon": "Solo tarde · 14:00–20:00",
+          "night": "Solo noche · 20:00–23:59"
+        },
+        "actions": {
+          "addHoliday": "Añadir festivo",
+          "saving": "Creando primera versión…",
+          "create": "Guardar y crear primera versión"
+        },
+        "generationNotice": "Si eliges rangos horarios, se generarán franjas para los próximos {days} días. Los días cerrados y festivos se omitirán.",
+        "holidayReason": "Festivo configurado en la primera versión",
+        "error": "No se ha podido completar la primera versión. Revisa las respuestas y vuelve a intentarlo. Los cambios ya guardados se conservarán."
+      },
       "weekdays": {
         "1": "Lunes",
         "2": "Martes",
@@ -586,6 +644,23 @@
         "reason": "Motivo interno opcional",
         "weeklySource": "Horario semanal",
         "exceptionSource": "Excepción activa"
+      },
+      "range": {
+        "title": "Festivos, días libres y rangos",
+        "description": "Aplica un cierre, pausa nuevas reservas o restaura el horario semanal en varias fechas consecutivas.",
+        "reservationWarning": "Los cambios bloquean nuevas reservas, pero no cancelan las ya confirmadas. Revísalas en la agenda si el rango afecta a clientes.",
+        "startsOn": "Fecha inicial",
+        "endsOn": "Fecha final",
+        "operation": "Acción del rango",
+        "operations": {
+          "closed": "Cerrar todo el día",
+          "reservationsDisabled": "Mantener abierto sin nuevas reservas",
+          "restoreWeekly": "Restaurar horario semanal"
+        },
+        "reason": "Motivo interno",
+        "reasonHelper": "Por ejemplo: festivo local, vacaciones, mantenimiento o evento privado. Máximo 500 caracteres.",
+        "summary": "Se actualizarán {count, plural, one {# fecha} other {# fechas}}.",
+        "invalid": "El intervalo debe tener fechas válidas, estar ordenado y no superar 366 días."
       },
       "internalCalendar": {
         "title": "Vista interna de calendario",
@@ -614,6 +689,7 @@
       "automatic": {
         "title": "Generar franjas",
         "duration": "Duración",
+        "minutes": "{minutes} minutos",
         "minutes30": "30 minutos",
         "minutes60": "1 hora",
         "minutes90": "1 hora y 30 minutos"
@@ -624,7 +700,8 @@
         "description": "Disponibilidad configurada para {date}.",
         "empty": "Todavía no hay franjas para esta fecha.",
         "automatic": "Generada automáticamente",
-        "manual": "Creada manualmente"
+        "manual": "Creada manualmente",
+        "clearConfirm": "¿Quieres quitar todas las franjas del {date}? Esta acción no puede deshacerse y se bloqueará si alguna franja tiene reservas asociadas."
       },
       "slotStatus": {
         "available": "Disponible",
@@ -634,19 +711,25 @@
       "actions": {
         "saving": "Guardando",
         "saveSchedule": "Guardar horario semanal",
-        "saveDay": "Guardar excepci?n",
+        "saveDay": "Guardar excepción",
+        "applyRange": "Aplicar a {count, plural, one {# fecha} other {# fechas}}",
         "createSlot": "Crear franja",
         "generateSlots": "Generar franjas",
+        "clearSlots": "Quitar todas las franjas",
         "refresh": "Actualizar",
         "saveCapacity": "Guardar capacidad",
         "block": "Bloquear",
         "reopen": "Reabrir"
       },
       "notices": {
+        "setupSaved": "La primera versión se ha creado correctamente con {count, plural, one {# franja} other {# franjas}}.",
+        "setupEditable": "La configuración inicial ya está activa. Desde ahora puedes editar libremente días, rangos, horarios, festivos y capacidad.",
         "scheduleSaved": "El horario semanal se ha guardado.",
         "daySaved": "La configuración del día se ha guardado.",
+        "rangeSaved": "Se han actualizado {count, plural, one {# fecha} other {# fechas}} correctamente.",
         "slotCreated": "La franja se ha creado.",
         "slotsGenerated": "Las franjas se han generado.",
+        "slotsCleared": "Se han quitado todas las franjas del día.",
         "capacitySaved": "La capacidad se ha actualizado.",
         "slotBlocked": "La franja se ha bloqueado.",
         "slotReopened": "La franja vuelve a estar disponible."
@@ -656,6 +739,7 @@
         "forbidden": "Tu cuenta no tiene permiso para gestionar este local.",
         "notFound": "No existe un perfil de local activo para esta cuenta.",
         "conflict": "La operación entra en conflicto con otra franja o con un cambio reciente.",
+        "referenced": "No se pueden quitar estas franjas porque alguna tiene reservas asociadas. Puedes bloquearlas para impedir nuevas reservas sin perder el historial.",
         "invalid": "La configuración no es válida. Revisa horarios, capacidad y estado del día.",
         "unavailable": "No podemos conectar con el servicio de disponibilidad en este momento."
       }
@@ -755,18 +839,22 @@
   },
   "VenueProfileEditor": {
     "actions": {
-      "chooseGalleryImage": "Seleccionar imagen",
+      "chooseGalleryImage": "Seleccionar imágenes",
       "chooseMainImage": "Seleccionar imagen principal",
+      "create": "Crear local",
+      "creating": "Creando local",
       "deleteGalleryImage": "Eliminar imagen",
       "goToAccess": "Ir al acceso de locales",
       "publish": "Publicar local",
       "publishing": "Publicando",
+      "removePendingGalleryImage": "Quitar de la selección",
       "retry": "Volver a intentarlo",
       "save": "Guardar perfil",
       "saving": "Guardando",
       "uploadGalleryImage": "Subir a galería",
       "uploadMainImage": "Subir imagen principal",
-      "uploading": "Subiendo"
+      "uploading": "Subiendo",
+      "viewHome": "Ver en la página de inicio"
     },
     "errors": {
       "api": {
@@ -813,7 +901,8 @@
       },
       "galleryAltText": {
         "helper": "Describe la imagen para accesibilidad. Máximo 300 caracteres.",
-        "label": "Texto alternativo"
+        "label": "Texto alternativo",
+        "labelFor": "Texto alternativo para {name}"
       },
       "latitude": {
         "label": "Latitud"
@@ -860,8 +949,15 @@
       "title": "Perfil público"
     },
     "images": {
+      "createBeforeUpload": "Crea primero el perfil del local para habilitar la subida.",
+      "galleryPreviewAlt": "Vista previa de la imagen de galería {name}",
+      "loadedCount": "Imágenes cargadas: {count}",
       "noGallery": "Aún no hay imágenes adicionales en la galería.",
-      "noMainImage": "Aún no has subido una imagen principal. Es obligatoria para publicar."
+      "noMainImage": "Aún no has subido una imagen principal. Es obligatoria para publicar.",
+      "pendingGalleryImage": "Archivo seleccionado: {name}. Añade el texto alternativo y pulsa Subir a galería para guardarlo.",
+      "pendingGalleryCount": "Imágenes seleccionadas pendientes de subir: {count}. Completa el texto alternativo de cada una.",
+      "pendingMainImage": "Archivo seleccionado: {name}. Esta vista previa es local; pulsa Subir imagen principal para guardarla.",
+      "previewAlt": "Vista previa de {name}"
     },
     "loading": "Cargando el perfil del local…",
     "locales": {
@@ -887,6 +983,11 @@
       "MAIN_IMAGE_MISSING": "Sube una imagen principal.",
       "MINIMUM_ADDRESS_MISSING": "Completa dirección, ciudad y país."
     },
+    "status": {
+      "createFirstVenue": "Tu cuenta todavía no tiene un local. Completa los datos y pulsa Crear local para guardar el primer borrador.",
+      "published": "Tu local se ha publicado correctamente. Ya puedes verlo desde la página de inicio.",
+      "saved": "Cambios guardados correctamente."
+    },
     "sections": {
       "contact": {
         "body": "Decide qué datos de contacto se mostrarán públicamente.",
@@ -911,9 +1012,6 @@
         "body": "La publicación requiere descripción en español e inglés; el resto puede quedar vacío.",
         "title": "Textos localizados"
       }
-    },
-    "status": {
-      "saved": "Cambios guardados correctamente."
     }
   },
   "PanelPreview": {
@@ -1327,6 +1425,11 @@
       "summary": "Revisa la agenda, las personas previstas y las incidencias de hoy desde un único punto."
     },
     "loading": "Cargando resumen del día",
+    "onboarding": {
+      "title": "Crea tu primer local",
+      "description": "Tu cuenta está lista. Completa el perfil del local para configurar sus datos, imágenes y publicación.",
+      "action": "Crear mi local"
+    },
     "today": { "title": "Actividad de hoy" },
     "actions": {
       "refresh": "Actualizar resumen",
@@ -1362,13 +1465,19 @@
   },
   "VenueReservations": {
     "metadata": {
-      "title": "Reservas del día | Reserly",
-      "description": "Consulta y gestiona las reservas recibidas por tu local."
+      "title": "Gestión de reservas | Reserly",
+      "description": "Gestiona agenda, calendario, horarios, festivos, franjas y reservas de tu local."
     },
     "hero": {
-      "eyebrow": "Agenda del local",
-      "title": "Reservas del día",
-      "summary": "Consulta quién viene hoy y abre cada reserva para revisar todos sus detalles."
+      "eyebrow": "Operaciones del local",
+      "title": "Gestión profesional de reservas",
+      "summary": "Controla agenda, calendario, festivos, días libres, horarios, franjas y disponibilidad desde un único espacio."
+    },
+    "workspace": {
+      "label": "Herramientas de gestión de reservas",
+      "agenda": "Agenda y reservas",
+      "calendar": "Calendario",
+      "availability": "Horarios y disponibilidad"
     },
     "loading": "Cargando reservas",
     "filters": {

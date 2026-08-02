@@ -58,6 +58,8 @@ class VenuePublicSearchServiceTests {
     assertThat(response.results().get(0).descriptionExcerpt()).isEqualTo("Seasonal cuisine");
     assertThat(response.results().get(0).mainImageUrl())
         .isEqualTo("/api/public/venue-images/id/main");
+    assertThat(response.results().get(0).address()).isEqualTo("Calle Mayor, 1");
+    assertThat(response.results().get(0).postalCode()).isEqualTo("28013");
     assertThat(response.results().get(0).city()).isEqualTo("Madrid");
     assertThat(response.results().get(0).statusCode()).isEqualTo("availability_pending");
     assertThat(response.results().get(0).statusLabel()).isEqualTo("Availability pending");
@@ -373,6 +375,7 @@ class VenuePublicSearchServiceTests {
                 SupportedLocale.EN, "Seasonal cuisine")));
     venue.setMainImageUrl("/api/public/venue-images/id/main");
     venue.setAddress("Calle Mayor, 1");
+    venue.setPostalCode("28013");
     venue.setCity("Madrid");
     venue.setProvince("Madrid");
     venue.setCountry("ES");

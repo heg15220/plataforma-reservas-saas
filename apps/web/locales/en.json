@@ -156,7 +156,9 @@
       "viewMap": "View on map"
     },
     "card": {
-      "imageAlt": "Image of {name}"
+      "closed": "Closed",
+      "imageAlt": "Image of {name}",
+      "open": "Open"
     },
     "discovery": {
       "empty": "Explore the categories to find available venues.",
@@ -560,6 +562,62 @@
         "summary": "Set opening times, apply date exceptions and manage each time slot."
       },
       "loading": "Loading availability",
+      "setup": {
+        "badge": "Initial setup",
+        "title": "Create the first version of your bookings",
+        "description": "Answer these six questions. We will prepare the weekly schedule, holidays and the first calendar time slots.",
+        "versionNotice": "This wizard only appears before the first save. Afterwards you can change every day, range, schedule and time slot in the professional editor.",
+        "questions": {
+          "openDays": "Which days of the week is the venue open?",
+          "closedDay": "Which day does the venue usually close, if any?",
+          "holidays": "Which public holidays are taken off?",
+          "specialDays": "Are any days open only in the morning, afternoon or evening?",
+          "duration": "How long will each booking last?",
+          "capacity": "What is the maximum number of people in each time range?"
+        },
+        "fields": {
+          "openDays": "Open days",
+          "closedDay": "Usual closing day",
+          "holidays": "Initial holiday policy",
+          "holidayDate": "Holiday date",
+          "specialDays": "Different schedule by day",
+          "duration": "Time range per booking",
+          "capacity": "Maximum people per range"
+        },
+        "weekdays": {
+          "1": "Monday",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday",
+          "7": "Sunday"
+        },
+        "options": {
+          "noFixedClosedDay": "There is no fixed closing day",
+          "noHolidays": "Do not add holidays now",
+          "chooseHolidayDates": "Choose specific holiday dates",
+          "sameSchedule": "No, every day uses the full schedule",
+          "configureShifts": "Yes, configure each day's shift",
+          "noTimeSlots": "No ranges: manage whole days only",
+          "minutes": "{minutes} minutes per booking",
+          "people": "{count, plural, one {# person} other {# people}}"
+        },
+        "shifts": {
+          "full": "Full schedule · 09:00–20:00",
+          "morning": "Morning only · 09:00–14:00",
+          "afternoon": "Afternoon only · 14:00–20:00",
+          "night": "Evening only · 20:00–23:59"
+        },
+        "actions": {
+          "addHoliday": "Add holiday",
+          "saving": "Creating first version…",
+          "create": "Save and create first version"
+        },
+        "generationNotice": "If you choose time ranges, slots will be generated for the next {days} days. Closed days and holidays will be skipped.",
+        "holidayReason": "Holiday configured in the first version",
+        "error": "The first version could not be completed. Review the answers and try again. Changes already saved will be preserved."
+      },
       "weekdays": {
         "1": "Monday",
         "2": "Tuesday",
@@ -586,6 +644,23 @@
         "reason": "Optional internal reason",
         "weeklySource": "Weekly schedule",
         "exceptionSource": "Active exception"
+      },
+      "range": {
+        "title": "Holidays, time off and date ranges",
+        "description": "Close, pause new bookings or restore the weekly schedule across consecutive dates.",
+        "reservationWarning": "Changes block new bookings but do not cancel confirmed ones. Review the agenda when the range affects customers.",
+        "startsOn": "Start date",
+        "endsOn": "End date",
+        "operation": "Range action",
+        "operations": {
+          "closed": "Close the full day",
+          "reservationsDisabled": "Stay open without new bookings",
+          "restoreWeekly": "Restore weekly schedule"
+        },
+        "reason": "Internal reason",
+        "reasonHelper": "For example: public holiday, annual leave, maintenance or private event. Maximum 500 characters.",
+        "summary": "{count, plural, one {# date will be updated} other {# dates will be updated}}.",
+        "invalid": "The range must contain valid ordered dates and cannot exceed 366 days."
       },
       "internalCalendar": {
         "title": "Internal calendar view",
@@ -614,6 +689,7 @@
       "automatic": {
         "title": "Generate time slots",
         "duration": "Duration",
+        "minutes": "{minutes} minutes",
         "minutes30": "30 minutes",
         "minutes60": "1 hour",
         "minutes90": "1 hour 30 minutes"
@@ -624,7 +700,8 @@
         "description": "Availability configured for {date}.",
         "empty": "There are no time slots for this date yet.",
         "automatic": "Generated automatically",
-        "manual": "Created manually"
+        "manual": "Created manually",
+        "clearConfirm": "Remove every time slot on {date}? This cannot be undone and will be blocked if any slot has associated bookings."
       },
       "slotStatus": {
         "available": "Available",
@@ -635,18 +712,24 @@
         "saving": "Saving",
         "saveSchedule": "Save weekly schedule",
         "saveDay": "Save exception",
+        "applyRange": "Apply to {count, plural, one {# date} other {# dates}}",
         "createSlot": "Create time slot",
         "generateSlots": "Generate time slots",
+        "clearSlots": "Remove all time slots",
         "refresh": "Refresh",
         "saveCapacity": "Save capacity",
         "block": "Block",
         "reopen": "Reopen"
       },
       "notices": {
+        "setupSaved": "The first version was created successfully with {count, plural, one {# time slot} other {# time slots}}.",
+        "setupEditable": "The initial setup is now active. You can freely edit days, ranges, schedules, holidays and capacity.",
         "scheduleSaved": "The weekly schedule has been saved.",
         "daySaved": "The day settings have been saved.",
+        "rangeSaved": "{count, plural, one {# date has} other {# dates have}} been updated successfully.",
         "slotCreated": "The time slot has been created.",
         "slotsGenerated": "The time slots have been generated.",
+        "slotsCleared": "All time slots for the day have been removed.",
         "capacitySaved": "Capacity has been updated.",
         "slotBlocked": "The time slot has been blocked.",
         "slotReopened": "The time slot is available again."
@@ -656,6 +739,7 @@
         "forbidden": "Your account cannot manage this venue.",
         "notFound": "There is no active venue profile for this account.",
         "conflict": "The operation conflicts with another time slot or a recent change.",
+        "referenced": "These time slots cannot be removed because at least one has associated bookings. You can block them to prevent new bookings without losing history.",
         "invalid": "The settings are invalid. Review times, capacity and day status.",
         "unavailable": "The availability service cannot be reached right now."
       }
@@ -755,18 +839,22 @@
   },
   "VenueProfileEditor": {
     "actions": {
-      "chooseGalleryImage": "Select image",
+      "chooseGalleryImage": "Select images",
       "chooseMainImage": "Select main image",
+      "create": "Create venue",
+      "creating": "Creating venue",
       "deleteGalleryImage": "Delete image",
       "goToAccess": "Go to venue access",
       "publish": "Publish venue",
       "publishing": "Publishing",
+      "removePendingGalleryImage": "Remove from selection",
       "retry": "Try again",
       "save": "Save profile",
       "saving": "Saving",
       "uploadGalleryImage": "Upload to gallery",
       "uploadMainImage": "Upload main image",
-      "uploading": "Uploading"
+      "uploading": "Uploading",
+      "viewHome": "View on the home page"
     },
     "errors": {
       "api": {
@@ -813,7 +901,8 @@
       },
       "galleryAltText": {
         "helper": "Describe the image for accessibility. Maximum 300 characters.",
-        "label": "Alternative text"
+        "label": "Alternative text",
+        "labelFor": "Alternative text for {name}"
       },
       "latitude": {
         "label": "Latitude"
@@ -860,8 +949,15 @@
       "title": "Public profile"
     },
     "images": {
+      "createBeforeUpload": "Create the venue profile first to enable uploading.",
+      "galleryPreviewAlt": "Preview of gallery image {name}",
+      "loadedCount": "Images uploaded: {count}",
       "noGallery": "There are no additional gallery images yet.",
-      "noMainImage": "You have not uploaded a main image yet. It is required for publishing."
+      "noMainImage": "You have not uploaded a main image yet. It is required for publishing.",
+      "pendingGalleryImage": "Selected file: {name}. Add the alternative text and press Upload to gallery to save it.",
+      "pendingGalleryCount": "Selected images waiting to upload: {count}. Complete the alternative text for each one.",
+      "pendingMainImage": "Selected file: {name}. This is a local preview; press Upload main image to save it.",
+      "previewAlt": "Preview of {name}"
     },
     "loading": "Loading venue profile…",
     "locales": {
@@ -887,6 +983,11 @@
       "MAIN_IMAGE_MISSING": "Upload a main image.",
       "MINIMUM_ADDRESS_MISSING": "Complete address, city and country."
     },
+    "status": {
+      "createFirstVenue": "Your account does not have a venue yet. Complete the details and select Create venue to save the first draft.",
+      "published": "Your venue has been published successfully. You can now view it from the home page.",
+      "saved": "Changes saved successfully."
+    },
     "sections": {
       "contact": {
         "body": "Decide which contact details will be shown publicly.",
@@ -911,9 +1012,6 @@
         "body": "Publishing requires a description in Spanish and English; the rest may stay empty.",
         "title": "Localized texts"
       }
-    },
-    "status": {
-      "saved": "Changes saved successfully."
     }
   },
   "PanelPreview": {
@@ -1327,6 +1425,11 @@
       "summary": "Review today's schedule, expected guests and incidents from one place."
     },
     "loading": "Loading today's overview",
+    "onboarding": {
+      "title": "Create your first venue",
+      "description": "Your account is ready. Complete the venue profile to configure its details, images, and publication.",
+      "action": "Create my venue"
+    },
     "today": { "title": "Today's activity" },
     "actions": {
       "refresh": "Refresh overview",
@@ -1362,13 +1465,19 @@
   },
   "VenueReservations": {
     "metadata": {
-      "title": "Today's reservations | Reserly",
-      "description": "Review and manage the reservations received by your venue."
+      "title": "Reservation management | Reserly",
+      "description": "Manage your venue's agenda, calendar, schedules, holidays, slots and reservations."
     },
     "hero": {
-      "eyebrow": "Venue schedule",
-      "title": "Today's reservations",
-      "summary": "See who is coming today and open each reservation to review every detail."
+      "eyebrow": "Venue operations",
+      "title": "Professional reservation management",
+      "summary": "Control the agenda, calendar, holidays, time off, schedules, slots and availability from one workspace."
+    },
+    "workspace": {
+      "label": "Reservation management tools",
+      "agenda": "Agenda and reservations",
+      "calendar": "Calendar",
+      "availability": "Schedules and availability"
     },
     "loading": "Loading reservations",
     "filters": {

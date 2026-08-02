@@ -13,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +34,12 @@ public interface TimeSlotController {
   /** Lista franjas propias de una fecha. */
   @GetMapping
   ResponseEntity<List<TimeSlotResponse>> list(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date);
+
+  /** Elimina todas las franjas propias de una fecha si ninguna pertenece a una reserva. */
+  @DeleteMapping
+  ResponseEntity<Void> deleteByDate(
       @AuthenticationPrincipal AuthenticatedAccount account,
       @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date);
 

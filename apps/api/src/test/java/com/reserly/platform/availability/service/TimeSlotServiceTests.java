@@ -16,6 +16,7 @@ import com.reserly.platform.availability.persistence.TimeSlotDao;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
+import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.LocalDate;
@@ -37,6 +38,7 @@ class TimeSlotServiceTests {
   @Mock private VenueOpeningHourDao openingHourDao;
   @Mock private AvailabilityBlockDao blockDao;
   @Mock private TimeSlotDao slotDao;
+  @Mock private ReservationDao reservationDao;
 
   private TimeSlotServiceImpl service;
   private UUID ownerId;
@@ -44,7 +46,7 @@ class TimeSlotServiceTests {
 
   @BeforeEach
   void setUp() {
-    service = new TimeSlotServiceImpl(venueDao, openingHourDao, blockDao, slotDao);
+    service = new TimeSlotServiceImpl(venueDao, openingHourDao, blockDao, slotDao, reservationDao);
     ownerId = UUID.randomUUID();
     venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
@@ -114,6 +116,36 @@ class TimeSlotServiceTests {
     when(slotDao.findAllOwnedByDate(ownerId, date)).thenReturn(List.of(new TimeSlotEntity()));
 
     assertThat(service.list(ownerId, date)).hasSize(1);
+  }
+
+  @Test
+  void deletesEveryOwnedSlotForDateWhenThereAreNoReservations() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+    TimeSlotEntity first = slot(date, LocalTime.of(9, 0));
+    TimeSlotEntity second = slot(date, LocalTime.of(10, 0));
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(slotDao.findAllOwnedByDateForUpdate(ownerId, date)).thenReturn(List.of(first, second));
+    when(reservationDao.existsByTimeSlotIds(List.of(first.getId(), second.getId())))
+        .thenReturn(false);
+
+    service.deleteByDate(ownerId, date);
+
+    verify(slotDao).deleteAllInBatch(List.of(first, second));
+    verify(slotDao).flush();
+  }
+
+  @Test
+  void rejectsDeletingSlotsReferencedByReservationHistory() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+    TimeSlotEntity referenced = slot(date, LocalTime.of(9, 0));
+    when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
+    when(slotDao.findAllOwnedByDateForUpdate(ownerId, date)).thenReturn(List.of(referenced));
+    when(reservationDao.existsByTimeSlotIds(List.of(referenced.getId()))).thenReturn(true);
+
+    assertThatThrownBy(() -> service.deleteByDate(ownerId, date))
+        .isInstanceOf(TimeSlotDeleteConflictException.class);
+
+    verify(slotDao, never()).deleteAllInBatch(any());
   }
 
   @Test
@@ -240,5 +272,14 @@ class TimeSlotServiceTests {
     openingHour.setOpensAt(LocalTime.of(9, 0));
     openingHour.setClosesAt(LocalTime.of(17, 0));
     return openingHour;
+  }
+
+  private TimeSlotEntity slot(LocalDate date, LocalTime startsAt) {
+    TimeSlotEntity slot = new TimeSlotEntity();
+    slot.setId(UUID.randomUUID());
+    slot.setDate(date);
+    slot.setStartsAt(startsAt);
+    slot.setEndsAt(startsAt.plusHours(1));
+    return slot;
   }
 }

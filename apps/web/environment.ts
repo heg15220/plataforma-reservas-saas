@@ -49,8 +49,15 @@ export function parseWebEnvironment(source: Record<string, string | undefined>):
 }
 
 /**
- * Lee la configuración real del proceso durante el arranque o build de Next.js.
+ * Lee la configuración real mediante referencias estáticas que Next.js puede sustituir también en
+ * bundles cliente. Pasar `process.env` completo impediría esa sustitución y produciría valores
+ * ausentes en el navegador. La URL interna solo se consulta durante ejecución de servidor.
  */
 export function loadWebEnvironment(): WebEnvironment {
-  return parseWebEnvironment(process.env);
+  return parseWebEnvironment({
+    NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    RESERLY_API_INTERNAL_URL:
+      typeof window === "undefined" ? process.env.RESERLY_API_INTERNAL_URL : undefined,
+  });
 }

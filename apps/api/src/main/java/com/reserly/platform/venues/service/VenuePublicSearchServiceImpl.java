@@ -167,6 +167,8 @@ public class VenuePublicSearchServiceImpl implements VenuePublicSearchService {
         resolve(venue.getCategory().getNameI18n(), locale, venue.getCategory().getName()),
         excerpt(resolve(venue.getDescriptionI18n(), locale, venue.getDescription())),
         venue.getMainImageUrl(),
+        venue.getAddress(),
+        venue.getPostalCode(),
         venue.getCity(),
         venue.getProvince(),
         venue.getCountry(),

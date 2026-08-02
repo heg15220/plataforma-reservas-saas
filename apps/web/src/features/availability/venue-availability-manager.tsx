@@ -9,7 +9,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { Ban, Clock3, Plus, RefreshCw, Save } from "lucide-react";
+import { Ban, CalendarRange, Clock3, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
@@ -19,6 +19,7 @@ import { StatusChip } from "@/components/visual";
 import {
   AvailabilityApiError,
   createTimeSlot,
+  deleteTimeSlots,
   fetchAvailabilityDay,
   fetchOpeningHours,
   fetchTimeSlots,
@@ -31,6 +32,8 @@ import {
   type OpeningHourInput,
   type TimeSlot,
 } from "./availability-api";
+import { VenueAvailabilitySetupWizard } from "./venue-availability-setup-wizard";
+import { VenueInternalCalendar } from "./venue-internal-calendar";
 
 const weekdays = ["1", "2", "3", "4", "5", "6", "7"] as const;
 
@@ -40,10 +43,16 @@ const weekdays = ["1", "2", "3", "4", "5", "6", "7"] as const;
  * Todas las mutaciones se vuelven a reconciliar con la respuesta del backend;
  * el navegador no concede disponibilidad ni aplica aislamiento entre locales.
  */
-export function VenueAvailabilityManager() {
+export function VenueAvailabilityManager({
+  includeCalendar = false,
+  initialDate = todayIso(),
+}: {
+  includeCalendar?: boolean;
+  initialDate?: string;
+}) {
   const t = useTranslations("Availability.private");
   const [openingHours, setOpeningHours] = useState<OpeningHourInput[]>([]);
-  const [selectedDate, setSelectedDate] = useState(todayIso());
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [day, setDay] = useState<AvailabilityDay | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
@@ -51,8 +60,16 @@ export function VenueAvailabilityManager() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [generatedSetupSlots, setGeneratedSetupSlots] = useState<number | null>(null);
   const [manual, setManual] = useState({ startsAt: "09:00", endsAt: "10:00", capacity: 1 });
   const [automatic, setAutomatic] = useState({ durationMinutes: 30, capacity: 1 });
+  const [range, setRange] = useState({
+    startsOn: initialDate,
+    endsOn: initialDate,
+    operation: "closed" as RangeOperation,
+    reason: "",
+  });
+  const rangeDates = buildDateRange(range.startsOn, range.endsOn);
 
   const loadDay = useCallback(
     async (date: string, signal?: AbortSignal) => {
@@ -126,10 +143,33 @@ export function VenueAvailabilityManager() {
     return () => controller.abort();
   }, [selectedDate, t]);
 
+  if (loadingSchedule) {
+    return <Loading label={t("loading")} />;
+  }
+
+  if (openingHours.length === 0) {
+    return (
+      <VenueAvailabilitySetupWizard
+        initialDate={initialDate}
+        onComplete={(days, generatedSlots) => {
+          setOpeningHours(days);
+          setGeneratedSetupSlots(generatedSlots);
+          setNotice(t("notices.setupSaved", { count: generatedSlots }));
+          void loadDay(selectedDate);
+        }}
+      />
+    );
+  }
+
   return (
     <Stack spacing={4}>
       {error && <Alert severity="error">{error}</Alert>}
       {notice && <Alert severity="success">{notice}</Alert>}
+      {generatedSetupSlots !== null ? (
+        <Alert severity="info">{t("notices.setupEditable")}</Alert>
+      ) : null}
+
+      {includeCalendar ? <VenueInternalCalendar startDate={initialDate} /> : null}
 
       <Surface component="section">
         <Stack spacing={3}>
@@ -142,92 +182,88 @@ export function VenueAvailabilityManager() {
             </Typography>
           </Box>
 
-          {loadingSchedule ? (
-            <Loading label={t("loading")} />
-          ) : (
-            <>
-              <Stack spacing={2}>
-                {openingHours.map((item) => (
-                  <Box
-                    key={item.weekday}
-                    sx={{
-                      alignItems: { md: "center" },
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: 2,
-                      display: "grid",
-                      gap: 2,
-                      gridTemplateColumns: { md: "130px 1fr 1fr 1fr 1fr" },
-                      p: 2,
-                    }}
-                  >
-                    <Typography sx={{ fontWeight: 800 }}>
-                      {t(`weekdays.${weekdays[item.weekday - 1]}`)}
-                    </Typography>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={item.closed}
-                          onChange={(event) =>
-                            updateOpeningDay(item.weekday, {
-                              closed: event.target.checked,
-                              reservationsEnabled: event.target.checked
-                                ? false
-                                : item.reservationsEnabled,
-                            })
-                          }
-                        />
-                      }
-                      label={t("schedule.closed")}
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={item.reservationsEnabled}
-                          disabled={item.closed}
-                          onChange={(event) =>
-                            updateOpeningDay(item.weekday, {
-                              reservationsEnabled: event.target.checked,
-                            })
-                          }
-                        />
-                      }
-                      label={t("schedule.reservations")}
-                    />
-                    <TextField
-                      disabled={item.closed}
-                      label={t("schedule.opensAt")}
-                      onChange={(event) =>
-                        updateOpeningDay(item.weekday, { opensAt: event.target.value })
-                      }
-                      slotProps={{ inputLabel: { shrink: true } }}
-                      type="time"
-                      value={item.opensAt ?? ""}
-                    />
-                    <TextField
-                      disabled={item.closed}
-                      label={t("schedule.closesAt")}
-                      onChange={(event) =>
-                        updateOpeningDay(item.weekday, { closesAt: event.target.value })
-                      }
-                      slotProps={{ inputLabel: { shrink: true } }}
-                      type="time"
-                      value={item.closesAt ?? ""}
-                    />
-                  </Box>
-                ))}
-              </Stack>
-              <Button
-                disabled={busy !== null}
-                onClick={() => void persistOpeningHours()}
-                startIcon={<Save aria-hidden="true" size={18} />}
-                sx={{ alignSelf: "flex-start" }}
-                variant="contained"
-              >
-                {busy === "schedule" ? t("actions.saving") : t("actions.saveSchedule")}
-              </Button>
-            </>
-          )}
+          <>
+            <Stack spacing={2}>
+              {openingHours.map((item) => (
+                <Box
+                  key={item.weekday}
+                  sx={{
+                    alignItems: { md: "center" },
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    display: "grid",
+                    gap: 2,
+                    gridTemplateColumns: { md: "130px 1fr 1fr 1fr 1fr" },
+                    p: 2,
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 800 }}>
+                    {t(`weekdays.${weekdays[item.weekday - 1]}`)}
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.closed}
+                        onChange={(event) =>
+                          updateOpeningDay(item.weekday, {
+                            closed: event.target.checked,
+                            reservationsEnabled: event.target.checked
+                              ? false
+                              : item.reservationsEnabled,
+                          })
+                        }
+                      />
+                    }
+                    label={t("schedule.closed")}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.reservationsEnabled}
+                        disabled={item.closed}
+                        onChange={(event) =>
+                          updateOpeningDay(item.weekday, {
+                            reservationsEnabled: event.target.checked,
+                          })
+                        }
+                      />
+                    }
+                    label={t("schedule.reservations")}
+                  />
+                  <TextField
+                    disabled={item.closed}
+                    label={t("schedule.opensAt")}
+                    onChange={(event) =>
+                      updateOpeningDay(item.weekday, { opensAt: event.target.value })
+                    }
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    type="time"
+                    value={item.opensAt ?? ""}
+                  />
+                  <TextField
+                    disabled={item.closed}
+                    label={t("schedule.closesAt")}
+                    onChange={(event) =>
+                      updateOpeningDay(item.weekday, { closesAt: event.target.value })
+                    }
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    type="time"
+                    value={item.closesAt ?? ""}
+                  />
+                </Box>
+              ))}
+            </Stack>
+            <Button
+              disabled={busy !== null}
+              onClick={() => void persistOpeningHours()}
+              startIcon={<Save aria-hidden="true" size={18} />}
+              sx={{ alignSelf: "flex-start" }}
+              variant="contained"
+            >
+              {busy === "schedule" ? t("actions.saving") : t("actions.saveSchedule")}
+            </Button>
+          </>
         </Stack>
       </Surface>
 
@@ -312,6 +348,83 @@ export function VenueAvailabilityManager() {
         </Stack>
       </Surface>
 
+      <Surface component="section">
+        <Stack spacing={3}>
+          <Box>
+            <Typography component="h2" variant="h2">
+              {t("range.title")}
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
+              {t("range.description")}
+            </Typography>
+          </Box>
+          <Alert severity="warning">{t("range.reservationWarning")}</Alert>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" },
+            }}
+          >
+            <TextField
+              label={t("range.startsOn")}
+              onChange={(event) => setRange({ ...range, startsOn: event.target.value })}
+              slotProps={{ inputLabel: { shrink: true } }}
+              type="date"
+              value={range.startsOn}
+            />
+            <TextField
+              label={t("range.endsOn")}
+              onChange={(event) => setRange({ ...range, endsOn: event.target.value })}
+              slotProps={{ inputLabel: { shrink: true } }}
+              type="date"
+              value={range.endsOn}
+            />
+            <TextField
+              label={t("range.operation")}
+              onChange={(event) =>
+                setRange({ ...range, operation: event.target.value as RangeOperation })
+              }
+              select
+              slotProps={{ select: { native: true } }}
+              value={range.operation}
+            >
+              <option value="closed">{t("range.operations.closed")}</option>
+              <option value="reservations_disabled">
+                {t("range.operations.reservationsDisabled")}
+              </option>
+              <option value="restore_weekly">{t("range.operations.restoreWeekly")}</option>
+            </TextField>
+          </Box>
+          <TextField
+            fullWidth
+            helperText={t("range.reasonHelper")}
+            label={t("range.reason")}
+            onChange={(event) => setRange({ ...range, reason: event.target.value })}
+            slotProps={{ htmlInput: { maxLength: 500 } }}
+            value={range.reason}
+          />
+          {rangeDates.length > 0 ? (
+            <Typography color="text.secondary">
+              {t("range.summary", { count: rangeDates.length })}
+            </Typography>
+          ) : (
+            <Alert severity="error">{t("range.invalid")}</Alert>
+          )}
+          <Button
+            disabled={busy !== null || rangeDates.length === 0}
+            onClick={() => void persistRange()}
+            startIcon={<CalendarRange aria-hidden="true" size={18} />}
+            sx={{ alignSelf: "flex-start" }}
+            variant="contained"
+          >
+            {busy === "range"
+              ? t("actions.saving")
+              : t("actions.applyRange", { count: rangeDates.length })}
+          </Button>
+        </Stack>
+      </Surface>
+
       <Box
         sx={{
           display: "grid",
@@ -370,9 +483,11 @@ export function VenueAvailabilityManager() {
               slotProps={{ select: { native: true } }}
               value={automatic.durationMinutes}
             >
-              <option value={30}>{t("automatic.minutes30")}</option>
-              <option value={60}>{t("automatic.minutes60")}</option>
-              <option value={90}>{t("automatic.minutes90")}</option>
+              {[15, 30, 45, 60, 90, 120, 180, 240].map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {t("automatic.minutes", { minutes })}
+                </option>
+              ))}
             </TextField>
             <TextField
               label={t("capacity")}
@@ -410,18 +525,29 @@ export function VenueAvailabilityManager() {
                 {t("slots.description", { date: selectedDate })}
               </Typography>
             </Box>
-            <Button
-              disabled={loadingDay}
-              onClick={() => {
-                setLoadingDay(true);
-                setError(null);
-                void loadDay(selectedDate);
-              }}
-              startIcon={<RefreshCw aria-hidden="true" size={17} />}
-              variant="outlined"
-            >
-              {t("actions.refresh")}
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <Button
+                color="error"
+                disabled={loadingDay || busy !== null || slots.length === 0}
+                onClick={() => void clearDaySlots()}
+                startIcon={<Trash2 aria-hidden="true" size={17} />}
+                variant="outlined"
+              >
+                {t("actions.clearSlots")}
+              </Button>
+              <Button
+                disabled={loadingDay}
+                onClick={() => {
+                  setLoadingDay(true);
+                  setError(null);
+                  void loadDay(selectedDate);
+                }}
+                startIcon={<RefreshCw aria-hidden="true" size={17} />}
+                variant="outlined"
+              >
+                {t("actions.refresh")}
+              </Button>
+            </Stack>
           </Stack>
 
           {slots.length === 0 ? (
@@ -487,6 +613,24 @@ export function VenueAvailabilityManager() {
     });
   }
 
+  async function persistRange() {
+    if (rangeDates.length === 0) return;
+    await runMutation("range", async () => {
+      const state = rangeOperationState(range.operation);
+      for (const date of rangeDates) {
+        await saveAvailabilityDay({
+          date,
+          ...state,
+          reason: range.operation === "restore_weekly" ? null : range.reason.trim() || null,
+        });
+      }
+      setNotice(t("notices.rangeSaved", { count: rangeDates.length }));
+      if (rangeDates.includes(selectedDate)) {
+        await loadDay(selectedDate);
+      }
+    });
+  }
+
   async function addManualSlot() {
     await runMutation("manual", async () => {
       await createTimeSlot({ date: selectedDate, ...manual });
@@ -500,6 +644,15 @@ export function VenueAvailabilityManager() {
       await generateTimeSlots({ date: selectedDate, ...automatic });
       setNotice(t("notices.slotsGenerated"));
       setSlots(await fetchTimeSlots(selectedDate));
+    });
+  }
+
+  async function clearDaySlots() {
+    if (!window.confirm(t("slots.clearConfirm", { date: selectedDate }))) return;
+    await runMutation("clearSlots", async () => {
+      await deleteTimeSlots(selectedDate);
+      setSlots([]);
+      setNotice(t("notices.slotsCleared"));
     });
   }
 
@@ -617,6 +770,36 @@ export function VenueAvailabilityManager() {
       </Box>
     );
   }
+}
+
+type RangeOperation = "closed" | "reservations_disabled" | "restore_weekly";
+
+function rangeOperationState(operation: RangeOperation) {
+  if (operation === "closed") return { closed: true, reservationsEnabled: false };
+  if (operation === "reservations_disabled") {
+    return { closed: false, reservationsEnabled: false };
+  }
+  return { closed: false, reservationsEnabled: true };
+}
+
+/** Construye un intervalo inclusivo de hasta 366 días sin depender de la zona horaria local. */
+function buildDateRange(startsOn: string, endsOn: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startsOn) || !/^\d{4}-\d{2}-\d{2}$/.test(endsOn)) return [];
+  const start = Date.parse(`${startsOn}T00:00:00Z`);
+  const end = Date.parse(`${endsOn}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
+  if (
+    new Date(start).toISOString().slice(0, 10) !== startsOn ||
+    new Date(end).toISOString().slice(0, 10) !== endsOn
+  ) {
+    return [];
+  }
+  const dayCount = Math.floor((end - start) / 86_400_000) + 1;
+  if (dayCount > 366) return [];
+  return Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(start + index * 86_400_000);
+    return date.toISOString().slice(0, 10);
+  });
 }
 
 function errorKind(value: unknown) {

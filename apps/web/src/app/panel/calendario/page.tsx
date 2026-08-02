@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeading, VenueShell } from "@/components/layout";
-import { VenueInternalCalendar } from "@/features/availability/venue-internal-calendar";
 import { VenueAvailabilityManager } from "@/features/availability/venue-availability-manager";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,8 +24,7 @@ export default async function VenueCalendarPage() {
         summary={t("hero.summary")}
         title={t("hero.title")}
       />
-      <VenueInternalCalendar />
-      <VenueAvailabilityManager />
+      <VenueAvailabilityManager includeCalendar />
     </VenueShell>
   );
 }

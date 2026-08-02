@@ -12,7 +12,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ImagePlus, Send, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { NavigationLink } from "@/components/navigation-link";
 import { Surface } from "@/components/layout";
@@ -37,6 +37,13 @@ import { parseVenueProfileForm, type VenueProfileFieldErrors } from "./venue-pro
 
 type LoadState = "loading" | "ready" | "error";
 type SubmitState = "idle" | "saving" | "publishing" | "uploadingMain" | "uploadingGallery";
+type PendingGalleryImage = {
+  id: string;
+  file: File;
+  altText: string;
+};
+
+const MAX_GALLERY_IMAGES = 8;
 
 /**
  * Panel privado de edición del perfil público del local.
@@ -51,6 +58,7 @@ export function VenueProfileEditor() {
   const formRef = useRef<HTMLFormElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
   const mainImageFileRef = useRef<HTMLInputElement>(null);
+  const gallerySelectionSequenceRef = useRef(0);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [profile, setProfile] = useState<VenueProfile | null>(null);
@@ -58,9 +66,15 @@ export function VenueProfileEditor() {
   const [gallery, setGallery] = useState<VenueGalleryImage[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedDefaultLocale, setSelectedDefaultLocale] = useState("es");
+  const [showEmail, setShowEmail] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<VenueProfileFieldErrors>({});
   const [apiError, setApiError] = useState<VenueProfileApiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const [publishedSuccessfully, setPublishedSuccessfully] = useState(false);
+  const [selectedMainImage, setSelectedMainImage] = useState<File | null>(null);
+  const [mainImagePreviewUrl, setMainImagePreviewUrl] = useState<string | null>(null);
+  const [pendingGalleryImages, setPendingGalleryImages] = useState<PendingGalleryImage[]>([]);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -77,6 +91,8 @@ export function VenueProfileEditor() {
         setGallery(nextGallery);
         setSelectedCategoryId(nextProfile?.categoryId ?? nextCategories[0]?.id ?? "");
         setSelectedDefaultLocale(nextProfile?.defaultLocale ?? (locale === "en" ? "en" : "es"));
+        setShowEmail(nextProfile?.showEmail ?? false);
+        setShowPhone(nextProfile?.showPhone ?? false);
         setLoadState("ready");
       } catch (error) {
         if (signal?.aborted) {
@@ -99,6 +115,15 @@ export function VenueProfileEditor() {
     return () => abortController.abort();
   }, [load]);
 
+  useEffect(
+    () => () => {
+      if (mainImagePreviewUrl) {
+        URL.revokeObjectURL(mainImagePreviewUrl);
+      }
+    },
+    [mainImagePreviewUrl],
+  );
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitState !== "idle") {
@@ -117,9 +142,12 @@ export function VenueProfileEditor() {
     setFieldErrors({});
     setApiError(null);
     setSaved(false);
+    setPublishedSuccessfully(false);
     try {
       const nextProfile = await saveVenueProfile(result.payload, Boolean(profile));
       setProfile(nextProfile);
+      setShowEmail(nextProfile.showEmail);
+      setShowPhone(nextProfile.showPhone);
       setSaved(true);
     } catch (error) {
       setApiError(toApiError(error));
@@ -135,9 +163,10 @@ export function VenueProfileEditor() {
     setSubmitState("publishing");
     setApiError(null);
     setSaved(false);
+    setPublishedSuccessfully(false);
     try {
       setProfile(await publishVenueProfile());
-      setSaved(true);
+      setPublishedSuccessfully(true);
     } catch (error) {
       setApiError(toApiError(error));
     } finally {
@@ -146,7 +175,7 @@ export function VenueProfileEditor() {
   }
 
   async function handleMainImageUpload() {
-    const file = mainImageFileRef.current?.files?.[0];
+    const file = selectedMainImage;
     if (!file || submitState !== "idle") {
       return;
     }
@@ -154,6 +183,8 @@ export function VenueProfileEditor() {
     setApiError(null);
     try {
       setProfile(await uploadMainImage(file));
+      setSelectedMainImage(null);
+      setMainImagePreviewUrl(null);
       if (mainImageFileRef.current) {
         mainImageFileRef.current.value = "";
       }
@@ -164,30 +195,72 @@ export function VenueProfileEditor() {
     }
   }
 
+  /**
+   * Conserva el archivo elegido y genera una URL temporal para confirmar visualmente la selección
+   * antes de efectuar la subida. El efecto asociado revoca cada URL al sustituirla o desmontar.
+   */
+  function handleMainImageSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedMainImage(file);
+    setMainImagePreviewUrl(file ? URL.createObjectURL(file) : null);
+    setApiError(null);
+  }
+
   async function handleGalleryUpload() {
-    const file = galleryFileRef.current?.files?.[0];
-    const altTextElement = formRef.current?.elements.namedItem("galleryAltText");
-    const altText = altTextElement instanceof HTMLInputElement ? altTextElement.value.trim() : "";
-    if (!file || !altText || submitState !== "idle") {
-      setFieldErrors((current) => ({ ...current, galleryAltText: "required" }));
+    if (
+      pendingGalleryImages.length === 0 ||
+      pendingGalleryImages.some((image) => !image.altText.trim()) ||
+      submitState !== "idle"
+    ) {
       return;
     }
     setSubmitState("uploadingGallery");
     setApiError(null);
     try {
-      const image = await uploadGalleryImage(file, altText);
-      setGallery((current) => [...current, image].sort((a, b) => a.position - b.position));
+      for (const pendingImage of pendingGalleryImages) {
+        const image = await uploadGalleryImage(pendingImage.file, pendingImage.altText.trim());
+        setGallery((current) => [...current, image].sort((a, b) => a.position - b.position));
+        setPendingGalleryImages((current) =>
+          current.filter((candidate) => candidate.id !== pendingImage.id),
+        );
+      }
       if (galleryFileRef.current) {
         galleryFileRef.current.value = "";
-      }
-      if (altTextElement instanceof HTMLInputElement) {
-        altTextElement.value = "";
       }
     } catch (error) {
       setApiError(toApiError(error));
     } finally {
       setSubmitState("idle");
     }
+  }
+
+  /**
+   * Incorpora varios archivos a la cola local sin superar el límite total de la galería. Cada
+   * elemento recibe identidad estable y texto alternativo independiente antes de enviarse.
+   */
+  function handleGalleryImageSelection(event: ChangeEvent<HTMLInputElement>) {
+    const capacity = Math.max(0, MAX_GALLERY_IMAGES - gallery.length - pendingGalleryImages.length);
+    const files = Array.from(event.target.files ?? []).slice(0, capacity);
+    setPendingGalleryImages((current) => [
+      ...current,
+      ...files.map((file) => ({
+        id: `pending-gallery-${++gallerySelectionSequenceRef.current}`,
+        file,
+        altText: "",
+      })),
+    ]);
+    event.target.value = "";
+    setApiError(null);
+  }
+
+  function handleGalleryAltTextChange(imageId: string, altText: string) {
+    setPendingGalleryImages((current) =>
+      current.map((image) => (image.id === imageId ? { ...image, altText } : image)),
+    );
+  }
+
+  function handlePendingGalleryImageRemove(imageId: string) {
+    setPendingGalleryImages((current) => current.filter((image) => image.id !== imageId));
   }
 
   async function handleGalleryDelete(imageId: string) {
@@ -249,6 +322,7 @@ export function VenueProfileEditor() {
 
   const status = profile?.status ?? "draft";
   const mainImageUrl = resolveVenueAssetUrl(profile?.mainImageUrl ?? null);
+  const displayedMainImageUrl = mainImagePreviewUrl ?? mainImageUrl;
 
   return (
     <Box component="form" noValidate onSubmit={handleSave} ref={formRef}>
@@ -265,7 +339,18 @@ export function VenueProfileEditor() {
             ) : null}
           </Alert>
         ) : null}
+        {!profile ? <Alert severity="info">{t("status.createFirstVenue")}</Alert> : null}
         {saved ? <Alert severity="success">{t("status.saved")}</Alert> : null}
+        {publishedSuccessfully ? (
+          <Alert aria-live="polite" severity="success">
+            <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
+              <Typography>{t("status.published")}</Typography>
+              <Button component={NavigationLink} href="/" variant="contained">
+                {t("actions.viewHome")}
+              </Button>
+            </Stack>
+          </Alert>
+        ) : null}
         <input name="categoryId" type="hidden" value={selectedCategoryId} />
         <input name="defaultLocale" type="hidden" value={selectedDefaultLocale} />
 
@@ -421,11 +506,23 @@ export function VenueProfileEditor() {
             />
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <FormControlLabel
-                control={<Checkbox defaultChecked={profile?.showEmail ?? false} name="showEmail" />}
+                control={
+                  <Checkbox
+                    checked={showEmail}
+                    name="showEmail"
+                    onChange={(event) => setShowEmail(event.target.checked)}
+                  />
+                }
                 label={t("fields.showEmail.label")}
               />
               <FormControlLabel
-                control={<Checkbox defaultChecked={profile?.showPhone ?? false} name="showPhone" />}
+                control={
+                  <Checkbox
+                    checked={showPhone}
+                    name="showPhone"
+                    onChange={(event) => setShowPhone(event.target.checked)}
+                  />
+                }
                 label={t("fields.showPhone.label")}
               />
             </Stack>
@@ -435,11 +532,15 @@ export function VenueProfileEditor() {
         <Surface>
           <Stack spacing={4}>
             <SectionTitle title={t("sections.images.title")} body={t("sections.images.body")} />
-            {mainImageUrl ? (
+            {displayedMainImageUrl ? (
               <Box
-                alt={t("mainImageAlt")}
+                alt={
+                  selectedMainImage
+                    ? t("images.previewAlt", { name: selectedMainImage.name })
+                    : t("mainImageAlt")
+                }
                 component="img"
-                src={mainImageUrl}
+                src={displayedMainImageUrl}
                 sx={{ aspectRatio: "16 / 9", borderRadius: 3, objectFit: "cover", width: "100%" }}
               />
             ) : (
@@ -448,10 +549,17 @@ export function VenueProfileEditor() {
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <Button component="label" startIcon={<ImagePlus size={18} />} variant="outlined">
                 {t("actions.chooseMainImage")}
-                <input accept="image/jpeg,image/png" hidden ref={mainImageFileRef} type="file" />
+                <input
+                  accept="image/jpeg,image/png"
+                  data-testid="main-image-input"
+                  hidden
+                  onChange={handleMainImageSelection}
+                  ref={mainImageFileRef}
+                  type="file"
+                />
               </Button>
               <Button
-                disabled={submitState !== "idle" || !profile}
+                disabled={submitState !== "idle" || !profile || !selectedMainImage}
                 onClick={() => void handleMainImageUpload()}
                 variant="contained"
               >
@@ -460,29 +568,40 @@ export function VenueProfileEditor() {
                   : t("actions.uploadMainImage")}
               </Button>
             </Stack>
+            {selectedMainImage ? (
+              <Alert aria-live="polite" severity="info">
+                {t("images.pendingMainImage", { name: selectedMainImage.name })}
+                {!profile ? ` ${t("images.createBeforeUpload")}` : null}
+              </Alert>
+            ) : null}
 
             <Box>
               <Typography component="h3" variant="h3">
                 {t("sections.gallery.title")}
               </Typography>
+              <Typography aria-live="polite" color="text.secondary" sx={{ mt: 1 }}>
+                {t("images.loadedCount", { count: gallery.length })}
+              </Typography>
               <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mt: 3 }}>
-                <TextField
-                  error={Boolean(fieldErrors.galleryAltText)}
-                  fullWidth
-                  helperText={
-                    fieldErrors.galleryAltText
-                      ? t("errors.fields.required")
-                      : t("fields.galleryAltText.helper")
-                  }
-                  label={t("fields.galleryAltText.label")}
-                  name="galleryAltText"
-                />
                 <Button component="label" variant="outlined">
                   {t("actions.chooseGalleryImage")}
-                  <input accept="image/jpeg,image/png" hidden ref={galleryFileRef} type="file" />
+                  <input
+                    accept="image/jpeg,image/png"
+                    data-testid="gallery-image-input"
+                    hidden
+                    multiple
+                    onChange={handleGalleryImageSelection}
+                    ref={galleryFileRef}
+                    type="file"
+                  />
                 </Button>
                 <Button
-                  disabled={submitState !== "idle" || !profile}
+                  disabled={
+                    submitState !== "idle" ||
+                    !profile ||
+                    pendingGalleryImages.length === 0 ||
+                    pendingGalleryImages.some((image) => !image.altText.trim())
+                  }
                   onClick={() => void handleGalleryUpload()}
                   variant="contained"
                 >
@@ -491,6 +610,30 @@ export function VenueProfileEditor() {
                     : t("actions.uploadGalleryImage")}
                 </Button>
               </Stack>
+              {pendingGalleryImages.length > 0 ? (
+                <Stack aria-live="polite" spacing={3} sx={{ mt: 3 }}>
+                  <Alert severity="info">
+                    {t("images.pendingGalleryCount", { count: pendingGalleryImages.length })}
+                    {!profile ? ` ${t("images.createBeforeUpload")}` : null}
+                  </Alert>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 3,
+                      gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+                    }}
+                  >
+                    {pendingGalleryImages.map((image) => (
+                      <PendingGalleryImageCard
+                        image={image}
+                        key={image.id}
+                        onAltTextChange={handleGalleryAltTextChange}
+                        onRemove={handlePendingGalleryImageRemove}
+                      />
+                    ))}
+                  </Box>
+                </Stack>
+              ) : null}
             </Box>
             {gallery.length > 0 ? (
               <Box
@@ -554,7 +697,9 @@ export function VenueProfileEditor() {
                 type="submit"
                 variant="contained"
               >
-                {submitState === "saving" ? t("actions.saving") : t("actions.save")}
+                {submitState === "saving"
+                  ? t(profile ? "actions.saving" : "actions.creating")
+                  : t(profile ? "actions.save" : "actions.create")}
               </Button>
               <Button
                 disabled={submitState !== "idle" || !profile}
@@ -570,6 +715,54 @@ export function VenueProfileEditor() {
         </Surface>
       </Stack>
     </Box>
+  );
+}
+
+/**
+ * Previsualiza un archivo pendiente y mantiene su URL blob limitada a la vida de la tarjeta.
+ * Solicita una descripción independiente para no degradar la accesibilidad en cargas múltiples.
+ */
+function PendingGalleryImageCard({
+  image,
+  onAltTextChange,
+  onRemove,
+}: {
+  image: PendingGalleryImage;
+  onAltTextChange: (imageId: string, altText: string) => void;
+  onRemove: (imageId: string) => void;
+}) {
+  const t = useTranslations("VenueProfileEditor");
+  const [previewUrl] = useState(() => URL.createObjectURL(image.file));
+
+  useEffect(() => () => URL.revokeObjectURL(previewUrl), [previewUrl]);
+
+  return (
+    <Surface component="article" padded={false}>
+      <Box
+        alt={t("images.galleryPreviewAlt", { name: image.file.name })}
+        component="img"
+        src={previewUrl}
+        sx={{ aspectRatio: "4 / 3", objectFit: "contain", width: "100%" }}
+      />
+      <Stack spacing={2} sx={{ p: 3 }}>
+        <Typography sx={{ overflowWrap: "anywhere" }}>{image.file.name}</Typography>
+        <TextField
+          fullWidth
+          helperText={t("fields.galleryAltText.helper")}
+          label={t("fields.galleryAltText.labelFor", { name: image.file.name })}
+          onChange={(event) => onAltTextChange(image.id, event.target.value)}
+          value={image.altText}
+        />
+        <Button
+          color="error"
+          onClick={() => onRemove(image.id)}
+          startIcon={<Trash2 size={16} />}
+          variant="outlined"
+        >
+          {t("actions.removePendingGalleryImage")}
+        </Button>
+      </Stack>
+    </Surface>
   );
 }
 

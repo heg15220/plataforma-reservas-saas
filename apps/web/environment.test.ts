@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { parseWebEnvironment } from "./environment";
+import { loadWebEnvironment, parseWebEnvironment } from "./environment";
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("parseWebEnvironment", () => {
   it("acepta URLs HTTP locales y usa la URL pública como fallback interno", () => {
@@ -37,5 +39,17 @@ describe("parseWebEnvironment", () => {
 
   it("rechaza variables obligatorias ausentes", () => {
     expect(() => parseWebEnvironment({})).toThrow();
+  });
+
+  it("lee las variables públicas mediante el contrato compatible con bundles cliente", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_ENV", "test");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://public.test");
+    vi.stubEnv("RESERLY_API_INTERNAL_URL", "http://internal.test");
+
+    expect(loadWebEnvironment()).toEqual({
+      appEnvironment: "test",
+      publicApiBaseUrl: "http://public.test",
+      internalApiBaseUrl: "http://public.test",
+    });
   });
 });

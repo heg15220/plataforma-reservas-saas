@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeading, VenueShell } from "@/components/layout";
-import { VenueReservationsDashboard } from "@/features/venue-reservations/venue-reservations-dashboard";
+import { VenueReservationsWorkspace } from "@/features/venue-reservations/venue-reservations-workspace";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("VenueReservations.metadata");
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** Agenda privada diaria con actualización automática de reservas confirmadas. */
+/** Espacio privado unificado para agenda, calendario y disponibilidad profesional. */
 export default async function VenueReservationsPage({
   searchParams,
 }: {
@@ -26,7 +26,7 @@ export default async function VenueReservationsPage({
   return (
     <VenueShell currentPath="/panel/reservas">
       <PageHeading eyebrow={t("eyebrow")} summary={t("summary")} title={t("title")} />
-      <VenueReservationsDashboard initialDate={initialDate} />
+      <VenueReservationsWorkspace initialDate={initialDate} />
     </VenueShell>
   );
 }

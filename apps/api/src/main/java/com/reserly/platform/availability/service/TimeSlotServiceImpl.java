@@ -8,6 +8,7 @@ import com.reserly.platform.availability.persistence.TimeSlotDao;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
+import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
@@ -32,16 +33,19 @@ public class TimeSlotServiceImpl implements TimeSlotService {
   private final VenueOpeningHourDao openingHourDao;
   private final AvailabilityBlockDao availabilityBlockDao;
   private final TimeSlotDao timeSlotDao;
+  private final ReservationDao reservationDao;
 
   public TimeSlotServiceImpl(
       VenueDao venueDao,
       VenueOpeningHourDao openingHourDao,
       AvailabilityBlockDao availabilityBlockDao,
-      TimeSlotDao timeSlotDao) {
+      TimeSlotDao timeSlotDao,
+      ReservationDao reservationDao) {
     this.venueDao = venueDao;
     this.openingHourDao = openingHourDao;
     this.availabilityBlockDao = availabilityBlockDao;
     this.timeSlotDao = timeSlotDao;
+    this.reservationDao = reservationDao;
   }
 
   @Override
@@ -50,6 +54,23 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     validateDate(date);
     requireCurrentVenue(ownerUserId);
     return timeSlotDao.findAllOwnedByDate(ownerUserId, date);
+  }
+
+  @Override
+  @Transactional
+  public void deleteByDate(UUID ownerUserId, LocalDate date) {
+    validateDate(date);
+    requireCurrentVenueForUpdate(ownerUserId);
+    List<TimeSlotEntity> slots = timeSlotDao.findAllOwnedByDateForUpdate(ownerUserId, date);
+    if (slots.isEmpty()) {
+      return;
+    }
+    List<UUID> slotIds = slots.stream().map(TimeSlotEntity::getId).toList();
+    if (reservationDao.existsByTimeSlotIds(slotIds)) {
+      throw new TimeSlotDeleteConflictException();
+    }
+    timeSlotDao.deleteAllInBatch(slots);
+    timeSlotDao.flush();
   }
 
   @Override

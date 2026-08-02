@@ -14,6 +14,8 @@ public record VenueSearchItemResponse(
     String categoryName,
     String descriptionExcerpt,
     String mainImageUrl,
+    String address,
+    String postalCode,
     String city,
     String province,
     String country,

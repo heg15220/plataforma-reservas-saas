@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchVenueReservationsForDay } from "@/features/venue-reservations/venue-reservations-api";
+import {
+  fetchVenueReservationsForDay,
+  VenueReservationsApiError,
+} from "@/features/venue-reservations/venue-reservations-api";
 import { reservationList } from "@/features/venue-reservations/venue-reservations-test-fixtures";
 import { renderWithIntl } from "@/test-utils/render-with-intl";
 
@@ -52,5 +55,20 @@ describe("VenueDashboardOverview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Actualizar resumen" }));
 
     await waitFor(() => expect(fetchVenueReservationsForDay).toHaveBeenCalledTimes(2));
+  });
+
+  it("permite crear el primer local cuando la cuenta todavía no tiene perfil", async () => {
+    vi.mocked(fetchVenueReservationsForDay).mockRejectedValue(
+      new VenueReservationsApiError("notFound"),
+    );
+
+    renderWithIntl(<VenueDashboardOverview initialDate="2026-07-26" />);
+
+    expect(await screen.findByRole("heading", { name: "Crea tu primer local" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Crear mi local" })).toHaveAttribute(
+      "href",
+      "/panel/perfil",
+    );
+    expect(screen.queryByText("No se encontró la agenda del local.")).not.toBeInTheDocument();
   });
 });

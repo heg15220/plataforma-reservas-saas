@@ -114,6 +114,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 4.12. Crear panel privado de horarios y franjas.
 - [x] 4.13. Crear vista de calendario interno básica.
 - [x] 4.14. Crear tests de cálculo de disponibilidad.
+- [x] 4.15. Implementar gestión profesional de festivos, días libres y excepciones por rango de fechas desde el panel privado.
+- [x] 4.16. Crear asistente de primera configuración de reservas y generar el calendario inicial del local.
+- [x] 4.17. Ampliar duraciones y permitir retirar de forma segura todas las franjas de una fecha.
 
 ## 7. Fase 5 - Equipo, recursos y servicios MVP
 
@@ -193,6 +196,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 9.8. Crear detalle de reserva desktop y móvil.
 - [x] 9.9. Añadir actualización tras nueva reserva.
 - [x] 9.10. Crear tests de permisos y filtros.
+- [x] 9.11. Unificar agenda, calendario, horarios, excepciones y franjas en el espacio profesional de Reservas.
 
 ## 12. Fase 10 - Asistencia, incidencias y penalizaciones
 
@@ -288,6 +292,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 15.14. Ejecutar pruebas visuales en móvil, tablet y escritorio.
 - [x] 15.15. Ejecutar pruebas visuales con locale español e inglés.
 - [x] 15.16. Validar ficha móvil con pestañas personalizadas y flujo de reseña por email desde el botón de detalles.
+- [x] 15.17. Animar lateralmente los recomendados y hacer navegable la superficie completa de las tarjetas públicas de catálogo.
 
 ## 18. Fase 16 - Seguridad, privacidad y endurecimiento
 

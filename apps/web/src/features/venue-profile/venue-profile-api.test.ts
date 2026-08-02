@@ -11,11 +11,11 @@ import {
 import type { VenueProfilePayload } from "./venue-profile-schema";
 
 const categoryPayload = [
-  { id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", slug: "restaurante", name: "Restaurante" },
+  { id: "20000000-0000-0000-0000-000000000001", slug: "restaurante", name: "Restaurante" },
 ];
 
 const profilePayload = {
-  id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+  id: "d3000000-0000-4000-8000-000000000001",
   categoryId: categoryPayload[0].id,
   categorySlug: "restaurante",
   categoryName: "Restaurante",

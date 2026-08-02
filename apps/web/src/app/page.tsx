@@ -2,15 +2,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import {
-  ArrowRight,
-  Dumbbell,
-  Heart,
-  Scissors,
-  Sparkles,
-  Utensils,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Dumbbell, Scissors, Sparkles, Utensils, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { getLocale } from "next-intl/server";
 
@@ -22,6 +14,11 @@ import {
   searchPublicVenues,
 } from "@/features/public-search/public-search-api";
 import { PublicSearchAutocomplete } from "@/features/public-search/public-search-autocomplete";
+import {
+  HomeRecommendedCarousel,
+  HomeVenueCard,
+} from "@/features/public-search/home-recommended-carousel";
+import { enrichHomeVenueCards } from "@/features/public-search/home-venue-enrichment";
 import { visualTokens } from "@/theme/visual-tokens";
 
 const quickCategories = [
@@ -50,6 +47,7 @@ export default async function HomePage() {
 
   try {
     venues = (await searchPublicVenues(locale, { size: 8, sort: "availability" })).results;
+    venues = await enrichHomeVenueCards(venues, locale);
   } catch {
     // El inicio conserva su navegación aun cuando el API no esté disponible durante SSR.
   }
@@ -165,9 +163,10 @@ export function HomePageView({ venues = [] }: { venues?: PublicVenueSearchItem[]
       <PageContainer>
         <Stack spacing={{ xs: 7, md: 9 }} sx={{ py: { xs: 6, md: 8 } }}>
           <VenueSection
+            carousel
             emptyDescription={t("discovery.empty")}
             title={t("discovery.recommended")}
-            venues={venues.slice(0, 4)}
+            venues={venues}
           />
           <VenueSection
             emptyDescription={t("discovery.empty")}
@@ -181,11 +180,16 @@ export function HomePageView({ venues = [] }: { venues?: PublicVenueSearchItem[]
   );
 }
 
+/**
+ * Presenta un bloque de descubrimiento como cuadrícula estática o carril rotatorio responsive.
+ */
 function VenueSection({
+  carousel = false,
   emptyDescription,
   title,
   venues,
 }: {
+  carousel?: boolean;
   emptyDescription: string;
   title: string;
   venues: PublicVenueSearchItem[];
@@ -204,21 +208,25 @@ function VenueSection({
           </Button>
         </Stack>
         {venues.length > 0 ? (
-          <Box
-            sx={{
-              display: "grid",
-              gap: 3,
-              gridTemplateColumns: {
-                xs: "minmax(240px, 1fr)",
-                sm: "repeat(2, minmax(0, 1fr))",
-                lg: "repeat(4, minmax(0, 1fr))",
-              },
-            }}
-          >
-            {venues.map((venue) => (
-              <HomeVenueCard key={`${title}-${venue.slug}`} venue={venue} />
-            ))}
-          </Box>
+          carousel ? (
+            <HomeRecommendedCarousel venues={venues} />
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gap: 3,
+                gridTemplateColumns: {
+                  xs: "minmax(240px, 1fr)",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  lg: "repeat(4, minmax(0, 1fr))",
+                },
+              }}
+            >
+              {venues.map((venue) => (
+                <HomeVenueCard key={`${title}-${venue.slug}`} venue={venue} />
+              ))}
+            </Box>
+          )
         ) : (
           <Box
             sx={{
@@ -232,85 +240,6 @@ function VenueSection({
             <Typography sx={{ color: "text.secondary" }}>{emptyDescription}</Typography>
           </Box>
         )}
-      </Stack>
-    </Box>
-  );
-}
-
-function HomeVenueCard({ venue }: { venue: PublicVenueSearchItem }) {
-  const t = useTranslations("HomePage");
-  const location = [venue.city, venue.province].filter(Boolean).join(" · ");
-  const metadata = [venue.categoryName, location].filter(Boolean).join(" · ");
-
-  return (
-    <Box
-      component="article"
-      sx={{
-        bgcolor: "background.paper",
-        border: 1,
-        borderColor: "divider",
-        borderRadius: `${visualTokens.radius.card}px`,
-        boxShadow: visualTokens.shadow.card,
-        minWidth: 0,
-        overflow: "hidden",
-      }}
-    >
-      <Box sx={{ position: "relative" }}>
-        {venue.mainImageUrl ? (
-          <Box
-            component="img"
-            src={resolveSearchImageUrl(venue.mainImageUrl)}
-            alt={t("card.imageAlt", { name: venue.name })}
-            sx={{ aspectRatio: "16 / 9", display: "block", objectFit: "cover", width: "100%" }}
-          />
-        ) : (
-          <Box sx={{ aspectRatio: "16 / 9", bgcolor: "primary.light" }} />
-        )}
-        <Box
-          aria-hidden="true"
-          sx={{
-            alignItems: "center",
-            bgcolor: "rgba(255,255,255,0.94)",
-            borderRadius: "50%",
-            display: "flex",
-            height: 30,
-            justifyContent: "center",
-            position: "absolute",
-            right: 8,
-            top: 8,
-            width: 30,
-          }}
-        >
-          <Heart size={15} strokeWidth={1.9} />
-        </Box>
-      </Box>
-      <Stack spacing={1.5} sx={{ p: 3 }}>
-        <Stack spacing={0.5}>
-          <Typography component="h3" noWrap sx={{ fontWeight: 700 }}>
-            {venue.name}
-          </Typography>
-          <Typography noWrap sx={{ color: "text.secondary", fontSize: 11.5 }}>
-            {metadata}
-          </Typography>
-        </Stack>
-        <Typography
-          sx={{
-            color: venue.statusCode === "available" ? "success.dark" : "text.secondary",
-            fontSize: 11.5,
-            fontWeight: 600,
-          }}
-        >
-          {venue.availabilitySummary}
-        </Typography>
-        <Button
-          component={NavigationLink}
-          fullWidth
-          href={VENUE_PATH_PREFIX + venue.slug}
-          size="small"
-          variant="outlined"
-        >
-          {t("actions.viewAvailability")}
-        </Button>
       </Stack>
     </Box>
   );

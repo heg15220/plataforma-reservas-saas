@@ -28,6 +28,11 @@ npm run dev:web
 
 El comando anterior se ejecuta desde la raíz del monorepo.
 
+También puede ejecutarse `npm run dev` desde `apps/web`. Ese script carga explícitamente
+`../../.env.local` antes de iniciar Next.js, porque Next solo descubre automáticamente ficheros de
+entorno situados dentro de su propio directorio de aplicación. En ambos casos deben haberse creado
+primero las variables locales con `Copy-Item .env.local.example .env.local` desde la raíz.
+
 ## Verificación
 
 ```bash

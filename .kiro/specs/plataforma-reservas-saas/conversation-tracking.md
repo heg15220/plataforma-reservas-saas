@@ -6898,6 +6898,844 @@ Fuente de verdad del avance:
     ejecutado ni fallo de aserción. No se repitió para evitar validaciones interminables.
   - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.
 
+## Conversación 146 - Movimiento de recomendados y tarjetas de catálogo navegables
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - Se añadió una deriva horizontal continua y suave al carril de inicio "Recomendados para ti".
+  - La animación se pausa durante `hover` o foco y queda desactivada cuando el sistema solicita
+    reducir movimiento.
+  - Las tarjetas de locales del inicio y del listado de resultados permiten abrir la ficha pulsando
+    cualquier zona libre de su superficie.
+  - Las acciones explícitas de ficha y reserva del listado mantienen destinos independientes y no
+    generan enlaces HTML anidados.
+- Archivos modificados:
+  - `apps/web/src/app/page.tsx` y `apps/web/src/app/page.test.tsx`.
+  - `apps/web/src/features/public-search/public-search-results.tsx` y su test.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-029 Recomendaciones`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Se añadió y completó `15.17`.
+- Tareas completadas:
+  - `15.17. Animar lateralmente los recomendados y hacer navegable la superficie completa de las
+    tarjetas públicas de catálogo`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El movimiento usa solo CSS y no introduce temporizadores, estado cliente ni duplicados
+    accesibles en el árbol DOM.
+  - La amplitud es de 16 px entre extremos y el ciclo dura 7 segundos para evitar distracción.
+  - La navegación de tarjeta se implementa con un enlace extendido desde el nombre; los botones de
+    resultados usan una capa superior para conservar su semántica.
+  - Pasaron 7 tests focalizados. Prettier validó los cuatro archivos de frontend modificados.
+  - El typecheck global sigue bloqueado por errores TypeScript preexistentes en módulos ajenos; no
+    reportó errores en los archivos de este cambio antes de finalizar. ESLint focalizado excedió el
+    límite de 120 segundos sin emitir diagnóstico.
+
+## Conversación 147 - Rectificación del carril rotatorio de recomendados
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario aclaró que el movimiento solicitado no era una oscilación decorativa, sino un
+    carrusel que rota tarjetas completas cuando existen más resultados que huecos visibles.
+  - Se sustituyó la deriva de 16 px por un carril circular que recibe los ocho recomendados cargados
+    en inicio y avanza un local cada cuatro segundos.
+  - El layout conserva cuatro tarjetas visibles en escritorio, dos en tablet y una en móvil.
+  - Se mantuvo la navegación desde toda la tarjeta implementada en la iteración anterior.
+- Archivos modificados:
+  - Nuevo `apps/web/src/features/public-search/home-recommended-carousel.tsx`.
+  - `apps/web/src/app/page.tsx` y `apps/web/src/app/page.test.tsx`.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-029 Recomendaciones`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Se rectificó la implementación y documentación de `15.17` sin cambiar su objetivo funcional.
+- Tareas completadas:
+  - `15.17`, verificada de nuevo con rotación real de tarjetas completas.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Esta decisión sustituye expresamente la deriva decorativa registrada en la conversación 146,
+    porque aquella no exponía las tarjetas quinta a octava y, por tanto, no cumplía la intención.
+  - El ciclo añade cuatro clones finales inertes y ocultos para accesibilidad; sirven únicamente
+    como continuidad visual antes de restablecer el índice sin transición.
+  - La rotación solo se activa con más de cuatro resultados para que una cuadrícula completa o
+    incompleta no se mueva innecesariamente en escritorio.
+  - La prueba focalizada valida avance, disponibilidad del octavo local y reinicio circular de 8 a
+    0 después de la transición.
+
+## Conversación 148 - Carga del entorno local al iniciar Next.js desde apps/web
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - Se diagnosticó un `ZodError` de runtime porque Next.js se había iniciado desde `apps/web` sin
+    `NEXT_PUBLIC_APP_ENV` ni `NEXT_PUBLIC_API_BASE_URL`.
+  - Las variables existían correctamente en `.env.local` en la raíz, pero Next solo descubre por sí
+    mismo ficheros de entorno dentro de su directorio de aplicación.
+  - El script `dev` del workspace web carga ahora explícitamente `../../.env.local` antes de ejecutar
+    `next dev`.
+  - Se reinició el proceso obsoleto y se comprobó la página pública real en localhost.
+- Archivos modificados:
+  - `apps/web/package.json`.
+  - `apps/web/README.md`.
+  - `scripts/validate-environment-examples.mjs`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RNF-003 Configuración y despliegue`.
+  - `RNF-006 Disponibilidad operativa`.
+- Tareas impactadas:
+  - Rectificación operativa de `0.4`; no se añadió una tarea nueva ni se cambió su estado.
+- Tareas completadas:
+  - Ninguna nueva; se corrigió una regresión de ejecución local sobre una tarea ya cerrada.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Se conserva la validación Zod estricta: no se introducen defaults que puedan ocultar una mala
+    configuración de staging o producción.
+  - El comando raíz continúa siendo válido aunque cargue el mismo fichero antes de delegar al
+    workspace; la carga repetida es idempotente.
+  - `npm run env:check` pasa y ahora protege también el contrato del script `apps/web#dev`.
+  - El arranque alcanzó `Ready in 2.9s`; una petición posterior a `http://localhost:3000` respondió
+    `200` y no contenía `ZodError`.
+
+## Conversación 149 - Variables públicas disponibles durante hidratación del carrusel
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - La portada respondía HTTP 200, pero la hidratación cliente fallaba al resolver imágenes del
+    nuevo carrusel con un `ZodError` por variables públicas aparentemente ausentes.
+  - Se determinó que `loadWebEnvironment()` entregaba a Zod el objeto dinámico `process.env`.
+  - Next.js solo incorpora variables públicas al bundle cliente cuando el código contiene
+    referencias estáticas a sus nombres exactos.
+  - Se modificó el loader para construir explícitamente el objeto validado y limitar la URL interna
+    a ejecución de servidor.
+- Archivos modificados:
+  - `apps/web/environment.ts` y `apps/web/environment.test.ts`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RNF-003 Configuración y despliegue`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación de `0.4` y verificación runtime de `15.17`.
+- Tareas completadas:
+  - Ninguna nueva; se corrigió la integración cliente de dos tareas ya cerradas.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La validación Zod continúa siendo única y estricta tanto en servidor como en navegador.
+  - `RESERLY_API_INTERNAL_URL` nunca se incorpora intencionadamente al navegador; allí se aplica el
+    fallback a `NEXT_PUBLIC_API_BASE_URL`.
+  - Pasaron 7 tests focalizados de entorno e inicio y el formato de los archivos afectados.
+  - La validación real se realizó tras recarga completa: título `Reserly`, sección "Recomendados para
+    ti" presente y cero errores en la consola del navegador.
+
+## Conversación 150 - Rotación de recomendados sin tarjetas parcialmente recortadas
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario señaló que el desplazamiento horizontal cortaba parcialmente la tarjeta situada en
+    el borde izquierdo durante la transición.
+  - Se sustituyó el movimiento de una pista larga por cuatro posiciones visuales fijas cuyo
+    contenido rota circularmente.
+  - Las nuevas tarjetas mantienen sensación lateral mediante una entrada de 12 px, pero ese
+    movimiento ocurre dentro del espacio seguro de cada posición.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/home-recommended-carousel.tsx`.
+  - `apps/web/src/app/page.test.tsx`.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-029 Recomendaciones`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual de `15.17`.
+- Tareas completadas:
+  - `15.17`, verificada de nuevo sin recortes laterales.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El índice usa módulo por el número total de locales y deja de necesitar clones o un
+    `transitionend` de reinicio.
+  - El DOM contiene solo las cuatro recomendaciones activas; CSS oculta las posiciones tercera y
+    cuarta en tablet y todas salvo la primera en móvil.
+  - La prueba valida los locales 5 y 8 y el retorno circular a índice 0.
+  - En navegador, tanto antes como después de rotar, la primera tarjeta empieza en `x = 40 px` y el
+    contenedor en `x = 32 px`; las cuatro tarjetas conservan ancho completo y la consola queda sin
+    errores.
+
+## Conversación 151 - Categoría y estado operativo visibles en las tarjetas de inicio
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - Se añadió la categoría como chip independiente a cada tarjeta reutilizada por los bloques de
+    catálogo del inicio.
+  - Se eliminó el botón `Ver disponibilidad` y se sustituyó por un chip de estado `Abierto` o
+    `Cerrado`; el estado `availability_pending` se presenta como cerrado porque el catálogo no
+    confirma disponibilidad activa.
+  - Se amplió la prueba del carrusel para verificar categoría, estados abierto/cerrado, ausencia del
+    botón anterior, rotación completa y navegación a la ficha.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/home-recommended-carousel.tsx`.
+  - `apps/web/src/app/page.test.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-029 Recomendaciones`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual de `15.17`.
+- Tareas completadas:
+  - Ninguna nueva; `15.17` permanece completada y se amplía su presentación visual.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La traducción visual es binaria: `available` se presenta como `Abierto`; `unavailable` y
+    `availability_pending` se presentan como `Cerrado`.
+  - No se añadió una segunda interacción dentro de la tarjeta: el enlace extendido de toda la
+    superficie sigue siendo la única acción de detalle.
+  - La prueba focalizada cubre también que `availability_pending` nunca reaparezca como una tercera
+    etiqueta visible. El chequeo global de i18n sigue bloqueado por textos hardcodeados
+    preexistentes en módulos no relacionados.
+  - La comprobación en navegador con datos reales confirmó categorías visibles, seis tarjetas con
+    estado `Cerrado`, ausencia de `Ver disponibilidad` y ausencia de la etiqueta técnica pendiente.
+
+## Conversación 152 - Iconos de categoría, dirección completa y local abierto
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - Las categorías de las tarjetas de inicio y resultados reutilizan ahora iconos por slug y el
+    tratamiento outlined de los filtros rápidos de búsqueda.
+  - El contrato de búsqueda pública incorpora calle y código postal; las tarjetas concatenan calle,
+    código postal, ciudad, provincia y país.
+  - El fixture idempotente marca `Ames Padel Center` como `available`, de modo que aparece `Abierto`
+    tras reiniciar el API y recargar los datos locales.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-category-label.tsx`.
+  - `apps/web/src/features/public-search/home-recommended-carousel.tsx`.
+  - `apps/web/src/features/public-search/public-search-results.tsx`.
+  - `apps/web/src/features/public-search/public-search-api.ts` y tests relacionados.
+  - `apps/api/src/main/java/com/reserly/platform/venues/dto/VenueSearchItemResponse.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicSearchServiceImpl.java`.
+  - `apps/api/src/main/resources/dev-fixtures/local-demo-venues.sql` y test del servicio.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-029 Recomendaciones`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual y contractual de `15.17`.
+- Tareas completadas:
+  - Ninguna nueva; `15.17` permanece completada.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El badge de categoría se renderiza como chip outlined no interactivo, no como botón, para
+    conservar una única acción interactiva en la tarjeta completa.
+  - `address` y `postalCode` son adiciones públicas sin datos personales ni empresariales internos;
+    el esquema web las acepta opcionales para tolerar despliegues escalonados.
+  - Pasaron 13 tests web y 8 tests API focalizados; Spotless validó los Java afectados y
+    `git diff --check` no detectó errores.
+  - Checkstyle y typecheck globales continúan bloqueados por incidencias históricas en archivos no
+    modificados. El API activo aún sirve el contrato anterior hasta reiniciar el proceso de
+    desarrollo, momento en que se vuelve a aplicar el fixture idempotente.
+  - En navegador se confirmó que la categoría es visible como contenido no interactivo y que ya no
+    aparece un falso botón dentro de la tarjeta; la ubicación antigua se mantiene como fallback
+    compatible mientras el API activo no se reinicie.
+
+## Conversación 153 - Dirección y estado reales sin depender del reinicio del API
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario confirmó que la portada activa seguía sin calle/código postal y sin locales abiertos.
+  - Se verificó que el proceso API activo aún devolvía el contrato de búsqueda antiguo con todos los
+    estados `availability_pending`.
+  - La portada enriquece ahora cada resultado mediante la ficha pública y la disponibilidad del día,
+    por lo que funciona incluso antes de reiniciar ese API.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/home-venue-enrichment.ts` y su test.
+  - `apps/web/src/app/page.tsx`.
+  - `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RF-029 Recomendaciones`.
+  - `RNF-006 Disponibilidad operativa`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación runtime de `15.17`.
+- Tareas completadas:
+  - Ninguna nueva; se corrige la integración runtime de una tarea ya completada.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Se usa la fecha de negocio en `Europe/Madrid`, igual que el backend, para consultar
+    disponibilidad pública.
+  - Perfil y disponibilidad se consultan en paralelo por local mediante `Promise.allSettled`; un
+    fallo aislado conserva la tarjeta original y no vacía la portada.
+  - Esta decisión sustituye la dependencia de reinicio documentada en la conversación 152.
+  - Pasaron 4 tests focalizados en 2 archivos y `git diff --check`.
+  - En navegador real se confirmaron direcciones completas, por ejemplo
+    `Rúa Nova de Abaixo 21 · 15706 · Santiago de Compostela · A Coruña · ES`, y varios estados
+    `Abierto` dentro de las cuatro tarjetas visibles.
+
+## Conversación 154 - Imágenes completas en las tarjetas de Explorar
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario indicó que las imágenes de los resultados de `/explorar` aparecían cortadas.
+  - La medición descartó desbordamiento horizontal: el recorte procedía de `object-fit: cover` y del
+    marco móvil 16:9 aplicado a fotografías cuadradas o 3:2.
+  - Las imágenes usan ahora un marco 4:3 estable y `object-fit: contain`, preservando la fotografía
+    completa dentro de la tarjeta.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-search-results.tsx` y su test.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual de `15.2` y `15.14`.
+- Tareas completadas:
+  - Ninguna nueva; se corrige una regresión visual en tareas ya completadas.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Se aceptan bandas del fondo neutro cuando la proporción original no es 4:3; mostrar la imagen
+    íntegra tiene prioridad sobre llenar cada píxel recortando contenido.
+  - La tarjeta y la imagen fijan `minWidth: 0`, `width: 100%` y `maxWidth: 100%` para impedir
+    desbordamientos por contenido intrínseco.
+  - Pasaron 5 tests focalizados y `git diff --check`.
+  - En navegador, las seis imágenes mostraron `object-fit: contain`, proporción 4:3 y límites
+    completamente contenidos en un viewport de 1280 px; el documento no generó scroll horizontal.
+
+## Conversación 155 - Marco interior de imagen en las tarjetas de Explorar
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario aclaró que, además de no recortar la fotografía, el marco no debía ocupar todo el
+    ancho exterior de la tarjeta.
+  - La imagen y el placeholder se movieron a un contenedor interior con 16 px de separación en
+    móvil y 20 px desde tablet, manteniendo 4:3 y `contain`.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-search-results.tsx` y su test.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual de `15.2` y `15.14`.
+- Tareas completadas:
+  - Ninguna nueva; se refina una tarea ya completada.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El inset usa píxeles explícitos y no unidades de spacing del tema, cuyo paso es 4 px, para
+    garantizar exactamente 16/20 px.
+  - El marco incorpora radio de control y conserva fondo neutro para las bandas de `contain`.
+  - Pasaron 5 tests focalizados y `git diff --check`.
+  - En navegador, las seis imágenes quedaron centradas con 20 px de padding computado y 20,8 px
+    entre imagen y borde exterior contando el borde de la tarjeta.
+
+## Conversación 156 - Límite de ancho del marco en ordenador
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario indicó que el inset anterior seguía sin resultar proporcionado en la vista de
+    ordenador porque el bloque visual continuaba creciendo casi hasta el ancho de la tarjeta.
+  - Desde el breakpoint `md`, el marco completo se centra y limita a 360 px de ancho exterior; la
+    imagen conserva 20 px de padding lateral, proporción 4:3 y `object-fit: contain`.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-search-results.tsx` y su test.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual de `15.2` y `15.14`.
+- Tareas completadas:
+  - Ninguna nueva; se corrige la composición de escritorio de tareas ya completadas.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El límite se aplica al marco y no a toda la tarjeta, de modo que textos, dirección, categoría
+    y estado siguen aprovechando el ancho normal de la columna.
+  - En navegador real con viewport de 1280 px, la tarjeta midió 422,4 px, el marco 360 px y la
+    imagen 320 px; quedó centrada con 51,2 px entre imagen y borde de tarjeta por ambos lados.
+  - Pasaron los 5 tests focalizados y `git diff --check`.
+
+## Conversación 157 - Tarjetas compactas de Explorar en ordenador
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó reducir el tamaño de los items del catálogo de `Explorar` en ordenador.
+  - La retícula de resultados cambia a tres columnas desde `md`, frente a las dos columnas previas.
+  - El padding del contenido deja de crecer en escritorio y categoría/estado se apilan en `md` y
+    `lg` para evitar recortes dentro del nuevo ancho compacto.
+- Archivos modificados:
+  - `apps/web/src/features/public-search/public-search-results.tsx`.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-003 Resultados de búsqueda`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas:
+  - Rectificación visual de `15.2` y `15.14`.
+- Tareas completadas:
+  - Ninguna nueva; se refina la densidad de una interfaz ya completada.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Móvil y tablet mantienen una única columna; la compactación comienza exactamente en `md`.
+  - A 1280 px, el catálogo pasó de tarjetas de aproximadamente 422,4 px a tres columnas de
+    277,6 px cada una, una reducción cercana al 34 %.
+  - Categoría y estado quedaron completamente contenidos y el documento no generó scroll
+    horizontal.
+  - Pasaron los 5 tests focalizados y `git diff --check`.
+
+## Conversación 158 - Creación del primer local desde la cuenta registrada
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó que la cuenta de local registrada para desarrollo pudiera crear un local
+    nuevo.
+  - Se confirmó que el backend ya admite el primer borrador mediante
+    `POST /api/venue/me/profile`, pero el inicio del panel interpretaba la ausencia de local como un
+    error de agenda sin una acción clara.
+  - El panel transforma ahora ese `404` en un estado de onboarding con acceso a `/panel/perfil`.
+  - El editor informa de que la cuenta aún no tiene local y usa las acciones `Crear local` y
+    `Creando local` hasta que el primer perfil queda persistido.
+- Archivos modificados:
+  - `apps/web/src/features/venue-dashboard/venue-dashboard-overview.tsx` y su test.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx` y su test.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación funcional de `2.4`, `2.11`, `3.14`, `9.7` y `15.10`.
+- Tareas completadas:
+  - Ninguna nueva; se hace accesible desde el panel un contrato de creación ya implementado.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - No se añade una excepción de seguridad para desarrollo: cualquier cuenta empresarial
+    autenticada sin perfil vigente recibe el mismo onboarding seguro.
+  - Solo la ausencia de local (`404`) activa la creación; autenticación, autorización, validación e
+    indisponibilidad siguen mostrándose como errores.
+  - Publicar continúa exigiendo email verificado, verificación empresarial aprobada, imagen y demás
+    requisitos; la nueva acción crea únicamente un borrador.
+  - Pasaron 10 tests focalizados en 3 archivos y `git diff --check`.
+  - El typecheck global se ejecutó y sigue bloqueado por errores históricos ajenos en administración,
+    formularios, equipo, incidencias y reservas; no informó errores del dashboard ni editor tocados.
+  - El lint focalizado no produjo diagnósticos antes de agotar su timeout de 120 segundos.
+
+## Conversación 159 - Reparación de la carga del editor del primer local
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario informó de que `/panel/perfil` mostraba `No podemos conectar con el servicio` al
+    intentar crear el primer local.
+  - Se comprobó que el API estaba activo: categorías devolvía 200 y el perfil privado devolvía el
+    401 esperado sin cookie.
+  - La causa directa era el uso de `z.uuid()`: los identificadores estables de categorías del
+    fixture son UUID aceptados por PostgreSQL, pero no declaran bits RFC de versión/variante, por lo
+    que Zod rechazaba una respuesta HTTP correcta y la UI la clasificaba como indisponibilidad.
+  - Se añadió un esquema hexadecimal canónico compatible con UUID de PostgreSQL tanto a respuestas
+    como al payload de creación.
+  - También se corrigió CORS local para admitir los puertos 3000 y 3001, evitando el mismo mensaje
+    cuando Next cambia automáticamente al segundo por un conflicto de puerto.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-api.ts` y su test.
+  - `apps/web/src/features/venue-profile/venue-profile-schema.ts` y su test.
+  - `apps/api/src/main/resources/application-local.yaml`.
+  - `apps/api/src/test/java/com/reserly/platform/identity/security/SecurityConfigurationTests.java`.
+  - `.env.local` y `.env.local.example`.
+  - `requirements.md`, `design.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RNF-001 Seguridad`.
+- Tareas impactadas:
+  - Rectificación funcional de `0.4`, `2.4`, `2.11`, `3.14` y `15.10`.
+- Tareas completadas:
+  - Ninguna nueva; se repara un flujo ya implementado.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La validación UUID sigue exigiendo exactamente la forma hexadecimal `8-4-4-4-12`; no admite
+    cadenas arbitrarias, pero deja de imponer versión/variante que PostgreSQL no exige.
+  - CORS mantiene orígenes exactos y cookies; no se introducen comodines. Los dos puertos solo se
+    configuran en local, mientras staging y producción conservan una URL HTTPS única.
+  - Pasaron 13 tests web en 4 archivos, 1 test Java de CORS y `env:check`.
+  - `git diff --check` no detectó errores. La configuración CORS requiere reiniciar la API activa;
+    la corrección del esquema frontend puede aplicarse mediante recarga en caliente.
+
+## Conversación 160 - Ficha e imágenes para crear manualmente Azahar & Brasa
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó toda la información necesaria para rellenar manualmente un local nuevo,
+    incluidas imágenes generadas.
+  - Se creó `Azahar & Brasa`, un restaurante mediterráneo valenciano completamente ficticio para
+    desarrollo, con contenido localizado ES/EN, ubicación, contacto, normas, servicios y texto
+    público.
+  - Se generaron una portada y dos imágenes de galería coherentes entre sí: salón, arroz de
+    temporada y terraza.
+  - Una guía de copia y pega añade textos alternativos, orden de alta y propuestas de horarios,
+    servicios, formulario y franjas para completar el resto del panel.
+- Archivos modificados:
+  - `tmp/generated-venue/azahar-y-brasa/README.md`.
+  - `tmp/generated-venue/azahar-y-brasa/azahar-y-brasa-principal.png`.
+  - `tmp/generated-venue/azahar-y-brasa/azahar-y-brasa-arroz.png`.
+  - `tmp/generated-venue/azahar-y-brasa/azahar-y-brasa-terraza.png`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+- Requisitos impactados:
+  - `RF-007 Registro de local`.
+  - `RF-009 Gestión de perfil público`.
+  - `RF-010 Gestión de horarios`.
+  - `RF-013 Formulario de reserva configurable`.
+- Tareas impactadas:
+  - Ninguna; se aporta material ficticio para probar manualmente capacidades ya implementadas.
+- Tareas completadas:
+  - Ninguna nueva.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Identidad, dirección, teléfono y correo son ficticios; el correo usa `.local` y la guía declara
+    expresamente que no corresponden a un negocio real.
+  - Los PNG pesan entre 2,47 y 2,82 MB, por debajo del límite local de 5 MB, y se validó que las tres
+    copias guardadas pueden abrirse.
+  - Las imágenes se generaron mediante el flujo integrado `photorealistic-natural`, sin personas
+    identificables, logotipos, texto ni marcas de agua.
+  - El perfil debe guardarse como borrador antes de que se habilite la carga de imágenes; publicar
+    continúa sujeto a las verificaciones de cuenta y requisitos editoriales.
+
+## Conversación 161 - Vista previa y confirmación de la imagen principal
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario indicó que seleccionar la imagen principal desde el ordenador no producía ningún
+    cambio visible en el editor del perfil.
+  - Se identificó que el input conservaba el archivo únicamente en el DOM y que la interfaz no tenía
+    estado reactivo, vista previa ni nombre de archivo.
+  - El editor muestra ahora una vista previa local inmediata, informa de que la selección está
+    pendiente y habilita la subida solo cuando existen tanto el perfil como el archivo.
+  - Tras una subida correcta se muestra la imagen persistida y se limpia la selección temporal.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación de las tareas completadas `2.7` y `2.11`.
+- Tareas completadas:
+  - Ninguna nueva; no se modifican checkboxes de `tasks.md`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Elegir un archivo no lo sube automáticamente; la persistencia requiere pulsar `Subir imagen
+    principal` para evitar cargas accidentales.
+  - La vista previa también funciona antes de crear el primer perfil, pero la subida permanece
+    deshabilitada y la interfaz explica que debe crearse el local primero.
+  - Las URL `blob:` se revocan al sustituir la selección, completar la subida o desmontar el editor.
+  - Pasaron 8 tests focalizados de perfil y API, 3 tests de integridad i18n, ESLint focalizado y
+    `git diff --check`.
+
+## Conversación 162 - Contador de imágenes cargadas en la galería
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó mostrar `Imágenes cargadas: X` en la sección de galería del perfil.
+  - Se añadió un contador localizado bajo el título de la galería, calculado a partir del estado
+    real de imágenes.
+  - El valor se actualiza automáticamente después de cargar o eliminar una imagen correctamente.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación visual de las tareas completadas `2.8` y `2.11`.
+- Tareas completadas:
+  - Ninguna nueva; no se modifican checkboxes de `tasks.md`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El contador no duplica estado: se deriva de `gallery.length` para evitar desincronizaciones.
+  - Se localiza como `Imágenes cargadas: {count}` y `Images uploaded: {count}`.
+  - La variación se anuncia de forma no intrusiva mediante `aria-live="polite"`.
+  - Pasaron 8 tests en los archivos focalizados del editor y de integridad i18n, ESLint focalizado
+    y `git diff --check`.
+
+## Conversación 163 - Selección y subida visible de imágenes de galería
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario indicó que seleccionar una imagen de galería desde el ordenador no parecía cargarla
+    en el sistema.
+  - Se identificó el mismo problema de estado oculto que tuvo la portada: el archivo solo vivía en
+    el input y el editor no mostraba preview, nombre ni una condición correcta de habilitación.
+  - La galería mantiene ahora el archivo seleccionado en estado React, muestra una vista previa y
+    explica que hay que completar el texto alternativo y confirmar `Subir a galería`.
+  - Tras el `POST` correcto se agrega la imagen devuelta por el API, aumenta el contador y se limpia
+    la selección temporal.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación funcional de las tareas completadas `2.8` y `2.11`.
+- Tareas completadas:
+  - Ninguna nueva; no se modifican checkboxes de `tasks.md`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Seleccionar no persiste automáticamente porque cada imagen necesita texto alternativo y una
+    confirmación explícita.
+  - El botón queda deshabilitado hasta tener perfil y archivo; si falta el texto alternativo al
+    confirmar, se conserva la validación de campo existente.
+  - La preview usa `object-fit: contain` y un máximo de 480 px para mostrar la imagen completa.
+  - Pasaron 6 tests del editor, 3 tests i18n, Prettier, ESLint focalizado y `git diff --check`.
+
+## Conversación 164 - Carga múltiple de imágenes de galería
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario aclaró que la galería debe permitir cargar más de una imagen.
+  - El selector pasa a aceptar múltiples archivos en una misma elección y permite acumular nuevas
+    selecciones hasta el límite total de ocho imágenes.
+  - Cada pendiente se presenta en una tarjeta propia con preview, nombre, texto alternativo
+    individual y acción para retirarla.
+  - La confirmación procesa el lote secuencialmente sobre el endpoint unitario existente y actualiza
+    el contador por cada respuesta correcta.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación funcional de las tareas completadas `2.8` y `2.11`.
+- Tareas completadas:
+  - Ninguna nueva; no se modifican checkboxes de `tasks.md`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Se mantiene el límite de ocho contando imágenes guardadas y pendientes.
+  - No se reutiliza una sola descripción para todo el lote: cada imagen exige su propio texto
+    alternativo por accesibilidad.
+  - La subida secuencial evita carreras sobre posiciones y el límite del endpoint existente; un
+    fallo parcial conserva en pantalla los elementos aún no completados.
+  - Pasaron 9 tests focalizados del editor e i18n, Prettier, ESLint focalizado y `git diff --check`.
+
+## Conversación 165 - Checkboxes de contacto controlados en el editor
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario reportó la advertencia MUI por cambiar el `defaultChecked` de un `SwitchBase` no
+    controlado en los campos de visibilidad de correo y teléfono.
+  - La causa era la transición de `profile = null` a un perfil creado o actualizado, que cambiaba
+    tardíamente los `defaultChecked` ya inicializados.
+  - Ambos checkboxes pasan a usar estado booleano controlado, sincronizado al cargar y guardar.
+  - Se añade una prueba del recorrido completo de creación del primer local que verifica payload,
+    persistencia visual y ausencia de la advertencia concreta.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación funcional de `2.11. Crear panel de edición de perfil`.
+- Tareas completadas:
+  - Ninguna nueva; no se modifican checkboxes de `tasks.md`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Se usa `checked` y `onChange`; no se silencia la advertencia ni se fuerza un remount mediante
+    claves artificiales.
+  - La respuesta de `POST` o `PATCH` vuelve a sincronizar ambos estados para aceptar el valor
+    canónico del servidor.
+  - Pasaron 7 tests del editor, Prettier, ESLint focalizado y `git diff --check`.
+
+## Conversación 166 - Confirmación de publicación y acceso al inicio
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó que, tras publicar un local, el panel muestre un mensaje de éxito y un botón
+    para regresar a inicio y observarlo.
+  - Se añadió un estado específico de publicación correcta, independiente del guardado ordinario.
+  - El aviso incluye la acción localizada `Ver en la página de inicio`, enlazada a `/`.
+  - La prueba positiva valida mensaje y destino; la prueba de rechazo confirma que no aparece un
+    falso éxito cuando faltan requisitos.
+- Archivos modificados:
+  - `apps/web/src/features/venue-profile/venue-profile-editor.tsx`.
+  - `apps/web/src/features/venue-profile/venue-profile-editor.test.tsx`.
+  - `apps/web/locales/es.json`.
+  - `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-009 Gestión de perfil público`.
+- Tareas impactadas:
+  - Rectificación funcional de `2.9. Implementar publicación de local` y `2.11. Crear panel de
+    edición de perfil`.
+- Tareas completadas:
+  - Ninguna nueva; no se modifican checkboxes de `tasks.md`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La navegación no es automática: el propietario puede leer la confirmación antes de decidir ir
+    a inicio.
+  - El estado de publicación se limpia al guardar cambios o iniciar otro intento para no mostrar una
+    confirmación obsoleta.
+  - Pasaron 11 tests del editor e i18n, Prettier, ESLint focalizado y `git diff --check`.
+
+## Conversación 167 - Espacio profesional de reservas, calendario y excepciones
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario solicitó que Reservas permita gestionar profesionalmente fechas, calendario,
+    festivos, días libres, reservas, rangos horarios y circunstancias sin rango horario, después de
+    revisar la documentación `.kiro`.
+  - La auditoría confirmó que agenda, calendario y disponibilidad ya existían, pero estaban
+    fragmentados entre `/panel/reservas` y `/panel/calendario`, y no había operación masiva por fecha.
+  - `/panel/reservas` incorpora un espacio con pestañas para agenda, calendario y horarios, manteniendo
+    montadas las herramientas visitadas para no perder estado local.
+  - Disponibilidad incorpora gestión inclusiva por rango para cierre completo, pausa de reservas o
+    restauración semanal, con motivo interno, límite de 366 días y aviso sobre reservas existentes.
+- Archivos modificados:
+  - Nuevo `apps/web/src/features/venue-reservations/venue-reservations-workspace.tsx`.
+  - Nuevo `apps/web/src/features/venue-reservations/venue-reservations-workspace.test.tsx`.
+  - `apps/web/src/app/panel/reservas/page.tsx`.
+  - `apps/web/src/features/availability/venue-availability-manager.tsx`.
+  - `apps/web/src/features/availability/availability-ui.test.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-008 Acceso y panel privado del local`.
+  - `RF-010 Gestión de horarios`.
+  - `RF-011 Gestión de franjas`.
+  - `RF-012 Gestión de disponibilidad en tiempo real`.
+  - `RF-018 Panel de reservas del local`.
+  - `RNF-002 Seguridad y privacidad`.
+  - `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas y completadas:
+  - `4.15. Implementar gestión profesional de festivos, días libres y excepciones por rango de
+    fechas desde el panel privado`.
+  - `9.11. Unificar agenda, calendario, horarios, excepciones y franjas en el espacio profesional de
+    Reservas`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Se reutilizan servicios y endpoints privados existentes; no hay cambios de base de datos ni API.
+  - Una circunstancia sin horas usa excepción de día completo; las circunstancias horarias usan
+    franjas manuales o generadas, capacidad y bloqueo ya existentes.
+  - Las reservas confirmadas afectadas no se cancelan. El propietario recibe un aviso y debe
+    revisarlas desde Agenda para cualquier actuación auditada.
+  - Pasaron 10 tests focalizados de workspace, disponibilidad e i18n, Prettier, ESLint focalizado y
+    `git diff --check`.
+
+## Conversación 168 - Asistente para la primera versión de reservas
+
+- Fecha: 2026-08-02.
+- Resumen de la conversación:
+  - El usuario pidió que Calendario muestre seis preguntas guiadas antes del primer guardado y que,
+    tras responderlas, cree la primera versión de la gestión de reservas.
+  - Se añadió detección basada en la ausencia real de `VenueOpeningHours`, sin estado local
+    persistente ni bandera simulada en frontend.
+  - El nuevo asistente pregunta por días abiertos, cierre habitual, festivos, jornadas parciales,
+    duración opcional y capacidad, con respuestas principales mediante desplegables.
+  - El guardado crea el snapshot semanal, persiste festivos concretos como cierres y genera franjas
+    durante 28 días cuando el local ha elegido duración y capacidad.
+  - Después del primer guardado se muestra el calendario y el editor profesional ya existentes para
+    realizar cambios libres, excepciones puntuales y operaciones por rango.
+- Archivos modificados:
+  - Nuevo `apps/web/src/features/availability/venue-availability-setup-wizard.tsx`.
+  - `apps/web/src/features/availability/venue-availability-manager.tsx`.
+  - `apps/web/src/features/availability/availability-ui.test.tsx`.
+  - `apps/web/src/app/panel/calendario/page.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-010 Gestión de horarios`.
+  - `RF-011 Gestión de franjas`.
+  - `RF-012 Gestión de disponibilidad en tiempo real`.
+  - `RF-018 Panel de reservas del local`.
+  - `RNF-006 Mantenibilidad` y `RNF-007 Usabilidad y responsive`.
+- Tareas impactadas y completadas:
+  - `4.16. Crear asistente de primera configuración de reservas y generar el calendario inicial del
+    local`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - No se añade migración: la presencia del snapshot semanal completo es la primera versión
+    persistida y el backend ya valida que contenga exactamente los siete días.
+  - Los rangos predefinidos son completo `09:00–20:00`, mañana `09:00–14:00`, tarde
+    `14:00–20:00` y noche `20:00–23:59`; pueden modificarse después en el editor.
+  - La opción “sin rangos” no crea `TimeSlots`; sigue permitiendo gestión de cierres y días.
+  - La creación reutiliza endpoints privados con ownership por cookie. Al no existir un contrato
+    bulk transaccional, un error intermedio conserva las operaciones ya guardadas y se explica al
+    usuario; un endpoint batch idempotente queda como mejora futura.
+  - Pasaron 10 tests focalizados de disponibilidad e i18n y ESLint focalizado. El typecheck global
+    no informa errores en los archivos nuevos, pero sigue fallando por incidencias históricas de
+    MUI e i18n en administración, formularios, equipo, incidencias y reservas.
+
 ## Conversación 107 - Cobertura focalizada de permisos y filtros del panel
 
 - Fecha: 2026-07-26.

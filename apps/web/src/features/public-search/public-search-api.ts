@@ -10,6 +10,8 @@ const publicVenueSearchItemSchema = z.object({
   categoryName: z.string().min(1),
   descriptionExcerpt: z.string().nullable(),
   mainImageUrl: z.string().nullable(),
+  address: z.string().min(1).nullable().optional(),
+  postalCode: z.string().min(1).nullable().optional(),
   city: z.string().min(1),
   province: z.string().nullable(),
   country: z.string().min(2),

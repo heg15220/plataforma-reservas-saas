@@ -24,9 +24,17 @@ import { NavigationLink } from "@/components/navigation-link";
 import {
   fetchVenueReservationsForDay,
   VenueReservationsApiError,
+  type VenueReservationsApiErrorKind,
   type VenueReservationList,
   type VenueReservationSummary,
 } from "@/features/venue-reservations/venue-reservations-api";
+
+type DashboardErrorKind =
+  | "authentication"
+  | "authorization"
+  | "validation"
+  | "notFound"
+  | "unavailable";
 
 /**
  * Resumen privado del día construido sobre el mismo contrato que la agenda.
@@ -38,7 +46,7 @@ export function VenueDashboardOverview({ initialDate = todayIso() }: { initialDa
   const [result, setResult] = useState<VenueReservationList | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DashboardErrorKind | null>(null);
 
   const load = useCallback(
     async (background: boolean, signal?: AbortSignal) => {
@@ -48,7 +56,7 @@ export function VenueDashboardOverview({ initialDate = todayIso() }: { initialDa
         setResult(await fetchVenueReservationsForDay(initialDate, signal));
       } catch (loadError) {
         if (!(loadError instanceof DOMException && loadError.name === "AbortError")) {
-          setError(t(`errors.${errorKind(loadError)}`));
+          setError(errorKind(loadError));
         }
       } finally {
         setLoading(false);
@@ -74,9 +82,49 @@ export function VenueDashboardOverview({ initialDate = todayIso() }: { initialDa
     [result],
   );
 
+  if (!loading && error === "notFound") {
+    return (
+      <Surface component="section" padding="md" sx={{ mt: 5 }}>
+        <Stack spacing={3} sx={{ alignItems: "flex-start" }}>
+          <Box
+            sx={{
+              alignItems: "center",
+              bgcolor: "primary.light",
+              borderRadius: "50%",
+              color: "primary.dark",
+              display: "flex",
+              height: 48,
+              justifyContent: "center",
+              width: 48,
+            }}
+          >
+            <Store aria-hidden="true" size={24} />
+          </Box>
+          <Box>
+            <Typography component="h2" variant="h2">
+              {t("onboarding.title")}
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
+              {t("onboarding.description")}
+            </Typography>
+          </Box>
+          <Button
+            component={NavigationLink}
+            href="/panel/perfil"
+            size="large"
+            startIcon={<Store aria-hidden="true" size={18} />}
+            variant="contained"
+          >
+            {t("onboarding.action")}
+          </Button>
+        </Stack>
+      </Surface>
+    );
+  }
+
   return (
     <Stack spacing={4} sx={{ mt: 5 }}>
-      {error ? <Alert severity="error">{error}</Alert> : null}
+      {error ? <Alert severity="error">{t(`errors.${error}`)}</Alert> : null}
 
       <Surface component="section" padding="md">
         <Stack spacing={3}>
@@ -304,9 +352,9 @@ function summarize(items: VenueReservationSummary[]) {
   };
 }
 
-function errorKind(value: unknown) {
+function errorKind(value: unknown): DashboardErrorKind {
   if (!(value instanceof VenueReservationsApiError)) return "unavailable";
-  const keys = {
+  const keys: Record<VenueReservationsApiErrorKind, DashboardErrorKind> = {
     unauthenticated: "authentication",
     forbidden: "authorization",
     invalid: "validation",

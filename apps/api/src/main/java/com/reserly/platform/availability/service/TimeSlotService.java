@@ -15,6 +15,13 @@ public interface TimeSlotService {
   List<TimeSlotEntity> list(UUID ownerUserId, LocalDate date);
 
   /**
+   * Elimina todas las franjas propias de una fecha.
+   *
+   * @throws TimeSlotDeleteConflictException si alguna franja conserva reservas asociadas
+   */
+  void deleteByDate(UUID ownerUserId, LocalDate date);
+
+  /**
    * Crea una franja manual disponible.
    *
    * @throws TimeSlotInvalidException si la fecha no admite reservas o la franja no es válida

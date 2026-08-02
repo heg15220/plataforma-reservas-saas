@@ -18,6 +18,17 @@ const optionalDecimal = z
   .transform((value) => (value.length > 0 ? Number(value) : null))
   .pipe(z.number().finite().nullable());
 
+/**
+ * Identificador UUID almacenado por PostgreSQL.
+ *
+ * Los fixtures reservan bloques hexadecimales estables que PostgreSQL acepta como UUID, aunque no
+ * declaran bits de versión o variante RFC. Se valida la forma canónica completa sin imponer esos
+ * bits para mantener alineados el contrato real del API y el formulario de desarrollo.
+ */
+export const databaseUuidSchema = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
 export const localizedTextSchema = z
   .object({
     sourceLocale: z.enum(supportedLocales),
@@ -27,7 +38,7 @@ export const localizedTextSchema = z
 
 export const venueProfilePayloadSchema = z.object({
   name: z.string().trim().min(1).max(160),
-  categoryId: z.uuid(),
+  categoryId: databaseUuidSchema,
   descriptionI18n: localizedTextSchema,
   servicesI18n: localizedTextSchema,
   rulesI18n: localizedTextSchema,

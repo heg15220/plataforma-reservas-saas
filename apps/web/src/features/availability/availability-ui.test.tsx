@@ -5,6 +5,7 @@ import { renderWithIntl } from "@/test-utils/render-with-intl";
 
 import {
   createTimeSlot,
+  deleteTimeSlots,
   fetchAvailabilityDay,
   fetchOpeningHours,
   fetchPublicAvailability,
@@ -24,6 +25,7 @@ vi.mock("./availability-api", async (importOriginal) => {
   return {
     ...original,
     createTimeSlot: vi.fn(),
+    deleteTimeSlots: vi.fn(),
     fetchAvailabilityDay: vi.fn(),
     fetchOpeningHours: vi.fn(),
     fetchPublicAvailability: vi.fn(),
@@ -120,6 +122,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("PublicAvailabilityCalendar", () => {
@@ -142,6 +145,9 @@ describe("PublicAvailabilityCalendar", () => {
       }),
     ).toBeVisible();
     expect(screen.getByRole("option", { name: /Ana/ })).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("option", { name: "Cualquier profesional o recurso disponible" }),
+    );
 
     expect(screen.getByText("julio de 2026")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Mostrar el mes siguiente" }));
@@ -207,6 +213,45 @@ describe("PublicAvailabilityCalendar", () => {
 });
 
 describe("VenueAvailabilityManager", () => {
+  it("crea la primera versión desde el asistente cuando no existe horario guardado", async () => {
+    vi.mocked(fetchOpeningHours).mockResolvedValue([]);
+    vi.mocked(generateTimeSlots).mockResolvedValue([slot]);
+
+    renderWithIntl(<VenueAvailabilityManager initialDate="2026-07-13" />);
+
+    expect(await screen.findByText("Crea la primera versión de tus reservas")).toBeVisible();
+    expect(screen.getByLabelText("Días abiertos")).toBeVisible();
+    expect(screen.getByLabelText("Día habitual de cierre")).toBeVisible();
+    expect(screen.getByLabelText("Política inicial de festivos")).toBeVisible();
+    expect(screen.getByLabelText("Horario distinto según el día")).toBeVisible();
+    expect(screen.getByLabelText("Rango horario por reserva")).toBeVisible();
+    expect(screen.getByLabelText("Personas máximas por rango")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar y crear primera versión" }));
+
+    await waitFor(() => expect(saveOpeningHours).toHaveBeenCalledTimes(1));
+    const snapshot = vi.mocked(saveOpeningHours).mock.calls[0][0];
+    expect(snapshot).toHaveLength(7);
+    expect(snapshot[0]).toMatchObject({
+      weekday: 1,
+      closed: false,
+      opensAt: "09:00",
+      closesAt: "20:00",
+    });
+    expect(snapshot[6]).toEqual({
+      weekday: 7,
+      closed: true,
+      reservationsEnabled: false,
+      opensAt: null,
+      closesAt: null,
+    });
+    await waitFor(() => expect(generateTimeSlots).toHaveBeenCalledTimes(24));
+    expect(
+      await screen.findByText("La primera versión se ha creado correctamente con 24 franjas."),
+    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Horario semanal" })).toBeVisible();
+  });
+
   it("carga el horario y guarda el snapshot semanal completo", async () => {
     renderWithIntl(<VenueAvailabilityManager />);
 
@@ -225,6 +270,64 @@ describe("VenueAvailabilityManager", () => {
 
     await waitFor(() => expect(setTimeSlotBlocked).toHaveBeenCalledWith(slot.id, true));
     expect(await screen.findByText("Bloqueada")).toBeVisible();
+  });
+
+  it("quita todas las franjas del día tras confirmación", async () => {
+    vi.mocked(deleteTimeSlots).mockResolvedValue();
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
+    renderWithIntl(<VenueAvailabilityManager initialDate="2026-07-13" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Quitar todas las franjas" }));
+
+    await waitFor(() => expect(deleteTimeSlots).toHaveBeenCalledWith("2026-07-13"));
+    expect(await screen.findByText("Se han quitado todas las franjas del día.")).toBeVisible();
+    expect(screen.getByText("Todavía no hay franjas para esta fecha.")).toBeVisible();
+  });
+
+  it("aplica festivos o días libres a un rango completo", async () => {
+    vi.mocked(saveAvailabilityDay).mockImplementation(async (input) => ({
+      ...input,
+      source: "override",
+      blockId: "40000000-0000-4000-8000-000000000001",
+    }));
+    renderWithIntl(<VenueAvailabilityManager initialDate="2026-07-13" />);
+
+    fireEvent.change(await screen.findByLabelText("Fecha inicial"), {
+      target: { value: "2026-07-13" },
+    });
+    fireEvent.change(screen.getByLabelText("Fecha final"), {
+      target: { value: "2026-07-15" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Motivo interno" }), {
+      target: { value: "Festivo local" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar a 3 fechas" }));
+
+    await waitFor(() => expect(saveAvailabilityDay).toHaveBeenCalledTimes(3));
+    expect(vi.mocked(saveAvailabilityDay).mock.calls.map(([input]) => input)).toEqual([
+      {
+        date: "2026-07-13",
+        closed: true,
+        reservationsEnabled: false,
+        reason: "Festivo local",
+      },
+      {
+        date: "2026-07-14",
+        closed: true,
+        reservationsEnabled: false,
+        reason: "Festivo local",
+      },
+      {
+        date: "2026-07-15",
+        closed: true,
+        reservationsEnabled: false,
+        reason: "Festivo local",
+      },
+    ]);
+    expect(await screen.findByText("Se han actualizado 3 fechas correctamente.")).toBeVisible();
   });
 });
 
@@ -249,5 +352,6 @@ describe("VenueInternalCalendar", () => {
 
 void createTimeSlot;
 void generateTimeSlots;
+void deleteTimeSlots;
 void saveAvailabilityDay;
 void updateTimeSlotCapacity;

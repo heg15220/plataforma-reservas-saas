@@ -68,6 +68,25 @@ class TimeSlotControllerTests {
   }
 
   @Test
+  void deletesAllSlotsForDateUsingAuthenticatedOwner() {
+    LocalDate date = LocalDate.of(2026, 7, 13);
+
+    var response = controller.deleteByDate(account, date);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(timeSlotService).deleteByDate(account.userId(), date);
+  }
+
+  @Test
+  void mapsReferencedSlotDeletionToConflict() {
+    var response = new AvailabilityExceptionHandler().handleTimeSlotDeleteConflict();
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().error()).isEqualTo("TIME_SLOT_DELETE_CONFLICT");
+  }
+
+  @Test
   void generatesSlotsAndUpdatesCapacityUsingAuthenticatedOwner() {
     LocalDate date = LocalDate.of(2026, 7, 13);
     UUID slotId = UUID.randomUUID();

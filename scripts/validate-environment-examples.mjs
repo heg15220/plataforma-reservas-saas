@@ -133,4 +133,11 @@ for (const template of templates) {
   }
 }
 
+const webPackage = JSON.parse(await readFile(resolve("apps/web/package.json"), "utf8"));
+if (webPackage.scripts?.dev !== "dotenv -e ../../.env.local -- next dev") {
+  throw new Error(
+    "apps/web debe cargar el .env.local de la raíz antes de iniciar Next.js en desarrollo",
+  );
+}
+
 console.log(`Plantillas de entorno válidas: ${templates.join(", ")}`);

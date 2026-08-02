@@ -19,6 +19,15 @@ import org.springframework.data.repository.query.Param;
 /** DAO del agregado con lecturas explícitas para capacidad y confirmación transaccional. */
 public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
 
+  /** Protege el historial antes de retirar franjas desde el calendario privado. */
+  @Query(
+      """
+      select (count(reservation) > 0)
+      from ReservationEntity reservation
+      where reservation.timeSlot.id in :timeSlotIds
+      """)
+  boolean existsByTimeSlotIds(@Param("timeSlotIds") Collection<UUID> timeSlotIds);
+
   /** Cuenta global por estado para el snapshot operativo administrativo. */
   @Query(
       "select count(reservation) from ReservationEntity reservation"

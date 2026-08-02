@@ -96,6 +96,7 @@ export type AvailabilityApiErrorKind =
   | "forbidden"
   | "notFound"
   | "conflict"
+  | "referenced"
   | "invalid"
   | "unavailable";
 
@@ -167,6 +168,13 @@ export async function fetchTimeSlots(date: string, signal?: AbortSignal) {
     await request(url.toString(), { method: "GET", signal }, true),
     z.array(timeSlotSchema),
   );
+}
+
+/** Elimina todas las franjas de una fecha; el backend rechaza las vinculadas a reservas. */
+export async function deleteTimeSlots(date: string) {
+  const url = new URL("/api/venue/me/time-slots", apiBaseUrl());
+  url.searchParams.set("date", date);
+  await request(url.toString(), { method: "DELETE" }, true);
 }
 
 export async function createTimeSlot(input: {
@@ -244,9 +252,28 @@ async function request(url: string, init: RequestInit, authenticated: boolean) {
       409: "conflict",
       422: "invalid",
     };
-    throw new AvailabilityApiError(byStatus[response.status] ?? "unavailable");
+    let kind = byStatus[response.status] ?? "unavailable";
+    if (response.status === 409) {
+      const payload = await response
+        .clone()
+        .json()
+        .catch(() => null);
+      if (isErrorCode(payload, "TIME_SLOT_DELETE_CONFLICT")) {
+        kind = "referenced";
+      }
+    }
+    throw new AvailabilityApiError(kind);
   }
   return response;
+}
+
+function isErrorCode(value: unknown, expected: string) {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "error" in value &&
+    (value as { error?: unknown }).error === expected
+  );
 }
 
 async function parse<T>(response: Response, schema: z.ZodType<T>): Promise<T> {

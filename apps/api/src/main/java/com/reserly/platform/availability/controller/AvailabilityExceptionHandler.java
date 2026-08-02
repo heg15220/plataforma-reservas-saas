@@ -3,6 +3,7 @@ package com.reserly.platform.availability.controller;
 import com.reserly.platform.availability.dto.AvailabilityErrorResponse;
 import com.reserly.platform.availability.service.AvailabilityDayInvalidException;
 import com.reserly.platform.availability.service.OpeningHoursInvalidException;
+import com.reserly.platform.availability.service.TimeSlotDeleteConflictException;
 import com.reserly.platform.availability.service.TimeSlotInvalidException;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,12 @@ public class AvailabilityExceptionHandler {
   @ExceptionHandler(TimeSlotInvalidException.class)
   public ResponseEntity<AvailabilityErrorResponse> handleInvalidTimeSlot() {
     return ResponseEntity.badRequest().body(new AvailabilityErrorResponse("TIME_SLOT_INVALID"));
+  }
+
+  @ExceptionHandler(TimeSlotDeleteConflictException.class)
+  public ResponseEntity<AvailabilityErrorResponse> handleTimeSlotDeleteConflict() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new AvailabilityErrorResponse("TIME_SLOT_DELETE_CONFLICT"));
   }
 
   @ExceptionHandler(VenueProfileNotFoundException.class)

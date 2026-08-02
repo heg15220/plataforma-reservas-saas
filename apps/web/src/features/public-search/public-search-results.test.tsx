@@ -21,6 +21,8 @@ const response: PublicVenueSearchResponse = {
       categoryName: "Restaurante",
       descriptionExcerpt: "Cocina de temporada",
       mainImageUrl: "/api/public/venue-images/casa/main",
+      address: "Calle Mayor 1",
+      postalCode: "28013",
       city: "Madrid",
       province: "Madrid",
       country: "ES",
@@ -38,6 +40,8 @@ const response: PublicVenueSearchResponse = {
       categoryName: "Pista de pádel",
       descriptionExcerpt: "Pádel cubierto",
       mainImageUrl: null,
+      address: "Avenida Norte 8",
+      postalCode: "46001",
       city: "València",
       province: "València",
       country: "ES",
@@ -88,11 +92,20 @@ describe("PublicSearchResultsView", () => {
       screen.getByRole("heading", { level: 1, name: "Explora locales para reservar" }),
     ).toBeVisible();
     expect(screen.getByText("2 locales encontrados")).toBeVisible();
-    expect(screen.getByRole("img", { name: "Imagen principal de Casa Luz" })).toHaveAttribute(
+    const venueImage = screen.getByRole("img", { name: "Imagen principal de Casa Luz" });
+    expect(venueImage).toHaveAttribute(
       "src",
       "http://localhost:8080/api/public/venue-images/casa/main",
     );
+    expect(venueImage).toHaveStyle({ maxWidth: "100%", objectFit: "contain", width: "100%" });
+    expect(screen.getByTestId("venue-image-frame-casa-luz")).toContainElement(venueImage);
     expect(screen.getByRole("heading", { level: 2, name: "Casa Luz" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Casa Luz" }).querySelector("a"),
+    ).toHaveAttribute("href", "/locales/casa-luz");
+    expect(screen.getAllByText("Calle Mayor 1, 28013, Madrid, Madrid, ES").length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getByText("Disponible")).toBeVisible();
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Categoría" }));
     const systemCategory = screen.getByRole("option", { name: "Restaurante del sistema" });

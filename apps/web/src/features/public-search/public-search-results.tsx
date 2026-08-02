@@ -29,6 +29,7 @@ import {
   searchSortOptions,
 } from "./public-search-api";
 import { PublicSearchAutocomplete } from "./public-search-autocomplete";
+import { PublicCategoryLabel } from "./public-category-label";
 
 const EXPLORE_PATH = "/explorar";
 const VENUE_PATH_PREFIX = "/locales/";
@@ -97,7 +98,9 @@ export function PublicSearchResultsView({
                   sx={{
                     display: "grid",
                     gap: 3,
-                    gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+                    // El catálogo pasa a tres columnas al entrar en escritorio para mantener
+                    // tarjetas compactas sin alterar la lista táctil de móvil y tablet.
+                    gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
                   }}
                 >
                   {response.results.map((venue) => (
@@ -224,7 +227,9 @@ function DiscoverySections({
 }
 
 function CompactVenueLink({ venue }: { venue: PublicVenueSearchItem }) {
-  const location = [venue.city, venue.province].filter(Boolean).join(", ");
+  const location = [venue.address, venue.postalCode, venue.city, venue.province, venue.country]
+    .filter(Boolean)
+    .join(", ");
   const venueHref = `${VENUE_PATH_PREFIX}${venue.slug}`;
 
   return (
@@ -438,58 +443,106 @@ function SearchFilterFields({
   );
 }
 
+/**
+ * Resultado navegable a la ficha mediante un enlace extendido, sin absorber la acción secundaria
+ * de reserva directa ni crear enlaces anidados.
+ */
 function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
   const t = useTranslations("PublicSearch");
-  const location = [venue.city, venue.province, venue.country].filter(Boolean).join(", ");
+  const location = [venue.address, venue.postalCode, venue.city, venue.province, venue.country]
+    .filter(Boolean)
+    .join(", ");
   const venueHref = `${VENUE_PATH_PREFIX}${venue.slug}`;
 
   return (
     <Surface
       component="article"
       padded={false}
-      sx={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minWidth: 0,
+        overflow: "hidden",
+        position: "relative",
+        width: "100%",
+        transition: "transform 180ms ease, box-shadow 180ms ease",
+        "&:hover": { boxShadow: visualTokens.shadow.floating, transform: "translateY(-2px)" },
+        "&:focus-within": {
+          outline: "2px solid",
+          outlineColor: "primary.main",
+          outlineOffset: 2,
+        },
+      }}
     >
-      {venue.mainImageUrl ? (
-        <Box
-          component="img"
-          src={resolveSearchImageUrl(venue.mainImageUrl)}
-          alt={t("card.imageAlt", { name: venue.name })}
-          sx={{
-            aspectRatio: { xs: "16 / 9", sm: "4 / 3" },
-            bgcolor: "action.hover",
-            objectFit: "cover",
-            width: "100%",
-          }}
-        />
-      ) : (
-        <Box
-          sx={{
-            alignItems: "center",
-            aspectRatio: { xs: "16 / 9", sm: "4 / 3" },
-            bgcolor: "action.hover",
-            display: "flex",
-            justifyContent: "center",
-            width: "100%",
-          }}
-        >
-          <Typography sx={{ color: "text.secondary" }}>{t("card.noImage")}</Typography>
-        </Box>
-      )}
-      <Stack spacing={2.5} sx={{ flex: 1, minWidth: 0, p: { xs: 2.5, sm: 3, md: 4 } }}>
+      <Box
+        data-testid={`venue-image-frame-${venue.slug}`}
+        sx={{
+          boxSizing: "border-box",
+          maxWidth: { md: "360px" },
+          mx: { md: "auto" },
+          px: { xs: "16px", sm: "20px" },
+          pt: { xs: "16px", sm: "20px" },
+          width: "100%",
+        }}
+      >
+        {venue.mainImageUrl ? (
+          <Box
+            component="img"
+            src={resolveSearchImageUrl(venue.mainImageUrl)}
+            alt={t("card.imageAlt", { name: venue.name })}
+            sx={{
+              aspectRatio: "4 / 3",
+              bgcolor: "action.hover",
+              borderRadius: `${visualTokens.radius.control}px`,
+              display: "block",
+              maxWidth: "100%",
+              objectFit: "contain",
+              width: "100%",
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              alignItems: "center",
+              aspectRatio: "4 / 3",
+              bgcolor: "action.hover",
+              borderRadius: `${visualTokens.radius.control}px`,
+              display: "flex",
+              justifyContent: "center",
+              maxWidth: "100%",
+              width: "100%",
+            }}
+          >
+            <Typography sx={{ color: "text.secondary" }}>{t("card.noImage")}</Typography>
+          </Box>
+        )}
+      </Box>
+      <Stack spacing={2.5} sx={{ flex: 1, minWidth: 0, p: { xs: 2.5, sm: 3 } }}>
         <Stack
-          direction={{ xs: "column", sm: "row" }}
+          direction={{ xs: "column", sm: "row", md: "column", xl: "row" }}
           spacing={1.5}
           sx={{
-            alignItems: { xs: "flex-start", sm: "center" },
+            alignItems: { xs: "flex-start", sm: "center", md: "flex-start", xl: "center" },
             justifyContent: "space-between",
           }}
         >
-          <Chip label={venue.categoryName} size="small" />
+          <PublicCategoryLabel label={venue.categoryName} slug={venue.categorySlug} />
           <StatusChip label={venue.statusLabel} tone={statusTone(venue.statusCode)} />
         </Stack>
         <Stack spacing={1}>
           <Typography component="h2" variant="h2">
-            {venue.name}
+            <Box
+              component={NavigationLink}
+              href={venueHref}
+              sx={{
+                color: "inherit",
+                textDecoration: "none",
+                "&::after": { content: '\"\"', inset: 0, position: "absolute" },
+              }}
+            >
+              {venue.name}
+            </Box>
           </Typography>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center", color: "text.secondary" }}>
             <MapPin aria-hidden="true" size={17} strokeWidth={1.9} />
@@ -515,7 +568,7 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
             component={NavigationLink}
             fullWidth
             href={venueHref}
-            sx={{ minHeight: 44 }}
+            sx={{ minHeight: 44, position: "relative", zIndex: 1 }}
             variant={venue.bookingAvailable ? "outlined" : "contained"}
           >
             {t("actions.viewVenue")}
@@ -525,7 +578,7 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
               component={NavigationLink}
               fullWidth
               href={`${venueHref}#availability`}
-              sx={{ minHeight: 44 }}
+              sx={{ minHeight: 44, position: "relative", zIndex: 1 }}
               variant="contained"
             >
               {t("actions.book")}

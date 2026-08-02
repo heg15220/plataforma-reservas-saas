@@ -2,17 +2,21 @@ import { z } from "zod";
 
 import { supportedLocales } from "@/i18n/config";
 
-import { localizedTextSchema, type VenueProfilePayload } from "./venue-profile-schema";
+import {
+  databaseUuidSchema,
+  localizedTextSchema,
+  type VenueProfilePayload,
+} from "./venue-profile-schema";
 
 const venueCategorySchema = z.object({
-  id: z.uuid(),
+  id: databaseUuidSchema,
   slug: z.string().min(1),
   name: z.string().min(1),
 });
 
 const venueProfileSchema = z.object({
-  id: z.uuid(),
-  categoryId: z.uuid(),
+  id: databaseUuidSchema,
+  categoryId: databaseUuidSchema,
   categorySlug: z.string().min(1),
   categoryName: z.string().min(1),
   name: z.string().min(1),
@@ -41,7 +45,7 @@ const venueProfileSchema = z.object({
 });
 
 const galleryImageSchema = z.object({
-  id: z.uuid(),
+  id: databaseUuidSchema,
   url: z.string().min(1),
   altText: z.string().min(1),
   position: z.number().int().nonnegative(),
