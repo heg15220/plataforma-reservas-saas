@@ -23,6 +23,7 @@ public record VenueReservationDetailResponse(
     LocalTime startsAt,
     LocalTime endsAt,
     String status,
+    boolean manualActionsAvailable,
     Instant cancelledAt,
     String cancelledBy,
     String cancellationReason,

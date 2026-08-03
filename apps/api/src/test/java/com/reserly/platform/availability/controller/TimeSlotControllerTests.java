@@ -48,7 +48,7 @@ class TimeSlotControllerTests {
   void listsAndCreatesManualSlotsUsingAuthenticatedOwner() {
     LocalDate date = LocalDate.of(2026, 7, 13);
     TimeSlotRequest request =
-        new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 4);
+        new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 4, null);
     TimeSlotEntity slot = slot(date);
     when(timeSlotService.list(account.userId(), date)).thenReturn(List.of(slot));
     when(timeSlotService.create(account.userId(), request)).thenReturn(slot);
@@ -90,7 +90,7 @@ class TimeSlotControllerTests {
   void generatesSlotsAndUpdatesCapacityUsingAuthenticatedOwner() {
     LocalDate date = LocalDate.of(2026, 7, 13);
     UUID slotId = UUID.randomUUID();
-    TimeSlotGenerationRequest generationRequest = new TimeSlotGenerationRequest(date, 60, 5);
+    TimeSlotGenerationRequest generationRequest = new TimeSlotGenerationRequest(date, 60, 5, null);
     TimeSlotCapacityRequest capacityRequest = new TimeSlotCapacityRequest(8);
     TimeSlotEntity generated = slot(date);
     generated.setCreatedByRule(true);

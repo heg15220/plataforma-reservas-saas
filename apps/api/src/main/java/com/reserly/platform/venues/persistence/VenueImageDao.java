@@ -21,6 +21,9 @@ public interface VenueImageDao extends JpaRepository<VenueImageEntity, UUID> {
       """)
   List<VenueImageEntity> findAllOwned(@Param("ownerUserId") UUID ownerUserId);
 
+  /** Lista la galería de una ficha previamente autorizada por el servicio. */
+  List<VenueImageEntity> findAllByVenueIdOrderByPosition(UUID venueId);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       """
@@ -31,6 +34,10 @@ public interface VenueImageDao extends JpaRepository<VenueImageEntity, UUID> {
       """)
   Optional<VenueImageEntity> findOwnedForUpdate(
       @Param("ownerUserId") UUID ownerUserId, @Param("imageId") UUID imageId);
+
+  /** Bloquea una imagen dentro de la ficha seleccionada para impedir cruces entre locales. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  Optional<VenueImageEntity> findByVenueIdAndId(UUID venueId, UUID imageId);
 
   @Query(
       """

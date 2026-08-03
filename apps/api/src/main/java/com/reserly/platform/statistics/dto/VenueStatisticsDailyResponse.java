@@ -15,4 +15,5 @@ public record VenueStatisticsDailyResponse(
     long availableCapacity,
     BigDecimal occupancyRate,
     long reviewsCount,
+    long incidentsCount,
     BigDecimal averageRating) {}

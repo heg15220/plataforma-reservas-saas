@@ -44,15 +44,13 @@ export function PublicAvailabilityCalendar({
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [resourceSelections, setResourceSelections] = useState<Record<string, string>>({});
+  const [selectedResourceId, setSelectedResourceId] = useState<string>("");
   const dates = useMemo(() => createMonthDates(visibleMonth), [visibleMonth]);
   const leadingEmptyDays = useMemo(() => monthLeadingEmptyDays(visibleMonth), [visibleMonth]);
   const weekdayLabels = useMemo(() => createWeekdayLabels(locale), [locale]);
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setFailed(false);
     Promise.all(
       dates.map((date) => fetchPublicAvailability(venueSlug, date, locale, controller.signal)),
     )
@@ -76,20 +74,61 @@ export function PublicAvailabilityCalendar({
   const selected = days[selectedDate];
   const serviceOptions = useMemo(() => {
     const uniqueServices = new Map<string, string>();
-    for (const slot of selected?.slots ?? []) {
-      if (slot.serviceId && slot.serviceName) {
-        uniqueServices.set(slot.serviceId, slot.serviceName);
+    for (const day of Object.values(days)) {
+      for (const slot of day.slots) {
+        if (slot.serviceId && slot.serviceName)
+          uniqueServices.set(slot.serviceId, slot.serviceName);
       }
     }
     return Array.from(uniqueServices, ([id, name]) => ({ id, name }));
-  }, [selected]);
+  }, [days]);
   const effectiveServiceId = serviceOptions.some((service) => service.id === selectedServiceId)
     ? selectedServiceId
     : (serviceOptions[0]?.id ?? null);
-  const visibleSlots =
+  const serviceSlots =
     effectiveServiceId === null
       ? (selected?.slots ?? [])
       : (selected?.slots.filter((slot) => slot.serviceId === effectiveServiceId) ?? []);
+  const resourceOptions = useMemo(() => {
+    const resources = new Map<string, { id: string; name: string; specialty: string | null }>();
+    for (const day of Object.values(days)) {
+      for (const slot of day.slots) {
+        if (effectiveServiceId !== null && slot.serviceId !== effectiveServiceId) continue;
+        for (const resource of slot.availableEmployeeResources) {
+          resources.set(resource.employeeResourceId, {
+            id: resource.employeeResourceId,
+            name: resource.displayName,
+            specialty: resource.specialty,
+          });
+        }
+      }
+    }
+    return Array.from(resources.values()).sort((left, right) =>
+      left.name.localeCompare(right.name, locale),
+    );
+  }, [days, effectiveServiceId, locale]);
+  const anyAvailableAllowed = Object.values(days).some((day) =>
+    day.slots.some(
+      (slot) =>
+        (effectiveServiceId === null || slot.serviceId === effectiveServiceId) &&
+        slot.anyAvailableResourceAllowed,
+    ),
+  );
+  const effectiveResourceId =
+    selectedResourceId === "any_available" && anyAvailableAllowed
+      ? selectedResourceId
+      : resourceOptions.some((resource) => resource.id === selectedResourceId)
+        ? selectedResourceId
+        : "";
+  const visibleSlots = effectiveResourceId
+    ? effectiveResourceId === "any_available"
+      ? serviceSlots
+      : serviceSlots.filter((slot) =>
+          slot.availableEmployeeResources.some(
+            (resource) => resource.employeeResourceId === effectiveResourceId,
+          ),
+        )
+    : serviceSlots;
   const maximumCapacity = visibleSlots.reduce(
     (maximum, slot) => Math.max(maximum, slot.capacity),
     0,
@@ -114,6 +153,58 @@ export function PublicAvailabilityCalendar({
             {t("description")}
           </Typography>
         </Box>
+
+        {serviceOptions.length > 0 ? (
+          <Surface padding="sm" tone="muted">
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: { sm: "repeat(2, minmax(0, 1fr))" },
+              }}
+            >
+              <TextField
+                label={t("specialtyLabel")}
+                onChange={(event) => {
+                  setSelectedServiceId(event.target.value);
+                  setSelectedResourceId("");
+                }}
+                select
+                value={effectiveServiceId ?? ""}
+              >
+                {serviceOptions.map((service) => (
+                  <MenuItem key={service.id} value={service.id}>
+                    {service.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                disabled={resourceOptions.length === 0}
+                label={t("doctorLabel")}
+                onChange={(event) => setSelectedResourceId(event.target.value)}
+                select
+                value={effectiveResourceId}
+              >
+                <MenuItem disabled value="">
+                  {t("chooseDoctor")}
+                </MenuItem>
+                {anyAvailableAllowed ? (
+                  <MenuItem value="any_available">{t("anyAvailableResource")}</MenuItem>
+                ) : null}
+                {resourceOptions.map((resource) => (
+                  <MenuItem key={resource.id} value={resource.id}>
+                    {resource.specialty
+                      ? t("resourceWithSpecialty", {
+                          name: resource.name,
+                          specialty: resource.specialty,
+                        })
+                      : resource.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+          </Surface>
+        ) : null}
 
         {failed ? <Alert severity="error">{t("error")}</Alert> : null}
 
@@ -220,7 +311,7 @@ export function PublicAvailabilityCalendar({
                           <Button
                             key={date}
                             aria-label={`${formatLongDate(date, locale)} · ${day?.statusLabel ?? t("unavailable")}`}
-                            aria-pressed={selectedDay}
+                            aria-selected={selectedDay}
                             disabled={pastDay}
                             onClick={() => setSelectedDate(date)}
                             role="gridcell"
@@ -314,21 +405,7 @@ export function PublicAvailabilityCalendar({
                       />
                     </Stack>
 
-                    {serviceOptions.length > 1 ? (
-                      <TextField
-                        label={t("serviceFilter")}
-                        onChange={(event) => setSelectedServiceId(event.target.value)}
-                        select
-                        size="small"
-                        value={effectiveServiceId ?? ""}
-                      >
-                        {serviceOptions.map((service) => (
-                          <MenuItem key={service.id} value={service.id}>
-                            {service.name}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    ) : serviceOptions.length === 1 ? (
+                    {serviceOptions.length === 1 ? (
                       <Typography color="text.secondary" variant="body2">
                         {t("selectedService", { name: serviceOptions[0].name })}
                       </Typography>
@@ -358,10 +435,9 @@ export function PublicAvailabilityCalendar({
                         </Box>
                         <Stack divider={<Box sx={{ borderTop: 1, borderColor: "divider" }} />}>
                           {visibleSlots.map((slot) => {
-                            const selectedResource = resourceSelections[slot.slotId];
                             const canBook =
                               slot.bookingAvailable &&
-                              (!slot.employeeResourceRequired || Boolean(selectedResource));
+                              (!slot.employeeResourceRequired || Boolean(effectiveResourceId));
                             return (
                               <Box
                                 key={slot.slotId}
@@ -378,7 +454,9 @@ export function PublicAvailabilityCalendar({
                               >
                                 <Box>
                                   <Typography sx={{ fontWeight: 800 }} variant="body2">
-                                    {formatTimeRange(slot.startsAt, slot.endsAt)}
+                                    {slot.bookingMode === "exact_time"
+                                      ? slot.startsAt.slice(0, 5)
+                                      : formatTimeRange(slot.startsAt, slot.endsAt)}
                                   </Typography>
                                   <Typography
                                     color="text.secondary"
@@ -394,44 +472,6 @@ export function PublicAvailabilityCalendar({
                                     <Typography color="text.secondary" variant="caption">
                                       {t("slotService", { name: slot.serviceName })}
                                     </Typography>
-                                  ) : null}
-                                  {slot.employeeResourceRequired ? (
-                                    <TextField
-                                      fullWidth
-                                      label={t("resourceLabel")}
-                                      onChange={(event) =>
-                                        setResourceSelections((current) => ({
-                                          ...current,
-                                          [slot.slotId]: event.target.value,
-                                        }))
-                                      }
-                                      select
-                                      size="small"
-                                      sx={{ mt: 1 }}
-                                      value={selectedResource ?? ""}
-                                    >
-                                      <MenuItem disabled value="">
-                                        {t("chooseResource")}
-                                      </MenuItem>
-                                      {slot.anyAvailableResourceAllowed ? (
-                                        <MenuItem value="any_available">
-                                          {t("anyAvailableResource")}
-                                        </MenuItem>
-                                      ) : null}
-                                      {slot.availableEmployeeResources.map((resource) => (
-                                        <MenuItem
-                                          key={resource.employeeResourceId}
-                                          value={resource.employeeResourceId}
-                                        >
-                                          {resource.specialty
-                                            ? t("resourceWithSpecialty", {
-                                                name: resource.displayName,
-                                                specialty: resource.specialty,
-                                              })
-                                            : resource.displayName}
-                                        </MenuItem>
-                                      ))}
-                                    </TextField>
                                   ) : null}
                                 </Box>
                                 <SlotDatum
@@ -524,7 +564,6 @@ export function PublicAvailabilityCalendar({
   );
 
   function bookingHref(slot: PublicAvailability["slots"][number]) {
-    const selectedResource = resourceSelections[slot.slotId];
     const query = new URLSearchParams({
       date: selectedDate,
       slotId: slot.slotId,
@@ -532,11 +571,11 @@ export function PublicAvailabilityCalendar({
     if (slot.serviceId) {
       query.set("serviceId", slot.serviceId);
     }
-    if (selectedResource === "any_available") {
+    if (effectiveResourceId === "any_available") {
       query.set("assignmentPreference", "any_available");
-    } else if (selectedResource) {
+    } else if (effectiveResourceId) {
       query.set("assignmentPreference", "specific");
-      query.set("employeeResourceId", selectedResource);
+      query.set("employeeResourceId", effectiveResourceId);
     }
     return `/locales/${encodeURIComponent(venueSlug)}/reservar?${query.toString()}`;
   }
@@ -547,6 +586,8 @@ export function PublicAvailabilityCalendar({
       return;
     }
     const nextSelectedDate = nextMonth === monthStart(todayIso()) ? todayIso() : nextMonth;
+    setLoading(true);
+    setFailed(false);
     setVisibleMonth(nextMonth);
     setSelectedDate(nextSelectedDate);
   }

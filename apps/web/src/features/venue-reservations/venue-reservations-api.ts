@@ -14,6 +14,10 @@ const reservationSummarySchema = z.object({
   startsAt: localTimeSchema,
   endsAt: localTimeSchema,
   status: z.string().min(1),
+  manualActionsAvailable: z.boolean(),
+  // Compatibilidad de despliegue: una API anterior no enviaba esta proyección minimizada.
+  // La ausencia se interpreta como falta de señal y nunca como una incidencia atribuible.
+  incidentRiskLevel: z.enum(["low", "watch", "high"]).default("low"),
   createdAt: instantSchema,
 });
 
@@ -54,17 +58,19 @@ const incidentHistorySchema = z.object({
   items: z.array(incidentSchema).max(50),
 });
 
-const reservationDetailSchema = reservationSummarySchema.omit({ createdAt: true }).extend({
-  serviceId: z.uuid().nullable(),
-  cancelledAt: instantSchema.nullable(),
-  cancelledBy: z.string().nullable(),
-  cancellationReason: z.string().nullable(),
-  createdAt: instantSchema,
-  updatedAt: instantSchema,
-  formAnswers: z.array(formAnswerSchema),
-  assignedResource: assignedResourceSchema.nullable(),
-  incidentHistory: incidentHistorySchema,
-});
+const reservationDetailSchema = reservationSummarySchema
+  .omit({ createdAt: true, incidentRiskLevel: true })
+  .extend({
+    serviceId: z.uuid().nullable(),
+    cancelledAt: instantSchema.nullable(),
+    cancelledBy: z.string().nullable(),
+    cancellationReason: z.string().nullable(),
+    createdAt: instantSchema,
+    updatedAt: instantSchema,
+    formAnswers: z.array(formAnswerSchema),
+    assignedResource: assignedResourceSchema.nullable(),
+    incidentHistory: incidentHistorySchema,
+  });
 
 const cancellationSchema = z.object({
   reservationId: z.uuid(),

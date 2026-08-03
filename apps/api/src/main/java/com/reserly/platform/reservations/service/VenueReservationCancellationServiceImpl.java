@@ -15,7 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Cancela una reserva confirmada futura dentro de la misma transacción que su auditoría.
+ * Cancela una reserva confirmada durante su hora operativa en la misma transacción que la
+ * auditoría.
  *
  * <p>La capacidad se libera por el cambio de estado: las consultas de ocupación solo contabilizan
  * estados activos. El email se publica como evento y se encola después del commit.
@@ -28,16 +29,19 @@ public class VenueReservationCancellationServiceImpl
   private final AuditLogService auditLogService;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
+  private final ReservationOperationalWindow operationalWindow;
 
   public VenueReservationCancellationServiceImpl(
       ReservationDao reservationDao,
       AuditLogService auditLogService,
       ApplicationEventPublisher eventPublisher,
-      Clock clock) {
+      Clock clock,
+      ReservationOperationalWindow operationalWindow) {
     this.reservationDao = reservationDao;
     this.auditLogService = auditLogService;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
+    this.operationalWindow = operationalWindow;
   }
 
   @Override
@@ -53,12 +57,10 @@ public class VenueReservationCancellationServiceImpl
     }
     ReservationEntity reservation =
         reservationDao
-            .findOwnedForAttendanceUpdate(ownerUserId, reservationId)
+            .findAccessibleForAttendanceUpdate(ownerUserId, reservationId)
             .orElseThrow(VenueReservationCancellationNotFoundException::new);
     Instant now = clock.instant();
-    Instant startsAt =
-        reservation.getDate().atTime(reservation.getStartsAt()).atZone(clock.getZone()).toInstant();
-    if (!"confirmed".equals(reservation.getStatus()) || !startsAt.isAfter(now)) {
+    if (!operationalWindow.allowsManualAction(reservation)) {
       throw new VenueReservationCancellationInvalidException();
     }
 

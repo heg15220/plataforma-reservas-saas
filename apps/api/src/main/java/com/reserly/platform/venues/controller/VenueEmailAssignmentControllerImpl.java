@@ -27,6 +27,7 @@ public class VenueEmailAssignmentControllerImpl implements VenueEmailAssignmentC
   @Override
   public ResponseEntity<VenueEmailAssignmentResponse> update(
       AuthenticatedAccount account, UUID venueId, VenueEmailAssignmentRequest request) {
-    return ResponseEntity.ok(service.update(account.userId(), venueId, request.email()));
+    return ResponseEntity.ok(
+        service.update(account.userId(), venueId, request.email(), request.password()));
   }
 }

@@ -62,7 +62,7 @@ class NoShowReportServiceTests {
   void reportsMarkedNoShowAndRecordsMinimizedAuditInSameUseCase() {
     UUID ownerId = UUID.randomUUID();
     ReservationEntity reservation = noShowReservation();
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservation.getId()))
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
         .thenReturn(Optional.of(reservation));
 
     NoShowIncidentEntity incident =
@@ -133,7 +133,7 @@ class NoShowReportServiceTests {
     UUID ownerId = UUID.randomUUID();
     ReservationEntity reservation = noShowReservation();
     reservation.setStatus("attended");
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservation.getId()))
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
         .thenReturn(Optional.of(reservation));
 
     assertThatThrownBy(
@@ -152,7 +152,7 @@ class NoShowReportServiceTests {
   void keepsForeignAndMissingReservationOpaque() {
     UUID ownerId = UUID.randomUUID();
     UUID reservationId = UUID.randomUUID();
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservationId))
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservationId))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(

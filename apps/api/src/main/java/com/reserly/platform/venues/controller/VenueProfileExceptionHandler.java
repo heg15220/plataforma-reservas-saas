@@ -1,5 +1,6 @@
 package com.reserly.platform.venues.controller;
 
+import com.reserly.platform.forms.controller.PublicReservationFormControllerImpl;
 import com.reserly.platform.venues.dto.VenueDescriptionLimitErrorResponse;
 import com.reserly.platform.venues.dto.VenueProfileErrorResponse;
 import com.reserly.platform.venues.dto.VenuePublicationErrorResponse;
@@ -28,7 +29,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
       VenueGalleryControllerImpl.class,
       VenueCustomTabControllerImpl.class,
       VenueEmailAssignmentControllerImpl.class,
-      VenuePublicProfileControllerImpl.class
+      VenuePublicProfileControllerImpl.class,
+      PublicReservationFormControllerImpl.class
     })
 public class VenueProfileExceptionHandler {
 

@@ -7,6 +7,7 @@ import java.util.UUID;
 /** Franja de reserva visible en el panel privado del local. */
 public record TimeSlotResponse(
     UUID id,
+    UUID serviceId,
     LocalDate date,
     int weekday,
     LocalTime startsAt,

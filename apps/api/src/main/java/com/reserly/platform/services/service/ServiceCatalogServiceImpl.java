@@ -108,7 +108,19 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
     if (command.allowsAnyAvailableResource() != null) {
       service.setAnyAvailableResourceAllowed(command.allowsAnyAvailableResource());
     }
+    service.setBookingMode(normalizeBookingMode(command.bookingMode()));
     service.setUpdatedAt(updatedAt);
+  }
+
+  private String normalizeBookingMode(String value) {
+    if (value == null || value.isBlank()) {
+      return "range";
+    }
+    String normalized = value.trim();
+    if (!normalized.equals("range") && !normalized.equals("exact_time")) {
+      throw new ServiceInvalidException();
+    }
+    return normalized;
   }
 
   private String normalizeRequired(String value, int maxLength) {

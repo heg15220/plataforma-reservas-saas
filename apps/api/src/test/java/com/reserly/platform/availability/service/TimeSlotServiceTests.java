@@ -17,6 +17,7 @@ import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
 import com.reserly.platform.reservations.persistence.ReservationDao;
+import com.reserly.platform.services.persistence.ServiceDao;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.LocalDate;
@@ -39,6 +40,7 @@ class TimeSlotServiceTests {
   @Mock private AvailabilityBlockDao blockDao;
   @Mock private TimeSlotDao slotDao;
   @Mock private ReservationDao reservationDao;
+  @Mock private ServiceDao serviceDao;
 
   private TimeSlotServiceImpl service;
   private UUID ownerId;
@@ -46,7 +48,9 @@ class TimeSlotServiceTests {
 
   @BeforeEach
   void setUp() {
-    service = new TimeSlotServiceImpl(venueDao, openingHourDao, blockDao, slotDao, reservationDao);
+    service =
+        new TimeSlotServiceImpl(
+            venueDao, openingHourDao, blockDao, slotDao, reservationDao, serviceDao);
     ownerId = UUID.randomUUID();
     venue = new VenueEntity();
     venue.setId(UUID.randomUUID());
@@ -56,11 +60,11 @@ class TimeSlotServiceTests {
   void createsManualSlotInsideOpeningHours() {
     LocalDate date = LocalDate.of(2026, 7, 13);
     TimeSlotRequest request =
-        new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 6);
+        new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 6, null);
     when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(openingHourDao.findOwnedByWeekday(ownerId, 1)).thenReturn(Optional.of(openingHour()));
     when(blockDao.existsOwnedDayOverride(ownerId, date)).thenReturn(false);
-    when(slotDao.existsOwnedOverlap(ownerId, date, request.startsAt(), request.endsAt()))
+    when(slotDao.existsOwnedOverlap(ownerId, date, request.startsAt(), request.endsAt(), null))
         .thenReturn(false);
     when(slotDao.saveAndFlush(any(TimeSlotEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -86,7 +90,7 @@ class TimeSlotServiceTests {
             () ->
                 service.create(
                     ownerId,
-                    new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 4)))
+                    new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 4, null)))
         .isInstanceOf(TimeSlotInvalidException.class);
 
     when(blockDao.existsOwnedDayOverride(ownerId, date)).thenReturn(false);
@@ -94,16 +98,16 @@ class TimeSlotServiceTests {
             () ->
                 service.create(
                     ownerId,
-                    new TimeSlotRequest(date, LocalTime.of(8, 30), LocalTime.of(9, 30), 4)))
+                    new TimeSlotRequest(date, LocalTime.of(8, 30), LocalTime.of(9, 30), 4, null)))
         .isInstanceOf(TimeSlotInvalidException.class);
 
-    when(slotDao.existsOwnedOverlap(ownerId, date, LocalTime.of(10, 0), LocalTime.of(11, 0)))
+    when(slotDao.existsOwnedOverlap(ownerId, date, LocalTime.of(10, 0), LocalTime.of(11, 0), null))
         .thenReturn(true);
     assertThatThrownBy(
             () ->
                 service.create(
                     ownerId,
-                    new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 4)))
+                    new TimeSlotRequest(date, LocalTime.of(10, 0), LocalTime.of(11, 0), 4, null)))
         .isInstanceOf(TimeSlotInvalidException.class);
 
     verify(slotDao, never()).saveAndFlush(any());
@@ -151,11 +155,11 @@ class TimeSlotServiceTests {
   @Test
   void generatesSlotsByDurationInsideOpeningHours() {
     LocalDate date = LocalDate.of(2026, 7, 13);
-    TimeSlotGenerationRequest request = new TimeSlotGenerationRequest(date, 60, 5);
+    TimeSlotGenerationRequest request = new TimeSlotGenerationRequest(date, 60, 5, null);
     when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(openingHourDao.findOwnedByWeekday(ownerId, 1)).thenReturn(Optional.of(openingHour()));
     when(blockDao.existsOwnedDayOverride(ownerId, date)).thenReturn(false);
-    when(slotDao.existsOwnedOverlap(any(), any(), any(), any())).thenReturn(false);
+    when(slotDao.existsOwnedOverlap(any(), any(), any(), any(), any())).thenReturn(false);
     when(slotDao.saveAllAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     List<TimeSlotEntity> slots = service.generate(ownerId, request);
@@ -173,14 +177,15 @@ class TimeSlotServiceTests {
   @Test
   void rejectsGenerationWhenDurationIsInvalidOrSlotOverlaps() {
     LocalDate date = LocalDate.of(2026, 7, 13);
-    assertThatThrownBy(() -> service.generate(ownerId, new TimeSlotGenerationRequest(date, 4, 5)))
+    assertThatThrownBy(
+            () -> service.generate(ownerId, new TimeSlotGenerationRequest(date, 4, 5, null)))
         .isInstanceOf(TimeSlotInvalidException.class);
 
-    TimeSlotGenerationRequest request = new TimeSlotGenerationRequest(date, 60, 5);
+    TimeSlotGenerationRequest request = new TimeSlotGenerationRequest(date, 60, 5, null);
     when(venueDao.findCurrentByOwnerUserIdForUpdate(ownerId)).thenReturn(Optional.of(venue));
     when(openingHourDao.findOwnedByWeekday(ownerId, 1)).thenReturn(Optional.of(openingHour()));
     when(blockDao.existsOwnedDayOverride(ownerId, date)).thenReturn(false);
-    when(slotDao.existsOwnedOverlap(ownerId, date, LocalTime.of(9, 0), LocalTime.of(10, 0)))
+    when(slotDao.existsOwnedOverlap(ownerId, date, LocalTime.of(9, 0), LocalTime.of(10, 0), null))
         .thenReturn(true);
 
     assertThatThrownBy(() -> service.generate(ownerId, request))

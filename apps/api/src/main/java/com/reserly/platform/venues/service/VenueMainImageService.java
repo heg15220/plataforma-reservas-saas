@@ -9,6 +9,10 @@ public interface VenueMainImageService {
   /** Reemplaza la imagen del perfil propio tras validar y normalizar el contenido. */
   VenueMainImageOutcome upload(UUID ownerUserId, String declaredMediaType, InputStream input);
 
+  /** Reemplaza la imagen principal de una ficha seleccionada y accesible por el actor. */
+  VenueMainImageOutcome upload(
+      UUID userId, UUID venueId, String declaredMediaType, InputStream input);
+
   /** Lee una imagen solo si pertenece a un local publicado. */
   VenueMainImageContent findPublished(UUID venueId);
 }

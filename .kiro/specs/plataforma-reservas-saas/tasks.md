@@ -36,6 +36,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 0.15. Añadir validación de codificación UTF-8 y calidad de textos españoles para detectar tildes ausentes, signos de apertura omitidos, caracteres especiales rotos y mojibake en catálogos, plantillas, seeds, migraciones con texto visible y documentación.
 - [x] 0.16. Añadir tres publicaciones idempotentes exclusivas del perfil local, con imágenes, disponibilidad móvil, reserva anónima, correo capturable y actualización real de plazas.
 - [x] 0.17. Crear una cuenta local autenticable con varios locales publicados para pruebas multi-local.
+- [x] 0.18. Añadir una clínica privada ficticia al catálogo local con imagen propia, especialidades, médicos y citas futuras a hora exacta.
 
 ## 3. Fase 1 - Identidad, roles y base SaaS
 
@@ -62,6 +63,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 1.21. Crear textos ES/EN para registro, login, errores y estados de verificación.
 - [x] 1.22. Crear tests de registro, login, verificación de email, verificación empresarial, documentación de respaldo y permisos.
 - [x] 1.23. Añadir al menú privado acceso al inicio público y cierre de sesión responsive.
+- [x] 1.24. Añadir acceso asistido local para la cuenta de Azahar sin depender del autocompletado.
 
 ## 4. Fase 2 - Locales, categorías y perfil público
 
@@ -83,6 +85,11 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 2.16. Mostrar pestañas personalizadas activas dentro de la ficha pública del local.
 - [x] 2.17. Crear tests de permisos, orden, publicación, sanitización e i18n de pestañas personalizadas.
 - [x] 2.18. Gestionar desde el panel el email operativo asociado a cada local publicado propio.
+- [x] 2.19. Asignar credenciales privadas independientes a cada local de una cuenta multi-local.
+- [x] 2.20. Gestionar creación, selección, edición y archivo de múltiples perfiles de local desde el panel.
+- [x] 2.21. Habilitar el formulario base al crear un local y controlar su ausencia en la API pública.
+- [x] 2.22. Restringir el alta de locales adicionales a cuentas con capacidad multi-local explícita.
+- [x] 2.23. Estabilizar la credencial local del propietario de Azahar & Brasa.
 
 ## 5. Fase 3 - Búsqueda pública y descubrimiento
 
@@ -120,6 +127,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 4.15. Implementar gestión profesional de festivos, días libres y excepciones por rango de fechas desde el panel privado.
 - [x] 4.16. Crear asistente de primera configuración de reservas y generar el calendario inicial del local.
 - [x] 4.17. Ampliar duraciones y permitir retirar de forma segura todas las franjas de una fecha.
+- [x] 4.18. Evitar la generación inicial de franjas cuando el local elige gestionar solo por día.
 
 ## 7. Fase 5 - Equipo, recursos y servicios MVP
 
@@ -135,6 +143,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 5.10. Crear sección "Equipo y disponibilidad" en panel.
 - [x] 5.11. Mostrar selector de servicio y profesional en reserva cuando el local lo configure.
 - [x] 5.12. Crear tests de disponibilidad con empleados, recursos y servicios.
+- [x] 5.13. Implementar especialidades clínicas con médicos, citas a hora exacta y gestión integral desde el panel privado.
 
 ## 8. Fase 6 - Formularios personalizados
 
@@ -201,13 +210,14 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 9.9. Añadir actualización tras nueva reserva.
 - [x] 9.10. Crear tests de permisos y filtros.
 - [x] 9.11. Unificar agenda, calendario, horarios, excepciones y franjas en el espacio profesional de Reservas.
+- [x] 9.12. Corregir la consulta PostgreSQL de la agenda y habilitar reservas para identidades delegadas multi-local.
 
 ## 12. Fase 10 - Asistencia, incidencias y penalizaciones
 
 - [x] 10.1. Crear migraciones de `no_show_incidents`, `penalties` y `venue_booking_rules`.
 - [x] 10.2. Implementar reglas básicas de cancelación por local.
-- [x] 10.3. Implementar marcado de asistida, no asistida y pendiente.
-- [x] 10.4. Implementar job para marcar asistida por defecto tras periodo configurado.
+- [x] 10.3. Implementar marcado manual de asistida y no asistida durante la hora operativa.
+- [x] 10.4. Mantener confirmada por defecto una reserva sin decisión y retirar la asistencia automática.
 - [x] 10.5. Implementar reporte de no asistencia con confirmación.
 - [x] 10.6. Implementar auditoría del reporte.
 - [x] 10.7. Implementar cálculo de penalización 7, 14, 21 y 60 días.
@@ -220,6 +230,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 10.14. Crear tests de bloqueo de email penalizado.
 - [x] 10.15. Crear tests de auditoría de cancelación y reporte.
 - [x] 10.16. Crear traducciones ES/EN para incidencias, penalizaciones, advertencias y mensajes de restricción.
+- [x] 10.17. Proyectar pendiente antes del inicio y limitar asistencia y cancelación a la hora posterior.
+- [x] 10.18. Añadir semáforo accesible verde, amarillo y rojo al historial profesional según antigüedad y reincidencia.
+- [x] 10.19. Mostrar junto al estado de la agenda un aviso de incidencias previas enlazado al detalle.
 
 ## 13. Fase 11 - Reseñas y valoraciones
 
@@ -245,6 +258,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 12.5. Crear panel de estadísticas desktop.
 - [x] 12.6. Crear panel móvil con tarjetas y gráficos simples.
 - [x] 12.7. Crear tests de agregación.
+- [x] 12.8. Corregir la agrupación PostgreSQL de reseñas por fecha local y verificar el endpoint de estadísticas sobre base real.
+- [x] 12.9. Añadir selección segura de local y actualización automática de métricas en cuentas multi-local.
+- [x] 12.10. Añadir una gráfica temporal del balance de incidencias operativas activadas por local.
 
 ## 15. Fase 13 - Suscripción y RedSys preparado sin cobro real en MVP
 

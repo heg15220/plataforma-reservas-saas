@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchVenueCategories,
   fetchVenueProfile,
+  fetchVenueProfiles,
   publishVenueProfile,
   resolveVenueAssetUrl,
   saveVenueProfile,
@@ -86,6 +87,22 @@ describe("venue profile API", () => {
     await expect(fetchVenueProfile()).resolves.toMatchObject({ name: "Casa Luz" });
   });
 
+  it("expone la capacidad multi-local devuelta por el servidor", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          response({ profiles: [profilePayload], canCreateAdditionalVenue: false }),
+        ),
+    );
+
+    await expect(fetchVenueProfiles()).resolves.toMatchObject({
+      profiles: [{ name: "Casa Luz" }],
+      canCreateAdditionalVenue: false,
+    });
+  });
+
   it("usa POST para crear, PATCH para actualizar y reduce rechazo de publicación", async () => {
     const payload = {
       name: "Casa Luz",
@@ -122,9 +139,9 @@ describe("venue profile API", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    await saveVenueProfile(payload, false);
-    await saveVenueProfile(payload, true);
-    await expect(publishVenueProfile()).rejects.toMatchObject({
+    await saveVenueProfile(payload, null);
+    await saveVenueProfile(payload, profilePayload.id);
+    await expect(publishVenueProfile(profilePayload.id)).rejects.toMatchObject({
       kind: "publicationRejected",
       requirements: ["EMAIL_NOT_VERIFIED", "MAIN_IMAGE_MISSING"],
     } satisfies Partial<VenueProfileApiError>);

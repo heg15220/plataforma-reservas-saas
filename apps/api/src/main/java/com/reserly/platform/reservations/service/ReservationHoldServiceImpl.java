@@ -10,6 +10,7 @@ import com.reserly.platform.reservations.dto.ReservationHoldResponse;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.reservations.persistence.ReservationTimeSlotDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,6 +33,7 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
   private final OneTimeTokenService tokenService;
   private final Clock clock;
   private final ReservationHoldExpirationPolicy expirationPolicy;
+  private final EmployeeResourceDao resourceDao;
 
   @Autowired
   public ReservationHoldServiceImpl(
@@ -39,13 +41,15 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
       ReservationDao reservationDao,
       EmployeeResourceAssignmentService assignmentService,
       OneTimeTokenService tokenService,
-      ReservationHoldExpirationPolicy expirationPolicy) {
+      ReservationHoldExpirationPolicy expirationPolicy,
+      EmployeeResourceDao resourceDao) {
     this(
         timeSlotDao,
         reservationDao,
         assignmentService,
         tokenService,
         expirationPolicy,
+        resourceDao,
         Clock.systemUTC());
   }
 
@@ -55,12 +59,14 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
       EmployeeResourceAssignmentService assignmentService,
       OneTimeTokenService tokenService,
       ReservationHoldExpirationPolicy expirationPolicy,
+      EmployeeResourceDao resourceDao,
       Clock clock) {
     this.timeSlotDao = timeSlotDao;
     this.reservationDao = reservationDao;
     this.assignmentService = assignmentService;
     this.tokenService = tokenService;
     this.expirationPolicy = expirationPolicy;
+    this.resourceDao = resourceDao;
     this.clock = clock;
   }
 
@@ -97,6 +103,7 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
     } catch (EmployeeResourceAssignmentException exception) {
       throw new ReservationHoldInvalidException();
     }
+    assignedResource.ifPresent(resourceId -> validateResourceConflict(slot, resourceId, now));
 
     Instant expiresAt = expirationPolicy.expiresAt(now);
     String rawToken = tokenService.generate();
@@ -142,6 +149,25 @@ public class ReservationHoldServiceImpl implements ReservationHoldService {
     try {
       return ResourceAssignmentPreference.valueOf(value.toUpperCase(Locale.ROOT));
     } catch (IllegalArgumentException exception) {
+      throw new ReservationHoldInvalidException();
+    }
+  }
+
+  /**
+   * Bloquea la fila del profesional antes de consultar solapes. Así dos citas simultáneas de
+   * especialidades o franjas distintas no pueden reservar al mismo médico a la vez.
+   */
+  private void validateResourceConflict(TimeSlotEntity slot, UUID resourceId, Instant now) {
+    resourceDao
+        .findActiveByVenueIdForUpdate(slot.getVenue().getId(), resourceId)
+        .orElseThrow(ReservationHoldInvalidException::new);
+    if (reservationDao.existsEffectiveResourceOverlap(
+        slot.getVenue().getId(),
+        resourceId,
+        slot.getDate(),
+        slot.getStartsAt(),
+        slot.getEndsAt(),
+        now)) {
       throw new ReservationHoldInvalidException();
     }
   }

@@ -245,6 +245,11 @@ El local debe iniciar sesión y acceder a un panel privado.
 #### Criterios de aceptación
 
 - WHEN el local introduce credenciales válidas, THEN accede a su panel.
+- WHEN el perfil local contiene Azahar & Brasa creado manualmente, THEN su propietario dispone de
+  una identidad de desarrollo estable y reproducible que conserva acceso tras reiniciar la API.
+- WHEN la pantalla de acceso se sirve desde Next en desarrollo sobre `localhost` o `127.0.0.1`,
+  THEN muestra una acción asistida para cargar de forma exacta la credencial local de Azahar sin
+  depender del autocompletado almacenado por el navegador.
 - WHEN las credenciales son inválidas, THEN se muestra error genérico sin revelar si el email existe.
 - WHEN un local solicita recuperar su contraseña, THEN la respuesta no revela si el email existe,
   está suspendido o no admite recuperación.
@@ -264,6 +269,25 @@ El local debe iniciar sesión y acceder a un panel privado.
   de emails con todos sus locales y permite asignar a cada uno un destinatario operativo distinto.
 - WHEN el propietario cambia el email de un local, THEN el backend valida formato, pertenencia y
   estado publicado usando el ID explícito del local sin permitir consultar o modificar locales ajenos.
+- WHEN el propietario configura el acceso de un local, THEN debe asignar conjuntamente un email y
+  una contraseña de 12 a 72 caracteres que cumpla el límite criptográfico de BCrypt.
+- WHEN se guardan las credenciales de un local, THEN el email sirve para iniciar sesión y recibir
+  avisos operativos, la contraseña solo se persiste como hash y la identidad accede exclusivamente
+  al panel de ese local sin perder la administración multi-local de la cuenta propietaria.
+- WHEN el propietario cambia la contraseña de un local, THEN se revocan todas las sesiones previas
+  de esa identidad antes de admitir nuevos accesos.
+- WHEN la cuenta propietaria dispone de varios locales vigentes, THEN la sección Perfil público
+  muestra un desplegable con todos ellos y permite elegir inequívocamente cuál se está editando.
+- WHEN una cuenta dispone de la capacidad multi-local explícita y crea un local adicional, THEN se
+  genera un borrador asociado a la misma identidad empresarial sin sustituir ni mezclar los datos
+  de las fichas existentes.
+- WHEN una cuenta de local único ya dispone de una ficha vigente, THEN Perfil público permite
+  editar esa ficha pero no muestra selector, alta ni eliminación de locales adicionales, y la API
+  rechaza cualquier intento directo de crear otro local.
+- WHEN una cuenta de local único todavía no tiene ficha vigente, THEN puede crear exclusivamente
+  su primer local; la capacidad multi-local no se deduce del rol ni de accesos delegados.
+- WHEN la cuenta archiva un local desde Perfil público, THEN el panel exige confirmación, retira la
+  ficha de la selección y conserva su historial en lugar de efectuar un borrado físico.
 
 ### RF-009 Gestión de perfil público
 
@@ -282,6 +306,8 @@ El local debe poder editar los datos visibles de su ficha.
 - WHEN el backend confirma la publicación del local, THEN el panel muestra un mensaje inequívoco de éxito y una acción para volver a la página de inicio y observar el local; un rechazo no debe mostrar ese estado.
 - WHEN el local cambia su dirección o coordenadas, THEN las búsquedas por ubicación deben usar los nuevos datos.
 - WHEN el local crea, edita, ordena, activa o desactiva pestañas personalizadas de la ficha, THEN los cambios deben guardarse solo para su local y mostrarse públicamente según estado activo y locale resuelto.
+- WHEN el usuario cambia el local seleccionado, THEN formulario, estado editorial, imagen principal
+  y galería se recargan para ese identificador explícito y no reutilizan datos de otra ficha.
 
 ### RF-010 Gestión de horarios
 
@@ -301,6 +327,8 @@ El local debe configurar horario semanal y días cerrados.
 - WHEN el local todavía no tiene un horario semanal persistido, THEN Calendario muestra un asistente de primera configuración en lugar del editor operativo.
 - WHEN el local completa la primera configuración, THEN debe escoger mediante desplegables los días abiertos, el cierre semanal opcional, la política de festivos, las jornadas de mañana/tarde/noche, la duración opcional y la capacidad por rango.
 - WHEN la primera configuración define duración y capacidad, THEN el sistema guarda el snapshot semanal y genera franjas para las cuatro semanas siguientes omitiendo cierres y festivos concretos.
+- WHEN la primera configuración elige gestionar solo por día y sin rangos horarios, THEN el
+  sistema guarda el snapshot semanal con cero franjas y no invoca ninguna generación automática.
 - WHEN ya existe un horario semanal persistido, THEN el asistente inicial no vuelve a mostrarse y el local puede editar libremente horario, fechas, rangos, festivos, capacidad y franjas.
 
 ### RF-011 Gestión de franjas
@@ -344,6 +372,10 @@ Cada local debe poder definir campos adicionales para su formulario de reserva.
 - WHEN crea un campo, THEN puede elegir tipo: texto corto, texto largo, número, selector, checkbox, fecha, teléfono o email.
 - WHEN marca un campo obligatorio, THEN el usuario debe completarlo para confirmar.
 - WHEN se reserva, THEN nombre, email, número de personas, fecha y franja siempre son obligatorios.
+- WHEN se crea un local nuevo, THEN su formulario base queda habilitado para que la primera
+  publicación del perfil no muestre franjas que desemboquen en un proceso de reserva incompleto.
+- WHEN un formulario no está disponible o el slug no identifica un local publicado, THEN la API
+  pública devuelve un 404 estable y nunca un error interno 500.
 - WHEN el usuario envía el formulario, THEN las respuestas quedan asociadas a la reserva.
 - WHEN el propietario usa el editor privado en español, THEN todas las etiquetas, ayudas,
   confirmaciones y estados deben mostrarse en UTF-8 correcto, con singular y plural gramaticales.
@@ -418,19 +450,28 @@ El local debe consultar y gestionar reservas recibidas.
 - WHEN el local entra en reservas, THEN puede ver reservas por día, semana, mes, franja, estado y usuario.
 - WHEN abre una reserva, THEN ve datos del usuario, email, personas, fecha, franja, respuestas del formulario e historial de incidencias.
 - WHEN una reserva se confirma, THEN aparece en el panel del local.
+- WHEN la cuenta propietaria o la identidad delegada de un local consulta Reservas, THEN ve las
+  reservas confirmadas de todos y solo los locales que puede administrar, sin errores internos al
+  omitir filtros opcionales.
 - WHEN el local filtra por estado, THEN el listado se actualiza.
 - WHEN el local entra en Reservas, THEN dispone en el mismo espacio de agenda, calendario interno y gestión de horarios/disponibilidad, sin perder cambios locales al alternar entre herramientas ya visitadas.
+- WHEN una reserva confirmada todavía no ha alcanzado su fecha y hora de inicio, THEN la agenda la muestra con estado temporal `pending` sin modificar el estado confirmado persistido ni liberar capacidad.
+- WHEN llega la fecha y hora de inicio, THEN la agenda la muestra como `confirmed`.
+- WHEN transcurre una hora desde el inicio sin una decisión manual, THEN la reserva continúa en estado `confirmed` y el sistema no infiere asistencia ni ejecuta una transición automática.
+- WHEN una reserva de la agenda tiene nivel de incidencias `watch` o `high`, THEN junto a su estado se muestra un aviso profesional amarillo o rojo que enlaza al detalle para revisar el historial.
+- WHEN el nivel de incidencias es `low`, THEN la agenda no muestra un aviso adicional; el listado recibe únicamente el nivel resumido y no expone fechas, tipos ni contenido del historial.
 
 ### RF-019 Marcado de asistencia
 
 **Prioridad:** MVP
 
-El local debe marcar asistencia de reservas finalizadas.
+El local debe decidir manualmente la asistencia durante la hora operativa posterior al inicio.
 
 #### Criterios de aceptación
 
-- WHEN una reserva ya finalizó, THEN el local puede marcar asistida, no asistida o pendiente.
-- WHEN el local no marca nada tras el periodo configurado, THEN el sistema puede marcar automáticamente como asistida.
+- WHEN llega la hora de inicio y no ha transcurrido todavía una hora, THEN una cuenta con acceso al local puede marcar la reserva como asistida o no asistida.
+- WHEN la reserva todavía no ha comenzado o ya ha transcurrido una hora desde el inicio, THEN los controles de asistencia no se muestran y el backend rechaza cualquier intento directo.
+- WHEN el local no toma una decisión durante la hora operativa, THEN la reserva permanece confirmada indefinidamente y nunca se marca asistida por defecto.
 - WHEN se marca asistida, THEN no se genera penalización.
 - WHEN se marca no asistida, THEN el local puede reportarla para activar protocolo de incidencia.
 
@@ -447,6 +488,9 @@ El local debe poder reportar una no asistencia de forma auditada.
 - WHEN se registra la incidencia, THEN se actualiza el historial de incidencias del email.
 - WHEN procede penalización, THEN se calcula y activa restricción temporal.
 - WHEN se muestra lenguaje de interfaz, THEN debe usar términos profesionales como "historial de incidencias" o "riesgo de no asistencia".
+- WHEN el local consulta el historial, THEN se muestra un indicador informativo verde, amarillo o rojo calculado con el estado operativo, el tiempo desde la última incidencia y la reincidencia dentro de la ventana visible de 12 meses.
+- WHEN se muestra el indicador, THEN el nivel también se comunica mediante etiqueta, icono y explicación profesional, sin depender exclusivamente del color.
+- WHEN una incidencia está desestimada, THEN no participa en el indicador; el resultado visual tampoco crea penalizaciones, cancela reservas ni sustituye las reglas autoritativas del backend.
 
 ### RF-021 Penalizaciones por email
 
@@ -518,6 +562,12 @@ El local debe consultar métricas básicas.
 - WHEN el local abre estadísticas, THEN ve reservas, ocupación, no asistencias, valoración media y evolución simple.
 - WHEN filtra por hoy, semana, mes, año o rango, THEN las métricas se recalculan.
 - WHEN está en móvil, THEN las métricas se muestran como tarjetas y gráficos simples.
+- WHEN el backend agrupe reseñas por fecha local, THEN debe reutilizar una única expresión de zona horaria compatible con parámetros preparados de PostgreSQL y devolver la serie aunque no existan reseñas en el periodo.
+- WHEN una cuenta tenga acceso a varios locales, THEN el panel de estadísticas debe permitir elegir el local y mostrar exclusivamente las métricas del local seleccionado.
+- WHEN se confirme o modifique una reserva mientras el panel de estadísticas permanece abierto, THEN las métricas deben actualizarse periódicamente y al recuperar el foco o la visibilidad, sin exigir una recarga completa de la página.
+- WHEN el local consulta estadísticas, THEN debe ver una gráfica temporal del número de incidencias operativas activadas en cada fecha del periodo seleccionado.
+- WHEN una incidencia se encuentre en estado `reported` o `confirmed`, THEN debe contabilizarse para su local según la fecha local de `reported_at`; una incidencia `dismissed` no debe formar parte del balance operativo.
+- WHEN no existan incidencias activadas durante el periodo, THEN la gráfica debe mostrar un estado vacío profesional, accesible e internacionalizado sin exponer identidades, reservas, emails, motivos ni actores.
 
 ### RF-026 Equipo y disponibilidad
 
@@ -534,6 +584,9 @@ El local debe poder crear empleados, profesionales, recursos o unidades reservab
 - WHEN la reserva se confirma, THEN queda asignada al empleado o recurso seleccionado o asignado automáticamente.
 - WHEN un empleado se archiva, THEN se conserva histórico de reservas.
 
+- WHEN el local sea una clínica con varias secciones, THEN cada especialidad puede asociar uno o varios profesionales visibles por nombre al paciente.
+- WHEN el paciente elija un profesional concreto, THEN el sistema debe impedir dos citas solapadas para ese profesional, aunque pertenezcan a servicios o franjas diferentes.
+
 ### RF-027 Servicios del local
 
 **Prioridad:** MVP recomendado
@@ -546,6 +599,10 @@ El local debe poder definir servicios reservables básicos para calcular duraci�
 - WHEN el servicio se asocia a empleados o recursos, THEN solo esos empleados o recursos pueden ser asignados.
 - WHEN el usuario selecciona servicio, THEN el sistema calcula disponibilidad con su duración.
 - WHEN no se define servicio, THEN la reserva usa la duración de la franja seleccionada.
+
+- WHEN un servicio se configure como cita a hora exacta, THEN el paciente selecciona especialidad, profesional, fecha y hora de inicio sin mostrar un rango, mientras backend conserva la duración para validar solapes.
+- WHEN el propietario gestione una especialidad clínica, THEN puede editar nombre, descripción, duración, estado, modo de presentación y profesionales compatibles desde el panel privado.
+- WHEN los fixtures de demostración estén habilitados en desarrollo local, THEN el catálogo debe incluir una clínica privada ficticia publicada, con imagen propia, varias especialidades, profesionales identificados y citas futuras a hora exacta para comprobar el recorrido completo sin introducir datos médicos reales.
 
 ### RF-028 Suscripción y RedSys
 
@@ -795,9 +852,9 @@ El bloqueo temporal por defecto dura 5 minutos. Al expirar, la plaza vuelve a es
 
 La prioridad corresponde al usuario que primero consiga crear el bloqueo o confirmación a nivel transaccional.
 
-### RB-006 Asistencia por defecto
+### RB-006 Estado temporal y asistencia manual
 
-Si la reserva ya pasó y el local no marca manualmente no asistencia o pendiente dentro del periodo configurado, el sistema puede marcarla como asistida por defecto.
+Una reserva confirmada se presenta como pendiente antes de su inicio. Desde el inicio y durante una hora se presenta como confirmada y permite una decisión manual de asistencia, no asistencia o cancelación por el local. Al finalizar esa hora, si no hubo decisión, permanece confirmada sin transición automática.
 
 ### RB-007 Penalización global MVP
 
@@ -817,6 +874,8 @@ El usuario puede cancelar mediante enlace seguro si está dentro del plazo permi
 ### RB-009 Cancelación por local
 
 Toda cancelación hecha por el local requiere motivo y registro de auditoría.
+
+La cancelación operativa desde la agenda solo puede ejecutarse desde la hora de inicio, incluida, hasta una hora después, excluida, por una cuenta con acceso al local.
 
 ### RB-010 Disponibilidad con equipo o recursos
 

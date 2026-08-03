@@ -14,6 +14,7 @@ public record PublicTimeSlotAvailabilityResponse(
     UUID slotId,
     UUID serviceId,
     String serviceName,
+    String bookingMode,
     LocalTime startsAt,
     LocalTime endsAt,
     int capacity,

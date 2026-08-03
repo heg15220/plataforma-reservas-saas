@@ -10,6 +10,7 @@ public interface VenueEmailAssignmentService {
   /** Lista únicamente locales publicados propios, ordenados de forma estable. */
   List<VenueEmailAssignmentResponse> list(UUID ownerUserId);
 
-  /** Sustituye el destinatario de un local publicado propio. */
-  VenueEmailAssignmentResponse update(UUID ownerUserId, UUID venueId, String email);
+  /** Sustituye el destinatario y crea o rota la credencial privada de un local publicado propio. */
+  VenueEmailAssignmentResponse update(
+      UUID ownerUserId, UUID venueId, String email, String rawPassword);
 }

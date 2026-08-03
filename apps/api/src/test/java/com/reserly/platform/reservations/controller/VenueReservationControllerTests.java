@@ -12,13 +12,18 @@ import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
 import com.reserly.platform.reservations.converter.VenueReservationConverter;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.reservations.service.ReservationOperationalWindow;
 import com.reserly.platform.reservations.service.VenueReservationDetail;
+import com.reserly.platform.reservations.service.VenueReservationIncidentRisk;
+import com.reserly.platform.reservations.service.VenueReservationPage;
 import com.reserly.platform.reservations.service.VenueReservationService;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +46,9 @@ class VenueReservationControllerTests {
   @BeforeEach
   void setUp() {
     controller =
-        new VenueReservationControllerImpl(reservationService, new VenueReservationConverter());
+        new VenueReservationControllerImpl(
+            reservationService,
+            new VenueReservationConverter(new ReservationOperationalWindow(Clock.systemUTC())));
     account =
         new AuthenticatedAccount(
             UUID.randomUUID(),
@@ -59,7 +66,9 @@ class VenueReservationControllerTests {
     var page = new PageImpl<>(List.of(reservation), PageRequest.of(0, 25), 31);
     when(reservationService.list(
             account.userId(), "day", date, timeSlotId, "confirmed", "ana", 0, 25))
-        .thenReturn(page);
+        .thenReturn(
+            new VenueReservationPage(
+                page, Map.of("ana@example.com", VenueReservationIncidentRisk.WATCH)));
 
     var response = controller.list(account, "day", date, timeSlotId, "confirmed", "ana", 0, 25);
 
@@ -67,6 +76,7 @@ class VenueReservationControllerTests {
     assertThat(response.getBody().totalElements()).isEqualTo(31);
     assertThat(response.getBody().totalPages()).isEqualTo(2);
     assertThat(response.getBody().items().getFirst().customerEmail()).isEqualTo("ana@example.com");
+    assertThat(response.getBody().items().getFirst().incidentRiskLevel()).isEqualTo("watch");
     verify(reservationService)
         .list(account.userId(), "day", date, timeSlotId, "confirmed", "ana", 0, 25);
   }

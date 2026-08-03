@@ -20,6 +20,7 @@ import com.reserly.platform.venues.service.VenuePublicationRejectedException;
 import com.reserly.platform.venues.service.VenuePublicationRequirement;
 import com.reserly.platform.venues.service.VenuePublicationService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,12 +66,15 @@ class VenueProfileControllerTests {
     when(venueProfileService.find(account.userId())).thenReturn(venue);
     when(venueProfileService.update(account.userId(), command)).thenReturn(venue);
     when(publicationService.publish(account.userId())).thenReturn(venue);
+    when(venueProfileService.list(account.userId())).thenReturn(List.of(venue));
+    when(venueProfileService.canCreateAdditional(account.userId())).thenReturn(false);
 
     ResponseEntity<VenueProfileResponse> created = controller.create(account, request);
     ResponseEntity<VenueProfileResponse> found = controller.find(account);
     ResponseEntity<VenueProfileResponse> updated = controller.update(account, request);
     ResponseEntity<Void> archived = controller.archive(account);
     ResponseEntity<VenueProfileResponse> published = controller.publish(account);
+    var listed = controller.list(account);
 
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(created.getHeaders().getLocation()).hasToString("/api/venue/me");
@@ -81,11 +85,15 @@ class VenueProfileControllerTests {
     assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(archived.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(published.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(listed.getBody()).isNotNull();
+    assertThat(listed.getBody().profiles()).hasSize(1);
+    assertThat(listed.getBody().canCreateAdditionalVenue()).isFalse();
     verify(venueProfileService).create(account.userId(), command);
     verify(venueProfileService).find(account.userId());
     verify(venueProfileService).update(account.userId(), command);
     verify(venueProfileService).archive(account.userId());
     verify(publicationService).publish(account.userId());
+    verify(venueProfileService).canCreateAdditional(account.userId());
   }
 
   @Test

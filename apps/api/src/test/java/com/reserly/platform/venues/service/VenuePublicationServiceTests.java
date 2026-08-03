@@ -55,6 +55,7 @@ class VenuePublicationServiceTests {
 
     assertThat(published.getStatus()).isEqualTo("published");
     assertThat(published.getPublishedAt()).isNotNull();
+    assertThat(published.getReservationFormPublishedAt()).isNotNull();
     verify(venueDao).saveAndFlush(venue);
     assertThat(service.publish(ownerId)).isSameAs(venue);
   }
@@ -109,6 +110,7 @@ class VenuePublicationServiceTests {
   private VenueEntity completeVenue() {
     VenueEntity result = new VenueEntity();
     result.setStatus("draft");
+    result.setReservationFormPublished(true);
     BusinessAccountEntity business = new BusinessAccountEntity();
     business.setId(UUID.randomUUID());
     result.setBusinessAccount(business);

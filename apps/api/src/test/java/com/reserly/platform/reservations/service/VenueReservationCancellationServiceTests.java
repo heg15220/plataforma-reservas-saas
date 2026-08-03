@@ -38,9 +38,14 @@ class VenueReservationCancellationServiceTests {
   private final ReservationDao reservationDao = mock(ReservationDao.class);
   private final AuditLogService auditLogService = mock(AuditLogService.class);
   private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+  private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final VenueReservationCancellationService service =
       new VenueReservationCancellationServiceImpl(
-          reservationDao, auditLogService, eventPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
+          reservationDao,
+          auditLogService,
+          eventPublisher,
+          clock,
+          new ReservationOperationalWindow(clock));
 
   @BeforeEach
   void returnSavedReservation() {
@@ -49,10 +54,10 @@ class VenueReservationCancellationServiceTests {
   }
 
   @Test
-  void cancelsFutureOwnedReservationAndAuditsReasonBeforePublishingEmail() {
+  void cancelsOwnedReservationDuringOperationalHourAndAuditsReason() {
     UUID ownerId = UUID.randomUUID();
     ReservationEntity reservation = reservation();
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservation.getId()))
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
         .thenReturn(Optional.of(reservation));
 
     ReservationEntity result =
@@ -115,8 +120,9 @@ class VenueReservationCancellationServiceTests {
 
     UUID ownerId = UUID.randomUUID();
     ReservationEntity past = reservation();
-    past.setDate(LocalDate.of(2026, 7, 26));
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, past.getId()))
+    past.setDate(LocalDate.of(2026, 7, 27));
+    past.setStartsAt(LocalTime.of(8, 59));
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, past.getId()))
         .thenReturn(Optional.of(past));
     assertThatThrownBy(
             () ->
@@ -132,7 +138,7 @@ class VenueReservationCancellationServiceTests {
   void keepsForeignReservationOpaque() {
     UUID ownerId = UUID.randomUUID();
     UUID reservationId = UUID.randomUUID();
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservationId))
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservationId))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(
@@ -177,7 +183,7 @@ class VenueReservationCancellationServiceTests {
     reservation.setCustomerEmailNormalized("ana@example.com");
     reservation.setCustomerLocale("es");
     reservation.setPartySize(2);
-    reservation.setDate(LocalDate.of(2026, 7, 28));
+    reservation.setDate(LocalDate.of(2026, 7, 27));
     reservation.setStartsAt(LocalTime.of(10, 0));
     reservation.setEndsAt(LocalTime.of(11, 0));
     reservation.setStatus("confirmed");

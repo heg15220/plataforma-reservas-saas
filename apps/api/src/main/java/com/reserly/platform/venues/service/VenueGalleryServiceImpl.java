@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -51,13 +52,39 @@ public class VenueGalleryServiceImpl implements VenueGalleryService {
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public List<VenueImageEntity> list(UUID userId, UUID venueId) {
+    requireVenue(userId, venueId, false);
+    return List.copyOf(imageDao.findAllByVenueIdOrderByPosition(venueId));
+  }
+
+  @Override
   @Transactional
   public VenueImageEntity upload(
       UUID ownerUserId, String altText, String declaredMediaType, InputStream input) {
     String normalizedAltText = normalizeAltText(altText);
     ValidatedVenueImage image = validator.validate(declaredMediaType, input);
     VenueEntity venue = requireVenue(ownerUserId, true);
-    List<VenueImageEntity> existing = imageDao.findAllOwned(ownerUserId);
+    return store(venue, normalizedAltText, image, imageDao.findAllOwned(ownerUserId));
+  }
+
+  @Override
+  @Transactional
+  public VenueImageEntity upload(
+      UUID userId, UUID venueId, String altText, String declaredMediaType, InputStream input) {
+    VenueEntity venue = requireVenue(userId, venueId, true);
+    return store(
+        venue,
+        normalizeAltText(altText),
+        validator.validate(declaredMediaType, input),
+        imageDao.findAllByVenueIdOrderByPosition(venueId));
+  }
+
+  private VenueImageEntity store(
+      VenueEntity venue,
+      String normalizedAltText,
+      ValidatedVenueImage image,
+      List<VenueImageEntity> existing) {
     if (existing.size() >= MAX_IMAGES) {
       throw new VenueGalleryLimitException();
     }
@@ -88,6 +115,20 @@ public class VenueGalleryServiceImpl implements VenueGalleryService {
   public List<VenueImageEntity> reorder(UUID ownerUserId, List<UUID> imageIds) {
     requireVenue(ownerUserId, true);
     List<VenueImageEntity> images = imageDao.findAllOwned(ownerUserId);
+    applyOrder(images, imageIds);
+    return imageDao.findAllOwned(ownerUserId);
+  }
+
+  @Override
+  @Transactional
+  public List<VenueImageEntity> reorder(UUID userId, UUID venueId, List<UUID> imageIds) {
+    requireVenue(userId, venueId, true);
+    List<VenueImageEntity> images = imageDao.findAllByVenueIdOrderByPosition(venueId);
+    applyOrder(images, imageIds);
+    return imageDao.findAllByVenueIdOrderByPosition(venueId);
+  }
+
+  private void applyOrder(List<VenueImageEntity> images, List<UUID> imageIds) {
     if (imageIds == null
         || imageIds.size() != images.size()
         || new HashSet<>(imageIds).size() != imageIds.size()
@@ -104,7 +145,6 @@ public class VenueGalleryServiceImpl implements VenueGalleryService {
       byId.get(imageIds.get(position)).setPosition(position);
     }
     imageDao.saveAllAndFlush(images);
-    return imageDao.findAllOwned(ownerUserId);
   }
 
   @Override
@@ -115,10 +155,25 @@ public class VenueGalleryServiceImpl implements VenueGalleryService {
         imageDao
             .findOwnedForUpdate(ownerUserId, imageId)
             .orElseThrow(VenueProfileNotFoundException::new);
+    delete(image, () -> imageDao.findAllOwned(ownerUserId));
+  }
+
+  @Override
+  @Transactional
+  public void delete(UUID userId, UUID venueId, UUID imageId) {
+    VenueEntity venue = requireVenue(userId, venueId, true);
+    VenueImageEntity image =
+        imageDao
+            .findByVenueIdAndId(venueId, imageId)
+            .orElseThrow(VenueProfileNotFoundException::new);
+    delete(image, () -> imageDao.findAllByVenueIdOrderByPosition(venue.getId()));
+  }
+
+  private void delete(VenueImageEntity image, Supplier<List<VenueImageEntity>> remainingQuery) {
     String objectKey = image.getObjectKey();
     imageDao.delete(image);
     imageDao.flush();
-    List<VenueImageEntity> remaining = imageDao.findAllOwned(ownerUserId);
+    List<VenueImageEntity> remaining = remainingQuery.get();
     for (int position = 0; position < remaining.size(); position++) {
       remaining.get(position).setPosition(position);
     }
@@ -138,6 +193,13 @@ public class VenueGalleryServiceImpl implements VenueGalleryService {
     return (lock
             ? venueDao.findCurrentByOwnerUserIdForUpdate(ownerUserId)
             : venueDao.findCurrentByOwnerUserId(ownerUserId))
+        .orElseThrow(VenueProfileNotFoundException::new);
+  }
+
+  private VenueEntity requireVenue(UUID userId, UUID venueId, boolean lock) {
+    return (lock
+            ? venueDao.findAccessibleByIdForUpdate(userId, venueId)
+            : venueDao.findAccessibleById(userId, venueId))
         .orElseThrow(VenueProfileNotFoundException::new);
   }
 

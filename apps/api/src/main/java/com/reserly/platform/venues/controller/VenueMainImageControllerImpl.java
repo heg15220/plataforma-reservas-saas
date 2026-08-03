@@ -27,12 +27,26 @@ public class VenueMainImageControllerImpl implements VenueMainImageController {
   @Override
   public ResponseEntity<VenueMainImageResponse> upload(
       AuthenticatedAccount account, MultipartFile file) {
+    return upload(account, null, file);
+  }
+
+  @Override
+  public ResponseEntity<VenueMainImageResponse> uploadById(
+      AuthenticatedAccount account, UUID venueId, MultipartFile file) {
+    return upload(account, venueId, file);
+  }
+
+  private ResponseEntity<VenueMainImageResponse> upload(
+      AuthenticatedAccount account, UUID venueId, MultipartFile file) {
     if (file.isEmpty() || file.getContentType() == null) {
       throw new VenueImageValidationException();
     }
     try {
       VenueMainImageOutcome outcome =
-          service.upload(account.userId(), file.getContentType(), file.getInputStream());
+          venueId == null
+              ? service.upload(account.userId(), file.getContentType(), file.getInputStream())
+              : service.upload(
+                  account.userId(), venueId, file.getContentType(), file.getInputStream());
       return ResponseEntity.ok(
           new VenueMainImageResponse(
               outcome.url(),

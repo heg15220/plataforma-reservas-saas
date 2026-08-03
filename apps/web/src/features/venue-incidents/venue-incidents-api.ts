@@ -38,7 +38,7 @@ const reportSchema = z.object({
 
 export type VenueBookingRules = z.infer<typeof bookingRulesSchema>;
 export type VenueIncidentHistory = z.infer<typeof incidentHistorySchema>;
-export type AttendanceStatus = "attended" | "no_show" | "pending";
+export type AttendanceStatus = "attended" | "no_show";
 
 export class VenueIncidentsApiError extends Error {
   constructor(

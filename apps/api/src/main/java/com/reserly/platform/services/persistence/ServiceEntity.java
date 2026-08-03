@@ -35,6 +35,7 @@ public class ServiceEntity {
   private int capacityRequired;
   private boolean active;
   private boolean allowsAnyAvailableResource = true;
+  private String bookingMode = "range";
   private Set<EmployeeResourceEntity> compatibleResources = new HashSet<>();
   private Instant createdAt;
   private Instant updatedAt;
@@ -136,6 +137,16 @@ public class ServiceEntity {
 
   public void setAnyAvailableResourceAllowed(boolean allowsAnyAvailableResource) {
     this.allowsAnyAvailableResource = allowsAnyAvailableResource;
+  }
+
+  /** Forma de presentar la hora al paciente; el intervalo real siempre se conserva para solapes. */
+  @Column(name = "\"bookingMode\"", nullable = false, length = 32)
+  public String getBookingMode() {
+    return bookingMode;
+  }
+
+  public void setBookingMode(String bookingMode) {
+    this.bookingMode = bookingMode;
   }
 
   /** Recursos compatibles con este servicio; solo se gestionan desde endpoints privados. */

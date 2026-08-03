@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
 
 beforeEach(() => {
   replace.mockReset();
+  vi.stubEnv("NEXT_PUBLIC_APP_ENV", "local");
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080");
 });
 
@@ -32,6 +33,21 @@ function completeForm() {
 }
 
 describe("VenueLoginForm", () => {
+  it("carga de forma exacta la cuenta local de Azahar sin depender del autocompletado", () => {
+    renderWithIntl(<VenueLoginForm localEnvironment />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Usar cuenta de Azahar" }));
+
+    expect(screen.getByRole("textbox")).toHaveValue("azahar@reserly.local");
+    expect(document.querySelector('input[name="password"]')).toHaveValue("ReserlyLocal2026!");
+  });
+
+  it("muestra el acceso asistido solo cuando la página acredita el entorno local", () => {
+    renderWithIntl(<VenueLoginForm localEnvironment />);
+
+    expect(screen.getByRole("button", { name: "Usar cuenta de Azahar" })).toBeVisible();
+  });
+
   it("valida, muestra ayudas y enfoca el primer campo incorrecto", () => {
     renderWithIntl(<VenueLoginForm />);
 

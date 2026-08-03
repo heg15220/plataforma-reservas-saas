@@ -3,6 +3,7 @@ package com.reserly.platform.incidents.service;
 import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.reservations.service.ReservationOperationalWindow;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
@@ -15,15 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AttendanceServiceImpl implements AttendanceService {
 
-  private static final Set<String> MARKABLE_STATUSES = Set.of("confirmed", "attended", "no_show");
-  private static final Set<String> ATTENDANCE_VALUES = Set.of("attended", "no_show", "pending");
+  private static final Set<String> ATTENDANCE_VALUES = Set.of("attended", "no_show");
 
   private final ReservationDao reservationDao;
   private final Clock clock;
+  private final ReservationOperationalWindow operationalWindow;
 
-  public AttendanceServiceImpl(ReservationDao reservationDao, Clock clock) {
+  public AttendanceServiceImpl(
+      ReservationDao reservationDao, Clock clock, ReservationOperationalWindow operationalWindow) {
     this.reservationDao = reservationDao;
     this.clock = clock;
+    this.operationalWindow = operationalWindow;
   }
 
   @Override
@@ -36,21 +39,14 @@ public class AttendanceServiceImpl implements AttendanceService {
     String requestedStatus = normalizeStatus(request);
     ReservationEntity reservation =
         reservationDao
-            .findOwnedForAttendanceUpdate(ownerUserId, reservationId)
+            .findAccessibleForAttendanceUpdate(ownerUserId, reservationId)
             .orElseThrow(AttendanceNotFoundException::new);
-    if (!MARKABLE_STATUSES.contains(reservation.getStatus())) {
+    if (!operationalWindow.allowsManualAction(reservation)) {
       throw new AttendanceInvalidException();
     }
 
     Instant now = clock.instant();
-    Instant reservationEnd =
-        reservation.getDate().atTime(reservation.getEndsAt()).atZone(clock.getZone()).toInstant();
-    if (now.isBefore(reservationEnd)) {
-      throw new AttendanceTooEarlyException();
-    }
-
-    boolean pending = "pending".equals(requestedStatus);
-    reservation.setStatus(pending ? "confirmed" : requestedStatus);
+    reservation.setStatus(requestedStatus);
     reservation.setAttendanceMarkedAt(now);
     reservation.setUpdatedAt(now);
     return reservationDao.saveAndFlush(reservation);

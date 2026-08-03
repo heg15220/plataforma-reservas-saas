@@ -8,4 +8,7 @@ public interface VenuePublicationService {
 
   /** Publica de forma idempotente o rechaza con requisitos cerrados. */
   VenueEntity publish(UUID ownerUserId);
+
+  /** Publica la ficha explícita accesible por el principal. */
+  VenueEntity publish(UUID userId, UUID venueId);
 }

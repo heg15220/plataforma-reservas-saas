@@ -71,6 +71,22 @@ public interface BusinessAccountDao extends JpaRepository<BusinessAccountEntity,
       """)
   Optional<BusinessAccountEntity> findByOwnerUserId(@Param("ownerUserId") UUID ownerUserId);
 
+  /**
+   * Serializa el alta de locales sobre la identidad empresarial propietaria.
+   *
+   * <p>El bloqueo evita que dos peticiones concurrentes eludan el límite de un solo local.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select account
+      from BusinessAccountEntity account
+      join fetch account.ownerUser
+      where account.ownerUser.id = :ownerUserId
+      """)
+  Optional<BusinessAccountEntity> findByOwnerUserIdForVenueCreation(
+      @Param("ownerUserId") UUID ownerUserId);
+
   /** Comprueba conflictos por país e identificador fiscal canónico. */
   @Query(
       """

@@ -28,6 +28,11 @@ import {
   VenueReservationsApiError,
   type VenueReservationDetail,
 } from "./venue-reservations-api";
+import {
+  assessIncidentHistoryRisk,
+  type IncidentHistoryRiskAssessment,
+  type IncidentHistoryRiskLevel,
+} from "./incident-history-risk";
 
 /** Builds a local-only list URL without exposing reservation customer data. */
 function reservationListHref(date: string): string {
@@ -95,6 +100,8 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
       </Stack>
     );
   }
+
+  const incidentRisk = assessIncidentHistoryRisk(detail.incidentHistory.items);
 
   return (
     <Stack spacing={4}>
@@ -215,6 +222,7 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
                 count: detail.incidentHistory.totalElements,
               })}
             </Typography>
+            <IncidentRiskIndicator assessment={incidentRisk} t={t} />
             {detail.incidentHistory.items.length === 0 ? (
               <Typography color="text.secondary" sx={{ mt: 4 }}>
                 {t("detail.incidents.empty")}
@@ -274,6 +282,36 @@ export function VenueReservationDetailPanel({ reservationId }: { reservationId: 
       </Button>
     </Stack>
   );
+}
+
+/** Presenta el semáforo con texto e icono; el color nunca es el único significado. */
+function IncidentRiskIndicator({
+  assessment,
+  t,
+}: {
+  assessment: IncidentHistoryRiskAssessment;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const { level, daysSinceLastIncident, operationalCount } = assessment;
+  return (
+    <Alert role="note" severity={riskSeverity(level)} sx={{ mt: 3 }}>
+      <Typography component="p" sx={{ fontWeight: 800 }}>
+        {t(`detail.incidents.risk.${level}.label`)}
+      </Typography>
+      <Typography component="p" variant="body2">
+        {t(`detail.incidents.risk.${level}.description`, {
+          count: operationalCount,
+          days: daysSinceLastIncident ?? 0,
+        })}
+      </Typography>
+    </Alert>
+  );
+}
+
+function riskSeverity(level: IncidentHistoryRiskLevel): "success" | "warning" | "error" {
+  if (level === "high") return "error";
+  if (level === "watch") return "warning";
+  return "success";
 }
 
 function SectionTitle({ icon: Icon, title }: { icon: typeof UserRound; title: string }) {
@@ -361,6 +399,7 @@ function incidentTone(status: string): StatusTone {
 
 function statusLabel(status: string, t: ReturnType<typeof useTranslations>) {
   const supported = [
+    "pending",
     "confirmed",
     "cancelled_by_user",
     "cancelled_by_venue",

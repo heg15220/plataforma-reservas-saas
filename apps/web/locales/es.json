@@ -347,6 +347,10 @@
         "title": "Verificación bajo control"
       }
     },
+    "development": {
+      "description": "Acceso local preparado para gestionar Azahar & Brasa.",
+      "useAzahar": "Usar cuenta de Azahar"
+    },
     "errors": {
       "fields": {
         "email": "Introduce un correo electrónico válido.",
@@ -510,28 +514,34 @@
   "VenueEmails": {
     "metadata": {
       "title": "Emails de locales | Reserly",
-      "description": "Gestión privada de destinatarios para los locales publicados."
+      "description": "Gestión privada de credenciales y destinatarios para los locales publicados."
     },
     "hero": {
       "eyebrow": "CUENTA MULTI-LOCAL",
-      "title": "Emails de los locales",
-      "summary": "Asocia cada local publicado al email que recibirá sus nuevas reservas y avisos operativos."
+      "title": "Accesos y emails de los locales",
+      "summary": "Asigna a cada local sus propias credenciales de panel y el email que recibirá las reservas y avisos operativos."
     },
     "loading": "Cargando locales publicados…",
     "empty": "Todavía no hay locales publicados a los que asignar un email.",
     "card": {
-      "help": "Este email es privado y se utiliza para las notificaciones operativas del local.",
-      "emailLabel": "Email de notificaciones",
-      "emailHelp": "Las nuevas reservas de este local se enviarán a esta dirección.",
-      "save": "Guardar email",
+      "help": "El local podrá iniciar sesión con este email y tendrá acceso exclusivo a su propio panel.",
+      "emailLabel": "Email de acceso y notificaciones",
+      "emailHelp": "Se usará para iniciar sesión y recibir las nuevas reservas del local.",
+      "passwordLabel": "Contraseña del panel",
+      "passwordHelp": "Usa entre 12 y 72 caracteres. Al guardar de nuevo se cerrarán las sesiones anteriores.",
+      "accessConfigured": "Acceso configurado",
+      "accessPending": "Sin acceso propio",
+      "save": "Crear acceso",
+      "rotate": "Actualizar acceso",
       "saving": "Guardando…"
     },
-    "success": "El email de {venue} se ha actualizado correctamente.",
+    "success": "Las credenciales y el email de {venue} se han actualizado correctamente.",
     "errors": {
-      "invalid": "Introduce un email válido.",
+      "invalid": "Introduce un email válido y una contraseña de entre 12 y 72 caracteres.",
       "unauthenticated": "Tu sesión ha caducado. Inicia sesión de nuevo.",
       "forbidden": "No tienes permiso para gestionar estos locales.",
       "notFound": "El local no existe, no está publicado o no pertenece a tu cuenta.",
+      "conflict": "Ese email ya está asociado a otra cuenta o local.",
       "unavailable": "No podemos gestionar los emails en este momento. Inténtalo más tarde."
     }
   },
@@ -560,6 +570,9 @@
         "selected": "Día seleccionado"
       },
       "serviceFilter": "Servicio",
+      "specialtyLabel": "Especialidad o sección",
+      "doctorLabel": "Profesional o recurso",
+      "chooseDoctor": "Selecciona un médico o profesional",
       "selectedService": "Servicio: {name}",
       "slotService": "Servicio: {name}",
       "resourceLabel": "Profesional o recurso",
@@ -595,6 +608,10 @@
         "summary": "Configura cuándo abre el local, aplica excepciones por fecha y gestiona cada franja."
       },
       "loading": "Cargando disponibilidad",
+      "service": {
+        "label": "Servicio o especialidad de estas citas",
+        "none": "Reserva general sin especialidad"
+      },
       "setup": {
         "badge": "Configuración inicial",
         "title": "Crea la primera versión de tus reservas",
@@ -998,6 +1015,18 @@
       "es": "Español"
     },
     "mainImageAlt": "Imagen principal actual del local",
+    "management": {
+      "body": "Selecciona el local que quieres editar o crea una ficha nueva. Cada local conserva sus propios datos e imágenes.",
+      "cancel": "Cancelar",
+      "confirmDelete": "Sí, eliminar local",
+      "create": "Crear un local nuevo",
+      "delete": "Eliminar local",
+      "deleteConfirmation": "¿Quieres eliminar {name}? La ficha se archivará y dejará de estar disponible en el panel.",
+      "deleting": "Eliminando…",
+      "newVenue": "Nuevo local sin guardar",
+      "selector": "Local que quieres gestionar",
+      "title": "Gestión de locales"
+    },
     "metadata": {
       "description": "Panel privado para editar el perfil público del local en Reserly.",
       "title": "Editar perfil del local"
@@ -1214,7 +1243,11 @@
       "anyAvailable": "Admite primera disponibilidad",
       "active": "Activo",
       "inactive": "Inactivo",
-      "noResources": "Sin recursos compatibles"
+      "noResources": "Sin recursos compatibles",
+      "bookingModes": {
+        "range": "Se muestra como franja horaria",
+        "exact_time": "Cita a una hora exacta"
+      }
     },
     "types": {
       "employee": "Empleado",
@@ -1269,6 +1302,11 @@
       "capacity": "Capacidad requerida",
       "active": "Servicio activo",
       "anyAvailable": "Permitir cualquier recurso disponible",
+      "bookingMode": "Presentación de la reserva",
+      "bookingModes": {
+        "range": "Franja con hora de inicio y fin",
+        "exact_time": "Cita a una hora exacta"
+      },
       "resources": "Recursos compatibles",
       "resourcesEmpty": "Añade primero un recurso al equipo."
     }
@@ -1539,7 +1577,11 @@
       "title": "Agenda del {date}",
       "summary": "{count, plural, =0 {No hay reservas} one {# reserva} other {# reservas}}",
       "partySize": "{count, plural, one {# persona} other {# personas}}",
-      "limited": "Se muestran {shown} de {total} reservas. Usa los filtros del panel para acotar la consulta."
+      "limited": "Se muestran {shown} de {total} reservas. Usa los filtros del panel para acotar la consulta.",
+      "incidentRisk": {
+        "watch": "Posibles incidencias previas",
+        "high": "Incidencias previas recurrentes"
+      }
     },
     "empty": {
       "title": "No hay reservas para este día",
@@ -1553,6 +1595,7 @@
       "unavailable": "No pudimos cargar las reservas. Inténtalo de nuevo."
     },
     "status": {
+      "pending": "Pendiente",
       "confirmed": "Confirmada",
       "cancelled_by_user": "Cancelada por el cliente",
       "cancelled_by_venue": "Cancelada por el local",
@@ -1605,7 +1648,21 @@
         "title": "Historial de incidencias",
         "summary": "{count, plural, =0 {Sin incidencias registradas} one {# incidencia registrada} other {# incidencias registradas}}",
         "empty": "No hay incidencias profesionales asociadas a este correo.",
-        "truncated": "Se muestran las {shown} incidencias más recientes de un total de {total}."
+        "truncated": "Se muestran las {shown} incidencias más recientes de un total de {total}.",
+        "risk": {
+          "low": {
+            "label": "Riesgo de no asistencia bajo",
+            "description": "{count, plural, =0 {No hay incidencias operativas en los últimos 12 meses.} one {La última incidencia operativa fue hace {days} días y no existe reincidencia reciente.} other {No existe reincidencia reciente.}}"
+          },
+          "watch": {
+            "label": "Riesgo de no asistencia en observación",
+            "description": "{count, plural, one {Hay una incidencia operativa reciente que conviene revisar.} other {Hay # incidencias operativas previas, sin reincidencia reciente de nivel alto.}}"
+          },
+          "high": {
+            "label": "Riesgo de no asistencia alto",
+            "description": "Se observan {count} incidencias operativas recurrentes en el historial visible."
+          }
+        }
       }
     },
     "operations": {
@@ -1613,8 +1670,7 @@
       "description": "Actualiza la asistencia o gestiona una incidencia. Las acciones críticas se validan y auditan en el servidor.",
       "attendance": {
         "attended": "Marcar asistida",
-        "noShow": "Marcar no asistida",
-        "pending": "Dejar pendiente"
+        "noShow": "Marcar no asistida"
       },
       "report": {
         "open": "Reportar no asistencia",
@@ -1715,9 +1771,14 @@
     "loading": "Cargando estadísticas",
     "periodLabel": "Datos del {from} al {to}",
     "percent": "{value} %",
+    "venue": {
+      "label": "Local",
+      "aria": "Seleccionar local para las estadísticas",
+      "description": "Las métricas corresponden únicamente al local seleccionado."
+    },
     "filters": {
       "title": "Periodo",
-      "description": "Las métricas se recalculan para el intervalo seleccionado.",
+      "description": "Las métricas se recalculan para el intervalo seleccionado y se actualizan automáticamente.",
       "periodAria": "Seleccionar periodo de estadísticas",
       "periods": {
         "today": "Hoy",
@@ -1741,18 +1802,23 @@
     "charts": {
       "reservations": "Evolución de reservas",
       "occupancy": "Evolución de ocupación",
+      "incidents": "Evolución de incidencias",
       "reservationsAria": "Gráfico diario de reservas",
       "occupancyAria": "Gráfico diario del porcentaje de ocupación",
+      "incidentsAria": "Gráfico diario de incidencias activadas",
       "reservationValue": "{value, plural, one {# reserva} other {# reservas}}",
       "occupancyValue": "{value} % de ocupación",
-      "empty": "No hay actividad en este periodo."
+      "incidentValue": "{value, plural, one {# incidencia activada} other {# incidencias activadas}}",
+      "empty": "No hay actividad en este periodo.",
+      "incidentsEmpty": "No hay incidencias activadas en este periodo."
     },
     "details": {
       "title": "Detalle del periodo",
       "confirmed": "Reservas confirmadas",
       "cancelled": "Cancelaciones",
       "attended": "Asistencias",
-      "reviews": "Reseñas recibidas"
+      "reviews": "Reseñas recibidas",
+      "incidents": "Incidencias activadas"
     },
     "errors": {
       "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",

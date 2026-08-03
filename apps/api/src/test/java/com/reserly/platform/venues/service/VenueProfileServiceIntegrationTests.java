@@ -60,6 +60,9 @@ class VenueProfileServiceIntegrationTests {
     assertThat(created.getContactEmail()).isEqualTo("reservas@example.invalid");
     assertThat(created.getStatus()).isEqualTo("draft");
     assertThat(created.getManualAvailabilityStatus()).isEqualTo("automatic");
+    assertThat(created.isReservationFormPublished()).isTrue();
+    assertThat(created.isReservationFormFallbackApproved()).isFalse();
+    assertThat(created.getReservationFormPublishedAt()).isNull();
     assertThat(venueProfileService.find(ownerUserId).getId()).isEqualTo(created.getId());
     assertThatThrownBy(() -> venueProfileService.find(otherOwnerUserId))
         .isInstanceOf(VenueProfileNotFoundException.class);
@@ -138,6 +141,38 @@ class VenueProfileServiceIntegrationTests {
                 Integer.class,
                 otherOwnerUserId))
         .isZero();
+  }
+
+  @Test
+  void allowsOnlyExplicitMultiVenueAccountsToCreateAnAdditionalVenue() {
+    UUID singleVenueOwner = createVenueOwner("profile-single-venue");
+    venueProfileService.createAdditional(singleVenueOwner, initialCommand());
+
+    assertThat(venueProfileService.canCreateAdditional(singleVenueOwner)).isFalse();
+    assertThatThrownBy(
+            () -> venueProfileService.createAdditional(singleVenueOwner, updatedCommand()))
+        .isInstanceOf(VenueProfileForbiddenException.class);
+  }
+
+  @Test
+  void allowsAnEnabledMultiVenueAccountToCreateMoreThanOneVenue() {
+    UUID multiVenueOwner = createVenueOwner("profile-multi-venue");
+
+    jdbcTemplate.update(
+        """
+        UPDATE "BusinessAccounts"
+        SET "multiVenueEnabled" = true
+        WHERE "ownerUserId" = ?
+        """,
+        multiVenueOwner);
+    entityManager.clear();
+
+    assertThat(venueProfileService.canCreateAdditional(multiVenueOwner)).isTrue();
+    venueProfileService.createAdditional(multiVenueOwner, initialCommand());
+    VenueEntity additional =
+        venueProfileService.createAdditional(multiVenueOwner, updatedCommand());
+    assertThat(additional.getOwnerUser().getId()).isEqualTo(multiVenueOwner);
+    assertThat(venueProfileService.list(multiVenueOwner)).hasSize(2);
   }
 
   @Test

@@ -47,14 +47,22 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
           select reservation
           from ReservationEntity reservation
           join fetch reservation.timeSlot
-          where reservation.venue.ownerUser.id = :ownerUserId
+          where (
+              reservation.venue.ownerUser.id = :userId
+              or exists (
+                select credential.id
+                from VenuePanelCredentialEntity credential
+                where credential.venue.id = reservation.venue.id
+                  and credential.user.id = :userId
+              )
+            )
             and reservation.customerEmail is not null
-            and (:fromDate is null or reservation.date >= :fromDate)
-            and (:toDateExclusive is null or reservation.date < :toDateExclusive)
-            and (:timeSlotId is null or reservation.timeSlot.id = :timeSlotId)
-            and (:status is null or reservation.status = :status)
+            and reservation.date >= :fromDate
+            and reservation.date < :toDateExclusive
+            and reservation.timeSlot.id = coalesce(:timeSlotId, reservation.timeSlot.id)
+            and reservation.status = coalesce(:status, reservation.status)
             and (
-              :userPattern is null
+              :userPattern = ''
               or lower(reservation.customerName) like :userPattern escape '\\'
               or reservation.customerEmailNormalized like :userPattern escape '\\'
             )
@@ -64,20 +72,28 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
           """
           select count(reservation)
           from ReservationEntity reservation
-          where reservation.venue.ownerUser.id = :ownerUserId
+          where (
+              reservation.venue.ownerUser.id = :userId
+              or exists (
+                select credential.id
+                from VenuePanelCredentialEntity credential
+                where credential.venue.id = reservation.venue.id
+                  and credential.user.id = :userId
+              )
+            )
             and reservation.customerEmail is not null
-            and (:fromDate is null or reservation.date >= :fromDate)
-            and (:toDateExclusive is null or reservation.date < :toDateExclusive)
-            and (:timeSlotId is null or reservation.timeSlot.id = :timeSlotId)
-            and (:status is null or reservation.status = :status)
+            and reservation.date >= :fromDate
+            and reservation.date < :toDateExclusive
+            and reservation.timeSlot.id = coalesce(:timeSlotId, reservation.timeSlot.id)
+            and reservation.status = coalesce(:status, reservation.status)
             and (
-              :userPattern is null
+              :userPattern = ''
               or lower(reservation.customerName) like :userPattern escape '\\'
               or reservation.customerEmailNormalized like :userPattern escape '\\'
             )
           """)
-  Page<ReservationEntity> findOwnedReservations(
-      @Param("ownerUserId") UUID ownerUserId,
+  Page<ReservationEntity> findAccessibleReservations(
+      @Param("userId") UUID userId,
       @Param("fromDate") LocalDate fromDate,
       @Param("toDateExclusive") LocalDate toDateExclusive,
       @Param("timeSlotId") UUID timeSlotId,
@@ -95,11 +111,19 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       from ReservationEntity reservation
       join fetch reservation.timeSlot
       where reservation.id = :reservationId
-        and reservation.venue.ownerUser.id = :ownerUserId
+        and (
+          reservation.venue.ownerUser.id = :userId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue.id = reservation.venue.id
+              and credential.user.id = :userId
+          )
+        )
         and reservation.customerEmail is not null
       """)
-  Optional<ReservationEntity> findOwnedDetail(
-      @Param("ownerUserId") UUID ownerUserId, @Param("reservationId") UUID reservationId);
+  Optional<ReservationEntity> findAccessibleDetail(
+      @Param("userId") UUID userId, @Param("reservationId") UUID reservationId);
 
   /**
    * Bloquea una reserva propia con identidad confirmada antes de cambiar su asistencia.
@@ -112,11 +136,19 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       select reservation
       from ReservationEntity reservation
       where reservation.id = :reservationId
-        and reservation.venue.ownerUser.id = :ownerUserId
+        and (
+          reservation.venue.ownerUser.id = :userId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue.id = reservation.venue.id
+              and credential.user.id = :userId
+          )
+        )
         and reservation.customerEmail is not null
       """)
-  Optional<ReservationEntity> findOwnedForAttendanceUpdate(
-      @Param("ownerUserId") UUID ownerUserId, @Param("reservationId") UUID reservationId);
+  Optional<ReservationEntity> findAccessibleForAttendanceUpdate(
+      @Param("userId") UUID userId, @Param("reservationId") UUID reservationId);
 
   /**
    * Expira en una sola sentencia los holds cuyo plazo terminó estrictamente antes del instante
@@ -137,46 +169,6 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
   int expireHoldsBefore(@Param("now") Instant now);
 
   /**
-   * Marca en bloque solo reservas confirmadas sobre las que no existe decisión manual.
-   *
-   * <p>La fecha y hora snapshot se interpretan en la zona IANA del reloj de negocio. Cada regla
-   * aporta su periodo; 120 minutos es el fallback para locales creados sin fila de configuración.
-   * La condición completa vuelve a evaluarse al adquirir cada lock de escritura, por lo que una
-   * marca manual concurrente prevalece.
-   */
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
-  @Query(
-      value =
-          """
-          UPDATE "Reservations" reservation
-          SET
-            "status" = 'attended',
-            "attendanceMarkedAt" = :now,
-            "updatedAt" = :now
-          WHERE reservation."status" = 'confirmed'
-            AND reservation."customerEmailNormalized" IS NOT NULL
-            AND reservation."attendanceMarkedAt" IS NULL
-            AND (
-              (
-                (reservation."date" + reservation."endsAt") AT TIME ZONE :zoneId
-              )
-              + make_interval(
-                  mins => COALESCE(
-                    (
-                      SELECT rule."autoMarkAttendedAfterMinutes"
-                      FROM "VenueBookingRules" rule
-                      WHERE rule."venueId" = reservation."venueId"
-                    ),
-                    120
-                  )
-                )
-            ) <= :now
-          """,
-      nativeQuery = true)
-  int markUnresolvedFinishedReservationsAttended(
-      @Param("now") Instant now, @Param("zoneId") String zoneId);
-
-  /**
    * Suma ocupación efectiva: reservas confirmadas en cualquier estado posterior y holds vigentes.
    * El llamador debe poseer el bloqueo pesimista de la franja antes de ejecutar esta consulta.
    */
@@ -191,6 +183,29 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
         )
       """)
   long sumOccupiedCapacity(@Param("timeSlotId") UUID timeSlotId, @Param("now") Instant now);
+
+  /** Evita dos citas solapadas para el mismo profesional, incluidos holds todavía vigentes. */
+  @Query(
+      """
+      select (count(reservation) > 0)
+      from ReservationEntity reservation
+      where reservation.venue.id = :venueId
+        and reservation.employeeResourceId = :resourceId
+        and reservation.date = :date
+        and reservation.startsAt < :endsAt
+        and reservation.endsAt > :startsAt
+        and (
+          reservation.status in ('confirmed', 'attended', 'no_show', 'reported')
+          or (reservation.status = 'hold' and reservation.holdExpiresAt > :now)
+        )
+      """)
+  boolean existsEffectiveResourceOverlap(
+      @Param("venueId") UUID venueId,
+      @Param("resourceId") UUID resourceId,
+      @Param("date") LocalDate date,
+      @Param("startsAt") LocalTime startsAt,
+      @Param("endsAt") LocalTime endsAt,
+      @Param("now") Instant now);
 
   /**
    * Calcula en una consulta la ocupación visible de todas las franjas de una respuesta pública.

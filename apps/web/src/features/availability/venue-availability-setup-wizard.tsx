@@ -33,6 +33,7 @@ type Weekday = (typeof WEEKDAYS)[number];
 type DayShift = "full" | "morning" | "afternoon" | "night";
 type HolidayMode = "none" | "dates";
 type SpecialDaysMode = "none" | "configure";
+type DurationOption = "none" | "15" | "30" | "45" | "60" | "90" | "120";
 
 interface SetupState {
   openDays: Weekday[];
@@ -40,7 +41,7 @@ interface SetupState {
   holidayMode: HolidayMode;
   specialDaysMode: SpecialDaysMode;
   shifts: Record<Weekday, DayShift>;
-  durationMinutes: string;
+  durationMinutes: DurationOption;
   capacity: string;
 }
 
@@ -219,7 +220,9 @@ export function VenueAvailabilitySetupWizard({
           <TextField
             fullWidth
             label={t("fields.duration")}
-            onChange={(event) => setState({ ...state, durationMinutes: event.target.value })}
+            onChange={(event) =>
+              setState({ ...state, durationMinutes: event.target.value as DurationOption })
+            }
             select
             value={state.durationMinutes}
           >
@@ -316,7 +319,8 @@ export function VenueAvailabilitySetupWizard({
       }
 
       let generatedSlots = 0;
-      if (state.durationMinutes !== "none") {
+      const selectedDuration = parseSelectedDuration(state.durationMinutes);
+      if (selectedDuration !== null) {
         const dates = buildDates(initialDate, GENERATION_DAYS).filter((date) => {
           const weekday = weekdayOf(date);
           return state.openDays.includes(weekday) && !effectiveHolidayDates.includes(date);
@@ -324,7 +328,7 @@ export function VenueAvailabilitySetupWizard({
         for (const date of dates) {
           const generated = await generateTimeSlots({
             date,
-            durationMinutes: Number(state.durationMinutes),
+            durationMinutes: selectedDuration,
             capacity: Number(state.capacity),
           });
           generatedSlots += generated.length;
@@ -368,7 +372,7 @@ function initialState(): SetupState {
       Weekday,
       DayShift
     >,
-    durationMinutes: "60",
+    durationMinutes: "none",
     capacity: "4",
   };
 }
@@ -412,4 +416,14 @@ function isIsoDate(value: string) {
 function parseWeekday(value: string): Weekday | null {
   const weekday = Number(value);
   return WEEKDAYS.includes(weekday as Weekday) ? (weekday as Weekday) : null;
+}
+
+/**
+ * Convierte exclusivamente una duración elegida en minutos.
+ *
+ * La opción `none` es una decisión persistible del asistente y nunca debe reutilizar una duración
+ * anterior ni activar la generación automática de franjas.
+ */
+function parseSelectedDuration(value: DurationOption): number | null {
+  return value === "none" ? null : Number(value);
 }

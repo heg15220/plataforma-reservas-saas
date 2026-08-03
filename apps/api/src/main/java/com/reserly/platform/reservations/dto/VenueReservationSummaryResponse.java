@@ -16,7 +16,9 @@ import java.util.UUID;
  * @param date fecha local de la cita
  * @param startsAt inicio local
  * @param endsAt fin local
- * @param status estado operativo persistido
+ * @param status estado visible: pendiente antes del inicio y confirmado desde la hora reservada
+ * @param manualActionsAvailable si el actor puede decidir asistencia o cancelar ahora
+ * @param incidentRiskLevel resumen informativo low, watch o high sin detalles del historial
  * @param createdAt instante de creación
  */
 public record VenueReservationSummaryResponse(
@@ -29,4 +31,6 @@ public record VenueReservationSummaryResponse(
     LocalTime startsAt,
     LocalTime endsAt,
     String status,
+    boolean manualActionsAvailable,
+    String incidentRiskLevel,
     Instant createdAt) {}

@@ -51,6 +51,10 @@ describe("VenueReservationsDashboard", () => {
     expect(screen.getByText("ana@example.com")).toBeVisible();
     expect(screen.getByText("2 personas")).toBeVisible();
     expect(screen.getByText("Confirmada")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Posibles incidencias previas" })).toHaveAttribute(
+      "href",
+      "/panel/reservas/10000000-0000-4000-8000-000000000001",
+    );
     expect(screen.getByRole("link", { name: "Ver detalle" })).toHaveAttribute(
       "href",
       "/panel/reservas/10000000-0000-4000-8000-000000000001",
@@ -58,6 +62,36 @@ describe("VenueReservationsDashboard", () => {
     expect(fetchVenueReservationsForDay).toHaveBeenCalledWith(
       "2026-07-26",
       expect.any(AbortSignal),
+    );
+  });
+
+  it("does not clutter a reservation without previous incident signals", async () => {
+    const withoutRisk = reservationList();
+    withoutRisk.items[0].incidentRiskLevel = "low";
+    vi.mocked(fetchVenueReservationsForDay).mockResolvedValue(withoutRisk);
+
+    renderWithIntl(<VenueReservationsDashboard initialDate="2026-07-26" />);
+
+    expect(await screen.findByText("Ana Martín")).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "Posibles incidencias previas" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Incidencias previas recurrentes" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a red detail link next to status for recurrent incidents", async () => {
+    const recurrent = reservationList();
+    recurrent.items[0].incidentRiskLevel = "high";
+    vi.mocked(fetchVenueReservationsForDay).mockResolvedValue(recurrent);
+
+    renderWithIntl(<VenueReservationsDashboard initialDate="2026-07-26" />);
+
+    expect(await screen.findByText("Confirmada")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Incidencias previas recurrentes" })).toHaveAttribute(
+      "href",
+      "/panel/reservas/10000000-0000-4000-8000-000000000001",
     );
   });
 
@@ -90,6 +124,38 @@ describe("VenueReservationsDashboard", () => {
 });
 
 describe("VenueReservationDetailPanel", () => {
+  it("shows a future reservation as pending without operational actions", async () => {
+    vi.mocked(fetchVenueReservationDetail).mockResolvedValue({
+      ...reservationDetail(),
+      status: "pending",
+      manualActionsAvailable: false,
+    });
+
+    renderWithIntl(
+      <VenueReservationDetailPanel reservationId="10000000-0000-4000-8000-000000000001" />,
+    );
+
+    expect(await screen.findByText("Pendiente")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Marcar asistida" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Marcar no asistida" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar por el local" })).not.toBeInTheDocument();
+  });
+
+  it("keeps confirmed status but hides actions after the operational hour", async () => {
+    vi.mocked(fetchVenueReservationDetail).mockResolvedValue({
+      ...reservationDetail(),
+      manualActionsAvailable: false,
+    });
+
+    renderWithIntl(
+      <VenueReservationDetailPanel reservationId="10000000-0000-4000-8000-000000000001" />,
+    );
+
+    expect(await screen.findByText("Confirmada")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Marcar asistida" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar por el local" })).not.toBeInTheDocument();
+  });
+
   it("renders customer, form, resource, and incident blocks in the private detail", async () => {
     renderWithIntl(
       <VenueReservationDetailPanel reservationId="10000000-0000-4000-8000-000000000001" />,
@@ -101,12 +167,56 @@ describe("VenueReservationDetailPanel", () => {
     expect(screen.getByText("Lucía")).toBeVisible();
     expect(screen.getByText("Cancelación tardía")).toBeVisible();
     expect(screen.getByText("Reportada")).toBeVisible();
+    expect(screen.getByText("Riesgo de no asistencia en observación")).toBeVisible();
     expect(screen.queryByText("No debe exponerse")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marcar asistida" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Abrir incidencias y reglas" })).toHaveAttribute(
       "href",
       "/panel/incidencias?reservationId=10000000-0000-4000-8000-000000000001",
     );
+  });
+
+  it("shows a green, explained indicator when the incident history is empty", async () => {
+    vi.mocked(fetchVenueReservationDetail).mockResolvedValue({
+      ...reservationDetail(),
+      incidentHistory: { totalElements: 0, truncated: false, items: [] },
+    });
+
+    renderWithIntl(
+      <VenueReservationDetailPanel reservationId="10000000-0000-4000-8000-000000000001" />,
+    );
+
+    expect(await screen.findByText("Riesgo de no asistencia bajo")).toBeVisible();
+    expect(
+      screen.getByText("No hay incidencias operativas en los últimos 12 meses."),
+    ).toBeVisible();
+  });
+
+  it("shows a red, explained indicator for recurrent operational incidents", async () => {
+    vi.mocked(fetchVenueReservationDetail).mockResolvedValue({
+      ...reservationDetail(),
+      incidentHistory: {
+        totalElements: 2,
+        truncated: false,
+        items: [
+          { incidentType: "no_show", reportedAt: new Date().toISOString(), status: "confirmed" },
+          {
+            incidentType: "late_cancellation",
+            reportedAt: new Date().toISOString(),
+            status: "reported",
+          },
+        ],
+      },
+    });
+
+    renderWithIntl(
+      <VenueReservationDetailPanel reservationId="10000000-0000-4000-8000-000000000001" />,
+    );
+
+    expect(await screen.findByText("Riesgo de no asistencia alto")).toBeVisible();
+    expect(
+      screen.getByText("Se observan 2 incidencias operativas recurrentes en el historial visible."),
+    ).toBeVisible();
   });
 
   it("offers touch-friendly attendance actions and refreshes after success", async () => {

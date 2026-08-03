@@ -3,6 +3,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
@@ -26,6 +27,11 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function VenueLoginPage() {
   const t = await getTranslations("VenueLogin");
+  const requestHeaders = await headers();
+  const requestHost = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "";
+  const localEnvironment =
+    process.env.NODE_ENV === "development" &&
+    (/^localhost(?::\d+)?$/i.test(requestHost) || /^127\.0\.0\.1(?::\d+)?$/.test(requestHost));
 
   return (
     <PublicShell currentPath="/locales/acceso">
@@ -91,7 +97,7 @@ export default async function VenueLoginPage() {
             padding="none"
             sx={{ p: { xs: 3, sm: 5 } }}
           >
-            <VenueLoginForm />
+            <VenueLoginForm localEnvironment={localEnvironment} />
           </Surface>
         </Box>
       </PageContainer>

@@ -14,9 +14,13 @@ import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.identity.security.RestAccessDeniedHandler;
 import com.reserly.platform.identity.security.RestAuthenticationEntryPoint;
 import com.reserly.platform.reservations.converter.VenueReservationConverter;
+import com.reserly.platform.reservations.service.ReservationOperationalWindow;
 import com.reserly.platform.reservations.service.VenueReservationNotFoundException;
+import com.reserly.platform.reservations.service.VenueReservationPage;
 import com.reserly.platform.reservations.service.VenueReservationService;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +64,9 @@ class VenueReservationPermissionTests {
   @BeforeEach
   void setUp() {
     var controller =
-        new VenueReservationControllerImpl(reservationService, new VenueReservationConverter());
+        new VenueReservationControllerImpl(
+            reservationService,
+            new VenueReservationConverter(new ReservationOperationalWindow(Clock.systemUTC())));
     mockMvc =
         MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new VenueReservationExceptionHandler())
@@ -88,7 +94,7 @@ class VenueReservationPermissionTests {
     AuthenticatedAccount principal = principal("venue_owner");
     LocalDate date = LocalDate.of(2026, 7, 24);
     when(reservationService.list(principal.userId(), "day", date, null, "confirmed", "ana", 0, 25))
-        .thenReturn(Page.empty());
+        .thenReturn(new VenueReservationPage(Page.empty(), Map.of()));
 
     mockMvc
         .perform(

@@ -37,7 +37,7 @@ class IncidentHistoryServiceTests {
     ReservationEntity reservation = new ReservationEntity();
     reservation.setCustomerEmailNormalized("user@example.com");
     Instant cutoff = NOW.atZone(ZONE).minusMonths(12).toInstant();
-    when(reservationDao.findOwnedDetail(ownerId, reservationId))
+    when(reservationDao.findAccessibleDetail(ownerId, reservationId))
         .thenReturn(Optional.of(reservation));
     when(incidentDao.findOperationalHistory("user@example.com", cutoff, PageRequest.of(1, 25)))
         .thenReturn(Page.empty());
@@ -50,7 +50,7 @@ class IncidentHistoryServiceTests {
   void keepsForeignReservationOpaqueAndRejectsUnboundedPage() {
     UUID ownerId = UUID.randomUUID();
     UUID reservationId = UUID.randomUUID();
-    when(reservationDao.findOwnedDetail(ownerId, reservationId)).thenReturn(Optional.empty());
+    when(reservationDao.findAccessibleDetail(ownerId, reservationId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.find(ownerId, reservationId, 0, 25))
         .isInstanceOf(IncidentHistoryNotFoundException.class);

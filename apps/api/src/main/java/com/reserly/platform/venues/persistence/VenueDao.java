@@ -13,6 +13,16 @@ import org.springframework.data.repository.query.Param;
 /** Persistencia de perfiles siempre acotada por el propietario autenticado. */
 public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
 
+  /** Comprueba si el titular directo ya posee un local activo, sin contar accesos delegados. */
+  @Query(
+      """
+      select count(venue) > 0
+      from VenueEntity venue
+      where venue.ownerUser.id = :ownerUserId
+        and venue.status <> 'archived'
+      """)
+  boolean existsCurrentOwnedByUserId(@Param("ownerUserId") UUID ownerUserId);
+
   /** Cuenta global administrativa por estado editorial exacto. */
   @Query("select count(venue) from VenueEntity venue where venue.status = :status")
   long countAdminByStatus(@Param("status") String status);
@@ -258,12 +268,28 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       select venue
       from VenueEntity venue
       join fetch venue.category
-      where venue.ownerUser.id = :ownerUserId
+      where (
+          venue.ownerUser.id = :ownerUserId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue = venue
+              and credential.user.id = :ownerUserId
+          )
+        )
         and venue.status <> 'archived'
         and venue.slug = (
           select min(candidate.slug)
           from VenueEntity candidate
-          where candidate.ownerUser.id = :ownerUserId
+          where (
+              candidate.ownerUser.id = :ownerUserId
+              or exists (
+                select candidateCredential.id
+                from VenuePanelCredentialEntity candidateCredential
+                where candidateCredential.venue = candidate
+                  and candidateCredential.user.id = :ownerUserId
+              )
+            )
             and candidate.status <> 'archived'
         )
       """)
@@ -276,16 +302,97 @@ public interface VenueDao extends JpaRepository<VenueEntity, UUID> {
       select venue
       from VenueEntity venue
       join fetch venue.category
-      where venue.ownerUser.id = :ownerUserId
+      where (
+          venue.ownerUser.id = :ownerUserId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue = venue
+              and credential.user.id = :ownerUserId
+          )
+        )
         and venue.status <> 'archived'
         and venue.slug = (
           select min(candidate.slug)
           from VenueEntity candidate
-          where candidate.ownerUser.id = :ownerUserId
+          where (
+              candidate.ownerUser.id = :ownerUserId
+              or exists (
+                select candidateCredential.id
+                from VenuePanelCredentialEntity candidateCredential
+                where candidateCredential.venue = candidate
+                  and candidateCredential.user.id = :ownerUserId
+              )
+            )
             and candidate.status <> 'archived'
         )
       """)
   Optional<VenueEntity> findCurrentByOwnerUserIdForUpdate(@Param("ownerUserId") UUID ownerUserId);
+
+  /**
+   * Lista todas las fichas activas accesibles; el propietario ve todas y un delegado solo la suya.
+   */
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      join fetch venue.category
+      where (
+          venue.ownerUser.id = :userId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue = venue
+              and credential.user.id = :userId
+          )
+        )
+        and venue.status <> 'archived'
+      order by venue.name asc, venue.id asc
+      """)
+  List<VenueEntity> findAllAccessibleByUserId(@Param("userId") UUID userId);
+
+  /** Carga una ficha explícita accesible sin revelar fichas ajenas. */
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      join fetch venue.category
+      where venue.id = :venueId
+        and (
+          venue.ownerUser.id = :userId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue = venue
+              and credential.user.id = :userId
+          )
+        )
+        and venue.status <> 'archived'
+      """)
+  Optional<VenueEntity> findAccessibleById(
+      @Param("userId") UUID userId, @Param("venueId") UUID venueId);
+
+  /** Serializa la edición o archivo de una ficha explícita accesible. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select venue
+      from VenueEntity venue
+      join fetch venue.category
+      where venue.id = :venueId
+        and (
+          venue.ownerUser.id = :userId
+          or exists (
+            select credential.id
+            from VenuePanelCredentialEntity credential
+            where credential.venue = venue
+              and credential.user.id = :userId
+          )
+        )
+        and venue.status <> 'archived'
+      """)
+  Optional<VenueEntity> findAccessibleByIdForUpdate(
+      @Param("userId") UUID userId, @Param("venueId") UUID venueId);
 
   /** Lista todos los locales publicados del propietario para configuración explícita por ID. */
   @Query(

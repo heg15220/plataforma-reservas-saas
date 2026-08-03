@@ -34,7 +34,7 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("35");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("40");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
@@ -47,6 +47,18 @@ class DatabaseMigrationIntegrationTests {
             String.class);
 
     assertThat(extensions).containsExactly("pg_trgm", "postgis", "unaccent");
+
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+                SELECT "column_name"
+                FROM "information_schema"."columns"
+                WHERE "table_schema" = current_schema()
+                  AND "table_name" = 'StatsDailyVenue'
+                ORDER BY "ordinal_position"
+                """,
+                String.class))
+        .contains("incidentsCount");
   }
 
   /** Verifica sobre PostgreSQL real el contrato físico introducido por la migración de reseñas. */
@@ -288,7 +300,12 @@ class DatabaseMigrationIntegrationTests {
             "mainImageMediaType",
             "mainImageSizeBytes",
             "mainImageWidth",
-            "mainImageHeight"));
+            "mainImageHeight",
+            "reservationFormPublished",
+            "reservationFormFallbackApproved",
+            "reservationFormPublishedAt",
+            "cancellationNoticeMinutes",
+            "notificationEmail"));
     expectedColumns.put(
         "VenueImages",
         List.of(
@@ -354,7 +371,6 @@ class DatabaseMigrationIntegrationTests {
             "ixVenuesPublishedSuggestionLocationTrigram",
             "ixVenuesPublishedSuggestionTextTrigram",
             "ixVenuesPublicLocation",
-            "uqVenuesOwnerCurrent",
             "uqVenuesSlug");
   }
 
@@ -396,7 +412,8 @@ class DatabaseMigrationIntegrationTests {
             "isActive",
             "createdAt",
             "updatedAt",
-            "allowsAnyAvailableResource"));
+            "allowsAnyAvailableResource",
+            "bookingMode"));
     expectedColumns.put(
         "EmployeeResources",
         List.of(

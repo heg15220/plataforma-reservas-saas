@@ -85,6 +85,10 @@ public class LocalDemoVenueInitializer implements ApplicationRunner {
           new DemoImage(
               "dev-fixtures/images/lume-de-bretema-kitchen.png",
               "dev-fixtures/venues/lume-de-bretema/gallery-2.png",
+              "image/png"),
+          new DemoImage(
+              "dev-fixtures/images/clinica-alba-integral-main.png",
+              "dev-fixtures/venues/clinica-alba-integral/main.png",
               "image/png"));
 
   private final javax.sql.DataSource dataSource;
@@ -108,7 +112,7 @@ public class LocalDemoVenueInitializer implements ApplicationRunner {
     new ResourceDatabasePopulator(new ClassPathResource(SQL_RESOURCE)).execute(dataSource);
     LOGGER.info(
         "Fixtures locales preparados: Ames Padel Center, Lume de Brétema, Brisa Studio, "
-            + "Campo do Sar, Norte Fitness Lab y Aura Atlántica");
+            + "Campo do Sar, Norte Fitness Lab, Aura Atlántica y Clínica Alba Integral");
   }
 
   private void store(DemoImage image) {

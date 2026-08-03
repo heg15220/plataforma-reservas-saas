@@ -1,9 +1,7 @@
 package com.reserly.platform.reservations.service;
 
-import com.reserly.platform.reservations.persistence.ReservationEntity;
 import java.time.LocalDate;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
 
 /** Casos de uso de lectura del panel de reservas, siempre acotados por propietario. */
 public interface VenueReservationService {
@@ -13,7 +11,7 @@ public interface VenueReservationService {
    *
    * @throws VenueReservationFilterInvalidException si algún filtro o límite no es válido
    */
-  Page<ReservationEntity> list(
+  VenueReservationPage list(
       UUID ownerUserId,
       String period,
       LocalDate anchorDate,

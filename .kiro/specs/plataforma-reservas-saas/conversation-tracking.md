@@ -10,14 +10,15 @@ Fuente de verdad del avance:
 
 ## Estado actual
 
-- Fecha de última actualización: 2026-08-01
-- Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.17`, `3.1` a
+- Fecha de última actualización: 2026-08-03
+- Tareas completadas en `tasks.md`: `0.1` a `0.16`, `1.1` a `1.22`, `2.1` a `2.21`, `3.1` a
   `3.14`, `4.1` a `4.14`, `5.1` a `5.12`, `6.1` a `6.12`, `7.1` a `7.16`, `8.1` a `8.14`,
-  `9.1` a `9.10`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
+  `9.1` a `9.12`, `10.1` a `10.16`, `11.1` a `11.12`, `12.1` a `12.7`, `13.1` a `13.12` y
   `14.1` a `14.14`, `15.1` a `15.16`.
 - Siguiente tarea pendiente recomendada: `16.1. Revisar validación backend de todos los endpoints públicos`.
-- Observación: la fase 15 queda completa con validación responsive bilingüe y del flujo móvil de
-  reseñas de la ficha pública.
+- Observación: además de la fase 15 completa, las extensiones multi-local de la fase 2 incluyen
+  credenciales delegadas, gestión integral de perfiles y un formulario base reservable desde la
+  primera publicación.
 
 ## Conversación 145 - Oferta detallada por local y calendario público mensual
 
@@ -6898,6 +6899,37 @@ Fuente de verdad del avance:
     ejecutado ni fallo de aserción. No se repitió para evitar validaciones interminables.
   - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.
 
+## Conversación 172 - Credenciales independientes por local multi-local
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - El usuario aclaró que asignar un email a cada local también debe crear una contraseña y un panel
+    privado propio.
+  - Se implementó una identidad delegada por local sin transferir la propiedad empresarial.
+  - El email sirve para acceso y notificaciones; la contraseña se hashea con las reglas del sistema
+    y toda rotación revoca sesiones anteriores.
+- Archivos modificados:
+  - Migración `V37__create_venue_panel_credentials.sql` y fixture `local-demo-venues.sql`.
+  - Entidad/DAO `VenuePanelCredential*`, `VenueDao` y servicio, controlador y DTO de asignaciones.
+  - API, manager y tests de `venue-emails`; catálogos `es.json` y `en.json`.
+  - Tests backend de servicio y contrato de migración.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-008`, `RNF-001`, `RNF-002` y `RNF-006`.
+- Tareas impactadas: se añadió y completó `2.19`.
+- Tareas completadas:
+  - `2.19. Asignar credenciales privadas independientes a cada local de una cuenta multi-local`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Una identidad delegada solo puede resolver un local; la cuenta principal conserva todos.
+  - La API nunca devuelve contraseña ni hash.
+  - La contraseña debe tener 12..72 caracteres y no superar 72 bytes UTF-8.
+  - Un email duplicado devuelve conflicto genérico sin revelar la cuenta existente.
+  - Evidencia: 6 tests backend focalizados, 7 de integración y 5 web correctos; Flyway aplicó V1..V37
+    sobre PostgreSQL/PostGIS real de Testcontainers.
+  - El typecheck global continúa bloqueado por el artefacto generado previo
+    `.next/dev/types/validator.ts:317` con `TS1128`.
+
 ## Conversación 146 - Movimiento de recomendados y tarjetas de catálogo navegables
 
 - Fecha: 2026-08-02.
@@ -8087,3 +8119,553 @@ Fuente de verdad del avance:
   - No se ejecutaron suite global, frontend, Testcontainers, migraciones reales, Docker ni
     validaciones visuales.
   - El cambio previo `apps/web/next-env.d.ts` se mantuvo fuera del trabajo.
+# Conversación 173 - Gestión multi-local completa desde Perfil público
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se convirtió `/panel/perfil` en un editor multi-local con desplegable de selección, alta de
+    nuevas fichas, edición del local elegido y archivo con confirmación.
+  - Perfil, publicación, imagen principal y galería usan rutas con `venueId` explícito para evitar
+    mezclar datos entre sedes.
+  - La cuenta propietaria lista todas sus fichas activas; una identidad delegada continúa limitada
+    a la ficha asociada a sus credenciales.
+  - Se conservaron los contratos singulares anteriores para no romper cuentas de un solo local.
+- Archivos modificados:
+  - `VenueDao`, `VenueImageDao`, servicios de perfil, publicación, imagen principal y galería.
+  - Controladores y contratos REST de perfil, publicación e imágenes; nuevo
+    `VenueProfilesResponse`.
+  - `venue-profile-api.ts`, `venue-profile-editor.tsx`, tests y catálogos ES/EN.
+  - Documentos `.kiro` de requisitos, diseño, tareas, seguimiento e implementación técnica.
+- Requisitos impactados: `RF-008`, `RF-009`, `RNF-001`, `RNF-002`, `RNF-006`, `RNF-007` y
+  `RNF-009`.
+- Tareas impactadas: se añadió y completó `2.20`.
+- Tareas completadas:
+  - `2.20. Gestionar creación, selección, edición y archivo de múltiples perfiles de local desde el panel`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La eliminación solicitada se implementa como archivo lógico para conservar historial y
+    relaciones; la UI exige una segunda confirmación.
+  - Crear otra ficha reutiliza la cuenta empresarial verificada y genera un slug único y estado
+    `draft`; no transfiere propiedad ni altera otros locales.
+  - La prueba funcional autenticada confirmó dos fichas para `multilocal@reserly.local`: Ames Padel
+    Center y Brisa Studio.
+  - Compilaron 822 fuentes Java. Pasaron 18 pruebas focales backend y 12 pruebas web. La integración
+    previa de perfil pasó 8 pruebas y aplicó Flyway V1..V37.
+  - El checkstyle global conserva 26 incidencias preexistentes en plantillas de correo y un test de
+    reservas. El typecheck global conserva errores previos en módulos administrativos y operativos;
+    ninguno corresponde a los dos archivos de perfil modificados.
+  - La primera inspección del navegador detectó correctamente una instancia API antigua; tras
+    reiniciarla se verificó el contrato actualizado por petición autenticada. La recarga visual
+    final quedó impedida por la política de navegación del navegador integrado.
+
+# Conversación 174 - Corrección del acceso al proceso público de reserva
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se diagnosticó el mensaje «No hemos podido preparar la reserva» al entrar desde una franja
+    disponible del local `azahar-brasa-11176fa9`.
+  - La ficha y sus franjas eran públicas, pero el formulario base conservaba
+    `reservationFormPublished=false`; la lectura pública terminaba además en un error 500 porque
+    su controlador no estaba incluido en el manejador acotado de perfiles.
+  - Los nuevos locales nacen ahora con el formulario base habilitado y su fecha de publicación se
+    fija al publicar por primera vez la ficha. El local de desarrollo afectado se reparó de forma
+    puntual para que el flujo existente funcione inmediatamente.
+  - La ausencia real de local o formulario publicado responde con `404 VENUE_PROFILE_NOT_FOUND` y
+    deja de exponer un error interno.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenueProfileServiceImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/service/VenuePublicationServiceImpl.java`.
+  - `apps/api/src/main/java/com/reserly/platform/venues/controller/VenueProfileExceptionHandler.java`.
+  - `VenueProfileServiceIntegrationTests.java` y `VenuePublicationServiceTests.java`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados: `RF-004`, `RF-013`, `RF-014`, `RNF-003`, `RNF-006` y `RNF-009`.
+- Tareas impactadas: se añadió y completó `2.21`.
+- Tareas completadas:
+  - `2.21. Habilitar el formulario base al crear un local y controlar su ausencia en la API pública`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Los campos base ya forman un formulario válido; no se crean campos personalizados ni se fuerza
+    un fallback editorial durante el alta.
+  - Una despublicación manual posterior continúa respetándose: la inicialización se limita a la
+    creación y el sello temporal solo se completa cuando falta durante la primera publicación.
+  - La reparación de datos actualizó exactamente una fila publicada, identificada por el slug de
+    Azahar & Brasa; no se añadió migración porque era un dato local generado durante el desarrollo.
+  - Evidencia HTTP tras reiniciar la API: formulario de Azahar `200`, formulario inexistente `404`
+    y página de reserva con una franja real `200`.
+  - `VenuePublicationServiceTests`: 3 pruebas correctas. `VenueProfileServiceIntegrationTests`: 8
+    pruebas correctas, 0 fallos y Flyway V1..V37 aplicado sobre PostgreSQL Testcontainers.
+
+# Conversación 175 - Reservas confirmadas visibles en el panel del local
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se comprobó que la reserva de Hugo para Azahar & Brasa sí estaba confirmada y correctamente
+    asociada al local, pero `/api/venue/me/reservations` devolvía un error 500 antes de listar datos.
+  - El error real era `SQLSTATE 42P18`: Hibernate 7 generaba `? is null` para filtros de fecha
+    opcionales y PostgreSQL no podía inferir el tipo del parámetro.
+  - La consulta usa ahora límites de fecha siempre tipados, ausencia explícita para el patrón de
+    usuario y `coalesce` tipado para franja y estado.
+  - Listado, detalle y operaciones aceptan tanto al propietario directo como a la identidad
+    delegada de ese local, sin ampliar el acceso a sedes ajenas.
+- Archivos modificados:
+  - `ReservationDao.java`, `VenueReservationServiceImpl.java` y `EmployeeResourceDao.java`.
+  - Servicios de cancelación, asistencia, no-show e historial de incidencias.
+  - Tests focalizados de reservas e incidencias y nuevo
+    `VenueReservationQueryIntegrationTests.java`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados: `RF-008`, `RF-018`, `RF-019`, `RF-020`, `RNF-002`, `RNF-003` y
+  `RNF-009`.
+- Tareas impactadas: se añadió y completó `9.12`.
+- Tareas completadas:
+  - `9.12. Corregir la consulta PostgreSQL de la agenda y habilitar reservas para identidades delegadas multi-local`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La reserva afectada no se recreó ni modificó: permaneció confirmada con su UUID original.
+  - Azahar & Brasa pertenece a la cuenta `local.demo.20260801.2200@reserly.test`; la sesión del
+    navegador integrado correspondía a otra cuenta multi-local y se usó solo para validar que el
+    endpoint ya devuelve datos en lugar de 500.
+  - El recurso asignado se resuelve por el `venueId` ya autorizado de la reserva, evitando depender
+    de si el actor es propietario o delegado.
+  - Evidencia: 26 tests focalizados y 1 test PostgreSQL correctos, compilación de 822 fuentes,
+    Flyway V1..V37 y verificación visual del panel con una reserva real cargada.
+
+# Conversación 176 - Cuentas de local único sin alta de sedes adicionales
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se separó la cuenta estándar, que puede crear solo su primera ficha y editar la vigente, de la
+    cuenta multi-local autorizada expresamente.
+  - La API aplica la restricción con una capacidad persistida y bloqueo transaccional; el panel
+    oculta selector, alta y archivo a la cuenta que ya posee un único local.
+  - `multilocal@reserly.local` conserva la gestión de varias fichas en desarrollo.
+- Archivos modificados:
+  - Flyway V38, entidad y DAO empresarial, DAO/servicio/DTO/controlador de perfiles y fixture local.
+  - Cliente HTTP, editor de Perfil público y pruebas web.
+  - Pruebas Java de servicio, controlador, migración y fixture.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-008`, `RF-009`, `RNF-002`, `RNF-003`, `RNF-006` y `RNF-009`.
+- Tareas impactadas: se añadió y completó `2.22`.
+- Tareas completadas:
+  - `2.22. Restringir el alta de locales adicionales a cuentas con capacidad multi-local explícita`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - `multiVenueEnabled` nace en `false`; no se infiere por rol ni por acceso delegado.
+  - Una cuenta vacía puede crear su primer local. El segundo exige capacidad explícita y se
+    rechaza con el error estable de prohibición si no existe.
+  - El lock pesimista sobre la cuenta empresarial impide eludir el límite con altas simultáneas.
+  - Pasaron 15 pruebas web, 7 pruebas backend y 10 pruebas PostgreSQL con Flyway V1..V38.
+  - Checkstyle global conserva 26 incidencias ajenas preexistentes; Spotless validó 1.017 archivos.
+
+# Conversación 177 - Primera configuración sin generación de rangos
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se reforzó el asistente inicial para que la respuesta `Sin rangos: gestionar solo por día`
+    guarde el horario semanal sin generar ninguna franja.
+  - La opción sin rangos pasa a ser el valor inicial seguro; crear franjas requiere seleccionar
+    expresamente una duración.
+  - La duración se modela como una unión cerrada y `none` se transforma en ausencia, nunca en una
+    duración numérica reutilizada o predeterminada.
+- Archivos modificados:
+  - `venue-availability-setup-wizard.tsx` y `availability-ui.test.tsx`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados: `RF-010`, `RF-011`, `RNF-003` y `RNF-009`.
+- Tareas impactadas: se añadió y completó `4.18`.
+- Tareas completadas:
+  - `4.18. Evitar la generación inicial de franjas cuando el local elige gestionar solo por día`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El backend nunca generaba franjas al guardar el horario; el único disparador es la llamada
+    explícita del asistente a `generateTimeSlots`.
+  - La prueba cambia primero a 60 minutos y después elige sin rangos, evitando validar solamente el
+    valor inicial. Confirma horario guardado, capacidad deshabilitada, cero llamadas al generador y
+    resultado visible de cero franjas.
+  - Pasaron las 9 pruebas focalizadas de `availability-ui.test.tsx`.
+
+# Conversación 178 - Estado temporal y hora operativa de reservas
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se sustituyó la asistencia automática por una política temporal explícita en la agenda.
+  - Una reserva confirmada aparece como pendiente hasta su hora de inicio; desde ese instante
+    aparece confirmada y durante una hora permite marcar asistida, no asistida o cancelar por el
+    local.
+  - Si no hay ninguna intervención, al cerrar la hora sigue confirmada sin transición automática.
+  - La misma frontera se aplica en la respuesta de API, en la visibilidad de botones y en los
+    endpoints, evitando que una petición construida manualmente eluda la interfaz.
+- Archivos modificados:
+  - Política `ReservationOperationalWindow`, convertidor y contratos privados de reservas.
+  - Servicios de asistencia y cancelación, DAO de reservas y retirada de `DefaultAttendanceJob`.
+  - Cliente, acciones, agenda, detalle, traducciones y pruebas web de reservas.
+  - Pruebas Java de política temporal, asistencia, cancelación, controlador y permisos.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados: `RF-018`, `RF-019`, `RB-006`, `RB-009`, `RNF-002`, `RNF-003` y
+  `RNF-009`.
+- Tareas impactadas: se actualizaron `10.3` y `10.4`, y se añadió `10.17`.
+- Tareas completadas:
+  - `10.17. Proyectar pendiente antes del inicio y limitar asistencia y cancelación a la hora posterior`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La ventana es semiabierta: incluye el inicio exacto y excluye `inicio + 1 hora`.
+  - `pending` es solo estado visible; en base de datos la reserva permanece `confirmed`, por lo que
+    sigue ocupando capacidad y no necesita un job que la confirme al llegar la hora.
+  - Se eliminó la opción manual “dejar pendiente”; pendiente deriva exclusivamente del reloj.
+  - Se retiraron el job, la actualización SQL masiva y sus pruebas obsoletas. La columna histórica
+    de configuración se conserva por compatibilidad de esquema, aunque ya no gobierna transiciones.
+  - Evidencia: 18 pruebas backend y 10 pruebas web focalizadas correctas; Spotless y Checkstyle
+    pasaron durante la suite Maven. El typecheck global conserva errores previos fuera de esta
+    iteración en administración, i18n dinámica y pruebas de perfil, por lo que no se usa como
+    evidencia de éxito.
+
+# Conversación 179 - Reparación del acceso local de Azahar & Brasa
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se reprodujo el acceso contra la API y se confirmó que la cuenta multi-local oficial sí
+    autenticaba, por lo que formulario, CORS, cookie y endpoint estaban operativos.
+  - La consulta de asociaciones locales mostró que Azahar & Brasa pertenecía a la identidad
+    temporal `local.demo.20260801.2200@reserly.test`, sin credencial de desarrollo estable.
+  - Se normalizó esa misma cuenta a `azahar@reserly.local`, se repuso un hash BCrypt conocido y se
+    incorporó la reparación condicional al fixture local para conservarla tras reinicios.
+- Archivos modificados:
+  - `apps/api/src/main/resources/dev-fixtures/local-demo-venues.sql`.
+  - `apps/api/src/test/java/com/reserly/platform/development/LocalDemoVenueFixtureContractTests.java`.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-008`, `RNF-002`, `RNF-003` y `RNF-009`.
+- Tareas impactadas: se añadió y completó `2.23`.
+- Tareas completadas:
+  - `2.23. Estabilizar la credencial local del propietario de Azahar & Brasa`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Credencial exclusiva de desarrollo: `azahar@reserly.local / ReserlyLocal2026!`.
+  - No se creó otro usuario ni se transfirió el local: se actualizó la identidad propietaria
+    existente, conservando UUID, reservas, configuración y permisos.
+  - La actualización se limita al perfil `local`, al slug reservado de Azahar y comprueba que el
+    email estable no pertenezca a otra cuenta.
+  - Verificación real: login 200 con cookie y `GET /api/venue/me` devolviendo Azahar & Brasa.
+  - Prueba focalizada: 2 tests correctos; Spotless y Checkstyle correctos.
+
+# Conversación 180 - Acceso asistido local resistente al autocompletado
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se volvió a verificar que la API activa aceptaba la cuenta de Azahar y emitía una sesión, pese
+    a que el navegador continuaba mostrando credenciales inválidas.
+  - Se identificó la discrepancia en los valores enviados por el formulario/autocompletado y se
+    añadieron inputs controlados junto con una acción local que carga la credencial exacta.
+  - La página servidor acredita el modo local por `NODE_ENV=development` y host loopback, sin
+    depender de que el proceso Next haya sido iniciado mediante el wrapper `dotenv`.
+- Archivos modificados:
+  - `apps/web/src/app/locales/acceso/page.tsx`.
+  - `venue-login-form.tsx`, `venue-login-form.test.tsx` y catálogos `es.json`/`en.json`.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-008`, `RNF-002`, `RNF-003`, `RNF-006` y `RNF-009`.
+- Tareas impactadas: se añadió y completó `1.24`.
+- Tareas completadas:
+  - `1.24. Añadir acceso asistido local para la cuenta de Azahar sin depender del autocompletado`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El botón solo carga los campos; la creación de sesión sigue requiriendo pulsar explícitamente
+    `Acceder al panel`.
+  - La capacidad no se basa en cabeceras reenviadas en producción: exige simultáneamente el modo
+    de desarrollo de Next y un host `localhost` o `127.0.0.1` exacto.
+  - La página real devolvió 200 e incluyó el acceso asistido; el login directo siguió devolviendo
+    `venue_business` y una cookie.
+  - Pasaron 18 pruebas focalizadas de formulario/API y ESLint en los archivos afectados.
+
+# Conversación 181 - Especialidades clínicas y citas con médico a hora exacta
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se amplió el modelo existente de servicios y profesionales para representar secciones de una
+    clínica, como psiquiatría o ginecología, y asociar varios médicos a cada especialidad.
+  - El panel privado permite configurar el modo de cita exacta, la duración interna, los médicos
+    compatibles, el horario semanal de cada profesional y las franjas de agenda de cada especialidad.
+  - El calendario público ordena la selección como especialidad, profesional, fecha y hora. En una
+    cita exacta muestra solo la hora de inicio y conserva el final exclusivamente para disponibilidad.
+  - La creación del hold bloquea al profesional y rechaza solapes efectivos, incluso entre servicios
+    o franjas diferentes.
+- Archivos modificados:
+  - Migración `V39__add_exact_time_service_booking_mode.sql`.
+  - Entidades, DTOs, conversores, servicios y DAOs de servicios, disponibilidad, recursos y reservas.
+  - Gestores web de equipo y disponibilidad, calendario público, resumen de reserva y APIs tipadas.
+  - Catálogos `es.json` y `en.json`, pruebas Java y pruebas Vitest focalizadas.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados: `RF-010`, `RF-011`, `RF-026`, `RF-027`, `RB-003`, `RB-004`, `RB-010`,
+  `RNF-002`, `RNF-003`, `RNF-009` y `RNF-011`.
+- Tareas impactadas: se añadió y completó `5.13`.
+- Tareas completadas:
+  - `5.13. Implementar especialidades clínicas con médicos, citas a hora exacta y gestión integral
+    desde el panel privado`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - No se creó un calendario clínico paralelo: especialidad equivale a servicio, médico equivale a
+    profesional y la agenda reutiliza franjas, horarios y holds existentes.
+  - `exact_time` modifica la presentación pública, no elimina el intervalo interno necesario para
+    duración, capacidad y detección de solapes.
+  - Distintas especialidades pueden tener franjas simultáneas; un mismo médico no puede ocupar dos.
+  - Evidencia: 32 pruebas backend y 17 pruebas web focalizadas correctas; compilación backend y
+    Spotless correctos. Además, las 11 pruebas de migración aplicaron V1..V39 desde cero sobre
+    PostgreSQL 17.5. El Checkstyle global sin omisión continúa bloqueado por 26 infracciones
+    preexistentes en plantillas de email y un test de mensajería ajenos a esta iteración.
+
+# Conversación 182 - Clínica ficticia completa en el catálogo local
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se creó `Clínica Alba Integral`, una publicación ficticia y visible en el catálogo local para
+    comprobar la variante clínica sin registrar manualmente todos sus datos.
+  - La ficha incluye imagen original, dirección completa, contacto, textos ES/EN y un aviso que
+    prohíbe usar información médica real en este entorno de demostración.
+  - Se configuraron Psiquiatría, Ginecología y Psicología clínica como citas `exact_time`, cuatro
+    profesionales ficticios, horarios laborables, asociaciones explícitas y disponibilidad móvil.
+  - El local pertenece a la cuenta multi-local autenticable y puede gestionarse desde su selector.
+- Archivos modificados:
+  - `apps/api/src/main/resources/dev-fixtures/local-demo-venues.sql`.
+  - `apps/api/src/main/resources/dev-fixtures/images/clinica-alba-integral-main.png`.
+  - `apps/api/src/main/java/com/reserly/platform/development/LocalDemoVenueInitializer.java`.
+  - `LocalDemoVenueFixtureContractTests.java` y `LocalDemoClinicFixtureIntegrationTests.java`.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-026`, `RF-027`, `RNF-002`, `RNF-003`, `RNF-009` y `RNF-011`.
+- Tareas impactadas: se añadió y completó `0.18`.
+- Tareas completadas:
+  - `0.18. Añadir una clínica privada ficticia al catálogo local con imagen propia, especialidades,
+    médicos y citas futuras a hora exacta`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El slug estable es `clinica-alba-integral` y el local se clasifica temporalmente como `otros`,
+    al no existir todavía una categoría sanitaria en el catálogo inicial.
+  - El fixture es idempotente y renueva un horizonte de 45 días laborables sin duplicar franjas.
+  - La imagen fue generada para esta ficha, no contiene personas, texto, marcas ni datos clínicos.
+  - La infraestructura local activa devolvió 200 para ficha e imagen; la búsqueda por “Clínica”
+    devolvió exactamente el nuevo local y una fecha futura ofreció 9 citas con profesionales.
+  - Pasaron 3 pruebas focalizadas sobre contrato y PostgreSQL real; Spotless quedó correcto. El
+    Checkstyle global continúa bloqueado por las 26 infracciones preexistentes ajenas ya registradas.
+
+# Conversación 183 - Reparación de la carga de estadísticas privadas
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se reprodujo el mensaje genérico del panel con Azahar y con la cuenta multilocal: el login
+    respondía 200 y el endpoint mensual de estadísticas respondía 500 en ambos casos.
+  - La traza PostgreSQL identificó que `reviewStats` repetía la conversión zonificada de
+    `createdAt` en `SELECT` y `GROUP BY`; Hibernate generaba placeholders distintos y el motor no
+    consideraba agrupada la columna proyectada.
+  - Se cambió la agrupación a la posición de la columna proyectada y se añadió una prueba que
+    ejecuta la consulta nativa sobre PostgreSQL real, no solo una inspección de su texto.
+  - La API corregida devolvió correctamente el periodo mensual para ambos tipos de cuenta.
+- Archivos modificados:
+  - `apps/api/src/main/java/com/reserly/platform/statistics/persistence/StatsDailyVenueDao.java`.
+  - `apps/api/src/test/java/com/reserly/platform/statistics/persistence/VenueStatisticsAggregationIntegrationTests.java`.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados: `RF-025`, `RNF-002`, `RNF-004`, `RNF-005`, `RNF-009` y `RNF-011`.
+- Tareas impactadas: se añadió y completó `12.8`.
+- Tareas completadas:
+  - `12.8. Corregir la agrupación PostgreSQL de reseñas por fecha local y verificar el endpoint de
+    estadísticas sobre base real`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - `GROUP BY 1` referencia la fecha local ya proyectada y evita duplicar el parámetro `zoneId`.
+  - No cambian el DTO, los filtros, los cálculos, la autorización ni la minimización de datos.
+  - Pasaron 10 pruebas focalizadas con 0 fallos; la integración creó tres instantáneas diarias.
+  - Verificación HTTP: cuenta multilocal y Azahar devolvieron `period=month`, fechas 2026-08-01 a
+    2026-08-03 y tres puntos; Azahar reflejó su reserva existente.
+  - La API temporal se cerró después de comprobarla y el puerto 8081 quedó libre.
+  - Se cerró el árbol coordinado anterior y se inició una única instancia nueva del entorno; la API
+    principal en 8080 y `/panel/estadisticas` en 3000 responden correctamente con el arreglo cargado.
+
+# Conversación 184 - Estadísticas reactivas y selección multi-local
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se comprobó que la reserva confirmada de Azahar sí aparecía al recalcular el endpoint, pero el
+    panel abierto no volvía a solicitar datos después de su primera carga.
+  - Se comprobó que la cuenta multi-local resolvía implícitamente su primer local y no ofrecía forma
+    de consultar las reservas de los demás locales accesibles.
+  - Se añadió selección explícita de local, autorización backend por local accesible y refresco de
+    estadísticas cada 30 segundos, al recuperar foco y al volver visible la pestaña.
+- Archivos modificados:
+  - Controlador, servicio e implementación de estadísticas; pruebas de controlador, autorización y
+    servicio bajo `apps/api/src/{main,test}/java/com/reserly/platform/statistics`.
+  - `apps/web/src/features/venue-statistics/venue-statistics-api.ts` y su prueba.
+  - `apps/web/src/features/venue-statistics/venue-statistics-dashboard.tsx` y su prueba.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-025`, `RF-008`, `RNF-002`, `RNF-003`, `RNF-004`, `RNF-005`,
+  `RNF-009` y `RNF-011`.
+- Tareas impactadas: se añadió y completó `12.9`.
+- Tareas completadas:
+  - `12.9. Añadir selección segura de local y actualización automática de métricas en cuentas
+    multi-local`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - `venueId` es opcional para mantener compatibilidad, pero la UI nueva siempre lo envía.
+  - El backend valida acceso con la identidad de sesión; un UUID ajeno devuelve 404 y no filtra la
+    existencia del local.
+  - El refresco en segundo plano conserva las métricas visibles y evita solicitudes concurrentes.
+  - Pasaron 7 pruebas web focalizadas, lint de los cuatro archivos de estadísticas y las pruebas
+    Java de servicio, controlador y autorización, sin fallos.
+  - El typecheck global quedó bloqueado por fragmentos duplicados y truncados que Next volvió a
+    escribir en `.next/dev/types` incluso con una única instancia; la fuente se valida aparte con
+    las mismas opciones estrictas excluyendo solo ese directorio generado.
+  - El typecheck focalizado estricto pasó sin errores y la configuración temporal se eliminó.
+  - La comprobación HTTP real devolvió tres locales para la cuenta multi-local: Ames con 0 reservas,
+    Brisa Studio con 1 reserva confirmada y Clínica Alba Integral con 0; un UUID ajeno devolvió 404
+    y `/panel/estadisticas` respondió 200.
+
+# Conversación 185 - Gráfica temporal de incidencias por local
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se solicitó añadir al panel de estadísticas una gráfica que muestre a lo largo del tiempo el
+    balance del número de incidencias activadas para el local seleccionado.
+  - Se amplió la instantánea diaria con un contador de incidencias operativas, calculado por fecha
+    local desde `NoShowIncidents` y limitado a estados `reported` y `confirmed`.
+  - Se añadió al contrato privado el total del periodo y el contador de cada día, sin trasladar
+    ninguna identidad o detalle sensible del historial.
+  - Se incorporó una tercera gráfica responsive, accesible e internacionalizada, un estado vacío
+    específico y el total en el detalle del periodo.
+- Archivos modificados:
+  - `apps/api/src/main/resources/db/migration/V40__add_incident_count_to_daily_venue_stats.sql`.
+  - `StatsDailyVenueDao.java`, `StatsDailyVenueEntity.java`, DTOs y servicio del módulo statistics.
+  - Pruebas de migración, contrato SQL, integración PostgreSQL, servicio y controladores.
+  - API, dashboard y pruebas de `apps/web/src/features/venue-statistics`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-020`, `RF-025`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`,
+  `RNF-005`, `RNF-007`, `RNF-009`, `RNF-011` y `RNF-012`.
+- Tareas impactadas: se añadió y completó `12.10`.
+- Tareas completadas:
+  - `12.10. Añadir una gráfica temporal del balance de incidencias operativas activadas por local`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - “Activada” se interpreta como incidencia operativa vigente en estado `reported` o `confirmed`;
+    `dismissed` no forma parte del balance.
+  - El día se determina con `reportedAt AT TIME ZONE :zoneId`, no con la fecha de la reserva ni con
+    UTC, y la agrupación usa `GROUP BY 1` para compatibilidad con PostgreSQL/Hibernate.
+  - La gráfica reutiliza el local seleccionado, los periodos existentes y el refresco automático;
+    no se crea una ruta paralela ni se debilita la autorización multi-local.
+  - Flyway aplicó 40 migraciones desde cero sobre PostgreSQL 17.5 y la prueba real recuperó una
+    incidencia exactamente en el 2 de agosto de 2026.
+  - Pasaron 8 pruebas web, TypeScript estricto focalizado, lint, validación JSON ES/EN, Spotless y
+    todas las suites Java focalizadas e integradas ejecutadas, sin fallos.
+
+# Conversación 186 - Semáforo profesional del historial de incidencias
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se solicitó que el historial de incidencias de la ficha privada distinga visualmente en verde,
+    amarillo y rojo la ausencia de incidencias, su antigüedad y la reincidencia.
+  - Se creó una evaluación pura y determinista sobre estados operativos `reported` y `confirmed`,
+    con umbral reciente de 180 días y recurrencia adicional en la ventana visible de 12 meses.
+  - Se añadió al historial un bloque accesible con color semántico, icono, nivel textual y
+    explicación profesional; las incidencias desestimadas quedan excluidas.
+  - Se verificaron los tres niveles, el límite exacto de 180 días y la exclusión de estados
+    desestimados mediante pruebas unitarias y de interfaz.
+- Archivos modificados:
+  - `apps/web/src/features/venue-reservations/incident-history-risk.ts` y su prueba unitaria.
+  - `apps/web/src/features/venue-reservations/venue-reservation-detail-panel.tsx`.
+  - `apps/web/src/features/venue-reservations/venue-reservations-ui.test.tsx`.
+  - `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-020`, `RF-021`, `RNF-002`, `RNF-003`, `RNF-007`, `RNF-009`,
+  `RNF-011` y `RNF-012`.
+- Tareas impactadas: se añadió y completó `10.18`.
+- Tareas completadas:
+  - `10.18. Añadir semáforo accesible verde, amarillo y rojo al historial profesional según
+    antigüedad y reincidencia`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - Verde significa ausencia operativa o un único registro con al menos 180 días; amarillo, una
+    incidencia reciente o dos previas sin recurrencia reciente alta; rojo, dos en 180 días o tres
+    dentro del historial visible.
+  - El semáforo es informativo y no modifica penalizaciones, reservas ni permisos; el backend
+    continúa siendo la autoridad de negocio.
+  - El significado no depende solo del color y evita vocabulario acusatorio.
+  - Pasaron 14 pruebas focalizadas y el lint de los cuatro archivos TypeScript modificados. Los
+    validadores globales de i18n y español continúan bloqueados por deuda previa ajena; el typecheck
+    global agotó los límites de 120 y 180 segundos sin emitir diagnósticos.
+
+# Conversación 187 - Aviso de incidencias previas en la agenda
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se solicitó mostrar junto al estado de cada reserva un aviso de posibles incidencias previas
+    para acceder después al detalle y revisar el historial profesional.
+  - Se enriqueció la página privada con un nivel minimizado `low`, `watch` o `high`, calculado en
+    una única consulta agregada para todos los correos visibles.
+  - La agenda muestra un enlace amarillo “Posibles incidencias previas” para `watch`, uno rojo
+    “Incidencias previas recurrentes” para `high` y ningún aviso adicional para `low`.
+  - Ambos avisos conducen al detalle de la propia reserva, donde permanece el historial completo y
+    su explicación accesible.
+- Archivos modificados:
+  - Proyección agregada de incidencias y consulta de `NoShowIncidentDao`.
+  - Contratos internos `VenueReservationPage` y `VenueReservationIncidentRisk`.
+  - Servicio, conversor, DTO y pruebas del listado privado de reservas.
+  - API, agenda, fixtures, pruebas y catálogos ES/EN del frontend.
+  - Los cinco documentos fuente de verdad de `.kiro`.
+- Requisitos impactados: `RF-018`, `RF-020`, `RF-021`, `RNF-002`, `RNF-003`, `RNF-004`,
+  `RNF-007`, `RNF-009`, `RNF-011` y `RNF-012`.
+- Tareas impactadas: se añadió y completó `10.19`.
+- Tareas completadas:
+  - `10.19. Mostrar junto al estado de la agenda un aviso de incidencias previas enlazado al
+    detalle`.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - El listado no recibe recuentos, fechas, tipos ni notas: solo el nivel derivado.
+  - El nivel verde no genera aviso para evitar ruido; amarillo y rojo incluyen texto, icono y
+    enlace, por lo que la información no depende solo del color.
+  - La agregación se limita a identidades presentes en la página ya autorizada y evita N+1.
+  - Pasaron 20 pruebas web, 15 pruebas backend de servicio/controlador/permisos y 2 pruebas de
+    integración PostgreSQL; lint, Spotless y Checkstyle focalizados quedaron correctos.
+
+# Conversación 188 - Compatibilidad del aviso de incidencias en la agenda
+
+- Fecha: 2026-08-03.
+- Resumen de la conversación:
+  - Se reprodujo el error i18n `VenueReservations.list.incidentRisk.undefined` y el aviso genérico
+    de carga en una agenda que consumía una instancia anterior de la API.
+  - Se identificó una ventana de compatibilidad: el contrato anterior no enviaba
+    `incidentRiskLevel` y una fila retenida por HMR satisfacía incorrectamente la condición abierta
+    distinta de `low`.
+  - El parser normaliza únicamente la ausencia del campo a `low`; los valores desconocidos siguen
+    fallando de forma cerrada.
+  - La fila solo renderiza el enlace de incidencias para los valores exactos `watch` y `high`.
+- Archivos modificados:
+  - `apps/web/src/features/venue-reservations/venue-reservations-api.ts` y su prueba.
+  - `apps/web/src/features/venue-reservations/venue-reservations-dashboard.tsx` y su prueba UI.
+  - `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados: `RF-018`, `RF-020`, `RF-021`, `RNF-002`, `RNF-003`, `RNF-004`,
+  `RNF-007`, `RNF-009` y `RNF-012`.
+- Tareas impactadas: corrección de regresión de la tarea completada `10.19`.
+- Tareas completadas: ninguna nueva; `10.19` conserva su estado completado con evidencia ampliada.
+- Siguiente tarea pendiente recomendada:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Decisiones o aclaraciones relevantes:
+  - La ausencia de una proyección informativa nunca se convierte en una acusación de incidencia.
+  - No se añaden claves `undefined` ni fallbacks visibles; el conjunto de traducciones permanece
+    cerrado a `watch` y `high`.
+  - Pasaron 15 pruebas focalizadas y ESLint sobre los cuatro archivos TypeScript modificados.
+  - La recarga del panel no registró `MISSING_MESSAGE`; la sesión existente había caducado y no se
+    introdujeron credenciales para continuar la comprobación privada.

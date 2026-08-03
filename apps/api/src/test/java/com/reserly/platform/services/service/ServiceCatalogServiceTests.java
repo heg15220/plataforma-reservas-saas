@@ -168,7 +168,8 @@ class ServiceCatalogServiceTests {
         durationMinutes,
         capacityRequired,
         active,
-        true);
+        true,
+        "range");
   }
 
   private ServiceCommand command(
@@ -186,7 +187,8 @@ class ServiceCatalogServiceTests {
         durationMinutes,
         capacityRequired,
         active,
-        allowsAnyAvailableResource);
+        allowsAnyAvailableResource,
+        "range");
   }
 
   private LocalizedText localized(String es, String en) {

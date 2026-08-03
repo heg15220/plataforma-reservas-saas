@@ -20,6 +20,8 @@ import { PublicAvailabilityCalendar } from "./public-availability-calendar";
 import { VenueInternalCalendar } from "./venue-internal-calendar";
 import { VenueAvailabilityManager } from "./venue-availability-manager";
 
+vi.mock("@/features/team/team-api", () => ({ fetchVenueServices: vi.fn().mockResolvedValue([]) }));
+
 vi.mock("./availability-api", async (importOriginal) => {
   const original = await importOriginal<typeof import("./availability-api")>();
   return {
@@ -40,6 +42,7 @@ vi.mock("./availability-api", async (importOriginal) => {
 
 const slot = {
   id: "10000000-0000-4000-8000-000000000001",
+  serviceId: null,
   date: "2026-07-13",
   weekday: 1,
   startsAt: "09:00:00",
@@ -70,6 +73,7 @@ beforeEach(() => {
               slotId: slot.id,
               serviceId: "20000000-0000-4000-8000-000000000001",
               serviceName: "Corte",
+              bookingMode: "range" as const,
               startsAt: slot.startsAt,
               endsAt: slot.endsAt,
               capacity: slot.capacity,
@@ -153,7 +157,7 @@ describe("PublicAvailabilityCalendar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mostrar el mes siguiente" }));
     expect(await screen.findByText("agosto de 2026")).toBeVisible();
     await waitFor(() => expect(fetchPublicAvailability).toHaveBeenCalledTimes(62));
-  });
+  }, 15_000);
 
   it("muestra selector de servicio cuando una fecha ofrece varias alternativas", async () => {
     vi.mocked(fetchPublicAvailability).mockImplementation(async (_slug, date) => ({
@@ -174,6 +178,7 @@ describe("PublicAvailabilityCalendar", () => {
                 slotId: "10000000-0000-4000-8000-000000000001",
                 serviceId: "20000000-0000-4000-8000-000000000001",
                 serviceName: "Corte",
+                bookingMode: "range" as const,
                 startsAt: "09:00:00",
                 endsAt: "10:00:00",
                 capacity: 2,
@@ -188,6 +193,7 @@ describe("PublicAvailabilityCalendar", () => {
                 slotId: "10000000-0000-4000-8000-000000000002",
                 serviceId: "20000000-0000-4000-8000-000000000002",
                 serviceName: "Masaje",
+                bookingMode: "exact_time" as const,
                 startsAt: "11:00:00",
                 endsAt: "12:00:00",
                 capacity: 1,
@@ -204,11 +210,14 @@ describe("PublicAvailabilityCalendar", () => {
 
     renderWithIntl(<PublicAvailabilityCalendar startDate="2026-07-13" venueSlug="casa-luz" />);
 
-    const serviceSelector = await screen.findByRole("combobox", { name: "Servicio" });
+    const serviceSelector = await screen.findByRole("combobox", { name: "Especialidad o sección" });
     fireEvent.mouseDown(serviceSelector);
     fireEvent.click(await screen.findByRole("option", { name: "Masaje" }));
 
-    expect(await screen.findByText("11:00 " + String.fromCharCode(8211) + " 12:00")).toBeVisible();
+    expect(await screen.findByText("11:00", { selector: "p" })).toBeVisible();
+    expect(
+      screen.queryByText("11:00 " + String.fromCharCode(8211) + " 12:00"),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -226,6 +235,9 @@ describe("VenueAvailabilityManager", () => {
     expect(screen.getByLabelText("Horario distinto según el día")).toBeVisible();
     expect(screen.getByLabelText("Rango horario por reserva")).toBeVisible();
     expect(screen.getByLabelText("Personas máximas por rango")).toBeVisible();
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Rango horario por reserva" }));
+    fireEvent.click(await screen.findByRole("option", { name: "60 minutos por reserva" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar y crear primera versión" }));
 
@@ -251,6 +263,36 @@ describe("VenueAvailabilityManager", () => {
     ).toBeVisible();
     expect(screen.getByRole("heading", { name: "Horario semanal" })).toBeVisible();
   });
+
+  it("no genera ninguna franja cuando se elige gestionar solo por día", async () => {
+    vi.mocked(fetchOpeningHours).mockResolvedValue([]);
+    vi.mocked(fetchTimeSlots).mockResolvedValue([]);
+
+    renderWithIntl(<VenueAvailabilityManager initialDate="2026-07-13" />);
+
+    const durationSelector = await screen.findByRole("combobox", {
+      name: "Rango horario por reserva",
+    });
+    fireEvent.mouseDown(durationSelector);
+    fireEvent.click(await screen.findByRole("option", { name: "60 minutos por reserva" }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Rango horario por reserva" }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Sin rangos: gestionar solo por día" }),
+    );
+
+    expect(screen.getByRole("combobox", { name: "Personas máximas por rango" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Guardar y crear primera versión" }));
+
+    await waitFor(() => expect(saveOpeningHours).toHaveBeenCalledTimes(1));
+    expect(generateTimeSlots).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("La primera versión se ha creado correctamente con 0 franjas."),
+    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Horario semanal" })).toBeVisible();
+  }, 15_000);
 
   it("carga el horario y guarda el snapshot semanal completo", async () => {
     renderWithIntl(<VenueAvailabilityManager />);

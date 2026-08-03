@@ -115,7 +115,7 @@ class ServiceControllerTests {
     ServiceLocalizedTextDto descriptionI18n =
         new ServiceLocalizedTextDto("es", Map.of("es", "Corte clasico", "en", "Classic cut"));
     return new ServiceRequest(
-        "Corte", nameI18n, "Corte clasico", descriptionI18n, 45, 1, true, false);
+        "Corte", nameI18n, "Corte clasico", descriptionI18n, 45, 1, true, false, "exact_time");
   }
 
   private ServiceEntity serviceEntity() {

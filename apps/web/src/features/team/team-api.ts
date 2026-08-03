@@ -41,6 +41,7 @@ const serviceSchema = z.object({
   capacityRequired: z.number().int().positive(),
   active: z.boolean(),
   allowsAnyAvailableResource: z.boolean(),
+  bookingMode: z.enum(["range", "exact_time"]).default("range"),
   employeeResourceIds: z.array(z.uuid()),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -81,6 +82,7 @@ export interface VenueServiceInput {
   capacityRequired: number;
   active: boolean;
   allowsAnyAvailableResource: boolean;
+  bookingMode: "range" | "exact_time";
 }
 
 export type TeamApiErrorKind =
@@ -120,7 +122,10 @@ export async function createEmployeeResource(input: EmployeeResourceInput) {
 /** Actualiza todos los campos editables de un recurso propio. */
 export async function updateEmployeeResource(id: string, input: EmployeeResourceInput) {
   return parse(
-    await privateRequest(`/api/venue/me/team/${encodeURIComponent(id)}`, jsonRequest("PATCH", input)),
+    await privateRequest(
+      `/api/venue/me/team/${encodeURIComponent(id)}`,
+      jsonRequest("PATCH", input),
+    ),
     resourceSchema,
   );
 }

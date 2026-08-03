@@ -4,6 +4,7 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -12,6 +13,7 @@ import {
   CalendarRange,
   ChartNoAxesColumnIncreasing,
   CirclePercent,
+  ShieldAlert,
   Star,
   UsersRound,
 } from "lucide-react";
@@ -19,6 +21,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { Surface } from "@/components/layout";
+import {
+  fetchVenueProfiles,
+  VenueProfileApiError,
+  type VenueProfile,
+} from "@/features/venue-profile/venue-profile-api";
 
 import {
   fetchVenueStatistics,
@@ -29,6 +36,7 @@ import {
 } from "./venue-statistics-api";
 
 const PERIODS = ["today", "week", "month", "year", "custom"] as const;
+const AUTO_REFRESH_MILLISECONDS = 30_000;
 
 /** Panel responsive de estadísticas con tarjetas y gráficos accesibles sin librería externa. */
 export function VenueStatisticsDashboard() {
@@ -38,27 +46,87 @@ export function VenueStatisticsDashboard() {
   const [pendingPeriod, setPendingPeriod] = useState<VenueStatisticsPeriod>("month");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [profiles, setProfiles] = useState<VenueProfile[]>([]);
+  const [selectedVenueId, setSelectedVenueId] = useState("");
   const [data, setData] = useState<VenueStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<VenueStatisticsApiError["kind"] | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    fetchVenueStatistics(filter, controller.signal)
+    fetchVenueProfiles(controller.signal)
       .then((result) => {
-        if (!controller.signal.aborted) setData(result);
+        if (controller.signal.aborted) return;
+        setProfiles(result.profiles);
+        if (result.profiles.length === 0) {
+          setError("notFound");
+          setLoading(false);
+          return;
+        }
+        setSelectedVenueId(result.profiles[0].id);
       })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
-        setError(reason instanceof VenueStatisticsApiError ? reason.kind : "unavailable");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        const kind = reason instanceof VenueProfileApiError ? reason.kind : "unavailable";
+        setError(
+          kind === "unauthenticated" || kind === "forbidden" || kind === "notFound"
+            ? kind
+            : "unavailable",
+        );
+        setLoading(false);
       });
     return () => controller.abort();
-  }, [filter]);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedVenueId) return;
+    const controller = new AbortController();
+    let requestRunning = false;
+
+    async function loadStatistics(showLoading: boolean) {
+      if (requestRunning) return;
+      requestRunning = true;
+      if (showLoading) setLoading(true);
+      setError(null);
+      try {
+        const result = await fetchVenueStatistics(
+          { ...filter, venueId: selectedVenueId },
+          controller.signal,
+        );
+        if (!controller.signal.aborted) setData(result);
+      } catch (reason: unknown) {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setError(reason instanceof VenueStatisticsApiError ? reason.kind : "unavailable");
+      } finally {
+        requestRunning = false;
+        if (!controller.signal.aborted && showLoading) setLoading(false);
+      }
+    }
+
+    void loadStatistics(true);
+    const refreshInterval = window.setInterval(
+      () => void loadStatistics(false),
+      AUTO_REFRESH_MILLISECONDS,
+    );
+    const refreshOnFocus = () => void loadStatistics(false);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadStatistics(false);
+    };
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [filter, selectedVenueId]);
+
+  function selectVenue(venueId: string) {
+    setData(null);
+    setSelectedVenueId(venueId);
+  }
 
   function selectPeriod(period: VenueStatisticsPeriod) {
     setPendingPeriod(period);
@@ -87,6 +155,25 @@ export function VenueStatisticsDashboard() {
 
   return (
     <Stack spacing={4} sx={{ mt: { xs: 4, sm: 6 }, minWidth: 0 }}>
+      {profiles.length > 1 && (
+        <Surface component="section">
+          <TextField
+            fullWidth
+            helperText={t("venue.description")}
+            label={t("venue.label")}
+            onChange={(event) => selectVenue(event.target.value)}
+            select
+            slotProps={{ htmlInput: { "aria-label": t("venue.aria") } }}
+            value={selectedVenueId}
+          >
+            {profiles.map((profile) => (
+              <MenuItem key={profile.id} value={profile.id}>
+                {profile.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Surface>
+      )}
       <Surface component="section">
         <Stack spacing={3}>
           <Stack
@@ -241,6 +328,21 @@ export function VenueStatisticsDashboard() {
               }))}
               valueLabel={(value) => t("charts.occupancyValue", { value: decimal.format(value) })}
             />
+            <Box sx={{ gridColumn: { xl: "1 / -1" } }}>
+              <EvolutionChart
+                ariaLabel={t("charts.incidentsAria")}
+                color="warning.main"
+                emptyLabel={t("charts.incidentsEmpty")}
+                icon={ShieldAlert}
+                label={t("charts.incidents")}
+                locale={locale}
+                points={data.series.map((day) => ({
+                  date: day.date,
+                  value: day.incidentsCount,
+                }))}
+                valueLabel={(value) => t("charts.incidentValue", { value })}
+              />
+            </Box>
           </Box>
 
           <Surface component="section">
@@ -264,6 +366,10 @@ export function VenueStatisticsDashboard() {
               <Detail label={t("details.cancelled")} value={number.format(data.cancelledCount)} />
               <Detail label={t("details.attended")} value={number.format(data.attendedCount)} />
               <Detail label={t("details.reviews")} value={number.format(data.reviewsCount)} />
+              <Detail
+                label={t("details.incidents")}
+                value={number.format(data.incidentsCount)}
+              />
             </Box>
           </Surface>
         </>
@@ -302,6 +408,7 @@ function EvolutionChart({
   emptyLabel,
   label,
   locale,
+  icon: Icon = ChartNoAxesColumnIncreasing,
   points,
   valueLabel,
 }: {
@@ -310,6 +417,7 @@ function EvolutionChart({
   emptyLabel: string;
   label: string;
   locale: string;
+  icon?: typeof ChartNoAxesColumnIncreasing;
   points: Array<{ date: string; value: number }>;
   valueLabel: (value: number) => string;
 }) {
@@ -318,7 +426,7 @@ function EvolutionChart({
   return (
     <Surface aria-label={ariaLabel} component="section">
       <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start", minWidth: 0 }}>
-        <ChartNoAxesColumnIncreasing aria-hidden="true" size={20} style={{ flexShrink: 0 }} />
+        <Icon aria-hidden="true" size={20} style={{ flexShrink: 0 }} />
         <Typography component="h2" sx={{ overflowWrap: "anywhere" }} variant="h2">
           {label}
         </Typography>

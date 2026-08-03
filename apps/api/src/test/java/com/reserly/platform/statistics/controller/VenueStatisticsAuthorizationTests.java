@@ -79,18 +79,21 @@ class VenueStatisticsAuthorizationTests {
   @Test
   void permitsVenueOwnerAndUsesPrincipalIdentity() throws Exception {
     AuthenticatedAccount principal = principal(AccountType.VENUE_BUSINESS);
-    when(service.findOwned(principal.userId(), "month", null, null)).thenReturn(emptyResponse());
+    UUID venueId = UUID.randomUUID();
+    when(service.findOwned(principal.userId(), venueId, "month", null, null))
+        .thenReturn(emptyResponse());
 
     mockMvc
         .perform(
             get("/api/venue/me/statistics")
                 .queryParam("period", "month")
+                .queryParam("venueId", venueId.toString())
                 .with(authentication(account(principal, "ROLE_VENUE_OWNER"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.period").value("month"))
         .andExpect(jsonPath("$.series").isArray());
 
-    verify(service).findOwned(principal.userId(), "month", null, null);
+    verify(service).findOwned(principal.userId(), venueId, "month", null, null);
   }
 
   private VenueStatisticsResponse emptyResponse() {
@@ -106,6 +109,7 @@ class VenueStatisticsAuthorizationTests {
         0,
         0,
         new BigDecimal("0.0"),
+        0,
         0,
         null,
         List.of());

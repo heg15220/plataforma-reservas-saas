@@ -12,9 +12,12 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,8 @@ public class VenueReservationServiceImpl implements VenueReservationService {
   private static final int MAX_PAGE_SIZE = 100;
   private static final int MAX_USER_FILTER_LENGTH = 320;
   private static final int MAX_INCIDENT_HISTORY = 50;
+  private static final LocalDate MIN_RESERVATION_DATE = LocalDate.of(1, 1, 1);
+  private static final LocalDate MAX_RESERVATION_DATE_EXCLUSIVE = LocalDate.of(9999, 12, 31);
   private static final Set<String> VISIBLE_STATUSES =
       Set.of(
           "confirmed",
@@ -60,7 +65,7 @@ public class VenueReservationServiceImpl implements VenueReservationService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<ReservationEntity> list(
+  public VenueReservationPage list(
       UUID ownerUserId,
       String periodValue,
       LocalDate anchorDate,
@@ -75,14 +80,44 @@ public class VenueReservationServiceImpl implements VenueReservationService {
     DateRange dateRange = resolveDateRange(period, anchorDate);
     String status = normalizeStatus(statusValue);
     String userPattern = normalizeUserPattern(user);
-    return reservationDao.findOwnedReservations(
-        ownerUserId,
-        dateRange.from(),
-        dateRange.toExclusive(),
-        timeSlotId,
-        status,
-        userPattern,
-        PageRequest.of(page, size));
+    Page<ReservationEntity> reservations =
+        reservationDao.findAccessibleReservations(
+            ownerUserId,
+            dateRange.from() == null ? MIN_RESERVATION_DATE : dateRange.from(),
+            dateRange.toExclusive() == null
+                ? MAX_RESERVATION_DATE_EXCLUSIVE
+                : dateRange.toExclusive(),
+            timeSlotId,
+            status,
+            userPattern,
+            PageRequest.of(page, size));
+    return new VenueReservationPage(reservations, incidentRisks(reservations.getContent()));
+  }
+
+  /** Agrega una página completa con una sola consulta y sin trasladar el historial al listado. */
+  private Map<String, VenueReservationIncidentRisk> incidentRisks(
+      List<ReservationEntity> reservations) {
+    Set<String> emails =
+        reservations.stream()
+            .map(ReservationEntity::getCustomerEmailNormalized)
+            .filter(email -> email != null && !email.isBlank())
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    if (emails.isEmpty()) {
+      return Map.of();
+    }
+    Instant now = clock.instant();
+    Instant retentionCutoff = now.atZone(clock.getZone()).minusMonths(12).toInstant();
+    Instant recentCutoff = now.minus(180, ChronoUnit.DAYS);
+    Map<String, VenueReservationIncidentRisk> risks = new HashMap<>();
+    incidentDao
+        .summarizeOperationalRisk(emails, retentionCutoff, recentCutoff)
+        .forEach(
+            aggregate ->
+                risks.put(
+                    aggregate.getCustomerEmailNormalized(),
+                    VenueReservationIncidentRisk.from(
+                        aggregate.getOperationalCount(), aggregate.getRecentCount())));
+    return risks;
   }
 
   @Override
@@ -94,12 +129,12 @@ public class VenueReservationServiceImpl implements VenueReservationService {
     }
     ReservationEntity reservation =
         reservationDao
-            .findOwnedDetail(ownerUserId, reservationId)
+            .findAccessibleDetail(ownerUserId, reservationId)
             .orElseThrow(VenueReservationNotFoundException::new);
     List<ReservationFormResponseEntity> formResponses =
         formResponseDao.findAllByReservationId(reservationId);
     EmployeeResourceEntity assignedResource =
-        findAssignedResource(ownerUserId, reservation.getEmployeeResourceId());
+        findAssignedResource(reservation.getVenue().getId(), reservation.getEmployeeResourceId());
     String customerEmailNormalized = reservation.getCustomerEmailNormalized();
     Instant incidentCutoff = clock.instant().atZone(clock.getZone()).minusMonths(12).toInstant();
     List<NoShowIncidentEntity> incidents =
@@ -111,12 +146,12 @@ public class VenueReservationServiceImpl implements VenueReservationService {
         reservation, formResponses, assignedResource, incidentTotal, incidents);
   }
 
-  private EmployeeResourceEntity findAssignedResource(UUID ownerUserId, UUID resourceId) {
+  private EmployeeResourceEntity findAssignedResource(UUID venueId, UUID resourceId) {
     if (resourceId == null) {
       return null;
     }
     return employeeResourceDao
-        .findOwnedHistoricalReference(ownerUserId, resourceId)
+        .findHistoricalReferenceByVenueId(venueId, resourceId)
         .orElseThrow(VenueReservationNotFoundException::new);
   }
 
@@ -161,7 +196,7 @@ public class VenueReservationServiceImpl implements VenueReservationService {
 
   private String normalizeUserPattern(String value) {
     if (value == null || value.isBlank()) {
-      return null;
+      return "";
     }
     String normalized = value.trim().toLowerCase(Locale.ROOT);
     if (normalized.length() > MAX_USER_FILTER_LENGTH) {

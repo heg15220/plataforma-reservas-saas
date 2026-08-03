@@ -23,6 +23,16 @@ public interface VenueMainImageController {
       @AuthenticationPrincipal AuthenticatedAccount account,
       @RequestPart("file") MultipartFile file);
 
+  /** Carga la imagen principal de la ficha elegida en el panel multi-local. */
+  @PostMapping(
+      path = "/api/venue/me/profiles/{venueId}/main-image",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  ResponseEntity<VenueMainImageResponse> uploadById(
+      @AuthenticationPrincipal AuthenticatedAccount account,
+      @PathVariable UUID venueId,
+      @RequestPart("file") MultipartFile file);
+
   @GetMapping(path = "/api/public/venue-images/{venueId}/main")
   ResponseEntity<byte[]> findPublished(@PathVariable UUID venueId);
 }

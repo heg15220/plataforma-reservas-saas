@@ -22,30 +22,34 @@ class VenueReservationDaoTests {
     Query query = listMethod().getAnnotation(Query.class);
 
     assertThat(query.value())
-        .contains("reservation.venue.ownerUser.id = :ownerUserId")
+        .contains("reservation.venue.ownerUser.id = :userId")
+        .contains("from VenuePanelCredentialEntity credential")
+        .contains("credential.user.id = :userId")
         .contains("reservation.customerEmail is not null")
         .contains("reservation.date >= :fromDate")
         .contains("reservation.date < :toDateExclusive")
-        .contains("reservation.timeSlot.id = :timeSlotId")
-        .contains("reservation.status = :status")
+        .contains("coalesce(:timeSlotId, reservation.timeSlot.id)")
+        .contains("coalesce(:status, reservation.status)")
         .contains("lower(reservation.customerName) like :userPattern")
         .contains("reservation.customerEmailNormalized like :userPattern")
         .contains("reservation.date desc, reservation.startsAt desc");
     assertThat(query.countQuery())
-        .contains("reservation.venue.ownerUser.id = :ownerUserId")
+        .contains("reservation.venue.ownerUser.id = :userId")
+        .contains("credential.user.id = :userId")
         .contains("reservation.customerEmail is not null")
-        .contains(":userPattern is null");
+        .contains(":userPattern = ''");
     assertThat(listMethod().getReturnType()).isEqualTo(Page.class);
   }
 
   @Test
   void detailQueryCombinesIdentifierAndOwnerWithoutLeakingAnonymousHolds() throws Exception {
-    Method method = ReservationDao.class.getMethod("findOwnedDetail", UUID.class, UUID.class);
+    Method method = ReservationDao.class.getMethod("findAccessibleDetail", UUID.class, UUID.class);
     Query query = method.getAnnotation(Query.class);
 
     assertThat(query.value())
         .contains("reservation.id = :reservationId")
-        .contains("reservation.venue.ownerUser.id = :ownerUserId")
+        .contains("reservation.venue.ownerUser.id = :userId")
+        .contains("credential.user.id = :userId")
         .contains("reservation.customerEmail is not null")
         .contains("join fetch reservation.timeSlot");
   }
@@ -82,7 +86,7 @@ class VenueReservationDaoTests {
 
   private Method listMethod() throws Exception {
     return ReservationDao.class.getMethod(
-        "findOwnedReservations",
+        "findAccessibleReservations",
         UUID.class,
         LocalDate.class,
         LocalDate.class,

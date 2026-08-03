@@ -13,7 +13,7 @@ import org.springframework.core.io.ClassPathResource;
 class LocalDemoVenueFixtureContractTests {
 
   @Test
-  void scriptPublishesSixStableVenuesAcrossDistinctCategoriesAndRollingCapacity() throws Exception {
+  void scriptPublishesSevenStableVenuesIncludingExactTimeClinicAppointments() throws Exception {
     String sql =
         new ClassPathResource("dev-fixtures/local-demo-venues.sql")
             .getContentAsString(StandardCharsets.UTF_8);
@@ -25,6 +25,16 @@ class LocalDemoVenueFixtureContractTests {
         .contains("'campo-do-sar'")
         .contains("'norte-fitness-lab'")
         .contains("'aura-atlantica'")
+        .contains("'clinica-alba-integral'")
+        .contains("'Clínica Alba Integral'")
+        .contains("'Psiquiatría'")
+        .contains("'Ginecología'")
+        .contains("'Psicología clínica'")
+        .contains("'Dra. Laura Seoane'")
+        .contains("'Dra. Inés Varela'")
+        .contains("'exact_time'")
+        .contains("INSERT INTO \"EmployeeResources\"")
+        .contains("INSERT INTO \"ServiceEmployeeResources\"")
         .contains("INSERT INTO \"VenueCustomTabs\"")
         .contains("Tarifas y alquiler")
         .contains("Estilos y precios")
@@ -50,9 +60,14 @@ class LocalDemoVenueFixtureContractTests {
 
     assertThat(sql)
         .contains("multilocal@reserly.local")
+        .contains("azahar@reserly.local")
         .contains("ReserlyLocal2026!")
+        .contains("\"multiVenueEnabled\"")
+        .contains("'local_fixture', 'local-apc-001', true")
         .contains("\"notificationEmail\"")
-        .contains("La cuenta multilocal autenticable gestiona Ames Padel Center y Brisa Studio");
+        .contains("La cuenta multilocal autenticable gestiona Ames Padel Center y Brisa Studio")
+        .contains("venue.\"slug\" = 'azahar-brasa-11176fa9'")
+        .contains("owner_account.\"emailNormalized\" = 'azahar@reserly.local'");
 
     assertThat(sql.substring(sql.indexOf("-- Sustituye el fixture histórico")))
         .doesNotContain("'let-padel-ames'");
@@ -74,7 +89,8 @@ class LocalDemoVenueFixtureContractTests {
             new ExpectedImage("dev-fixtures/images/aura-atlantica-gallery.jpg", 444, 443),
             new ExpectedImage("dev-fixtures/images/lume-de-bretema-main.png", 1536, 1024),
             new ExpectedImage("dev-fixtures/images/lume-de-bretema-dish.png", 1536, 1024),
-            new ExpectedImage("dev-fixtures/images/lume-de-bretema-kitchen.png", 1536, 1024));
+            new ExpectedImage("dev-fixtures/images/lume-de-bretema-kitchen.png", 1536, 1024),
+            new ExpectedImage("dev-fixtures/images/clinica-alba-integral-main.png", 1536, 1024));
 
     for (ExpectedImage expected : images) {
       ClassPathResource resource = new ClassPathResource(expected.path());

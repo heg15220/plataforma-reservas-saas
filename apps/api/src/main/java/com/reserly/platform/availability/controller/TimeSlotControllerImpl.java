@@ -73,6 +73,7 @@ public class TimeSlotControllerImpl implements TimeSlotController {
   private TimeSlotResponse toResponse(TimeSlotEntity slot) {
     return new TimeSlotResponse(
         slot.getId(),
+        slot.getServiceId(),
         slot.getDate(),
         slot.getWeekday(),
         slot.getStartsAt(),

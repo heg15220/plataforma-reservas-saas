@@ -38,6 +38,7 @@ public class BusinessAccountEntity {
   private Instant businessVerificationExpiresAt;
   private String businessVerificationProvider;
   private String businessVerificationReference;
+  private boolean multiVenueEnabled;
   private String manualReviewStatus;
   private UserEntity manualReviewedByUser;
   private Instant manualReviewedAt;
@@ -175,6 +176,20 @@ public class BusinessAccountEntity {
 
   public void setBusinessVerificationReference(String businessVerificationReference) {
     this.businessVerificationReference = businessVerificationReference;
+  }
+
+  /**
+   * Indica si el titular puede crear locales adicionales después del primero.
+   *
+   * <p>Es una capacidad empresarial explícita y no se deduce del rol ni de locales delegados.
+   */
+  @Column(name = "\"multiVenueEnabled\"", nullable = false)
+  public boolean isMultiVenueEnabled() {
+    return multiVenueEnabled;
+  }
+
+  public void setMultiVenueEnabled(boolean multiVenueEnabled) {
+    this.multiVenueEnabled = multiVenueEnabled;
   }
 
   /** Estado de revisión manual, o {@code null} si todavía no se ha solicitado. */

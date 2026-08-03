@@ -10,6 +10,7 @@ import com.reserly.platform.venues.persistence.VenueEntity;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -46,16 +47,40 @@ public class VenueProfileServiceImpl implements VenueProfileService {
   @Override
   @Transactional
   public VenueEntity create(UUID ownerUserId, VenueProfileCommand command) {
+    return createProfile(ownerUserId, command, true);
+  }
+
+  @Override
+  @Transactional
+  public VenueEntity createAdditional(UUID ownerUserId, VenueProfileCommand command) {
+    return createProfile(ownerUserId, command, false);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public boolean canCreateAdditional(UUID userId) {
+    return businessAccountDao
+        .findByOwnerUserId(userId)
+        .map(BusinessAccountEntity::isMultiVenueEnabled)
+        .orElse(false);
+  }
+
+  private VenueEntity createProfile(
+      UUID ownerUserId, VenueProfileCommand command, boolean singularEndpoint) {
     descriptionService.validate(command.descriptionI18n());
     validateCoordinates(command.latitude(), command.longitude());
-    if (venueDao.findCurrentByOwnerUserId(ownerUserId).isPresent()) {
-      throw new VenueProfileConflictException();
-    }
 
     BusinessAccountEntity businessAccount =
         businessAccountDao
-            .findByOwnerUserId(ownerUserId)
+            .findByOwnerUserIdForVenueCreation(ownerUserId)
             .orElseThrow(VenueProfileForbiddenException::new);
+    boolean hasCurrentVenue = venueDao.existsCurrentOwnedByUserId(ownerUserId);
+    if (hasCurrentVenue && singularEndpoint) {
+      throw new VenueProfileConflictException();
+    }
+    if (hasCurrentVenue && !businessAccount.isMultiVenueEnabled()) {
+      throw new VenueProfileForbiddenException();
+    }
     CategoryEntity category = requireActiveCategory(command.categoryId());
     Instant now = Instant.now();
 
@@ -66,6 +91,10 @@ public class VenueProfileServiceImpl implements VenueProfileService {
     venue.setSlug(generateSlug(command.name()));
     venue.setStatus(DRAFT_STATUS);
     venue.setManualAvailabilityStatus(AUTOMATIC_AVAILABILITY);
+    // Los campos base son un formulario completo y seguro. Se habilitan desde el alta para que la
+    // primera publicación del local nunca exponga franjas que desemboquen en un proceso incompleto.
+    venue.setReservationFormPublished(true);
+    venue.setReservationFormFallbackApproved(false);
     venue.setCreatedAt(now);
     applyEditableFields(venue, command, now);
 
@@ -74,6 +103,20 @@ public class VenueProfileServiceImpl implements VenueProfileService {
     } catch (DataIntegrityViolationException exception) {
       throw new VenueProfileConflictException(exception);
     }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<VenueEntity> list(UUID userId) {
+    return List.copyOf(venueDao.findAllAccessibleByUserId(userId));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public VenueEntity find(UUID userId, UUID venueId) {
+    return venueDao
+        .findAccessibleById(userId, venueId)
+        .orElseThrow(VenueProfileNotFoundException::new);
   }
 
   @Override
@@ -105,10 +148,40 @@ public class VenueProfileServiceImpl implements VenueProfileService {
 
   @Override
   @Transactional
+  public VenueEntity update(UUID userId, UUID venueId, VenueProfileCommand command) {
+    descriptionService.validate(command.descriptionI18n());
+    validateCoordinates(command.latitude(), command.longitude());
+    VenueEntity venue =
+        venueDao
+            .findAccessibleByIdForUpdate(userId, venueId)
+            .orElseThrow(VenueProfileNotFoundException::new);
+    venue.setCategory(requireActiveCategory(command.categoryId()));
+    applyEditableFields(venue, command, Instant.now());
+    try {
+      return venueDao.saveAndFlush(venue);
+    } catch (DataIntegrityViolationException exception) {
+      throw new VenueProfileConflictException(exception);
+    }
+  }
+
+  @Override
+  @Transactional
   public void archive(UUID ownerUserId) {
     VenueEntity venue =
         venueDao
             .findCurrentByOwnerUserIdForUpdate(ownerUserId)
+            .orElseThrow(VenueProfileNotFoundException::new);
+    venue.setStatus(ARCHIVED_STATUS);
+    venue.setUpdatedAt(Instant.now());
+    venueDao.saveAndFlush(venue);
+  }
+
+  @Override
+  @Transactional
+  public void archive(UUID userId, UUID venueId) {
+    VenueEntity venue =
+        venueDao
+            .findAccessibleByIdForUpdate(userId, venueId)
             .orElseThrow(VenueProfileNotFoundException::new);
     venue.setStatus(ARCHIVED_STATUS);
     venue.setUpdatedAt(Instant.now());

@@ -6,6 +6,7 @@ import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -34,6 +35,7 @@ import {
 } from "./availability-api";
 import { VenueAvailabilitySetupWizard } from "./venue-availability-setup-wizard";
 import { VenueInternalCalendar } from "./venue-internal-calendar";
+import { fetchVenueServices, type VenueService } from "@/features/team/team-api";
 
 const weekdays = ["1", "2", "3", "4", "5", "6", "7"] as const;
 
@@ -55,6 +57,8 @@ export function VenueAvailabilityManager({
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [day, setDay] = useState<AvailabilityDay | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [services, setServices] = useState<VenueService[]>([]);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [loadingSchedule, setLoadingSchedule] = useState(true);
   const [loadingDay, setLoadingDay] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -96,7 +100,7 @@ export function VenueAvailabilityManager({
   useEffect(() => {
     const controller = new AbortController();
     fetchOpeningHours(controller.signal)
-      .then((days) =>
+      .then((days) => {
         setOpeningHours(
           days.map(({ weekday, closed, reservationsEnabled, opensAt, closesAt }) => ({
             weekday,
@@ -105,8 +109,8 @@ export function VenueAvailabilityManager({
             opensAt: normalizeTime(opensAt),
             closesAt: normalizeTime(closesAt),
           })),
-        ),
-      )
+        );
+      })
       .catch((loadError) => {
         if (!(loadError instanceof DOMException && loadError.name === "AbortError")) {
           setError(t(`errors.${errorKind(loadError)}`));
@@ -119,6 +123,16 @@ export function VenueAvailabilityManager({
       });
     return () => controller.abort();
   }, [t]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchVenueServices(controller.signal)
+      .then((loadedServices) => setServices(loadedServices.filter((service) => service.active)))
+      .catch(() => {
+        if (!controller.signal.aborted) setServices([]);
+      });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -437,6 +451,12 @@ export function VenueAvailabilityManager({
             <Typography component="h2" variant="h2">
               {t("manual.title")}
             </Typography>
+            <ServiceSelector
+              services={services}
+              value={selectedServiceId}
+              onChange={selectService}
+              t={t}
+            />
             <TextField
               label={t("manual.startsAt")}
               onChange={(event) => setManual({ ...manual, startsAt: event.target.value })}
@@ -474,6 +494,12 @@ export function VenueAvailabilityManager({
             <Typography component="h2" variant="h2">
               {t("automatic.title")}
             </Typography>
+            <ServiceSelector
+              services={services}
+              value={selectedServiceId}
+              onChange={selectService}
+              t={t}
+            />
             <TextField
               label={t("automatic.duration")}
               onChange={(event) =>
@@ -633,7 +659,7 @@ export function VenueAvailabilityManager({
 
   async function addManualSlot() {
     await runMutation("manual", async () => {
-      await createTimeSlot({ date: selectedDate, ...manual });
+      await createTimeSlot({ date: selectedDate, ...manual, serviceId: selectedServiceId || null });
       setNotice(t("notices.slotCreated"));
       setSlots(await fetchTimeSlots(selectedDate));
     });
@@ -641,7 +667,11 @@ export function VenueAvailabilityManager({
 
   async function addGeneratedSlots() {
     await runMutation("automatic", async () => {
-      await generateTimeSlots({ date: selectedDate, ...automatic });
+      await generateTimeSlots({
+        date: selectedDate,
+        ...automatic,
+        serviceId: selectedServiceId || null,
+      });
       setNotice(t("notices.slotsGenerated"));
       setSlots(await fetchTimeSlots(selectedDate));
     });
@@ -703,6 +733,14 @@ export function VenueAvailabilityManager({
     return t("slotStatus.unavailable");
   }
 
+  function selectService(serviceId: string) {
+    setSelectedServiceId(serviceId);
+    const service = services.find((candidate) => candidate.id === serviceId);
+    if (service) {
+      setAutomatic((current) => ({ ...current, durationMinutes: service.durationMinutes }));
+    }
+  }
+
   function SlotEditor({
     slot,
     busy: rowBusy,
@@ -734,7 +772,10 @@ export function VenueAvailabilityManager({
             {formatTimeRange(slot.startsAt, slot.endsAt)}
           </Typography>
           <Typography color="text.secondary" variant="body2">
-            {slot.createdByRule ? t("slots.automatic") : t("slots.manual")}
+            {slot.serviceId
+              ? services.find((service) => service.id === slot.serviceId)?.name
+              : t("service.none")}{" "}
+            · {slot.createdByRule ? t("slots.automatic") : t("slots.manual")}
           </Typography>
         </Box>
         <StatusChip
@@ -770,6 +811,34 @@ export function VenueAvailabilityManager({
       </Box>
     );
   }
+}
+
+function ServiceSelector({
+  services,
+  value,
+  onChange,
+  t,
+}: {
+  services: VenueService[];
+  value: string;
+  onChange: (value: string) => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <TextField
+      label={t("service.label")}
+      onChange={(event) => onChange(event.target.value)}
+      select
+      value={value}
+    >
+      <MenuItem value="">{t("service.none")}</MenuItem>
+      {services.map((service) => (
+        <MenuItem key={service.id} value={service.id}>
+          {service.name}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
 }
 
 type RangeOperation = "closed" | "reservations_disabled" | "restore_weekly";

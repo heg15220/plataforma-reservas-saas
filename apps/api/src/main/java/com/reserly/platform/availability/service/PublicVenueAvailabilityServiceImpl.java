@@ -78,7 +78,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         venueDao.findPublishedBySlug(slug.strip()).orElseThrow(VenueProfileNotFoundException::new);
     int weekday = date.getDayOfWeek().getValue();
     List<TimeSlotEntity> slots = timeSlotDao.findPublishedByVenueIdAndDate(venue.getId(), date);
-    Map<UUID, String> serviceNames = loadServiceNames(venue.getId(), slots, resolvedLocale);
+    Map<UUID, ServicePresentation> services = loadServices(venue.getId(), slots, resolvedLocale);
     Map<UUID, Long> occupiedCapacity = loadOccupiedCapacity(slots);
     var resourceAvailability =
         employeeResourceAvailabilityService.resolve(venue.getId(), weekday, slots);
@@ -88,7 +88,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
                 slot ->
                     toSlotResponse(
                         slot,
-                        slot.getServiceId() == null ? null : serviceNames.get(slot.getServiceId()),
+                        slot.getServiceId() == null ? null : services.get(slot.getServiceId()),
                         occupiedCapacity.getOrDefault(slot.getId(), 0L),
                         resourceAvailability.getOrDefault(
                             slot.getId(), EmployeeResourceSlotAvailability.unrestricted())))
@@ -136,7 +136,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
                 occupancy -> occupancy.occupiedCapacity().longValue()));
   }
 
-  private Map<UUID, String> loadServiceNames(
+  private Map<UUID, ServicePresentation> loadServices(
       UUID venueId, List<TimeSlotEntity> slots, SupportedLocale locale) {
     Set<UUID> serviceIds =
         slots.stream()
@@ -150,7 +150,9 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
         .collect(
             Collectors.toUnmodifiableMap(
                 ServiceEntity::getId,
-                configured -> resolveServiceName(configured, locale),
+                configured ->
+                    new ServicePresentation(
+                        resolveServiceName(configured, locale), configured.getBookingMode()),
                 (first, ignored) -> first));
   }
 
@@ -163,7 +165,7 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
 
   private PublicTimeSlotAvailabilityResponse toSlotResponse(
       TimeSlotEntity slot,
-      String serviceName,
+      ServicePresentation service,
       long occupiedCapacity,
       EmployeeResourceSlotAvailability resourceAvailability) {
     boolean slotAvailable = STATUS_AVAILABLE.equals(slot.getStatus());
@@ -175,7 +177,8 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
     return new PublicTimeSlotAvailabilityResponse(
         slot.getId(),
         slot.getServiceId(),
-        serviceName,
+        service == null ? null : service.name(),
+        service == null ? "range" : service.bookingMode(),
         slot.getStartsAt(),
         slot.getEndsAt(),
         slot.getCapacity(),
@@ -270,4 +273,6 @@ public class PublicVenueAvailabilityServiceImpl implements PublicVenueAvailabili
       boolean closed,
       boolean reservationsEnabled,
       String source) {}
+
+  private record ServicePresentation(String name, String bookingMode) {}
 }

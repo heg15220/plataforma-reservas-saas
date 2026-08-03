@@ -15,8 +15,8 @@ public interface AttendanceService {
    * requieren el flujo confirmado de reporte.
    *
    * @throws AttendanceNotFoundException si no existe o no pertenece al propietario
-   * @throws AttendanceTooEarlyException si la reserva todavía no finalizó
-   * @throws AttendanceInvalidException si el estado o la transición no son válidos
+   * @throws AttendanceInvalidException si el estado, la transición o la ventana operativa no son
+   *     válidos
    */
   ReservationEntity update(UUID ownerUserId, UUID reservationId, AttendanceUpdateRequest request);
 }

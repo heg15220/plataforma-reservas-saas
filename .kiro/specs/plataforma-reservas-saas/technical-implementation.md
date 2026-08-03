@@ -32036,3 +32036,1883 @@ gates históricos. No se ejecutó Testcontainers ni se aplicó V36 contra una ba
 - La creación/editorial completa de un segundo local desde todas las pantallas no forma parte de
   esta iteración. V36 y los contratos por ID preparan la base, pero un selector global de local y la
   propagación explícita de `venueId` por todos los módulos siguen como evolución necesaria.
+
+## Iteración 2.19 - Credenciales privadas independientes por local
+
+### Identificación, objetivo y requisitos
+
+- Tarea: `2.19. Asignar credenciales privadas independientes a cada local de una cuenta multi-local`.
+- Fecha: 2026-08-03.
+- Requisitos: `RF-008`, `RNF-001`, `RNF-002`, `RNF-006` y la extensión 2.18.
+
+La asignación de email operativo crea ahora una identidad autenticable por local. La cuenta
+empresarial principal mantiene `Venues.ownerUserId` y administra todas las sedes; no se transfiere
+propiedad ni se duplica la identidad fiscal. La delegación se modela con una relación uno a uno, de
+modo que una credencial nunca pueda resolver accidentalmente varios locales.
+
+### Modelo de datos y migración
+
+`V37__create_venue_panel_credentials.sql` crea `"VenuePanelCredentials"` con UUID, `venueId`,
+`userId`, timestamps, claves foráneas en cascada y unicidad independiente por local y usuario. El
+hash sigue exclusivamente en `Users.passwordHash`; la nueva tabla no contiene secretos. El índice
+`ixVenuePanelCredentialsUserVenue` soporta la resolución privada. Flyway validó y aplicó V1..V37
+desde un esquema PostgreSQL/PostGIS vacío mediante Testcontainers.
+
+La fixture local libera `reservas@brisa-studio.local` de una identidad histórica sin local activo,
+evitando un conflicto artificial cuando la cuenta demo lo asigna a Brisa Studio.
+
+### Backend, contratos y flujo
+
+- `VenuePanelCredentialEntity` expresa el alcance y `VenuePanelCredentialDao` ofrece lectura y
+  bloqueo pesimista para rotaciones atómicas.
+- `PUT /api/venue/me/email-assignments/{venueId}` recibe `email` y `password`. Bean Validation exige
+  email válido y contraseña de 12..72 caracteres; `PasswordHashingService` valida además el máximo
+  criptográfico de 72 bytes UTF-8 de BCrypt.
+- Tras bloquear un local publicado propio, el servicio crea un `User` activo y verificado de tipo
+  `venue_business`, genera el hash, concede `venue_owner` conservando al propietario como actor y
+  crea el vínculo. Si ya existe, actualiza email y hash y revoca todas sus sesiones activas.
+- La contraseña en claro solo existe durante la transacción y no forma parte de respuestas,
+  entidades de delegación, logs ni excepciones.
+- `VenueDao.findCurrentByOwnerUserId*` resuelve propiedad directa o delegación. La cuenta principal
+  conserva su selección estable por slug; la identidad delegada obtiene exclusivamente su sede.
+- Conflictos de email se reducen a `409 VENUE_PROFILE_CONFLICT`; local ajeno/no publicado mantiene
+  el `404` indistinguible y datos inválidos devuelven `400`.
+- La respuesta solo añade `panelAccessConfigured`; nunca devuelve usuario, hash o contraseña.
+
+### Frontend, estados, accesibilidad e i18n
+
+`VenueEmailManager` muestra por local el email de acceso/notificaciones, contraseña con
+`autocomplete="new-password"`, límites HTML 12..72, chip de estado y acciones para crear o
+actualizar. Los drafts se separan por UUID y la contraseña se limpia tras éxito. En móvil se apilan
+los controles y desde `sm` aprovechan el ancho disponible. Los catálogos ES/EN cubren ayuda,
+rotación de sesiones, validación, conflicto, permisos y errores de disponibilidad.
+
+`venue-email-api.ts` valida `panelAccessConfigured` con Zod, transmite el secreto únicamente en el
+`PUT` autenticado mediante cookie HttpOnly y clasifica `409` como `conflict`.
+
+### Archivos afectados
+
+- Migración V37, fixture local, `VenuePanelCredentialEntity/Dao` y `VenueDao`.
+- DTO, controlador, interfaz e implementación de `VenueEmailAssignment*`.
+- API y manager web, tests y catálogos `es.json`/`en.json`.
+- Tests de servicio y contrato de migración.
+- Documentos `.kiro` de requisitos, diseño, tareas, seguimiento e implementación.
+
+### Verificación
+
+```text
+VenueEmailAssignmentServiceTests + MultiVenueMigrationContractTests: 6 tests, 0 fallos.
+Spotless: 1.015 archivos Java limpios; Checkstyle y BUILD SUCCESS.
+AuthenticationIntegrationTests: 7 tests, 0 fallos; V1..V37 aplicadas; BUILD SUCCESS.
+venue-email-api + venue-email-manager: 2 archivos, 5 tests, todos correctos.
+Compilación Maven: 821 fuentes principales y 194 fuentes de test.
+```
+
+El `typecheck` global frontend sigue bloqueado por un artefacto previo generado en
+`.next/dev/types/validator.ts:317` (`TS1128`), fuera del código fuente modificado.
+
+### Seguridad, privacidad, riesgos y deuda
+
+- La rotación revoca sesiones y los índices únicos resuelven carreras sin revelar la cuenta que ya
+  usa un email.
+- La identidad se marca verificada porque la crea un propietario autenticado. Antes de producción
+  conviene confirmar el nuevo email y mantener el destinatario anterior hasta esa confirmación.
+- No existe revelado ni recuperación de contraseña desde este editor; cada guardado exige una nueva
+  contraseña completa.
+- Los módulos operativos que resuelven local mediante `VenueDao` funcionan para la identidad
+  delegada. Las funciones estrictamente fiscales pueden continuar reservadas al propietario.
+
+## Iteración 2.20 - Gestión multi-local completa desde Perfil público
+
+### Identificación, fecha y objetivo
+
+- Tarea: `2.20. Gestionar creación, selección, edición y archivo de múltiples perfiles de local desde el panel`.
+- Fecha: 2026-08-03.
+- Requisitos y diseño: `RF-008`, `RF-009`, `RNF-001`, `RNF-002`, `RNF-006`, `RNF-007`,
+  `RNF-009` y la extensión multi-local de 2.18/2.19.
+
+El objetivo es eliminar la resolución implícita de “primer local” en el editor de perfil y convertir
+cada operación en una acción inequívoca sobre el UUID elegido. La cuenta empresarial principal
+puede crear, seleccionar, editar y archivar todas sus fichas; las credenciales delegadas continúan
+viendo únicamente el local al que fueron asociadas.
+
+### Persistencia, consultas y autorización
+
+No se añade migración: `Venues` ya admite varias filas por propietario y el archivo lógico usa el
+estado existente `archived`. `VenueDao.findAllAccessibleByUserId` devuelve fichas no archivadas con
+categoría precargada, ordenadas por nombre e ID. `findAccessibleById` y
+`findAccessibleByIdForUpdate` comprueban en una sola consulta que el actor sea propietario directo o
+usuario de `VenuePanelCredentials`; la variante de escritura aplica `PESSIMISTIC_WRITE`.
+
+`VenueImageDao` añade consultas acotadas por `venueId`. El servicio autoriza primero la ficha y
+después consulta sus imágenes, mientras el borrado bloquea además la combinación
+`venueId + imageId`. Así una imagen válida perteneciente a otra sede se trata como no encontrada.
+Los métodos antiguos por propietario permanecen intactos para compatibilidad y sus tests garantizan
+que no cambió el comportamiento singular.
+
+### Servicios y flujos transaccionales
+
+`VenueProfileService.createAdditional` valida textos, coordenadas, cuenta empresarial y categoría,
+crea un borrador con propietario y cuenta compartidos, slug único y disponibilidad automática. La
+creación singular delega en este flujo después de verificar que no exista perfil. `list`, `find`,
+`update` y `archive` incorporan variantes explícitas por UUID. El archivo cambia estado y timestamp;
+no elimina físicamente reservas, medios ni historial.
+
+`VenuePublicationService.publish(userId, venueId)` conserva la elegibilidad empresarial y editorial
+existente, pero bloquea la ficha seleccionada. `VenueMainImageService` y `VenueGalleryService`
+incorporan sobrecargas por UUID que reutilizan validación de contenido, almacenamiento privado,
+compensación transaccional, límite de ocho imágenes, orden y limpieza diferida. Las claves de objeto
+ya incluían el UUID, por lo que no hay colisiones entre locales.
+
+### Contratos HTTP
+
+Se añadió `VenueProfilesResponse` y el conjunto `/api/venue/me/profiles`. Listado y detalle son
+lecturas privadas; POST crea una ficha adicional; PATCH sustituye campos editables; DELETE archiva;
+publish, main-image y gallery actúan sobre el mismo UUID. Todos derivan `userId` de
+`AuthenticatedAccount`, nunca del body. Los errores de ficha ajena, archivada o inexistente son
+indistinguibles. Los endpoints históricos `/api/venue/me`, `/profile`, `/publish`, `/main-image` y
+`/gallery` permanecen disponibles durante la transición.
+
+### Frontend, estados, accesibilidad y responsive
+
+`venue-profile-api.ts` valida la colección con Zod y construye todas las mutaciones con el UUID
+seleccionado. Tras subir portada solicita de nuevo el perfil explícito porque el endpoint multipart
+devuelve metadatos de imagen, no el contrato editorial completo.
+
+`VenueProfileEditor` mantiene `profiles` y `profile` seleccionado. Al cambiar de opción limpia
+errores, avisos, previews, archivos pendientes y estados de visibilidad, y carga la galería del nuevo
+UUID. La clave React del formulario fuerza el remontaje de campos con `defaultValue`, evitando que
+texto de una sede permanezca visible al seleccionar otra. “Crear un local nuevo” cambia a un
+formulario vacío sin alterar fichas persistidas; el guardado agrega la respuesta al selector. Editar
+actualiza tanto el perfil activo como su entrada de colección.
+
+La eliminación es un flujo de dos pasos dentro de la página, sin diálogo nativo: muestra el nombre
+del local, acciones Cancelar/Confirmar y estado de progreso. Tras éxito retira la ficha y selecciona
+la siguiente o presenta el alta vacía. El selector y botones se apilan en móvil y comparten fila
+desde `sm`. Todos los textos están en ES/EN; alertas de éxito/error conservan regiones vivas y los
+botones no deseados en submit declaran `type="button"`.
+
+### Archivos principales
+
+- `VenueDao.java`, `VenueImageDao.java`.
+- `VenueProfileService*`, `VenuePublicationService*`, `VenueMainImageService*` y
+  `VenueGalleryService*`.
+- `VenueProfileController*`, `VenueMainImageController*`, `VenueGalleryController*` y
+  `VenueProfilesResponse.java`.
+- `venue-profile-api.ts`, `venue-profile-editor.tsx`, sus tests y catálogos `es.json`/`en.json`.
+- Documentos `.kiro` de requisitos, diseño, tareas, seguimiento e implementación.
+
+### Errores, seguridad, privacidad y observabilidad
+
+La API mantiene cookies HttpOnly y autorización `ROLE_VENUE_OWNER`. Ningún contrato admite IDs de
+propietario, cuenta empresarial, claves de objeto o hashes. El uso de consultas conjuntas actor/UUID
+evita enumeración horizontal y ventanas TOCTOU. Los errores se reducen a las categorías existentes y
+la UI no presenta como éxito una mutación rechazada. No se añaden logs con datos personales ni
+secretos. El archivo lógico es recuperable a nivel de datos y conserva trazabilidad.
+
+### Tests y evidencia verificable
+
+```text
+mvn -f apps/api/pom.xml -DskipTests -Dcheckstyle.skip=true compile
+BUILD SUCCESS; 822 fuentes principales compiladas.
+
+VenueGalleryControllerTests, VenueMainImageControllerTests, VenueProfileControllerTests,
+VenueGalleryServiceTests, VenueMainImageServiceTests, VenuePublicationServiceTests
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0.
+
+VenueProfileServiceIntegrationTests
+Tests run: 8, Failures: 0, Errors: 0; Flyway V1..V37 aplicado con Testcontainers.
+
+venue-profile-api.test.ts + venue-profile-editor.test.tsx
+Test Files: 2 passed; Tests: 12 passed.
+
+Petición autenticada local:
+GET /api/venue/me/profiles -> 2 perfiles: Ames Padel Center, Brisa Studio.
+```
+
+Spotless dejó 1.016 fuentes Java limpias. El checkstyle global sigue bloqueado por 26 incidencias
+preexistentes en templates de email y un test de reservas. El typecheck global devuelve errores
+previos en administración, reservas, equipo e incidencias; las comprobaciones focales y tests del
+perfil no presentan errores. La inspección inicial del navegador reveló que el proceso 8080 era una
+instancia antigua; se reinició de forma acotada y el contrato actualizado se comprobó autenticado.
+La política del navegador integrado bloqueó la recarga visual final, por lo que no se declara esa
+comprobación como completada.
+
+### Riesgos, limitaciones y deuda derivada
+
+- El selector multi-local se implementa en Perfil público. Otros módulos privados aún resuelven el
+  local singular o delegado; extender un selector global a todo el panel requiere una tarea aparte.
+- Archivar una ficha publicada la retira inmediatamente del catálogo por estado. Una evolución
+  futura puede exigir advertencias adicionales cuando existan reservas futuras.
+- Los endpoints singulares son compatibilidad temporal; deberán deprecarse con telemetría antes de
+  retirarlos.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 12.9 - Selección multi-local y actualización automática de estadísticas
+
+**Fecha:** 2026-08-03
+**Tarea:** `12.9. Añadir selección segura de local y actualización automática de métricas en
+cuentas multi-local`.
+
+### Objetivo técnico y diagnóstico
+
+La agregación corregida en 12.8 devolvía datos actuales al invocar el endpoint, pero el panel solo
+lo consultaba al montar el componente o cambiar el periodo. Una reserva confirmada después de abrir
+la pantalla quedaba invisible hasta recargar manualmente. Además, el servicio resolvía siempre
+`findCurrentByOwnerUserId`; en una cuenta con varios locales esto elegía uno implícitamente y la UI
+no permitía consultar otro. La reserva de Brisa Studio, por ejemplo, no podía verse si el local
+resuelto era Ames.
+
+La iteración completa `RF-025` con dos invariantes: cada consulta queda ligada a un local accesible
+elegido de forma explícita, y una pantalla abierta converge automáticamente hacia la agregación
+actual. Se mantienen `RF-008`, la privacidad de `RNF-005`, el aislamiento y seguridad de `RNF-004`,
+la accesibilidad y responsive de `RNF-003`, el rendimiento de `RNF-002`, la i18n de `RNF-009` y la
+documentación verificable de `RNF-011`.
+
+### Archivos y contratos modificados
+
+- `VenueStatisticsController.java` y `VenueStatisticsControllerImpl.java`: el GET privado acepta
+  `venueId: UUID` opcional y lo propaga sin derivarlo de datos enviados por el cliente.
+- `VenueStatisticsService.java` y `VenueStatisticsServiceImpl.java`: `findOwned` recibe el local
+  solicitado y lo resuelve con `VenueDao.findAccessibleById(userId, venueId)`. Si no se envía,
+  conserva el camino compatible `findCurrentByOwnerUserId(userId)`.
+- `VenueStatisticsControllerTests`, `VenueStatisticsAuthorizationTests` y
+  `VenueStatisticsServiceTests`: cubren propagación, principal autenticado, acceso explícito y
+  ocultación de un local inaccesible.
+- `venue-statistics-api.ts`: `VenueStatisticsFilter` incorpora `venueId` y lo codifica como query
+  parameter; el DTO de respuesta minimizado no cambia.
+- `venue-statistics-dashboard.tsx`: carga los perfiles accesibles, selecciona uno, renderiza el
+  selector solo para cuentas multi-local y coordina las recargas automáticas.
+- `venue-statistics-api.test.ts` y `venue-statistics-dashboard.test.tsx`: validan serialización,
+  selección del segundo local y refresco al recuperar foco.
+- `locales/es.json` y `locales/en.json`: etiquetas, ayuda accesible y explicación del refresco sin
+  texto hardcodeado.
+- Los cinco documentos `.kiro`: requisito, diseño, tarea, seguimiento y esta evidencia.
+
+No se crean migraciones, tablas, índices ni nuevos datos persistidos. Tampoco cambia la semántica de
+periodos: las reservas se contabilizan por la fecha local de la cita dentro del intervalo elegido.
+
+### Arquitectura y flujo de ejecución
+
+Al montar el panel, `fetchVenueProfiles` usa la cookie HttpOnly de sesión y devuelve únicamente las
+fichas accesibles. Con cero perfiles se presenta el estado 404 seguro; con uno se selecciona sin
+añadir controles innecesarios; con varios se muestra un `TextField select` MUI responsive. La UI
+envía siempre el UUID seleccionado en `fetchVenueStatistics`.
+
+El controlador obtiene `userId` exclusivamente de `AuthenticatedAccount`. La implementación del
+servicio combina ese identificador con `venueId` mediante `findAccessibleById`, cuya consulta ya
+contempla propiedad y credenciales delegadas. Un UUID ajeno, eliminado o inexistente produce
+`VenueStatisticsNotFoundException`; no existe una consulta previa que permita diferenciar esos
+casos. Tras autorizar, el flujo de agregación diario, UPSERT y lectura ordenada de 12.8 permanece
+inalterado.
+
+Cada pareja `(filter, selectedVenueId)` crea un único ciclo de vida React con `AbortController`:
+
+1. solicita inmediatamente y muestra carga en el primer acceso o cambio explícito;
+2. instala un intervalo de 30 segundos para actualización silenciosa;
+3. actualiza también en `window.focus` y cuando `document.visibilityState` vuelve a `visible`;
+4. usa `requestRunning` para no solapar agregaciones si coinciden varios disparadores;
+5. conserva los datos existentes durante una actualización de fondo para evitar parpadeo;
+6. cancela petición, intervalo y listeners cuando cambian local/periodo o se desmonta el panel.
+
+Cambiar el local elimina inmediatamente la estadística anterior antes de pedir la nueva, evitando
+atribuir visualmente cifras de un local a otro. Cambiar periodo mantiene las reglas existentes de
+validación del rango personalizado y crea un nuevo ciclo aislado.
+
+### Validación, permisos, seguridad, errores e internacionalización
+
+Spring convierte `venueId` al tipo `UUID`; valores malformados no alcanzan el servicio. La política
+`ROLE_VENUE_OWNER` continúa protegiendo `/api/venue/me/**`: anónimo recibe 401 y administrador sin
+rol recibe 403. La autorización de objeto se aplica siempre en backend y no confía en las opciones
+del selector. El 404 uniforme evita enumeración de locales. La respuesta sigue excluyendo emails,
+identidades de clientes e IDs de reserva.
+
+La carga de perfiles clasifica los errores del contrato compartido y la carga de estadísticas usa
+`VenueStatisticsApiError`; no se muestran excepciones internas. Todos los textos nuevos existen en
+español e inglés. El control usa semántica MUI de combobox con etiqueta visible, texto de ayuda y
+una superficie fluida, por lo que mantiene navegación por teclado y adaptación móvil. El intervalo
+solo existe mientras el componente está montado y no acumula listeners.
+
+### Pruebas y evidencia de verificación
+
+```text
+npm run test --workspace @reserly/web --
+  src/features/venue-statistics/venue-statistics-api.test.ts
+  src/features/venue-statistics/venue-statistics-dashboard.test.tsx
+Test Files: 2 passed; Tests: 7 passed.
+
+npm exec --workspace @reserly/web eslint --
+  src/features/venue-statistics/venue-statistics-api.ts
+  src/features/venue-statistics/venue-statistics-api.test.ts
+  src/features/venue-statistics/venue-statistics-dashboard.tsx
+  src/features/venue-statistics/venue-statistics-dashboard.test.tsx --max-warnings=0
+Resultado: 0 avisos y código 0.
+
+npx tsc -p tsconfig.venue-statistics.tmp.json --noEmit
+Resultado: código 0 con las mismas opciones estrictas del proyecto, las cuatro fuentes y pruebas
+focalizadas y `vitest.setup.ts`; se excluyó solo la referencia a `.next/dev/types` y la
+configuración temporal se eliminó después.
+
+mvn -Dcheckstyle.skip=true -DforkCount=0 \
+  -Dtest=VenueStatisticsServiceTests,VenueStatisticsControllerTests,
+  VenueStatisticsAuthorizationTests test
+Resultado: código 0; servicio, controlador y autorización correctos.
+
+mvn spotless:check
+El primer chequeo detectó únicamente formato en los tests modificados; `spotless:apply` aplicó el
+formato configurado antes de ejecutar las suites.
+
+Verificación HTTP sobre la única instancia reiniciada:
+GET /api/venue/me/profiles con multilocal@reserly.local -> 3 locales.
+GET /api/venue/me/statistics?period=month&venueId=<Ames> -> 0 reservas.
+GET /api/venue/me/statistics?period=month&venueId=<Brisa> -> 1 reserva, 1 confirmada.
+GET /api/venue/me/statistics?period=month&venueId=<Clínica> -> 0 reservas.
+GET con venueId ajeno -> 404.
+GET http://localhost:3000/panel/estadisticas -> 200.
+```
+
+El typecheck global no pudo analizar fuentes porque `.next/dev/types/routes.d.ts` y `validator.ts`
+contenían fragmentos duplicados y truncados generados de nuevo por Next incluso tras reiniciar una
+sola instancia. Es un fallo del artefacto de desarrollo, no de los archivos fuente modificados. La
+verificación focalizada usa una configuración temporal que hereda las mismas opciones estrictas y
+excluye exclusivamente `.next`; después se elimina esa configuración del árbol de trabajo.
+
+### Riesgos, limitaciones y trabajo pendiente
+
+- El polling de 30 segundos prioriza simplicidad y convergencia eventual. Una evolución con eventos
+  SSE/WebSocket podría reducir consultas cuando crezca el volumen, pero requiere infraestructura y
+  observabilidad propias.
+- Si la reserva pertenece a una fecha fuera del periodo seleccionado, no aparece en ese filtro; es
+  la semántica deliberada de `RF-025`, no un retraso de actualización.
+- La ruta compatible sin `venueId` permanece para consumidores antiguos y debe retirarse solo tras
+  deprecación y telemetría.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 12.8 - Reparación de la agregación PostgreSQL de estadísticas
+
+**Fecha:** 2026-08-03
+**Tarea:** `12.8. Corregir la agrupación PostgreSQL de reseñas por fecha local y verificar el
+endpoint de estadísticas sobre base real`.
+
+### Objetivo técnico, diagnóstico y requisitos
+
+El panel mostraba `No pudimos cargar las estadísticas` porque el contrato privado terminaba en un
+HTTP 500 para cualquier propietario, con independencia de que fuese una cuenta singular o
+multilocal. La autenticación se verificó primero por separado: ambos logins devolvían 200 y la
+petición autenticada era la que fallaba. La traza de la API aisló el error de PostgreSQL:
+
+```text
+ERROR: column "review.createdAt" must appear in the GROUP BY clause
+Position: 1627
+```
+
+La causa estaba en la CTE `reviewStats` de `StatsDailyVenueDao.aggregateVenueRange`. El `SELECT` y
+el `GROUP BY` repetían `CAST(review."createdAt" AT TIME ZONE :zoneId AS date)`. Hibernate traduce
+cada uso del parámetro nominal a una posición JDBC distinta. Aunque ambos valores enlazados sean
+iguales, PostgreSQL analiza expresiones con placeholders diferentes y no puede demostrar que la
+columna seleccionada sea idéntica a la agrupada. La iteración corrige `RF-025` y conserva las
+garantías de rendimiento, privacidad, aislamiento y portabilidad declaradas en `RNF-002`,
+`RNF-004`, `RNF-005`, `RNF-009` y `RNF-011`.
+
+### Archivos y arquitectura aplicada
+
+- `StatsDailyVenueDao.java`: `reviewStats` pasa a `GROUP BY 1`, referencia ordinal de la primera
+  columna proyectada. La conversión zonificada aparece una sola vez en la proyección y otra en el
+  filtro de rango, donde no participa en una equivalencia de agrupación.
+- `VenueStatisticsAggregationIntegrationTests.java`: nueva prueba `@SpringBootTest` con perfil
+  `test`, PostgreSQL real, fixture idempotente y transacción de repositorio.
+- Los cinco documentos `.kiro`: requisito, diseño, tarea, histórico y evidencia técnica.
+
+No hay migraciones, cambios de tabla, índices ni contratos REST. La solución se limita al DAO y
+mantiene una única sentencia SQL por rango, `generate_series`, las tres CTE de agregación y el UPSERT
+atómico sobre `uqStatsDailyVenueVenueDate`.
+
+### Flujo corregido y modelo de datos
+
+`GET /api/venue/me/statistics` resuelve el local accesible desde el principal, calcula el rango y
+ejecuta `aggregateVenueRange`. La CTE `dates` crea cada día; `reservationStats` cuenta estados y
+ocupación; `capacityStats` suma capacidad ofertada; `reviewStats` proyecta la fecha local y agrupa
+por esa proyección mediante `GROUP BY 1`. Después se insertan o actualizan filas de
+`StatsDailyVenue`, incluidas fechas sin actividad, y `findRange` devuelve la serie ordenada dentro
+de la misma transacción.
+
+La prueba usa `Clínica Alba Integral`, solicita 2026-08-01 a 2026-08-03 y exige exactamente tres
+filas ordenadas. Esto valida que la consulta completa se prepara, planifica y ejecuta; también
+protege el caso sin reseñas, que antes fallaba durante el análisis SQL aunque `reviewStats` no
+produjese filas.
+
+### Validación, permisos, privacidad, errores y observabilidad
+
+No se acepta un `venueId` arbitrario desde el cliente ni se relaja `ROLE_VENUE_OWNER`. Los tests de
+autorización mantienen 401 para anónimo y 403 para administrador, y comprueban que el servicio solo
+recibe el `userId` del principal. La respuesta continúa agregada y no expone emails, IDs de reserva,
+comentarios ni datos de clientes. Los filtros de fecha, el máximo de 366 días, la zona IANA y los
+errores 400/404 propios no cambian.
+
+La causa original queda observable en logs backend como excepción SQL, mientras la UI conserva un
+mensaje seguro sin detalles internos. La reparación no añade reintentos ni oculta fallos futuros:
+elimina la sentencia inválida y mantiene la propagación normal de errores inesperados.
+
+### Pruebas y evidencia de verificación
+
+```text
+VenueStatisticsAggregationIntegrationTests
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0.
+PostgreSQL real; aggregateVenueRange devolvió 3 y findRange leyó las tres fechas.
+
+VenueStatisticsServiceTests: 4 correctos.
+VenueStatisticsControllerTests: 1 correcto.
+VenueStatisticsAuthorizationTests: 2 correctos.
+StatsDailyVenueAggregationContractTests: 2 correctos.
+Total focalizado: 10 tests, 0 fallos y 0 errores.
+
+Verificación HTTP sobre API corregida temporal en 8081:
+multilocal@reserly.local -> month, 2026-08-01..2026-08-03, 3 días, 0 reservas.
+azahar@reserly.local -> month, 2026-08-01..2026-08-03, 3 días, 1 reserva.
+
+Verificación final después del reinicio coordinado:
+POST http://localhost:8080/api/auth/login (Azahar) -> 200.
+GET http://localhost:8080/api/venue/me/statistics?period=month
+  -> month, 3 días, 1 reserva.
+GET http://localhost:3000/panel/estadisticas -> 200.
+```
+
+Maven agotó el timeout externo al liberar el contexto/Testcontainers después de escribir todos los
+informes; los XML y resúmenes Surefire acreditan la finalización de las cinco suites con cero
+fallos. La API temporal fue cerrada por su árbol exacto y el puerto 8081 quedó liberado.
+
+### Riesgos, limitaciones y deuda técnica
+
+- `GROUP BY 1` depende del orden estable de la proyección de `reviewStats`; cualquier reordenación
+  futura debe ajustar el ordinal o extraer la fecha a una CTE previa con nombre explícito.
+- El entorno fue reiniciado como una sola instancia coordinada; no quedan procesos temporales ni un
+  segundo servidor de desarrollo ocupando 3001 u 8081.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 0.18 - Clínica privada ficticia con recorrido clínico completo
+
+**Fecha:** 2026-08-03
+**Tarea:** `0.18. Añadir una clínica privada ficticia al catálogo local con imagen propia,
+especialidades, médicos y citas futuras a hora exacta`.
+
+### Objetivo técnico y requisitos relacionados
+
+La iteración materializa en datos reproducibles la variante clínica definida por `RF-026` y
+`RF-027`. El objetivo es disponer en cada arranque local de una publicación que permita comprobar
+catálogo, ficha, imagen, selección de especialidad, selección de profesional, disponibilidad y
+cita exacta, sin alta manual ni uso de información sanitaria real. También aplica aislamiento por
+entorno, UTF-8, contratos localizados e idempotencia exigidos por `RNF-002`, `RNF-003`, `RNF-009` y
+`RNF-011`.
+
+### Archivos, recurso visual y arquitectura aplicada
+
+- `local-demo-venues.sql`: añade la publicación, horarios, servicios, profesionales, asociaciones,
+  agenda móvil y pestaña editorial mediante UPSERT o inserciones protegidas por conflictos.
+- `clinica-alba-integral-main.png`: fotografía horizontal de recepción clínica, 1536 × 1024,
+  2.278.206 bytes y `image/png`, generada sin texto, logotipos, pacientes ni marcas.
+- `LocalDemoVenueInitializer.java`: incorpora el recurso a la copia previa al almacenamiento de
+  objetos bajo `dev-fixtures/venues/clinica-alba-integral/main.png`. La imagen se almacena antes de
+  publicar la referencia SQL, evitando tarjetas con objeto inexistente.
+- `LocalDemoVenueFixtureContractTests.java`: amplía el contrato estático a siete publicaciones,
+  verifica los elementos clínicos y valida los metadatos reales de la imagen empaquetada.
+- `LocalDemoClinicFixtureIntegrationTests.java`: aplica dos veces el fixture sobre PostgreSQL real y
+  comprueba publicación, servicios exactos, profesionales, asociaciones y citas futuras.
+
+No se crean migraciones ni columnas nuevas: se reutiliza el modelo V19 de `Services`,
+`EmployeeResources`, `EmployeeResourceHours` y `ServiceEmployeeResources`, la agenda V17 y el modo
+`bookingMode=exact_time` de V39. El UUID de la clínica usa el namespace reservado `e3...`; servicios
+y profesionales usan `e5...` y `e6...`, evitando colisiones con los fixtures históricos `d...`.
+
+### Modelo de datos y flujos de ejecución
+
+`Clínica Alba Integral` queda publicada con slug `clinica-alba-integral`, categoría `otros`,
+dirección completa en Santiago de Compostela, formulario base publicado e imagen principal servida
+por el endpoint público seguro. Se vincula al propietario `multilocal@reserly.local`, cuya cuenta ya
+tiene `multiVenueEnabled=true`, por lo que aparece en el selector privado sin ampliar permisos.
+
+Las especialidades son tres servicios activos y de recurso obligatorio:
+
+- Psiquiatría: 45 minutos, Dra. Laura Seoane y Dr. Mateo Rivas.
+- Ginecología: 30 minutos, Dra. Inés Varela.
+- Psicología clínica: 50 minutos, Paula Souto.
+
+Todos usan `allowsAnyAvailableResource=false` y `bookingMode=exact_time`. Los cuatro recursos son
+`professional`, públicos y activos. Sus horarios semanales cubren mañanas para psiquiatría y
+ginecología, y tardes para psicología; sábados y domingos se persisten explícitamente como no
+disponibles. `ServiceEmployeeResources` restringe cada especialidad a sus profesionales compatibles.
+
+La agenda se genera desde el día siguiente hasta 45 días después, solo de lunes a viernes. Cada
+franja conserva `startsAt` y `endsAt` para duración, capacidad y solapes. Psiquiatría admite dos
+reservas simultáneas porque dispone de dos médicos; los otros servicios admiten una. El índice único
+por local, fecha, inicio y servicio hace idempotente `ON CONFLICT DO NOTHING`, de modo que un reinicio
+amplía el horizonte y conserva reservas o holds existentes.
+
+### Validaciones, seguridad, privacidad, i18n y errores
+
+El inicializador sigue restringido a `@Profile("local")` y a
+`reserly.development.demoVenuesEnabled`; test, staging y producción no reciben estos datos. Todos los
+nombres de profesionales son ficticios. Los textos públicos ES/EN identifican la ficha como demo y
+advierten que no deben introducirse datos médicos reales. No se almacenan diagnósticos, historiales,
+documentos ni datos personales de pacientes. El contacto usa el TLD reservado `.local`.
+
+La escritura conserva claves foráneas, checks de tipo/estado/duración y unicidad física. El orden de
+inserción respeta publicación, horario, servicio, recurso, asociación y franjas. Cualquier fallo al
+leer o almacenar la imagen detiene el inicializador mediante `UncheckedIOException`; así la API no
+declara preparado un catálogo parcialmente roto. Los textos localizados permanecen en JSONB UTF-8 y
+la pestaña usa `safe_html`, sin scripts ni contenido remoto.
+
+### Pruebas y evidencia verificable
+
+```text
+mvn spotless:check
+BUILD SUCCESS; 1.016 fuentes Java limpias.
+
+mvn -Dcheckstyle.skip=true -DforkCount=0 \
+  -Dtest=LocalDemoVenueFixtureContractTests,LocalDemoClinicFixtureIntegrationTests test
+LocalDemoVenueFixtureContractTests: 2 tests, 0 fallos.
+LocalDemoClinicFixtureIntegrationTests: 1 test, 0 fallos; PostgreSQL real; fixture aplicado 2 veces.
+
+Comprobación funcional sobre la infraestructura local activa:
+GET /api/public/venues/clinica-alba-integral?locale=es -> 200
+GET /api/public/venue-images/e3000000-0000-4000-8000-000000000001/main
+  -> 200, image/png, 2.278.206 bytes
+GET /api/public/venues/search?locale=es&q=Clínica&size=20
+  -> 1 resultado: clinica-alba-integral
+GET /api/public/venues/clinica-alba-integral/availability?date=2026-08-04&locale=es
+  -> abierto, 9 citas y profesionales compatibles; en la API compilada, bookingMode=exact_time.
+```
+
+La ejecución Maven alcanzó todos los informes con 3 pruebas correctas, aunque el proceso de Maven
+agotó el timeout externo durante la liberación del contexto/Testcontainers; los XML de Surefire
+registran cero fallos. El Checkstyle global no se usa como evidencia de esta tarea porque continúa
+bloqueado por 26 infracciones preexistentes en plantillas de correo y un test de mensajería ajenos.
+
+### Riesgos, limitaciones y deuda técnica
+
+- La categoría pública es `otros` porque el seed inicial no define todavía una categoría sanitaria;
+  añadir `clínica` requerirá decisión de producto, traducciones e iconografía de filtros.
+- La imagen solo representa la recepción. Una galería o retratos ficticios de profesionales podrían
+  añadirse después, pero no son necesarios para comprobar el flujo funcional.
+- La API principal que permanecía activa en 8080 sirve ya ficha, búsqueda e imagen desde la base
+  compartida. Para observar el campo nuevo `bookingMode` y su presentación exacta debe reiniciarse
+  ese proceso si fue iniciado antes de compilar V39.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2026-08-03 - Tarea 5.13: especialidades clínicas y citas a hora exacta
+
+### Objetivo técnico y alcance
+
+La tarea extiende `RF-026` y `RF-027` para que una clínica pueda modelar secciones asistenciales,
+asociar varios médicos a cada una y ofrecer al paciente una cita con un profesional concreto en una
+fecha y hora exactas. Se conserva el monolito modular y se reutilizan los agregados existentes:
+`ServiceEntity` representa la especialidad, `EmployeeResourceEntity` de tipo `professional`
+representa al médico, `ServiceEmployeeResources` expresa compatibilidad y
+`EmployeeResourceHours` define el horario semanal. Esta decisión evita duplicar disponibilidad,
+reservas, permisos, excepciones o calendario interno.
+
+### Modelo de datos y migración
+
+`V39__add_exact_time_service_booking_mode.sql` añade `Services.bookingMode varchar(32) NOT NULL`
+con valor inicial `range` y una restricción que solo admite `range` o `exact_time`. El valor por
+defecto mantiene semántica y datos históricos. `exact_time` es una política de presentación: las
+franjas y reservas conservan `startsAt` y `endsAt`, porque el final resulta imprescindible para
+calcular duración y detectar solapes.
+
+No se crea una tabla de especialidades adicional. La relación muchos-a-muchos ya existente permite
+un médico en varias secciones y varios médicos en una sección. `TimeSlots.serviceId`, previamente
+preparado por el esquema, pasa a formar parte de los contratos privados de creación manual y
+generación automática. La búsqueda de solapes al configurar agenda se acota por servicio; por ello
+psiquiatría y ginecología pueden publicar citas simultáneas sin colisionar como agenda del local.
+
+### Backend, contratos y flujo transaccional
+
+Los contratos privados `ServiceRequest`, `ServiceCommand` y `ServiceResponse` incorporan
+`bookingMode`; la capa de servicio normaliza ausencia a `range` y rechaza valores desconocidos. La
+entidad documenta explícitamente que el modo no cambia el intervalo real. Los contratos
+`TimeSlotRequest`, `TimeSlotGenerationRequest` y `TimeSlotResponse` incorporan `serviceId`. Antes de
+crear agenda, `TimeSlotServiceImpl` bloquea y valida que el servicio pertenezca al local vigente y
+siga activo. El propietario nunca puede enviar ni sustituir `venueId`.
+
+La disponibilidad pública añade `bookingMode` a cada franja tras cargar únicamente servicios
+activos del local publicado. Conserva nombre localizado, recursos públicos compatibles y horario
+semanal. No expone apellidos privados, notas internas ni estados administrativos.
+
+La prevención de doble cita se ejecuta dentro de la transacción del hold. Después de validar la
+franja, capacidad, compatibilidad y horario, `ReservationHoldServiceImpl` obtiene el profesional
+asignado, adquiere un bloqueo pesimista sobre su fila mediante
+`EmployeeResourceDao.findActiveByVenueIdForUpdate` y consulta
+`ReservationDao.existsEffectiveResourceOverlap`. La consulta considera confirmadas, asistidas, no
+asistidas, reportadas y holds no expirados; ignora canceladas y expiradas. Compara fecha e intervalo
+con la condición estándar `existing.start < requested.end && existing.end > requested.start`. El
+bloqueo del médico serializa solicitudes que lleguen por franjas o especialidades distintas y evita
+la carrera que no cubriría el lock aislado de cada franja.
+
+### Panel privado y experiencia pública
+
+`TeamAvailabilityManager` presenta servicios y especialidades en el mismo catálogo. El formulario
+permite elegir cita exacta o rango, duración, capacidad, estado, asignación automática y médicos
+compatibles. Para nuevas especialidades se propone `exact_time` y selección explícita de profesional
+como valores seguros. El diálogo de horario semanal existente configura cada médico de forma
+independiente.
+
+`VenueAvailabilityManager` carga los servicios activos y permite asignar una especialidad tanto a
+una cita manual como a una generación de agenda. Al seleccionar un servicio, sincroniza la duración
+propuesta con su duración clínica; la capacidad y el intervalo siguen editables. Las filas privadas
+muestran la especialidad asociada.
+
+`PublicAvailabilityCalendar` construye desde las respuestas públicas los selectores de especialidad
+y profesional antes del calendario. Filtra fechas y horas según ambos valores, mantiene la opción
+genérica de cualquier profesional cuando el servicio la permite y, para `exact_time`, muestra solo
+`startsAt`. El enlace de reserva conserva identificadores de servicio, franja y médico; la página de
+resumen vuelve a resolverlos contra la API y nunca confía en nombres enviados por query string. El
+resumen final aplica la misma regla visual de hora exacta. Los textos nuevos existen en español e
+inglés y los controles usan labels accesibles de MUI.
+
+### Archivos principales modificados
+
+- Backend: migración V39; `ServiceEntity`, DTOs, conversor y catálogo de servicios;
+  `TimeSlotServiceImpl`, sus DTOs, DAO y controlador; disponibilidad pública; `ReservationDao`,
+  `EmployeeResourceDao` y `ReservationHoldServiceImpl`.
+- Frontend: `team-api.ts`, `team-availability-manager.tsx`, `availability-api.ts`,
+  `venue-availability-manager.tsx`, `public-availability-calendar.tsx`, formulario/resumen de
+  reserva, ruta pública de reserva y catálogos ES/EN.
+- Pruebas: servicios, controlador y servicio de franjas, hold y conflictos de profesional, APIs y
+  componentes web de equipo y disponibilidad.
+
+### Validación, permisos, errores e internacionalización
+
+Todos los endpoints privados conservan sesión `ROLE_VENUE_OWNER` y resolución del local desde el
+principal. Las búsquedas de servicio y profesional incluyen `venueId` o propiedad en la propia
+consulta. Un servicio inexistente, inactivo o ajeno y un profesional ocupado se reducen al error de
+dominio de disponibilidad/hold sin filtrar datos. El canal público sigue sin cookies y revalida la
+selección en backend. No se añaden datos clínicos, diagnóstico, historial médico ni campos de salud;
+solo especialidad pública, identidad profesional pública y agenda.
+
+### Pruebas y evidencia
+
+```text
+mvn -Dcheckstyle.skip=true -Dtest=TimeSlotServiceTests,TimeSlotControllerTests,
+ServiceCatalogServiceTests,ServiceControllerTests,ReservationHoldServiceTests test
+Tests run: 32, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+
+npm test -- team-api.test.ts team-availability-manager.test.tsx
+availability-ui.test.tsx availability-api.test.ts --pool=forks --maxWorkers=1
+Test Files: 4 passed; Tests: 17 passed.
+
+mvn -Dcheckstyle.skip=true -Dtest=DatabaseMigrationIntegrationTests test
+Tests run: 11, Failures: 0, Errors: 0, Skipped: 0; V1..V39 aplicadas sobre PostgreSQL 17.5.
+
+mvn -DskipTests -Dcheckstyle.skip=true compile
+BUILD SUCCESS; 821 fuentes Java compiladas.
+```
+
+Spotless dejó 1.015 fuentes Java limpias. El Checkstyle global sin omisión detecta 26 incidencias
+preexistentes fuera del alcance: imports estrella en
+`ReservationConfirmationEmailConsumerTests.java` y líneas largas en las plantillas de email ES/EN.
+ESLint focalizado queda limpio tras sustituir `aria-pressed` por `aria-selected` en las celdas del
+calendario y mover el cambio de carga al evento de navegación mensual.
+
+### Riesgos, limitaciones y trabajo derivado
+
+- La agenda exacta continúa materializándose como franjas internas. Esto es deliberado para
+  conservar holds, capacidad, excepciones y auditoría; una futura agenda infinita calculada bajo
+  demanda requeriría una política de horizonte y materialización idempotente.
+- La selección pública se construye con la disponibilidad del mes cargado. Un médico sin ninguna
+  hora publicada en ese mes no aparece, aunque exista en el catálogo privado.
+- Los nombres clínicos son textos públicos configurables y deben completar la política i18n antes de
+  producción multilingüe estricta.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2026-08-03 - Tarea 1.24: acceso asistido local resistente al autocompletado
+
+### Diagnóstico y objetivo técnico
+
+Después de estabilizar la fila de usuario de Azahar, dos llamadas reales sucesivas a
+`POST /api/auth/login` confirmaron que `azahar@reserly.local / ReserlyLocal2026!` era aceptada y
+generaba cookie. La API y CORS no explicaban el mensaje de credenciales inválidas. El problema
+restante estaba en el navegador: un valor persistido por autocompletado podía diferir de la
+credencial mostrada o copiada. Además, el proceso Next actual no exponía `NEXT_PUBLIC_APP_ENV`, por
+lo que una primera detección basada solo en esa variable no renderizaba la ayuda local.
+
+La tarea añade un camino verificable para cargar la credencial exacta sin debilitar el endpoint ni
+automatizar la creación de sesión.
+
+### Arquitectura y flujo
+
+`app/locales/acceso/page.tsx`, componente servidor, lee `host`/`x-forwarded-host` mediante
+`headers()`. Calcula `localEnvironment` únicamente si `NODE_ENV` es `development` y el host coincide
+de forma completa con `localhost` o `127.0.0.1`, admitiendo solo un puerto decimal opcional. Esta
+decisión se transmite como booleano a `VenueLoginForm`; el cliente no intenta inferir seguridad a
+partir de variables públicas ausentes.
+
+`VenueLoginForm` convierte email y contraseña en controles React explícitos. Los `onChange`
+actualizan estado y conservan la limpieza de errores por campo. La acción `Usar cuenta de Azahar`,
+visible solo con la capacidad acreditada, establece ambos valores exactos, elimina errores de campo
+y envío y no ejecuta ninguna petición. El usuario conserva el gesto separado sobre `Acceder al
+panel`; el submit existente genera `FormData`, valida con Zod, llama al endpoint con
+`credentials: include` y limpia ambos estados únicamente tras éxito.
+
+Este diseño impide que el DOM muestre un valor mientras React envía otro y reduce el efecto de un
+gestor de contraseñas que intente restaurar una credencial anterior. No se escriben valores en URL,
+localStorage, sessionStorage, cookies legibles por JavaScript ni logs.
+
+### Seguridad, i18n, accesibilidad y responsive
+
+La ayuda no se renderiza en un build de producción, aunque una cabecera host fuese manipulada. El
+secreto corresponde exclusivamente a una cuenta `.local` y la API continúa aplicando BCrypt, rate
+limiting, estado/tipo de cuenta y error no enumerable. La acción es un botón `type=button`, por lo
+que cargar los campos no envía el formulario accidentalmente. El bloque usa `Alert` informativo y
+un control accesible por nombre; los inputs mantienen labels, autocompletado semántico, límites,
+foco y objetivos táctiles MUI. Los textos se incorporaron en español e inglés.
+
+### Archivos y evidencia
+
+- `apps/web/src/app/locales/acceso/page.tsx`: acreditación server-side del host local.
+- `apps/web/src/features/venue-login/venue-login-form.tsx`: estado controlado y carga asistida.
+- `venue-login-form.test.tsx`: credencial exacta y render condicionado.
+- `apps/web/locales/es.json` y `en.json`: textos localizados.
+
+```text
+npm test -- src/features/venue-login/venue-login-form.test.tsx
+src/features/venue-login/venue-login-api.test.ts --pool=forks --maxWorkers=1
+Test Files: 2 passed; Tests: 18 passed.
+
+npx eslint src/features/venue-login/venue-login-form.tsx
+src/features/venue-login/venue-login-form.test.tsx --max-warnings=0
+Resultado: correcto, cero avisos.
+
+GET http://localhost:3000/locales/acceso
+Resultado: 200; HTML contiene “Use Azahar account” en el locale resuelto por la petición.
+
+POST http://localhost:8080/api/auth/login
+Resultado: 200, accountType=venue_business, cookie emitida.
+```
+
+### Riesgos y limitaciones
+
+- La ayuda está pensada para desarrollo local y contiene una contraseña conocida; la doble guarda
+  de `NODE_ENV` y host evita incluirla visualmente en producción, pero la cuenta tampoco debe
+  existir fuera del perfil local.
+- El navegador integrado de Codex no pudo alcanzar el loopback del host por aislamiento de red;
+  la verificación funcional se realizó contra los servidores activos mediante HTTP local y HTML
+  renderizado, además de tests DOM.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2026-08-03 - Tarea 10.17: estado temporal y ventana operativa de una hora
+
+### Objetivo técnico y requisitos
+
+La tarea reemplaza el comportamiento anterior que resolvía automáticamente como asistidas las
+reservas confirmadas. Implementa `RF-018`, `RF-019`, `RB-006` y `RB-009` con cuatro invariantes:
+
+1. Antes de `date + startsAt`, una reserva persistida como `confirmed` se muestra como `pending`.
+2. En `[inicio, inicio + 1 hora)` se muestra `confirmed` y admite decisión manual del local.
+3. En el límite exacto `inicio + 1 hora` se cierran las acciones.
+4. Sin decisión manual nunca hay transición: el registro continúa `confirmed`.
+
+### Arquitectura, modelo temporal y contratos
+
+Se creó `ReservationOperationalWindow`, componente backend que recibe el `Clock` de negocio. Es la
+única fuente de la proyección `visibleStatus` y del predicado `allowsManualAction`. Combina los
+snapshots `ReservationEntity.date` y `startsAt` en la zona del reloj, los convierte a `Instant` y
+usa una duración constante de una hora. El intervalo es deliberadamente semiabierto para que las
+fronteras sean deterministas: `!now.isBefore(start)` y `now.isBefore(start.plus(oneHour))`.
+
+No se añade un valor a la restricción de estados de `Reservations`. `pending` es una vista temporal
+de `confirmed`, no una transición persistida; esto evita escrituras programadas, condiciones de
+carrera y liberaciones de capacidad. Los DTO `VenueReservationSummaryResponse` y
+`VenueReservationDetailResponse` exponen ahora `manualActionsAvailable`, mientras `status` contiene
+el estado visible calculado. El cliente Zod exige el booleano, de modo que una respuesta antigua o
+incompleta falla cerrada en vez de mostrar operaciones sin autorización temporal.
+
+### Servicios, permisos y flujo de ejecución
+
+`AttendanceServiceImpl` acepta únicamente `attended` y `no_show`; se eliminó el pseudoestado manual
+`pending`. Tras cargar la reserva mediante `findAccessibleForAttendanceUpdate`, que conserva el
+aislamiento para propietario directo e identidad delegada del local, valida la ventana antes de
+mutar y guardar `attendanceMarkedAt`/`updatedAt`. Una reserva futura, pasada, cancelada o ya resuelta
+recibe conflicto de transición sin escritura.
+
+`VenueReservationCancellationServiceImpl` aplica el mismo predicado antes de cancelar. Continúa
+exigiendo motivo, limpiando el token público, registrando auditoría sin datos personales y
+publicando el evento de email después de guardar. Por tanto, la interfaz y ambos endpoints comparten
+la misma regla, y ocultar botones no es el único control de seguridad.
+
+`VenueReservationConverter` inyecta la política y calcula estado/acciones tanto en agenda como en
+detalle. En web, `venue-reservation-actions.tsx` solo renderiza asistencia y cancelación cuando el
+estado visible es `confirmed` y `manualActionsAvailable` es verdadero. Se retiró “Dejar pendiente”.
+Una reserva `no_show` mantiene el flujo separado de reporte de incidencia. Agenda y detalle
+reconocen `pending` con tono de advertencia y textos ES/EN.
+
+### Retirada de automatización y compatibilidad de datos
+
+Se eliminaron `DefaultAttendanceJob`, su planificación `@Scheduled`, la operación nativa
+`ReservationDao.markUnresolvedFinishedReservationsAttended` y las dos suites que verificaban ese
+comportamiento derogado. No hay migración: los estados existentes permanecen válidos y ninguna fila
+se reescribe. `VenueBookingRules.autoMarkAttendedAfterMinutes` se conserva temporalmente para no
+introducir una migración destructiva ni romper contratos históricos; queda sin efecto en la máquina
+de reservas y puede retirarse en una migración de limpieza posterior.
+
+También se retiraron `AttendanceTooEarlyException` y su mapeo específico, porque la operación ya no
+depende del final de la reserva. Las violaciones antes del inicio o después de la hora son una
+transición inválida homogénea, expuesta sin filtrar fechas, identidad o existencia de locales ajenos.
+
+### Archivos principales
+
+- Creado: `apps/api/src/main/java/com/reserly/platform/reservations/service/ReservationOperationalWindow.java`.
+- Modificados: convertidor y DTO de reservas, `AttendanceServiceImpl`,
+  `VenueReservationCancellationServiceImpl`, `ReservationDao`, cliente/API y componentes web.
+- Eliminados: `DefaultAttendanceJob.java`, `AttendanceTooEarlyException.java`,
+  `DefaultAttendanceJobTests.java` y `DefaultAttendanceDaoTests.java`.
+- Añadido: `ReservationOperationalWindowTests.java`; actualizadas pruebas de servicios,
+  controladores, permisos, contrato y UI.
+
+### Validación, accesibilidad, i18n y errores
+
+Los botones conservan altura táctil, iconos con `aria-hidden`, confirmación dialogada y estado busy.
+Antes del inicio y después de la hora la sección no ofrece acciones inaplicables. Se añadieron
+`VenueReservations.status.pending` en español e inglés. Los endpoints continúan devolviendo 404
+opaco cuando la reserva no pertenece a un local accesible y 409 ante una transición fuera de
+ventana; no registran PII ni incorporan servicios externos nuevos.
+
+### Pruebas y evidencia
+
+```text
+mvn -Dtest=ReservationOperationalWindowTests,AttendanceServiceTests,
+VenueReservationCancellationServiceTests,VenueReservationControllerTests,
+VenueReservationPermissionTests -Dcheckstyle.skip=true test
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+Spotless: 1.015 fuentes limpias; Checkstyle: correcto.
+
+npm test -- src/features/venue-reservations/venue-reservations-api.test.ts
+src/features/venue-reservations/venue-reservations-ui.test.tsx --pool=forks --maxWorkers=1
+Test Files: 2 passed; Tests: 10 passed.
+```
+
+Las pruebas con reloj fijo cubren un segundo antes del inicio, el inicio exacto, el último segundo
+de la ventana y el límite exacto de una hora. También cubren autorización opaca, ausencia de
+mutación fuera de ventana, auditoría de cancelación, estado pendiente sin botones y confirmada sin
+botones después del límite. `npm run typecheck` global se ejecutó y conserva errores previos ajenos
+a esta iteración en componentes de administración, claves i18n dinámicas y una prueba de perfil;
+por ello no se contabiliza como verificación satisfactoria de esta tarea.
+
+### Riesgos y deuda técnica
+
+- La zona horaria sigue siendo la zona global del `Clock`; si el producto admite locales en varias
+  zonas, la política deberá resolver una zona IANA persistida por local.
+- El estado visible cambia al llegar la hora en la siguiente recarga o refresco periódico de la
+  agenda; no se mantiene un temporizador por tarjeta, evitando deriva del reloj del navegador.
+- La columna `autoMarkAttendedAfterMinutes` queda obsoleta pero conservada por compatibilidad. Su
+  retirada requiere una migración específica y revisión de cualquier DTO de reglas que aún la
+  exponga.
+- La primera tarea pendiente por orden continúa siendo `16.1`.
+
+### Corrección de compatibilidad del aviso de incidencias (2026-08-03)
+
+Durante la verificación posterior de `10.19` se detectó una ventana de despliegue descoordinado:
+el frontend actualizado podía consultar una instancia anterior de la API cuyo resumen todavía no
+incluía `incidentRiskLevel`. El esquema Zod rechazaba la página completa y la agenda mostraba el
+error genérico de carga. Además, React podía conservar temporalmente durante HMR una fila ya
+renderizada sin el nuevo atributo; la condición abierta `valor !== "low"` trataba `undefined` como
+aviso y construía la clave inexistente `list.incidentRisk.undefined`.
+
+La frontera de entrada conserva el dominio cerrado `low | watch | high`, pero aplica `low` como
+valor predeterminado exclusivamente cuando el atributo está ausente. Esta decisión es segura y
+minimiza falsos positivos: una respuesta antigua no puede atribuir incidencias al cliente y se
+interpreta como ausencia de señal hasta el siguiente refresco contra la API nueva. Los valores
+presentes pero desconocidos continúan rechazándose; no se amplía el contrato a cadenas arbitrarias.
+
+`ReservationRow` aplica además una comprobación exhaustiva y solo crea el enlace cuando el valor
+en tiempo de ejecución es exactamente `watch` o `high`. Cualquier fila antigua, incompleta o
+retenida por HMR omite el aviso, por lo que nunca puede formar una clave de traducción dinámica con
+`undefined`. No cambian el cálculo backend, la consulta agregada, los permisos, la privacidad, los
+umbrales, la navegación ni los catálogos ES/EN.
+
+Archivos modificados en la corrección:
+
+- `apps/web/src/features/venue-reservations/venue-reservations-api.ts`.
+- `apps/web/src/features/venue-reservations/venue-reservations-dashboard.tsx`.
+- `apps/web/src/features/venue-reservations/venue-reservations-api.test.ts`.
+- `apps/web/src/features/venue-reservations/venue-reservations-ui.test.tsx`.
+- `conversation-tracking.md` y este documento técnico.
+
+Evidencia de verificación:
+
+```text
+npm run test -- --run
+  src/features/venue-reservations/venue-reservations-api.test.ts
+  src/features/venue-reservations/venue-reservations-ui.test.tsx
+Resultado: 2 archivos, 15 pruebas correctas y 0 fallos.
+
+npx eslint [cuatro archivos TypeScript focalizados] --max-warnings=0
+Resultado: código 0, sin avisos.
+
+Verificación del panel local tras recarga:
+- no se registró MISSING_MESSAGE en consola;
+- no apareció el mensaje genérico de carga causado por el contrato;
+- la sesión existente había caducado, por lo que no se introdujeron credenciales ni se ejecutaron
+  acciones privadas adicionales.
+```
+
+Las pruebas de regresión eliminan expresamente `incidentRiskLevel` de una respuesta simulada de la
+API anterior y comprueban su normalización a `low`. Una segunda prueba entrega directamente una
+fila antigua al dashboard, omitiendo el parser, y verifica que no se renderiza ningún enlace de
+riesgo. La tarea `10.19` permanece completada y la siguiente tarea pendiente continúa siendo
+`16.1`.
+
+## Iteración 2026-08-03 - Tarea 10.18: semáforo accesible del historial profesional
+
+### Identificador, objetivo y trazabilidad
+
+**Tarea:** `10.18. Añadir semáforo accesible verde, amarillo y rojo al historial profesional según
+antigüedad y reincidencia`.
+
+El objetivo técnico fue convertir el bloque existente de historial por correo en una señal visual
+explicable que permita al propietario distinguir rápidamente ausencia de incidencias, observación
+reciente y recurrencia. La implementación se relaciona con `RF-020` y `RF-021`, respeta la ventana
+identificable de 12 meses de `RNF-002` y aplica accesibilidad, responsive e internacionalización de
+`RNF-003`, `RNF-007`, `RNF-009`, `RNF-011` y `RNF-012`.
+
+El indicador no se diseñó como un motor nuevo de penalizaciones. La restricción temporal continúa
+calculándose y validándose en el backend auditado; esta tarea solo presenta una evaluación local de
+los elementos ya autorizados que devuelve el detalle privado.
+
+### Archivos creados y modificados
+
+- Creado `apps/web/src/features/venue-reservations/incident-history-risk.ts`.
+- Creado `apps/web/src/features/venue-reservations/incident-history-risk.test.ts`.
+- Modificado `venue-reservation-detail-panel.tsx` para integrar el indicador.
+- Modificado `venue-reservations-ui.test.tsx` para cubrir amarillo, verde y rojo en la vista.
+- Modificados `apps/web/locales/es.json` y `apps/web/locales/en.json` con claves equivalentes.
+- Actualizados `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y este
+  documento.
+
+No se eliminan archivos, no se introduce una migración, no cambia el contrato REST y no se
+modifican entidades, índices, reservas, incidencias ni penalizaciones persistidas.
+
+### Algoritmo y reglas deterministas
+
+`assessIncidentHistoryRisk` es una función pura que recibe entradas mínimas `reportedAt` y
+`status`, además de un reloj inyectable para pruebas. Antes de clasificar:
+
+1. conserva exclusivamente estados operativos `reported` y `confirmed`;
+2. descarta `dismissed` y estados desconocidos para impedir que una incidencia desestimada eleve
+   el riesgo;
+3. convierte los instantes ISO a una antigüedad entera en días;
+4. ignora fechas no analizables y limita a cero una fecha futura por desfase de reloj;
+5. ordena las antigüedades para identificar de forma independiente la última incidencia.
+
+La ventana reciente usa 180 días completos. La comparación es deliberadamente estricta
+`age < 180`: al cumplirse exactamente 180 días, un único registro deja de considerarse reciente.
+La clasificación resultante es:
+
+- `high`: al menos dos incidencias operativas recientes o al menos tres incidencias operativas en
+  el historial visible de 12 meses;
+- `watch`: sin cumplir `high`, al menos una incidencia reciente o dos incidencias operativas
+  visibles;
+- `low`: ningún registro operativo, o un único registro cuya antigüedad es igual o superior a 180
+  días.
+
+La función devuelve nivel, total operativo, total reciente y días desde la última incidencia. No
+recibe correo, identificador de cliente, reserva, local ni notas. La consulta existente ya limita el
+historial privado a 50 elementos recientes y a la retención operativa; los umbrales de recurrencia
+se alcanzan mucho antes de ese límite.
+
+### Integración de interfaz, estados y responsive
+
+`VenueReservationDetailPanel` calcula la evaluación después de validar que el detalle fue cargado.
+`IncidentRiskIndicator` traduce `low`, `watch` y `high` a severidades MUI `success`, `warning` y
+`error`, lo que produce las superficies verde, amarilla y roja solicitadas. El bloque usa `role=note`
+porque es contexto estático y no una alerta urgente generada durante la interacción.
+
+Cada nivel muestra simultáneamente:
+
+- icono semántico proporcionado por `Alert`;
+- etiqueta textual de riesgo bajo, en observación o alto;
+- explicación del recuento, antigüedad o recurrencia que originó el resultado;
+- historial detallado existente con tipo, fecha y estado de cada incidencia.
+
+Por ello, el color no es el único canal de información. La superficie permanece dentro del flujo
+vertical del `Surface` existente y no fija anchos ni alturas, de modo que se adapta a la columna
+móvil y a la cuadrícula de escritorio sin cortes ni desplazamiento lateral.
+
+El estado vacío conserva “Sin incidencias registradas” y “No hay incidencias profesionales
+asociadas a este correo”, pero ahora añade encima la señal verde y explica que no hay incidencias
+operativas en los últimos 12 meses. Una incidencia reciente se presenta en amarillo. La recurrencia
+se presenta en rojo sin términos como castigo, denuncia, lista negra o vocabulario acusatorio.
+
+### Contrato, seguridad, privacidad y permisos
+
+No cambia `GET /api/venue/me/reservations/{reservationId}` ni su esquema Zod. La vista sigue
+accediendo únicamente al detalle acreditado por sesión y local; el cálculo sucede tras recibir una
+respuesta autorizada y no realiza consultas por correo. La función no almacena ni transmite datos,
+no escribe logs y no crea telemetría con información personal.
+
+La salida es orientativa. No habilita botones, no altera `manualActionsAvailable`, no cancela una
+reserva, no reporta una incidencia y no calcula el plazo 7/14/21/60. Estas decisiones siguen en el
+servidor, con sus validaciones, auditoría y control de concurrencia. Esta separación evita que una
+manipulación del frontend tenga consecuencias operativas.
+
+La exclusión defensiva de `dismissed` coincide con el contrato backend actual. La ventana máxima de
+12 meses continúa aplicándose en persistencia, de modo que el cliente no puede reintroducir datos
+expirados ni ampliar su conservación mediante el indicador.
+
+### Internacionalización, errores y observabilidad
+
+Se añadieron claves paralelas bajo `VenueReservations.detail.incidents.risk` para `low`, `watch` y
+`high` en español e inglés. Las descripciones usan pluralización ICU y el número localizado por
+`next-intl`; la antigüedad solo se muestra cuando existe una única incidencia antigua. No se añadió
+texto visible hardcodeado al componente.
+
+Una respuesta inválida sigue fallando en el esquema Zod y usa el error genérico ya existente. Las
+fechas inválidas se ignoran dentro del helper como defensa adicional; el contrato normal impide que
+lleguen desde el API. No se agregan logs porque la evaluación es derivada, síncrona y no contiene
+un fallo operativo que deba auditarse.
+
+### Pruebas y evidencia de verificación
+
+La prueba unitaria cubre seis escenarios: historial vacío, exclusión de `dismissed`, único registro
+con exactamente 180 días, registro reciente amarillo, dos registros recientes rojos y tres
+registros visibles rojos. El reloj fijo evita dependencia de la fecha de ejecución.
+
+La prueba de interfaz verifica que el fixture existente muestra el nivel amarillo, que un historial
+vacío muestra nivel verde con explicación y que dos incidencias actuales muestran nivel rojo con
+recuento. También se ejecutaron las pruebas previas de estado temporal, acciones, detalle y agenda
+del mismo módulo para detectar regresiones.
+
+```text
+npm run test --workspace @reserly/web -- --run
+  src/features/venue-reservations/incident-history-risk.test.ts
+  src/features/venue-reservations/venue-reservations-ui.test.tsx
+Resultado: 2 archivos, 14 pruebas correctas y 0 fallos.
+
+npx eslint src/features/venue-reservations/incident-history-risk.ts
+  src/features/venue-reservations/incident-history-risk.test.ts
+  src/features/venue-reservations/venue-reservation-detail-panel.tsx
+  src/features/venue-reservations/venue-reservations-ui.test.tsx --max-warnings=0
+Resultado: código 0, sin avisos.
+
+npx prettier --check [archivos de esta iteración]
+Resultado: código 0 después del formateo mecánico.
+```
+
+El typecheck global se intentó con la configuración normal durante 120 segundos y con una
+configuración temporal estricta que excluía `.next` durante 180 segundos. Ambos procesos agotaron
+el tiempo sin emitir diagnósticos; la configuración temporal se eliminó. Los validadores globales
+de i18n y español continúan señalando deuda previa en componentes administrativos, recursos SQL y
+documentación histórica ajenos a los archivos de esta iteración. Las traducciones modificadas se
+validaron además como JSON y mantienen paridad estructural ES/EN.
+
+### Riesgos, límites y trabajo posterior
+
+- Los umbrales de 180 días, dos recientes y tres anuales son una regla de presentación explícita;
+  cualquier cambio de política deberá modificar función, documentación y pruebas conjuntamente.
+- El nivel puede cambiar al transcurrir el tiempo aunque no cambien datos. Se recalcula al cargar o
+  refrescar el detalle, lo adecuado para esta vista sin mantener temporizadores abiertos.
+- No se muestra una puntuación numérica opaca ni se infieren causas personales. El propietario debe
+  revisar el historial y seguir las acciones auditadas disponibles.
+- La política jurídica de conservación completa continúa pendiente en `16.10`; este cambio no
+  amplía el plazo ni el volumen de datos identificables.
+- La primera tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2026-08-03 - Tarea 2.23: credencial local estable para Azahar & Brasa
+
+### Objetivo, diagnóstico y requisitos
+
+El objetivo fue restaurar un inicio de sesión reproducible para la cuenta propietaria del local
+Azahar & Brasa en desarrollo. La API, el endpoint `POST /api/auth/login`, CORS para
+`http://localhost:3000`, la emisión de cookie HttpOnly y la cuenta `multilocal@reserly.local` se
+validaron correctamente. La causa no estaba en el formulario: la base local asociaba Azahar al
+usuario temporal `local.demo.20260801.2200@reserly.test`, creado durante un recorrido manual y sin
+una contraseña de desarrollo documentada o repuesta por el inicializador.
+
+La solución implementa `RF-008` y mantiene los principios de `RNF-002`, `RNF-003` y `RNF-009`: una
+credencial válida permite acceder, el error público continúa siendo no enumerable, el secreto solo
+se almacena como hash y el comportamiento es repetible mediante prueba automatizada.
+
+### Implementación y flujo de datos
+
+`dev-fixtures/local-demo-venues.sql`, ejecutado exclusivamente por `LocalDemoVenueInitializer` bajo
+el perfil Spring `local`, incorpora una actualización condicional. Busca el local por el slug
+reservado `azahar-brasa-11176fa9`, resuelve su `ownerUserId` y actualiza esa misma fila de `Users`:
+
+- email y email normalizado: `azahar@reserly.local`;
+- hash BCrypt con coste 12 correspondiente a la contraseña de desarrollo documentada;
+- tipo `venue_business` y estado `active`;
+- verificación de email, conservando el instante previo cuando ya existía;
+- `updatedAt` en el instante de inicialización.
+
+No se crea un usuario alternativo, no se cambia `Venues.ownerUserId` y no se tocan sesiones,
+reservas, imágenes, horarios ni publicaciones. El UUID de la cuenta permanece estable, por lo que
+todas las claves foráneas e historiales existentes conservan significado. Antes de normalizar el
+email, una subconsulta impide ocuparlo si ya pertenece a otro usuario; así el script no elude la
+unicidad ni mezcla identidades ante una base local manipulada.
+
+La reparación operativa se aplicó también a la fila actual de PostgreSQL para evitar exigir un
+reinicio inmediato. El siguiente arranque repite la misma convergencia de manera idempotente.
+
+### Seguridad, permisos y privacidad
+
+La contraseña en claro solo se documenta como credencial de desarrollo y nunca se inserta en
+PostgreSQL; la base recibe únicamente el hash BCrypt. La lógica está empaquetada en un inicializador
+con `@Profile("local")`, por lo que staging, test y producción no conocen ni ejecutan esta
+credencial. El login conserva comparación de coste constante, rate limiting, respuesta genérica
+para credenciales incorrectas y cookie HttpOnly. Tras autenticarse, la autorización sigue
+resolviendo al propietario existente y confina la sesión a Azahar & Brasa.
+
+### Archivos y pruebas
+
+- Modificado `apps/api/src/main/resources/dev-fixtures/local-demo-venues.sql` con la convergencia
+  condicional y comentario de operación local.
+- Modificado `LocalDemoVenueFixtureContractTests` para exigir email estable, slug objetivo y
+  condición sobre `emailNormalized`.
+- Actualizados requisitos, diseño, tareas, seguimiento y este documento técnico.
+
+Evidencia ejecutada:
+
+```text
+POST http://localhost:8080/api/auth/login
+email=azahar@reserly.local
+Resultado: 200, accountType=venue_business, locale=es, cookie de sesión emitida.
+
+GET http://localhost:8080/api/venue/me con la cookie anterior
+Resultado: 200, name=Azahar & Brasa, slug=azahar-brasa-11176fa9.
+
+mvn -Dtest=LocalDemoVenueFixtureContractTests -Dcheckstyle.skip=true test
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+Spotless: correcto. Checkstyle: correcto.
+```
+
+### Riesgos, limitaciones y deuda técnica
+
+- La reparación depende deliberadamente del slug local reservado. En una base limpia donde Azahar
+  no exista, la sentencia no crea datos ni afecta a otras cuentas.
+- Si otra identidad ya ocupa `azahar@reserly.local`, la actualización se omite para preservar
+  unicidad; el operador deberá resolver explícitamente ese conflicto local.
+- La contraseña compartida con la cuenta multi-local es aceptable solo en desarrollo. No debe
+  reutilizarse ni promoverse a otros entornos.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 4.18 - Primera configuración sin rangos horarios automáticos
+
+**Fecha:** 2026-08-03
+
+### Objetivo y requisitos
+
+La tarea `4.18` garantiza que una cuenta que responde `Sin rangos: gestionar solo por día` en el
+asistente de primera configuración cree el snapshot semanal, pero ninguna franja horaria. El cambio
+concreta `RF-010` y `RF-011` y protege la consistencia de `RNF-003` mediante una representación
+inequívoca y una regresión automatizada conforme a `RNF-009`.
+
+### Implementación y flujo de ejecución
+
+`venue-availability-setup-wizard.tsx` sustituye el string abierto de duración por la unión cerrada
+`DurationOption`: `none`, `15`, `30`, `45`, `60`, `90` o `120`. El estado inicial usa `none`, de
+modo que generar franjas es una decisión afirmativa y no un efecto del valor predeterminado de 60
+minutos. El selector continúa permitiendo todas las opciones visibles ya definidas para esta fase.
+
+Al confirmar, el helper documentado `parseSelectedDuration` convierte `none` en `null` y solo las
+variantes numéricas en minutos. El flujo persiste primero los siete `OpeningHourInput` y los cierres
+festivos seleccionados. Después:
+
+- con `selectedDuration === null`, conserva `generatedSlots=0`, no construye el horizonte de fechas
+  y no invoca `generateTimeSlots`;
+- con duración numérica, mantiene la generación de los 28 días abiertos no festivos;
+- la capacidad permanece deshabilitada mientras la opción sea `none`;
+- `onComplete` recibe cero y el manager muestra la primera versión editable sin franjas.
+
+No cambia el modelo de datos ni requiere migración. `OpeningHoursServiceImpl.replace` ya se limita a
+persistir el horario semanal y nunca crea `TimeSlotEntity`; el único disparador de generación sigue
+siendo la llamada HTTP explícita del cliente. Tampoco se eliminan franjas históricas ni reservas: el
+caso de uso se ejecuta exclusivamente cuando todavía no existe el primer snapshot semanal.
+
+### UI, accesibilidad e internacionalización
+
+Se conservan el desplegable etiquetado `Rango horario por reserva`, la opción localizada ES/EN y el
+control de capacidad asociado. No se añaden textos hardcodeados ni nuevas claves. El estado
+deshabilitado de capacidad permanece expuesto por `aria-disabled`, y el resultado usa la
+pluralización existente para informar que se crearon cero franjas.
+
+### Pruebas y evidencia
+
+`availability-ui.test.tsx` incorpora una regresión que selecciona primero 60 minutos y luego cambia
+expresamente a `Sin rangos`. Así se comprueba la transición real, no solo el valor inicial. Verifica:
+
+- capacidad con `aria-disabled=true`;
+- una llamada a `saveOpeningHours`;
+- cero llamadas a `generateTimeSlots`;
+- mensaje de primera versión con cero franjas;
+- entrada posterior al editor semanal.
+
+```text
+npm run test -- --run src/features/availability/availability-ui.test.tsx \
+  --pool=forks --maxWorkers=1
+Test Files: 1 passed; Tests: 9 passed; 0 failures.
+Prettier: ambos archivos modificados cumplen el formato.
+```
+
+### Riesgos, limitaciones y trabajo posterior
+
+- El guardado de horario y la generación con duración siguen siendo varias peticiones; una mejora
+  futura podría ofrecer un comando backend atómico para toda la primera versión.
+- Elegir sin rangos no borra franjas históricas preexistentes; esa operación destructiva continúa
+  bajo la acción explícita y protegida `Quitar todas las franjas`.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2.22 - Restricción explícita de altas multi-local
+
+**Fecha:** 2026-08-03
+**Tarea:** `2.22. Restringir el alta de locales adicionales a cuentas con capacidad multi-local explícita`.
+
+### Objetivo técnico y arquitectura
+
+La iteración impide que una cuenta empresarial estándar agregue sedes después de crear su primer
+local y mantiene la edición de su ficha vigente. Implementa `RF-008` y `RF-009` bajo autorización,
+consistencia, migraciones seguras y pruebas de `RNF-002`, `RNF-003`, `RNF-006` y `RNF-009`. La
+capacidad se modela como dato empresarial persistente; el rol `venue_owner` no concede por sí solo
+multi-localidad y la interfaz no constituye la frontera de seguridad.
+
+### Modelo de datos, migración y fixture
+
+`V38__restrict_additional_venues_to_multi_venue_accounts.sql` incorpora
+`BusinessAccounts.multiVenueEnabled boolean NOT NULL DEFAULT false`. El valor seguro convierte
+cuentas nuevas e históricas en cuentas de local único sin backfills permisivos. La propiedad
+primitiva documentada de `BusinessAccountEntity` no admite estado nulo. No requiere índice porque
+se lee tras resolver la cuenta por propietario y no sirve como filtro global.
+
+`local-demo-venues.sql` declara `true` exclusivamente para la identidad empresarial de
+`multilocal@reserly.local` y `false` para las cuentas individuales. El `ON CONFLICT` restaura la
+capacidad en cada arranque local para que el escenario sea determinista.
+
+### Servicio, concurrencia, permisos y errores
+
+`BusinessAccountDao.findByOwnerUserIdForVenueCreation` obtiene con `PESSIMISTIC_WRITE` la cuenta
+propiedad del actor. Dentro de la misma transacción, `VenueDao.existsCurrentOwnedByUserId` comprueba
+fichas vigentes de propiedad directa, sin considerar credenciales delegadas. Las invariantes son:
+
+- una cuenta sin ficha puede crear su primer borrador aunque la capacidad sea falsa;
+- una cuenta con ficha solo crea otra mediante `POST /api/venue/me/profiles` si la capacidad es
+  verdadera;
+- el endpoint singular compatible conserva `409` si ya existe una ficha;
+- una identidad delegada no posee cuenta empresarial y no puede crear locales;
+- una infracción se normaliza como `403 VENUE_PROFILE_FORBIDDEN`.
+
+El lock permanece hasta el commit. Dos altas simultáneas para una cuenta vacía quedan
+serializadas: la segunda observa la ficha de la primera y se rechaza. Se conservan la captura de
+violaciones de integridad, el slug único, el estado `draft` y la propiedad inmutable.
+
+`GET /api/venue/me/profiles` devuelve ahora `{ profiles, canCreateAdditionalVenue }`. El booleano
+se calcula solo desde la cuenta empresarial directamente propiedad del principal y es falso para
+delegados. No expone el dato fiscal, la columna persistente ni la causa de la concesión.
+
+### Frontend, accesibilidad e internacionalización
+
+`venue-profile-api.ts` valida el nuevo contrato con Zod. `VenueProfileEditor` separa la colección
+accesible de la capacidad de alta. Con una sola ficha y capacidad falsa no renderiza la superficie
+que contenía selector, alta y archivo; conserva directamente el formulario editable, validaciones,
+imágenes, estados accesibles y acciones de guardado/publicación. Una cuenta vacía mantiene el flujo
+de creación del primer local. Con capacidad verdadera o varias fichas existentes se conserva el
+selector, pero el alta aparece únicamente cuando la API la autoriza.
+
+No se añaden cadenas: se reutilizan las traducciones ES/EN existentes. Una petición fabricada sigue
+siendo rechazada en backend independientemente de JavaScript, CSS o estado del navegador.
+
+### Archivos y contratos modificados
+
+- Migración V38 y `local-demo-venues.sql`.
+- `BusinessAccountEntity.java`, `BusinessAccountDao.java` y `VenueDao.java`.
+- `VenueProfileService.java`, `VenueProfileServiceImpl.java`, `VenueProfilesResponse.java` y
+  `VenueProfileControllerImpl.java`.
+- `venue-profile-api.ts`, `venue-profile-editor.tsx` y sus pruebas.
+- Tests Java de integración, controlador, migración y fixture; documentos `.kiro`.
+
+### Pruebas y evidencia verificable
+
+```text
+venue-profile-api.test.ts: 5 pruebas correctas.
+venue-profile-editor.test.tsx: 10 pruebas correctas.
+
+VenueProfileControllerTests + MultiVenueMigrationContractTests
++ LocalDemoVenueFixtureContractTests: 7 pruebas correctas; BUILD SUCCESS.
+
+VenueProfileServiceIntegrationTests: 10 pruebas correctas; BUILD SUCCESS.
+PostgreSQL 17.5 mediante Testcontainers; Flyway V1..V38 aplicado correctamente.
+
+mvn -f apps/api/pom.xml spotless:apply
+1.017 archivos Java limpios.
+```
+
+El primer intento global de Checkstyle no alcanzó tests por 26 infracciones preexistentes: dos
+imports comodín de `ReservationConfirmationEmailConsumerTests` y líneas largas de plantillas de
+correo ES/EN. No pertenecen a esta tarea; las pruebas focalizadas se repitieron con
+`checkstyle.skip=true` y Spotless validó todo el código Java.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Aún no existe pantalla administrativa para conceder la capacidad; el fixture o datos controlados
+  la habilitan hasta definir su relación con planes comerciales.
+- Cuentas históricas con varias fichas reciben `false`: pueden seleccionarlas y editarlas, pero no
+  crear más, evitando retirar acceso a datos existentes.
+- Archivar la única ficha permite crear otra primera ficha porque el límite se define sobre locales
+  vigentes y conserva el historial archivado.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 9.12 - Agenda PostgreSQL y autorización delegada de reservas
+
+### Identificación, fecha y objetivo
+
+- Tarea: `9.12. Corregir la consulta PostgreSQL de la agenda y habilitar reservas para identidades delegadas multi-local`.
+- Fecha: 2026-08-03.
+- Objetivo técnico: recuperar la agenda privada que fallaba con filtros opcionales, asegurar que
+  toda reserva confirmada aparezca para su local y extender de forma consistente las operaciones a
+  las credenciales delegadas creadas en la iteración 2.19.
+- Requisitos relacionados: `RF-008`, `RF-018`, `RF-019`, `RF-020`, `RNF-002`, `RNF-003` y
+  `RNF-009`.
+
+### Diagnóstico verificable
+
+La fila `d26c61f1-d6f4-47c8-b495-082294141e82` existía en `Reservations` con estado `confirmed`,
+fecha 2026-08-03, hora 18:00 y `venueId` de Azahar & Brasa. Por tanto, ni la confirmación pública ni
+la asociación de datos habían fallado. La petición autenticada de agenda devolvía 500 y el frontend
+mostraba el alert «No pudimos cargar las reservas» junto a métricas en cero.
+
+Tras reiniciar la API con salida capturable se obtuvo `SQLSTATE 42P18` y el mensaje PostgreSQL
+`could not determine data type of parameter $2`. Hibernate 7.4 había traducido
+`(:fromDate is null or reservation.date >= :fromDate)` a `(? is null or date >= ?)`. El primer
+placeholder no tenía contexto de columna suficiente para que el driver determinase `date` cuando el
+valor era nulo. El fallo ocurría antes de consultar reservas y afectaba a cualquier cuenta.
+
+### Arquitectura y flujo implementado
+
+`VenueReservationServiceImpl` transforma una ausencia de periodo en límites PostgreSQL válidos y
+siempre tipados: `0001-01-01` como inicio inclusivo y `9999-12-31` como fin exclusivo. Los periodos
+de día, semana y mes conservan sus límites naturales. El patrón de usuario ausente se normaliza a
+cadena vacía; un patrón real continúa escapando `\\`, `%` y `_` antes de añadir los comodines.
+
+`ReservationDao.findAccessibleReservations` aplica directamente ambos límites. Franja y estado
+usan `coalesce(:parametro, columna)`, lo que aporta al parámetro el tipo UUID o varchar de la
+columna. El patrón se activa solo cuando no es vacío. Tanto la consulta de contenido como su
+`countQuery` comparten exactamente las condiciones para preservar paginación y totales.
+
+La frontera de autorización queda embebida en las consultas:
+
+```text
+venue.ownerUser.id = actor
+OR EXISTS VenuePanelCredential(venue.id, actor)
+```
+
+La misma condición se aplica al detalle y al lock pesimista usado por cancelación, asistencia y
+reporte de no-show. No se acepta un identificador de local desde el navegador. La cuenta propietaria
+ve sus sedes directas; una identidad delegada solo satisface el `EXISTS` de su local; cualquier otra
+identidad obtiene ausencia opaca.
+
+Después de autorizar el detalle, un recurso asignado se obtiene por el par `venueId` ya acreditado y
+`resourceId`. Esto permite recuperar referencias históricas archivadas sin volver a exigir propiedad
+directa y mantiene imposible cruzar recursos entre locales.
+
+### Archivos modificados
+
+- `ReservationDao.java`: consultas accesibles, parámetros tipados y nombres de métodos acordes a la
+  semántica multi-local.
+- `VenueReservationServiceImpl.java`: límites no nulos, patrón vacío y recurso acotado por local.
+- `EmployeeResourceDao.java`: lectura histórica por local autorizado.
+- `VenueReservationCancellationServiceImpl.java`, `AttendanceServiceImpl.java`,
+  `NoShowReportServiceImpl.java` e `IncidentHistoryServiceImpl.java`: reutilización de la frontera
+  accesible.
+- Tests de los seis servicios/DAO afectados y nuevo
+  `VenueReservationQueryIntegrationTests.java`.
+- Documentación `.kiro` de requisitos, diseño, tarea, seguimiento e implementación.
+
+No se modifica el modelo físico, no se crea migración y no se reescribe ninguna reserva. Las tablas
+`Reservations` y `VenuePanelCredentials`, sus claves foráneas e índices V23/V37 ya expresaban las
+relaciones necesarias. El arreglo es exclusivamente de consulta, autorización y tipado JDBC.
+
+### Seguridad, privacidad, errores y observabilidad
+
+La identidad continúa derivándose de la cookie HttpOnly validada por `SessionAuthenticationFilter`.
+Los contratos no reciben `ownerUserId`, `userId` ni `venueId`. Propiedad directa y delegación se
+evalúan dentro de la misma sentencia que lee o bloquea la reserva, evitando enumeración y una ventana
+TOCTOU. Las reservas ajenas siguen respondiendo como no encontradas y no se exponen hashes, tokens ni
+datos de otros clientes.
+
+El 500 no se enmascara con datos vacíos: se elimina su causa. Los logs capturados se usaron solo para
+diagnóstico local y no añaden telemetría permanente ni datos al contrato. El frontend mantiene su
+estado de error para fallos reales, pero ya recibe una página válida en el camino nominal.
+
+### Tests y evidencia
+
+```text
+mvn -f apps/api/pom.xml spotless:apply -Dcheckstyle.skip=true \
+  -Dtest=VenueReservationServiceTests,VenueReservationDaoTests,
+  VenueReservationCancellationServiceTests,AttendanceServiceTests,
+  NoShowReportServiceTests,IncidentHistoryServiceTests test
+
+Tests run: 26, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+Compilación: 822 fuentes principales y 194 fuentes de test.
+
+mvn -f apps/api/pom.xml -Dcheckstyle.skip=true \
+  -Dtest=VenueReservationQueryIntegrationTests test
+
+La prueba ejecuta findAccessibleReservations con franja/estado nulos sobre PostgreSQL
+Testcontainers y protege específicamente frente a SQLSTATE 42P18.
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+PostgreSQL 17.5 y Flyway V1..V37 aplicados correctamente.
+```
+
+Tras reiniciar la API local, `/panel/reservas` dejó de mostrar el alert de carga y presentó una
+reserva persistida de la cuenta activa, con métricas, cliente, email, personas, estado y enlace de
+detalle. La reserva confirmada de Azahar permaneció intacta y consultable por la cuenta propietaria
+del local. Spotless validó 1.017 archivos Java.
+
+### Riesgos, limitaciones y deuda
+
+- La cuenta propietaria multi-local ve agregadas las reservas de todas sus sedes porque la agenda
+  todavía no incorpora selector global de local. La autorización ya está preparada para añadir ese
+  filtro explícito sin cambiar la frontera de seguridad.
+- El límite superior exclusivo 9999-12-31 deja fuera únicamente esa fecha extrema, que no es una
+  fecha operativa razonable; si el dominio amplía reservas a dicho año deberá sustituirse por una
+  construcción dinámica tipada.
+- Otros módulos privados históricos todavía pueden resolver solo el primer local. Deben migrarse de
+  forma independiente cuando se amplíe el selector multi-local fuera de Perfil y Reservas.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2.21 - Formulario base disponible en la primera publicación
+
+### Identificación, fecha y objetivo técnico
+
+- Tarea: `2.21. Habilitar el formulario base al crear un local y controlar su ausencia en la API pública`.
+- Fecha: 2026-08-03.
+- Objetivo: garantizar que una ficha nueva no pueda publicar disponibilidad que conduzca a un
+  proceso público imposible de preparar por carecer de un formulario base publicado, y convertir
+  la ausencia legítima de formulario en un error HTTP estable en lugar de una excepción 500.
+- Requisitos y diseño relacionados: `RF-004`, `RF-013`, `RF-014`, `RNF-003`, `RNF-006` y
+  `RNF-009`; sección de diseño «Formulario base en la primera publicación».
+
+### Diagnóstico y flujo corregido
+
+La ficha pública `azahar-brasa-11176fa9` respondía correctamente y la consulta de disponibilidad
+devolvía once franjas. Sin embargo, `GET /api/public/venues/{slug}/reservation-form` devolvía 500.
+La inspección del registro persistido confirmó la combinación inconsistente
+`status=published`, `reservation_form_published=false` y `reservation_form_published_at=NULL`.
+El frontend atrapaba ese fallo y mostraba el mensaje genérico «No hemos podido preparar la
+reserva».
+
+El nuevo flujo es:
+
+1. `VenueProfileServiceImpl.createAdditional` crea el borrador con
+   `reservationFormPublished=true` y `reservationFormFallbackApproved=false`.
+2. El borrador sigue siendo privado porque su `VenueStatus` continúa siendo `draft`; habilitar el
+   formulario base no publica por sí solo el local ni sus franjas.
+3. `VenuePublicationServiceImpl.publish` completa `reservationFormPublishedAt` con el mismo
+   instante de publicación cuando el formulario está habilitado y todavía no tiene sello temporal.
+4. La lectura pública sirve los cinco campos base obligatorios y los campos personalizados que
+   existan. Si el local, su estado o su formulario no son públicos, el manejador devuelve 404.
+
+La asignación de fecha es condicional e idempotente. No vuelve a habilitar formularios
+despublicados ni sobrescribe su fecha histórica. De esta forma, la decisión posterior del dueño en
+el módulo Formulario conserva prioridad sobre el valor inicial seguro.
+
+### Archivos y arquitectura aplicada
+
+- `VenueProfileServiceImpl.java`: inicialización documentada del formulario base durante el alta
+  multi-local.
+- `VenuePublicationServiceImpl.java`: sincronización del sello temporal en la primera publicación
+  efectiva del perfil.
+- `VenueProfileExceptionHandler.java`: incorporación explícita de
+  `PublicReservationFormControllerImpl` al alcance del `@RestControllerAdvice`; se mantiene el
+  manejador limitado a controladores de perfil y no se altera el tratamiento global de errores.
+- `VenuePublicationServiceTests.java`: el fixture de ficha completa incluye el formulario base y
+  la prueba de publicación verifica su fecha.
+- `VenueProfileServiceIntegrationTests.java`: el alta real sobre PostgreSQL comprueba formulario
+  habilitado, fallback no aprobado y fecha todavía nula mientras la ficha es borrador.
+- Documentos `.kiro`: requisito, diseño, tarea, seguimiento y esta evidencia técnica.
+
+No se crearon tablas, columnas, índices ni migraciones. Los campos necesarios ya forman parte de
+`VenueEntity`. Para recuperar el dato de desarrollo existente se ejecutó una corrección dirigida
+por slug y condiciones de estado/publicación; afectó exactamente una fila de Azahar & Brasa. Esta
+operación no se convierte en migración porque el registro fue creado manualmente durante las
+pruebas locales y una migración global podría contradecir despublicaciones intencionadas.
+
+### Contratos, validación, permisos y errores
+
+El contrato público afectado es `GET /api/public/venues/{slug}/reservation-form`. No cambia su DTO
+de éxito. Para local inexistente, ficha no publicada o formulario despublicado, la excepción
+`VenueProfileNotFoundException` queda normalizada como HTTP 404 con código
+`VENUE_PROFILE_NOT_FOUND`. No se devuelven stack traces, estado editorial interno ni información
+que permita distinguir una ficha privada de una inexistente.
+
+Los endpoints de escritura conservan autenticación `ROLE_VENUE_OWNER`, resolución del actor desde
+la sesión y aislamiento por propietario/local. La corrección no añade datos personales, secretos,
+logs ni llamadas externas. Tampoco modifica la creación de holds: estos siguen iniciándose después
+de que formulario y franja hayan sido cargados correctamente.
+
+### Internacionalización, accesibilidad y frontend
+
+No fue necesario cambiar componentes ni traducciones. El mensaje existente del frontend continúa
+siendo la red de seguridad ante indisponibilidad real, pero el camino nominal recibe ahora el
+contrato válido. La corrección backend es independiente de idioma, breakpoint y tecnología de
+entrada; conserva el formulario público y su accesibilidad actuales.
+
+### Pruebas y evidencia verificable
+
+```text
+mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dtest=VenuePublicationServiceTests test
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+
+mvn -f apps/api/pom.xml -Dcheckstyle.skip=true -Dtest=VenueProfileServiceIntegrationTests test
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS.
+PostgreSQL 17.5 mediante Testcontainers; Flyway V1..V37 aplicado correctamente.
+
+Comprobación funcional contra los procesos locales reiniciados:
+GET /api/public/venues/azahar-brasa-11176fa9/reservation-form -> 200
+GET /api/public/venues/formulario-inexistente/reservation-form -> 404
+GET /locales/azahar-brasa-11176fa9/reservar?date=2026-08-04&slotId=d9ec60d4-f561-484b-be43-bd041a06a6c9 -> 200
+```
+
+Spotless confirmó 1.016 fuentes Java limpias. La prueba de integración compiló y ejecutó el
+contexto completo; los avisos de RabbitMQ apuntando a `localhost:1` forman parte del aislamiento de
+tests y no provocaron fallos. La reparación SQL devolvió una única fila actualizada.
+
+### Riesgos, limitaciones y deuda técnica
+
+- Los locales históricos que presenten la misma inconsistencia fuera del entorno local no se
+  habilitan masivamente para respetar posibles despublicaciones voluntarias; deben auditarse y
+  repararse caso por caso o mediante una tarea de saneamiento con reglas explícitas.
+- El 404 comparte deliberadamente semántica entre ausencia, privacidad y formulario no publicado.
+  Es adecuado para la superficie pública, aunque la interfaz privada puede ofrecer diagnósticos más
+  específicos al propietario autenticado.
+- La siguiente tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 12.10 - Gráfica temporal de incidencias operativas por local
+
+**Fecha:** 2026-08-03
+
+**Tarea:** `12.10. Añadir una gráfica temporal del balance de incidencias operativas activadas por
+local`.
+
+### Objetivo técnico, alcance y requisitos
+
+La iteración amplía las estadísticas básicas para que una cuenta con acceso a un local pueda
+observar la evolución diaria de sus incidencias operativas dentro de los mismos periodos hoy,
+semana, mes, año o rango personalizado. Se relaciona directamente con `RF-020` y `RF-025`: una
+incidencia activada se materializa en `NoShowIncidents` y la estadística debe mostrar su balance sin
+convertir el panel agregado en una vía de acceso al historial identificable.
+
+Se aplican `RNF-001` y `RNF-002` mediante autorización existente y minimización; `RNF-003` mediante
+UPSERT idempotente dentro de la transacción; `RNF-004` y `RNF-005` reutilizando la instantánea diaria
+indexada; `RNF-007` con lenguaje profesional y comportamiento responsive; `RNF-009` y `RNF-012` con
+catálogos ES/EN en UTF-8; y `RNF-011` con migración UpperCamelCase/lowerCamelCase, entidad por
+getters, DAO declarado, servicio separado y DTO explícito.
+
+### Definición del indicador
+
+`incidentsCount` representa el número de incidencias cuyo `reportedAt` cae en la fecha local
+agregada, pertenecen al `venueId` autorizado y mantienen estado operativo `reported` o `confirmed`.
+Una incidencia `dismissed` no cuenta porque ha sido desestimada administrativamente y no forma
+parte del riesgo operativo vigente. Esta métrica es un recuento de activaciones diarias, no un
+recuento de reservas con estado `no_show`: una no asistencia todavía no reportada no es una
+incidencia activada, y una incidencia se cuenta una sola vez gracias a la unicidad por reserva.
+
+El total `incidentsCount` de la respuesta es la suma de los puntos diarios del periodo. La serie
+permite comparar la evolución; no calcula una puntuación de riesgo, no acusa al cliente y no expone
+el tipo concreto, notas, identidad ni resultado de una penalización.
+
+### Modelo de datos y migración V40
+
+`V40__add_incident_count_to_daily_venue_stats.sql` añade a `StatsDailyVenue`:
+
+```text
+incidentsCount bigint NOT NULL DEFAULT 0
+```
+
+El valor por defecto migra instantáneas existentes de forma compatible. La migración reemplaza
+`ckStatsDailyVenueCounts` para incorporar `incidentsCount >= 0` junto al resto de contadores y añade
+un comentario físico que documenta la semántica de estados. No se crea un índice adicional: la
+fuente `NoShowIncidents` ya dispone de `ixNoShowIncidentsVenueReportedAt(venueId, reportedAt DESC)`
+y la lectura final reutiliza `ixStatsDailyVenueDateVenue` y la unicidad `(venueId, date)`.
+
+`StatsDailyVenueEntity` incorpora la propiedad `long incidentsCount`, mapeada por getter/setter a
+`"incidentsCount"`. No se añaden relaciones JPA hacia la entidad sensible de incidencias: la
+instantánea sigue siendo un agregado desacoplado y eliminable con el local.
+
+### Agregación SQL, zona horaria e idempotencia
+
+Los dos caminos de `StatsDailyVenueDao` se ampliaron:
+
+- `aggregateDate` crea `incidentStats`, filtra el intervalo instantáneo `[dayStart, dayEnd)`, limita
+  a `reported`/`confirmed`, agrupa por local y une el contador a todos los locales.
+- `aggregateVenueRange` convierte `reportedAt` mediante `AT TIME ZONE :zoneId`, limita el rango
+  inclusivo, agrupa por la primera columna proyectada con `GROUP BY 1` y une contra `dates`.
+
+La referencia ordinal evita repetir la expresión zonificada dentro del `GROUP BY`, lo que protege
+frente a placeholders JDBC diferentes generados por Hibernate, igual que en la reparación 12.8. El
+`LEFT JOIN` y `COALESCE(..., 0)` generan puntos cero para días sin incidencias. Ambos UPSERT actualizan
+`incidentsCount`, por lo que confirmar o desestimar una incidencia y volver a consultar recalcula el
+balance sin duplicados ni acumulaciones incrementales.
+
+La transacción del servicio sigue el flujo autorizar local, validar periodo, recalcular rango, leer
+serie y construir DTO. `VenueStatisticsServiceImpl` suma el nuevo `Metric.INCIDENTS`; no consulta
+datos sensibles fuera del DAO ni crea efectos secundarios adicionales.
+
+### Contratos REST, permisos, privacidad y errores
+
+`VenueStatisticsDailyResponse` y `VenueStatisticsResponse` incorporan `incidentsCount` no negativo.
+El endpoint continúa siendo `GET /api/venue/me/statistics` y exige `ROLE_VENUE_OWNER`. El local se
+resuelve desde `userId` de sesión y el `venueId` seleccionado mediante `findAccessibleById`; un UUID
+ajeno o inexistente permanece oculto tras 404. No se aceptan emails, reservas ni IDs de incidencia
+como filtros.
+
+La respuesta solo contiene números y fechas. Se excluyen expresamente `customerEmailNormalized`,
+`reservationId`, `reportedByUserId`, `incidentType`, `notes` y detalles de penalización. Por ello la
+instantánea agregada puede conservar valor estadístico sin ampliar el acceso ordinario al historial
+identificable; las reglas futuras de supresión de `RNF-002` deberán decidir jurídicamente la
+retención de agregados anónimos, pero no necesitan reconstruir esta respuesta con datos personales.
+
+Errores de autenticación, autorización, local ausente, filtro inválido e indisponibilidad conservan
+los contratos 401/403/404/400/5xx ya clasificados. La nueva métrica no introduce un endpoint, job o
+mensaje de error adicional.
+
+### Frontend, gráfica, accesibilidad, responsive e i18n
+
+`venue-statistics-api.ts` exige mediante Zod un entero no negativo tanto para el total como para cada
+punto. El esquema continúa en modo `strict`, de modo que los campos privados inesperados invalidan
+la respuesta. `VenueStatisticsDashboard` añade una tercera `EvolutionChart` con icono profesional
+`ShieldAlert`, color semántico `warning.main` y una superficie de ancho completo en escritorio.
+
+La gráfica reutiliza el componente de barras accesible:
+
+- cada punto es un `li` con etiqueta de fecha localizada y pluralización de incidencias;
+- las barras visuales son decorativas y la información no depende exclusivamente del color;
+- hasta 31 días se muestra el número de día; para rangos mayores se mantiene alternativa accesible;
+- el contenedor permite desplazamiento horizontal en móvil y preserva un ancho mínimo por punto;
+- si todos los valores son cero aparece el mensaje específico “No hay incidencias activadas en este
+  periodo” o su equivalente inglés;
+- `Detalle del periodo` expone el total como alternativa textual rápida.
+
+Las claves `charts.incidents`, `charts.incidentsAria`, `charts.incidentValue`,
+`charts.incidentsEmpty` y `details.incidents` existen en ambos catálogos. No se añadió texto visible
+hardcodeado. El local y periodo seleccionados, el polling de 30 segundos, foco, visibilidad,
+cancelación de requests y prevención de concurrencia permanecen compartidos con las otras métricas.
+
+### Archivos creados y modificados
+
+- Migración V40 y actualización de `DatabaseMigrationIntegrationTests` a la versión 40.
+- `StatsDailyVenueDao.java`, `StatsDailyVenueEntity.java`.
+- `VenueStatisticsDailyResponse.java`, `VenueStatisticsResponse.java` y
+  `VenueStatisticsServiceImpl.java`.
+- Tests Java de servicio, controlador, autorización, contrato SQL y agregación PostgreSQL.
+- `venue-statistics-api.ts`, `venue-statistics-dashboard.tsx` y sus tests.
+- `apps/web/locales/es.json` y `apps/web/locales/en.json`.
+- `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+
+No se eliminan archivos ni columnas. No se altera `NoShowIncidents`, su auditoría, sus índices ni el
+flujo de penalizaciones.
+
+### Estrategia de pruebas y evidencia verificable
+
+```text
+npm run test --workspace @reserly/web --
+  src/features/venue-statistics/venue-statistics-api.test.ts
+  src/features/venue-statistics/venue-statistics-dashboard.test.tsx
+Resultado: 2 archivos y 8 pruebas correctas.
+
+npm exec --workspace @reserly/web eslint --
+  src/features/venue-statistics/venue-statistics-api.ts
+  src/features/venue-statistics/venue-statistics-api.test.ts
+  src/features/venue-statistics/venue-statistics-dashboard.tsx
+  src/features/venue-statistics/venue-statistics-dashboard.test.tsx --max-warnings=0
+Resultado: código 0.
+
+npx tsc -p tsconfig.venue-statistics-incidents.tmp.json --noEmit
+Resultado: código 0 con las opciones estrictas heredadas; la configuración temporal excluyó solo
+los tipos `.next` corruptos ya documentados y fue eliminada tras la comprobación.
+
+Validación JSON de locales/es.json y locales/en.json mediante JSON.parse: código 0.
+
+mvn -Dcheckstyle.skip=true -DforkCount=0
+  -Dtest=VenueStatisticsServiceTests,VenueStatisticsControllerTests,
+  VenueStatisticsAuthorizationTests,StatsDailyVenueAggregationContractTests test
+Resultado: código 0; servicio, DTO/controlador, permisos y consulta nativa correctos.
+
+mvn -Dcheckstyle.skip=true -DforkCount=0
+  -Dtest=DatabaseMigrationIntegrationTests#migratesEmptyPostgisDatabaseToLatestVersion,
+  VenueStatisticsAggregationIntegrationTests test
+Resultado: código 0 sobre PostgreSQL 17.5.
+Flyway validó y aplicó 40 migraciones desde un esquema vacío.
+V40 dejó disponible incidentsCount y Hibernate validó la entidad.
+Una incidencia reported a 2026-08-02T10:00Z produjo incidentsCount=1 el 2026-08-02.
+
+mvn spotless:check
+Resultado: código 0.
+```
+
+La prueba UI cubre la gráfica, el nombre accesible, la etiqueta diaria pluralizada, el total textual
+y el estado vacío específico aunque existan reservas u ocupación. La prueba de integración inserta
+una reserva e incidencia ficticias dentro de una transacción, sin usar datos personales reales, y
+verifica la fecha local recuperada desde la instantánea.
+
+### Observabilidad, riesgos, limitaciones y deuda técnica
+
+- La métrica se recalcula al consultar y también es compatible con el job diario existente; no se
+  añade un evento o log por cada visualización para evitar ruido y datos operativos innecesarios.
+- Al desestimar una incidencia, un nuevo cálculo retira su contribución histórica del balance. Esta
+  es la semántica elegida de “incidencia operativa activada”; si producto necesita en el futuro una
+  serie de altas brutas y otra de resoluciones, deberán modelarse como métricas separadas.
+- El máximo de 366 días acota coste y densidad visual. La UI no pretende sustituir una herramienta
+  analítica anual avanzada.
+- El agregado no contiene información identificable, pero la política jurídica pendiente de
+  `16.10` debe confirmar su conservación cuando se anonimicen o eliminen incidencias fuente.
+- La primera tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2026-08-03 - Tarea 10.19: aviso de incidencias previas en la agenda
+
+### Identificador, objetivo y requisitos relacionados
+
+**Tarea:** `10.19. Mostrar junto al estado de la agenda un aviso de incidencias previas enlazado al
+detalle`.
+
+El objetivo fue trasladar a la agenda diaria una señal compacta del semáforo implementado en
+`10.18`, para que el propietario detecte posibles incidencias antes de abrir una reserva. El cambio
+afecta a `RF-018`, `RF-020` y `RF-021`, y mantiene los requisitos de minimización, rendimiento,
+accesibilidad, responsive, internacionalización y convenciones de `RNF-002`, `RNF-003`, `RNF-004`,
+`RNF-007`, `RNF-009`, `RNF-011` y `RNF-012`.
+
+### Arquitectura y flujo de ejecución
+
+El endpoint existente `GET /api/venue/me/reservations` conserva ruta, filtros, paginación y
+autorización. Su flujo queda:
+
+1. `VenueReservationServiceImpl` valida propietario, periodo, filtros y paginación.
+2. `ReservationDao` recupera como máximo cien reservas de locales accesibles para el principal.
+3. El servicio extrae y deduplica únicamente los emails normalizados de esa página.
+4. Si el conjunto está vacío, omite por completo la consulta de incidencias.
+5. `NoShowIncidentDao.summarizeOperationalRisk` ejecuta una sola agregación para el conjunto,
+   limitada a estados `reported` y `confirmed` y a la ventana de 12 meses.
+6. La consulta calcula el total operativo y el total posterior al corte estricto de 180 días por
+   email; `VenueReservationIncidentRisk.from` los clasifica con los umbrales de `10.18`.
+7. `VenueReservationPage` mantiene temporalmente el mapa interno durante la conversión.
+8. `VenueReservationConverter` incorpora a cada resumen exclusivamente `incidentRiskLevel`.
+
+Esta solución evita solicitar el detalle desde el navegador para cada tarjeta y evita también una
+consulta backend por reserva. El coste adicional es una agregación acotada por un conjunto máximo
+de cien identidades y respaldada por el índice existente sobre email, estado y fecha del historial.
+
+### Modelo interno, persistencia y contrato REST
+
+No se añade migración ni se modifica una tabla. `IncidentRiskAggregateProjection` define las tres
+columnas internas `customerEmailNormalized`, `operationalCount` y `recentCount`. La consulta JPQL
+agrupa por email y aplica:
+
+```text
+reportedAt >= retentionCutoff de 12 meses
+reportedAt > recentCutoff de 180 días
+status IN ('reported', 'confirmed')
+customerEmailNormalized IN (emails de la página autorizada)
+```
+
+El corte reciente es estricto para que una incidencia con exactamente 180 días coincida con la
+regla del detalle. Los estados `dismissed` y desconocidos quedan excluidos. El enum interno traduce
+dos recientes o tres visibles a `high`, una reciente o dos visibles a `watch`, y el resto a `low`.
+
+`VenueReservationSummaryResponse` añade `incidentRiskLevel` documentado como `low`, `watch` o
+`high`. No expone recuentos, fecha de última incidencia, correo normalizado derivado del historial,
+tipo, notas, reserva origen, actor ni penalización. `VenueReservationPage` copia defensivamente el
+mapa y devuelve `LOW` cuando no existe agregado para una identidad.
+
+El esquema Zod del listado exige exactamente uno de los tres valores. El detalle no hereda el campo
+porque ya dispone de `incidentHistory`; su esquema lo omite expresamente antes de extender el
+contrato, preservando compatibilidad con la respuesta de detalle actual.
+
+### Interfaz, navegación, accesibilidad y responsive
+
+`ReservationRow` agrupa el `StatusChip` y el nuevo aviso en un `Stack` horizontal con salto de línea.
+El comportamiento es:
+
+- `low`: no se renderiza aviso adicional;
+- `watch`: botón-enlace amarillo con icono y texto “Posibles incidencias previas”;
+- `high`: botón-enlace rojo con icono y texto “Incidencias previas recurrentes”.
+
+Los dos enlaces apuntan a `/panel/reservas/{reservationId}`, igual que “Ver detalle”, y permiten
+revisar el historial y su explicación sin exponerlo en la agenda. El control mantiene 36 píxeles de
+altura mínima dentro de una fila cuya acción principal conserva 44 píxeles. En móvil el contenedor
+permite `flex-wrap`, mientras que la cuadrícula de escritorio lo mantiene junto al estado siempre
+que exista espacio.
+
+El icono es decorativo porque el enlace tiene nombre accesible. El significado se comunica mediante
+texto y color, no solo por amarillo o rojo. No se muestra una etiqueta verde para evitar ruido en
+reservas sin señales relevantes. Las claves equivalentes existen en `es.json` y `en.json` y no hay
+texto visible hardcodeado.
+
+### Seguridad, privacidad, permisos y errores
+
+La frontera de propiedad permanece en `ReservationDao.findAccessibleReservations`, que recibe el
+`userId` del principal. Solo después de obtener la página autorizada se derivan las identidades que
+pueden participar en la agregación. HTTP no acepta un email nuevo ni un local adicional como filtro
+del riesgo. Una cuenta anónima continúa recibiendo 401, una identidad sin rol 403 y los filtros
+inválidos mantienen sus códigos existentes.
+
+El mapa con emails normalizados nunca sale de la capa de servicio. No se registra en logs, no se
+cachea y se descarta al construir el DTO. El aviso no habilita acciones, no cambia el estado de la
+reserva, no crea una incidencia y no aplica o amplía penalizaciones. Abrir el enlace vuelve a pasar
+por la autorización opaca del detalle.
+
+La consulta vacía se evita para no generar un `IN ()` inválido. Los emails nulos o vacíos se filtran
+defensivamente y su nivel resulta `low`. Errores de persistencia conservan la estrategia global de
+indisponibilidad y no producen una respuesta parcial potencialmente engañosa.
+
+### Archivos creados y modificados
+
+- Creado `IncidentRiskAggregateProjection.java`.
+- Creados `VenueReservationIncidentRisk.java` y `VenueReservationPage.java`.
+- Modificados `NoShowIncidentDao`, `VenueReservationService`, su implementación, conversor y
+  `VenueReservationSummaryResponse`.
+- Modificadas las pruebas Java de servicio, controlador, permisos y consulta PostgreSQL.
+- Modificados `venue-reservations-api.ts`, `venue-reservations-dashboard.tsx`, fixtures y pruebas.
+- Modificados los catálogos `es.json` y `en.json`.
+- Actualizados los cinco documentos fuente de verdad de `.kiro`.
+
+No se eliminaron archivos ni se modificaron tablas, índices o migraciones.
+
+### Estrategia de pruebas y evidencia
+
+```text
+npm run test --workspace @reserly/web -- --run
+  src/features/venue-reservations/venue-reservations-api.test.ts
+  src/features/venue-reservations/venue-reservations-ui.test.tsx
+  src/features/venue-reservations/incident-history-risk.test.ts
+Resultado: 3 archivos, 20 pruebas correctas y 0 fallos.
+
+npx eslint [cuatro archivos TypeScript modificados] --max-warnings=0
+Resultado: código 0, sin avisos.
+
+mvn -Dcheckstyle.skip=true -DforkCount=0
+  -Dtest=VenueReservationServiceTests,VenueReservationControllerTests,
+  VenueReservationPermissionTests test
+Resultado final combinado: 15 pruebas correctas; servicio, contrato, permisos y conversión
+validados. La primera ejecución detectó un import ausente en el test y la segunda un mock antiguo
+sin respuesta; ambos defectos de prueba se corrigieron antes de cerrar la tarea.
+
+mvn -Dcheckstyle.skip=true -DforkCount=0
+  -Dtest=VenueReservationQueryIntegrationTests test
+Resultado: 2 pruebas correctas sobre PostgreSQL 17.5, 40 migraciones aplicadas desde cero y consulta
+agregada JPQL ejecutada correctamente.
+
+mvn spotless:apply / spotless:check
+Resultado: formato correcto para los 1020 archivos Java inspeccionados por el plugin.
+```
+
+Las pruebas web cubren aviso amarillo con enlace, ausencia completa del aviso en `low`, aviso rojo
+con enlace, parseo del nuevo campo, detalle sin ese campo y regresiones de agenda. Las pruebas Java
+cubren cálculo agregado único, nivel serializado, autorización, filtros y SQL real.
+
+### Riesgos, límites y deuda técnica
+
+- El nivel se calcula al refrescar la agenda, actualmente en la carga, cada 30 segundos, al foco y
+  al recuperar visibilidad. No se mantiene un temporizador específico por tarjeta.
+- Si producto cambia los umbrales, deben actualizarse de manera coordinada el enum backend, el
+  helper del detalle, diseño y pruebas; una futura mejora podría compartir un contrato generado.
+- El botón amarillo/rojo duplica intencionadamente el destino de “Ver detalle”, pero comunica la
+  razón prioritaria para abrirlo y mejora la detección rápida.
+- La conservación jurídica definitiva de incidencias sigue pendiente en `16.10`; la consulta actual
+  nunca supera la ventana operativa ya definida.
+- La primera tarea pendiente por orden continúa siendo `16.1`.

@@ -20,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Recalcula un rango acotado del local antes de construir totales y evolución.
  *
- * <p>La escritura y lectura comparten transacción. El local se resuelve desde el propietario y el
- * cliente nunca puede seleccionar otro {@code venueId}.
+ * <p>La escritura y lectura comparten transacción. Un {@code venueId} explícito se resuelve con la
+ * misma consulta de acceso que el panel multi-local, sin revelar locales ajenos.
  */
 @Service
 public class VenueStatisticsServiceImpl implements VenueStatisticsService {
@@ -41,23 +41,28 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
   @Override
   @Transactional
   public VenueStatisticsResponse findOwned(
-      UUID ownerUserId, String periodValue, LocalDate fromDate, LocalDate toDate) {
-    if (ownerUserId == null) {
+      UUID userId, UUID selectedVenueId, String periodValue, LocalDate fromDate, LocalDate toDate) {
+    if (userId == null) {
       throw new VenueStatisticsFilterInvalidException();
     }
     VenueStatisticsPeriod period = VenueStatisticsPeriod.parse(periodValue);
     DateRange range = resolveRange(period, fromDate, toDate);
-    UUID venueId =
-        venueDao
-            .findCurrentByOwnerUserId(ownerUserId)
-            .orElseThrow(VenueStatisticsNotFoundException::new)
-            .getId();
+    UUID venueId = resolveAccessibleVenueId(userId, selectedVenueId);
 
     statsDao.aggregateVenueRange(
         venueId, range.fromDate(), range.toDate(), clock.getZone().getId(), clock.instant());
     List<StatsDailyVenueEntity> days =
         statsDao.findRange(venueId, range.fromDate(), range.toDate());
     return toResponse(period, range, days);
+  }
+
+  /** Resuelve el local solicitado sin distinguir entre un UUID inexistente, archivado o ajeno. */
+  private UUID resolveAccessibleVenueId(UUID userId, UUID selectedVenueId) {
+    return (selectedVenueId == null
+            ? venueDao.findCurrentByOwnerUserId(userId)
+            : venueDao.findAccessibleById(userId, selectedVenueId))
+        .orElseThrow(VenueStatisticsNotFoundException::new)
+        .getId();
   }
 
   private DateRange resolveRange(
@@ -95,6 +100,7 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
     long occupied = sum(days, Metric.OCCUPIED);
     long available = sum(days, Metric.AVAILABLE);
     long reviews = sum(days, Metric.REVIEWS);
+    long incidents = sum(days, Metric.INCIDENTS);
     return new VenueStatisticsResponse(
         period.externalValue(),
         range.fromDate(),
@@ -108,6 +114,7 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
         available,
         percentage(occupied, available),
         reviews,
+        incidents,
         weightedRating(days, reviews),
         days.stream().map(this::toDaily).toList());
   }
@@ -124,6 +131,7 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
         day.getAvailableCapacity(),
         percentage(day.getOccupiedCapacity(), day.getAvailableCapacity()),
         day.getReviewsCount(),
+        day.getIncidentsCount(),
         day.getAverageRating());
   }
 
@@ -201,6 +209,12 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
       @Override
       long value(StatsDailyVenueEntity day) {
         return day.getReviewsCount();
+      }
+    },
+    INCIDENTS {
+      @Override
+      long value(StatsDailyVenueEntity day) {
+        return day.getIncidentsCount();
       }
     };
 

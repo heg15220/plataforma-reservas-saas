@@ -7,6 +7,7 @@ const assignment = {
   venueName: "Ames Padel Center",
   venueSlug: "ames-padel-center",
   email: "reservas@ames.local",
+  panelAccessConfigured: true,
   updatedAt: "2026-08-02T20:00:00Z",
 };
 
@@ -33,12 +34,15 @@ describe("venue email API", () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json(assignment));
     vi.stubGlobal("fetch", fetchMock);
 
-    await updateVenueEmailAssignment(assignment.venueId, assignment.email);
+    await updateVenueEmailAssignment(assignment.venueId, assignment.email, "UnaClaveSegura2026!");
 
     expect(fetchMock).toHaveBeenCalledWith(
       `http://localhost:8080/api/venue/me/email-assignments/${assignment.venueId}`,
       expect.objectContaining({
-        body: JSON.stringify({ email: assignment.email }),
+        body: JSON.stringify({
+          email: assignment.email,
+          password: "UnaClaveSegura2026!",
+        }),
         credentials: "include",
         method: "PUT",
       }),
@@ -49,7 +53,7 @@ describe("venue email API", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
 
     await expect(
-      updateVenueEmailAssignment(assignment.venueId, assignment.email),
+      updateVenueEmailAssignment(assignment.venueId, assignment.email, "UnaClaveSegura2026!"),
     ).rejects.toMatchObject({ kind: "notFound" });
   });
 });

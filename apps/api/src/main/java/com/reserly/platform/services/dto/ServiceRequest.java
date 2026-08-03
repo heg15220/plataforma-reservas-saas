@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /** Payload privado para crear o editar un servicio del local autenticado. */
@@ -15,4 +16,5 @@ public record ServiceRequest(
     @Min(1) @Max(1440) int durationMinutes,
     @Min(1) int capacityRequired,
     boolean active,
-    Boolean allowsAnyAvailableResource) {}
+    Boolean allowsAnyAvailableResource,
+    @Pattern(regexp = "range|exact_time") String bookingMode) {}

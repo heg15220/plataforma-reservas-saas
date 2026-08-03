@@ -14,6 +14,7 @@ const publicSlotSchema = z.object({
   slotId: z.uuid(),
   serviceId: z.uuid().nullable(),
   serviceName: z.string().min(1).nullable(),
+  bookingMode: z.enum(["range", "exact_time"]).default("range"),
   startsAt: localTimeSchema,
   endsAt: localTimeSchema,
   capacity: z.number().int().positive(),
@@ -61,6 +62,7 @@ const availabilityDaySchema = z.object({
 
 const timeSlotSchema = z.object({
   id: z.uuid(),
+  serviceId: z.uuid().nullable().default(null),
   date: isoDateSchema,
   weekday: z.number().int().min(1).max(7),
   startsAt: localTimeSchema,
@@ -182,6 +184,7 @@ export async function createTimeSlot(input: {
   startsAt: string;
   endsAt: string;
   capacity: number;
+  serviceId?: string | null;
 }) {
   return parse(
     await privateRequest("/api/venue/me/time-slots", jsonRequest("POST", input)),
@@ -193,6 +196,7 @@ export async function generateTimeSlots(input: {
   date: string;
   durationMinutes: number;
   capacity: number;
+  serviceId?: string | null;
 }) {
   return parse(
     await privateRequest("/api/venue/me/time-slots/generate", jsonRequest("POST", input)),

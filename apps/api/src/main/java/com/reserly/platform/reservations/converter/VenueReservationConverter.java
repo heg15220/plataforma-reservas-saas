@@ -8,26 +8,35 @@ import com.reserly.platform.reservations.dto.VenueReservationIncidentResponse;
 import com.reserly.platform.reservations.dto.VenueReservationListResponse;
 import com.reserly.platform.reservations.dto.VenueReservationSummaryResponse;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.reservations.service.ReservationOperationalWindow;
 import com.reserly.platform.reservations.service.VenueReservationDetail;
+import com.reserly.platform.reservations.service.VenueReservationPage;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import java.util.List;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 /** Convierte el agregado interno a contratos privados sin exponer hashes ni secretos. */
 @Component
 public class VenueReservationConverter {
 
+  private final ReservationOperationalWindow operationalWindow;
+
+  public VenueReservationConverter(ReservationOperationalWindow operationalWindow) {
+    this.operationalWindow = operationalWindow;
+  }
+
   /** Convierte una página conservando sus metadatos y el orden fijado por persistencia. */
-  public VenueReservationListResponse toListResponse(Page<ReservationEntity> reservations) {
+  public VenueReservationListResponse toListResponse(VenueReservationPage page) {
     List<VenueReservationSummaryResponse> items =
-        reservations.getContent().stream().map(this::toSummaryResponse).toList();
+        page.reservations().getContent().stream()
+            .map(reservation -> toSummaryResponse(reservation, page))
+            .toList();
     return new VenueReservationListResponse(
         items,
-        reservations.getNumber(),
-        reservations.getSize(),
-        reservations.getTotalElements(),
-        reservations.getTotalPages());
+        page.reservations().getNumber(),
+        page.reservations().getSize(),
+        page.reservations().getTotalElements(),
+        page.reservations().getTotalPages());
   }
 
   /** Convierte el detalle acreditado y minimiza respuestas, recurso e historial profesional. */
@@ -60,7 +69,8 @@ public class VenueReservationConverter {
         reservation.getDate(),
         reservation.getStartsAt(),
         reservation.getEndsAt(),
-        reservation.getStatus(),
+        operationalWindow.visibleStatus(reservation),
+        operationalWindow.allowsManualAction(reservation),
         reservation.getCancelledAt(),
         reservation.getCancelledBy(),
         reservation.getCancellationReason(),
@@ -87,7 +97,8 @@ public class VenueReservationConverter {
         resource.getStatus());
   }
 
-  private VenueReservationSummaryResponse toSummaryResponse(ReservationEntity reservation) {
+  private VenueReservationSummaryResponse toSummaryResponse(
+      ReservationEntity reservation, VenueReservationPage page) {
     return new VenueReservationSummaryResponse(
         reservation.getId(),
         reservation.getTimeSlot().getId(),
@@ -97,7 +108,9 @@ public class VenueReservationConverter {
         reservation.getDate(),
         reservation.getStartsAt(),
         reservation.getEndsAt(),
-        reservation.getStatus(),
+        operationalWindow.visibleStatus(reservation),
+        operationalWindow.allowsManualAction(reservation),
+        page.incidentRiskFor(reservation).apiValue(),
         reservation.getCreatedAt());
   }
 }

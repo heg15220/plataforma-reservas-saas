@@ -7,8 +7,8 @@ import java.util.List;
 /**
  * Métricas privadas agregadas y serie diaria del periodo.
  *
- * <p>No contiene IDs, emails, reservas ni comentarios. La media del rango está ponderada por el
- * número diario de reseñas.
+ * <p>No contiene IDs, emails, reservas, motivos ni comentarios. La media del rango está ponderada
+ * por el número diario de reseñas y las incidencias solo se exponen como recuentos agregados.
  */
 public record VenueStatisticsResponse(
     String period,
@@ -23,6 +23,7 @@ public record VenueStatisticsResponse(
     long availableCapacity,
     BigDecimal occupancyRate,
     long reviewsCount,
+    long incidentsCount,
     BigDecimal averageRating,
     List<VenueStatisticsDailyResponse> series) {
 

@@ -3,6 +3,7 @@ package com.reserly.platform.statistics.controller;
 import com.reserly.platform.identity.security.AuthenticatedAccount;
 import com.reserly.platform.statistics.dto.VenueStatisticsResponse;
 import java.time.LocalDate;
+import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ public interface VenueStatisticsController {
   @GetMapping
   ResponseEntity<VenueStatisticsResponse> get(
       @AuthenticationPrincipal AuthenticatedAccount account,
+      @RequestParam(required = false) UUID venueId,
       @RequestParam(defaultValue = "today") String period,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to);

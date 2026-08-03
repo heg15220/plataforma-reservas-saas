@@ -44,6 +44,11 @@ const venueProfileSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
+const venueProfilesSchema = z.object({
+  profiles: z.array(venueProfileSchema),
+  canCreateAdditionalVenue: z.boolean(),
+});
+
 const galleryImageSchema = z.object({
   id: databaseUuidSchema,
   url: z.string().min(1),
@@ -62,6 +67,7 @@ const publicationErrorSchema = z.object({
 
 export type VenueCategory = z.infer<typeof venueCategorySchema>;
 export type VenueProfile = z.infer<typeof venueProfileSchema>;
+export type VenueProfiles = z.infer<typeof venueProfilesSchema>;
 export type VenueGalleryImage = z.infer<typeof galleryImageSchema>;
 export type VenueProfileApiErrorKind =
   | "unauthenticated"
@@ -97,6 +103,13 @@ export async function fetchVenueProfile(signal?: AbortSignal): Promise<VenueProf
   return parseJson(response, venueProfileSchema);
 }
 
+/** Lista las fichas que el actor puede seleccionar en el panel multi-local. */
+export async function fetchVenueProfiles(signal?: AbortSignal): Promise<VenueProfiles> {
+  const response = await request("/api/venue/me/profiles", { method: "GET", signal });
+  await throwForStatus(response);
+  return venueProfilesSchema.parse(await response.json());
+}
+
 export async function fetchVenueCategories(
   locale: string,
   signal?: AbortSignal,
@@ -111,35 +124,63 @@ export async function fetchVenueCategories(
 
 export async function saveVenueProfile(
   payload: VenueProfilePayload,
-  exists: boolean,
+  venueId: string | null,
   signal?: AbortSignal,
 ): Promise<VenueProfile> {
-  const response = await request("/api/venue/me/profile", {
-    method: exists ? "PATCH" : "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+  const response = await request(
+    venueId ? `/api/venue/me/profiles/${venueId}` : "/api/venue/me/profiles",
+    {
+      method: venueId ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    },
+  );
+  await throwForStatus(response);
+  return parseJson(response, venueProfileSchema);
+}
+
+export async function publishVenueProfile(
+  venueId: string,
+  signal?: AbortSignal,
+): Promise<VenueProfile> {
+  const response = await request(`/api/venue/me/profiles/${venueId}/publish`, {
+    method: "POST",
     signal,
   });
   await throwForStatus(response);
   return parseJson(response, venueProfileSchema);
 }
 
-export async function publishVenueProfile(signal?: AbortSignal): Promise<VenueProfile> {
-  const response = await request("/api/venue/me/publish", { method: "POST", signal });
-  await throwForStatus(response);
-  return parseJson(response, venueProfileSchema);
-}
-
-export async function uploadMainImage(file: File, signal?: AbortSignal): Promise<VenueProfile> {
+export async function uploadMainImage(
+  venueId: string,
+  file: File,
+  signal?: AbortSignal,
+): Promise<VenueProfile> {
   const body = new FormData();
   body.set("file", file);
-  const response = await request("/api/venue/me/main-image", { method: "POST", body, signal });
+  const response = await request(`/api/venue/me/profiles/${venueId}/main-image`, {
+    method: "POST",
+    body,
+    signal,
+  });
   await throwForStatus(response);
-  return parseJson(response, venueProfileSchema);
+  const profileResponse = await request(`/api/venue/me/profiles/${venueId}`, {
+    method: "GET",
+    signal,
+  });
+  await throwForStatus(profileResponse);
+  return parseJson(profileResponse, venueProfileSchema);
 }
 
-export async function fetchVenueGallery(signal?: AbortSignal): Promise<VenueGalleryImage[]> {
-  const response = await request("/api/venue/me/gallery", { method: "GET", signal });
+export async function fetchVenueGallery(
+  venueId: string,
+  signal?: AbortSignal,
+): Promise<VenueGalleryImage[]> {
+  const response = await request(`/api/venue/me/profiles/${venueId}/gallery`, {
+    method: "GET",
+    signal,
+  });
   if (response.status === 404) {
     return [];
   }
@@ -148,6 +189,7 @@ export async function fetchVenueGallery(signal?: AbortSignal): Promise<VenueGall
 }
 
 export async function uploadGalleryImage(
+  venueId: string,
   file: File,
   altText: string,
   signal?: AbortSignal,
@@ -155,13 +197,33 @@ export async function uploadGalleryImage(
   const body = new FormData();
   body.set("altText", altText);
   body.set("file", file);
-  const response = await request("/api/venue/me/gallery", { method: "POST", body, signal });
+  const response = await request(`/api/venue/me/profiles/${venueId}/gallery`, {
+    method: "POST",
+    body,
+    signal,
+  });
   await throwForStatus(response);
   return parseJson(response, galleryImageSchema);
 }
 
-export async function deleteGalleryImage(imageId: string, signal?: AbortSignal): Promise<void> {
-  const response = await request(`/api/venue/me/gallery/${imageId}`, { method: "DELETE", signal });
+export async function deleteGalleryImage(
+  venueId: string,
+  imageId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await request(`/api/venue/me/profiles/${venueId}/gallery/${imageId}`, {
+    method: "DELETE",
+    signal,
+  });
+  await throwForStatus(response);
+}
+
+/** Archiva la ficha seleccionada conservando su historial y relaciones. */
+export async function deleteVenueProfile(venueId: string, signal?: AbortSignal): Promise<void> {
+  const response = await request(`/api/venue/me/profiles/${venueId}`, {
+    method: "DELETE",
+    signal,
+  });
   await throwForStatus(response);
 }
 

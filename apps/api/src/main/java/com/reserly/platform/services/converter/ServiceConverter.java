@@ -27,7 +27,8 @@ public class ServiceConverter {
         request.durationMinutes(),
         request.capacityRequired(),
         request.active(),
-        request.allowsAnyAvailableResource());
+        request.allowsAnyAvailableResource(),
+        request.bookingMode());
   }
 
   /** Proyecta un servicio propio ocultando el local y el propietario. */
@@ -42,6 +43,7 @@ public class ServiceConverter {
         service.getCapacityRequired(),
         service.isActive(),
         service.isAnyAvailableResourceAllowed(),
+        service.getBookingMode(),
         compatibleResourceIds(service),
         service.getCreatedAt(),
         service.getUpdatedAt());

@@ -59,7 +59,7 @@ public class NoShowReportServiceImpl implements NoShowReportService {
 
     ReservationEntity reservation =
         reservationDao
-            .findOwnedForAttendanceUpdate(ownerUserId, reservationId)
+            .findAccessibleForAttendanceUpdate(ownerUserId, reservationId)
             .orElseThrow(NoShowReportNotFoundException::new);
     if (!"no_show".equals(reservation.getStatus())) {
       throw new NoShowReportStateException();

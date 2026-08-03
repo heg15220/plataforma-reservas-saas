@@ -33,13 +33,18 @@ const submissionErrorKeys = {
   unavailable: "errors.submission.unavailable",
 } as const;
 
+const localAzaharCredentials = {
+  email: "azahar@reserly.local",
+  password: "ReserlyLocal2026!",
+} as const;
+
 /**
  * Formulario de acceso de propietarios conectado a la sesión opaca de backend.
  *
  * Mantiene las credenciales únicamente durante la interacción, evita doble
  * envío y navega con el locale de cuenta una vez creada la cookie HttpOnly.
  */
-export function VenueLoginForm() {
+export function VenueLoginForm({ localEnvironment = false }: { localEnvironment?: boolean }) {
   const t = useTranslations("VenueLogin");
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -48,6 +53,8 @@ export function VenueLoginForm() {
   const [submissionError, setSubmissionError] = useState<VenueLoginErrorKind>();
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(
     () => () => {
@@ -80,7 +87,8 @@ export function VenueLoginForm() {
 
     try {
       const loginResult = await loginVenue(result.payload, abortController.signal);
-      form.reset();
+      setEmail("");
+      setPassword("");
       setSubmissionState("redirecting");
       router.replace(`/panel?locale=${encodeURIComponent(loginResult.preferredLocale)}`);
     } catch (error) {
@@ -116,6 +124,13 @@ export function VenueLoginForm() {
 
   const submitting = submissionState !== "idle";
 
+  function useLocalAzaharAccount() {
+    setEmail(localAzaharCredentials.email);
+    setPassword(localAzaharCredentials.password);
+    setFieldErrors({});
+    setSubmissionError(undefined);
+  }
+
   return (
     <Stack
       component="form"
@@ -137,6 +152,19 @@ export function VenueLoginForm() {
         </Alert>
       ) : null}
 
+      {localEnvironment ? (
+        <Alert
+          action={
+            <Button color="inherit" onClick={useLocalAzaharAccount} type="button">
+              {t("development.useAzahar")}
+            </Button>
+          }
+          severity="info"
+        >
+          {t("development.description")}
+        </Alert>
+      ) : null}
+
       <Stack spacing={{ xs: 3, sm: 4 }}>
         <TextField
           autoComplete="email"
@@ -146,11 +174,15 @@ export function VenueLoginForm() {
           helperText={fieldErrors.email ? t(fieldErrorKeys[fieldErrors.email]) : undefined}
           label={t("fields.email.label")}
           name="email"
-          onChange={() => clearFieldError("email")}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            clearFieldError("email");
+          }}
           required
           slotProps={{ htmlInput: { maxLength: 320 } }}
           sx={{ "& .MuiOutlinedInput-root": { minHeight: 48 } }}
           type="email"
+          value={email}
         />
         <TextField
           autoComplete="current-password"
@@ -159,7 +191,10 @@ export function VenueLoginForm() {
           helperText={fieldErrors.password ? t(fieldErrorKeys[fieldErrors.password]) : undefined}
           label={t("fields.password.label")}
           name="password"
-          onChange={() => clearFieldError("password")}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            clearFieldError("password");
+          }}
           required
           slotProps={{
             input: {
@@ -187,6 +222,7 @@ export function VenueLoginForm() {
           }}
           sx={{ "& .MuiOutlinedInput-root": { minHeight: 48 } }}
           type={showPassword ? "text" : "password"}
+          value={password}
         />
         <Link
           component={NavigationLink}

@@ -21,6 +21,7 @@ const assignments = [
     venueName: "Ames Padel Center",
     venueSlug: "ames-padel-center",
     email: "reservas@ames.local",
+    panelAccessConfigured: false,
     updatedAt: "2026-08-02T20:00:00Z",
   },
   {
@@ -28,6 +29,7 @@ const assignments = [
     venueName: "Brisa Studio",
     venueSlug: "brisa-studio",
     email: "reservas@brisa.local",
+    panelAccessConfigured: true,
     updatedAt: "2026-08-02T20:00:00Z",
   },
 ];
@@ -43,8 +45,9 @@ describe("VenueEmailManager", () => {
 
     expect(await screen.findByRole("heading", { name: "Ames Padel Center" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Brisa Studio" })).toBeVisible();
-    expect(screen.getAllByRole("textbox", { name: /Email de notificaciones/ })).toHaveLength(2);
-  });
+    expect(screen.getAllByRole("textbox", { name: /Email de acceso/ })).toHaveLength(2);
+    expect(screen.getAllByLabelText(/Contraseña del panel/)).toHaveLength(2);
+  }, 15_000);
 
   it("guarda el email del local elegido y confirma el resultado", async () => {
     vi.mocked(updateVenueEmailAssignment).mockImplementation(async (venueId, email) => ({
@@ -54,16 +57,20 @@ describe("VenueEmailManager", () => {
     }));
     renderWithIntl(<VenueEmailManager />);
 
-    const fields = await screen.findAllByRole("textbox", { name: /Email de notificaciones/ });
+    const fields = await screen.findAllByRole("textbox", { name: /Email de acceso/ });
     fireEvent.change(fields[0], { target: { value: "equipo@ames.local" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Guardar email" })[0]);
+    fireEvent.change(screen.getAllByLabelText(/Contraseña del panel/)[0], {
+      target: { value: "UnaClaveSegura2026!" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Crear acceso" })[0]);
 
     await waitFor(() =>
       expect(updateVenueEmailAssignment).toHaveBeenCalledWith(
         assignments[0].venueId,
         "equipo@ames.local",
+        "UnaClaveSegura2026!",
       ),
     );
-    expect(await screen.findByText(/Ames Padel Center se ha actualizado/)).toBeVisible();
-  });
+    expect(await screen.findByText(/email de Ames Padel Center se han actualizado/)).toBeVisible();
+  }, 15_000);
 });

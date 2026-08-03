@@ -27,7 +27,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
       @Param("toDate") LocalDate toDate);
 
   /**
-   * Regenera una fecha para todos los locales desde reservas, franjas y reseñas.
+   * Regenera una fecha para todos los locales desde reservas, franjas, reseñas e incidencias.
    *
    * <p>Una reserva contabilizable ya recopiló identidad y conserva uno de los estados posteriores a
    * la confirmación. Las canceladas forman parte del total, pero no de la ocupación. {@code
@@ -98,6 +98,16 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             WHERE review."createdAt" >= :dayStart
               AND review."createdAt" < :dayEnd
             GROUP BY review."venueId"
+          ),
+          incidentStats AS (
+            SELECT
+              incident."venueId" AS "venueId",
+              COUNT(*) AS "incidentsCount"
+            FROM "NoShowIncidents" incident
+            WHERE incident."reportedAt" >= :dayStart
+              AND incident."reportedAt" < :dayEnd
+              AND incident."status" IN ('reported', 'confirmed')
+            GROUP BY incident."venueId"
           )
           INSERT INTO "StatsDailyVenue" (
             "id",
@@ -111,6 +121,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             "occupiedCapacity",
             "availableCapacity",
             "reviewsCount",
+            "incidentsCount",
             "averageRating",
             "createdAt",
             "updatedAt"
@@ -127,6 +138,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             COALESCE(reservationStats."occupiedCapacity", 0),
             COALESCE(capacityStats."availableCapacity", 0),
             COALESCE(reviewStats."reviewsCount", 0),
+            COALESCE(incidentStats."incidentsCount", 0),
             reviewStats."averageRating",
             :calculatedAt,
             :calculatedAt
@@ -134,6 +146,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
           LEFT JOIN reservationStats ON reservationStats."venueId" = venue."id"
           LEFT JOIN capacityStats ON capacityStats."venueId" = venue."id"
           LEFT JOIN reviewStats ON reviewStats."venueId" = venue."id"
+          LEFT JOIN incidentStats ON incidentStats."venueId" = venue."id"
           ON CONFLICT ("venueId", "date") DO UPDATE SET
             "reservationsCount" = EXCLUDED."reservationsCount",
             "confirmedCount" = EXCLUDED."confirmedCount",
@@ -143,6 +156,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             "occupiedCapacity" = EXCLUDED."occupiedCapacity",
             "availableCapacity" = EXCLUDED."availableCapacity",
             "reviewsCount" = EXCLUDED."reviewsCount",
+            "incidentsCount" = EXCLUDED."incidentsCount",
             "averageRating" = EXCLUDED."averageRating",
             "updatedAt" = EXCLUDED."updatedAt"
           """,
@@ -157,7 +171,8 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
    * Recalcula en una sola sentencia un rango inclusivo de un único local autenticado.
    *
    * <p>{@code generate_series} produce también días sin actividad. La zona IANA convierte los
-   * instantes de reseñas a su fecha local; reservas y franjas ya guardan una fecha snapshot.
+   * instantes de reseñas e incidencias a su fecha local; reservas y franjas ya guardan una fecha
+   * snapshot.
    *
    * @return número de días insertados o actualizados
    */
@@ -232,7 +247,18 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             WHERE review."venueId" = :venueId
               AND CAST(review."createdAt" AT TIME ZONE :zoneId AS date)
                 BETWEEN :fromDate AND :toDate
-            GROUP BY CAST(review."createdAt" AT TIME ZONE :zoneId AS date)
+            GROUP BY 1
+          ),
+          incidentStats AS (
+            SELECT
+              CAST(incident."reportedAt" AT TIME ZONE :zoneId AS date) AS "date",
+              COUNT(*) AS "incidentsCount"
+            FROM "NoShowIncidents" incident
+            WHERE incident."venueId" = :venueId
+              AND incident."status" IN ('reported', 'confirmed')
+              AND CAST(incident."reportedAt" AT TIME ZONE :zoneId AS date)
+                BETWEEN :fromDate AND :toDate
+            GROUP BY 1
           )
           INSERT INTO "StatsDailyVenue" (
             "id",
@@ -246,6 +272,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             "occupiedCapacity",
             "availableCapacity",
             "reviewsCount",
+            "incidentsCount",
             "averageRating",
             "createdAt",
             "updatedAt"
@@ -262,6 +289,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             COALESCE(reservationStats."occupiedCapacity", 0),
             COALESCE(capacityStats."availableCapacity", 0),
             COALESCE(reviewStats."reviewsCount", 0),
+            COALESCE(incidentStats."incidentsCount", 0),
             reviewStats."averageRating",
             :calculatedAt,
             :calculatedAt
@@ -269,6 +297,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
           LEFT JOIN reservationStats ON reservationStats."date" = dates."date"
           LEFT JOIN capacityStats ON capacityStats."date" = dates."date"
           LEFT JOIN reviewStats ON reviewStats."date" = dates."date"
+          LEFT JOIN incidentStats ON incidentStats."date" = dates."date"
           ON CONFLICT ("venueId", "date") DO UPDATE SET
             "reservationsCount" = EXCLUDED."reservationsCount",
             "confirmedCount" = EXCLUDED."confirmedCount",
@@ -278,6 +307,7 @@ public interface StatsDailyVenueDao extends JpaRepository<StatsDailyVenueEntity,
             "occupiedCapacity" = EXCLUDED."occupiedCapacity",
             "availableCapacity" = EXCLUDED."availableCapacity",
             "reviewsCount" = EXCLUDED."reviewsCount",
+            "incidentsCount" = EXCLUDED."incidentsCount",
             "averageRating" = EXCLUDED."averageRating",
             "updatedAt" = EXCLUDED."updatedAt"
           """,

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
+import com.reserly.platform.reservations.service.ReservationOperationalWindow;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,7 +29,8 @@ class AttendanceServiceTests {
 
   private final ReservationDao reservationDao = mock(ReservationDao.class);
   private final Clock clock = Clock.fixed(NOW, ZoneId.of("Europe/Madrid"));
-  private final AttendanceService service = new AttendanceServiceImpl(reservationDao, clock);
+  private final AttendanceService service =
+      new AttendanceServiceImpl(reservationDao, clock, new ReservationOperationalWindow(clock));
 
   @BeforeEach
   void returnSavedReservation() {
@@ -37,10 +39,10 @@ class AttendanceServiceTests {
   }
 
   @Test
-  void marksFinishedReservationAttendedWithAuditInstant() {
+  void marksReservationAttendedDuringOperationalHourWithAuditInstant() {
     UUID ownerId = UUID.randomUUID();
-    ReservationEntity reservation = finishedReservation("confirmed");
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservation.getId()))
+    ReservationEntity reservation = operationalReservation("confirmed");
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
         .thenReturn(Optional.of(reservation));
 
     ReservationEntity updated =
@@ -53,35 +55,31 @@ class AttendanceServiceTests {
   }
 
   @Test
-  void marksNoShowWithoutCreatingIncidentAndCanRestorePending() {
+  void marksNoShowWithoutCreatingIncident() {
     UUID ownerId = UUID.randomUUID();
-    ReservationEntity reservation = finishedReservation("confirmed");
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservation.getId()))
+    ReservationEntity reservation = operationalReservation("confirmed");
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
         .thenReturn(Optional.of(reservation));
 
     service.update(ownerId, reservation.getId(), new AttendanceUpdateRequest("no_show"));
     assertThat(reservation.getStatus()).isEqualTo("no_show");
     assertThat(reservation.getAttendanceMarkedAt()).isEqualTo(NOW);
-
-    service.update(ownerId, reservation.getId(), new AttendanceUpdateRequest("pending"));
-    assertThat(reservation.getStatus()).isEqualTo("confirmed");
-    assertThat(reservation.getAttendanceMarkedAt()).isEqualTo(NOW);
   }
 
   @Test
-  void rejectsReservationBeforeEndWithoutMutation() {
+  void rejectsReservationBeforeStartWithoutMutation() {
     UUID ownerId = UUID.randomUUID();
-    ReservationEntity reservation = finishedReservation("confirmed");
+    ReservationEntity reservation = operationalReservation("confirmed");
     reservation.setDate(LocalDate.of(2026, 7, 27));
-    reservation.setEndsAt(LocalTime.of(15, 0));
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, reservation.getId()))
+    reservation.setStartsAt(LocalTime.of(15, 0));
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
         .thenReturn(Optional.of(reservation));
 
     assertThatThrownBy(
             () ->
                 service.update(
                     ownerId, reservation.getId(), new AttendanceUpdateRequest("attended")))
-        .isInstanceOf(AttendanceTooEarlyException.class);
+        .isInstanceOf(AttendanceInvalidException.class);
 
     assertThat(reservation.getStatus()).isEqualTo("confirmed");
     verify(reservationDao, never()).saveAndFlush(any());
@@ -91,7 +89,7 @@ class AttendanceServiceTests {
   void rejectsForeignReservationAndNonMarkableState() {
     UUID ownerId = UUID.randomUUID();
     UUID missingReservationId = UUID.randomUUID();
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, missingReservationId))
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, missingReservationId))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(
@@ -100,8 +98,8 @@ class AttendanceServiceTests {
                     ownerId, missingReservationId, new AttendanceUpdateRequest("attended")))
         .isInstanceOf(AttendanceNotFoundException.class);
 
-    ReservationEntity cancelled = finishedReservation("cancelled_by_user");
-    when(reservationDao.findOwnedForAttendanceUpdate(ownerId, cancelled.getId()))
+    ReservationEntity cancelled = operationalReservation("cancelled_by_user");
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, cancelled.getId()))
         .thenReturn(Optional.of(cancelled));
     assertThatThrownBy(
             () ->
@@ -109,13 +107,29 @@ class AttendanceServiceTests {
         .isInstanceOf(AttendanceInvalidException.class);
   }
 
-  private ReservationEntity finishedReservation(String status) {
+  @Test
+  void rejectsReservationWhenOperationalHourHasElapsed() {
+    UUID ownerId = UUID.randomUUID();
+    ReservationEntity reservation = operationalReservation("confirmed");
+    reservation.setStartsAt(LocalTime.of(12, 59));
+    when(reservationDao.findAccessibleForAttendanceUpdate(ownerId, reservation.getId()))
+        .thenReturn(Optional.of(reservation));
+
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    ownerId, reservation.getId(), new AttendanceUpdateRequest("no_show")))
+        .isInstanceOf(AttendanceInvalidException.class);
+    verify(reservationDao, never()).saveAndFlush(any());
+  }
+
+  private ReservationEntity operationalReservation(String status) {
     ReservationEntity reservation = new ReservationEntity();
     reservation.setId(UUID.randomUUID());
     reservation.setCustomerEmail("customer@example.com");
-    reservation.setDate(LocalDate.of(2026, 7, 26));
-    reservation.setStartsAt(LocalTime.of(10, 0));
-    reservation.setEndsAt(LocalTime.of(11, 0));
+    reservation.setDate(LocalDate.of(2026, 7, 27));
+    reservation.setStartsAt(LocalTime.of(13, 30));
+    reservation.setEndsAt(LocalTime.of(14, 30));
     reservation.setStatus(status);
     return reservation;
   }

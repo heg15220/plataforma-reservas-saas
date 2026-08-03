@@ -11,6 +11,8 @@ export function reservationList() {
         startsAt: "10:00:00",
         endsAt: "11:00:00",
         status: "confirmed",
+        manualActionsAvailable: true,
+        incidentRiskLevel: "watch" as const,
         createdAt: "2026-07-25T09:00:00Z",
       },
     ],

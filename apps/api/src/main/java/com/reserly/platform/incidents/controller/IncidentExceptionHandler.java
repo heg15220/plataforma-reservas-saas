@@ -3,7 +3,6 @@ package com.reserly.platform.incidents.controller;
 import com.reserly.platform.incidents.dto.IncidentErrorResponse;
 import com.reserly.platform.incidents.service.AttendanceInvalidException;
 import com.reserly.platform.incidents.service.AttendanceNotFoundException;
-import com.reserly.platform.incidents.service.AttendanceTooEarlyException;
 import com.reserly.platform.incidents.service.IncidentHistoryInvalidException;
 import com.reserly.platform.incidents.service.IncidentHistoryNotFoundException;
 import com.reserly.platform.incidents.service.NoShowReportInvalidException;
@@ -49,12 +48,6 @@ public class IncidentExceptionHandler {
   ResponseEntity<IncidentErrorResponse> attendanceNotFound() {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(new IncidentErrorResponse("VENUE_RESERVATION_NOT_FOUND"));
-  }
-
-  @ExceptionHandler(AttendanceTooEarlyException.class)
-  ResponseEntity<IncidentErrorResponse> attendanceTooEarly() {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new IncidentErrorResponse("ATTENDANCE_RESERVATION_NOT_FINISHED"));
   }
 
   @ExceptionHandler(AttendanceInvalidException.class)

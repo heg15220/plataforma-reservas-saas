@@ -11,7 +11,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { Ban, Check, Clock3, ShieldAlert, UserX } from "lucide-react";
+import { Ban, Check, ShieldAlert, UserX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -47,7 +47,7 @@ export function VenueReservationActions({
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const markable = ["confirmed", "attended", "no_show"].includes(detail.status);
+  const markable = detail.status === "confirmed" && detail.manualActionsAvailable;
 
   async function mark(status: AttendanceStatus) {
     setBusy(status);
@@ -94,7 +94,7 @@ export function VenueReservationActions({
     }
   }
 
-  if (!markable && detail.status !== "confirmed") return null;
+  if (!markable && detail.status !== "no_show") return null;
 
   return (
     <Surface component="section">
@@ -131,14 +131,6 @@ export function VenueReservationActions({
             >
               {t("attendance.noShow")}
             </Button>
-            <Button
-              disabled={busy !== null}
-              onClick={() => void mark("pending")}
-              startIcon={<Clock3 aria-hidden="true" size={18} />}
-              variant="outlined"
-            >
-              {t("attendance.pending")}
-            </Button>
           </Stack>
         )}
 
@@ -155,7 +147,7 @@ export function VenueReservationActions({
               {t("report.open")}
             </Button>
           )}
-          {detail.status === "confirmed" && (
+          {markable && (
             <Button
               color="error"
               disabled={busy !== null}

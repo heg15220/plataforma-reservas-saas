@@ -11,4 +11,5 @@ public record ServiceCommand(
     int durationMinutes,
     int capacityRequired,
     boolean active,
-    Boolean allowsAnyAvailableResource) {}
+    Boolean allowsAnyAvailableResource,
+    String bookingMode) {}

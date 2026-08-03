@@ -19,9 +19,10 @@ import { Surface } from "@/components/layout";
 
 import {
   deleteGalleryImage,
+  deleteVenueProfile,
   fetchVenueCategories,
   fetchVenueGallery,
-  fetchVenueProfile,
+  fetchVenueProfiles,
   publishVenueProfile,
   resolveVenueAssetUrl,
   saveVenueProfile,
@@ -36,7 +37,13 @@ import {
 import { parseVenueProfileForm, type VenueProfileFieldErrors } from "./venue-profile-schema";
 
 type LoadState = "loading" | "ready" | "error";
-type SubmitState = "idle" | "saving" | "publishing" | "uploadingMain" | "uploadingGallery";
+type SubmitState =
+  | "idle"
+  | "saving"
+  | "publishing"
+  | "uploadingMain"
+  | "uploadingGallery"
+  | "deleting";
 type PendingGalleryImage = {
   id: string;
   file: File;
@@ -62,6 +69,8 @@ export function VenueProfileEditor() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [profile, setProfile] = useState<VenueProfile | null>(null);
+  const [profiles, setProfiles] = useState<VenueProfile[]>([]);
+  const [canCreateAdditionalVenue, setCanCreateAdditionalVenue] = useState(false);
   const [categories, setCategories] = useState<VenueCategory[]>([]);
   const [gallery, setGallery] = useState<VenueGalleryImage[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -75,18 +84,23 @@ export function VenueProfileEditor() {
   const [selectedMainImage, setSelectedMainImage] = useState<File | null>(null);
   const [mainImagePreviewUrl, setMainImagePreviewUrl] = useState<string | null>(null);
   const [pendingGalleryImages, setPendingGalleryImages] = useState<PendingGalleryImage[]>([]);
+  const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
       setLoadState("loading");
       setApiError(null);
       try {
-        const [nextCategories, nextProfile] = await Promise.all([
+        const [nextCategories, profilesResult] = await Promise.all([
           fetchVenueCategories(locale, signal),
-          fetchVenueProfile(signal),
+          fetchVenueProfiles(signal),
         ]);
-        const nextGallery = nextProfile ? await fetchVenueGallery(signal) : [];
+        const nextProfiles = profilesResult.profiles;
+        const nextProfile = nextProfiles[0] ?? null;
+        const nextGallery = nextProfile ? await fetchVenueGallery(nextProfile.id, signal) : [];
         setCategories(nextCategories);
+        setProfiles(nextProfiles);
+        setCanCreateAdditionalVenue(profilesResult.canCreateAdditionalVenue);
         setProfile(nextProfile);
         setGallery(nextGallery);
         setSelectedCategoryId(nextProfile?.categoryId ?? nextCategories[0]?.id ?? "");
@@ -144,8 +158,14 @@ export function VenueProfileEditor() {
     setSaved(false);
     setPublishedSuccessfully(false);
     try {
-      const nextProfile = await saveVenueProfile(result.payload, Boolean(profile));
+      const nextProfile = await saveVenueProfile(result.payload, profile?.id ?? null);
       setProfile(nextProfile);
+      setProfiles((current) => {
+        const exists = current.some((candidate) => candidate.id === nextProfile.id);
+        return exists
+          ? current.map((candidate) => (candidate.id === nextProfile.id ? nextProfile : candidate))
+          : [...current, nextProfile];
+      });
       setShowEmail(nextProfile.showEmail);
       setShowPhone(nextProfile.showPhone);
       setSaved(true);
@@ -165,7 +185,14 @@ export function VenueProfileEditor() {
     setSaved(false);
     setPublishedSuccessfully(false);
     try {
-      setProfile(await publishVenueProfile());
+      if (!profile) {
+        return;
+      }
+      const nextProfile = await publishVenueProfile(profile.id);
+      setProfile(nextProfile);
+      setProfiles((current) =>
+        current.map((candidate) => (candidate.id === nextProfile.id ? nextProfile : candidate)),
+      );
       setPublishedSuccessfully(true);
     } catch (error) {
       setApiError(toApiError(error));
@@ -182,7 +209,14 @@ export function VenueProfileEditor() {
     setSubmitState("uploadingMain");
     setApiError(null);
     try {
-      setProfile(await uploadMainImage(file));
+      if (!profile) {
+        return;
+      }
+      const nextProfile = await uploadMainImage(profile.id, file);
+      setProfile(nextProfile);
+      setProfiles((current) =>
+        current.map((candidate) => (candidate.id === nextProfile.id ? nextProfile : candidate)),
+      );
       setSelectedMainImage(null);
       setMainImagePreviewUrl(null);
       if (mainImageFileRef.current) {
@@ -218,7 +252,14 @@ export function VenueProfileEditor() {
     setApiError(null);
     try {
       for (const pendingImage of pendingGalleryImages) {
-        const image = await uploadGalleryImage(pendingImage.file, pendingImage.altText.trim());
+        if (!profile) {
+          return;
+        }
+        const image = await uploadGalleryImage(
+          profile.id,
+          pendingImage.file,
+          pendingImage.altText.trim(),
+        );
         setGallery((current) => [...current, image].sort((a, b) => a.position - b.position));
         setPendingGalleryImages((current) =>
           current.filter((candidate) => candidate.id !== pendingImage.id),
@@ -264,15 +305,76 @@ export function VenueProfileEditor() {
   }
 
   async function handleGalleryDelete(imageId: string) {
-    if (submitState !== "idle") {
+    if (submitState !== "idle" || !profile) {
       return;
     }
     setApiError(null);
     try {
-      await deleteGalleryImage(imageId);
+      await deleteGalleryImage(profile.id, imageId);
       setGallery((current) => current.filter((image) => image.id !== imageId));
     } catch (error) {
       setApiError(toApiError(error));
+    }
+  }
+
+  /** Cambia de ficha y descarta únicamente selecciones locales aún no subidas. */
+  async function handleVenueSelection(venueId: string) {
+    const nextProfile = profiles.find((candidate) => candidate.id === venueId);
+    if (!nextProfile || submitState !== "idle") {
+      return;
+    }
+    setProfile(nextProfile);
+    resetEditorState(nextProfile);
+    setGallery([]);
+    try {
+      setGallery(await fetchVenueGallery(nextProfile.id));
+    } catch (error) {
+      setApiError(toApiError(error));
+    }
+  }
+
+  function handleCreateVenue() {
+    if (submitState !== "idle") {
+      return;
+    }
+    setProfile(null);
+    resetEditorState(null);
+    setGallery([]);
+  }
+
+  function resetEditorState(nextProfile: VenueProfile | null) {
+    setSelectedCategoryId(nextProfile?.categoryId ?? categories[0]?.id ?? "");
+    setSelectedDefaultLocale(nextProfile?.defaultLocale ?? (locale === "en" ? "en" : "es"));
+    setShowEmail(nextProfile?.showEmail ?? false);
+    setShowPhone(nextProfile?.showPhone ?? false);
+    setFieldErrors({});
+    setApiError(null);
+    setSaved(false);
+    setPublishedSuccessfully(false);
+    setSelectedMainImage(null);
+    setMainImagePreviewUrl(null);
+    setPendingGalleryImages([]);
+    setDeleteConfirmationVisible(false);
+  }
+
+  async function handleVenueDelete() {
+    if (!profile || submitState !== "idle") {
+      return;
+    }
+    setSubmitState("deleting");
+    setApiError(null);
+    try {
+      await deleteVenueProfile(profile.id);
+      const remaining = profiles.filter((candidate) => candidate.id !== profile.id);
+      setProfiles(remaining);
+      const nextProfile = remaining[0] ?? null;
+      setProfile(nextProfile);
+      resetEditorState(nextProfile);
+      setGallery(nextProfile ? await fetchVenueGallery(nextProfile.id) : []);
+    } catch (error) {
+      setApiError(toApiError(error));
+    } finally {
+      setSubmitState("idle");
     }
   }
 
@@ -325,8 +427,83 @@ export function VenueProfileEditor() {
   const displayedMainImageUrl = mainImagePreviewUrl ?? mainImageUrl;
 
   return (
-    <Box component="form" noValidate onSubmit={handleSave} ref={formRef}>
+    <Box
+      component="form"
+      key={profile?.id ?? "new-venue"}
+      noValidate
+      onSubmit={handleSave}
+      ref={formRef}
+    >
       <Stack spacing={{ xs: 5, md: 6 }}>
+        {canCreateAdditionalVenue || profiles.length > 1 ? (
+          <Surface>
+            <Stack spacing={3}>
+              <SectionTitle title={t("management.title")} body={t("management.body")} />
+              <TextField
+                disabled={submitState !== "idle" || profiles.length === 0}
+                fullWidth
+                label={t("management.selector")}
+                onChange={(event) => void handleVenueSelection(event.target.value)}
+                select
+                value={profile?.id ?? ""}
+              >
+                {!profile ? (
+                  <MenuItem disabled value="">
+                    {t("management.newVenue")}
+                  </MenuItem>
+                ) : null}
+                {profiles.map((candidate) => (
+                  <MenuItem key={candidate.id} value={candidate.id}>
+                    {candidate.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                {canCreateAdditionalVenue ? (
+                  <Button onClick={handleCreateVenue} type="button" variant="outlined">
+                    {t("management.create")}
+                  </Button>
+                ) : null}
+                {profile ? (
+                  <Button
+                    color="error"
+                    onClick={() => setDeleteConfirmationVisible(true)}
+                    startIcon={<Trash2 size={16} />}
+                    type="button"
+                    variant="outlined"
+                  >
+                    {t("management.delete")}
+                  </Button>
+                ) : null}
+              </Stack>
+              {deleteConfirmationVisible && profile ? (
+                <Alert severity="warning">
+                  <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
+                    <Typography>
+                      {t("management.deleteConfirmation", { name: profile.name })}
+                    </Typography>
+                    <Stack direction="row" spacing={2}>
+                      <Button onClick={() => setDeleteConfirmationVisible(false)} type="button">
+                        {t("management.cancel")}
+                      </Button>
+                      <Button
+                        color="error"
+                        disabled={submitState !== "idle"}
+                        onClick={() => void handleVenueDelete()}
+                        type="button"
+                        variant="contained"
+                      >
+                        {submitState === "deleting"
+                          ? t("management.deleting")
+                          : t("management.confirmDelete")}
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Alert>
+              ) : null}
+            </Stack>
+          </Surface>
+        ) : null}
         {apiError ? (
           <Alert aria-live="assertive" severity="error">
             {apiErrorMessage(t, apiError.kind)}

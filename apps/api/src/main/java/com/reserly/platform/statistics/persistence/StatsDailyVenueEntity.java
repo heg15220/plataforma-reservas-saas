@@ -18,9 +18,9 @@ import java.util.UUID;
 /**
  * Instantánea diaria precalculada de un local.
  *
- * <p>Los contadores se regeneran desde las fuentes transaccionales. {@code availableCapacity}
- * representa la capacidad total ofertada y sirve como denominador de ocupación; no es capacidad
- * restante.
+ * <p>Los contadores se regeneran desde las fuentes transaccionales sin copiar identidades. {@code
+ * availableCapacity} representa la capacidad total ofertada y sirve como denominador de ocupación;
+ * no es capacidad restante.
  */
 @Entity
 @Table(name = "\"StatsDailyVenue\"")
@@ -37,6 +37,7 @@ public class StatsDailyVenueEntity {
   private long occupiedCapacity;
   private long availableCapacity;
   private long reviewsCount;
+  private long incidentsCount;
   private BigDecimal averageRating;
   private Instant createdAt;
   private Instant updatedAt;
@@ -142,6 +143,16 @@ public class StatsDailyVenueEntity {
 
   public void setReviewsCount(long value) {
     reviewsCount = value;
+  }
+
+  /** Número agregado de incidencias operativas activadas durante la fecha. */
+  @Column(name = "\"incidentsCount\"", nullable = false)
+  public long getIncidentsCount() {
+    return incidentsCount;
+  }
+
+  public void setIncidentsCount(long value) {
+    incidentsCount = value;
   }
 
   @Column(name = "\"averageRating\"", precision = 3, scale = 2)

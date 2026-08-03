@@ -47,6 +47,17 @@ public interface EmployeeResourceDao extends JpaRepository<EmployeeResourceEntit
   Optional<EmployeeResourceEntity> findOwnedHistoricalReference(
       @Param("ownerUserId") UUID ownerUserId, @Param("resourceId") UUID resourceId);
 
+  /** Recupera el recurso histórico después de autorizar la reserva y su local. */
+  @Query(
+      """
+      select resource
+      from EmployeeResourceEntity resource
+      where resource.id = :resourceId
+        and resource.venue.id = :venueId
+      """)
+  Optional<EmployeeResourceEntity> findHistoricalReferenceByVenueId(
+      @Param("venueId") UUID venueId, @Param("resourceId") UUID resourceId);
+
   @Query(
       """
       select resource from EmployeeResourceEntity resource
@@ -69,4 +80,16 @@ public interface EmployeeResourceDao extends JpaRepository<EmployeeResourceEntit
       """)
   Optional<EmployeeResourceEntity> findOwnedForUpdate(
       @Param("ownerUserId") UUID ownerUserId, @Param("resourceId") UUID resourceId);
+
+  /** Serializa reservas concurrentes del mismo profesional, incluso si usan franjas distintas. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select resource from EmployeeResourceEntity resource
+      where resource.id = :resourceId
+        and resource.venue.id = :venueId
+        and resource.status = 'active'
+      """)
+  Optional<EmployeeResourceEntity> findActiveByVenueIdForUpdate(
+      @Param("venueId") UUID venueId, @Param("resourceId") UUID resourceId);
 }

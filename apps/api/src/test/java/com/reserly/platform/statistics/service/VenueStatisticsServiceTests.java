@@ -38,13 +38,13 @@ class VenueStatisticsServiceTests {
     when(venueDao.findCurrentByOwnerUserId(OWNER_ID)).thenReturn(Optional.of(venue));
     List<StatsDailyVenueEntity> days =
         List.of(
-            stats(LocalDate.of(2026, 7, 1), 4, 3, 1, 1, 2, 6, 10, 1, "5.00"),
-            stats(LocalDate.of(2026, 7, 2), 6, 5, 1, 2, 3, 9, 20, 3, "3.00"));
+            stats(LocalDate.of(2026, 7, 1), 4, 3, 1, 1, 2, 6, 10, 1, 2, "5.00"),
+            stats(LocalDate.of(2026, 7, 2), 6, 5, 1, 2, 3, 9, 20, 3, 1, "3.00"));
     when(statsDao.findRange(VENUE_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 29)))
         .thenReturn(days);
     var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
 
-    var response = service.findOwned(OWNER_ID, "month", null, null);
+    var response = service.findOwned(OWNER_ID, null, "month", null, null);
 
     assertThat(response.period()).isEqualTo("month");
     assertThat(response.fromDate()).isEqualTo("2026-07-01");
@@ -56,6 +56,7 @@ class VenueStatisticsServiceTests {
     assertThat(response.attendedCount()).isEqualTo(5);
     assertThat(response.occupancyRate()).isEqualByComparingTo("50.0");
     assertThat(response.reviewsCount()).isEqualTo(4);
+    assertThat(response.incidentsCount()).isEqualTo(3);
     assertThat(response.averageRating()).isEqualByComparingTo("3.50");
     assertThat(response.series()).hasSize(2);
     verify(statsDao)
@@ -77,11 +78,15 @@ class VenueStatisticsServiceTests {
         .thenReturn(List.of());
     var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
 
-    assertThat(service.findOwned(OWNER_ID, "today", null, null).fromDate()).isEqualTo("2026-07-29");
-    assertThat(service.findOwned(OWNER_ID, "week", null, null).fromDate()).isEqualTo("2026-07-27");
-    assertThat(service.findOwned(OWNER_ID, "year", null, null).fromDate()).isEqualTo("2026-01-01");
+    assertThat(service.findOwned(OWNER_ID, null, "today", null, null).fromDate())
+        .isEqualTo("2026-07-29");
+    assertThat(service.findOwned(OWNER_ID, null, "week", null, null).fromDate())
+        .isEqualTo("2026-07-27");
+    assertThat(service.findOwned(OWNER_ID, null, "year", null, null).fromDate())
+        .isEqualTo("2026-01-01");
     var custom =
-        service.findOwned(OWNER_ID, "custom", LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30));
+        service.findOwned(
+            OWNER_ID, null, "custom", LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30));
     assertThat(custom.fromDate()).isEqualTo("2026-06-01");
     assertThat(custom.toDate()).isEqualTo("2026-06-30");
     assertThat(custom.occupancyRate()).isEqualByComparingTo("0.0");
@@ -94,22 +99,22 @@ class VenueStatisticsServiceTests {
     StatsDailyVenueDao statsDao = mock(StatsDailyVenueDao.class);
     var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
 
-    assertThatThrownBy(() -> service.findOwned(OWNER_ID, "unknown", null, null))
+    assertThatThrownBy(() -> service.findOwned(OWNER_ID, null, "unknown", null, null))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     assertThatThrownBy(
             () ->
                 service.findOwned(
-                    OWNER_ID, "custom", LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 2)))
+                    OWNER_ID, null, "custom", LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 2)))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     assertThatThrownBy(
             () ->
                 service.findOwned(
-                    OWNER_ID, "custom", LocalDate.of(2026, 7, 2), LocalDate.of(2026, 7, 1)))
+                    OWNER_ID, null, "custom", LocalDate.of(2026, 7, 2), LocalDate.of(2026, 7, 1)))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     assertThatThrownBy(
             () ->
                 service.findOwned(
-                    OWNER_ID, "today", LocalDate.of(2026, 7, 29), LocalDate.of(2026, 7, 29)))
+                    OWNER_ID, null, "today", LocalDate.of(2026, 7, 29), LocalDate.of(2026, 7, 29)))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
     verifyNoInteractions(venueDao, statsDao);
   }
@@ -121,9 +126,30 @@ class VenueStatisticsServiceTests {
     when(venueDao.findCurrentByOwnerUserId(OWNER_ID)).thenReturn(Optional.empty());
     var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
 
-    assertThatThrownBy(() -> service.findOwned(OWNER_ID, "today", null, null))
+    assertThatThrownBy(() -> service.findOwned(OWNER_ID, null, "today", null, null))
         .isInstanceOf(VenueStatisticsNotFoundException.class);
     verifyNoInteractions(statsDao);
+  }
+
+  @Test
+  void resolvesAnExplicitAccessibleVenueAndHidesAnInaccessibleOne() {
+    VenueDao venueDao = mock(VenueDao.class);
+    StatsDailyVenueDao statsDao = mock(StatsDailyVenueDao.class);
+    VenueEntity venue = new VenueEntity();
+    venue.setId(VENUE_ID);
+    when(venueDao.findAccessibleById(OWNER_ID, VENUE_ID)).thenReturn(Optional.of(venue));
+    when(statsDao.findRange(VENUE_ID, LocalDate.of(2026, 7, 29), LocalDate.of(2026, 7, 29)))
+        .thenReturn(List.of());
+    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
+
+    assertThat(service.findOwned(OWNER_ID, VENUE_ID, "today", null, null).period())
+        .isEqualTo("today");
+    verify(venueDao).findAccessibleById(OWNER_ID, VENUE_ID);
+
+    UUID inaccessibleVenueId = UUID.randomUUID();
+    when(venueDao.findAccessibleById(OWNER_ID, inaccessibleVenueId)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.findOwned(OWNER_ID, inaccessibleVenueId, "today", null, null))
+        .isInstanceOf(VenueStatisticsNotFoundException.class);
   }
 
   private StatsDailyVenueEntity stats(
@@ -136,6 +162,7 @@ class VenueStatisticsServiceTests {
       long occupied,
       long available,
       long reviews,
+      long incidents,
       String average) {
     StatsDailyVenueEntity result = new StatsDailyVenueEntity();
     result.setDate(date);
@@ -147,6 +174,7 @@ class VenueStatisticsServiceTests {
     result.setOccupiedCapacity(occupied);
     result.setAvailableCapacity(available);
     result.setReviewsCount(reviews);
+    result.setIncidentsCount(incidents);
     result.setAverageRating(new BigDecimal(average));
     return result;
   }

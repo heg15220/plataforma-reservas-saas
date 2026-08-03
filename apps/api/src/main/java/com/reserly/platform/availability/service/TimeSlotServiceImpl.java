@@ -9,6 +9,8 @@ import com.reserly.platform.availability.persistence.TimeSlotEntity;
 import com.reserly.platform.availability.persistence.VenueOpeningHourDao;
 import com.reserly.platform.availability.persistence.VenueOpeningHourEntity;
 import com.reserly.platform.reservations.persistence.ReservationDao;
+import com.reserly.platform.services.persistence.ServiceDao;
+import com.reserly.platform.services.persistence.ServiceEntity;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
@@ -34,18 +36,21 @@ public class TimeSlotServiceImpl implements TimeSlotService {
   private final AvailabilityBlockDao availabilityBlockDao;
   private final TimeSlotDao timeSlotDao;
   private final ReservationDao reservationDao;
+  private final ServiceDao serviceDao;
 
   public TimeSlotServiceImpl(
       VenueDao venueDao,
       VenueOpeningHourDao openingHourDao,
       AvailabilityBlockDao availabilityBlockDao,
       TimeSlotDao timeSlotDao,
-      ReservationDao reservationDao) {
+      ReservationDao reservationDao,
+      ServiceDao serviceDao) {
     this.venueDao = venueDao;
     this.openingHourDao = openingHourDao;
     this.availabilityBlockDao = availabilityBlockDao;
     this.timeSlotDao = timeSlotDao;
     this.reservationDao = reservationDao;
+    this.serviceDao = serviceDao;
   }
 
   @Override
@@ -78,6 +83,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
   public TimeSlotEntity create(UUID ownerUserId, TimeSlotRequest request) {
     validateRequest(request);
     VenueEntity venue = requireCurrentVenueForUpdate(ownerUserId);
+    requireActiveService(ownerUserId, request.serviceId());
     int weekday = request.date().getDayOfWeek().getValue();
     VenueOpeningHourEntity openingHour =
         openingHourDao
@@ -85,7 +91,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
             .orElseThrow(TimeSlotInvalidException::new);
     validateReservableDay(ownerUserId, request, openingHour);
     if (timeSlotDao.existsOwnedOverlap(
-        ownerUserId, request.date(), request.startsAt(), request.endsAt())) {
+        ownerUserId, request.date(), request.startsAt(), request.endsAt(), request.serviceId())) {
       throw new TimeSlotInvalidException();
     }
 
@@ -97,6 +103,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
   public List<TimeSlotEntity> generate(UUID ownerUserId, TimeSlotGenerationRequest request) {
     validateGenerationRequest(request);
     VenueEntity venue = requireCurrentVenueForUpdate(ownerUserId);
+    requireActiveService(ownerUserId, request.serviceId());
     int weekday = request.date().getDayOfWeek().getValue();
     VenueOpeningHourEntity openingHour =
         openingHourDao
@@ -108,7 +115,8 @@ public class TimeSlotServiceImpl implements TimeSlotService {
             request.date(),
             openingHour.getOpensAt(),
             openingHour.getClosesAt(),
-            request.capacity()),
+            request.capacity(),
+            request.serviceId()),
         openingHour);
 
     List<TimeSlotRequest> candidates = buildGenerationCandidates(request, openingHour);
@@ -117,7 +125,11 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     }
     for (TimeSlotRequest candidate : candidates) {
       if (timeSlotDao.existsOwnedOverlap(
-          ownerUserId, candidate.date(), candidate.startsAt(), candidate.endsAt())) {
+          ownerUserId,
+          candidate.date(),
+          candidate.startsAt(),
+          candidate.endsAt(),
+          candidate.serviceId())) {
         throw new TimeSlotInvalidException();
       }
     }
@@ -242,7 +254,9 @@ public class TimeSlotServiceImpl implements TimeSlotService {
       if (endsAt.isAfter(openingHour.getClosesAt())) {
         break;
       }
-      candidates.add(new TimeSlotRequest(request.date(), startsAt, endsAt, request.capacity()));
+      candidates.add(
+          new TimeSlotRequest(
+              request.date(), startsAt, endsAt, request.capacity(), request.serviceId()));
       startsAt = endsAt;
     }
     return candidates;
@@ -252,6 +266,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
       VenueEntity venue, int weekday, TimeSlotRequest request, boolean createdByRule, Instant now) {
     TimeSlotEntity slot = new TimeSlotEntity();
     slot.setVenue(venue);
+    slot.setServiceId(request.serviceId());
     slot.setDate(request.date());
     slot.setWeekday(weekday);
     slot.setStartsAt(request.startsAt());
@@ -263,5 +278,20 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     slot.setCreatedAt(now);
     slot.setUpdatedAt(now);
     return slot;
+  }
+
+  /** Valida que la especialidad elegida pertenezca al local y siga disponible para nuevas citas. */
+  private ServiceEntity requireActiveService(UUID ownerUserId, UUID serviceId) {
+    if (serviceId == null) {
+      return null;
+    }
+    ServiceEntity service =
+        serviceDao
+            .findOwnedForUpdate(ownerUserId, serviceId)
+            .orElseThrow(TimeSlotInvalidException::new);
+    if (!service.isActive()) {
+      throw new TimeSlotInvalidException();
+    }
+    return service;
   }
 }

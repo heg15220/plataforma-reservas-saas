@@ -45,6 +45,20 @@ public class VenuePublicationServiceImpl implements VenuePublicationService {
         venueDao
             .findCurrentByOwnerUserIdForUpdate(ownerUserId)
             .orElseThrow(VenueProfileNotFoundException::new);
+    return publishLocked(venue);
+  }
+
+  @Override
+  @Transactional
+  public VenueEntity publish(UUID userId, UUID venueId) {
+    VenueEntity venue =
+        venueDao
+            .findAccessibleByIdForUpdate(userId, venueId)
+            .orElseThrow(VenueProfileNotFoundException::new);
+    return publishLocked(venue);
+  }
+
+  private VenueEntity publishLocked(VenueEntity venue) {
     if ("published".equals(venue.getStatus())) {
       return venue;
     }
@@ -66,6 +80,9 @@ public class VenuePublicationServiceImpl implements VenuePublicationService {
     Instant now = Instant.now();
     venue.setStatus("published");
     venue.setPublishedAt(now);
+    if (venue.isReservationFormPublished() && venue.getReservationFormPublishedAt() == null) {
+      venue.setReservationFormPublishedAt(now);
+    }
     venue.setUpdatedAt(now);
     return venueDao.saveAndFlush(venue);
   }

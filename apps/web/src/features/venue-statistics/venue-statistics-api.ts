@@ -15,6 +15,7 @@ const dailySchema = z
     availableCapacity: z.number().int().nonnegative(),
     occupancyRate: z.number().nonnegative(),
     reviewsCount: z.number().int().nonnegative(),
+    incidentsCount: z.number().int().nonnegative(),
     averageRating: z.number().min(1).max(5).nullable(),
   })
   .strict();
@@ -33,6 +34,7 @@ const statisticsSchema = z
     availableCapacity: z.number().int().nonnegative(),
     occupancyRate: z.number().nonnegative(),
     reviewsCount: z.number().int().nonnegative(),
+    incidentsCount: z.number().int().nonnegative(),
     averageRating: z.number().min(1).max(5).nullable(),
     series: z.array(dailySchema).max(366),
   })
@@ -51,6 +53,7 @@ export type VenueStatisticsPeriod = z.infer<typeof periodSchema>;
 
 export interface VenueStatisticsFilter {
   period: VenueStatisticsPeriod;
+  venueId?: string;
   from?: string;
   to?: string;
 }
@@ -72,6 +75,9 @@ export async function fetchVenueStatistics(
 ): Promise<VenueStatistics> {
   const url = new URL("/api/venue/me/statistics", apiBaseUrl());
   url.searchParams.set("period", filter.period);
+  if (filter.venueId) {
+    url.searchParams.set("venueId", filter.venueId);
+  }
   if (filter.period === "custom") {
     if (!filter.from || !filter.to) {
       throw new VenueStatisticsApiError("invalid");

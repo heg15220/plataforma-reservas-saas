@@ -219,6 +219,18 @@ Tipos de cuenta:
 - `venue_business`: cuenta empresarial de local.
 - `admin`: cuenta interna.
 
+El inicializador exclusivo del perfil `local` estabiliza también identidades de demostración que
+nacieron durante recorridos manuales. Si encuentra el slug reservado `azahar-brasa-11176fa9`,
+normaliza su propietario a `azahar@reserly.local`, repone un hash BCrypt conocido solo para
+desarrollo y mantiene intacta la relación de propiedad. La actualización es condicional y no se
+ejecuta en `test`, `staging` ni `production`.
+
+La página servidor de acceso acredita el modo asistido únicamente cuando Next se ejecuta en
+`development` y el host solicitado es exactamente `localhost` o `127.0.0.1`, con puerto opcional.
+Pasa esa capacidad como propiedad explícita al formulario cliente. El botón local establece email
+y contraseña en inputs controlados, limpia errores previos y deja el envío al gesto separado de
+“Acceder al panel”; así un gestor de contraseñas no puede reponer silenciosamente valores antiguos.
+
 ### 3.2 Locales y catálogo
 
 Responsabilidades:
@@ -295,6 +307,15 @@ Estados:
 - `attended`: asistida.
 - `no_show`: no asistida.
 - `reported`: reportada.
+
+En el panel privado, `pending` es una proyección temporal y no un estado adicional persistido: una
+reserva almacenada como `confirmed` se expone como `pending` mientras el reloj de negocio sea
+anterior a `date + startsAt`. Desde el inicio se expone como `confirmed`. La política compartida
+`ReservationOperationalWindow` abre acciones manuales en el intervalo semiabierto
+`[inicio, inicio + 1 hora)` y las cierra al alcanzar el límite. Asistencia, no asistencia y
+cancelación por local vuelven a validar esta política en servidor, además de la autorización por
+local. No existe job de asistencia por defecto: pasada la ventana, una reserva no modificada
+continúa persistida y expuesta como `confirmed`.
 
 ### 3.6 Formularios personalizados
 
@@ -652,6 +673,27 @@ Relación muchos a muchos entre cuentas y roles, materializada como `"UserRoles"
 - borrado en cascada al suprimir la cuenta;
 - borrado de roles restringido mientras existan asignaciones;
 - actor de asignación conservado cuando la concesión sea administrativa.
+
+#### venue_panel_credentials
+
+Relación uno a uno materializada como `"VenuePanelCredentials"` que concede a una identidad
+autenticable acceso exclusivo al panel de un local sin transferir la propiedad empresarial.
+
+- `id`
+- `venue_id`
+- `user_id`
+- `created_at`
+- `updated_at`
+
+Índices y restricciones:
+
+- único por `venue_id`: cada local tiene como máximo una credencial delegada;
+- único por `user_id`: una identidad delegada solo puede resolver un local;
+- claves foráneas con borrado en cascada hacia `Venues` y `Users`;
+- el secreto permanece exclusivamente en `Users.password_hash` y nunca se almacena en esta tabla;
+- la cuenta empresarial propietaria conserva `Venues.owner_user_id` y puede administrar todas sus
+  sedes; las consultas privadas resuelven tanto propiedad directa como delegación explícita;
+- toda rotación de contraseña revoca las sesiones activas de la identidad delegada.
 
 #### auth_sessions
 
@@ -1222,6 +1264,20 @@ Implementación inicial en Fase 5:
 - Cada franja pública expone `employeeResourceRequired`, `anyAvailableResourceAllowed` y la lista
   mínima de recursos disponibles. No se publican notas internas, apellidos ni estado administrativo.
 
+- `Services.bookingMode` distingue `range` y `exact_time`. El segundo se utiliza para consultas
+  clínicas: la UI presenta solo `startsAt`, pero `endsAt` sigue siendo obligatorio para calcular
+  duración, ocupación y solapes sin crear un segundo sistema de calendario.
+- Las secciones de una clínica se modelan como servicios y los médicos como recursos de tipo
+  `professional`. `ServiceEmployeeResources` expresa qué médicos atienden cada especialidad y
+  `EmployeeResourceHours` conserva su horario semanal individual.
+- El editor de franjas acepta `serviceId` opcional tanto en creación manual como en generación. La
+  detección de solapes de agenda se acota por servicio, permitiendo agendas simultáneas de distintas
+  especialidades, mientras el hold bloquea la fila del profesional y rechaza cualquier reserva
+  efectiva que se solape para el mismo médico.
+- El calendario público ordena el flujo como especialidad o sección, profesional, fecha y hora. La
+  selección se reconstruye desde proyecciones públicas activas y backend revalida servicio,
+  compatibilidad, horario, capacidad y ausencia de solape al crear el hold.
+
 #### reservations
 
 - `id`
@@ -1634,6 +1690,33 @@ Este correo electrónico tiene una restricción temporal para realizar reservas 
 ```
 
 No deben usarse términos como "denuncia", "castigo", "antecedentes", "delincuente" o "lista negra".
+
+### 6.5 Semáforo informativo del historial profesional
+
+La ficha privada de una reserva resume el historial operativo visible mediante tres niveles:
+
+- `low` / verde: no existen incidencias `reported` o `confirmed`, o existe una única incidencia y
+  han transcurrido al menos 180 días desde su reporte.
+- `watch` / amarillo: existe una incidencia operativa durante los últimos 180 días o hay dos
+  incidencias operativas en el historial visible sin alcanzar recurrencia reciente.
+- `high` / rojo: existen al menos dos incidencias operativas durante los últimos 180 días o tres o
+  más incidencias operativas en la ventana visible de 12 meses.
+
+Las incidencias `dismissed` no participan. El cálculo de días usa instantes completos, limita a
+cero las fechas futuras por desfase de reloj e ignora fechas inválidas. Es una ayuda visual para
+revisión profesional: no modifica el contador de penalizaciones, no cancela reservas, no concede
+permisos y no sustituye las decisiones auditadas del servidor.
+
+La presentación combina color semántico, icono, título textual y explicación de la causa. Por
+tanto, es interpretable con deficiencias de percepción cromática y no emplea lenguaje acusatorio.
+Las cadenas existen en español e inglés y el diseño conserva una única columna legible en móvil.
+
+La agenda diaria reutiliza estos niveles como una señal compacta junto al estado de cada reserva.
+Solo `watch` y `high` generan un enlace amarillo o rojo al detalle; `low` no añade ruido visual. El
+listado expone `incidentRiskLevel` pero no el historial. El servicio reúne los emails normalizados
+de la página ya autorizada y ejecuta una única agregación por identidad con los cortes de 12 meses
+y 180 días. Así se evita una consulta por tarjeta y el email agregado permanece dentro de la capa
+de servicio. El DTO solo recibe `low`, `watch` o `high`.
 
 ## 7. Diseño de APIs
 
@@ -2332,6 +2415,66 @@ Flujo del botón de reseña:
 
 El panel del local debe permitir crear, editar, ordenar, activar y desactivar pestañas personalizadas. Cada pestaña debe validar título, slug, contenido localizado, formato seguro y estado de publicación antes de aparecer en la ficha pública.
 
+### 9.7 Agregación de estadísticas por fecha local
+
+La consulta privada de estadísticas genera el rango solicitado, agrega reservas, capacidad y
+reseñas y realiza UPSERT de una instantánea diaria por local. Para las reseñas, `createdAt` se
+convierte con una única expresión `AT TIME ZONE :zoneId`; la agrupación PostgreSQL debe referirse a
+la primera columna proyectada mediante `GROUP BY 1`. Repetir literalmente la expresión en el
+`GROUP BY` no es equivalente cuando Hibernate convierte cada aparición del parámetro nominal en un
+placeholder preparado diferente y PostgreSQL puede rechazarla por no reconocer la identidad de
+ambas expresiones.
+
+Este contrato debe verificarse ejecutando la consulta nativa sobre PostgreSQL real. Una inspección
+estática del texto protege aislamiento y estructura, pero no detecta reglas semánticas del motor
+sobre parámetros, agrupación, zona horaria o UPSERT.
+
+### 9.8 Selección multi-local y actualización de estadísticas
+
+`GET /api/venue/me/statistics` admite `venueId` opcional. Cuando está presente, la capa de servicio
+lo resuelve con `VenueDao.findAccessibleById(userId, venueId)`, de modo que tanto el propietario de
+una cuenta multi-local como una credencial delegada solo pueden consultar locales expresamente
+accesibles. Un identificador ajeno o inexistente se oculta con la misma respuesta 404. Si se omite
+el parámetro, se conserva el comportamiento singular anterior mediante
+`findCurrentByOwnerUserId`, para no romper consumidores existentes.
+
+El panel obtiene primero `/api/venue/me/profiles`, selecciona de forma explícita el primer local
+accesible y muestra el selector únicamente cuando hay más de uno. Cada cambio de local descarta la
+vista anterior y solicita el mismo periodo con el nuevo `venueId`; el backend sigue siendo la
+autoridad de acceso y no confía en la lista del navegador.
+
+Las métricas se vuelven a solicitar cada 30 segundos y también cuando la ventana recupera el foco
+o el documento vuelve a estado visible. Los refrescos en segundo plano conservan los datos actuales
+para evitar parpadeos, impiden solicitudes simultáneas y cancelan petición, temporizador y listeners
+al cambiar de local, periodo o desmontar el componente. El primer acceso y cada selección explícita
+mantienen indicador de carga; los errores se clasifican con los mismos estados seguros del contrato
+privado.
+
+### 9.9 Evolución de incidencias operativas por local
+
+`StatsDailyVenue` incorpora `incidentsCount bigint NOT NULL DEFAULT 0` dentro de su restricción de
+contadores no negativos. La instantánea no copia ninguna identidad del historial: conserva solo el
+número de filas de `NoShowIncidents` cuyo `venueId` coincide y cuyo estado es `reported` o
+`confirmed`. Las incidencias `dismissed` quedan fuera del balance operativo.
+
+La agregación por rango convierte `reportedAt` a fecha mediante `AT TIME ZONE :zoneId`, agrupa por
+la primera columna proyectada con `GROUP BY 1` y une el resultado a la serie completa de fechas. Así
+se preservan días con cero incidencias y se evita el problema de placeholders preparados ya
+documentado para reseñas. La agregación diaria global usa los límites instantáneos inclusivo y
+exclusivo del día. Ambos caminos realizan UPSERT idempotente de `incidentsCount` junto al resto de
+la instantánea.
+
+El DTO privado expone `incidentsCount` tanto en el total del periodo como en cada punto diario. No
+incluye identificadores, emails, reservas, tipos, notas, motivos ni actores. El selector multi-local,
+los límites de hasta 366 días, la autorización de objeto y el refresco automático se reutilizan sin
+crear un endpoint paralelo.
+
+La UI representa la serie con una tercera gráfica de barras de ancho completo. Cada barra tiene una
+etiqueta accesible con fecha y pluralización localizada; en móvil el carril permite desplazamiento
+horizontal sin comprimir los puntos. Si toda la serie es cero se sustituye el gráfico por un mensaje
+profesional específico en español e inglés. El total agregado se incluye también en el detalle del
+periodo como alternativa textual y comprobación rápida.
+
 ## 10. Pantallas responsive
 
 ### 10.1 Usuario final móvil
@@ -2902,6 +3045,26 @@ inválidos producen `400 VENUE_IMAGE_INVALID`.
 
 ### Espacio profesional unificado de reservas y disponibilidad
 
+#### Consulta segura de agenda para cuentas multi-local
+
+La agenda privada autoriza cada reserva mediante dos caminos equivalentes: propiedad directa de la
+ficha o una fila de `VenuePanelCredentials` que vincula la identidad delegada con ese mismo local.
+La comprobación forma parte de las consultas JPQL de listado, detalle y bloqueo de escritura; no se
+resuelve una ficha por separado ni se acepta `venueId` desde el cliente. Así, la cuenta empresarial
+puede operar todas sus sedes, una identidad delegada queda limitada a una y una identidad ajena no
+puede enumerar reservas.
+
+Los límites de fecha del listado siempre llegan tipados y no nulos. Una consulta sin periodo usa el
+intervalo persistible `[0001-01-01, 9999-12-31)`, mientras los filtros opcionales de franja y estado
+usan `coalesce` con la columna tipada y el patrón de usuario usa cadena vacía como ausencia. Esto
+evita que Hibernate 7 genere expresiones JDBC `? is null` cuyo tipo PostgreSQL no puede inferir
+(`SQLSTATE 42P18`). El filtrado real y la paginación siguen ejecutándose en base de datos.
+
+Una vez acreditado el detalle, el recurso histórico se busca conjuntamente por `venueId` de la
+reserva y `resourceId`. Las acciones de cancelación, asistencia, no-show e historial reutilizan la
+misma frontera accesible, por lo que una credencial delegada no pierde capacidad operativa al pasar
+del listado al detalle.
+
 La ruta `/panel/reservas` deja de limitarse a la agenda diaria y actúa como espacio operativo único
 con tres vistas: `Agenda y reservas`, `Calendario` y `Horarios y disponibilidad`. La composición
 reutiliza `VenueReservationsDashboard`, `VenueInternalCalendar` y `VenueAvailabilityManager`; no crea
@@ -2938,9 +3101,11 @@ posterior entra directamente en las herramientas avanzadas.
 El asistente presenta seis bloques numerados con desplegables para días abiertos, cierre habitual,
 festivos, jornada por día, duración de reserva y capacidad. Las jornadas predefinidas se traducen a
 rangos concretos (`09:00–20:00`, mañana `09:00–14:00`, tarde `14:00–20:00` y noche
-`20:00–23:59`). La opción sin rangos guarda únicamente la semana; con duración se generan franjas
-para un horizonte inicial de 28 días mediante el endpoint privado existente. Las fechas festivas
-elegidas se persisten como cierres completos y se excluyen de esa generación.
+`20:00–23:59`). La opción sin rangos es el valor inicial seguro y guarda únicamente la semana con
+cero franjas: se representa como una variante cerrada distinta de cualquier duración y no ejecuta
+el endpoint de generación. Solo una selección afirmativa de duración genera franjas para un horizonte
+inicial de 28 días mediante el endpoint privado existente. Las fechas festivas elegidas se
+persisten como cierres completos y se excluyen de esa generación.
 
 El panel `/panel/calendario` delega ahora tanto la detección como la transición al manager. Tras
 guardar, muestra el calendario interno y todo el editor profesional sin recargar la página. El mismo
@@ -3114,10 +3279,20 @@ galerías, horarios y servicios. Esas cuentas satisfacen integridad referencial,
 público no requiere registro ni autenticación. Como el estado `verified` exige vigencia, el fixture
 fija y renueva `businessVerificationExpiresAt` a un año desde cada inicialización.
 
-La cuenta autenticable `multilocal@reserly.local` agrupa `ames-padel-center` y `brisa-studio` bajo
+La cuenta autenticable `multilocal@reserly.local` agrupa `ames-padel-center`, `brisa-studio` y
+`clinica-alba-integral` bajo
 la misma identidad empresarial verificada. Su contraseña fija existe solo en el comentario del
 fixture y en la documentación técnica local; el hash BCrypt de coste 12 es lo único persistido. Las
-dos publicaciones disponen de emails operativos independientes que pueden modificarse en el panel.
+tres publicaciones disponen de emails operativos independientes que pueden modificarse en el panel.
+
+`clinica-alba-integral` constituye el fixture funcional de la variante clínica. Usa una fotografía
+horizontal propia empaquetada y almacenada con clave determinista; modela Psiquiatría, Ginecología
+y Psicología clínica como servicios `exact_time`, y cuatro identidades profesionales ficticias como
+recursos públicos de tipo `professional`. Las asociaciones servicio-profesional son explícitas y
+los horarios semanales de cada médico delimitan la disponibilidad real. Un horizonte móvil de 45
+días crea citas únicamente de lunes a viernes, conserva el intervalo interno de 30, 45 o 50 minutos
+y permite que la interfaz pública presente solo la hora inicial. La ficha advierte expresamente que
+no deben introducirse datos médicos reales.
 
 Las publicaciones de demostración abren en sus horarios configurados y exponen el formulario
 público base. Cada reinicio inserta, sin
@@ -3131,3 +3306,58 @@ franjas del día. Suma reservas `confirmed`, `attended`, `no_show` y `reported`,
 vigentes. El servicio resta la ocupación con límite inferior cero, combina capacidad con estado y
 recursos, y publica `full` cuando no quedan plazas. La lectura comparte las reglas de la validación
 transaccional de reserva, evita N+1 y nunca delega el cálculo al frontend.
+
+### Selector y edición explícita de perfiles multi-local
+
+La sección `/panel/perfil` deja de depender del perfil singular resuelto implícitamente. Su carga
+principal usa `GET /api/venue/me/profiles`, cuyo resultado contiene todas las fichas no archivadas
+del propietario directo o únicamente la ficha vinculada cuando la identidad es delegada. El
+desplegable mantiene como estado canónico el UUID seleccionado; cambiarlo reinicia errores,
+previsualizaciones y archivos pendientes antes de cargar su galería.
+
+La identidad empresarial persiste `BusinessAccounts.multiVenueEnabled`, obligatorio y con valor
+seguro `false`. El listado privado devuelve también `canCreateAdditionalVenue`, calculado solo a
+partir de la cuenta empresarial propiedad directa del actor; una identidad delegada nunca obtiene
+esa capacidad. Con una sola ficha y capacidad falsa, la UI omite por completo la superficie de
+selección, alta y archivo y conserva el formulario de edición actual. Una cuenta vacía puede crear
+el primer local aunque la capacidad sea falsa.
+
+Las mutaciones multi-local reciben siempre `venueId` en la ruta:
+
+```text
+POST   /api/venue/me/profiles
+GET    /api/venue/me/profiles/{venueId}
+PATCH  /api/venue/me/profiles/{venueId}
+DELETE /api/venue/me/profiles/{venueId}
+POST   /api/venue/me/profiles/{venueId}/publish
+POST   /api/venue/me/profiles/{venueId}/main-image
+GET    /api/venue/me/profiles/{venueId}/gallery
+POST   /api/venue/me/profiles/{venueId}/gallery
+PUT    /api/venue/me/profiles/{venueId}/gallery/order
+DELETE /api/venue/me/profiles/{venueId}/gallery/{imageId}
+```
+
+Las consultas de autorización combinan actor e identificador en la misma operación, incluyendo el
+lock pesimista de escritura. Una ficha ajena, archivada o inexistente produce el mismo resultado no
+encontrado. Los endpoints singulares anteriores se conservan temporalmente para compatibilidad con
+cuentas y clientes de un único local, pero la UI nueva no los utiliza. Eliminar significa archivar:
+se preservan relaciones históricas, reservas, imágenes y auditoría.
+
+El alta bloquea pesimistamente la fila de `BusinessAccounts` antes de consultar locales vigentes
+propiedad directa. Si ya existe uno y `multiVenueEnabled=false`, responde `403
+VENUE_PROFILE_FORBIDDEN`; así dos altas concurrentes tampoco pueden eludir el límite. La cuenta
+local `multilocal@reserly.local` es la única habilitada por fixture; el resto hereda `false`.
+
+### Formulario base en la primera publicación
+
+Los cinco campos base obligatorios constituyen un formulario válido sin configuración adicional.
+Por ello, `VenueProfileService.createAdditional` deja `reservationFormPublished=true` desde el
+borrador. La ficha aún no es consultable públicamente hasta que su propio estado sea `published`;
+en esa transición `VenuePublicationService` fija `reservationFormPublishedAt` si todavía no existe.
+
+Esta inicialización solo ocurre durante el alta y no en publicaciones idempotentes, por lo que una
+despublicación posterior realizada desde Formulario permanece respetada. Los campos personalizados,
+su fallback de traducción y sus cambios de publicación continúan bajo
+`ReservationFormPublicationService`. La API pública de formulario comparte el manejador acotado de
+perfil y transforma local inexistente, no publicado o formulario despublicado en
+`404 VENUE_PROFILE_NOT_FOUND`, evitando respuestas 500 y detalles internos.

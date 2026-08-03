@@ -15,6 +15,7 @@ const validStatistics = {
   availableCapacity: 30,
   occupancyRate: 60,
   reviewsCount: 3,
+  incidentsCount: 2,
   averageRating: 4.5,
   series: [
     {
@@ -28,6 +29,7 @@ const validStatistics = {
       availableCapacity: 10,
       occupancyRate: 80,
       reviewsCount: 1,
+      incidentsCount: 2,
       averageRating: 5,
     },
   ],
@@ -69,12 +71,13 @@ describe("fetchVenueStatistics", () => {
 
     await fetchVenueStatistics({
       period: "custom",
+      venueId: "20000000-0000-4000-8000-000000000001",
       from: "2026-07-01",
       to: "2026-07-29",
     });
     expect(fetchMock).toHaveBeenCalledWith(
       new URL(
-        "http://api.test/api/venue/me/statistics?period=custom&from=2026-07-01&to=2026-07-29",
+        "http://api.test/api/venue/me/statistics?period=custom&venueId=20000000-0000-4000-8000-000000000001&from=2026-07-01&to=2026-07-29",
       ),
       expect.anything(),
     );

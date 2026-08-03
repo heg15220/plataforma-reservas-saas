@@ -15,6 +15,8 @@ import com.reserly.platform.reservations.dto.ReservationHoldRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.reservations.persistence.ReservationTimeSlotDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceDao;
+import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import java.time.Clock;
 import java.time.Instant;
@@ -43,6 +45,7 @@ class ReservationHoldServiceTests {
   @Mock private ReservationDao reservationDao;
   @Mock private EmployeeResourceAssignmentService assignmentService;
   @Mock private OneTimeTokenService tokenService;
+  @Mock private EmployeeResourceDao resourceDao;
 
   private ReservationHoldServiceImpl service;
 
@@ -55,6 +58,7 @@ class ReservationHoldServiceTests {
             assignmentService,
             tokenService,
             new ReservationHoldExpirationPolicyImpl(),
+            resourceDao,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -76,6 +80,11 @@ class ReservationHoldServiceTests {
             com.reserly.platform.availability.service.ResourceAssignmentPreference.ANY_AVAILABLE,
             null))
         .thenReturn(Optional.of(resourceId));
+    when(resourceDao.findActiveByVenueIdForUpdate(venueId, resourceId))
+        .thenReturn(Optional.of(new EmployeeResourceEntity()));
+    when(reservationDao.existsEffectiveResourceOverlap(
+            venueId, resourceId, slot.getDate(), slot.getStartsAt(), slot.getEndsAt(), NOW))
+        .thenReturn(false);
     when(tokenService.generate()).thenReturn(TOKEN);
     when(tokenService.hash(TOKEN)).thenReturn(TOKEN_HASH);
     when(reservationDao.save(any(ReservationEntity.class)))
@@ -99,6 +108,30 @@ class ReservationHoldServiceTests {
     assertThat(saved.getEmployeeResourceId()).isEqualTo(resourceId);
     assertThat(saved.getPartySize()).isEqualTo(2);
     assertThat(saved.getDate()).isEqualTo(slot.getDate());
+  }
+
+  @Test
+  void rejectsOverlappingAppointmentForSameProfessional() {
+    UUID venueId = UUID.randomUUID();
+    UUID slotId = UUID.randomUUID();
+    UUID serviceId = UUID.randomUUID();
+    UUID resourceId = UUID.randomUUID();
+    TimeSlotEntity slot = slot(venueId, slotId, serviceId, 2);
+    ReservationHoldRequest request =
+        new ReservationHoldRequest(venueId, slotId, serviceId, resourceId, "specific", 1);
+    when(timeSlotDao.findPublishedForUpdate(venueId, slotId)).thenReturn(Optional.of(slot));
+    when(reservationDao.sumOccupiedCapacity(slotId, NOW)).thenReturn(0L);
+    when(assignmentService.assign(any(), anyInt(), any(), any(), any()))
+        .thenReturn(Optional.of(resourceId));
+    when(resourceDao.findActiveByVenueIdForUpdate(venueId, resourceId))
+        .thenReturn(Optional.of(new EmployeeResourceEntity()));
+    when(reservationDao.existsEffectiveResourceOverlap(
+            venueId, resourceId, slot.getDate(), slot.getStartsAt(), slot.getEndsAt(), NOW))
+        .thenReturn(true);
+
+    assertThatThrownBy(() -> service.create(request))
+        .isInstanceOf(ReservationHoldInvalidException.class);
+    verify(reservationDao, never()).save(any());
   }
 
   @Test

@@ -15,6 +15,7 @@ public record ServiceResponse(
     int capacityRequired,
     boolean active,
     boolean allowsAnyAvailableResource,
+    String bookingMode,
     List<UUID> employeeResourceIds,
     Instant createdAt,
     Instant updatedAt) {}

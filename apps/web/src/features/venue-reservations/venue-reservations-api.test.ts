@@ -36,6 +36,17 @@ describe("venue reservations api", () => {
     expect(result.items[0].customerName).toBe("Ana Martín");
   });
 
+  it("treats a missing risk projection from an older API as low risk", async () => {
+    const legacyResponse = reservationList();
+    delete (legacyResponse.items[0] as Partial<(typeof legacyResponse.items)[number]>)
+      .incidentRiskLevel;
+    fetchMock.mockResolvedValue(Response.json(legacyResponse));
+
+    const result = await fetchVenueReservationsForDay("2026-07-26");
+
+    expect(result.items[0].incidentRiskLevel).toBe("low");
+  });
+
   it("parses the enriched detail without requesting an email or venue id", async () => {
     fetchMock.mockResolvedValue(Response.json(reservationDetail()));
 

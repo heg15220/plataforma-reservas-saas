@@ -28,6 +28,7 @@ const service = {
   capacityRequired: 1,
   active: true,
   allowsAnyAvailableResource: true,
+  bookingMode: "range",
   employeeResourceIds: [resource.id],
   createdAt: "2026-07-13T10:00:00Z",
   updatedAt: "2026-07-13T10:00:00Z",

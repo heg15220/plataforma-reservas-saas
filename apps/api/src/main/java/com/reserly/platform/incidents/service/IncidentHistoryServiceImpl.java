@@ -46,7 +46,7 @@ public class IncidentHistoryServiceImpl implements IncidentHistoryService {
     }
     ReservationEntity reservation =
         reservationDao
-            .findOwnedDetail(ownerUserId, reservationId)
+            .findAccessibleDetail(ownerUserId, reservationId)
             .orElseThrow(IncidentHistoryNotFoundException::new);
     String email = reservation.getCustomerEmailNormalized();
     if (email == null || email.isBlank()) {

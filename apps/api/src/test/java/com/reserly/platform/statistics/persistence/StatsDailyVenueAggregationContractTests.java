@@ -30,6 +30,9 @@ class StatsDailyVenueAggregationContractTests {
         .contains("ROUND(AVG(review.\"rating\"), 2)")
         .contains("review.\"createdAt\" >= :dayStart")
         .contains("review.\"createdAt\" < :dayEnd")
+        .contains("FROM \"NoShowIncidents\" incident")
+        .contains("incident.\"status\" IN ('reported', 'confirmed')")
+        .contains("\"incidentsCount\" = EXCLUDED.\"incidentsCount\"")
         .contains("ON CONFLICT (\"venueId\", \"date\") DO UPDATE");
   }
 
@@ -52,7 +55,9 @@ class StatsDailyVenueAggregationContractTests {
         .contains("reservation.\"venueId\" = :venueId")
         .contains("slot.\"venueId\" = :venueId")
         .contains("review.\"venueId\" = :venueId")
+        .contains("incident.\"venueId\" = :venueId")
         .contains("AT TIME ZONE :zoneId")
+        .contains("COALESCE(incidentStats.\"incidentsCount\", 0)")
         .contains("FROM dates")
         .contains("ON CONFLICT (\"venueId\", \"date\") DO UPDATE");
   }

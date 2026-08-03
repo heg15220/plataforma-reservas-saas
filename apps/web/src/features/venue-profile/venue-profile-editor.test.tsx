@@ -53,18 +53,54 @@ afterEach(() => {
 });
 
 function response(body: unknown, status = 200) {
-  return new Response(body === null ? null : JSON.stringify(body), {
-    status,
-    headers: body === null ? undefined : { "Content-Type": "application/json" },
-  });
+  return new Response(
+    body === null ? null : JSON.stringify(body),
+    {
+      status,
+      headers: body === null ? undefined : { "Content-Type": "application/json" },
+    },
+    15_000,
+  );
 }
 
 describe("VenueProfileEditor", () => {
+  it("oculta la gestión de altas a una cuenta con un solo local", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response([category]))
+        .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
+        .mockResolvedValueOnce(response([])),
+    );
+
+    renderWithIntl(<VenueProfileEditor />);
+
+    expect(await screen.findByRole("textbox", { name: /Nombre del local/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Crear un local nuevo" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Local seleccionado")).not.toBeInTheDocument();
+  }, 15_000);
+
+  it("mantiene el selector y el alta para una cuenta multi-local", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response([category]))
+        .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: true }))
+        .mockResolvedValueOnce(response([])),
+    );
+
+    renderWithIntl(<VenueProfileEditor />);
+
+    expect(await screen.findByRole("button", { name: "Crear un local nuevo" })).toBeVisible();
+  });
+
   it("carga perfil y guarda cambios mediante PATCH privado", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(profile))
+      .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response([]))
       .mockResolvedValueOnce(response({ ...profile, name: "Casa Luz Actualizada" }));
     vi.stubGlobal("fetch", fetchMock);
@@ -89,7 +125,7 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(profile))
+      .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response([]))
       .mockResolvedValueOnce(
         response(
@@ -115,7 +151,7 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(profile))
+      .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response([]))
       .mockResolvedValueOnce(
         response({ ...profile, status: "published", updatedAt: "2026-08-02T12:00:00Z" }),
@@ -148,8 +184,17 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(profile))
+      .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(
+        response({
+          url: "/api/public/venues/casa-luz/main-image",
+          mediaType: "image/png",
+          sizeBytes: 6,
+          width: 1200,
+          height: 675,
+        }),
+      )
       .mockResolvedValueOnce(
         response({ ...profile, mainImageUrl: "/api/public/venues/casa-luz/main-image" }),
       );
@@ -170,9 +215,9 @@ describe("VenueProfileEditor", () => {
 
     fireEvent.click(uploadButton);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
     const [url, options] = fetchMock.mock.calls[3] as [string, RequestInit];
-    expect(url).toContain("/api/venue/me/main-image");
+    expect(url).toContain(`/api/venue/me/profiles/${profile.id}/main-image`);
     expect(options.method).toBe("POST");
     expect((options.body as FormData).get("file")).toBe(file);
     expect(
@@ -217,7 +262,7 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(profile))
+      .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response([]))
       .mockResolvedValueOnce(response(uploadedImages[0]))
       .mockResolvedValueOnce(response(uploadedImages[1]));
@@ -252,8 +297,8 @@ describe("VenueProfileEditor", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
     const [firstUrl, firstOptions] = fetchMock.mock.calls[3] as [string, RequestInit];
     const [secondUrl, secondOptions] = fetchMock.mock.calls[4] as [string, RequestInit];
-    expect(firstUrl).toContain("/api/venue/me/gallery");
-    expect(secondUrl).toContain("/api/venue/me/gallery");
+    expect(firstUrl).toContain(`/api/venue/me/profiles/${profile.id}/gallery`);
+    expect(secondUrl).toContain(`/api/venue/me/profiles/${profile.id}/gallery`);
     expect(firstOptions.method).toBe("POST");
     expect(secondOptions.method).toBe("POST");
     expect((firstOptions.body as FormData).get("file")).toBe(terraceFile);
@@ -295,7 +340,7 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(profile))
+      .mockResolvedValueOnce(response({ profiles: [profile], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response(gallery))
       .mockResolvedValueOnce(response(null, 204));
     vi.stubGlobal("fetch", fetchMock);
@@ -312,7 +357,7 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(null, 404));
+      .mockResolvedValueOnce(response({ profiles: [], canCreateAdditionalVenue: false }));
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithIntl(<VenueProfileEditor />);
@@ -327,7 +372,7 @@ describe("VenueProfileEditor", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response([category]))
-      .mockResolvedValueOnce(response(null, 404))
+      .mockResolvedValueOnce(response({ profiles: [], canCreateAdditionalVenue: false }))
       .mockResolvedValueOnce(response(createdProfile));
     vi.stubGlobal("fetch", fetchMock);
 

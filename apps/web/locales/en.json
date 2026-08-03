@@ -347,6 +347,10 @@
         "title": "Verification under control"
       }
     },
+    "development": {
+      "description": "Local access prepared to manage Azahar & Brasa.",
+      "useAzahar": "Use Azahar account"
+    },
     "errors": {
       "fields": {
         "email": "Enter a valid email address.",
@@ -510,28 +514,34 @@
   "VenueEmails": {
     "metadata": {
       "title": "Venue emails | Reserly",
-      "description": "Private recipient management for published venues."
+      "description": "Private credential and recipient management for published venues."
     },
     "hero": {
       "eyebrow": "MULTI-VENUE ACCOUNT",
-      "title": "Venue emails",
-      "summary": "Assign each published venue the email that will receive its new bookings and operational notices."
+      "title": "Venue access and emails",
+      "summary": "Give each venue its own panel credentials and the email that will receive bookings and operational notices."
     },
     "loading": "Loading published venues…",
     "empty": "There are no published venues to assign an email to yet.",
     "card": {
-      "help": "This email is private and is used for the venue's operational notifications.",
-      "emailLabel": "Notification email",
-      "emailHelp": "New bookings for this venue will be sent to this address.",
-      "save": "Save email",
+      "help": "The venue can sign in with this email and will have exclusive access to its own panel.",
+      "emailLabel": "Sign-in and notification email",
+      "emailHelp": "It will be used to sign in and receive this venue's new bookings.",
+      "passwordLabel": "Panel password",
+      "passwordHelp": "Use between 12 and 72 characters. Saving again signs out previous sessions.",
+      "accessConfigured": "Access configured",
+      "accessPending": "No individual access",
+      "save": "Create access",
+      "rotate": "Update access",
       "saving": "Saving…"
     },
-    "success": "The email for {venue} has been updated.",
+    "success": "The credentials and email for {venue} have been updated.",
     "errors": {
-      "invalid": "Enter a valid email address.",
+      "invalid": "Enter a valid email and a password between 12 and 72 characters.",
       "unauthenticated": "Your session has expired. Sign in again.",
       "forbidden": "You do not have permission to manage these venues.",
       "notFound": "The venue does not exist, is not published or does not belong to your account.",
+      "conflict": "That email is already assigned to another account or venue.",
       "unavailable": "We cannot manage emails right now. Try again later."
     }
   },
@@ -560,6 +570,9 @@
         "selected": "Selected day"
       },
       "serviceFilter": "Service",
+      "specialtyLabel": "Specialty or department",
+      "doctorLabel": "Professional or resource",
+      "chooseDoctor": "Choose a doctor or professional",
       "selectedService": "Service: {name}",
       "slotService": "Service: {name}",
       "resourceLabel": "Professional or resource",
@@ -595,6 +608,10 @@
         "summary": "Set opening times, apply date exceptions and manage each time slot."
       },
       "loading": "Loading availability",
+      "service": {
+        "label": "Service or specialty for these appointments",
+        "none": "General booking without a specialty"
+      },
       "setup": {
         "badge": "Initial setup",
         "title": "Create the first version of your bookings",
@@ -998,6 +1015,18 @@
       "es": "Spanish"
     },
     "mainImageAlt": "Current main venue image",
+    "management": {
+      "body": "Select the venue you want to edit or create a new profile. Each venue keeps its own details and images.",
+      "cancel": "Cancel",
+      "confirmDelete": "Yes, delete venue",
+      "create": "Create a new venue",
+      "delete": "Delete venue",
+      "deleteConfirmation": "Do you want to delete {name}? The profile will be archived and removed from the panel.",
+      "deleting": "Deleting…",
+      "newVenue": "Unsaved new venue",
+      "selector": "Venue to manage",
+      "title": "Venue management"
+    },
     "metadata": {
       "description": "Private panel for editing the public venue profile in Reserly.",
       "title": "Edit venue profile"
@@ -1214,7 +1243,11 @@
       "anyAvailable": "Supports first availability",
       "active": "Active",
       "inactive": "Inactive",
-      "noResources": "No compatible resources"
+      "noResources": "No compatible resources",
+      "bookingModes": {
+        "range": "Displayed as a time range",
+        "exact_time": "Appointment at an exact time"
+      }
     },
     "types": {
       "employee": "Employee",
@@ -1269,6 +1302,11 @@
       "capacity": "Required capacity",
       "active": "Active service",
       "anyAvailable": "Allow any available resource",
+      "bookingMode": "Booking presentation",
+      "bookingModes": {
+        "range": "Time range with start and end",
+        "exact_time": "Appointment at an exact time"
+      },
       "resources": "Compatible resources",
       "resourcesEmpty": "Add a team resource first."
     }
@@ -1539,7 +1577,11 @@
       "title": "Schedule for {date}",
       "summary": "{count, plural, =0 {No reservations} one {# reservation} other {# reservations}}",
       "partySize": "{count, plural, one {# guest} other {# guests}}",
-      "limited": "Showing {shown} of {total} reservations. Use the panel filters to narrow the query."
+      "limited": "Showing {shown} of {total} reservations. Use the panel filters to narrow the query.",
+      "incidentRisk": {
+        "watch": "Possible previous incidents",
+        "high": "Recurring previous incidents"
+      }
     },
     "empty": {
       "title": "No reservations for this day",
@@ -1553,6 +1595,7 @@
       "unavailable": "We could not load the reservations. Please try again."
     },
     "status": {
+      "pending": "Pending",
       "confirmed": "Confirmed",
       "cancelled_by_user": "Cancelled by customer",
       "cancelled_by_venue": "Cancelled by venue",
@@ -1605,7 +1648,21 @@
         "title": "Incident history",
         "summary": "{count, plural, =0 {No recorded incidents} one {# recorded incident} other {# recorded incidents}}",
         "empty": "There are no professional incidents associated with this email.",
-        "truncated": "Showing the {shown} most recent incidents out of {total}."
+        "truncated": "Showing the {shown} most recent incidents out of {total}.",
+        "risk": {
+          "low": {
+            "label": "Low no-show risk",
+            "description": "{count, plural, =0 {There have been no operational incidents in the last 12 months.} one {The last operational incident was {days} days ago, with no recent recurrence.} other {There is no recent recurrence.}}"
+          },
+          "watch": {
+            "label": "No-show risk under observation",
+            "description": "{count, plural, one {There is one recent operational incident worth reviewing.} other {There are # operational records, without high-level recent recurrence.}}"
+          },
+          "high": {
+            "label": "High no-show risk",
+            "description": "There are {count} recurring operational incidents in the visible history."
+          }
+        }
       }
     },
     "operations": {
@@ -1613,8 +1670,7 @@
       "description": "Update attendance or manage an incident. Critical actions are validated and audited by the server.",
       "attendance": {
         "attended": "Mark attended",
-        "noShow": "Mark no-show",
-        "pending": "Leave pending"
+        "noShow": "Mark no-show"
       },
       "report": {
         "open": "Report no-show",
@@ -1715,9 +1771,14 @@
     "loading": "Loading statistics",
     "periodLabel": "Data from {from} to {to}",
     "percent": "{value}%",
+    "venue": {
+      "label": "Venue",
+      "aria": "Select venue for statistics",
+      "description": "Metrics only correspond to the selected venue."
+    },
     "filters": {
       "title": "Period",
-      "description": "Metrics are recalculated for the selected interval.",
+      "description": "Metrics are recalculated for the selected interval and refresh automatically.",
       "periodAria": "Select statistics period",
       "periods": {
         "today": "Today",
@@ -1741,18 +1802,23 @@
     "charts": {
       "reservations": "Booking trend",
       "occupancy": "Occupancy trend",
+      "incidents": "Incident trend",
       "reservationsAria": "Daily bookings chart",
       "occupancyAria": "Daily occupancy percentage chart",
+      "incidentsAria": "Daily activated incidents chart",
       "reservationValue": "{value, plural, one {# booking} other {# bookings}}",
       "occupancyValue": "{value}% occupancy",
-      "empty": "There is no activity in this period."
+      "incidentValue": "{value, plural, one {# activated incident} other {# activated incidents}}",
+      "empty": "There is no activity in this period.",
+      "incidentsEmpty": "There are no activated incidents in this period."
     },
     "details": {
       "title": "Period details",
       "confirmed": "Confirmed bookings",
       "cancelled": "Cancellations",
       "attended": "Attendances",
-      "reviews": "Reviews received"
+      "reviews": "Reviews received",
+      "incidents": "Activated incidents"
     },
     "errors": {
       "unauthenticated": "Your session has expired. Sign in again.",

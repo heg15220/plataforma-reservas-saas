@@ -45,6 +45,7 @@ export type ReservationSummary = {
   date: string;
   startsAt: string;
   endsAt: string;
+  bookingMode: "range" | "exact_time";
   serviceName: string | null;
   resourceName: string | null;
   bookingRules: string | null;
@@ -467,7 +468,11 @@ function ReservationSummaryCard({
           <SummaryLine icon={<CalendarDays />} value={formatDate(summary.date, locale)} />
           <SummaryLine
             icon={<Clock3 />}
-            value={formatTimeRange(summary.startsAt, summary.endsAt)}
+            value={
+              summary.bookingMode === "exact_time"
+                ? summary.startsAt.slice(0, 5)
+                : formatTimeRange(summary.startsAt, summary.endsAt)
+            }
           />
           <SummaryLine icon={<UsersRound />} value={t("people", { count: partySize })} />
           {summary.serviceName ? (

@@ -10,12 +10,21 @@ public interface VenueGalleryService {
 
   List<VenueImageEntity> list(UUID ownerUserId);
 
+  List<VenueImageEntity> list(UUID userId, UUID venueId);
+
   VenueImageEntity upload(
       UUID ownerUserId, String altText, String declaredMediaType, InputStream input);
 
+  VenueImageEntity upload(
+      UUID userId, UUID venueId, String altText, String declaredMediaType, InputStream input);
+
   List<VenueImageEntity> reorder(UUID ownerUserId, List<UUID> imageIds);
 
+  List<VenueImageEntity> reorder(UUID userId, UUID venueId, List<UUID> imageIds);
+
   void delete(UUID ownerUserId, UUID imageId);
+
+  void delete(UUID userId, UUID venueId, UUID imageId);
 
   VenueMainImageContent findPublished(UUID imageId);
 }

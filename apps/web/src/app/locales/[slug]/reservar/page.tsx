@@ -48,6 +48,7 @@ export default async function ReservationPage({ params, searchParams }: Reservat
     date: availability.date,
     startsAt: slot.startsAt,
     endsAt: slot.endsAt,
+    bookingMode: slot.bookingMode,
     serviceName: slot.serviceName,
     resourceName: resource?.displayName ?? null,
     bookingRules: venue.rules,

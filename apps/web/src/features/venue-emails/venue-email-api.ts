@@ -5,6 +5,7 @@ const assignmentSchema = z.object({
   venueName: z.string().min(1),
   venueSlug: z.string().min(1),
   email: z.email().nullable(),
+  panelAccessConfigured: z.boolean(),
   updatedAt: z.iso.datetime(),
 });
 
@@ -16,6 +17,7 @@ export type VenueEmailApiErrorKind =
   | "unauthenticated"
   | "forbidden"
   | "notFound"
+  | "conflict"
   | "unavailable";
 
 export class VenueEmailApiError extends Error {
@@ -41,12 +43,13 @@ export async function fetchVenueEmailAssignments(
 export async function updateVenueEmailAssignment(
   venueId: string,
   email: string,
+  password: string,
   signal?: AbortSignal,
 ): Promise<VenueEmailAssignment> {
   const response = await request(`/api/venue/me/email-assignments/${venueId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, password }),
     signal,
   });
   await throwForStatus(response);
@@ -74,6 +77,7 @@ async function throwForStatus(response: Response): Promise<void> {
     401: "unauthenticated",
     403: "forbidden",
     404: "notFound",
+    409: "conflict",
   };
   throw new VenueEmailApiError(kinds[response.status] ?? "unavailable");
 }

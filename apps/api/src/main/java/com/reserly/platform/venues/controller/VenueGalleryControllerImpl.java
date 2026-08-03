@@ -33,14 +33,35 @@ public class VenueGalleryControllerImpl implements VenueGalleryController {
   }
 
   @Override
+  public ResponseEntity<List<VenueGalleryImageResponse>> listById(
+      AuthenticatedAccount account, UUID venueId) {
+    return ResponseEntity.ok(toResponses(service.list(account.userId(), venueId)));
+  }
+
+  @Override
   public ResponseEntity<VenueGalleryImageResponse> upload(
       AuthenticatedAccount account, String altText, MultipartFile file) {
+    return upload(account, null, altText, file);
+  }
+
+  @Override
+  public ResponseEntity<VenueGalleryImageResponse> uploadById(
+      AuthenticatedAccount account, UUID venueId, String altText, MultipartFile file) {
+    return upload(account, venueId, altText, file);
+  }
+
+  private ResponseEntity<VenueGalleryImageResponse> upload(
+      AuthenticatedAccount account, UUID venueId, String altText, MultipartFile file) {
     if (file.isEmpty() || file.getContentType() == null) {
       throw new VenueImageValidationException();
     }
     try {
       VenueImageEntity image =
-          service.upload(account.userId(), altText, file.getContentType(), file.getInputStream());
+          venueId == null
+              ? service.upload(
+                  account.userId(), altText, file.getContentType(), file.getInputStream())
+              : service.upload(
+                  account.userId(), venueId, altText, file.getContentType(), file.getInputStream());
       return ResponseEntity.created(URI.create(image.getUrl())).body(toResponse(image));
     } catch (IOException exception) {
       throw new VenueImageValidationException();
@@ -54,8 +75,21 @@ public class VenueGalleryControllerImpl implements VenueGalleryController {
   }
 
   @Override
+  public ResponseEntity<List<VenueGalleryImageResponse>> reorderById(
+      AuthenticatedAccount account, UUID venueId, VenueGalleryOrderRequest request) {
+    return ResponseEntity.ok(
+        toResponses(service.reorder(account.userId(), venueId, request.imageIds())));
+  }
+
+  @Override
   public ResponseEntity<Void> delete(AuthenticatedAccount account, UUID imageId) {
     service.delete(account.userId(), imageId);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  public ResponseEntity<Void> deleteById(AuthenticatedAccount account, UUID venueId, UUID imageId) {
+    service.delete(account.userId(), venueId, imageId);
     return ResponseEntity.noContent().build();
   }
 

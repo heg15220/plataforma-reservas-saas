@@ -97,6 +97,7 @@ public interface TimeSlotDao extends JpaRepository<TimeSlotEntity, UUID> {
       where slot.venue.ownerUser.id = :ownerUserId
         and slot.venue.status <> 'archived'
         and slot.date = :date
+        and ((:serviceId is null and slot.serviceId is null) or slot.serviceId = :serviceId)
         and slot.startsAt < :endsAt
         and slot.endsAt > :startsAt
       """)
@@ -104,7 +105,8 @@ public interface TimeSlotDao extends JpaRepository<TimeSlotEntity, UUID> {
       @Param("ownerUserId") UUID ownerUserId,
       @Param("date") LocalDate date,
       @Param("startsAt") LocalTime startsAt,
-      @Param("endsAt") LocalTime endsAt);
+      @Param("endsAt") LocalTime endsAt,
+      @Param("serviceId") UUID serviceId);
 
   /** Bloquea una franja propia antes de cambiar capacidad o estado. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)

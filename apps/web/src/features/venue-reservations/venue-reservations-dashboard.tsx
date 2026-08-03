@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Clock3,
   RefreshCw,
+  ShieldAlert,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -248,6 +249,13 @@ function ReservationRow({
   locale: string;
   t: ReturnType<typeof useTranslations>;
 }) {
+  // La comprobación cerrada protege también filas conservadas por React durante una recarga HMR
+  // si proceden del contrato anterior y todavía no incluyen incidentRiskLevel.
+  const incidentRiskLevel =
+    reservation.incidentRiskLevel === "watch" || reservation.incidentRiskLevel === "high"
+      ? reservation.incidentRiskLevel
+      : null;
+
   return (
     <Box
       component="li"
@@ -281,10 +289,25 @@ function ReservationRow({
           {t("list.partySize", { count: reservation.partySize })}
         </Typography>
       </Box>
-      <StatusChip
-        label={statusLabel(reservation.status, t)}
-        tone={statusTone(reservation.status)}
-      />
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}>
+        <StatusChip
+          label={statusLabel(reservation.status, t)}
+          tone={statusTone(reservation.status)}
+        />
+        {incidentRiskLevel && (
+          <Button
+            color={incidentRiskLevel === "high" ? "error" : "warning"}
+            component={NavigationLink}
+            href={`/panel/reservas/${reservation.id}`}
+            size="small"
+            startIcon={<ShieldAlert aria-hidden="true" size={16} />}
+            sx={{ minHeight: 36 }}
+            variant="outlined"
+          >
+            {t(`list.incidentRisk.${incidentRiskLevel}`)}
+          </Button>
+        )}
+      </Stack>
       <Button
         component={NavigationLink}
         href={`/panel/reservas/${reservation.id}`}
@@ -360,6 +383,7 @@ function summarize(items: VenueReservationSummary[]) {
 
 function statusLabel(status: string, t: ReturnType<typeof useTranslations>) {
   const supported = [
+    "pending",
     "confirmed",
     "cancelled_by_user",
     "cancelled_by_venue",

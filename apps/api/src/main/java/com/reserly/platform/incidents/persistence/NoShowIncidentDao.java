@@ -4,6 +4,7 @@ import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -58,6 +59,28 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
   long countByCustomerEmailNormalized(
       @Param("customerEmailNormalized") String customerEmailNormalized,
       @Param("cutoff") Instant cutoff);
+
+  /**
+   * Resume en una sola consulta los correos ya presentes en una página privada de reservas.
+   *
+   * <p>Solo cuenta estados operativos dentro de la retención visible. El correo se usa como clave
+   * interna y no se incorpora a la respuesta de riesgo.
+   */
+  @Query(
+      """
+      select incident.customerEmailNormalized as customerEmailNormalized,
+             count(incident) as operationalCount,
+             sum(case when incident.reportedAt > :recentCutoff then 1 else 0 end) as recentCount
+      from NoShowIncidentEntity incident
+      where incident.customerEmailNormalized in :customerEmails
+        and incident.reportedAt >= :retentionCutoff
+        and incident.status in ('reported', 'confirmed')
+      group by incident.customerEmailNormalized
+      """)
+  List<IncidentRiskAggregateProjection> summarizeOperationalRisk(
+      @Param("customerEmails") Set<String> customerEmails,
+      @Param("retentionCutoff") Instant retentionCutoff,
+      @Param("recentCutoff") Instant recentCutoff);
 
   /** Página profesional minimizada dentro de la ventana operativa de doce meses. */
   @Query(

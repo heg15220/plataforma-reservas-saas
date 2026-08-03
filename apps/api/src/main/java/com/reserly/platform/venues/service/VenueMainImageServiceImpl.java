@@ -45,6 +45,21 @@ public class VenueMainImageServiceImpl implements VenueMainImageService {
         venueDao
             .findCurrentByOwnerUserIdForUpdate(ownerUserId)
             .orElseThrow(VenueProfileNotFoundException::new);
+    return store(venue, image);
+  }
+
+  @Override
+  @Transactional
+  public VenueMainImageOutcome upload(
+      UUID userId, UUID venueId, String declaredMediaType, InputStream input) {
+    VenueEntity venue =
+        venueDao
+            .findAccessibleByIdForUpdate(userId, venueId)
+            .orElseThrow(VenueProfileNotFoundException::new);
+    return store(venue, validator.validate(declaredMediaType, input));
+  }
+
+  private VenueMainImageOutcome store(VenueEntity venue, ValidatedVenueImage image) {
     String oldObjectKey = venue.getMainImageObjectKey();
     String newObjectKey =
         "venues/" + venue.getId() + "/main/" + UUID.randomUUID() + "." + image.extension();
