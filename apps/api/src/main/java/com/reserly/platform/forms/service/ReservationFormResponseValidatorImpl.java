@@ -6,6 +6,7 @@ import com.reserly.platform.forms.dto.ReservationFormAnswerCommand;
 import com.reserly.platform.forms.dto.ReservationFormPreviewFieldResponse;
 import com.reserly.platform.forms.dto.ReservationFormPreviewResponse;
 import com.reserly.platform.forms.dto.ValidatedReservationFormAnswer;
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -207,7 +208,7 @@ public class ReservationFormResponseValidatorImpl implements ReservationFormResp
     if (!value.isTextual()) {
       throw invalid(ReservationFormResponseViolation.INVALID_TYPE, key);
     }
-    String normalized = value.textValue().trim();
+    String normalized = PlainTextSanitizer.sanitize(value.textValue());
     if (normalized.isEmpty()) {
       throw invalid(ReservationFormResponseViolation.INVALID_VALUE, key);
     }

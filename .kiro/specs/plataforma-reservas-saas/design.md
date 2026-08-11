@@ -2569,7 +2569,10 @@ Navegación inferior:
 - Verificación empresarial aprobada para publicar locales.
 - Sesiones seguras o tokens firmados.
 - Recuperación de contraseña con tokens de uso único.
-- Rate limiting en login, registro, recuperación, reserva, comprobación de elegibilidad de reseñas y creación de reseñas.
+- Rate limiting Redis fail-closed con cuotas independientes por IP observada para login, registro,
+  solicitud y consumo de recuperación, hold/confirmación de reserva, consulta/cancelación por
+  enlace público y elegibilidad/creación de reseñas. Las rutas dinámicas se clasifican por método y
+  forma canónica sin leer ni incorporar tokens o payloads sensibles a logs o claves Redis.
 
 ### 12.2 Autorización
 
@@ -2588,8 +2591,16 @@ Navegación inferior:
 - Validación backend obligatoria para formularios, capacidad, fechas y emails.
 - Validación backend obligatoria de `account_type` y verificación empresarial.
 - Validación backend obligatoria de elegibilidad de reseñas por `venue_id`, email normalizado y reserva confirmada/finalizada.
-- Sanitización de HTML o uso de texto plano en descripciones, pestañas personalizadas y comentarios.
-- Validación de archivos subidos.
+- Las descripciones localizadas, comentarios, notas de incidencias, motivos operativos, textos
+  alternativos y respuestas textuales de formularios se persisten como texto plano canónico: se
+  normaliza Unicode y saltos de línea, se retiran etiquetas y controles invisibles, y el consumidor
+  mantiene escape contextual. Las pestañas personalizadas conservan su saneador HTML de allowlist
+  cerrada, sin atributos.
+- Toda subida se limita tanto en multipart como durante lectura. Imágenes de perfil y galería solo
+  admiten JPEG/PNG cuyo MIME declarado coincida con el formato decodificado, validan dimensiones y
+  píxeles, se recodifican sin metadatos y usan claves aleatorias. Los documentos empresariales
+  aplican tamaño, allowlist MIME, magic bytes, SHA-256, antivirus fail-closed, cifrado y bucket
+  privado; nombre y extensión aportados por el cliente no forman parte de la clave persistida.
 - Los slugs públicos usan el alfabeto canónico y un máximo de 160 caracteres; los tokens de
   gestión exigen exactamente 43 caracteres Base64URL antes de calcular hashes o consultar datos.
 - Búsqueda, sugerencias, filtros, categorías, coordenadas, radio, ordenación, paginación, locale y

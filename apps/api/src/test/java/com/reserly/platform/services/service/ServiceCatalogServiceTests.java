@@ -64,7 +64,9 @@ class ServiceCatalogServiceTests {
 
     List<ServiceEntity> listed = service.list(ownerId);
     ServiceEntity created =
-        service.create(ownerId, command(" Corte ", " Corte clasico ", 45, 1, true));
+        service.create(
+            ownerId,
+            command(" Corte ", " <img src=x onerror=alert(1)>Corte clasico ", 45, 1, true));
     assertThat(listed).containsExactly(existing);
     assertThat(created.getVenue()).isSameAs(venue);
     assertThat(created.getName()).isEqualTo("Corte");

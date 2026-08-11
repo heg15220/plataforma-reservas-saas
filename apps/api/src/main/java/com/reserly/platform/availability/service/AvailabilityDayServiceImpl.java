@@ -6,6 +6,7 @@ import com.reserly.platform.availability.persistence.AvailabilityBlockDao;
 import com.reserly.platform.availability.persistence.AvailabilityBlockEntity;
 import com.reserly.platform.availability.persistence.TimeSlotDao;
 import com.reserly.platform.identity.persistence.UserEntity;
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.venues.persistence.VenueDao;
 import com.reserly.platform.venues.persistence.VenueEntity;
 import com.reserly.platform.venues.service.VenueProfileNotFoundException;
@@ -115,9 +116,6 @@ public class AvailabilityDayServiceImpl implements AvailabilityDayService {
   }
 
   private String normalizeReason(String reason) {
-    if (reason == null || reason.isBlank()) {
-      return null;
-    }
-    return reason.strip();
+    return PlainTextSanitizer.sanitizeNullable(reason);
   }
 }

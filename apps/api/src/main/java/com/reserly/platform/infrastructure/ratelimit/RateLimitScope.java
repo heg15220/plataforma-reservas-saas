@@ -11,6 +11,9 @@ public enum RateLimitScope {
   REGISTRATION("registration"),
   PASSWORD_RESET_REQUEST("password-reset-request"),
   PASSWORD_RESET_CONSUME("password-reset-consume"),
+  RESERVATION("reservation"),
+  PUBLIC_LINK("public-link"),
+  REVIEW("review"),
   BUSINESS_VERIFICATION("business-verification");
 
   private final String keySegment;

@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MultipartException;
 
 /** Traduce errores del perfil a códigos estables sin publicar IDs ni constraints. */
 @RestControllerAdvice(
@@ -62,7 +63,7 @@ public class VenueProfileExceptionHandler {
         .body(new VenueProfileErrorResponse("VENUE_CUSTOM_TAB_INVALID"));
   }
 
-  @ExceptionHandler(VenueImageValidationException.class)
+  @ExceptionHandler({VenueImageValidationException.class, MultipartException.class})
   public ResponseEntity<VenueProfileErrorResponse> handleInvalidImage() {
     return ResponseEntity.badRequest().body(new VenueProfileErrorResponse("VENUE_IMAGE_INVALID"));
   }

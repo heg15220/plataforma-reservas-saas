@@ -41,4 +41,20 @@ class BusinessDocumentContentValidatorTests {
             () -> validator.validate("application/pdf", new ByteArrayInputStream(content)))
         .isInstanceOf(BusinessDocumentUploadValidationException.class);
   }
+
+  @Test
+  void rejectsEmptyUnknownAndUntypedContent() {
+    assertThatThrownBy(
+            () -> validator.validate("application/pdf", new ByteArrayInputStream(new byte[0])))
+        .isInstanceOf(BusinessDocumentUploadValidationException.class);
+    assertThatThrownBy(
+            () ->
+                validator.validate("application/pdf", new ByteArrayInputStream("plain".getBytes())))
+        .isInstanceOf(BusinessDocumentUploadValidationException.class);
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    null, new ByteArrayInputStream("%PDF-1.7".getBytes(StandardCharsets.US_ASCII))))
+        .isInstanceOf(BusinessDocumentUploadValidationException.class);
+  }
 }

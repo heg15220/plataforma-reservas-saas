@@ -8717,3 +8717,47 @@ Fuente de verdad del avance:
     no una aserción del cambio.
   - Spotless identificó y corrigió solo siete fuentes Java modificadas; no se ejecutaron suites
     globales, frontend, migraciones ni validaciones visuales.
+
+# Conversación 190 - Saneado de texto, subida segura y cuotas anónimas
+
+- Fecha: 2026-08-11.
+- Resumen de la conversación:
+  - Se revisó la carpeta `.kiro`, el inventario completo de entradas multipart, los campos libres
+    persistidos y la infraestructura Redis de rate limiting.
+  - Se creó un saneador común de texto plano y se aplicó a textos localizados, comentarios,
+    respuestas de formulario, notas, motivos, catálogos y textos alternativos.
+  - Se confirmó que imágenes y documentos ya aplicaban límites, detección de contenido y claves
+    seguras; se cerró el contrato de error de imágenes ante desbordamiento o fallo multipart.
+  - Se ampliaron las cuotas existentes de login/registro/recuperación a hold, confirmación, enlaces
+    de gestión y flujos públicos de reseñas.
+- Archivos modificados:
+  - Nuevo `apps/api/src/main/java/com/reserly/platform/infrastructure/validation/PlainTextSanitizer.java`
+    y su prueba.
+  - `LocalizedText.java` y servicios de formularios, reseñas, incidencias, cancelaciones,
+    disponibilidad, servicios, recursos y galería.
+  - `RateLimitScope.java`, `RateLimitProperties.java`,
+    `SensitiveEndpointRateLimitInterceptor.java`, `application.yaml` y sus pruebas.
+  - `VenueProfileExceptionHandler.java` y pruebas de validadores de imagen y documentos.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007`, `RF-009`, `RF-013`, `RF-014`, `RF-015`, `RF-017`, `RF-020`, `RF-023`, `RF-024`,
+    `RF-026`, `RF-027`, `RF-032`, `RNF-001` y `RNF-002`.
+- Tareas impactadas:
+  - `16.4. Sanitizar comentarios, descripciones y campos libres`.
+  - `16.5. Validar subida de archivos`.
+  - `16.6. Añadir rate limiting a reserva, login, recuperación y enlaces públicos`.
+- Tareas completadas:
+  - `16.4`, `16.5` y `16.6`, con implementación, pruebas y documentación técnica individual.
+- Siguiente tarea pendiente recomendada:
+  - `16.7. Hashear tokens públicos de gestión`.
+- Decisiones o aclaraciones relevantes:
+  - El contenido ordinario se conserva como texto plano; el único HTML editorial continúa siendo
+    el de pestañas personalizadas bajo allowlist sin atributos.
+  - No se incorporan nombres de archivo, tokens, emails o payloads a claves Redis ni logs.
+  - Las cuotas nuevas son independientes y configurables: reserva 30/5 min, enlace 30/5 min y
+    reseñas 10/15 min; Redis sigue funcionando fail-closed.
+  - Compilaron 828 fuentes principales y 199 de test. Pasaron 65 pruebas focales y de consumidores
+    directos. No se ejecutaron suites globales, integraciones Docker, frontend ni migraciones.
+  - El Checkstyle global se detuvo por 26 infracciones históricas ajenas en plantillas de email y un
+    test de mensajería; Spotless sí dejó limpios los 1027 Java y cambió solo archivos de esta
+    iteración. La validación focal se mantuvo deliberadamente acotada como pidió el usuario.

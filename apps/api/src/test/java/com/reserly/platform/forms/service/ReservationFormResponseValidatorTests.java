@@ -32,7 +32,7 @@ class ReservationFormResponseValidatorTests {
     ReservationFormPreviewResponse form = completeForm();
     List<ReservationFormAnswerCommand> answers =
         List.of(
-            answer("notes", text(" Llegar diez minutos antes ")),
+            answer("notes", text(" <img src=x onerror=alert(1)>Llegar diez minutos antes ")),
             answer("customer_name", text(" Ana ")),
             answer("customer_email", text("ana@example.com")),
             answer("party_size", number(2)),

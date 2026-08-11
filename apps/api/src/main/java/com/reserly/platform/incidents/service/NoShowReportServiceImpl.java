@@ -5,6 +5,7 @@ import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.incidents.dto.NoShowReportRequest;
 import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import java.time.Clock;
@@ -111,10 +112,10 @@ public class NoShowReportServiceImpl implements NoShowReportService {
   }
 
   private String normalizeNotes(String notes) {
-    if (notes == null || notes.isBlank()) {
+    String normalized = PlainTextSanitizer.sanitizeNullable(notes);
+    if (normalized == null) {
       return null;
     }
-    String normalized = notes.trim();
     if (normalized.length() > 2000) {
       throw new NoShowReportInvalidException();
     }

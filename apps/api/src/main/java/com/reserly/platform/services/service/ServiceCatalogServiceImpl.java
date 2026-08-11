@@ -1,5 +1,6 @@
 package com.reserly.platform.services.service;
 
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.resources.persistence.EmployeeResourceDao;
 import com.reserly.platform.resources.persistence.EmployeeResourceEntity;
 import com.reserly.platform.services.dto.ServiceCommand;
@@ -127,7 +128,7 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
     if (value == null) {
       throw new ServiceInvalidException();
     }
-    String normalized = value.trim();
+    String normalized = PlainTextSanitizer.sanitize(value);
     if (normalized.isBlank() || normalized.length() > maxLength) {
       throw new ServiceInvalidException();
     }
@@ -138,7 +139,7 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
     if (value == null) {
       return null;
     }
-    String normalized = value.trim();
+    String normalized = PlainTextSanitizer.sanitize(value);
     if (normalized.isBlank() || normalized.length() > maxLength) {
       throw new ServiceInvalidException();
     }

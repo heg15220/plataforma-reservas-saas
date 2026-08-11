@@ -1,5 +1,6 @@
 package com.reserly.platform.venues.service;
 
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.venues.image.ValidatedVenueImage;
 import com.reserly.platform.venues.image.VenueImageContentValidator;
 import com.reserly.platform.venues.image.VenueImageStorage;
@@ -204,10 +205,11 @@ public class VenueGalleryServiceImpl implements VenueGalleryService {
   }
 
   private String normalizeAltText(String altText) {
-    if (altText == null || altText.isBlank() || altText.strip().length() > 300) {
+    String normalized = PlainTextSanitizer.sanitize(altText);
+    if (normalized.isBlank() || normalized.length() > 300) {
       throw new VenueImageValidationException();
     }
-    return altText.strip();
+    return normalized;
   }
 
   private void registerRollbackCleanup(String objectKey) {

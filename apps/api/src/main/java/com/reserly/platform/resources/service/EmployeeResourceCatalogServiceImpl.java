@@ -1,5 +1,6 @@
 package com.reserly.platform.resources.service;
 
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.resources.dto.EmployeeResourceCommand;
 import com.reserly.platform.resources.dto.EmployeeResourceHourRequest;
 import com.reserly.platform.resources.dto.EmployeeResourceWeeklyHoursRequest;
@@ -140,7 +141,7 @@ public class EmployeeResourceCatalogServiceImpl implements EmployeeResourceCatal
     if (value == null) {
       return null;
     }
-    String normalized = value.trim();
+    String normalized = PlainTextSanitizer.sanitize(value);
     if (normalized.isBlank() || normalized.length() > maxLength) {
       throw new EmployeeResourceInvalidException();
     }

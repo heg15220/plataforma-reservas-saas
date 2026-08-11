@@ -1,5 +1,6 @@
 package com.reserly.platform.reviews.service;
 
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.reservations.persistence.ReservationDao;
 import com.reserly.platform.reservations.persistence.ReservationEntity;
 import com.reserly.platform.reviews.dto.ReviewCreateRequest;
@@ -173,9 +174,6 @@ public class ReviewCreationServiceImpl implements ReviewCreationService {
   }
 
   private String normalizeComment(String comment) {
-    if (comment == null || comment.isBlank()) {
-      return null;
-    }
-    return comment.strip();
+    return PlainTextSanitizer.sanitizeNullable(comment);
   }
 }

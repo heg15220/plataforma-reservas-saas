@@ -1,5 +1,6 @@
 package com.reserly.platform.localization;
 
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -132,7 +133,10 @@ public record LocalizedText(SupportedLocale sourceLocale, Map<SupportedLocale, S
     if (sourceValues != null) {
       for (Map.Entry<SupportedLocale, String> entry : sourceValues.entrySet()) {
         if (entry.getKey() != null && entry.getValue() != null) {
-          normalizedValues.put(entry.getKey(), entry.getValue().trim());
+          String sanitized = PlainTextSanitizer.sanitizeNullable(entry.getValue());
+          if (sanitized != null) {
+            normalizedValues.put(entry.getKey(), sanitized);
+          }
         }
       }
     }

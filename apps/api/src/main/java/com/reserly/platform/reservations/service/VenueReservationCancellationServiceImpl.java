@@ -2,6 +2,7 @@ package com.reserly.platform.reservations.service;
 
 import com.reserly.platform.administration.service.AuditLogEntry;
 import com.reserly.platform.administration.service.AuditLogService;
+import com.reserly.platform.infrastructure.validation.PlainTextSanitizer;
 import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.reservations.dto.VenueReservationCancellationRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
@@ -118,7 +119,10 @@ public class VenueReservationCancellationServiceImpl
     if (request == null || request.reason() == null || request.reason().isBlank()) {
       throw new VenueReservationCancellationInvalidException();
     }
-    String normalized = request.reason().strip();
+    String normalized = PlainTextSanitizer.sanitize(request.reason());
+    if (normalized.isBlank()) {
+      throw new VenueReservationCancellationInvalidException();
+    }
     if (normalized.length() > 500) {
       throw new VenueReservationCancellationInvalidException();
     }

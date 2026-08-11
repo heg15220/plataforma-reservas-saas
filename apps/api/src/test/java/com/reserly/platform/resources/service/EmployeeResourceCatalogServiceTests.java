@@ -72,6 +72,8 @@ class EmployeeResourceCatalogServiceTests {
     assertThat(created.getFirstName()).isEqualTo("Ana");
     assertThat(created.getLastName()).isEqualTo("López");
     assertThat(created.getPublicAlias()).isEqualTo("Ana L.");
+    assertThat(created.getDescription()).isEqualTo("Especialista en cortes clásicos");
+    assertThat(created.getInternalNotes()).isEqualTo("Nota interna");
     assertThat(created.getStatus()).isEqualTo("active");
     assertThat(created.isPublicVisibility()).isTrue();
 
@@ -240,10 +242,10 @@ class EmployeeResourceCatalogServiceTests {
         publicAlias,
         "https://example.invalid/photo.png",
         "Peluquería",
-        "Especialista en cortes clásicos",
+        "<img src=x onerror=alert(1)>Especialista en cortes clásicos",
         status,
         publicVisibility,
-        "Nota interna");
+        "<script>alert(1)</script>Nota interna");
   }
 
   private EmployeeResourceEntity resource(

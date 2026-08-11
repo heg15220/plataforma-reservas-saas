@@ -53,6 +53,21 @@ class VenueImageContentValidatorTests {
         .isInstanceOf(VenueImageValidationException.class);
   }
 
+  @Test
+  void rejectsEmptyAndOversizedStreamsBeforeDecoding() {
+    VenueImageContentValidator oneKilobyteValidator =
+        new VenueImageContentValidator(new VenueImageUploadProperties(1024, 1, 4096, 16_777_216));
+
+    assertThatThrownBy(
+            () -> oneKilobyteValidator.validate("image/png", new ByteArrayInputStream(new byte[0])))
+        .isInstanceOf(VenueImageValidationException.class);
+    assertThatThrownBy(
+            () ->
+                oneKilobyteValidator.validate(
+                    "image/png", new ByteArrayInputStream(new byte[1025])))
+        .isInstanceOf(VenueImageValidationException.class);
+  }
+
   private byte[] image(String format, int width, int height) throws IOException {
     BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
     var graphics = image.createGraphics();

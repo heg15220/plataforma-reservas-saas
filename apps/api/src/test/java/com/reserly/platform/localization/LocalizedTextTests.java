@@ -55,6 +55,20 @@ class LocalizedTextTests {
   }
 
   @Test
+  void sanitizesEveryLocalizedValueBeforeItCanBePersisted() {
+    LocalizedText text =
+        LocalizedText.fromLanguageTagValues(
+            "es",
+            Map.of(
+                "es", "<img src=x onerror=alert(1)>Carta segura",
+                "en", "<script>alert(2)</script>Safe menu"));
+
+    assertThat(text.toLanguageTagValues())
+        .containsEntry("es", "Carta segura")
+        .containsEntry("en", "Safe menu");
+  }
+
+  @Test
   void requiresSourceLocaleAndVisibleSourceText() {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> new LocalizedText(null, Map.of(SupportedLocale.ES, "Carta")));

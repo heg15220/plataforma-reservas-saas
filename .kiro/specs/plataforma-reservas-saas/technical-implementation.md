@@ -34093,3 +34093,214 @@ Los clientes no navegador que reutilicen una cookie para escrituras deben enviar
 `Referer` autorizado; es una restricción deliberada. Si en el futuro la aplicación necesita clientes
 cookie-auth sin esas cabeceras, deberá migrarlos a autenticación no ambiental o incorporar un token
 CSRF explícito, sin debilitar la allowlist. La siguiente tarea pendiente es `16.4`.
+
+## Iteración 2026-08-11 - Tarea 16.4: saneado de comentarios, descripciones y campos libres
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.4. Sanitizar comentarios, descripciones y campos libres`.
+- Fecha: 2026-08-11.
+- Objetivo: impedir que contenido controlado por usuario conserve marcado ejecutable o caracteres
+  invisibles antes de persistirse, sin convertir textos legítimos en HTML codificado ni depender de
+  la conducta concreta de React.
+- Requisitos y diseño: `RNF-001`, `RF-009`, `RF-013`, `RF-020`, `RF-023`, `RF-024`, `RF-026` y
+  `RF-027`; diseño 3.2, 3.6 a 3.9 y 12.3.
+
+La revisión siguió el criterio de seguridad del proyecto: texto libre ordinario permanece texto
+plano y solo el contenido editorial de pestañas personalizadas conserva HTML mediante su allowlist
+cerrada preexistente. No se introdujo un saneador HTML general ni se autorizó ningún nuevo uso de
+`dangerouslySetInnerHTML`.
+
+### Arquitectura, contratos y flujo
+
+Se creó `infrastructure.validation.PlainTextSanitizer`, una utilidad sin estado con dos contratos:
+
+- `sanitizeNullable` normaliza a NFC, unifica CRLF/CR en LF, elimina secuencias con forma de
+  etiqueta, controles C0 no textuales, marcas bidireccionales y caracteres de formato invisibles;
+  devuelve `null` cuando no queda contenido visible;
+- `sanitize` ofrece el mismo contrato con cadena vacía para campos obligatorios, de forma que cada
+  caso de uso conserva su excepción de dominio y sus límites de longitud.
+
+El saneado se aplica en la frontera de persistencia, después de la validación estructural del DTO y
+antes de escribir entidades. Se conectó a:
+
+- `LocalizedText`, cubriendo descripciones, servicios, reglas, textos públicos, labels y opciones
+  localizadas sin duplicar lógica por módulo;
+- comentarios de reseñas en `ReviewCreationServiceImpl`;
+- respuestas `short_text` y `long_text` del formulario de reserva;
+- notas de no asistencia y motivo profesional de cancelación;
+- razones de excepciones de disponibilidad;
+- descripciones y campos editables de servicios y recursos profesionales;
+- texto alternativo de imágenes de galería.
+
+No cambia ningún JSON de entrada o salida, tabla, columna, índice ni migración. Los límites previos
+siguen aplicándose y el saneado no amplía contenido: la entrada se limita antes por Bean Validation o
+por la validación defensiva del servicio. Las etiquetas se eliminan en vez de escaparse para evitar
+persistir entidades HTML que después aparezcan literalmente en componentes que renderizan texto.
+
+### Seguridad, privacidad, i18n, errores y observabilidad
+
+El saneador no interpreta entidades HTML, URLs ni protocolos y no produce HTML confiable. Esta
+invariante está documentada en el código: todo consumidor debe continuar usando nodos de texto o
+escape contextual. Las pestañas personalizadas siguen aisladas en
+`VenueCustomTabHtmlSanitizer`, con etiquetas editoriales concretas y cero atributos.
+
+La normalización NFC preserva español e inglés, incluidos acentos, eñes y saltos de línea útiles.
+Se eliminan controles bidireccionales para reducir contenido visualmente engañoso en paneles,
+auditorías y emails. Los errores permanecen opacos y específicos de cada dominio; no se refleja la
+entrada rechazada ni se añaden logs con comentarios, notas o respuestas personales.
+
+### Archivos, tests y evidencia
+
+Archivos principales creados o modificados:
+
+- nuevo `PlainTextSanitizer.java` y `PlainTextSanitizerTests.java`;
+- `LocalizedText.java`;
+- servicios de formulario, reseñas, incidencias, cancelación, disponibilidad, catálogo de servicios,
+  recursos y galería;
+- pruebas focales de formulario y creación de reseñas.
+
+La verificación focal compiló 828 fuentes principales y 199 fuentes de test. En el lote conjunto
+pasaron las pruebas del saneador, localización y todos los servicios consumidores directos. Se
+comprobó específicamente eliminación de `img`, `script`, handlers, NUL y controles bidireccionales,
+conservación del texto visible, normalización de líneas y conversión de contenido vacío a `null`.
+
+### Riesgos, límites y deuda
+
+El saneador es defensa en profundidad para texto plano, no una autorización futura para interpolar
+su resultado en HTML, JavaScript, CSS, SQL o cabeceras. Si aparece un editor rich text nuevo deberá
+tener política HTML y pruebas propias. Los registros históricos no se reescriben en esta iteración;
+se sanean todas las nuevas escrituras que atraviesan los casos de uso cubiertos.
+
+## Iteración 2026-08-11 - Tarea 16.5: validación segura de archivos subidos
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.5. Validar subida de archivos`.
+- Fecha: 2026-08-11.
+- Objetivo: inventariar todas las fronteras multipart, verificar el pipeline real y cerrar la
+  respuesta ante desbordamientos de imagen sin duplicar validadores ya consolidados.
+- Requisitos y diseño: `RF-007`, `RF-009`, `RF-032`, `RNF-001`, `RNF-002` y diseño 3.2, 3.15 y
+  12.3.
+
+### Inventario y arquitectura verificada
+
+Solo existen tres familias de entrada `MultipartFile`: imagen principal, galería del local y
+documentación de verificación empresarial. El límite servlet global es 10 MiB por fichero y 11 MiB
+por petición. Además, cada pipeline vuelve a leer con un byte centinela sobre su límite de dominio,
+por lo que no confía únicamente en `Content-Length` ni en la configuración del contenedor.
+
+Para imagen principal y galería, `VenueImageContentValidator`:
+
+- ignora nombre original y extensión;
+- admite únicamente MIME declarado `image/jpeg` o `image/png` coincidente con el lector real;
+- rechaza vacío, tipo desconocido, múltiples imágenes, dimensiones menores o mayores y producto de
+  píxeles excesivo antes de materializar el raster;
+- decodifica y recodifica el contenido, retirando metadatos y bytes anexos;
+- genera claves de objeto con UUID bajo un prefijo propiedad del local.
+
+Para documentos empresariales, `BusinessDocumentContentValidator` y el servicio de subida:
+
+- aplican allowlist PDF/JPEG/PNG, firma binaria, tamaño y SHA-256 del claro;
+- ejecutan antivirus fail-closed antes de almacenar;
+- cifran el objeto, usan nombre aleatorio `.rsy` y bucket privado;
+- guardan solo metadatos mínimos y compensan el objeto si falla persistencia;
+- no persisten ni registran el nombre suministrado por el usuario.
+
+### Cambio implementado, errores y permisos
+
+`VenueProfileExceptionHandler` clasifica ahora también `MultipartException` como
+`400 VENUE_IMAGE_INVALID`. Esto cubre `MaxUploadSizeExceededException` y fallos de parsing antes de
+que el controlador pueda construir el `MultipartFile`, manteniendo el mismo contrato opaco que MIME,
+dimensiones o contenido inválido. Documentos empresariales ya tenían el contrato equivalente
+`DOCUMENT_UPLOAD_INVALID`.
+
+No cambian permisos: imágenes requieren propietario de local y consultas acotadas por actor/recurso;
+documentos requieren solicitud abierta, cuenta y tipo autorizados antes del pipeline. No se añade
+almacenamiento público directo, SVG, HTML, Office, ejecutables ni confianza en extensiones.
+
+### Archivos, pruebas y evidencia
+
+Archivos modificados:
+
+- `VenueProfileExceptionHandler.java`;
+- `VenueImageContentValidatorTests.java`;
+- `BusinessDocumentContentValidatorTests.java`;
+- `design.md` y documentos de cierre.
+
+Las pruebas focales verificaron imagen válida recodificada, spoofing MIME, contenido desconocido,
+dimensiones fuera de envolvente, stream vacío y stream superior al límite. Para documentos se
+verificaron PDF permitido y hash, desacuerdo MIME/firma, exceso de tamaño, vacío, contenido
+desconocido y ausencia de MIME. Pasaron las 4 pruebas de imagen, las 4 de documento y las 5 del
+servicio de galería dentro del lote dependiente.
+
+### Riesgos y límites
+
+El análisis antivirus continúa siendo la defensa específica contra payloads maliciosos dentro de
+PDF válidos; la firma no pretende sustituirlo. La disponibilidad de ClamAV y del almacenamiento se
+mantiene fail-closed. No se ejecutaron pruebas con MinIO, ClamAV ni Docker porque la tarea pudo
+verificarse en los límites puros y servicios directamente afectados.
+
+## Iteración 2026-08-11 - Tarea 16.6: cuotas para reserva, acceso y enlaces públicos
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.6. Añadir rate limiting a reserva, login, recuperación y enlaces públicos`.
+- Fecha: 2026-08-11.
+- Objetivo: completar las operaciones anónimas sensibles que faltaban sobre el contador Redis
+  atómico existente, manteniendo cuotas separadas y clasificación previa al controlador.
+- Requisitos y diseño: `RF-014`, `RF-015`, `RF-017`, `RF-024`, `RNF-001` y diseño 3.1, 3.5, 3.9,
+  8.1 a 8.3 y 12.1.
+
+### Arquitectura y rutas protegidas
+
+Login, registro y los dos pasos de recuperación ya estaban limitados por `1.16` y se conservaron.
+Se añadieron los ámbitos independientes `RESERVATION`, `PUBLIC_LINK` y `REVIEW`:
+
+- `POST /api/public/reservations/holds` y confirmación por UUID: 30 peticiones/5 minutos;
+- consulta `GET` y cancelación `POST` mediante token de gestión: 30 peticiones/5 minutos;
+- elegibilidad y creación de reseñas por slug o reserva: 10 peticiones/15 minutos.
+
+Las cuotas son configurables mediante `RESERLY_RATE_LIMIT_RESERVATION_*`,
+`RESERLY_RATE_LIMIT_PUBLIC_LINK_*` y `RESERLY_RATE_LIMIT_REVIEW_*`. Cada ámbito genera su segmento
+de clave Redis y no permite que una ráfaga de consulta de enlace agote login o recuperación.
+
+`SensitiveEndpointRateLimitInterceptor` clasifica método y ruta exacta o canónica antes de acceder
+al controlador. Los patrones exigen la forma prevista para UUID, slug y token Base64URL de 43
+caracteres. El discriminador continúa siendo la dirección remota observada por el servidor; no se
+confía en `X-Forwarded-For` ni se incorpora el token público, email o payload a la clave. La
+infraestructura de entrada debe seguir normalizando la IP cuando exista un proxy de confianza.
+
+### Errores, seguridad, privacidad y observabilidad
+
+El contador Redis mantiene incremento atómico y TTL de ventana fija. Al superar cuota devuelve
+`429 RATE_LIMIT_EXCEEDED` con `Retry-After`; si Redis no permite aplicar la defensa se responde
+`503 RATE_LIMIT_UNAVAILABLE`, es decir, fail-closed. La clasificación no registra secretos y el
+handler no publica cuota, clave interna ni discriminador.
+
+El rate limiting no sustituye locks de hold, token de gestión, validación de elegibilidad ni
+respuesta opaca: actúa antes como control de abuso y cada servicio conserva su autorización y
+consistencia transaccional.
+
+### Archivos, tests y evidencia
+
+Archivos modificados:
+
+- `RateLimitScope.java`, `RateLimitProperties.java` y
+  `SensitiveEndpointRateLimitInterceptor.java`;
+- `application.yaml`;
+- `SensitiveEndpointRateLimitInterceptorTests.java`;
+- `design.md` y documentos de cierre.
+
+La prueba de enrutado cubre login, registro, ambos pasos de recuperación, hold, confirmación,
+elegibilidad y dos variantes de creación de reseña, consulta y cancelación por enlace, además de
+rutas y métodos no clasificados. Tras corregir una expectativa acumulada del mock, sus 2 pruebas
+pasaron. En total quedaron verificadas 65 pruebas focales/dependientes sin lanzar suites globales.
+Spotless dejó limpios 1027 Java y modificó únicamente archivos de esta iteración.
+
+### Limitaciones y siguiente trabajo
+
+La política por IP puede agrupar usuarios detrás de NAT; por ello las cuotas de reserva y enlace son
+deliberadamente más amplias que reseñas y autenticación. Una evolución podrá combinar IP con un
+identificador pseudónimo, siempre evitando almacenar tokens o emails en claro. La siguiente tarea
+pendiente según `tasks.md` es `16.7. Hashear tokens públicos de gestión`.

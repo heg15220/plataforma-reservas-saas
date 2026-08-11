@@ -66,7 +66,11 @@ class ReviewCreationServiceTests {
     var response =
         service.create(
             reservation.getId(),
-            new ReviewCreateRequest(" Customer@Example.COM ", 5, "  Atención excelente.  ", true));
+            new ReviewCreateRequest(
+                " Customer@Example.COM ",
+                5,
+                "  <img src=x onerror=alert(1)>Atención excelente.  ",
+                true));
 
     assertThat(response.status()).isEqualTo("created");
     assertThat(response.venueId()).isEqualTo(reservation.getVenue().getId());

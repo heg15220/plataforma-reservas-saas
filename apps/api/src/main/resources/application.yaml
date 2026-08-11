@@ -96,6 +96,15 @@ reserly:
     password-reset-consume:
       requests: ${RESERLY_RATE_LIMIT_PASSWORD_RESET_CONSUME_REQUESTS:10}
       window: ${RESERLY_RATE_LIMIT_PASSWORD_RESET_CONSUME_WINDOW:15m}
+    reservation:
+      requests: ${RESERLY_RATE_LIMIT_RESERVATION_REQUESTS:30}
+      window: ${RESERLY_RATE_LIMIT_RESERVATION_WINDOW:5m}
+    public-link:
+      requests: ${RESERLY_RATE_LIMIT_PUBLIC_LINK_REQUESTS:30}
+      window: ${RESERLY_RATE_LIMIT_PUBLIC_LINK_WINDOW:5m}
+    review:
+      requests: ${RESERLY_RATE_LIMIT_REVIEW_REQUESTS:10}
+      window: ${RESERLY_RATE_LIMIT_REVIEW_WINDOW:15m}
     business-verification:
       requests: ${RESERLY_RATE_LIMIT_BUSINESS_VERIFICATION_REQUESTS:5}
       window: ${RESERLY_RATE_LIMIT_BUSINESS_VERIFICATION_WINDOW:1h}

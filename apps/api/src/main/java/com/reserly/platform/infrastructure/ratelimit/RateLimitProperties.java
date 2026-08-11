@@ -17,6 +17,9 @@ import org.springframework.validation.annotation.Validated;
  * @param registration altas empresariales por origen
  * @param passwordResetRequest solicitudes de enlace por origen
  * @param passwordResetConsume consumos de enlace por origen
+ * @param reservation intentos de hold o confirmación por origen
+ * @param publicLink consultas y cancelaciones mediante enlace de gestión por origen
+ * @param review comprobaciones y creaciones de reseña por origen
  * @param businessVerification comprobaciones remotas por cuenta empresarial
  */
 @Validated
@@ -27,6 +30,9 @@ public record RateLimitProperties(
     @NotNull @Valid Limit registration,
     @NotNull @Valid Limit passwordResetRequest,
     @NotNull @Valid Limit passwordResetConsume,
+    @NotNull @Valid Limit reservation,
+    @NotNull @Valid Limit publicLink,
+    @NotNull @Valid Limit review,
     @NotNull @Valid Limit businessVerification) {
 
   /** Devuelve la cuota inmutable asociada a una operación. */
@@ -36,6 +42,9 @@ public record RateLimitProperties(
       case REGISTRATION -> registration;
       case PASSWORD_RESET_REQUEST -> passwordResetRequest;
       case PASSWORD_RESET_CONSUME -> passwordResetConsume;
+      case RESERVATION -> reservation;
+      case PUBLIC_LINK -> publicLink;
+      case REVIEW -> review;
       case BUSINESS_VERIFICATION -> businessVerification;
     };
   }
