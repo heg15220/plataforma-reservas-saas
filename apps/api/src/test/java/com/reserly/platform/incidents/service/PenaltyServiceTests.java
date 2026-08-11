@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
 import com.reserly.platform.incidents.persistence.PenaltyDao;
@@ -32,14 +33,26 @@ class PenaltyServiceTests {
 
   private final PenaltyDao penaltyDao = mock(PenaltyDao.class);
   private final NoShowIncidentDao incidentDao = mock(NoShowIncidentDao.class);
+  private final AuditLogService auditLogService = mock(AuditLogService.class);
   private final PenaltyService service =
       new PenaltyServiceImpl(
-          penaltyDao, incidentDao, new PenaltyCalculationPolicyImpl(), Clock.fixed(NOW, ZONE));
+          penaltyDao,
+          incidentDao,
+          new PenaltyCalculationPolicyImpl(),
+          auditLogService,
+          Clock.fixed(NOW, ZONE));
 
   @BeforeEach
   void returnSavedPenalty() {
     when(penaltyDao.saveAndFlush(any(PenaltyEntity.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(
+            invocation -> {
+              PenaltyEntity penalty = invocation.getArgument(0);
+              if (penalty.getId() == null) {
+                penalty.setId(UUID.randomUUID());
+              }
+              return penalty;
+            });
   }
 
   @Test
@@ -64,6 +77,7 @@ class PenaltyServiceTests {
     ordered.verify(penaltyDao).lockGlobalIdentity("user@example.com");
     ordered.verify(penaltyDao).findActiveGlobalForUpdate("user@example.com");
     ordered.verify(incidentDao).countOperationalNoShows("user@example.com", retentionCutoff);
+    verify(auditLogService).record(any());
   }
 
   @ParameterizedTest(name = "{0} incidencias aplican {1} días")
@@ -146,7 +160,10 @@ class PenaltyServiceTests {
     NoShowIncidentEntity incident = incident();
     PenaltyEntity current = new PenaltyEntity();
     current.setCreatedAt(NOW.minusSeconds(86_400));
+    current.setStartsAt(NOW.minusSeconds(86_400));
     current.setEndsAt(NOW.plusSeconds(1));
+    current.setStatus("active");
+    current.setIncidentCountOperational(3);
     when(penaltyDao.findActiveGlobalForUpdate("user@example.com")).thenReturn(Optional.of(current));
     when(penaltyDao.findLatestCompletedResetBoundary("user@example.com", NOW))
         .thenReturn(Optional.empty());
@@ -202,6 +219,7 @@ class PenaltyServiceTests {
   private NoShowIncidentEntity incident() {
     NoShowIncidentEntity incident = new NoShowIncidentEntity();
     incident.setId(UUID.randomUUID());
+    incident.setReportedByUserId(UUID.randomUUID());
     incident.setCustomerEmailNormalized("user@example.com");
     incident.setIncidentType("no_show");
     incident.setStatus("reported");

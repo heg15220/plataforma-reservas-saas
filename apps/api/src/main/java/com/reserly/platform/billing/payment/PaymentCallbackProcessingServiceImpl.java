@@ -1,5 +1,7 @@
 package com.reserly.platform.billing.payment;
 
+import com.reserly.platform.administration.service.AuditLogEntry;
+import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.billing.PaymentStatus;
 import com.reserly.platform.billing.payment.redsys.InvalidPaymentCallbackException;
 import com.reserly.platform.billing.payment.redsys.RedsysCallbackVerificationService;
@@ -38,6 +40,7 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
   private final PaymentDao paymentDao;
   private final PaymentCallbackReceiptDao receiptDao;
   private final SubscriptionPaymentApplicationService subscriptionService;
+  private final AuditLogService auditLogService;
   private final Clock clock;
 
   public PaymentCallbackProcessingServiceImpl(
@@ -45,11 +48,13 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
       PaymentDao paymentDao,
       PaymentCallbackReceiptDao receiptDao,
       SubscriptionPaymentApplicationService subscriptionService,
+      AuditLogService auditLogService,
       Clock clock) {
     this.redsysVerifier = redsysVerifier;
     this.paymentDao = paymentDao;
     this.receiptDao = receiptDao;
     this.subscriptionService = subscriptionService;
+    this.auditLogService = auditLogService;
     this.clock = clock;
   }
 
@@ -142,6 +147,20 @@ public class PaymentCallbackProcessingServiceImpl implements PaymentCallbackProc
                     payment.getProvider(),
                     payment.getProviderOrderId(),
                     receivedAt));
+    auditLogService.record(
+        new AuditLogEntry(
+            null,
+            "system",
+            "payment",
+            payment.getId(),
+            "payment.callback_accepted",
+            Map.of("status", previousOutcome.persistedValue()),
+            Map.of(
+                "status", persistedOutcome.persistedValue(),
+                "channel", channel,
+                "subscriptionUpdated", subscriptionUpdated),
+            null,
+            null));
     LOGGER.info(
         "payment_callback_accepted provider={} order={} outcome={} subscriptionUpdated={}",
         payment.getProvider(),

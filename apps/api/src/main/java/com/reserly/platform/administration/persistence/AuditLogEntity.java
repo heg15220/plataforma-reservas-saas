@@ -45,7 +45,8 @@ public class AuditLogEntity {
     id = value;
   }
 
-  @Column(name = "\"actorUserId\"", nullable = false)
+  /** Actor humano; es nulo únicamente para procesos internos con rol {@code system}. */
+  @Column(name = "\"actorUserId\"")
   public UUID getActorUserId() {
     return actorUserId;
   }

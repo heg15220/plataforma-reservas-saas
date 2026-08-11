@@ -1,5 +1,7 @@
 package com.reserly.platform.incidents.service;
 
+import com.reserly.platform.administration.service.AuditLogEntry;
+import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.incidents.persistence.NoShowIncidentDao;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
 import com.reserly.platform.incidents.persistence.PenaltyDao;
@@ -7,6 +9,7 @@ import com.reserly.platform.incidents.persistence.PenaltyEntity;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -32,16 +35,19 @@ public class PenaltyServiceImpl implements PenaltyService {
   private final PenaltyDao penaltyDao;
   private final NoShowIncidentDao incidentDao;
   private final PenaltyCalculationPolicy calculationPolicy;
+  private final AuditLogService auditLogService;
   private final Clock clock;
 
   public PenaltyServiceImpl(
       PenaltyDao penaltyDao,
       NoShowIncidentDao incidentDao,
       PenaltyCalculationPolicy calculationPolicy,
+      AuditLogService auditLogService,
       Clock clock) {
     this.penaltyDao = penaltyDao;
     this.incidentDao = incidentDao;
     this.calculationPolicy = calculationPolicy;
+    this.auditLogService = auditLogService;
     this.clock = clock;
   }
 
@@ -73,6 +79,8 @@ public class PenaltyServiceImpl implements PenaltyService {
     }
 
     PenaltyEntity penalty = current.orElseGet(PenaltyEntity::new);
+    Map<String, Object> before =
+        current.map(this::auditSnapshot).orElseGet(() -> Map.of("status", "absent"));
     penalty.setCustomerEmailNormalized(email);
     penalty.setScope(GLOBAL_SCOPE);
     penalty.setVenueId(null);
@@ -86,7 +94,19 @@ public class PenaltyServiceImpl implements PenaltyService {
       penalty.setCreatedAt(now);
     }
     penalty.setUpdatedAt(now);
-    return penaltyDao.saveAndFlush(penalty);
+    PenaltyEntity saved = penaltyDao.saveAndFlush(penalty);
+    auditLogService.record(
+        new AuditLogEntry(
+            incident.getReportedByUserId(),
+            "venue_owner",
+            "penalty",
+            saved.getId(),
+            "penalty.applied",
+            before,
+            auditSnapshot(saved),
+            null,
+            null));
+    return saved;
   }
 
   @Override
@@ -117,5 +137,13 @@ public class PenaltyServiceImpl implements PenaltyService {
       throw new IllegalArgumentException("Normalized email is required");
     }
     return email.strip().toLowerCase(Locale.ROOT);
+  }
+
+  private Map<String, Object> auditSnapshot(PenaltyEntity penalty) {
+    return Map.of(
+        "status", penalty.getStatus(),
+        "incidentCountOperational", penalty.getIncidentCountOperational(),
+        "startsAt", penalty.getStartsAt().toString(),
+        "endsAt", penalty.getEndsAt().toString());
   }
 }

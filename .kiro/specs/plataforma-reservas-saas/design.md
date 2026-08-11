@@ -490,6 +490,13 @@ Responsabilidades:
 - Auditoría de acciones críticas.
 - Métricas globales.
 
+`AuditLogs` admite actores humanos (`venue_owner`, `admin`) con `actorUserId` obligatorio y procesos
+internos `system` sin usuario. Cancelación por local, reporte de no asistencia y decisiones admin ya
+registraban evidencia. `16.11` completa el inventario: cada actualización de reglas conserva valores
+operativos antes/después; cada creación o escalado automático de penalización conserva estado,
+contador y periodo; cada callback de pago aceptado conserva transición, canal y si actualizó la
+suscripción. Los duplicados idempotentes no generan una segunda auditoría.
+
 ### 3.14 Internacionalización y localización
 
 Responsabilidades:
@@ -1685,6 +1692,18 @@ Cuando se completa un bloqueo de 60 días, el contador operativo puede reiniciar
 - Un job periódico debe aplicar anonimización, bloqueo y borrado, generando métricas y auditoría sin conservar innecesariamente el email en claro.
 - Estos plazos son una política técnica inicial de minimización y requieren validación jurídica antes de producción.
 
+La tarea `16.10` materializa esta política mediante `IncidentRetentionJob`, programado por cron y
+configurable con `RESERLY_INCIDENT_RETENTION_OPERATIONAL_MONTHS` (12) y
+`RESERLY_INCIDENT_RETENTION_EVIDENCE_MONTHS` (36). Las consultas nativas masivas no cargan PII en
+Java: sustituyen el email por un identificador no reutilizable bajo `anonymous.invalid`, eliminan
+notas, ponen a cero el contador de penalización y marcan `anonymizedAt`. Todas las lecturas
+operativas y administrativas exigen `anonymizedAt IS NULL`.
+
+Al vencer la evidencia se borran primero `Penalties` y después `NoShowIncidents` sin referencias,
+respetando `createdFromIncidentId`. Una ejecución sin cambios no escribe auditoría; una ejecución
+efectiva crea un único evento `system` con fronteras y contadores agregados, nunca emails, notas ni
+identificadores de reservas. El ciclo es transaccional e idempotente.
+
 ### 6.4 Mensaje al usuario
 
 El mensaje debe ser sobrio:
@@ -1918,6 +1937,12 @@ Contratos preparados:
 - el identificador técnico de pago viaja en `Ds_MerchantData`, y se correlaciona con el pedido,
   comercio, terminal, importe, moneda EUR y tipo de transacción;
 - la activación o renovación de la suscripción solo ocurre ante un resultado `confirmed`;
+- persistencia conserva únicamente orden, importe, moneda, estado y hashes SHA-256. El diagnóstico
+  JSON tiene allowlist en Java y `CHECK` SQL para `channel`, `outcome` y
+  `providerResponseCode`; además, canal y resultado pertenecen a catálogos cerrados y el código
+  RedSys son exactamente cuatro dígitos. Así se impide ocultar datos arbitrarios bajo una clave
+  permitida y queda estructuralmente excluido el mensaje firmado, PAN, CVV, titular, caducidad o
+  firma;
 - el pago y la suscripción se actualizan dentro de la misma transacción que reserva el recibo
   idempotente, de modo que cualquier fallo revierte los tres efectos;
 - la configuración admite exclusivamente los endpoints oficiales de pruebas o producción y las

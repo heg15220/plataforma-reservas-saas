@@ -32,6 +32,7 @@ public class PenaltyEntity {
   private UUID createdFromIncidentId;
   private Instant createdAt;
   private Instant updatedAt;
+  private Instant anonymizedAt;
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -141,5 +142,15 @@ public class PenaltyEntity {
 
   public void setUpdatedAt(Instant value) {
     updatedAt = value;
+  }
+
+  /** Instante en que la restricción dejó de participar en decisiones operativas. */
+  @Column(name = "\"anonymizedAt\"")
+  public Instant getAnonymizedAt() {
+    return anonymizedAt;
+  }
+
+  public void setAnonymizedAt(Instant value) {
+    anonymizedAt = value;
   }
 }

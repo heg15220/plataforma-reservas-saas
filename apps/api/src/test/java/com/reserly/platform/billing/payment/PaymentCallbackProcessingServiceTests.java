@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.billing.PaymentStatus;
 import com.reserly.platform.billing.payment.redsys.InvalidPaymentCallbackException;
 import com.reserly.platform.billing.payment.redsys.RedsysCallbackVerificationService;
@@ -60,6 +61,7 @@ class PaymentCallbackProcessingServiceTests {
     verify(fixture.paymentDao()).saveAndFlush(fixture.payment());
     verify(fixture.subscriptionService())
         .applyConfirmedPayment(new PaymentConfirmation(PAYMENT_ID, "redsys", "1234567890", NOW));
+    verify(fixture.auditLogService()).record(any());
   }
 
   @Test
@@ -76,6 +78,7 @@ class PaymentCallbackProcessingServiceTests {
     assertThat(result.duplicate()).isTrue();
     verify(fixture.paymentDao(), never()).saveAndFlush(any());
     verify(fixture.subscriptionService(), never()).applyConfirmedPayment(any());
+    verify(fixture.auditLogService(), never()).record(any());
   }
 
   @Test
@@ -205,6 +208,7 @@ class PaymentCallbackProcessingServiceTests {
     PaymentCallbackReceiptDao receiptDao = mock(PaymentCallbackReceiptDao.class);
     SubscriptionPaymentApplicationService subscriptionService =
         mock(SubscriptionPaymentApplicationService.class);
+    AuditLogService auditLogService = mock(AuditLogService.class);
     RedsysSignedMessage message = new RedsysSignedMessage("HMAC_SHA512_V2", "encoded", "signature");
     VerifiedRedsysCallback callback =
         new VerifiedRedsysCallback(
@@ -232,9 +236,17 @@ class PaymentCallbackProcessingServiceTests {
             paymentDao,
             receiptDao,
             subscriptionService,
+            auditLogService,
             Clock.fixed(NOW, ZoneOffset.UTC));
     return new Fixture(
-        service, verifier, paymentDao, receiptDao, subscriptionService, payment, message);
+        service,
+        verifier,
+        paymentDao,
+        receiptDao,
+        subscriptionService,
+        auditLogService,
+        payment,
+        message);
   }
 
   private String responseCode(PaymentStatus status) {
@@ -253,6 +265,7 @@ class PaymentCallbackProcessingServiceTests {
       PaymentDao paymentDao,
       PaymentCallbackReceiptDao receiptDao,
       SubscriptionPaymentApplicationService subscriptionService,
+      AuditLogService auditLogService,
       PaymentEntity payment,
       RedsysSignedMessage message) {}
 }

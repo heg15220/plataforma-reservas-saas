@@ -29,6 +29,7 @@ public class NoShowIncidentEntity {
   private String notes;
   private String status;
   private Instant createdAt;
+  private Instant anonymizedAt;
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -121,5 +122,15 @@ public class NoShowIncidentEntity {
 
   public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /** Instante en que la incidencia dejó de estar disponible para uso operativo identificable. */
+  @Column(name = "\"anonymizedAt\"")
+  public Instant getAnonymizedAt() {
+    return anonymizedAt;
+  }
+
+  public void setAnonymizedAt(Instant value) {
+    anonymizedAt = value;
   }
 }

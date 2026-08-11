@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.billing.PaymentStatus;
 import com.reserly.platform.billing.payment.PaymentCallbackProcessingServiceImpl;
 import com.reserly.platform.billing.persistence.PaymentCallbackReceiptDao;
@@ -93,6 +94,7 @@ class RedsysCallbackContractTests {
     PaymentCallbackReceiptDao receiptDao = mock(PaymentCallbackReceiptDao.class);
     SubscriptionPaymentApplicationService subscriptionService =
         mock(SubscriptionPaymentApplicationService.class);
+    AuditLogService auditLogService = mock(AuditLogService.class);
     PaymentEntity payment = payment();
     when(paymentDao.findByIdForUpdate(PAYMENT_ID)).thenReturn(Optional.of(payment));
     String parameters = parameters(objectMapper);
@@ -107,6 +109,7 @@ class RedsysCallbackContractTests {
             paymentDao,
             receiptDao,
             subscriptionService,
+            auditLogService,
             Clock.fixed(NOW, ZoneOffset.UTC));
     return new Fixture(service, paymentDao, receiptDao, subscriptionService, payment, message);
   }

@@ -74,4 +74,37 @@ class AuditLogServiceTests {
     assertThatThrownBy(() -> service.record(invalid)).isInstanceOf(IllegalArgumentException.class);
     verifyNoInteractions(auditLogDao);
   }
+
+  @Test
+  void permitsOnlyActorlessSystemEntries() {
+    AuditLogEntity saved =
+        service.record(
+            new AuditLogEntry(
+                null,
+                "system",
+                "payment",
+                UUID.randomUUID(),
+                "payment.callback_accepted",
+                null,
+                Map.of("status", "confirmed"),
+                null,
+                null));
+
+    assertThat(saved.getActorUserId()).isNull();
+    assertThat(saved.getActorRole()).isEqualTo("system");
+    assertThatThrownBy(
+            () ->
+                service.record(
+                    new AuditLogEntry(
+                        UUID.randomUUID(),
+                        "system",
+                        "payment",
+                        UUID.randomUUID(),
+                        "payment.callback_accepted",
+                        null,
+                        null,
+                        null,
+                        null)))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
 }

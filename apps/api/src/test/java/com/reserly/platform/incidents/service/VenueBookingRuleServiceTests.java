@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.administration.service.AuditLogService;
 import com.reserly.platform.incidents.dto.VenueBookingRuleUpdateRequest;
 import com.reserly.platform.incidents.persistence.VenueBookingRuleDao;
 import com.reserly.platform.incidents.persistence.VenueBookingRuleEntity;
@@ -26,9 +27,10 @@ class VenueBookingRuleServiceTests {
 
   private final VenueBookingRuleDao ruleDao = mock(VenueBookingRuleDao.class);
   private final VenueDao venueDao = mock(VenueDao.class);
+  private final AuditLogService auditLogService = mock(AuditLogService.class);
   private final Clock clock = Clock.fixed(Instant.parse("2026-07-27T12:00:00Z"), ZoneOffset.UTC);
   private final VenueBookingRuleService service =
-      new VenueBookingRuleServiceImpl(ruleDao, venueDao, clock);
+      new VenueBookingRuleServiceImpl(ruleDao, venueDao, auditLogService, clock);
 
   @BeforeEach
   void returnSavedRule() {
@@ -57,6 +59,7 @@ class VenueBookingRuleServiceTests {
     assertThat(updated.getUpdatedAt()).isEqualTo(clock.instant());
     verify(ruleDao).findOwnedForUpdate(ownerUserId);
     verify(ruleDao).saveAndFlush(rule);
+    verify(auditLogService).record(any());
   }
 
   @Test

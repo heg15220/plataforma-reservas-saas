@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -26,6 +27,17 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(name = "\"Payments\"")
 public class PaymentEntity {
+
+  private static final Set<String> DIAGNOSTIC_KEYS =
+      Set.of("channel", "outcome", "providerResponseCode");
+  private static final Set<String> DIAGNOSTIC_CHANNELS = Set.of("notification", "simulator");
+  private static final Set<String> DIAGNOSTIC_OUTCOMES =
+      Set.of(
+          "confirmed",
+          "rejected",
+          "cancelled_by_user",
+          "communication_error",
+          "pending_confirmation");
 
   private UUID id;
   private UUID subscriptionId;
@@ -142,6 +154,15 @@ public class PaymentEntity {
   }
 
   public void setResponsePayloadJson(Map<String, Object> value) {
+    if (value != null
+        && (value.keySet().stream().anyMatch(key -> !DIAGNOSTIC_KEYS.contains(key))
+            || value.values().stream().anyMatch(item -> !(item instanceof String))
+            || !DIAGNOSTIC_CHANNELS.contains(value.get("channel"))
+            || !DIAGNOSTIC_OUTCOMES.contains(value.get("outcome"))
+            || (value.containsKey("providerResponseCode")
+                && !((String) value.get("providerResponseCode")).matches("[0-9]{4}")))) {
+      throw new IllegalArgumentException("Unsupported payment diagnostic payload");
+    }
     responsePayloadJson =
         value == null ? null : Collections.unmodifiableMap(new LinkedHashMap<>(value));
   }

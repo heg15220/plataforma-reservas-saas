@@ -135,6 +135,11 @@ reserly:
   statistics:
     daily:
       cron: "${RESERLY_STATISTICS_DAILY_CRON:0 15 0 * * *}"
+  incidents:
+    retention:
+      operationalMonths: ${RESERLY_INCIDENT_RETENTION_OPERATIONAL_MONTHS:12}
+      evidenceMonths: ${RESERLY_INCIDENT_RETENTION_EVIDENCE_MONTHS:36}
+      cron: "${RESERLY_INCIDENT_RETENTION_CRON:0 45 2 * * *}"
   venues:
     images:
       upload:

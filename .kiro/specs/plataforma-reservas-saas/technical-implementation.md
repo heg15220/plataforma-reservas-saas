@@ -34479,3 +34479,159 @@ la constraint exige que timestamp y snapshot estén ambos presentes o ambos ause
 debería centralizar ese fallback entre API y catálogo para impedir divergencias editoriales. Cambiar
 un documento material exige actualizar la constante y decidir reaceptación. La siguiente tarea
 pendiente es `16.10. Definir conservación de incidencias y penalizaciones`.
+
+## Iteración 2026-08-11 - Tarea 16.10: conservación de incidencias y penalizaciones
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.10. Definir conservación de incidencias y penalizaciones`.
+- Fecha: 2026-08-11.
+- Objetivo: convertir los plazos documentados en un proceso ejecutable que retire PII del uso
+  operativo y elimine evidencia vencida sin romper referencias.
+- Requisitos/diseño: `RF-020` a `RF-023`, `RNF-002`, diseño 6.3 y el apartado de conservación de
+  incidencias y penalizaciones.
+
+### Modelo, migración y arquitectura
+
+V42 incorpora `anonymizedAt` a `NoShowIncidents` y `Penalties` y añade índices parciales sobre las
+fechas de retención pendientes. La constraint del contador permite valores positivos solo mientras
+la penalización es identificable y exige cero después de anonimizar. El histórico anterior queda con
+`anonymizedAt=NULL` para que el primer ciclo lo clasifique con las mismas fronteras, sin inventar
+fechas ni estados.
+
+`IncidentRetentionServiceImpl` calcula una única frontera UTC desde el reloj de negocio. Los valores
+predeterminados son 12 meses operativos y 36 meses totales de evidencia; el constructor rechaza
+meses no positivos, evidencia no posterior a operación y valores superiores a 120 meses. Se
+configuran mediante las tres plantillas de entorno y el cron diario de las 02:45.
+
+Los DAOs ejecutan cuatro mutaciones nativas, masivas e idempotentes:
+
+1. Incidencias vencidas: sustituyen email por `retained-{uuid}@anonymous.invalid`, borran notas y
+   fijan `anonymizedAt`.
+2. Penalizaciones finalizadas: sustituyen email, ponen contador a cero, expiran cualquier fila aún
+   activa, reemplazan la razón y fijan `anonymizedAt/updatedAt`.
+3. Evidencia de penalización vencida: se elimina primero.
+4. Incidencias vencidas: se eliminan solo cuando no existe `createdFromIncidentId` dependiente.
+
+La desidentificación no carga emails/notas en la JVM ni emite valores por logs. Las consultas de
+historial, riesgo, contadores, bloqueo, listas y ediciones admin incluyen `anonymizedAt IS NULL`; el
+marcado equivale a bloqueo lógico inmediato. El job solo registra contadores agregados cuando hubo
+cambios y el servicio crea una auditoría `system` con fronteras y cantidades. Un ciclo vacío no
+escribe ni genera ruido.
+
+### Archivos, validación y límites
+
+Archivos principales: V42, `application.yaml`, tres `.env.*.example`, entidades/DAOs de incidencia y
+penalización, `IncidentRetentionService`, implementación, resultado y job, más
+`IncidentRetentionServiceTests`.
+
+Las pruebas verifican fronteras exactas 12/36 meses, orden penalización-incidencia, contadores,
+auditoría condicional, idempotencia vacía y fallo rápido de configuración. El comando Maven focal,
+con `IncidentRetentionServiceTests` y las cinco suites dependientes modificadas, compiló 833 fuentes
+y 202 fuentes de prueba y ejecutó 35 casos: cero fallos, errores u omisiones. Spotless terminó sin
+cambios pendientes. No se arrancó PostgreSQL/Docker: la sintaxis y contrato de V42 se protegen con
+prueba estática y las consultas se mantienen en los DAOs directamente afectados.
+
+Los plazos continúan sujetos a asesoría jurídica. No se implementa suspensión por litigio porque no
+existe aún un modelo de `legalHold`; antes de producción debe añadirse si el registro de actividades
+lo exige. Hasta entonces la configuración no debe ampliarse para simular una retención indefinida.
+
+## Iteración 2026-08-11 - Tarea 16.11: auditoría de acciones críticas
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.11. Auditar cancelaciones, reportes, penalizaciones, pagos y cambios de reglas`.
+- Fecha: 2026-08-11.
+- Objetivo: cerrar el inventario de mutaciones críticas y conservar evidencia atómica, consultable y
+  minimizada tanto para actores autenticados como para procesos internos.
+- Requisitos/diseño: `RF-017`, `RF-021`, `RF-022`, `RF-023`, `RF-028`, `RNF-001`, `RNF-006`, diseño
+  3.13 y 7.4.
+
+### Inventario y cambios aplicados
+
+La revisión confirmó que `VenueReservationCancellationServiceImpl` ya auditaba cancelación y motivo
+en la misma transacción, y `NoShowReportServiceImpl` hacía lo propio con reporte, transición de
+reserva y penalización. Las revisiones administrativas de incidencia/penalización también estaban
+cubiertas. Los huecos eran la mutación de reglas, la penalización automática como agregado propio y
+el resultado de pago autenticado.
+
+V42 permite `AuditLogs.actorUserId=NULL` exclusivamente cuando `actorRole='system'`; los roles
+humanos siguen requiriendo UUID. `AuditLogServiceImpl` replica la invariante antes del DAO y rechaza
+un sistema con usuario o un humano sin usuario.
+
+- `VenueBookingRuleServiceImpl` captura antes/después de `cancellationAllowed` y minutos, usa el ID
+  estable del local y acción `booking_rules.updated`.
+- `PenaltyServiceImpl` registra creación/escalado mediante `penalty.applied`; solo incluye estado,
+  contador y periodo, nunca email ni incidente completo.
+- `PaymentCallbackProcessingServiceImpl` crea `payment.callback_accepted` tras reservar el recibo y
+  aplicar la transición; guarda estados, canal y resultado booleano de suscripción. Un callback
+  duplicado retorna antes y no duplica auditoría.
+- `IncidentRetentionServiceImpl` usa actor `system` para el resumen del job.
+
+Todas las llamadas pertenecen a la transacción del caso de uso: si falla auditoría, también se
+revierte la mutación. IP y user-agent se mantienen solo donde el controlador observa una petición
+humana; procesos automáticos y servicios sin contexto HTTP usan nulo. Los snapshots no contienen
+secreto, email, token, payload firmado ni datos de tarjeta.
+
+### Pruebas y riesgos
+
+Se ampliaron `AuditLogServiceTests`, `PenaltyServiceTests`, `VenueBookingRuleServiceTests`,
+`PaymentCallbackProcessingServiceTests` y `RedsysCallbackContractTests`; también se ejecutaron los
+tests existentes de reporte y cancelación. El lote inicial reunió 45 pruebas: 44 pasaron y una
+señaló un fixture de penalización sin campos `NOT NULL`; tras alinearlo, las 13 pruebas exclusivas de
+esa suite pasaron. Como cierre, las seis suites directamente modificadas ejecutaron 35 pruebas con
+cero fallos, errores u omisiones. No apareció un fallo de producción.
+
+La auditoría sigue siendo append-only por contrato de aplicación, no mediante trigger que prohíba
+UPDATE/DELETE a la cuenta de base de datos. El endurecimiento de privilegios físicos corresponde al
+despliegue. Las acciones de pago de inicio de orden aún no existen como caso de uso persistente; al
+incorporarlas deberán registrar su propia evidencia sin campos de redirección.
+
+## Iteración 2026-08-11 - Tarea 16.12: ausencia de datos completos de tarjeta
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.12. Revisar que no se almacenan datos completos de tarjeta`.
+- Fecha: 2026-08-11.
+- Objetivo: demostrar que el diseño por redirección no recibe datos de tarjeta y convertir la
+  minimización existente en una restricción ejecutable contra regresiones.
+- Requisitos/diseño: `RF-028`, `RNF-001`, `RNF-006`, `RNF-008`, diseño 7.4 y proveedor RedSys.
+
+### Recorrido de datos y defensa en profundidad
+
+`RedsysPaymentProvider` genera exclusivamente el payload comercial (pedido, comercio, terminal,
+moneda, tipo, importe, URLs y UUID técnico) y devuelve tres campos firmados que el navegador envía
+directamente a RedSys. Reserly no renderiza inputs de PAN/CVV/titular/caducidad. El callback recibe
+los mismos tres campos técnicos, limita tamaños, decodifica en memoria, verifica HMAC antes de usar
+datos y devuelve un contrato cerrado con pago, pedido, importe, código, estado y SHA-256.
+
+Persistencia queda limitada a:
+
+- `Payments`: UUIDs de correlación, proveedor/pedido, importe, moneda, estado, hash de request,
+  diagnóstico mínimo y timestamps;
+- `PaymentCallbackReceipts`: correlación, canal, hash, resultado y recepción;
+- logs: proveedor, pedido, resultado y booleano agregado; nunca mensaje firmado ni firma.
+
+El setter de `PaymentEntity.responsePayloadJson` admite solo las claves `channel`, `outcome` y
+`providerResponseCode`, todas con valor string. Exige `notification` o `simulator` como canal, uno
+de los cinco estados canónicos como resultado y, si existe, un código RedSys de cuatro dígitos.
+Rechaza claves extra, estructuras anidadas y valores arbitrarios —incluido un PAN oculto bajo una
+clave válida—. V42 replica claves, catálogos y formato con `ckPaymentsResponsePayloadKeys`, de modo
+que scripts o futuras rutas no pueden saltarse la barrera Java. La auditoría de pago usa una
+estructura separada todavía más pequeña y no copia el diagnóstico.
+
+### Archivos, pruebas, seguridad y límites
+
+Se modificaron `PaymentEntity`, V42, el procesamiento de callback y sus pruebas. La nueva
+`PaymentDataMinimizationTests` inspecciona los campos persistidos, rechaza `pan`, `signature` y un
+objeto anidado con `cvv`, y valida la constraint SQL. Las suites RedSys acreditan firma,
+correlación, idempotencia y que solo se conserva código normalizado. La validación final incluyó
+esta suite en el lote Maven de 35 pruebas, todas correctas; además pasaron el validador de plantillas
+de entorno y `git diff --check`. Tras cerrar también los valores permitidos, las dos suites de pagos
+se repitieron: 13 pruebas correctas. El validador global de convenciones conserva 18 avisos
+históricos fuera del alcance, pero no reporta los archivos cambiados por estas tres tareas.
+
+No se afirma cumplimiento PCI DSS integral: el alcance puede cambiar con infraestructura, logs,
+proveedor o una futura UI. La garantía de esta iteración es arquitectónica y ejecutable: el código
+actual externaliza captura y autenticación, y sus modelos no admiten datos completos de tarjeta. La
+siguiente tarea pendiente es `16.13`, minimización fiscal/registral y de proveedores empresariales.

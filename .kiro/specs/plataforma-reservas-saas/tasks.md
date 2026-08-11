@@ -325,9 +325,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 16.7. Hashear tokens públicos de gestión.
 - [x] 16.8. Crear política de privacidad y condiciones de uso.
 - [x] 16.9. Añadir consentimiento explícito en registro y reserva.
-- [ ] 16.10. Definir conservación de incidencias y penalizaciones.
-- [ ] 16.11. Auditar cancelaciones, reportes, penalizaciones, pagos y cambios de reglas.
-- [ ] 16.12. Revisar que no se almacenan datos completos de tarjeta.
+- [x] 16.10. Definir conservación de incidencias y penalizaciones.
+- [x] 16.11. Auditar cancelaciones, reportes, penalizaciones, pagos y cambios de reglas.
+- [x] 16.12. Revisar que no se almacenan datos completos de tarjeta.
 - [ ] 16.13. Revisar minimización de datos fiscales/registrales y respuestas de proveedores de verificación empresarial.
 - [ ] 16.14. Revisar que todos los mensajes de error públicos usan claves i18n y no filtran detalles de proveedores externos.
 

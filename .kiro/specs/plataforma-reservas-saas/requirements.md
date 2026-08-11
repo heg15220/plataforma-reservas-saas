@@ -618,6 +618,9 @@ La plataforma debe contemplar planes SaaS y pagos externos mediante RedSys.
 - WHEN exista contrato con entidad adquirente, credenciales RedSys y validación de pruebas, THEN podrá activarse el flujo real mediante configuración, sin cambiar el dominio de suscripciones.
 - WHEN el local inicia un pago real ya habilitado, THEN se muestra resumen del plan y aviso de pago seguro externo RedSys.
 - WHEN se redirige a RedSys, THEN la plataforma no solicita ni almacena datos completos de tarjeta.
+- WHEN se persiste diagnóstico de un pago o callback, THEN solo se admiten canal, resultado y código
+  de respuesta normalizado; el payload firmado, PAN, CVV, titular, caducidad y firma quedan fuera de
+  entidades, auditoría y logs.
 - WHEN RedSys devuelve respuesta, THEN el sistema registra pago confirmado, rechazado, cancelado, error o pendiente.
 - WHEN se registra pago confirmado, THEN la suscripción se actualiza.
 
@@ -715,7 +718,8 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - El acceso debe estar protegido por roles: usuario anonimo, local, admin.
 - CORS con credenciales debe limitarse a orígenes exactos por entorno; en desarrollo local debe
   admitir los puertos web 3000 y 3001 usados por el arranque automático, sin comodines.
-- Las acciones críticas deben auditarse.
+- Las acciones críticas deben auditarse dentro de su transacción con actor humano o sistema,
+  agregado, acción y snapshots mínimos sin secretos ni datos de tarjeta.
 - Los enlaces seguros de reserva deben usar tokens de alta entropía, expiración o revocación.
 
 ### RNF-002 Privacidad y protección de datos
@@ -730,6 +734,9 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - Las penalizaciones identificables deben conservarse mientras estén activas y hasta 12 meses después de su finalización para gestionar reclamaciones y detectar errores operativos.
 - Cuando sea necesario conservar evidencia para posibles responsabilidades, los datos suprimidos del uso operativo deben quedar bloqueados, sin acceso ordinario, durante un máximo inicial de 3 años y eliminarse al terminar el plazo aplicable, salvo obligación legal o litigio abierto.
 - Los plazos de conservación deben revisarse jurídicamente antes de producción y documentarse en la política de privacidad y en el registro de actividades de tratamiento.
+- Un job idempotente y auditable debe ejecutar los plazos configurados, excluir inmediatamente los
+  registros anonimizados de decisiones y paneles y borrar primero las dependencias que impidan la
+  eliminación referencial de la evidencia vencida.
 - El sistema debe permitir acceso, rectificación y supresión cuando sea legalmente aplicable.
 - La ubicación del usuario solo debe usarse con autorización.
 - La información del personal del local solo debe mostrarse si el local la configura como pública.

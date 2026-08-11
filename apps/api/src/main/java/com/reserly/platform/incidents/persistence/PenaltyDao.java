@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,21 +19,24 @@ public interface PenaltyDao extends JpaRepository<PenaltyEntity, UUID> {
   @Query(
       """
       select count(penalty) from PenaltyEntity penalty
-      where penalty.status = 'active' and penalty.endsAt > :now
+      where penalty.status = 'active'
+        and penalty.anonymizedAt is null
+        and penalty.endsAt > :now
       """)
   long countAdminActive(@Param("now") Instant now);
 
   /** Listado administrativo reciente y acotado de restricciones. */
   @Query(
-      """
-      select penalty from PenaltyEntity penalty
-      order by penalty.updatedAt desc, penalty.id desc
-      """)
+      "select penalty from PenaltyEntity penalty "
+          + "where penalty.anonymizedAt is null "
+          + "order by penalty.updatedAt desc, penalty.id desc")
   List<PenaltyEntity> findAdminPage(Pageable pageable);
 
   /** Serializa una modificación administrativa de una penalización. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("select penalty from PenaltyEntity penalty where penalty.id = :penaltyId")
+  @Query(
+      "select penalty from PenaltyEntity penalty "
+          + "where penalty.id = :penaltyId and penalty.anonymizedAt is null")
   Optional<PenaltyEntity> findByIdForAdminUpdate(@Param("penaltyId") UUID penaltyId);
 
   /**
@@ -59,6 +63,7 @@ public interface PenaltyDao extends JpaRepository<PenaltyEntity, UUID> {
       from PenaltyEntity penalty
       where penalty.customerEmailNormalized = :customerEmailNormalized
         and penalty.scope = 'global'
+        and penalty.anonymizedAt is null
         and penalty.status = 'active'
       """)
   Optional<PenaltyEntity> findActiveGlobalForUpdate(
@@ -73,6 +78,7 @@ public interface PenaltyDao extends JpaRepository<PenaltyEntity, UUID> {
       from PenaltyEntity penalty
       where penalty.customerEmailNormalized = :customerEmailNormalized
         and penalty.scope = 'global'
+        and penalty.anonymizedAt is null
         and penalty.status = 'active'
         and penalty.endsAt > :now
       """)
@@ -89,10 +95,43 @@ public interface PenaltyDao extends JpaRepository<PenaltyEntity, UUID> {
       from PenaltyEntity penalty
       where penalty.customerEmailNormalized = :customerEmailNormalized
         and penalty.scope = 'global'
+        and penalty.anonymizedAt is null
         and penalty.incidentCountOperational >= 4
         and penalty.endsAt <= :now
         and penalty.status in ('active', 'expired')
       """)
   Optional<Instant> findLatestCompletedResetBoundary(
       @Param("customerEmailNormalized") String customerEmailNormalized, @Param("now") Instant now);
+
+  /** Desidentifica restricciones finalizadas y las excluye de cualquier decisión futura. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      value =
+          """
+          UPDATE "Penalties"
+          SET "customerEmailNormalized" = 'retained-' || "id"::text || '@anonymous.invalid',
+              "incidentCountOperational" = 0,
+              "status" = CASE WHEN "status" = 'active' THEN 'expired' ELSE "status" END,
+              "reason" = 'retention_anonymized',
+              "anonymizedAt" = :anonymizedAt,
+              "updatedAt" = :anonymizedAt
+          WHERE "anonymizedAt" IS NULL
+            AND "endsAt" < :operationalCutoff
+          """,
+      nativeQuery = true)
+  int anonymizeOperationalHistory(
+      @Param("operationalCutoff") Instant operationalCutoff,
+      @Param("anonymizedAt") Instant anonymizedAt);
+
+  /** Elimina primero penalizaciones vencidas para liberar la FK de su incidencia origen. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      value =
+          """
+          DELETE FROM "Penalties"
+          WHERE "anonymizedAt" IS NOT NULL
+            AND "endsAt" < :evidenceCutoff
+          """,
+      nativeQuery = true)
+  int deleteExpiredEvidence(@Param("evidenceCutoff") Instant evidenceCutoff);
 }

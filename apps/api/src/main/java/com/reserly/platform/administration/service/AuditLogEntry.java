@@ -6,8 +6,8 @@ import java.util.UUID;
 /**
  * Comando interno para registrar una acción crítica.
  *
- * @param actorUserId usuario autenticado que ejecutó la acción
- * @param actorRole rol efectivo en el momento de la acción
+ * @param actorUserId usuario autenticado, o nulo para un proceso interno
+ * @param actorRole rol efectivo {@code venue_owner}, {@code admin} o {@code system}
  * @param entityType tipo estable de agregado afectado
  * @param entityId identificador del agregado afectado
  * @param action acción estable y consultable

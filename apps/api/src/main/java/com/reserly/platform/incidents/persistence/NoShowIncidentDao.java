@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,15 +19,16 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
 
   /** Cola administrativa reciente, limitada por el pageable recibido. */
   @Query(
-      """
-      select incident from NoShowIncidentEntity incident
-      order by incident.reportedAt desc, incident.id desc
-      """)
+      "select incident from NoShowIncidentEntity incident "
+          + "where incident.anonymizedAt is null "
+          + "order by incident.reportedAt desc, incident.id desc")
   List<NoShowIncidentEntity> findAdminPage(Pageable pageable);
 
   /** Serializa una decisión administrativa sobre la incidencia. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("select incident from NoShowIncidentEntity incident where incident.id = :incidentId")
+  @Query(
+      "select incident from NoShowIncidentEntity incident "
+          + "where incident.id = :incidentId and incident.anonymizedAt is null")
   Optional<NoShowIncidentEntity> findByIdForAdminReview(@Param("incidentId") UUID incidentId);
 
   /**
@@ -39,6 +41,7 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
       from NoShowIncidentEntity incident
       where incident.customerEmailNormalized = :customerEmailNormalized
         and incident.reportedAt >= :cutoff
+        and incident.anonymizedAt is null
         and incident.status in ('reported', 'confirmed')
       order by incident.reportedAt desc, incident.id desc
       """)
@@ -54,6 +57,7 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
       from NoShowIncidentEntity incident
       where incident.customerEmailNormalized = :customerEmailNormalized
         and incident.reportedAt >= :cutoff
+        and incident.anonymizedAt is null
         and incident.status in ('reported', 'confirmed')
       """)
   long countByCustomerEmailNormalized(
@@ -74,6 +78,7 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
       from NoShowIncidentEntity incident
       where incident.customerEmailNormalized in :customerEmails
         and incident.reportedAt >= :retentionCutoff
+        and incident.anonymizedAt is null
         and incident.status in ('reported', 'confirmed')
       group by incident.customerEmailNormalized
       """)
@@ -90,6 +95,7 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
           from NoShowIncidentEntity incident
           where incident.customerEmailNormalized = :customerEmailNormalized
             and incident.reportedAt >= :cutoff
+            and incident.anonymizedAt is null
             and incident.status in ('reported', 'confirmed')
           order by incident.reportedAt desc, incident.id desc
           """,
@@ -99,6 +105,7 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
           from NoShowIncidentEntity incident
           where incident.customerEmailNormalized = :customerEmailNormalized
             and incident.reportedAt >= :cutoff
+            and incident.anonymizedAt is null
             and incident.status in ('reported', 'confirmed')
           """)
   Page<NoShowIncidentEntity> findOperationalHistory(
@@ -119,8 +126,42 @@ public interface NoShowIncidentDao extends JpaRepository<NoShowIncidentEntity, U
         and incident.incidentType = 'no_show'
         and incident.status in ('reported', 'confirmed')
         and incident.reportedAt >= :cutoff
+        and incident.anonymizedAt is null
       """)
   long countOperationalNoShows(
       @Param("customerEmailNormalized") String customerEmailNormalized,
       @Param("cutoff") Instant cutoff);
+
+  /** Retira email y notas del uso ordinario al vencer la ventana operativa. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      value =
+          """
+          UPDATE "NoShowIncidents"
+          SET "customerEmailNormalized" = 'retained-' || "id"::text || '@anonymous.invalid',
+              "notes" = NULL,
+              "anonymizedAt" = :anonymizedAt
+          WHERE "anonymizedAt" IS NULL
+            AND "reportedAt" < :operationalCutoff
+          """,
+      nativeQuery = true)
+  int anonymizeOperationalHistory(
+      @Param("operationalCutoff") Instant operationalCutoff,
+      @Param("anonymizedAt") Instant anonymizedAt);
+
+  /** Borra evidencia anonimizada vencida cuando ninguna penalización conserva su referencia. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      value =
+          """
+          DELETE FROM "NoShowIncidents" incident
+          WHERE incident."anonymizedAt" IS NOT NULL
+            AND incident."reportedAt" < :evidenceCutoff
+            AND NOT EXISTS (
+              SELECT 1 FROM "Penalties" penalty
+              WHERE penalty."createdFromIncidentId" = incident."id"
+            )
+          """,
+      nativeQuery = true)
+  int deleteExpiredEvidence(@Param("evidenceCutoff") Instant evidenceCutoff);
 }

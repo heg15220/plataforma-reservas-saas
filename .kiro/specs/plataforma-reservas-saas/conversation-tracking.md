@@ -8803,3 +8803,50 @@ Fuente de verdad del avance:
   - Pasaron 19 pruebas backend y 8 pruebas web focalizadas y el lint de los siete TSX afectados. El
     validador i18n global mantiene incidencias históricas fuera del alcance; las dos detectadas en el
     nuevo módulo se corrigieron.
+
+# Conversación 192 - Conservación ejecutable, auditoría crítica y minimización de pagos
+
+- Fecha: 2026-08-11.
+- Resumen de la conversación:
+  - Se revisaron los cinco documentos de `.kiro` y el inventario de entidades, migraciones, DAOs,
+    servicios y tests de incidencias, penalizaciones, reglas, cancelaciones, auditoría y RedSys.
+  - Se implementó un ciclo diario, configurable, transaccional e idempotente que anonimiza el uso
+    operativo a 12 meses y elimina evidencia vencida a 36 meses respetando claves foráneas.
+  - Se completó la auditoría de reglas de reserva, aplicación automática de penalizaciones y
+    callbacks de pago mediante actores humanos o `system` y snapshots mínimos.
+  - Se cerró la persistencia de diagnóstico de pagos con una allowlist en entidad y base de datos y
+    pruebas que impiden incorporar PAN, CVV, titular, caducidad, firma o payload firmado.
+- Archivos modificados:
+  - Migración `V42__enforce_retention_audit_and_payment_minimization.sql`, configuración YAML y
+    plantillas de entorno.
+  - Entidades/DAOs y nuevos servicio, resultado y job de conservación del módulo `incidents`.
+  - `AuditLogService`, reglas de reserva, penalizaciones y procesamiento de callbacks de pago.
+  - Tests focalizados de conservación, auditoría, pagos, reportes y cancelaciones.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-020`, `RF-021`, `RF-022`, `RF-023`, `RF-028`, `RNF-001`, `RNF-002`, `RNF-006` y
+    `RNF-008`.
+- Tareas impactadas:
+  - `16.10. Definir conservación de incidencias y penalizaciones`.
+  - `16.11. Auditar cancelaciones, reportes, penalizaciones, pagos y cambios de reglas`.
+  - `16.12. Revisar que no se almacenan datos completos de tarjeta`.
+- Tareas completadas:
+  - `16.10`, `16.11` y `16.12`, implementadas, verificadas y documentadas individualmente.
+- Siguiente tarea pendiente recomendada:
+  - `16.13. Revisar minimización de datos fiscales/registrales y respuestas de proveedores de
+    verificación empresarial`.
+- Decisiones o aclaraciones relevantes:
+  - Los plazos 12/36 meses siguen pendientes de validación jurídica antes de producción y se
+    configuran por entorno sin permitir que evidencia sea más corta que la ventana operativa.
+  - El job no carga emails ni notas en memoria y audita solo contadores y fronteras; una ejecución
+    vacía no produce ruido.
+  - RedSys continúa como redirección externa: Reserly nunca presenta campos de tarjeta. Los únicos
+    datos persistidos son correlación, importe/moneda, estados normalizados y hashes. La allowlist
+    valida también catálogos y formato para impedir datos arbitrarios bajo una clave permitida.
+  - El lote focal inicial ejecutó 45 pruebas: 44 pasaron y un fixture incompleto de penalización se
+    alineó con sus constraints. Después pasaron sus 13 pruebas exclusivas y la validación final de
+    las seis suites modificadas: 35 pruebas, cero fallos. También pasaron Spotless, las plantillas de
+    entorno y `git diff --check`. El validador global de convenciones sigue mostrando 18 incidencias
+    preexistentes fuera de estos módulos; ya no señala ningún archivo cambiado en esta iteración.
+    El cierre adicional de valores diagnósticos pasó sus 13 pruebas de pagos focalizadas.

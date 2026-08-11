@@ -14,7 +14,7 @@ public class AuditLogServiceImpl implements AuditLogService {
 
   private static final int MAX_IP_LENGTH = 45;
   private static final int MAX_USER_AGENT_LENGTH = 500;
-  private static final Set<String> ACTOR_ROLES = Set.of("venue_owner", "admin");
+  private static final Set<String> HUMAN_ACTOR_ROLES = Set.of("venue_owner", "admin");
 
   private final AuditLogDao auditLogDao;
   private final Clock clock;
@@ -44,8 +44,7 @@ public class AuditLogServiceImpl implements AuditLogService {
 
   private void validate(AuditLogEntry entry) {
     if (entry == null
-        || entry.actorUserId() == null
-        || !ACTOR_ROLES.contains(entry.actorRole())
+        || !validActor(entry)
         || entry.entityId() == null
         || isBlank(entry.entityType())
         || entry.entityType().length() > 64
@@ -53,6 +52,11 @@ public class AuditLogServiceImpl implements AuditLogService {
         || entry.action().length() > 64) {
       throw new IllegalArgumentException("Invalid audit log entry");
     }
+  }
+
+  private boolean validActor(AuditLogEntry entry) {
+    return (entry.actorUserId() != null && HUMAN_ACTOR_ROLES.contains(entry.actorRole()))
+        || (entry.actorUserId() == null && "system".equals(entry.actorRole()));
   }
 
   private Map<String, Object> copySnapshot(Map<String, Object> snapshot) {
