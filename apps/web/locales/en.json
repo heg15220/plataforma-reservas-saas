@@ -2302,5 +2302,24 @@
       "description": "Latest critical actions with actor and changes, without network metadata.",
       "error": "We could not load the audit trail."
     }
+  },
+  "PublicErrors": {
+    "title": "We could not complete the operation",
+    "invalidRequest": "Check the information and try again.",
+    "registrationConflict": "Registration could not be completed with those details.",
+    "authenticationInvalid": "The credentials are invalid.",
+    "emailVerificationInvalid": "The verification link is invalid or no longer available.",
+    "passwordResetInvalid": "The recovery link is invalid or no longer available.",
+    "rateLimited": "Too many attempts were made. Wait before trying again.",
+    "notFound": "The requested resource is not available.",
+    "conflict": "The operation conflicts with the current state.",
+    "reviewNotEligible": "The requirements for posting the review are not met.",
+    "reviewAlreadySubmitted": "This reservation already has a review.",
+    "holdExpired": "The time allowed to confirm the reservation has ended.",
+    "capacityUnavailable": "The selected place is no longer available.",
+    "restrictionActive": "A temporary booking restriction is active.",
+    "cancellationDeadlinePassed": "The cancellation deadline has passed.",
+    "unavailable": "The service is currently unavailable. Please try again.",
+    "retry": "Try again"
   }
 }

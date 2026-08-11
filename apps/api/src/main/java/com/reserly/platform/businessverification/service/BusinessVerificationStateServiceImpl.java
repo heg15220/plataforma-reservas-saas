@@ -56,7 +56,6 @@ public class BusinessVerificationStateServiceImpl implements BusinessVerificatio
     account.setBusinessVerifiedAt(null);
     account.setBusinessVerificationExpiresAt(null);
     account.setBusinessVerificationProvider(null);
-    account.setBusinessVerificationReference(null);
     account.setManualReviewStatus(null);
     account.setManualReviewedByUser(null);
     account.setManualReviewedAt(null);
@@ -112,7 +111,6 @@ public class BusinessVerificationStateServiceImpl implements BusinessVerificatio
   private void applyFinalState(
       BusinessAccountEntity account, BusinessVerificationCheckEntity check) {
     account.setBusinessVerificationProvider(check.getProvider());
-    account.setBusinessVerificationReference(check.getRemoteReference());
 
     if (TECHNICAL_VERIFIED.equals(check.getStatus()) && identityIsCoherent(account, check)) {
       account.setBusinessVerificationStatus(BusinessVerificationStatus.VERIFIED.persistedValue());

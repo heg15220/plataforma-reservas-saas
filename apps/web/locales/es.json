@@ -2302,5 +2302,24 @@
       "description": "Últimas acciones críticas, con actor y cambios, sin metadatos de red.",
       "error": "No pudimos cargar la auditoría."
     }
+  },
+  "PublicErrors": {
+    "title": "No pudimos completar la operación",
+    "invalidRequest": "Revisa los datos e inténtalo de nuevo.",
+    "registrationConflict": "No se pudo completar el registro con esos datos.",
+    "authenticationInvalid": "Las credenciales no son válidas.",
+    "emailVerificationInvalid": "El enlace de verificación no es válido o ya no está disponible.",
+    "passwordResetInvalid": "El enlace de recuperación no es válido o ya no está disponible.",
+    "rateLimited": "Has realizado demasiados intentos. Espera antes de volver a intentarlo.",
+    "notFound": "El recurso solicitado no está disponible.",
+    "conflict": "La operación entra en conflicto con el estado actual.",
+    "reviewNotEligible": "No se cumplen los requisitos para publicar la reseña.",
+    "reviewAlreadySubmitted": "Esta reserva ya tiene una reseña.",
+    "holdExpired": "El tiempo para confirmar la reserva ha terminado.",
+    "capacityUnavailable": "La plaza seleccionada ya no está disponible.",
+    "restrictionActive": "Existe una restricción temporal para realizar la reserva.",
+    "cancellationDeadlinePassed": "El plazo para cancelar la reserva ha terminado.",
+    "unavailable": "El servicio no está disponible en este momento. Inténtalo de nuevo.",
+    "retry": "Reintentar"
   }
 }

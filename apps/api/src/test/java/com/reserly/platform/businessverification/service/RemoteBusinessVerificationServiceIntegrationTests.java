@@ -127,7 +127,6 @@ class RemoteBusinessVerificationServiceIntegrationTests {
               "requestId",
               "provider",
               "providerCountry",
-              "identifierChecked",
               "status",
               "remoteReference",
               "attemptCount",
@@ -149,7 +148,7 @@ class RemoteBusinessVerificationServiceIntegrationTests {
         .containsEntry("errorMessageKey", null);
     assertThat(((Number) evidence.get("attemptCount")).intValue()).isEqualTo(2);
     assertThat((Integer) evidence.get("durationMs")).isGreaterThanOrEqualTo(0);
-    assertThat((String) evidence.get("identifierChecked")).startsWith("TEST");
+    assertThat(evidence).doesNotContainKey("identifierChecked");
   }
 
   @Test

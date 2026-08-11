@@ -14,6 +14,5 @@ public record AdminBusinessAccountResponse(
     String businessAddress,
     String verificationStatus,
     String verificationProvider,
-    String verificationReference,
     String manualReviewStatus,
     Instant updatedAt) {}

@@ -56,7 +56,6 @@ const businessAccountSchema = z.object({
     "expired",
   ]),
   verificationProvider: z.string().nullable(),
-  verificationReference: z.string().nullable(),
   manualReviewStatus: z
     .enum(["pending_review", "approved", "rejected", "needs_correction"])
     .nullable(),

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { loadWebEnvironment } from "../../../environment";
 import { resolvePublicAssetUrl } from "@/features/public-venue/public-venue-api";
+import { PublicApiError } from "@/features/public-error/public-api-error";
 
 const publicVenueSearchItemSchema = z.object({
   slug: z.string().min(1),
@@ -100,7 +101,7 @@ export async function searchPublicVenues(
 
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`No se pudo cargar la búsqueda pública (${response.status}).`);
+    throw new PublicApiError("PublicErrors.unavailable", response.status);
   }
   return publicVenueSearchResponseSchema.parse(await response.json());
 }
@@ -112,7 +113,7 @@ export async function fetchPublicSearchCategories(locale: string): Promise<Publi
   url.searchParams.set("locale", locale);
   const response = await fetch(url, { next: { revalidate: 300 } });
   if (!response.ok) {
-    throw new Error(`No se pudo cargar el catálogo público (${response.status}).`);
+    throw new PublicApiError("PublicErrors.unavailable", response.status);
   }
   return z.array(publicSearchCategorySchema).parse(await response.json());
 }
@@ -156,7 +157,7 @@ export async function fetchPublicSearchSuggestions(
     signal,
   });
   if (!response.ok) {
-    throw new Error(`No se pudieron cargar sugerencias públicas (${response.status}).`);
+    throw new PublicApiError("PublicErrors.unavailable", response.status);
   }
   const parsed = publicSearchSuggestionsResponseSchema.parse(await response.json());
   rememberSuggestions(cacheKey, parsed.suggestions);

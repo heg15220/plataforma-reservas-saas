@@ -8850,3 +8850,46 @@ Fuente de verdad del avance:
     entorno y `git diff --check`. El validador global de convenciones sigue mostrando 18 incidencias
     preexistentes fuera de estos módulos; ya no señala ningún archivo cambiado en esta iteración.
     El cierre adicional de valores diagnósticos pasó sus 13 pruebas de pagos focalizadas.
+
+# Conversación 193 - Minimización fiscal y contrato seguro de errores públicos
+
+- Fecha: 2026-08-11.
+- Resumen de la conversación:
+  - Se revisaron íntegramente los cinco documentos fuente de verdad de `.kiro` y el flujo de
+    verificación empresarial desde registro, adaptadores remotos, persistencia y administración.
+  - Se eliminaron las copias del identificador fiscal y de la referencia externa, se acotó la
+    referencia auditable a un valor opaco y se confirmó que nombre, dirección y respuestas de
+    proveedor solo se procesan transitoriamente.
+  - Se normalizaron los errores públicos con código y `messageKey`, catálogo cerrado, fallback 500
+    sin detalles internos y límite de error web localizado que no representa excepciones.
+- Archivos modificados:
+  - Entidades, servicios, DTO administrativo, contratos de verificación, fixture local y migración
+    `V43__minimize_business_verification_evidence.sql`.
+  - DTO de errores públicos, `PublicErrorMessageCatalog`, `PublicApiExceptionHandler`, clientes
+    públicos web, límite de error de Next.js y catálogos `es`/`en`.
+  - Pruebas focalizadas backend/web y pruebas de integración dependientes del esquema.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-031`, `RF-032`, `RNF-001`, `RNF-002`, `RNF-009` y `RNF-012`.
+- Tareas impactadas:
+  - `16.13. Revisar minimización de datos fiscales/registrales y respuestas de proveedores de
+    verificación empresarial`.
+  - `16.14. Revisar que todos los mensajes de error públicos usan claves i18n y no filtran detalles
+    de proveedores externos`.
+- Tareas completadas:
+  - `16.13` y `16.14`, implementadas, verificadas y documentadas individualmente.
+- Siguiente tarea pendiente recomendada:
+  - `17.1. Implementar logs estructurados`.
+- Decisiones o aclaraciones relevantes:
+  - `BusinessAccounts` conserva el identificador aportado y el normalizado por sus usos legítimos
+    de presentación autorizada, revisión y reglas de país; la minimización elimina su duplicación
+    en cada comprobación y la referencia redundante en la cuenta.
+  - El hash SHA-256 opcional permanece como evidencia mínima sin permitir almacenar el cuerpo. La
+    referencia remota solo admite un identificador opaco de 8 a 128 caracteres.
+  - El backend entrega claves estables y el frontend localiza; nunca usa como texto público el
+    mensaje de una excepción ni la respuesta de un proveedor.
+  - Pasaron 26 pruebas backend y 9 pruebas web focalizadas, además de Spotless, Prettier, ESLint y
+    `git diff --check`. El validador i18n global mantiene 43 incidencias históricas fuera de los
+    archivos modificados. No se arrancó Docker/PostgreSQL para respetar el alcance acotado pedido;
+    V43 quedó cubierta por prueba estática y los consumidores dependientes compilaron.

@@ -1,4 +1,5 @@
 import { loadWebEnvironment } from "../../../environment";
+import { PublicApiError } from "@/features/public-error/public-api-error";
 import { z } from "zod";
 
 const publicVenueProfileSchema = z.object({
@@ -71,7 +72,7 @@ export async function getPublicVenue(slug: string, locale: string): Promise<Publ
     throw new PublicVenueNotFoundError();
   }
   if (!response.ok) {
-    throw new Error(`No se pudo cargar la ficha pública (${response.status}).`);
+    throw new PublicApiError("PublicErrors.unavailable", response.status);
   }
   return publicVenueProfileSchema.parse(await response.json());
 }

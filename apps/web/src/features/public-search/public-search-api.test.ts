@@ -104,9 +104,11 @@ describe("searchPublicVenues", () => {
       }),
     );
 
-    await expect(searchPublicVenues("es", {})).rejects.toThrow(
-      "No se pudo cargar la búsqueda pública (503).",
-    );
+    await expect(searchPublicVenues("es", {})).rejects.toMatchObject({
+      message: "PublicErrors.unavailable",
+      messageKey: "PublicErrors.unavailable",
+      status: 503,
+    });
   });
 
   it("consulta sugerencias acotadas por ámbito y término", async () => {

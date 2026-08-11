@@ -1,4 +1,10 @@
 package com.reserly.platform.identity.dto;
 
+import com.reserly.platform.infrastructure.error.PublicErrorMessageCatalog;
+
 /** Error estable que no distingue token inexistente, caducado, revocado o consumido. */
-public record EmailVerificationErrorResponse(String error) {}
+public record EmailVerificationErrorResponse(String error, String messageKey) {
+  public EmailVerificationErrorResponse(String error) {
+    this(error, PublicErrorMessageCatalog.messageKey(error));
+  }
+}

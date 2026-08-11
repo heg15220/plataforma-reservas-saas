@@ -674,6 +674,8 @@ Todo texto visible para usuarios finales, locales y administradores debe estar i
 - WHEN falte una clave de traducción, THEN el sistema debe registrar el error y usar fallback controlado en inglés, sin mostrar claves técnicas al usuario.
 - WHEN un local configure textos visibles al usuario como descripción, servicios, reglas, pestañas personalizadas, campos del formulario o políticas, THEN el sistema debe permitir traducción en español e inglés o aplicar una política explícita de fallback antes de publicar.
 - WHEN se añada una nueva pantalla o flujo, THEN no debe aceptarse texto hardcodeado sin clave de traducción.
+- WHEN una API pública rechace una operación, THEN debe devolver un código estable y una clave i18n disponible en español e inglés, sin exponer excepciones, trazas ni detalles de proveedores externos.
+- WHEN ocurra un error inesperado en un endpoint público, THEN la respuesta debe ser genérica y no debe incluir payloads, URLs, estados remotos ni detalles de infraestructura.
 - WHEN se cree, modifique o publique cualquier texto en español del producto, documentación de usuario, catálogos i18n, emails, errores, estados, seed de datos visibles o contenido administrativo, THEN debe conservar ortografía española correcta, tildes, apertura de signos de interrogación y exclamación, eñes, diéresis, comillas y caracteres especiales propios del idioma.
 - WHEN un texto español se almacene en repositorio, base de datos, plantilla, fixture, migración, email o API, THEN debe codificarse en UTF-8 y no debe aparecer con mojibake ni caracteres sustitutos como `Ã`, `Â`, `�` o equivalentes.
 
@@ -705,6 +707,8 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - WHEN se complete una verificación, THEN el sistema debe guardar proveedor, fecha, resultado, referencia de consulta si existe y evidencia mínima necesaria para auditoría.
 - WHEN se almacene el identificador, THEN debe normalizarse y aplicarse unicidad por país e identificador.
 - WHEN se trate de datos fiscales o registrales, THEN el sistema debe minimizar datos guardados y no almacenar respuestas completas de terceros salvo necesidad legal o auditoría definida.
+- WHEN se registre un intento de verificación, THEN debe referenciar la cuenta empresarial sin copiar de nuevo su identificador fiscal y cualquier referencia externa debe existir únicamente en la comprobación que la originó.
+- WHEN el proveedor devuelva nombre, dirección o cuerpo de respuesta, THEN esos datos deben procesarse de forma transitoria para obtener coincidencias booleanas y no persistirse; solo se permite conservar la evidencia mínima definida, como una referencia opaca acotada o un hash SHA-256.
 
 ## 5. Requisitos no funcionales
 

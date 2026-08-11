@@ -407,10 +407,10 @@ class VenueRegistrationIntegrationTests {
         jdbcTemplate.queryForObject(
             """
             INSERT INTO "BusinessVerificationChecks" (
-              "businessAccountId", "requestId", "provider", "providerCountry",
-              "identifierChecked", "status", "checkedAt", "attemptCount", "durationMs"
+            "businessAccountId", "requestId", "provider", "providerCountry",
+              "status", "checkedAt", "attemptCount", "durationMs"
             )
-            VALUES (?, ?, 'aeat-census-manual', 'ES', 'B12345674',
+            VALUES (?, ?, 'aeat-census-manual', 'ES',
                     'inconclusive', CURRENT_TIMESTAMP, 1, 0)
             RETURNING "id"
             """,

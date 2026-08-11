@@ -34635,3 +34635,153 @@ No se afirma cumplimiento PCI DSS integral: el alcance puede cambiar con infraes
 proveedor o una futura UI. La garantía de esta iteración es arquitectónica y ejecutable: el código
 actual externaliza captura y autenticación, y sus modelos no admiten datos completos de tarjeta. La
 siguiente tarea pendiente es `16.13`, minimización fiscal/registral y de proveedores empresariales.
+
+## Iteración 2026-08-11 - Tarea 16.13: minimización fiscal, registral y de proveedores
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.13. Revisar minimización de datos fiscales/registrales y respuestas de
+  proveedores de verificación empresarial`.
+- Fecha: 2026-08-11.
+- Objetivo técnico: reducir la evidencia persistida al mínimo necesario, evitar copias del
+  identificador fiscal y convertir el contrato de referencias/respuestas remotas en restricciones
+  verificables de dominio y base de datos.
+- Requisitos y diseño: `RF-032`, `RNF-001`, `RNF-002`, `RNF-006`, diseño 3.15 y 4.4.
+
+### Modelo de datos, migración y arquitectura
+
+La migración `V43__minimize_business_verification_evidence.sql` elimina
+`BusinessVerificationChecks.identifierChecked`: cada comprobación ya contiene una clave foránea
+restrictiva hacia `BusinessAccounts`, que es la fuente autorizada del identificador fiscal. También
+elimina `BusinessAccounts.businessVerificationReference`, copia mutable de la referencia ya
+atribuida al intento que la originó. Antes de instalar
+`ckBusinessVerificationChecksRemoteReference`, V43 transforma en `NULL` las referencias históricas
+de más de 128 caracteres o que no cumplen `^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`; así no conserva
+texto libre potencialmente sensible bajo una columna concebida como identificador opaco.
+
+`BusinessAccountEntity` y `BusinessVerificationCheckEntity` dejan de mapear esos campos. La cuenta
+conserva `businessTaxIdentifier` y `businessTaxIdentifierNormalized`: el primero preserva el dato
+aportado para presentación a actores autorizados y permite distinguir prefijos significativos de
+país; el segundo aplica comparación y unicidad. No existe una tercera copia por comprobación.
+`RemoteBusinessVerificationResult` aplica el mismo patrón acotado de referencia antes de alcanzar
+persistencia. El hash de respuesta sigue siendo opcional y exige SHA-256 hexadecimal; representa
+integridad de una evidencia externa, nunca el cuerpo ni una serialización recuperable.
+
+### Flujo de ejecución, privacidad y errores
+
+`RemoteBusinessVerificationServiceImpl` persiste proveedor, país, resultado, coincidencias
+booleanas de razón social/dirección, referencia opaca, hash opcional, tiempos y código/clave de
+error. Ya no copia el identificador. `BusinessVerificationStateServiceImpl` actualiza el estado y
+proveedor de la cuenta sin trasladar la referencia del intento. Los adaptadores VIES y AEAT
+continúan limitando la descarga, deshabilitando construcciones XML peligrosas y procesando nombre,
+dirección y cuerpo en memoria; el resultado que sale del adaptador contiene solo booleanos y
+evidencia mínima.
+
+La respuesta administrativa `AdminBusinessAccountResponse` y su esquema Zod dejan de publicar la
+referencia remota. La autorización administrativa existente continúa protegiendo los demás datos
+fiscales. No se añadieron endpoints ni permisos. Los errores de proveedor siguen usando códigos y
+claves controladas; no se persisten mensajes remotos, URL, certificado, XML ni trazas. El fixture
+`local-demo-venues.sql` se alineó con el nuevo esquema para mantener arranques idempotentes.
+
+### Archivos, pruebas y evidencia de verificación
+
+Se modificaron las dos entidades de verificación, `RemoteBusinessVerificationResult`, los dos
+servicios de estado/remoto, el DTO y servicio administrativo, el esquema web administrativo, el
+fixture y tres pruebas de integración dependientes; se creó V43 y
+`BusinessVerificationDataMinimizationTests`. Esta prueba inspecciona por reflexión la ausencia de
+campos prohibidos, valida referencias/hash aceptados y rechazados y protege estáticamente la
+migración. Las pruebas dependientes de gateway VIES/AEAT y persistencia remota se incluyeron en el
+lote focal.
+
+Comandos relevantes: `mvn -o -Dmaven.repo.local=C:\Users\hugoe\.m2\repository spotless:apply` y
+Maven focal con `BusinessVerificationDataMinimizationTests`,
+`RemoteBusinessVerificationGatewayTests`, `ViesBusinessVerificationAdapterTests`,
+`AeatCensusManualReviewAdapterTests` y sus consumidores públicos. El lote backend completo de esta
+iteración compiló 836 fuentes principales y 204 de prueba y ejecutó 26 casos: cero fallos, errores u
+omisiones. No se ejecutó el conjunto global ni se arrancó PostgreSQL/Docker, conforme al límite de
+validar módulos afectados y dependientes; V43 se verificó estáticamente y los tests de integración
+afectados compilaron contra el nuevo contrato.
+
+### Riesgos, limitaciones y deuda
+
+La eliminación de columnas es intencionadamente irreversible: despliegues deben conservar backup
+operativo conforme a su política antes de migrar. Las referencias históricas no opacas se descartan
+para priorizar minimización; no se intenta extraer información de texto libre. La necesidad jurídica
+del hash y sus plazos debe revisarse junto a la política global de conservación. Una validación de
+migración desde una copia anonimizada de producción queda recomendada antes del despliegue, sin
+convertir esta iteración acotada en una ejecución de toda la plataforma.
+
+## Iteración 2026-08-11 - Tarea 16.14: errores públicos localizables y sin filtraciones
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.14. Revisar que todos los mensajes de error públicos usan claves i18n y no
+  filtran detalles de proveedores externos`.
+- Fecha: 2026-08-11.
+- Objetivo técnico: proporcionar a cada consumidor público un código estable y una clave de
+  traducción, y cerrar el último recurso de backend/frontend para que ninguna excepción o respuesta
+  remota se convierta en texto visible.
+- Requisitos y diseño: `RF-031`, `RF-032`, `RNF-001`, `RNF-002`, `RNF-009`, `RNF-012`, diseño 3.4,
+  3.15, 4.3 y 9.1.
+
+### Contratos backend y manejo de errores
+
+`PublicErrorMessageCatalog` centraliza una allowlist inmutable de códigos públicos y claves
+`PublicErrors.*` o claves de dominio existentes. Un código desconocido falla de inmediato: ampliar
+un error exige decidir explícitamente su traducción. Se añadió `messageKey` a los DTO de identidad,
+verificación de email, restablecimiento, registro, reservas/restricciones, reseñas, disponibilidad,
+rate limiting, validación y facturación. Los constructores auxiliares mantienen las firmas usadas
+por controladores y tests, pero derivan la clave desde el catálogo en vez de aceptar texto libre.
+
+`PublicApiExceptionHandler` es un `RestControllerAdvice` limitado por clases a controladores
+anónimos, autenticación, búsqueda/ficha/galería/categorías, disponibilidad, reseñas, formularios,
+reservas públicas y callbacks RedSys. Los manejadores específicos conservan precedencia. Solo las
+excepciones no clasificadas alcanzan el fallback, que devuelve HTTP 500 con
+`PUBLIC_SERVICE_UNAVAILABLE` y `PublicErrors.unavailable`. El log registra el nombre simple del tipo
+de excepción, sin mensaje, causa, stack, payload ni detalle del proveedor. La tarea 17.1 podrá
+añadir correlación estructurada segura sin reintroducir contenido sensible.
+
+### Contrato web, i18n y comportamiento visible
+
+`PublicApiError` separa `status` y clave; su `message` técnico es siempre
+`PublicErrors.unavailable`, nunca el cuerpo remoto. Los clientes `public-search-api.ts` y
+`public-venue-api.ts` sustituyen frases españolas y estados concatenados por este tipo. El límite
+global `app/error.tsx` usa exclusivamente `PublicErrors.title`, `PublicErrors.unavailable` y
+`PublicErrors.retry`, ofrece recuperación mediante `reset` y no renderiza `error.message`, `digest`
+ni traza. Los catálogos `es.json` y `en.json` incorporan el mismo conjunto cerrado de 17 entradas.
+
+Este patrón evita que HTML de proxy, mensajes de SDK, XML fiscal, códigos internos o URLs lleguen a
+la interfaz. La API no localiza en servidor: expone `messageKey` y el cliente elige catálogo según
+locale. Los campos adicionales son compatibles con consumidores JSON tolerantes; no se cambió la
+semántica de los códigos ya documentados.
+
+### Archivos, pruebas, seguridad y evidencia
+
+Se crearon `PublicErrorMessageCatalog`, `PublicApiErrorResponse`,
+`PublicApiExceptionHandler`, sus pruebas de contrato, `public-api-error.ts` y su test, además del
+límite global y su prueba. Se actualizaron once clases DTO backend, los dos clientes públicos, su
+test y ambos catálogos. Todo módulo/contrato nuevo documenta responsabilidad, entradas, salida,
+alcance y la prohibición de reflejar información externa.
+
+El mismo lote Maven focal ejecutó `PublicErrorContractTests`,
+`PublicEndpointInputValidationTests`, `ReservationConfirmationExceptionHandlerTests` y
+`RedsysCallbackControllerTests` junto con los tests dependientes de 16.13: 26 pruebas correctas. En
+web pasaron `app/error.test.tsx`, `public-api-error.test.ts` y `public-search-api.test.ts`: 9 pruebas,
+cero fallos. Prettier y ESLint focalizados pasaron sobre los siete módulos TS/TSX afectados. Las
+pruebas verifican paridad ES/EN, ausencia de campos `message`, `detail`, `provider` o `cause`, clave
+genérica ante una excepción con secreto simulado y que la UI no muestra mensaje, respuesta, traza
+ni digest.
+
+El validador i18n global detectó 43 literales históricos en archivos no modificados por estas dos
+tareas; se registran como baseline y no se amplió el alcance. Ninguna incidencia corresponde a los
+módulos cambiados. Spotless, las verificaciones focalizadas y `git diff --check` completaron sin
+errores. La siguiente tarea pendiente es `17.1`, logs estructurados.
+
+### Riesgos, limitaciones y deuda
+
+El catálogo debe ampliarse junto con cualquier nuevo código público; su fallo rápido evita un
+fallback silencioso durante desarrollo. Los clientes antiguos pueden ignorar `messageKey`, pero no
+obtendrán localización hasta adoptarlo. La respuesta genérica reduce diagnóstico deliberadamente;
+la observabilidad segura necesita identificador de correlación y campos estructurados allowlisted,
+no mensajes crudos. La auditoría automatizada global de literales conserva deuda previa que deberá
+resolverse en las tareas transversales correspondientes.

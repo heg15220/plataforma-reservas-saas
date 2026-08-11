@@ -182,7 +182,6 @@ public class AdminBusinessAccountServiceImpl implements AdminBusinessAccountServ
         account.getBusinessAddress(),
         account.getBusinessVerificationStatus(),
         account.getBusinessVerificationProvider(),
-        account.getBusinessVerificationReference(),
         account.getManualReviewStatus(),
         account.getUpdatedAt());
   }

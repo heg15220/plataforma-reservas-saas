@@ -528,6 +528,8 @@ Los catálogos base deben vivir en archivos versionados, por ejemplo:
 
 Todo texto de UI, API errors, emails y estados debe referenciar una clave estable, no texto hardcodeado.
 
+Los DTO de error expuestos por endpoints públicos incluyen `messageKey`, resuelta desde un catálogo cerrado por código de error. Un manejador de último recurso devuelve `PUBLIC_SERVICE_UNAVAILABLE` y `PublicErrors.unavailable` sin reflejar el mensaje, la causa ni datos de proveedores. El límite de error de Next.js presenta únicamente claves de catálogo y nunca `error.message`, `digest` o trazas.
+
 Los textos españoles deben almacenarse y servirse siempre en UTF-8. No se deben aceptar textos con caracteres degradados como `Ã`, `Â`, `�` o secuencias equivalentes de mojibake. Las comparaciones técnicas pueden usar versiones normalizadas sin tildes solo en campos auxiliares internos, por ejemplo para búsqueda, pero la versión visible al usuario debe conservar la ortografía correcta.
 
 La revisión de i18n debe cubrir como mínimo:
@@ -543,6 +545,8 @@ La revisión de i18n debe cubrir como mínimo:
 ### 3.15 Verificación empresarial
 
 Responsabilidades:
+
+La cuenta empresarial conserva el identificador aportado y su versión normalizada porque ambos son necesarios para revisión autorizada, presentación y reglas de país. Las comprobaciones remotas solo enlazan la cuenta por clave foránea: no duplican el identificador fiscal. Los adaptadores procesan nombre, dirección y cuerpos externos en memoria y materializan únicamente coincidencias booleanas, una referencia opaca acotada y, si procede, el hash SHA-256 de auditoría.
 
 - Capturar país fiscal, razón social e identificador fiscal/registral.
 - Normalizar identificadores por país.
@@ -762,7 +766,6 @@ Representa la identidad fiscal o registral de una empresa, profesional o entidad
 - `business_verification_expires_at`
 - `active_verification_request_id`
 - `business_verification_provider`
-- `business_verification_reference`
 - `manual_review_status`
 - `manual_reviewed_by_user_id`
 - `manual_reviewed_at`
@@ -790,7 +793,6 @@ Registra intentos de validación remota o manual de una cuenta empresarial. Se m
 - `request_id`
 - `provider`
 - `provider_country`
-- `identifier_checked`
 - `status`
 - `matched_legal_name`
 - `matched_address`
@@ -803,7 +805,7 @@ Registra intentos de validación remota o manual de una cuenta empresarial. Se m
 - `duration_ms`
 - `created_at`
 
-No debe guardar respuestas completas del proveedor salvo necesidad legal definida. Si se necesita evidencia, se guardará hash, referencia y campos mínimos.
+No debe guardar respuestas completas del proveedor salvo necesidad legal definida. Si se necesita evidencia, se guardará hash, referencia opaca y campos mínimos. `V43` elimina físicamente `BusinessVerificationChecks.identifierChecked` y `BusinessAccounts.businessVerificationReference`; antes de restringir la referencia a 8-128 caracteres del alfabeto opaco permitido, descarta valores históricos que no cumplen el contrato.
 
 Índices y restricciones:
 

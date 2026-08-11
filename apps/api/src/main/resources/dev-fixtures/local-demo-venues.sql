@@ -67,7 +67,7 @@ INSERT INTO "BusinessAccounts" (
   "businessTaxIdentifier", "businessTaxIdentifierNormalized", "businessAddress",
   "businessVerificationStatus", "businessVerifiedAt", "businessVerificationExpiresAt",
   "businessVerificationProvider",
-  "businessVerificationReference", "multiVenueEnabled", "createdAt", "updatedAt"
+  "multiVenueEnabled", "createdAt", "updatedAt"
 )
 VALUES
   (
@@ -76,7 +76,7 @@ VALUES
     'ES', 'Ames Padel Center · Demostración local', 'LOCAL-APC-001', 'LOCALAPC001',
     'Firmistáns 10A, 15895 Ames, A Coruña',
     'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days',
-    'local_fixture', 'local-apc-001', true,
+    'local_fixture', true,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
   ),
   (
@@ -85,7 +85,7 @@ VALUES
     'ES', 'LET Padel Ames · Demostración local', 'LOCAL-LET-002', 'LOCALLET002',
     'Firmistáns 10A, 15895 Ames, A Coruña',
     'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days',
-    'local_fixture', 'local-let-002', false,
+    'local_fixture', false,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
   ),
   (
@@ -94,7 +94,7 @@ VALUES
     'ES', 'Lume de Brétema · Demostración local', 'LOCAL-LUME-003', 'LOCALLUME003',
     'Rúa da Lúa Nova 18, 15705 Santiago de Compostela, A Coruña',
     'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days',
-    'local_fixture', 'local-lume-003', false,
+    'local_fixture', false,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
   )
 ON CONFLICT ("id") DO UPDATE SET
@@ -104,7 +104,6 @@ ON CONFLICT ("id") DO UPDATE SET
   "businessVerifiedAt" = EXCLUDED."businessVerifiedAt",
   "businessVerificationExpiresAt" = EXCLUDED."businessVerificationExpiresAt",
   "businessVerificationProvider" = EXCLUDED."businessVerificationProvider",
-  "businessVerificationReference" = EXCLUDED."businessVerificationReference",
   "multiVenueEnabled" = EXCLUDED."multiVenueEnabled",
   "updatedAt" = CURRENT_TIMESTAMP;
 
@@ -506,22 +505,22 @@ INSERT INTO "BusinessAccounts" (
   "id", "ownerUserId", "taxCountry", "businessLegalName", "businessTaxIdentifier",
   "businessTaxIdentifierNormalized", "businessAddress", "businessVerificationStatus",
   "businessVerifiedAt", "businessVerificationExpiresAt", "businessVerificationProvider",
-  "businessVerificationReference", "createdAt", "updatedAt"
+  "createdAt", "updatedAt"
 ) VALUES
   ('d2000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000004',
    'ES', 'Campo do Sar · Demostración local', 'LOCAL-SAR-004', 'LOCALSAR004',
    'Rúa das Brañas do Sar 9, 15702 Santiago de Compostela, A Coruña', 'verified',
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture', 'local-sar-004',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture',
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('d2000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000005',
    'ES', 'Norte Fitness Lab · Demostración local', 'LOCAL-NFL-005', 'LOCALNFL005',
    'Rúa de Fernando III 12, 15701 Santiago de Compostela, A Coruña', 'verified',
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture', 'local-nfl-005',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture',
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('d2000000-0000-4000-8000-000000000006', 'd0000000-0000-4000-8000-000000000006',
    'ES', 'Aura Atlántica · Demostración local', 'LOCAL-AUR-006', 'LOCALAUR006',
    'Rúa Nova de Abaixo 21, 15706 Santiago de Compostela, A Coruña', 'verified',
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture', 'local-aur-006',
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '365 days', 'local_fixture',
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT ("id") DO UPDATE SET
   "businessLegalName" = EXCLUDED."businessLegalName", "businessAddress" = EXCLUDED."businessAddress",

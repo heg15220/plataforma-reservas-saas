@@ -147,7 +147,6 @@ public class RemoteBusinessVerificationServiceImpl implements RemoteBusinessVeri
     check.setRequestId(requestId);
     check.setProvider(provider);
     check.setProviderCountry(account.getTaxCountry());
-    check.setIdentifierChecked(account.getBusinessTaxIdentifierNormalized());
     check.setCheckedAt(checkedAt);
     check.setAttemptCount(attempts);
     check.setDurationMs(durationMs);

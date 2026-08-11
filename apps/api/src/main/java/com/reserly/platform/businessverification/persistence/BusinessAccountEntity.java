@@ -37,7 +37,6 @@ public class BusinessAccountEntity {
   private Instant businessVerifiedAt;
   private Instant businessVerificationExpiresAt;
   private String businessVerificationProvider;
-  private String businessVerificationReference;
   private boolean multiVenueEnabled;
   private String manualReviewStatus;
   private UserEntity manualReviewedByUser;
@@ -166,16 +165,6 @@ public class BusinessAccountEntity {
 
   public void setBusinessVerificationProvider(String businessVerificationProvider) {
     this.businessVerificationProvider = businessVerificationProvider;
-  }
-
-  /** Referencia externa mínima del resultado vigente, sin respuesta remota completa. */
-  @Column(name = "\"businessVerificationReference\"", length = 255)
-  public String getBusinessVerificationReference() {
-    return businessVerificationReference;
-  }
-
-  public void setBusinessVerificationReference(String businessVerificationReference) {
-    this.businessVerificationReference = businessVerificationReference;
   }
 
   /**

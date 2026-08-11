@@ -184,10 +184,27 @@ class BusinessVerificationPersistenceIntegrationTests {
             FROM "information_schema"."columns"
             WHERE "table_schema" = 'public'
               AND "table_name" = 'BusinessVerificationChecks'
-              AND "column_name" IN ('rawResponse', 'rawResponseJson', 'responseBody')
+              AND "column_name" IN (
+                'identifierChecked',
+                'rawResponse',
+                'rawResponseJson',
+                'responseBody'
+              )
             """,
             String.class);
     assertThat(forbiddenColumns).isEmpty();
+
+    Integer duplicatedCurrentReference =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM "information_schema"."columns"
+            WHERE "table_schema" = 'public'
+              AND "table_name" = 'BusinessAccounts'
+              AND "column_name" = 'businessVerificationReference'
+            """,
+            Integer.class);
+    assertThat(duplicatedCurrentReference).isZero();
 
     assertThatThrownBy(
             () -> insertCheck(accountId, "vies", "verified", "raw-provider-response", null, null))
@@ -396,7 +413,6 @@ class BusinessVerificationPersistenceIntegrationTests {
           "requestId",
           "provider",
           "providerCountry",
-          "identifierChecked",
           "status",
           "remoteReference",
           "checkedAt",
@@ -404,7 +420,7 @@ class BusinessVerificationPersistenceIntegrationTests {
           "errorMessageKey",
           "rawResponseHash"
         )
-        VALUES (?, ?, ?, 'ES', 'B12345674', ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, 'ES', ?, ?, ?, ?, ?, ?)
         RETURNING "id"
         """,
         UUID.class,

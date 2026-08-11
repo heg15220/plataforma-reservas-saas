@@ -15,8 +15,9 @@ import java.util.UUID;
 /**
  * Evidencia mínima de un intento de verificación empresarial.
  *
- * <p>No almacena la respuesta remota completa. La trazabilidad se limita a proveedor, resultado,
- * coincidencias, referencia, error controlado y hash SHA-256 opcional de la respuesta.
+ * <p>No duplica el identificador fiscal de la cuenta ni almacena la respuesta remota completa. La
+ * trazabilidad se limita a proveedor, resultado, coincidencias, referencia, error controlado y hash
+ * SHA-256 opcional de la respuesta.
  */
 @Entity
 @Table(name = "\"BusinessVerificationChecks\"")
@@ -27,7 +28,6 @@ public class BusinessVerificationCheckEntity {
   private UUID requestId;
   private String provider;
   private String providerCountry;
-  private String identifierChecked;
   private String status;
   private Boolean matchedLegalName;
   private Boolean matchedAddress;
@@ -91,16 +91,6 @@ public class BusinessVerificationCheckEntity {
 
   public void setProviderCountry(String providerCountry) {
     this.providerCountry = providerCountry;
-  }
-
-  /** Identificador canónico comprobado, visible solo para procesos autorizados. */
-  @Column(name = "\"identifierChecked\"", nullable = false, length = 64)
-  public String getIdentifierChecked() {
-    return identifierChecked;
-  }
-
-  public void setIdentifierChecked(String identifierChecked) {
-    this.identifierChecked = identifierChecked;
   }
 
   /** Resultado técnico del intento; no equivale por sí solo al estado de publicación. */

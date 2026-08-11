@@ -9,7 +9,7 @@ import java.util.Objects;
  * @param status resultado técnico, independiente del estado publicable de la cuenta
  * @param matchedLegalName coincidencia opcional informada o calculada por el adaptador
  * @param matchedAddress coincidencia opcional de dirección
- * @param remoteReference referencia opaca del proveedor
+ * @param remoteReference referencia opaca y acotada del proveedor, nunca texto descriptivo
  * @param checkedAt instante UTC de la comprobación
  * @param rawResponseHash SHA-256 opcional del cuerpo canónico cuando se requiera integridad
  */
@@ -24,8 +24,8 @@ public record RemoteBusinessVerificationResult(
   public RemoteBusinessVerificationResult {
     Objects.requireNonNull(status);
     Objects.requireNonNull(checkedAt);
-    if (remoteReference != null && remoteReference.length() > 255) {
-      throw new IllegalArgumentException("Remote reference exceeds the audit contract");
+    if (remoteReference != null && !remoteReference.matches("[A-Za-z0-9][A-Za-z0-9._:-]{7,127}")) {
+      throw new IllegalArgumentException("Remote reference violates the audit contract");
     }
     if (rawResponseHash != null && !rawResponseHash.matches("[0-9a-f]{64}")) {
       throw new IllegalArgumentException("Response hash must be SHA-256 hexadecimal");

@@ -328,8 +328,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 16.10. Definir conservación de incidencias y penalizaciones.
 - [x] 16.11. Auditar cancelaciones, reportes, penalizaciones, pagos y cambios de reglas.
 - [x] 16.12. Revisar que no se almacenan datos completos de tarjeta.
-- [ ] 16.13. Revisar minimización de datos fiscales/registrales y respuestas de proveedores de verificación empresarial.
-- [ ] 16.14. Revisar que todos los mensajes de error públicos usan claves i18n y no filtran detalles de proveedores externos.
+- [x] 16.13. Revisar minimización de datos fiscales/registrales y respuestas de proveedores de verificación empresarial.
+- [x] 16.14. Revisar que todos los mensajes de error públicos usan claves i18n y no filtran detalles de proveedores externos.
 
 ## 19. Fase 17 - Observabilidad y operación
 
