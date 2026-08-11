@@ -39,6 +39,10 @@ public class ReservationEntity {
   private LocalDate date;
   private String secureTokenHash;
   private Instant secureTokenExpiresAt;
+  private Instant privacyPolicyAcceptedAt;
+  private String privacyPolicyVersion;
+  private Instant bookingRulesAcceptedAt;
+  private String bookingRulesSnapshot;
   private LocalTime startsAt;
   private LocalTime endsAt;
   private String status;
@@ -225,6 +229,49 @@ public class ReservationEntity {
 
   public void setSecureTokenExpiresAt(Instant secureTokenExpiresAt) {
     this.secureTokenExpiresAt = secureTokenExpiresAt;
+  }
+
+  /** Instante UTC en el que se aceptó expresamente la política de privacidad. */
+  @Column(name = "\"privacyPolicyAcceptedAt\"")
+  public Instant getPrivacyPolicyAcceptedAt() {
+    return privacyPolicyAcceptedAt;
+  }
+
+  public void setPrivacyPolicyAcceptedAt(Instant privacyPolicyAcceptedAt) {
+    this.privacyPolicyAcceptedAt = privacyPolicyAcceptedAt;
+  }
+
+  /** Versión de la política de privacidad aceptada durante la confirmación. */
+  @Column(name = "\"privacyPolicyVersion\"", length = 32)
+  public String getPrivacyPolicyVersion() {
+    return privacyPolicyVersion;
+  }
+
+  public void setPrivacyPolicyVersion(String privacyPolicyVersion) {
+    this.privacyPolicyVersion = privacyPolicyVersion;
+  }
+
+  /** Instante UTC en el que se aceptaron las reglas visibles de la reserva. */
+  @Column(name = "\"bookingRulesAcceptedAt\"")
+  public Instant getBookingRulesAcceptedAt() {
+    return bookingRulesAcceptedAt;
+  }
+
+  public void setBookingRulesAcceptedAt(Instant bookingRulesAcceptedAt) {
+    this.bookingRulesAcceptedAt = bookingRulesAcceptedAt;
+  }
+
+  /**
+   * Snapshot localizado de las reglas mostradas, incluido el fallback cuando el local no publica
+   * texto.
+   */
+  @Column(name = "\"bookingRulesSnapshot\"", length = 10_000)
+  public String getBookingRulesSnapshot() {
+    return bookingRulesSnapshot;
+  }
+
+  public void setBookingRulesSnapshot(String bookingRulesSnapshot) {
+    this.bookingRulesSnapshot = bookingRulesSnapshot;
   }
 
   @Column(name = "\"cancelledAt\"")

@@ -322,9 +322,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 16.4. Sanitizar comentarios, descripciones y campos libres.
 - [x] 16.5. Validar subida de archivos.
 - [x] 16.6. Añadir rate limiting a reserva, login, recuperación y enlaces públicos.
-- [ ] 16.7. Hashear tokens públicos de gestión.
-- [ ] 16.8. Crear política de privacidad y condiciones de uso.
-- [ ] 16.9. Añadir consentimiento explícito en registro y reserva.
+- [x] 16.7. Hashear tokens públicos de gestión.
+- [x] 16.8. Crear política de privacidad y condiciones de uso.
+- [x] 16.9. Añadir consentimiento explícito en registro y reserva.
 - [ ] 16.10. Definir conservación de incidencias y penalizaciones.
 - [ ] 16.11. Auditar cancelaciones, reportes, penalizaciones, pagos y cambios de reglas.
 - [ ] 16.12. Revisar que no se almacenan datos completos de tarjeta.

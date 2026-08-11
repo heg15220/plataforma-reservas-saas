@@ -29,6 +29,10 @@ public class UserEntity {
   private AccountType accountType;
   private String preferredLocale;
   private Instant emailVerifiedAt;
+  private Instant legalTermsAcceptedAt;
+  private String legalTermsVersion;
+  private Instant privacyPolicyAcceptedAt;
+  private String privacyPolicyVersion;
   private String status;
   private Instant createdAt;
   private Instant updatedAt;
@@ -108,6 +112,46 @@ public class UserEntity {
 
   public void setEmailVerifiedAt(Instant emailVerifiedAt) {
     this.emailVerifiedAt = emailVerifiedAt;
+  }
+
+  /** Evidencia mínima UTC de aceptación de las condiciones, sin IP ni user-agent. */
+  @Column(name = "\"legalTermsAcceptedAt\"")
+  public Instant getLegalTermsAcceptedAt() {
+    return legalTermsAcceptedAt;
+  }
+
+  public void setLegalTermsAcceptedAt(Instant legalTermsAcceptedAt) {
+    this.legalTermsAcceptedAt = legalTermsAcceptedAt;
+  }
+
+  /** Versión exacta de las condiciones aceptadas. */
+  @Column(name = "\"legalTermsVersion\"", length = 32)
+  public String getLegalTermsVersion() {
+    return legalTermsVersion;
+  }
+
+  public void setLegalTermsVersion(String legalTermsVersion) {
+    this.legalTermsVersion = legalTermsVersion;
+  }
+
+  /** Evidencia mínima UTC de aceptación de la política de privacidad. */
+  @Column(name = "\"privacyPolicyAcceptedAt\"")
+  public Instant getPrivacyPolicyAcceptedAt() {
+    return privacyPolicyAcceptedAt;
+  }
+
+  public void setPrivacyPolicyAcceptedAt(Instant privacyPolicyAcceptedAt) {
+    this.privacyPolicyAcceptedAt = privacyPolicyAcceptedAt;
+  }
+
+  /** Versión exacta de la política de privacidad aceptada. */
+  @Column(name = "\"privacyPolicyVersion\"", length = 32)
+  public String getPrivacyPolicyVersion() {
+    return privacyPolicyVersion;
+  }
+
+  public void setPrivacyPolicyVersion(String privacyPolicyVersion) {
+    this.privacyPolicyVersion = privacyPolicyVersion;
   }
 
   /** Estado operativo persistido y restringido por el esquema. */

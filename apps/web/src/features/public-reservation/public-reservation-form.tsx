@@ -7,6 +7,7 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
+  Link,
   MenuItem,
   Stack,
   TextField,
@@ -26,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
+import { NavigationLink } from "@/components/navigation-link";
 import { storeReservationConfirmation } from "@/features/reservation-booking/reservation-confirmation-storage";
 
 import {
@@ -306,11 +308,23 @@ export function PublicReservationFormView({
                       <Stack spacing={0.5}>
                         <FormControlLabel
                           control={<Checkbox name="acceptsPrivacyPolicy" required />}
-                          label={t("privacy")}
+                          label={t.rich("privacy", {
+                            privacyPolicy: (chunks) => (
+                              <Link component={NavigationLink} href="/legal/privacidad">
+                                {chunks}
+                              </Link>
+                            ),
+                          })}
                         />
                         <FormControlLabel
                           control={<Checkbox name="acceptsBookingRules" required />}
-                          label={t("rules")}
+                          label={t.rich("rules", {
+                            terms: (chunks) => (
+                              <Link component={NavigationLink} href="/legal/condiciones">
+                                {chunks}
+                              </Link>
+                            ),
+                          })}
                         />
                       </Stack>
                     </Surface>

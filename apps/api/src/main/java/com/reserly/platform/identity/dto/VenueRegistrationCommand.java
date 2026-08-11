@@ -13,4 +13,5 @@ public record VenueRegistrationCommand(
     String taxCountry,
     String businessLegalName,
     String businessTaxIdentifier,
-    String businessAddress) {}
+    String businessAddress,
+    boolean acceptsLegalTerms) {}

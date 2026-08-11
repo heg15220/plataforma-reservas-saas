@@ -14,6 +14,7 @@ import com.reserly.platform.identity.persistence.UserDao;
 import com.reserly.platform.identity.persistence.UserEntity;
 import com.reserly.platform.identity.persistence.UserRoleDao;
 import com.reserly.platform.identity.persistence.UserRoleEntity;
+import com.reserly.platform.infrastructure.legal.LegalDocumentVersions;
 import java.time.Instant;
 import java.util.Locale;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -61,6 +62,9 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
   @Override
   @Transactional
   public VenueRegistrationResponse register(VenueRegistrationCommand command) {
+    if (command == null || !command.acceptsLegalTerms()) {
+      throw new RegistrationValidationException();
+    }
     try {
       passwordHashingService.validate(command.rawPassword());
     } catch (PasswordHashingValidationException exception) {
@@ -124,6 +128,10 @@ public class VenueRegistrationServiceImpl implements VenueRegistrationService {
     user.setPasswordHash(passwordHashingService.hash(command.rawPassword()));
     user.setAccountType(AccountType.VENUE_BUSINESS);
     user.setPreferredLocale(command.preferredLocale());
+    user.setLegalTermsAcceptedAt(now);
+    user.setLegalTermsVersion(LegalDocumentVersions.TERMS_OF_SERVICE);
+    user.setPrivacyPolicyAcceptedAt(now);
+    user.setPrivacyPolicyVersion(LegalDocumentVersions.PRIVACY_POLICY);
     user.setStatus(INITIAL_USER_STATUS);
     user.setCreatedAt(now);
     user.setUpdatedAt(now);

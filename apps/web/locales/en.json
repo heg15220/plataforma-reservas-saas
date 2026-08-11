@@ -199,9 +199,11 @@
       "localAccess": "Venue access",
       "mobileNavigation": "Public mobile navigation",
       "primaryNavigation": "Primary public navigation",
+      "privacyPolicy": "Privacy policy",
       "recommendations": "Recommendations",
       "registerVenue": "Register your venue",
       "skipContent": "Skip to content",
+      "termsOfService": "Terms of use",
       "venueQuestion": "Are you a venue?"
     },
     "venue": {
@@ -209,6 +211,128 @@
       "mobileNavigation": "Panel mobile navigation",
       "navigation": "Panel navigation",
       "skipContent": "Skip to content"
+    }
+  },
+  "Legal": {
+    "privacy": {
+      "metadata": {
+        "title": "Privacy policy | Reserly",
+        "description": "How Reserly handles personal data relating to accounts, bookings, and incidents."
+      },
+      "title": "Privacy policy",
+      "description": "We explain which data Reserly uses, why it is needed, and what control you retain over it.",
+      "updatedLabel": "Version",
+      "updatedValue": "11 August 2026",
+      "reviewNotice": "This is the functional MVP version. The controller's legal identity, address, and formal contact channel must be completed and legally reviewed before the service opens in production.",
+      "relatedLabel": "You can also read our",
+      "relatedText": "terms of use",
+      "sections": [
+        {
+          "title": "1. Controller and scope",
+          "paragraphs": [
+            "Reserly operates a technology platform for discovering venues, making guest bookings, and managing professional accounts. Venues are responsible for their published information and may process booking data to provide the requested service."
+          ]
+        },
+        {
+          "title": "2. Data we process",
+          "paragraphs": [
+            "We minimise data and only request information connected to the flow being used."
+          ],
+          "bullets": [
+            "For professional accounts: email, protected credentials, language, tax identity, and business details.",
+            "For bookings: name, email, language, date, time slot, party size, venue-requested answers, and acceptance of rules.",
+            "For security: technical identifiers, rate-limited attempts, audit records, and evidence of incidents or penalties.",
+            "For payments: references and transaction status; Reserly does not store full card details."
+          ]
+        },
+        {
+          "title": "3. Purposes and legal bases",
+          "paragraphs": [
+            "We process data to create and manage the requested account or booking, send transactional messages, verify businesses, prevent abuse, resolve incidents, and meet legal duties. Depending on the operation, the basis may be performance of the service, explicit consent, a legal obligation, or legitimate interests in protecting the platform."
+          ]
+        },
+        {
+          "title": "4. Recipients and providers",
+          "paragraphs": [
+            "Booking data is shared with the booked venue. Infrastructure, email, verification, or payment providers may act as processors or independent controllers under their own terms. We do not sell personal data. Any international transfer will require appropriate safeguards."
+          ]
+        },
+        {
+          "title": "5. Retention",
+          "paragraphs": [
+            "We retain data while needed for the service, then block or delete it according to applicable duties. Operational incidents are currently planned for 12 months; restrictions for their active term and up to 12 additional months. Final statutory and accounting periods must be validated before production."
+          ]
+        },
+        {
+          "title": "6. Your rights and contact",
+          "paragraphs": [
+            "You may request access, correction, deletion, objection, restriction, or portability through the support channel published in the application. You may withdraw consent without affecting earlier processing and complain to the competent authority. The formal controller identity and channel will be published before production."
+          ]
+        },
+        {
+          "title": "7. Security and changes",
+          "paragraphs": [
+            "We use access controls, encryption in transit, hashed credentials and tokens, expiry, revocation, rate limits, and auditing. No system removes every risk. We will notify material changes and request renewed acceptance where required."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "metadata": {
+        "title": "Terms of use | Reserly",
+        "description": "Rules for customers and professional accounts using Reserly."
+      },
+      "title": "Terms of use",
+      "description": "These terms govern access to Reserly, bookings, and the tools provided to venues.",
+      "updatedLabel": "Version",
+      "updatedValue": "11 August 2026",
+      "reviewNotice": "This version defines MVP behaviour. The operator's contractual identity, jurisdiction, and any commercial terms must be completed and legally reviewed before production.",
+      "relatedLabel": "Learn how we handle your data in the",
+      "relatedText": "privacy policy",
+      "sections": [
+        {
+          "title": "1. Service and acceptance",
+          "paragraphs": [
+            "By creating an account or confirming a booking, you accept these terms and the privacy policy through controls that are not preselected. You must provide accurate information and have sufficient legal capacity to use the service."
+          ]
+        },
+        {
+          "title": "2. Bookings and management",
+          "paragraphs": [
+            "MVP bookings are made without a customer account. Confirmation depends on availability verified by Reserly and is emailed with a personal, expiring, revocable link. You must protect that link as a credential."
+          ]
+        },
+        {
+          "title": "3. Venue rules, changes, and attendance",
+          "paragraphs": [
+            "Each venue sets schedules, capacity, and rules visible before confirmation. By booking, you accept the displayed version. Cancellations, changes, late arrivals, and no-shows are governed by those rules and mandatory law. Repeated no-shows may result in proportionate temporary restrictions."
+          ]
+        },
+        {
+          "title": "4. Professional accounts",
+          "paragraphs": [
+            "Venue accounts must maintain accurate business details, protect credentials, and be authorised to publish and fulfil bookings. Business verification is not an endorsement and does not replace licences, insurance, or sector-specific duties."
+          ]
+        },
+        {
+          "title": "5. Content and conduct",
+          "paragraphs": [
+            "You may not impersonate others, automate abuse, infringe rights, publish illegal content, or bypass controls. Venues are responsible for listings and users for their contributions. We may remove content or limit access where necessary and proportionate."
+          ]
+        },
+        {
+          "title": "6. Payments and third parties",
+          "paragraphs": [
+            "Where a booking requires payment, an external provider processes it under its own terms. Reserly stores references and status, not full card details. Price, tax, refund, and cancellation terms must be shown before payment authorisation."
+          ]
+        },
+        {
+          "title": "7. Availability, liability, and changes",
+          "paragraphs": [
+            "We work to keep the service available, but interruptions or outdated venue information may occur. Nothing limits non-waivable consumer rights or liability that law prohibits excluding. We may update these terms and will request renewed acceptance for material changes."
+          ]
+        }
+      ]
     }
   },
   "Metadata": {
@@ -1437,8 +1561,8 @@
       "date": "Date",
       "timeSlot": "Time slot",
       "selectPlaceholder": "Select an option",
-      "privacy": "I accept the privacy policy",
-      "rules": "I accept the booking rules",
+      "privacy": "I accept the <privacyPolicy>privacy policy</privacyPolicy>",
+      "rules": "I accept the <terms>booking rules and terms</terms>",
       "steps": {
         "ariaLabel": "Booking progress",
         "select": "Select",

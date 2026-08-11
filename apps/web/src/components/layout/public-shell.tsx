@@ -116,6 +116,19 @@ export function PublicShell({ children, currentPath = "/" }: PublicShellProps) {
         {children}
       </Box>
 
+      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", mt: 6, py: 3 }}>
+        <PageContainer>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "center" }}>
+            <Button component={NavigationLink} href="/legal/privacidad" size="small">
+              {layout("privacyPolicy")}
+            </Button>
+            <Button component={NavigationLink} href="/legal/condiciones" size="small">
+              {layout("termsOfService")}
+            </Button>
+          </Box>
+        </PageContainer>
+      </Box>
+
       <Paper
         component="nav"
         aria-label={layout("mobileNavigation")}

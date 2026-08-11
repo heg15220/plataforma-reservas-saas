@@ -199,9 +199,11 @@
       "localAccess": "Acceso local",
       "mobileNavigation": "Navegación pública móvil",
       "primaryNavigation": "Navegación pública principal",
+      "privacyPolicy": "Política de privacidad",
       "recommendations": "Recomendaciones",
       "registerVenue": "Registra tu local",
       "skipContent": "Saltar al contenido",
+      "termsOfService": "Condiciones de uso",
       "venueQuestion": "¿Eres un local?"
     },
     "venue": {
@@ -209,6 +211,128 @@
       "mobileNavigation": "Navegación móvil del panel",
       "navigation": "Navegación del panel",
       "skipContent": "Saltar al contenido"
+    }
+  },
+  "Legal": {
+    "privacy": {
+      "metadata": {
+        "title": "Política de privacidad | Reserly",
+        "description": "Cómo trata Reserly los datos personales de cuentas, reservas e incidencias."
+      },
+      "title": "Política de privacidad",
+      "description": "Explicamos qué datos utiliza Reserly, para qué los necesita y qué control conservas sobre ellos.",
+      "updatedLabel": "Versión",
+      "updatedValue": "11 de agosto de 2026",
+      "reviewNotice": "Esta es la versión funcional del MVP. La identidad social, el domicilio y el canal formal del responsable deberán completarse y someterse a revisión jurídica antes de abrir el servicio a producción.",
+      "relatedLabel": "Consulta también nuestras",
+      "relatedText": "condiciones de uso",
+      "sections": [
+        {
+          "title": "1. Responsable y alcance",
+          "paragraphs": [
+            "Reserly actúa como plataforma tecnológica para descubrir locales, crear reservas anónimas y gestionar cuentas profesionales. El local es responsable de la información propia que publica y puede tratar los datos de sus reservas para prestar el servicio solicitado."
+          ]
+        },
+        {
+          "title": "2. Datos que tratamos",
+          "paragraphs": [
+            "Aplicamos minimización y solo solicitamos información vinculada al flujo utilizado."
+          ],
+          "bullets": [
+            "En cuentas profesionales: email, credenciales protegidas, idioma, identidad fiscal y datos empresariales.",
+            "En reservas: nombre, email, idioma, fecha, franja, número de personas, respuestas solicitadas por el local y aceptación de normas.",
+            "En seguridad: identificadores técnicos, intentos limitados, auditoría y evidencias de incidencias o penalizaciones.",
+            "En pagos: referencias y estado de la operación; Reserly no almacena los datos completos de la tarjeta."
+          ]
+        },
+        {
+          "title": "3. Finalidades y bases",
+          "paragraphs": [
+            "Tratamos los datos para crear y gestionar la cuenta o reserva solicitada, enviar comunicaciones transaccionales, verificar negocios, prevenir abuso, resolver incidencias y cumplir obligaciones legales. La base puede ser la ejecución del servicio, el consentimiento explícito, una obligación legal o el interés legítimo en proteger la plataforma, según cada operación."
+          ]
+        },
+        {
+          "title": "4. Destinatarios y proveedores",
+          "paragraphs": [
+            "Los datos de una reserva se comparten con el local reservado. Proveedores de infraestructura, correo, verificación o pago pueden actuar como encargados o responsables independientes bajo sus propios contratos. No vendemos datos personales. Cualquier transferencia internacional exigirá garantías adecuadas."
+          ]
+        },
+        {
+          "title": "5. Conservación",
+          "paragraphs": [
+            "Conservamos los datos mientras sean necesarios para el servicio y después los bloqueamos o eliminamos según las obligaciones aplicables. Las incidencias operativas se prevén por 12 meses; las restricciones, durante su vigencia y hasta 12 meses adicionales. Los plazos legales definitivos y el histórico contable deberán validarse antes de producción."
+          ]
+        },
+        {
+          "title": "6. Derechos y contacto",
+          "paragraphs": [
+            "Puedes solicitar acceso, rectificación, supresión, oposición, limitación o portabilidad mediante el canal de soporte publicado en la aplicación. También puedes retirar un consentimiento sin afectar al tratamiento previo y reclamar ante la autoridad competente. El canal y la identidad formal del responsable se publicarán antes de producción."
+          ]
+        },
+        {
+          "title": "7. Seguridad y cambios",
+          "paragraphs": [
+            "Usamos controles de acceso, cifrado en tránsito, hashes para credenciales y tokens, caducidad, revocación, limitación de solicitudes y auditoría. Ningún sistema elimina todo riesgo. Avisaremos de cambios materiales y pediremos una nueva aceptación cuando resulte necesaria."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "metadata": {
+        "title": "Condiciones de uso | Reserly",
+        "description": "Reglas de uso de Reserly para clientes y cuentas profesionales."
+      },
+      "title": "Condiciones de uso",
+      "description": "Estas condiciones regulan el acceso a Reserly, las reservas y el uso de las herramientas para locales.",
+      "updatedLabel": "Versión",
+      "updatedValue": "11 de agosto de 2026",
+      "reviewNotice": "Esta versión define el funcionamiento del MVP. La identificación contractual del operador, la jurisdicción y cualquier condición económica deberán completarse y revisarse jurídicamente antes de producción.",
+      "relatedLabel": "Consulta cómo tratamos tus datos en la",
+      "relatedText": "política de privacidad",
+      "sections": [
+        {
+          "title": "1. Servicio y aceptación",
+          "paragraphs": [
+            "Al crear una cuenta o confirmar una reserva aceptas estas condiciones y la política de privacidad mediante controles que no están premarcados. Debes facilitar información exacta y tener capacidad legal suficiente para usar el servicio."
+          ]
+        },
+        {
+          "title": "2. Reservas y gestión",
+          "paragraphs": [
+            "Las reservas del MVP se realizan sin cuenta de cliente. La confirmación depende de la disponibilidad validada por Reserly y se envía por email junto con un enlace personal, temporal y revocable. Debes proteger ese enlace como una credencial."
+          ]
+        },
+        {
+          "title": "3. Normas del local, cambios y asistencia",
+          "paragraphs": [
+            "Cada local define horarios, capacidad y reglas visibles antes de confirmar. Al reservar aceptas la versión mostrada. Las cancelaciones, cambios, retrasos y ausencias se rigen por esas reglas y por la normativa imperativa. Las ausencias reiteradas pueden producir restricciones temporales proporcionadas."
+          ]
+        },
+        {
+          "title": "4. Cuentas profesionales",
+          "paragraphs": [
+            "Las cuentas de local deben mantener datos empresariales veraces, proteger sus credenciales y disponer de autorización para publicar y atender reservas. La verificación empresarial no constituye una recomendación ni sustituye licencias, seguros u obligaciones sectoriales."
+          ]
+        },
+        {
+          "title": "5. Contenido y conducta",
+          "paragraphs": [
+            "No puedes suplantar identidades, automatizar abuso, infringir derechos, difundir contenido ilegal o eludir controles. Los locales responden de sus fichas y los usuarios de sus aportaciones. Podemos retirar contenido o limitar acceso cuando sea necesario y proporcionado."
+          ]
+        },
+        {
+          "title": "6. Pagos y terceros",
+          "paragraphs": [
+            "Cuando una reserva requiera pago, la operación se procesa mediante un proveedor externo y sus condiciones. Reserly conserva referencias y estados, no los datos completos de la tarjeta. Precio, impuestos, devoluciones y cancelaciones deberán mostrarse antes de autorizar el pago."
+          ]
+        },
+        {
+          "title": "7. Disponibilidad, responsabilidad y cambios",
+          "paragraphs": [
+            "Trabajamos para mantener el servicio disponible, pero pueden existir interrupciones o información desactualizada del local. Nada limita derechos irrenunciables de consumidores ni responsabilidades que la ley prohíba excluir. Podremos actualizar estas condiciones y solicitaremos nueva aceptación ante cambios materiales."
+          ]
+        }
+      ]
     }
   },
   "Metadata": {
@@ -1437,8 +1561,8 @@
       "date": "Fecha",
       "timeSlot": "Franja horaria",
       "selectPlaceholder": "Selecciona una opción",
-      "privacy": "Acepto la política de privacidad",
-      "rules": "Acepto las normas de reserva",
+      "privacy": "Acepto la <privacyPolicy>política de privacidad</privacyPolicy>",
+      "rules": "Acepto las <terms>normas y condiciones de reserva</terms>",
       "steps": {
         "ariaLabel": "Progreso de la reserva",
         "select": "Seleccionar",

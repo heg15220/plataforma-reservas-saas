@@ -78,6 +78,14 @@ describe("PublicReservationFormView", () => {
 
     expect(await screen.findByRole("textbox", { name: /Nombre/i })).toBeVisible();
     expect(await screen.findByText(/Tiempo para completar: 09:/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: "política de privacidad" })).toHaveAttribute(
+      "href",
+      "/legal/privacidad",
+    );
+    expect(screen.getByRole("link", { name: "normas y condiciones de reserva" })).toHaveAttribute(
+      "href",
+      "/legal/condiciones",
+    );
     expect(screen.getByRole("button", { name: "Confirmar reserva" })).toBeEnabled();
   });
 
@@ -120,7 +128,7 @@ describe("PublicReservationFormView", () => {
       target: { value: "maria@example.com" },
     });
     fireEvent.click(screen.getByRole("checkbox", { name: /política de privacidad/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /normas de reserva/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /normas y condiciones de reserva/i }));
 
     fireEvent.click(screen.getByRole("button", { name: "Confirmar reserva" }));
 

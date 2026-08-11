@@ -34304,3 +34304,178 @@ La política por IP puede agrupar usuarios detrás de NAT; por ello las cuotas d
 deliberadamente más amplias que reseñas y autenticación. Una evolución podrá combinar IP con un
 identificador pseudónimo, siempre evitando almacenar tokens o emails en claro. La siguiente tarea
 pendiente según `tasks.md` es `16.7. Hashear tokens públicos de gestión`.
+
+## Iteración 2026-08-11 - Tarea 16.7: hash de tokens públicos de gestión
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.7. Hashear tokens públicos de gestión`.
+- Fecha: 2026-08-11.
+- Objetivo: verificar y cerrar documentalmente que una filtración de base de datos no entrega los
+  secretos usados para consultar o cancelar reservas.
+- Requisitos y diseño: `RF-017`, `RNF-001`; diseño 3.5, flujo 8.2 y seguridad 12.1.
+
+### Arquitectura, flujo y datos
+
+`ReservationConfirmationServiceImpl` obtiene un token Base64URL de 256 bits mediante
+`OneTimeTokenService`, calcula SHA-256 y asigna únicamente los 64 caracteres hexadecimales a
+`Reservations.secureTokenHash`. El valor original no forma parte de la entidad, DTO de respuesta ni
+logs: solo se incorpora al evento de email que vive en memoria y se procesa tras commit. La
+caducidad absoluta se calcula con `ReservationManagementTokenPolicy`.
+
+`ReservationManagementServiceImpl` valida primero la forma cerrada del token, lo hashea y consulta
+`findBySecureTokenHashForUpdate`; después aplica caducidad y estado. La comparación y búsqueda no
+requieren recuperar el secreto. Al cancelar se ponen a `null` hash y caducidad, de modo que el enlace
+queda revocado aunque alguien conserve el email. La migración histórica V23 ya impone longitud 64,
+alfabeto hexadecimal minúsculo, pareja hash/caducidad e índice único parcial. V41 añade un comentario
+SQL verificable que prohíbe interpretar la columna como token en claro.
+
+### Seguridad, errores, observabilidad y documentación
+
+Tokens malformados, desconocidos o caducados mantienen el contrato opaco del servicio y no revelan
+si una reserva existe. No se añadieron logs, métricas con token ni hashes parciales. Los Javadoc de
+entidad y servicio explican la frontera de memoria y la invariantes de revocación. SHA-256 es adecuado
+aquí porque el secreto tiene entropía criptográfica completa; no se usa como sustituto de un KDF para
+contraseñas humanas.
+
+### Archivos, pruebas y evidencia
+
+Archivos relevantes verificados o modificados:
+
+- `OneTimeTokenServiceImpl.java`, `ReservationConfirmationServiceImpl.java` y
+  `ReservationManagementServiceImpl.java`;
+- `ReservationEntity.java`, `ReservationDao.java`, V23 y
+  `V41__record_explicit_legal_consents.sql`;
+- `ReservationConfirmationServiceTests.java` y `ReservationManagementServiceTests.java`.
+
+El comando Maven focalizado ejecutó las suites de confirmación, gestión y consentimiento: 19 pruebas,
+0 fallos. Las pruebas acreditan que el hash persistido difiere del secreto, el email recibe el token
+original, la consulta usa el hash, los tokens inválidos/caducados se rechazan y cancelar borra la
+credencial. Spotless y Checkstyle del ciclo Maven terminaron correctamente.
+
+### Riesgos y límites
+
+El secreto sí debe existir transitoriamente para construir el email; por ello cualquier proveedor de
+mensajería debe mantener su política de no registrar payloads sensibles. Un cambio futuro de algoritmo
+necesitará versionar el hash o migrar consultas; no se introduce esa complejidad mientras SHA-256 y
+tokens de 256 bits cubren el modelo de amenaza.
+
+## Iteración 2026-08-11 - Tarea 16.8: política de privacidad y condiciones de uso
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.8. Crear política de privacidad y condiciones de uso`.
+- Fecha: 2026-08-11.
+- Objetivo: convertir los enlaces legales existentes en documentos públicos reales, bilingües,
+  accesibles y coherentes con el funcionamiento del MVP.
+- Requisitos y diseño: `RF-007`, `RF-013`, `RF-015`, `RNF-002`; diseño 11 y 12.3.
+
+### UI, contenido e internacionalización
+
+Se crearon las rutas App Router `/legal/privacidad` y `/legal/condiciones`, ambas renderizadas en
+servidor y con `generateMetadata` localizado. `LegalDocumentPage` es el componente compartido: usa
+`main`, `article`, secciones, listas, encabezados H1/H2, elemento `time`, ancho compacto y superficies
+responsive. La navegación cruzada usa `NavigationLink` y el pie de `PublicShell` expone ambos
+documentos en todas las páginas públicas, también en móvil por encima de la barra fija.
+
+Los catálogos `es.json` y `en.json` mantienen la misma estructura y cubren alcance, categorías de
+datos, finalidades/bases, destinatarios, conservación, derechos, seguridad, reservas, reglas del
+local, cuentas profesionales, conducta, pagos, disponibilidad y cambios. El texto evita afirmar una
+identidad empresarial o canal inexistente: declara expresamente que esos datos, jurisdicción y plazos
+definitivos requieren revisión jurídica antes de producción. Esto es una limitación de lanzamiento,
+no un consentimiento implícito ni un sustituto de asesoramiento legal.
+
+### Privacidad, accesibilidad y errores
+
+La política refleja minimización, separación local/plataforma, ausencia de tarjeta completa y
+controles de seguridad reales. No carga scripts, trackers ni recursos de terceros. Al ser contenido
+estático localizado no añade endpoints, estado cliente, permisos ni nuevos modos de error. El enlace
+visible conserva foco, semántica de enlace y navegación del framework; el skip link del shell sigue
+apuntando al contenido principal.
+
+### Archivos, pruebas y evidencia
+
+Archivos creados o modificados:
+
+- `apps/web/src/app/legal/privacidad/page.tsx` y `legal/condiciones/page.tsx`;
+- `apps/web/src/features/legal/legal-document-page.tsx` y su prueba;
+- `PublicShell`, catálogos español/inglés y documentación de especificación.
+
+`LegalDocumentPage` pasó su prueba de jerarquía, navegación cruzada y `contentinfo`. ESLint focalizado
+sobre los siete TSX afectados terminó sin warnings. Prettier validó los TSX y ambos JSON. El validador
+i18n global se ejecutó una vez: señaló deuda histórica ajena y dos falsos positivos del módulo nuevo;
+estos dos se eliminaron, sin modificar módulos no relacionados.
+
+### Riesgos y límites
+
+Antes de producción se debe incorporar razón social, domicilio, contacto de privacidad, autoridad y
+jurisdicción aplicables, además de revisión profesional y decisión de versionado ante cambios
+materiales. La constante de versión actual usa fecha ISO para que esa sustitución sea trazable.
+
+## Iteración 2026-08-11 - Tarea 16.9: consentimiento explícito en registro y reserva
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea exacta: `16.9. Añadir consentimiento explícito en registro y reserva`.
+- Fecha: 2026-08-11.
+- Objetivo: exigir una acción afirmativa en ambas fronteras y conservar evidencia mínima, versionada
+  y verificable de lo aceptado.
+- Requisitos y diseño: `RF-007`, `RF-013`, `RF-015`, `RNF-002`; diseño 3.1, 3.5, 8.2 y 12.3.
+
+### Contratos, ejecución y persistencia
+
+El registro ya tenía checkbox no premarcado, esquema Zod con literal `true` y
+`VenueRegistrationRequest.acceptsLegalTerms` con `@AssertTrue`. Ahora
+`VenueRegistrationConverter` conserva el booleano en `VenueRegistrationCommand` y el servicio lo
+vuelve a comprobar antes de validar contraseña, consultar duplicados o escribir. Una aceptación
+válida asigna un mismo `Instant` a condiciones y privacidad y las versiones
+`LegalDocumentVersions.TERMS_OF_SERVICE` y `PRIVACY_POLICY`.
+
+La confirmación de reserva mantiene dos controles `required`, no premarcados y separados. Sus textos
+incluyen enlaces navegables a privacidad y condiciones. `ReservationConfirmRequest` y
+`ReservationConfirmationServiceImpl` exigen ambos booleanos antes de leer o bloquear el hold. Tras
+validar capacidad y respuestas, la misma transacción persiste timestamp/versión de privacidad,
+timestamp de normas y el texto localizado resuelto que también se envía por email. Así, cambios
+posteriores del perfil no reescriben qué reglas vio el cliente.
+
+V41 añade a `Users` las parejas `legalTermsAcceptedAt/legalTermsVersion` y
+`privacyPolicyAcceptedAt/privacyPolicyVersion`; a `Reservations`, privacidad y
+`bookingRulesAcceptedAt/bookingRulesSnapshot`. Las constraints de pareja impiden timestamps sin
+versión o viceversa. Las columnas aceptan nulo para histórico porque rellenarlas retrospectivamente
+inventaría evidencia. No se añaden índices: estas columnas son prueba asociada al agregado, no claves
+de consulta. No se conserva IP, user-agent ni una copia duplicada de los documentos globales.
+
+### Errores, permisos, seguridad y observabilidad
+
+La ausencia de consentimiento produce los contratos opacos existentes (`REGISTRATION_INVALID` o
+confirmación inválida) y no llega a hashing, DAO, locks ni publicación de eventos. No cambian roles:
+el registro y la reserva siguen siendo anónimos bajo sus controles propios. No se registran los
+booleanos ni datos personales adicionales. Las constantes centralizadas evitan divergencia entre
+servicios, migración y UI al publicar una nueva versión.
+
+### Archivos, pruebas y evidencia
+
+Además de V41 y `LegalDocumentVersions.java`, se modificaron comando/conversor/servicio/entidad de
+registro, entidad y servicio de confirmación, formulario público y catálogos. Se creó
+`VenueRegistrationConsentTests` y se ampliaron `ReservationConfirmationServiceTests` y
+`public-reservation-form.test.tsx`.
+
+La verificación focal quedó en:
+
+- backend: 19 pruebas en `VenueRegistrationConsentTests`, `ReservationConfirmationServiceTests` y
+  `ReservationManagementServiceTests`, todas correctas;
+- web: 8 pruebas entre documento legal, formulario de reserva y registro, todas correctas;
+- ESLint focalizado: 7 TSX, sin warnings;
+- Spotless/Checkstyle del Maven focal: éxito.
+
+No se ejecutaron suites globales, integraciones PostgreSQL/Docker ni build completo. La compilación
+Maven cubrió fuentes principales y test necesarias; los tests de servicio comprobaron rechazo antes
+del DAO, igualdad de timestamps, versiones exactas, persistencia separada del token y enlaces legales.
+
+### Riesgos, deuda y siguiente tarea
+
+El snapshot de reglas usa el mismo fallback localizado que la UI cuando el local no publicó texto, y
+la constraint exige que timestamp y snapshot estén ambos presentes o ambos ausentes. Una evolución
+debería centralizar ese fallback entre API y catálogo para impedir divergencias editoriales. Cambiar
+un documento material exige actualizar la constante y decidir reaceptación. La siguiente tarea
+pendiente es `16.10. Definir conservación de incidencias y penalizaciones`.

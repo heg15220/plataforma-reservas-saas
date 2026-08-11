@@ -7,6 +7,7 @@ import com.reserly.platform.forms.service.ReservationFormConfirmationService;
 import com.reserly.platform.forms.service.ReservationFormResponseInvalidException;
 import com.reserly.platform.identity.service.OneTimeTokenService;
 import com.reserly.platform.incidents.service.PenaltyService;
+import com.reserly.platform.infrastructure.legal.LegalDocumentVersions;
 import com.reserly.platform.localization.SupportedLocale;
 import com.reserly.platform.reservations.dto.ReservationConfirmRequest;
 import com.reserly.platform.reservations.dto.ReservationConfirmResponse;
@@ -30,6 +31,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReservationConfirmationServiceImpl implements ReservationConfirmationService {
 
   private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+  private static final String BOOKING_RULES_FALLBACK_ES =
+      "Consulta con el local cualquier cambio o cancelación de la reserva.";
+  private static final String BOOKING_RULES_FALLBACK_EN =
+      "Contact the venue about any booking changes or cancellation.";
 
   private final ReservationDao reservationDao;
   private final ReservationTimeSlotDao timeSlotDao;
@@ -127,6 +132,10 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     reservation.setHoldTokenHash(null);
     reservation.setSecureTokenHash(tokenService.hash(managementToken));
     reservation.setSecureTokenExpiresAt(managementTokenExpiresAt);
+    reservation.setPrivacyPolicyAcceptedAt(now);
+    reservation.setPrivacyPolicyVersion(LegalDocumentVersions.PRIVACY_POLICY);
+    reservation.setBookingRulesAcceptedAt(now);
+    reservation.setBookingRulesSnapshot(resolvedBookingRules(reservation, request.locale()));
     reservation.setUpdatedAt(now);
     ReservationEntity saved = reservationDao.save(reservation);
     eventPublisher.publishEvent(
@@ -173,10 +182,7 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
     SupportedLocale venueLocale =
         SupportedLocale.fromLanguageTag(reservation.getVenue().getDefaultLocale())
             .orElse(SupportedLocale.EN);
-    String bookingRules =
-        reservation.getVenue().getRulesI18n() == null
-            ? null
-            : reservation.getVenue().getRulesI18n().resolve(resolvedCustomerLocale).orElse(null);
+    String bookingRules = resolvedBookingRules(reservation, customerLocale);
     return new ReservationConfirmationEmailRequestedEvent(
         UUID.randomUUID(),
         reservation.getId(),
@@ -200,6 +206,17 @@ public class ReservationConfirmationServiceImpl implements ReservationConfirmati
                     new ReservationConfirmationEmailAnswer(
                         answer.fieldKey(), answer.fieldLabel(), answer.value().toString()))
             .toList());
+  }
+
+  /** Resuelve exactamente el texto que se muestra y conserva como evidencia de aceptación. */
+  private String resolvedBookingRules(ReservationEntity reservation, String customerLocale) {
+    SupportedLocale locale =
+        SupportedLocale.fromLanguageTag(customerLocale).orElse(SupportedLocale.EN);
+    String fallback =
+        locale == SupportedLocale.ES ? BOOKING_RULES_FALLBACK_ES : BOOKING_RULES_FALLBACK_EN;
+    return reservation.getVenue().getRulesI18n() == null
+        ? fallback
+        : reservation.getVenue().getRulesI18n().resolve(locale).orElse(fallback);
   }
 
   /** Usa el email operativo y garantiza fallback a la cuenta propietaria verificada. */

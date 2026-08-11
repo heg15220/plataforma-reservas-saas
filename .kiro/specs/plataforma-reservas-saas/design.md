@@ -294,7 +294,10 @@ Responsabilidades:
 - Consultar reservas por local.
 - Cambiar estado de reserva.
 - Asignar empleado o recurso.
-- Generar tokens seguros de gestión.
+- Generar tokens seguros de gestión de alta entropía. El secreto en claro solo puede existir en
+  memoria para construir el trabajo de email; PostgreSQL conserva exclusivamente su SHA-256
+  hexadecimal, caducidad e índice único parcial. Consulta y cancelación hashean el token recibido
+  antes de buscar y la cancelación revoca hash y caducidad.
 
 Estados:
 
@@ -1622,7 +1625,8 @@ Flujo transaccional recomendado:
 7. Recalcular capacidad.
 8. Validar campos obligatorios.
 9. Cambiar reserva a `confirmed`.
-10. Generar token seguro de gestión.
+10. Generar token seguro de gestión, persistir solo su hash SHA-256 y entregar el secreto al evento
+    transaccional de email.
 11. Confirmar transacción.
 12. Encolar emails.
 
@@ -2641,8 +2645,13 @@ Datos personales tratados:
 
 Medidas:
 
-- Política de privacidad y condiciones visibles.
-- Consentimiento antes de confirmar reserva.
+- Política de privacidad y condiciones visibles en español e inglés mediante
+  `/legal/privacidad` y `/legal/condiciones`, enlazadas desde el pie público y desde el punto de
+  aceptación.
+- Consentimiento no premarcado antes del registro y de confirmar reserva, validado en frontend,
+  DTO y servicio. `Users` conserva timestamp y versión de condiciones y privacidad;
+  `Reservations` conserva timestamp/versión de privacidad y timestamp/snapshot localizado de las
+  normas visibles. No se almacena IP ni user-agent como evidencia.
 - Minimización de campos personalizados.
 - Conservación limitada de incidencias.
 - Registro de actividad de penalizaciones.

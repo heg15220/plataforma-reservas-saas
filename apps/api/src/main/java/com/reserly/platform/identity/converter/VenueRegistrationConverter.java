@@ -20,6 +20,7 @@ public class VenueRegistrationConverter {
         request.business().taxCountry(),
         request.business().legalName(),
         request.business().taxIdentifier(),
-        request.business().registeredAddress());
+        request.business().registeredAddress(),
+        request.acceptsLegalTerms());
   }
 }

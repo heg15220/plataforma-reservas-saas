@@ -722,7 +722,9 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 
 - El sistema debe minimizar datos personales.
 - El sistema debe informar finalidad del tratamiento y política de privacidad.
-- Debe existir consentimiento para condiciones legales y tratamiento de datos.
+- Debe existir consentimiento explícito, no premarcado, para condiciones legales y tratamiento de
+  datos. La evidencia mínima debe conservar fecha UTC y versión del documento aceptado; en la
+  reserva también debe conservarse el texto localizado de las normas mostrado al cliente.
 - Los datos de incidencias deben tener conservación limitada y reglas claras.
 - Las incidencias identificables deben permanecer visibles para operación durante un máximo inicial de 12 meses desde su cierre. Después deben anonimizarse o eliminarse del historial operativo.
 - Las penalizaciones identificables deben conservarse mientras estén activas y hasta 12 meses después de su finalización para gestionar reclamaciones y detectar errores operativos.

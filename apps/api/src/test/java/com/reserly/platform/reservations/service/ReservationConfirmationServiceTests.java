@@ -17,6 +17,7 @@ import com.reserly.platform.identity.persistence.UserEntity;
 import com.reserly.platform.identity.service.OneTimeTokenService;
 import com.reserly.platform.incidents.service.ActiveBookingRestrictionException;
 import com.reserly.platform.incidents.service.PenaltyService;
+import com.reserly.platform.infrastructure.legal.LegalDocumentVersions;
 import com.reserly.platform.reservations.dto.ReservationConfirmFormResponse;
 import com.reserly.platform.reservations.dto.ReservationConfirmRequest;
 import com.reserly.platform.reservations.persistence.ReservationDao;
@@ -101,8 +102,15 @@ class ReservationConfirmationServiceTests {
 
     assertThat(response.status()).isEqualTo("confirmed");
     assertThat(reservation.getSecureTokenHash()).isEqualTo(MANAGE_HASH);
+    assertThat(reservation.getSecureTokenHash()).isNotEqualTo(MANAGE_TOKEN);
     assertThat(reservation.getCustomerLocale()).isEqualTo("en");
     assertThat(reservation.getSecureTokenExpiresAt()).isEqualTo(MANAGE_EXPIRY);
+    assertThat(reservation.getPrivacyPolicyAcceptedAt()).isEqualTo(NOW);
+    assertThat(reservation.getPrivacyPolicyVersion())
+        .isEqualTo(LegalDocumentVersions.PRIVACY_POLICY);
+    assertThat(reservation.getBookingRulesAcceptedAt()).isEqualTo(NOW);
+    assertThat(reservation.getBookingRulesSnapshot())
+        .isEqualTo("Contact the venue about any booking changes or cancellation.");
     assertThat(reservation.getHoldTokenHash()).isNull();
     ArgumentCaptor<ReservationConfirmationEmailRequestedEvent> event =
         ArgumentCaptor.forClass(ReservationConfirmationEmailRequestedEvent.class);
@@ -256,6 +264,24 @@ class ReservationConfirmationServiceTests {
 
     verify(reservationDao, never()).findByIdForUpdate(any());
     verify(penaltyService, never()).requireBookingAllowed(any());
+  }
+
+  @Test
+  void rejectsConfirmationWithoutBothExplicitConsentsBeforeReadingTheHold() {
+    UUID reservationId = UUID.randomUUID();
+    ReservationConfirmRequest missingPrivacy =
+        new ReservationConfirmRequest(
+            TOKEN, "María", "maria@example.com", "es", 2, List.of(), false, true);
+    ReservationConfirmRequest missingRules =
+        new ReservationConfirmRequest(
+            TOKEN, "María", "maria@example.com", "es", 2, List.of(), true, false);
+
+    assertThatThrownBy(() -> service.confirm(reservationId, missingPrivacy))
+        .isInstanceOf(ReservationConfirmationInvalidException.class);
+    assertThatThrownBy(() -> service.confirm(reservationId, missingRules))
+        .isInstanceOf(ReservationConfirmationInvalidException.class);
+
+    verify(reservationDao, never()).findByIdForUpdate(any());
   }
 
   private void arrangeValidHold(ReservationEntity reservation) {

@@ -8761,3 +8761,45 @@ Fuente de verdad del avance:
   - El Checkstyle global se detuvo por 26 infracciones históricas ajenas en plantillas de email y un
     test de mensajería; Spotless sí dejó limpios los 1027 Java y cambió solo archivos de esta
     iteración. La validación focal se mantuvo deliberadamente acotada como pidió el usuario.
+
+# Conversación 191 - Tokens públicos hasheados, textos legales y consentimiento versionado
+
+- Fecha: 2026-08-11.
+- Resumen de la conversación:
+  - Se auditó el ciclo completo del token público de gestión y se confirmó que el secreto se genera
+    con alta entropía, se persiste únicamente como SHA-256, se consulta por hash y se revoca al
+    cancelar; la migración documenta expresamente la invariantes del campo.
+  - Se publicaron política de privacidad y condiciones de uso en español e inglés, con estructura
+    semántica, metadatos, navegación cruzada y enlaces desde el pie público, registro y reserva.
+  - Se reforzó el consentimiento del registro y la confirmación: sigue siendo obligatorio y no
+    premarcado, ahora el servicio también conserva timestamp UTC y versión exacta; la reserva guarda
+    además el snapshot localizado de las normas mostradas.
+- Archivos modificados:
+  - Servicios, comandos y entidades de registro y confirmación de reservas; constantes de versiones
+    legales y migración `V41__record_explicit_legal_consents.sql`.
+  - Rutas `/legal/privacidad` y `/legal/condiciones`, componente legal compartido, `PublicShell`,
+    formulario público de reserva y catálogos `es`/`en`.
+  - Pruebas unitarias backend y de componentes web focalizadas.
+  - `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y
+    `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-007`, `RF-013`, `RF-015`, `RF-017`, `RNF-001` y `RNF-002`.
+- Tareas impactadas:
+  - `16.7. Hashear tokens públicos de gestión`.
+  - `16.8. Crear política de privacidad y condiciones de uso`.
+  - `16.9. Añadir consentimiento explícito en registro y reserva`.
+- Tareas completadas:
+  - `16.7`, `16.8` y `16.9`, implementadas, verificadas y documentadas individualmente.
+- Siguiente tarea pendiente recomendada:
+  - `16.10. Definir conservación de incidencias y penalizaciones`.
+- Decisiones o aclaraciones relevantes:
+  - La evidencia de aceptación aplica minimización: timestamp, versión y, solo para reglas variables
+    del local, el texto mostrado; no se guardan IP ni user-agent.
+  - Los registros históricos permanecen con consentimiento nulo porque no existe evidencia válida
+    para reconstruirlo; las constraints garantizan parejas timestamp/versión en nuevas escrituras.
+  - Los textos legales describen el MVP y señalan explícitamente los datos del responsable,
+    jurisdicción y revisión jurídica pendientes antes de producción; no se inventó identidad social
+    ni canal de contacto.
+  - Pasaron 19 pruebas backend y 8 pruebas web focalizadas y el lint de los siete TSX afectados. El
+    validador i18n global mantiene incidencias históricas fuera del alcance; las dos detectadas en el
+    nuevo módulo se corrigieron.
