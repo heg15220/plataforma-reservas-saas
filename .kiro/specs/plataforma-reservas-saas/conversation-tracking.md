@@ -8669,3 +8669,51 @@ Fuente de verdad del avance:
   - Pasaron 15 pruebas focalizadas y ESLint sobre los cuatro archivos TypeScript modificados.
   - La recarga del panel no registró `MISSING_MESSAGE`; la sesión existente había caducado y no se
     introdujeron credenciales para continuar la comprobación privada.
+
+# Conversación 189 - Validación pública, autorización cerrada y protección CSRF
+
+- Fecha: 2026-08-11.
+- Resumen de la conversación:
+  - Se revisó el inventario completo de controladores públicos, de autenticación, callbacks de
+    RedSys, rutas privadas de local y rutas administrativas.
+  - Se añadieron límites HTTP declarativos para slugs, tokens de gestión, búsqueda, sugerencias,
+    categorías, ubicación, coordenadas, radio, orden, paginación, locale y cabeceras de idioma.
+  - Los rechazos de parámetros se convierten en `400 REQUEST_INVALID` sin devolver valores ni
+    detalles de constraints y se producen antes de invocar servicios, hashing o persistencia.
+  - La cadena Spring Security permite anónimamente solo los namespaces API declarados y deniega por
+    defecto cualquier otra ruta `/api/**`; los roles de local y admin conservan namespaces
+    separados.
+  - Se implementó protección CSRF stateless para escrituras con `reserly_session`, exigiendo un
+    `Origin` exacto autorizado o un `Referer` exacto como fallback controlado.
+- Archivos modificados:
+  - Controladores públicos de disponibilidad, formulario, reseñas, ficha, categorías, búsqueda y
+    gestión de reservas.
+  - `SecurityConfiguration.java` y el nuevo `BrowserCsrfProtectionFilter.java`.
+  - Nuevos contrato y manejador opaco bajo `infrastructure/validation`.
+  - Tests focalizados de validación y CSRF; ajuste de la prueba de integración de autorización para
+    la nueva política cerrada.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RNF-001 Seguridad`.
+  - `RF-003 Resultados de búsqueda`, `RF-004 Ficha pública`, `RF-006 Calendario de
+    disponibilidad`, `RF-013 Formulario de reserva configurable`, `RF-017 Consulta y cancelación
+    por enlace seguro`, `RF-024 Reseñas`, `RF-030 Administración` y `RF-031 Internacionalización`.
+- Tareas impactadas y completadas:
+  - `16.1. Revisar validación backend de todos los endpoints públicos`.
+  - `16.2. Revisar autorización de endpoints de local y admin`.
+  - `16.3. Implementar protección CSRF si se usan cookies`.
+- Siguiente tarea pendiente recomendada:
+  - `16.4. Sanitizar comentarios, descripciones y campos libres`.
+- Decisiones o aclaraciones relevantes:
+  - No se incorporó estado CSRF al frontend: la defensa verifica cabeceras de origen que el
+    navegador controla y mantiene la API stateless. CORS exacto y `SameSite=Strict` continúan como
+    capas adicionales.
+  - Los endpoints anónimos que no usan la cookie no quedan sujetos al filtro CSRF; mantienen sus
+    DTOs, tokens o firmas como fronteras de autorización propias.
+  - Compilaron 827 fuentes principales y 198 de test. Pasaron 14 pruebas focalizadas de validación,
+    CSRF, CORS y controladores, sin fallos.
+  - La única integración PostgreSQL de roles se intentó una vez y se detuvo al confirmar que Docker
+    no estaba disponible; no se repitió. El fallo fue de infraestructura antes de cargar el contexto,
+    no una aserción del cambio.
+  - Spotless identificó y corrigió solo siete fuentes Java modificadas; no se ejecutaron suites
+    globales, frontend, migraciones ni validaciones visuales.

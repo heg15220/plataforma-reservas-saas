@@ -33916,3 +33916,180 @@ cubren cálculo agregado único, nivel serializado, autorización, filtros y SQL
 - La conservación jurídica definitiva de incidencias sigue pendiente en `16.10`; la consulta actual
   nunca supera la ventana operativa ya definida.
 - La primera tarea pendiente por orden continúa siendo `16.1`.
+
+## Iteración 2026-08-11 - Tarea 16.1: validación backend de endpoints públicos
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea: `16.1. Revisar validación backend de todos los endpoints públicos`.
+- Objetivo: cerrar entradas escalares que hasta ahora dependían de normalizaciones tolerantes y
+  asegurar que datos sobredimensionados o fuera de dominio se rechacen antes de servicios, hashes,
+  consultas SQL o verificaciones criptográficas.
+- Requisitos y diseño: `RNF-001`, los contratos públicos `RF-003`, `RF-004`, `RF-006`, `RF-013`,
+  `RF-017` y `RF-024`, y `design.md` 12.3.
+
+### Inventario auditado y cobertura
+
+Se revisaron los controladores de `/api/public/**`, las rutas anónimas `/api/auth/**` y los
+callbacks `/api/payments/redsys/**`. La revisión distinguió cuatro fronteras ya seguras:
+
+1. cuerpos JSON con `@Valid` y DTOs acotados para registro, login, verificación, recuperación,
+   holds, confirmación y reseñas;
+2. identificadores UUID convertidos por Spring antes del caso de uso;
+3. callbacks RedSys validados por versión exacta y tamaños máximos en `RedsysSignedMessage`, antes
+   de decodificar o verificar la firma;
+4. imágenes públicas limitadas a UUID y condicionadas a publicación en sus servicios.
+
+Los huecos estaban en strings y números de path/query/header. Se añadieron los siguientes límites:
+
+- slug canónico `[a-z0-9]+(?:-[a-z0-9]+)*`, máximo 160;
+- token de gestión Base64URL de exactamente 43 caracteres;
+- búsqueda 160, ubicación 240, hasta 20 categorías y slug de categoría máximo 120;
+- latitud `[-90, 90]`, longitud `[-180, 180]`, radio `(0, 500]` km;
+- ordenación cerrada a los cinco valores implementados, página `0..10000` y tamaño `1..50`;
+- sugerencias con tipo cerrado, término máximo 80 y límite `1..10`;
+- locale máximo 35 y `Accept-Language` máximo 256.
+
+El límite de página evita también offsets desproporcionados y elimina el riesgo de overflow en el
+cálculo de la siguiente página. No se modificó ninguna regla de disponibilidad, capacidad,
+elegibilidad, publicación o firma.
+
+### Arquitectura, errores y archivos
+
+Las constraints viven en los contratos de controlador para ejecutar la validación en el límite
+HTTP. `RequestValidationExceptionHandler` captura `HandlerMethodValidationException` y devuelve el
+DTO mínimo `RequestValidationErrorResponse("REQUEST_INVALID")`. No se serializan el valor recibido,
+el nombre del parámetro, el patrón, el stack ni mensajes de proveedor.
+
+Archivos principales:
+
+- controladores `PublicVenueAvailabilityController`, `PublicReservationFormController`,
+  `VenueCategoryController`, `VenuePublicProfileController`, `VenuePublicSearchController`,
+  `PublicVenueReviewController` y `ReservationManagementController`;
+- nuevos `RequestValidationErrorResponse` y `RequestValidationExceptionHandler`;
+- nuevo `PublicEndpointInputValidationTests`.
+
+No hubo migraciones, tablas, índices, jobs ni cambios de DTO de éxito. La validación es
+independiente del locale y el único texto público es un código estable, por lo que no se añadieron
+catálogos de interfaz.
+
+### Pruebas, evidencia, riesgos y deuda
+
+`PublicEndpointInputValidationTests` usa MockMvc y el validador real. Acredita que una búsqueda
+sobredimensionada/fuera de rango y un token malformado responden 400 sin interactuar con servicios.
+Las pruebas existentes de ambos controladores confirman que las entradas válidas conservan el
+contrato previo.
+
+Comandos focalizados:
+
+```text
+mvn -DskipTests -Dspotless.check.skip=true -Dcheckstyle.skip=true compile
+mvn -Dspotless.check.skip=true -Dcheckstyle.skip=true \
+  -Dtest=BrowserCsrfProtectionFilterTests,PublicEndpointInputValidationTests,\
+SecurityConfigurationTests,VenuePublicSearchControllerTests,\
+ReservationManagementControllerTests test
+```
+
+Resultado: 827 fuentes principales compiladas; dentro del lote de 14 pruebas, las 2 pruebas nuevas
+de validación y las 7 pruebas de controladores relacionadas terminaron sin fallos. Queda para 16.4
+la sanitización semántica de contenido libre; esta tarea limita forma y tamaño, no transforma texto.
+
+## Iteración 2026-08-11 - Tarea 16.2: autorización de local y administración
+
+### Identificador, objetivo y requisitos
+
+- Tarea: `16.2. Revisar autorización de endpoints de local y admin`.
+- Objetivo: verificar la clasificación de todas las rutas privadas actuales y hacer que una futura
+  ruta API no clasificada falle cerrada en vez de heredar acceso anónimo.
+- Requisitos: `RNF-001`, `RF-008`, `RF-018`, `RF-025`, `RF-028` y `RF-030`; diseño 8.10 y 12.2.
+
+### Arquitectura y flujo de autorización
+
+El inventario confirmó que los controladores del negocio escriben y consultan bajo
+`/api/venue/me` y que los controladores de plataforma usan `/api/admin`. La identidad sigue
+derivándose exclusivamente de `reserly_session` en `SessionAuthenticationFilter`; el principal
+contiene el `userId` y roles persistidos y no acepta actor, propietario o rol desde la petición.
+
+La cadena queda ordenada así:
+
+1. `/api/admin` y `/api/admin/**` exigen `ROLE_ADMIN`;
+2. `/api/venue/me` y `/api/venue/me/**` exigen `ROLE_VENUE_OWNER`;
+3. solo `/api/public/**`, `/api/auth/**` y `/api/payments/redsys/**` se declaran anónimos;
+4. cualquier otra ruta `/api/**` usa `denyAll`;
+5. recursos no API conservan el comportamiento de entrega existente.
+
+El cambio no sustituye la autorización por objeto: los servicios/DAOs continúan combinando el
+actor autenticado con `venueId`, reserva, imagen, documento o agregado. Un recurso ajeno o
+inexistente conserva respuestas opacas 404 cuando corresponde. `accountType` sigue sin conceder
+permisos por sí mismo.
+
+### Archivos, errores, seguridad y verificación
+
+Se modificó `SecurityConfiguration.java` y se actualizó
+`RoleAuthorizationIntegrationTests.java`: la sonda `/api/venue/mechanical`, deliberadamente cercana
+al prefijo pero no perteneciente al namespace, pasa de pública a denegada. Los manejadores existentes
+conservan `401 AUTHENTICATION_REQUIRED` para ausencia de sesión y `403 AUTHORIZATION_DENIED` para
+rol insuficiente o ruta API no clasificada, sin enumerar concesiones.
+
+La compilación principal y de 198 fuentes de test fue correcta. La integración
+`RoleAuthorizationIntegrationTests` se lanzó una sola vez; Testcontainers no encontró Docker y el
+contexto falló antes de ejecutar aserciones. No se reintentó para respetar la validación acotada. La
+cobertura unitaria de CORS/configuración incluida en el lote focal sí pasó.
+
+No existen cambios de persistencia ni compatibilidad de datos. El riesgo operativo principal es que
+una nueva familia API legítima deberá declararse expresamente; ese fallo cerrado es intencionado y
+debe quedar acompañado de una prueba de autorización al crearla.
+
+## Iteración 2026-08-11 - Tarea 16.3: protección CSRF para sesión por cookie
+
+### Identificador, objetivo y decisión técnica
+
+- Tarea: `16.3. Implementar protección CSRF si se usan cookies`.
+- Objetivo: impedir que un sitio externo provoque escrituras privadas o logout aprovechando el
+  envío automático de `reserly_session` por el navegador.
+- Requisitos: `RNF-001`; diseño 8.6, 8.10 y 12.3.
+
+La API es stateless, la sesión se resuelve desde una cookie HttpOnly y el frontend se sirve desde un
+origen separado configurado. Se implementó verificación exacta de origen en lugar de introducir
+estado CSRF o una cookie legible por JavaScript. El control se apoya en una propiedad que el
+navegador no permite falsificar desde otro origen y mantiene CORS y `SameSite=Strict` como capas
+adicionales.
+
+### Filtro, invariantes y flujo
+
+`BrowserCsrfProtectionFilter` se ejecuta antes de autenticar la sesión. Solo actúa cuando coinciden
+las tres condiciones siguientes:
+
+- método no seguro distinto de GET, HEAD, OPTIONS y TRACE;
+- ruta `/api/venue/me`, `/api/admin`, sus descendientes o `/api/auth/logout`;
+- presencia de una cookie llamada `reserly_session`.
+
+El filtro acepta `Origin` únicamente cuando su esquema, host y puerto normalizados coinciden con
+`apiPublicBaseUrl` o una entrada exacta de `allowedOrigins`. Si `Origin` no existe, puede usar el
+origen de `Referer`; no se aceptan `Origin: null`, user-info, cabeceras mayores de 2048, origen con
+path/query/fragment, valores malformados, orígenes ajenos ni ausencia simultánea de ambas cabeceras.
+Los puertos HTTP 80 y HTTPS 443 se normalizan para evitar discrepancias equivalentes.
+
+Un rechazo detiene la cadena y devuelve `403 {"error":"CSRF_VALIDATION_FAILED"}` en UTF-8. No
+registra cookie, cabeceras completas ni URL sensible. Las operaciones anónimas que no usan sesión,
+incluidos holds, confirmaciones, reseñas, enlaces de gestión, autenticación inicial y callbacks
+firmados de RedSys, conservan sus propias fronteras y no quedan bloqueadas por CSRF.
+
+### Archivos, pruebas y limitaciones
+
+Archivos principales:
+
+- nuevo `BrowserCsrfProtectionFilter.java`;
+- `SecurityConfiguration.java`, que coloca el filtro antes de `SessionAuthenticationFilter`;
+- nuevo `BrowserCsrfProtectionFilterTests.java`;
+- `design.md` y documentos de cierre.
+
+Las 4 pruebas del filtro cubren origen web autorizado, origen de API, fallback por Referer, ausencia,
+`null`, valor malformado, origen atacante, métodos seguros, petición anónima y endpoint público. Se
+ejecutaron dentro del lote focal de 14 pruebas, todas correctas. Spotless revisó 1025 archivos y
+aplicó formato solo a siete fuentes modificadas.
+
+Los clientes no navegador que reutilicen una cookie para escrituras deben enviar `Origin` o
+`Referer` autorizado; es una restricción deliberada. Si en el futuro la aplicación necesita clientes
+cookie-auth sin esas cabeceras, deberá migrarlos a autenticación no ambiental o incorporar un token
+CSRF explícito, sin debilitar la allowlist. La siguiente tarea pendiente es `16.4`.

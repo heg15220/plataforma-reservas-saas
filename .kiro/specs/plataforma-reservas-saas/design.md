@@ -2073,8 +2073,9 @@ completar su configuración, pero continúa bloqueada para publicar.
 
 `POST /api/auth/logout` acepta la cookie si existe, revoca por hash de forma idempotente, responde
 `204` y siempre emite la cookie expirada. No revela si la sesión era válida. La validación de sesión
-y actualización de `lastSeenAt` en rutas privadas pertenecen al middleware de `1.17`; la protección
-CSRF se endurece en `16.3`.
+y actualización de `lastSeenAt` en rutas privadas pertenecen al middleware de `1.17`. Desde `16.3`,
+una petición de logout que lleve cookie debe acreditar un `Origin` exacto autorizado o, cuando esa
+cabecera no exista, un `Referer` cuyo origen sea exacto; la ausencia o discrepancia falla con 403.
 
 El shell compartido del panel expone dos acciones globales: `Ir al inicio`, que navega a `/`, y
 `Cerrar sesión`, que invoca el contrato anterior con `credentials: include`. En escritorio se ubican
@@ -2189,7 +2190,9 @@ no modifica la caducidad absoluta. CORS admite credenciales solo desde `allowedO
 métodos y cabeceras cerrados. El perfil `local` admite exactamente `http://localhost:3000` y
 `http://localhost:3001`, ya que Next puede seleccionar el segundo cuando el primero está ocupado;
 staging y producción conservan exclusivamente su URL HTTPS configurada. CSRF permanece
-explícitamente pendiente de `16.3`.
+protegido en escrituras autenticadas por cookie mediante comprobación stateless de `Origin` y
+fallback estricto de `Referer`, previa a la autenticación. `SameSite=Strict` y CORS son defensas
+adicionales, no sustitutos de esa comprobación.
 
 ### 8.11 Consulta y carga privada de respaldo empresarial
 
@@ -2574,6 +2577,11 @@ Navegación inferior:
 - Admin requiere rol explícito.
 - Enlaces públicos de reserva solo dan acceso a una reserva concreta.
 - Los tokens públicos deben almacenarse hasheados.
+- La cadena HTTP declara de forma cerrada los namespaces anónimos `/api/public/**`, `/api/auth/**`
+  y `/api/payments/redsys/**`; cualquier otra ruta `/api/**` no clasificada se deniega por defecto.
+- `/api/venue/me` y descendientes requieren `ROLE_VENUE_OWNER`; `/api/admin` y descendientes
+  requieren `ROLE_ADMIN`. La autorización de objeto continúa combinando actor y recurso en las
+  consultas de cada módulo para responder de forma opaca ante recursos ajenos.
 
 ### 12.3 Validación
 
@@ -2582,7 +2590,14 @@ Navegación inferior:
 - Validación backend obligatoria de elegibilidad de reseñas por `venue_id`, email normalizado y reserva confirmada/finalizada.
 - Sanitización de HTML o uso de texto plano en descripciones, pestañas personalizadas y comentarios.
 - Validación de archivos subidos.
-- Protección CSRF si se usan cookies.
+- Los slugs públicos usan el alfabeto canónico y un máximo de 160 caracteres; los tokens de
+  gestión exigen exactamente 43 caracteres Base64URL antes de calcular hashes o consultar datos.
+- Búsqueda, sugerencias, filtros, categorías, coordenadas, radio, ordenación, paginación, locale y
+  `Accept-Language` tienen límites declarativos en el adaptador HTTP. Un rechazo devuelve
+  `400 REQUEST_INVALID` sin reflejar valores ni constraints internos.
+- Las escrituras privadas o el logout que incluyan `reserly_session` exigen origen exacto entre la
+  API pública y `allowedOrigins`. `Origin: null`, cabeceras malformadas, orígenes no autorizados o
+  ausencia simultánea de `Origin` y `Referer` devuelven `403 CSRF_VALIDATION_FAILED`.
 
 ### 12.4 Auditoría
 

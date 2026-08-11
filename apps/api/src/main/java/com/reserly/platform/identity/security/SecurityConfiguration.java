@@ -15,9 +15,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 /**
  * Política central de namespaces privados.
  *
- * <p>La API no crea sesión HTTP, no usa Basic ni formulario. CSRF permanece desactivado hasta la
- * tarea 16.3; la cookie {@code SameSite=Strict} reduce exposición pero no sustituye ese
- * endurecimiento futuro.
+ * <p>La API no crea sesión HTTP, no usa Basic ni formulario. Las escrituras autenticadas con cookie
+ * se protegen mediante {@link BrowserCsrfProtectionFilter}; {@code SameSite=Strict} permanece como
+ * defensa adicional.
  */
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfiguration {
@@ -26,11 +26,14 @@ public class SecurityConfiguration {
   @Bean
   SecurityFilterChain securityFilterChain(
       HttpSecurity http,
+      BrowserCsrfProtectionFilter browserCsrfProtectionFilter,
       SessionAuthenticationFilter sessionAuthenticationFilter,
       RestAuthenticationEntryPoint authenticationEntryPoint,
       RestAccessDeniedHandler accessDeniedHandler,
       CorsConfigurationSource corsConfigurationSource)
       throws Exception {
+    // No se usa HttpSession ni formularios Spring: el filtro stateless valida Origin/Referer contra
+    // la allowlist antes de autenticar la cookie.
     http.csrf(csrf -> csrf.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .httpBasic(httpBasic -> httpBasic.disable())
@@ -51,8 +54,13 @@ public class SecurityConfiguration {
                     .hasRole("ADMIN")
                     .requestMatchers("/api/venue/me", "/api/venue/me/**")
                     .hasRole("VENUE_OWNER")
+                    .requestMatchers("/api/public/**", "/api/auth/**", "/api/payments/redsys/**")
+                    .permitAll()
+                    .requestMatchers("/api/**")
+                    .denyAll()
                     .anyRequest()
                     .permitAll())
+        .addFilterBefore(browserCsrfProtectionFilter, SessionAuthenticationFilter.class)
         .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }

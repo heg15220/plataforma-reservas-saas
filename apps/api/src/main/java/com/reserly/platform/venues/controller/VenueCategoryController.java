@@ -1,6 +1,7 @@
 package com.reserly.platform.venues.controller;
 
 import com.reserly.platform.venues.dto.VenueCategoryResponse;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ public interface VenueCategoryController {
   /** Lista categorías asignables resolviendo `locale` explícito o `Accept-Language`. */
   @GetMapping
   ResponseEntity<List<VenueCategoryResponse>> findActive(
-      @RequestParam(required = false) String locale,
-      @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);
+      @RequestParam(required = false) @Size(max = 35) String locale,
+      @RequestHeader(name = "Accept-Language", required = false) @Size(max = 256)
+          String acceptLanguage);
 }

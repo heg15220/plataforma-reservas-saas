@@ -1,6 +1,8 @@
 package com.reserly.platform.venues.controller;
 
 import com.reserly.platform.venues.dto.VenuePublicProfileResponse;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +23,8 @@ public interface VenuePublicProfileController {
   /** Obtiene un local publicado; borradores, archivados y slugs inexistentes responden 404. */
   @GetMapping("/{slug}")
   ResponseEntity<VenuePublicProfileResponse> find(
-      @PathVariable String slug,
-      @RequestParam(required = false) String locale,
-      @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage);
+      @PathVariable @Size(max = 160) @Pattern(regexp = "^[a-z0-9]+(?:-[a-z0-9]+)*$") String slug,
+      @RequestParam(required = false) @Size(max = 35) String locale,
+      @RequestHeader(name = "Accept-Language", required = false) @Size(max = 256)
+          String acceptLanguage);
 }

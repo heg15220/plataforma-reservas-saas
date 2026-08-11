@@ -316,9 +316,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 18. Fase 16 - Seguridad, privacidad y endurecimiento
 
-- [ ] 16.1. Revisar validación backend de todos los endpoints públicos.
-- [ ] 16.2. Revisar autorización de endpoints de local y admin.
-- [ ] 16.3. Implementar protección CSRF si se usan cookies.
+- [x] 16.1. Revisar validación backend de todos los endpoints públicos.
+- [x] 16.2. Revisar autorización de endpoints de local y admin.
+- [x] 16.3. Implementar protección CSRF si se usan cookies.
 - [ ] 16.4. Sanitizar comentarios, descripciones y campos libres.
 - [ ] 16.5. Validar subida de archivos.
 - [ ] 16.6. Añadir rate limiting a reserva, login, recuperación y enlaces públicos.

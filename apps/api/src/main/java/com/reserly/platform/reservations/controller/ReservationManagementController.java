@@ -2,6 +2,7 @@ package com.reserly.platform.reservations.controller;
 
 import com.reserly.platform.reservations.dto.ManagedReservationResponse;
 import com.reserly.platform.reservations.dto.ReservationCancellationResponse;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,9 +18,11 @@ public interface ReservationManagementController {
 
   /** Consulta una proyección mínima sin revelar por qué un enlace no es utilizable. */
   @GetMapping("/{token}")
-  ResponseEntity<ManagedReservationResponse> findByToken(@PathVariable String token);
+  ResponseEntity<ManagedReservationResponse> findByToken(
+      @PathVariable @Pattern(regexp = "^[A-Za-z0-9_-]{43}$") String token);
 
   /** Cancela sin aceptar identidad, estado, motivo ni reserva desde el cliente. */
   @PostMapping("/{token}/cancel")
-  ResponseEntity<ReservationCancellationResponse> cancelByToken(@PathVariable String token);
+  ResponseEntity<ReservationCancellationResponse> cancelByToken(
+      @PathVariable @Pattern(regexp = "^[A-Za-z0-9_-]{43}$") String token);
 }

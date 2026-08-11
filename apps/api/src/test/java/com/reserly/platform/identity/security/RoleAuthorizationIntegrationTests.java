@@ -62,15 +62,15 @@ class RoleAuthorizationIntegrationTests {
   }
 
   @Test
-  void leavesPublicNamespaceAnonymousAndAccessible() throws Exception {
+  void leavesDeclaredPublicNamespaceAccessibleAndDeniesUnknownApiRoutes() throws Exception {
     mockMvc
         .perform(get(PUBLIC_ENDPOINT))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.access").value("public"));
     mockMvc
         .perform(get(NEARBY_PUBLIC_ENDPOINT))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.access").value("public"));
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error").value("AUTHORIZATION_DENIED"));
   }
 
   @Test
