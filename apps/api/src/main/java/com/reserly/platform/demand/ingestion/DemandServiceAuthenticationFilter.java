@@ -53,8 +53,7 @@ public class DemandServiceAuthenticationFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
-    return !path.equals("/api/internal/demand/v1/events")
-        && !path.startsWith("/api/internal/demand/v1/events/");
+    return !path.startsWith("/api/internal/demand/v1/");
   }
 
   private boolean constantTimeEquals(String supplied, String expected) {

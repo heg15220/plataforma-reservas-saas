@@ -55,7 +55,7 @@ public class SecurityConfiguration {
         .authorizeHttpRequests(
             authorization ->
                 authorization
-                    .requestMatchers("/api/internal/demand/v1/events")
+                    .requestMatchers("/api/internal/demand/v1/**")
                     .hasRole("DEMAND_INGESTOR")
                     .requestMatchers("/api/admin", "/api/admin/**")
                     .hasRole("ADMIN")
