@@ -35151,3 +35151,54 @@ fuente. La API de reserva sigue independiente de pgvector conforme a ADR-0001.
 - Los validadores globales de convenciones, Checkstyle y español conservan incidencias históricas
   ajenas (DTO/DAO/nombres, imports/plantillas y signos/tildes antiguos); no se introdujeron nuevas.
 - Las tablas reales de embeddings, benchmark y tuning HNSW corresponden a tareas posteriores.
+
+## Iteración 2026-08-13 - Tarea 19.4: identidad seudónima y vínculos revocables
+
+### Objetivo y trazabilidad
+
+- Tarea: `19.4`.
+- Objetivo: crear identidad progresiva sin introducir email en el dominio analítico ni convertir
+  personalización en requisito de reserva.
+- Requisitos: `RF-034`, `RNF-002`, `RNF-003`, `RNF-005`, `RNF-014`, `RB-016` y diseño 14.5/14.13.
+
+### Modelo físico y migración
+
+Flyway V45 crea tres tablas UpperCamelCase. `CustomerIdentities` contiene UUID, `emailHmac`
+hexadecimal de 64 caracteres, `keyVersion`, evidencia opcional de consentimiento de personalización,
+revocación, retención y timestamps. La unicidad compuesta deduplica dentro de una versión y permite
+coexistencia durante rotación. No almacena email ni secreto.
+
+`AnonymousIdentities` recibe un UUID generado fuera de PostgreSQL para controlar el CSPRNG y la
+entrega de primera parte. Canal, consentimiento, revocación, creación, actividad, expiración y
+retención son columnas tipadas. No existen IP, user-agent, fingerprint, advertising ID ni cookie.
+`IdentityLinks` une ambas FKs con motivo/finalidad allowlisted, versión/fecha de consentimiento,
+vínculo, revocación y retención.
+
+Constraints impiden HMAC/keyVersion malformados, consentimiento parcial, revocación retroactiva,
+ventanas incoherentes y valores fuera de catálogo. Un índice único parcial impide duplicar una
+pareja/finalidad activa manteniendo histórico revocado. Índices de expiración/retención preparan
+jobs acotados. `ON DELETE RESTRICT` obliga a retirar derivados y vínculos explícitamente.
+
+### Entidades, DAOs y ejecución
+
+El contexto `demand.identity.persistence` contiene tres entidades documentadas. Las relaciones son
+lazy y no exponen PII. Los DAOs declaran `@Query` para HMAC versionado, resolución personalizable,
+vínculo activo, revocación atómica y lotes paginados de retención. `touchActive` no amplía
+expiración/retención ni reactiva revocados. Todo derivado futuro debe revalidar ambos consentimientos
+en su transacción.
+
+El HMAC se calcula fuera del repositorio con clave de gestor seguro; un hash simple está prohibido.
+La rotación usa otra `keyVersion` y proceso controlado, no diccionarios. No se añadieron endpoints,
+cookies ni logs. Revocar no toca la reserva operativa.
+
+### Archivos y verificación
+
+- Migración V45; 3 entidades; 3 DAOs; documentación de los paquetes del contexto.
+- `DemandIdentityPersistenceIntegrationTests`: Testcontainers/Flyway V1-V45 sobre PostgreSQL 17.5.
+- 3 tests correctos: esquema/índices/minimización; persistencia+revocación; rechazo de HMAC,
+  consentimiento y vínculo activo duplicado.
+- `mvn -q spotless:apply` y compilación de main/tests correctas durante la ejecución.
+
+No se implementan derivación HMAC, cookies, API, UI ni job de borrado. Corresponden a 19.8 y
+19.16-19.18. El test aislado evita la regresión previa del filtro Spring sin rebajar la prueba real
+de PostgreSQL.

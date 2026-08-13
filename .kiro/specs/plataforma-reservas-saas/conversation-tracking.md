@@ -9045,3 +9045,31 @@ Fuente de verdad del avance:
   - El test histórico que levanta todo Spring sigue bloqueado por un problema previo e independiente
     en el orden de `SessionAuthenticationFilter`; la prueba aislada evita confundir ese fallo de
     aplicación con la compatibilidad de base de datos.
+
+# Conversación 198 - Identidad seudónima y vínculos revocables
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Flyway V45 crea `CustomerIdentities`, `AnonymousIdentities` e `IdentityLinks`.
+  - El identificador estable exige HMAC-SHA-256 hexadecimal y `keyVersion`; no se replica email ni
+    secreto. El identificador anónimo es UUID propio sin señales de fingerprinting.
+  - Consentimiento, finalidad, motivo, revocación, vigencia y retención quedan protegidos por
+    constraints, índices parciales y FKs restrictivas.
+  - Se añadieron tres entidades documentadas y DAOs con consultas explícitas para vigencia,
+    revocación atómica y lotes de retención.
+  - Testcontainers aplicó Flyway V1-V45 y validó tablas, índices, minimización, rechazo de
+    HMAC/consentimiento inválidos, vínculo activo único y revocación.
+- Archivos modificados:
+  - `V45__create_demand_identity_tables.sql`.
+  - Nuevo contexto `demand.identity.persistence`, tres entidades y tres DAOs.
+  - `DemandIdentityPersistenceIntegrationTests.java`.
+  - `docs/architecture/demand-identity-foundation.md`, índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-034`, `RNF-002`, `RNF-003`, `RNF-005`, `RNF-014` y `RB-016`.
+- Tareas impactadas: `19.4`; prepara `19.6`, `19.8`, `19.16`, `19.17` y `19.18`.
+- Tareas completadas: `19.4`.
+- Siguiente tarea pendiente recomendada:
+  - `17.1`; dentro de la prioridad explícita de fase 19, `19.5`.
+- Decisiones o aclaraciones relevantes:
+  - La reserva no depende de consentimiento de personalización.
+  - Revocar es terminal para una fila; una nueva aceptación crea evidencia nueva.
+  - Las FKs no usan cascada para que la futura supresión propagada sea explícita y auditable.

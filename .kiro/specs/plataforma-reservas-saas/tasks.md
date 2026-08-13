@@ -379,7 +379,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 19.1. Seleccionar y documentar el primer vertical o conjunto limitado de servicios, sus métricas de éxito y los criterios de abandono o ampliación.
 - [x] 19.2. Crear ADR de límites entre el monolito transaccional y `Demand Engine`, incluyendo contratos, ownership de datos, fallbacks y prohibición de dependencia crítica desde reserva.
 - [x] 19.3. Habilitar la extensión `pgvector` mediante Flyway y verificar compatibilidad, rollback lógico, índices y entornos.
-- [ ] 19.4. Crear migraciones, entidades y DAOs de `CustomerIdentities`, `AnonymousIdentities` e `IdentityLinks` con HMAC versionado, consentimiento, revocación y retención.
+- [x] 19.4. Crear migraciones, entidades y DAOs de `CustomerIdentities`, `AnonymousIdentities` e `IdentityLinks` con HMAC versionado, consentimiento, revocación y retención.
 - [ ] 19.5. Crear catálogo versionado de eventos y contratos JSON/Pydantic para descubrimiento, evaluación, conversión, post-reserva, activación y experimentación.
 - [ ] 19.6. Crear migraciones, entidades y DAOs de `BehaviorEvents` con idempotencia, fecha de ocurrencia/recepción, finalidad y contexto minimizado.
 - [ ] 19.7. Crear `RecommendationRequests`, `RecommendationCandidates` y `RecommendationRankings` para conservar alternativas, posiciones, componentes de score, versión y experimento.

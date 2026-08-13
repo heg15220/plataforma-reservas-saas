@@ -2840,6 +2840,13 @@ consentimiento y fecha. La ausencia o revocación de consentimiento mantiene ope
 limita recomendaciones a contexto no personal/agregados. La rotación de HMAC requiere versión de
 clave y reidentificación controlada; nunca se intenta recuperar una identidad con diccionarios.
 
+La implementación física inicial usa `CustomerIdentities`, `AnonymousIdentities` e `IdentityLinks`.
+La primera tabla acepta exclusivamente HMAC-SHA-256 hexadecimal con versión de clave; la segunda usa
+UUID aleatorio propio y no contiene señales de fingerprinting. Cada vínculo está limitado a una
+finalidad, conserva motivo y versión/fecha de consentimiento, admite revocación terminal y tiene
+retención explícita. FKs restrictivas obligan a retirar primero vínculos y derivados. Los DAOs solo
+resuelven personalización si consentimiento, vigencia y retención siguen activos.
+
 ### 14.6 Ontología, evidencias y perfil de local
 
 Familias iniciales: ambiente, espacio, experiencia, oferta, operación y accesibilidad. Cada atributo
