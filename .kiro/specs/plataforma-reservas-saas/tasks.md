@@ -376,7 +376,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 21. Fase 19 - Fundamentos de datos del motor de demanda
 
-- [ ] 19.1. Seleccionar y documentar el primer vertical o conjunto limitado de servicios, sus métricas de éxito y los criterios de abandono o ampliación.
+- [x] 19.1. Seleccionar y documentar el primer vertical o conjunto limitado de servicios, sus métricas de éxito y los criterios de abandono o ampliación.
 - [ ] 19.2. Crear ADR de límites entre el monolito transaccional y `Demand Engine`, incluyendo contratos, ownership de datos, fallbacks y prohibición de dependencia crítica desde reserva.
 - [ ] 19.3. Habilitar la extensión `pgvector` mediante Flyway y verificar compatibilidad, rollback lógico, índices y entornos.
 - [ ] 19.4. Crear migraciones, entidades y DAOs de `CustomerIdentities`, `AnonymousIdentities` e `IdentityLinks` con HMAC versionado, consentimiento, revocación y retención.

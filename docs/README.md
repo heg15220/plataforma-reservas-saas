@@ -15,6 +15,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `internationalization.md`: catálogos `es`/`en`, `next-intl` y reglas de uso frontend.
   - `localized-data.md`: patrón JSONB para textos configurables localizados en base de datos.
   - `spanish-text-quality.md`: validación UTF-8, mojibake, tildes frecuentes y signos de apertura en textos españoles.
+  - `demand-engine-validation-vertical.md`: vertical inicial, población, hipótesis, métricas y puertas de ampliación o abandono del motor de demanda.
   - `visual-system.md`: tokens, tema MUI, estados, iconografía y catálogo visual.
 - `configuration.md`: variables, perfiles y reglas de seguridad por entorno.
 - `continuous-integration.md`: eventos, checks, seguridad y protección de ramas del pipeline CI.

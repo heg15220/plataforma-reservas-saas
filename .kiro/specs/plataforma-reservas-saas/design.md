@@ -2727,6 +2727,20 @@ La inteligencia debe degradarse de forma progresiva:
 No se implementan inicialmente Kafka, redes profundas, pricing dinámico, causalidad sin experimento,
 fingerprinting, data brokers ni un catálogo de sectores sin modelo de recursos validado.
 
+#### Vertical inicial cerrado en la tarea 19.1
+
+El primer vertical es cuidado personal con cita individual y se limita a las categorías
+`peluqueria` y `centro-de-estetica`, servicios activos de capacidad uno y una geografía inicial de
+Santiago de Compostela y 25 km. Los fixtures `Brisa Studio` y `Aura Atlántica` permiten recorridos
+reproducibles. Salud, restauración, instalaciones, grupos, menores, promociones y pricing quedan
+fuera. El contrato completo de población, hipótesis, métricas, shadow, éxito, pausa y abandono vive
+en `docs/architecture/demand-engine-validation-vertical.md`.
+
+La ampliación exige, entre otras puertas, inventario mínimo, calidad de instrumentación, experimento
+con potencia suficiente, mejora de conversión, ocupación valle, guardrails de asistencia/cancelación,
+diversidad, privacidad, latencia y coste. La primera expansión preferida es geográfica dentro del
+mismo vertical, no añadir sectores heterogéneos.
+
 ### 14.2 Límites arquitectónicos y ownership
 
 El monolito Spring continúa siendo fuente de verdad de usuarios operativos, locales, servicios,

@@ -34917,3 +34917,72 @@ El PDF expresa una estrategia, no demuestra volumen, licencias, coste, calidad d
 causal. El primer vertical, consentimiento y métricas de éxito son puertas explícitas. Quedan
 pendientes revisión jurídica, selección del vertical, SLO/coste y modelos concretos. Se debe cerrar
 observabilidad y QA del MVP antes de iniciar la fase 19.
+
+## Iteración 2026-08-13 - Tarea 19.1: vertical inicial y puertas de validación
+
+### Identificador, objetivo y requisitos
+
+- Tarea: `19.1`.
+- Objetivo técnico: fijar una población homogénea y verificable para que instrumentación, ontología,
+  ranking y experimentos posteriores no mezclen modelos de capacidad incompatibles.
+- Requisitos relacionados: `RF-029`, `RF-033`, `RF-036`, `RF-037`, `RF-038`, `RF-040`, `RNF-002`,
+  `RNF-014`, `RNF-015`, `RB-014` y `RB-015`.
+
+### Decisión y evidencia del dominio existente
+
+Se selecciona cuidado personal con cita individual: categorías `peluqueria` y
+`centro-de-estetica`, servicios activos con `capacityRequired = 1`, duración conocida y franja
+reservable. El radio inicial es 25 km desde Santiago de Compostela. El repositorio ya dispone de
+categorías/UUID estables, servicios, profesionales/recursos, disponibilidad, reservas, asistencia,
+reseñas y dos fixtures complementarios: `Brisa Studio` y `Aura Atlántica`.
+
+La clínica se excluye por sensibilidad de salud. Restauración, campos, pistas y grupos se excluyen
+porque capacidad por comensales, alquiler completo o grupo no es comparable con una cita individual.
+También quedan fuera menores, promociones, pricing, contacto proactivo e inferencias sensibles.
+
+### Métricas y flujo de decisión
+
+El nuevo documento define de forma operacional cobertura de impresiones y correlación, conversión,
+asistencia, cancelación, cliente nuevo, ocupación valle, cobertura de candidatos, diversidad,
+latencia, fallback y coste. Una reserva cuenta como conversión solo al confirmarse; asistencia usa
+ventanas cerradas; `cliente nuevo` significa nuevo para ese local dentro de Reserly.
+
+Antes de A/B se exige shadow durante siete días con eventos válidos `>= 99 %`, alternativas completas
+`>= 98 %`, duplicados `< 0,5 %`, rechazo contractual `< 1 %`, cero PII/ineligibilidad, p95 añadido
+`<= 150 ms`, fallback no planificado `< 1 %` e inventario mínimo. Sin diez locales, treinta servicios
+y tres candidatos en el 70 % de sesiones no se experimenta ranking: solo instrumentación.
+
+El piloto dura al menos seis semanas y requiere análisis de potencia, un mínimo de 1.000 sesiones por
+variante y 100 reservas totales. La expansión exige mejora relativa de conversión del 5 %, cinco
+puntos de ocupación valle, guardrails de asistencia/cancelación, diversidad, coste, latencia y cero
+violaciones. Las condiciones de pausa inmediata y abandono evitan perseverar ante riesgo o ausencia
+de señal después de una muestra suficiente.
+
+### Arquitectura, datos y efectos secundarios
+
+La tarea no crea tablas, endpoints, jobs, modelos ni tratamiento nuevo de datos. Cierra una decisión
+de producto/arquitectura que limita las tareas 19.9, 19.12, 20.3-20.20. Los filtros elegibles deben
+derivarse de categoría, servicio, capacidad, estado y disponibilidad estructurados; nunca de texto
+libre o una predicción.
+
+Product/Growth posee hipótesis; Data/ML, estadística; Backend, elegibilidad/capacidad/fallback; y
+Privacy/Security, finalidad y atributos. Toda ampliación futura debe actualizar `.kiro`, versionar la
+política y preservar control.
+
+### Archivos y documentación del código
+
+- Creado `docs/architecture/demand-engine-validation-vertical.md` con decisión, alcance, métricas,
+  umbrales, ownership y revisiones.
+- Actualizado `docs/README.md` para descubrir el contrato.
+- Actualizados `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+- No se modificó código ejecutable, modelo de datos, seguridad, i18n de UI ni responsive.
+
+### Verificación, riesgos y deuda
+
+La verificación consiste en comprobar que el documento contiene categorías/fixtures reales, métricas
+con denominador, umbrales medibles, exclusiones, éxito, pausa, abandono y ownership; ejecutar
+validadores de texto español/formato y `git diff --check`; y confirmar que solo `19.1` cambia a `[x]`.
+
+Los umbrales son hipótesis de piloto, no garantías estadísticas. La tarea 20.20 debe recalcular muestra
+con baseline real. Todavía faltan inventario real, instrumentación y revisión jurídica. Si no se
+alcanza inventario en ocho semanas, se abandona o rediseña el piloto sin ampliar prematuramente.

@@ -8941,3 +8941,34 @@ Fuente de verdad del avance:
   - Atribución observacional e incrementalidad causal se muestran y calculan como conceptos distintos.
   - Las capacidades avanzadas requieren volumen, baseline superado, calibración, privacidad,
     explicabilidad, equidad, shadow/canary y rollback.
+
+# Conversación 195 - Vertical inicial de cuidado personal para el motor de demanda
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se seleccionó cuidado personal con cita individual como primer vertical, limitado a
+    `peluqueria` y `centro-de-estetica`, servicios de capacidad uno y un radio inicial de 25 km
+    alrededor de Santiago de Compostela.
+  - Se justificó la decisión con el modelo ya implementado de servicios, recursos, franjas,
+    reservas, asistencia y reseñas, además de los fixtures `Brisa Studio` y `Aura Atlántica`.
+  - Se definieron población elegible, exclusiones, tres hipótesis, diccionario de métricas, puertas
+    shadow, muestra mínima, criterios cuantitativos de éxito y condiciones de pausa/abandono.
+- Archivos modificados:
+  - `docs/architecture/demand-engine-validation-vertical.md`.
+  - `docs/README.md`.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-029`, `RF-033`, `RF-036`, `RF-037`, `RF-038`, `RF-040`, `RNF-002`, `RNF-014`,
+    `RNF-015`, `RB-014` y `RB-015`.
+- Tareas impactadas: `19.1`.
+- Tareas completadas:
+  - `19.1. Seleccionar y documentar el primer vertical o conjunto limitado de servicios, sus
+    métricas de éxito y los criterios de abandono o ampliación`.
+- Siguiente tarea pendiente recomendada:
+  - `17.1. Implementar logs estructurados`; dentro de la prioridad explícita de fase 19, `19.2`.
+- Decisiones o aclaraciones relevantes:
+  - Salud se excluye por sensibilidad; restauración, deporte e instalaciones por modelos de
+    capacidad heterogéneos.
+  - La ampliación preferente es geográfica dentro del mismo vertical.
+  - Ninguna métrica autoriza automatización ni permite presentar atribución como causalidad.
+  - Cualquier vulneración de privacidad, elegibilidad, capacidad o rollback pausa el piloto.
