@@ -2151,6 +2151,7 @@
     },
     "navigation": {
       "categories": "Categories",
+      "ontology": "Ontology",
       "venues": "Venues",
       "incidents": "Incidents",
       "businessAccounts": "Verifications",
@@ -2167,6 +2168,47 @@
     "errors": {
       "forbidden": "This session does not have administrator permissions.",
       "unavailable": "We could not complete the operation."
+    },
+    "ontology": {
+      "title": "Ontology governance",
+      "description": "Review bilingual attributes and discovered proposals before they can participate in profiles or ranking.",
+      "createTitle": "Register a draft proposal",
+      "create": "Create draft",
+      "fields": {
+        "code": "Proposed code",
+        "cluster": "Cluster key",
+        "family": "Family",
+        "type": "Type",
+        "nameEs": "Spanish name",
+        "nameEn": "English name",
+        "definitionEs": "Spanish definition",
+        "definitionEn": "English definition",
+        "sources": "Allowed sources",
+        "sourcesHelp": "Comma-separated codes.",
+        "examples": "Minimised examples",
+        "examplesHelp": "One summary without personal data per line."
+      },
+      "candidateQueue": "Proposals ({count})",
+      "catalogue": "Catalogue ({count})",
+      "decisionTitle": "Decision for {code}",
+      "status": "New status",
+      "mergeTarget": "Merge target",
+      "noTarget": "No target",
+      "reason": "Auditable reason",
+      "apply": "Apply decision",
+      "cancel": "Cancel",
+      "review": "Review proposal",
+      "govern": "Govern attribute",
+      "forbidden": "This session cannot govern the ontology.",
+      "unavailable": "We could not load or apply the decision.",
+      "states": {
+        "draft": "Draft",
+        "in_review": "In review",
+        "published": "Published",
+        "merged": "Merged",
+        "retired": "Retired",
+        "rejected": "Rejected"
+      }
     },
     "categories": {
       "title": "Category management",

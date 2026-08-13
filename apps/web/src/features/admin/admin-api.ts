@@ -147,6 +147,43 @@ const loginSchema = z.object({
   emailVerified: z.boolean(),
   sessionExpiresAt: z.iso.datetime({ offset: true }),
 });
+const demandAttributeSchema = z.object({
+  id: z.uuid(),
+  code: z.string(),
+  family: z.string(),
+  parentCode: z.string().nullable(),
+  attributeType: z.string(),
+  nameEs: z.string(),
+  nameEn: z.string(),
+  allowedSources: z.array(z.string()).max(6),
+  validityMode: z.string(),
+  ttlDays: z.number().int().positive().nullable(),
+  minimumEvidence: z.number().int().positive(),
+  governanceStatus: z.enum(["draft", "in_review", "published", "merged", "retired"]),
+  mergedIntoId: z.uuid().nullable(),
+  version: z.number().int().nonnegative(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+const demandAttributeCandidateSchema = z.object({
+  id: z.uuid(),
+  proposedCode: z.string(),
+  clusterKey: z.string(),
+  family: z.string(),
+  attributeType: z.string(),
+  nameEs: z.string(),
+  nameEn: z.string(),
+  allowedSources: z.array(z.string()).max(6),
+  exampleSummaries: z.array(z.string()).max(20),
+  governanceStatus: z.enum(["draft", "in_review", "published", "merged", "retired", "rejected"]),
+  decisionReason: z.string().nullable(),
+  resultingAttributeId: z.uuid().nullable(),
+  version: z.number().int().nonnegative(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+const demandOntologySchema = z.object({
+  attributes: z.array(demandAttributeSchema).max(500),
+  candidates: z.array(demandAttributeCandidateSchema).max(500),
+});
 
 export type AdminCategory = z.infer<typeof categorySchema>;
 export type AdminVenue = z.infer<typeof venueSchema>;
@@ -158,6 +195,8 @@ export type AdminPlan = z.infer<typeof planSchema>;
 export type AdminPlanInput = Omit<AdminPlan, "id" | "updatedAt">;
 export type AdminMetrics = z.infer<typeof metricsSchema>;
 export type AdminAuditLog = z.infer<typeof auditLogSchema>;
+export type DemandAttribute = z.infer<typeof demandAttributeSchema>;
+export type DemandAttributeCandidate = z.infer<typeof demandAttributeCandidateSchema>;
 export type AdminCategoryInput = Pick<AdminCategory, "active" | "nameEn" | "nameEs" | "slug">;
 export type AdminVenueInput = Pick<
   AdminVenue,
@@ -326,6 +365,51 @@ export async function fetchAdminMetrics(signal?: AbortSignal) {
 
 export async function fetchAdminAuditLogs(signal?: AbortSignal) {
   return request("/api/admin/audit-logs", auditLogsSchema, { signal });
+}
+
+/** Carga catálogo y cola desde un único snapshot administrativo. */
+export async function fetchDemandOntology(signal?: AbortSignal) {
+  return request("/api/admin/demand-ontology", demandOntologySchema, { signal });
+}
+
+export async function createDemandAttributeCandidate(input: {
+  proposedCode: string;
+  clusterKey: string;
+  family: string;
+  attributeType: string;
+  nameEs: string;
+  nameEn: string;
+  definitionEs: string;
+  definitionEn: string;
+  allowedSources: string[];
+  exampleSummaries: string[];
+}) {
+  return request("/api/admin/demand-ontology/candidates", demandAttributeCandidateSchema, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function transitionDemandCandidate(
+  candidateId: string,
+  input: { status: string; targetAttributeId: string | null; reason: string | null },
+) {
+  return request(
+    `/api/admin/demand-ontology/candidates/${candidateId}/transition`,
+    demandAttributeCandidateSchema,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
+
+export async function transitionDemandAttribute(
+  attributeId: string,
+  input: { status: string; targetAttributeId: string | null; reason: string | null },
+) {
+  return request(
+    `/api/admin/demand-ontology/attributes/${attributeId}/transition`,
+    demandAttributeSchema,
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }
 
 async function request<T>(

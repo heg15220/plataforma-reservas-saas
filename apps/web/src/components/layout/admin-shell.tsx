@@ -37,16 +37,19 @@ export function AdminShell({
               useFlexGap
               sx={{ flexWrap: "wrap", ml: { sm: "auto" } }}
             >
-              {[
-                ["/admin/categorias", "categories"],
-                ["/admin/locales", "venues"],
-                ["/admin/incidencias", "incidents"],
-                ["/admin/verificaciones", "businessAccounts"],
-                ["/admin/penalizaciones", "penalties"],
-                ["/admin/planes", "plans"],
-                ["/admin/metricas", "metrics"],
-                ["/admin/auditoria", "audit"],
-              ].map(([href, key]) => (
+              {(
+                [
+                  ["/admin/categorias", "categories"],
+                  ["/admin/ontologia", "ontology"],
+                  ["/admin/locales", "venues"],
+                  ["/admin/incidencias", "incidents"],
+                  ["/admin/verificaciones", "businessAccounts"],
+                  ["/admin/penalizaciones", "penalties"],
+                  ["/admin/planes", "plans"],
+                  ["/admin/metricas", "metrics"],
+                  ["/admin/auditoria", "audit"],
+                ] as const
+              ).map(([href, key]) => (
                 <Button
                   aria-current={currentPath === href ? "page" : undefined}
                   component={NavigationLink}

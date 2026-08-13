@@ -388,9 +388,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 19.10. Garantizar que cada impresión registra únicamente candidatos realmente elegibles y la información que el usuario pudo observar.
 - [x] 19.11. Implementar reconciliación entre eventos de frontend y resultados transaccionales de backend mediante identificadores de correlación.
 - [x] 19.12. Definir la ontología inicial gobernada de 30-50 atributos para el vertical elegido con familias, jerarquía, ES/EN, fuentes, vigencia y atributos prohibidos.
-- [ ] 19.13. Crear migraciones, entidades, DAOs y panel admin de `DemandAttributes` y `DemandAttributeCandidates` con workflow de borrador, revisión, publicación, fusión y retirada.
-- [ ] 19.14. Crear `VenueAttributeEvidence` y `VenueAttributeProfiles` con score, confianza, procedencia, diversidad, expiración y trazabilidad de cálculo.
-- [ ] 19.15. Implementar agregador configurable de evidencias con fiabilidad, confianza, volumen, acuerdo, diversidad y decaimiento temporal.
+- [x] 19.13. Crear migraciones, entidades, DAOs y panel admin de `DemandAttributes` y `DemandAttributeCandidates` con workflow de borrador, revisión, publicación, fusión y retirada.
+- [x] 19.14. Crear `VenueAttributeEvidence` y `VenueAttributeProfiles` con score, confianza, procedencia, diversidad, expiración y trazabilidad de cálculo.
+- [x] 19.15. Implementar agregador configurable de evidencias con fiabilidad, confianza, volumen, acuerdo, diversidad y decaimiento temporal.
 - [ ] 19.16. Crear política y UI ES/EN de consentimiento separado para analítica, personalización y activación comercial, sin bloquear la reserva operativa.
 - [ ] 19.17. Implementar acceso, corrección, oposición, revocación, desvinculación y supresión para identidades, eventos, perfiles y resultados derivados.
 - [ ] 19.18. Definir retención, particionado temporal, índices, umbrales de agregación y estrategia de borrado de eventos y rankings.

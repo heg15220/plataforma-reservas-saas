@@ -2151,6 +2151,7 @@
     },
     "navigation": {
       "categories": "Categorías",
+      "ontology": "Ontología",
       "venues": "Locales",
       "incidents": "Incidencias",
       "businessAccounts": "Verificaciones",
@@ -2167,6 +2168,47 @@
     "errors": {
       "forbidden": "La sesión no tiene permisos administrativos.",
       "unavailable": "No pudimos completar la operación."
+    },
+    "ontology": {
+      "title": "Gobierno de la ontología",
+      "description": "Revisa atributos bilingües y propuestas descubiertas antes de que puedan participar en perfiles o ranking.",
+      "createTitle": "Registrar propuesta en borrador",
+      "create": "Crear borrador",
+      "fields": {
+        "code": "Código propuesto",
+        "cluster": "Clave del clúster",
+        "family": "Familia",
+        "type": "Tipo",
+        "nameEs": "Nombre en español",
+        "nameEn": "Nombre en inglés",
+        "definitionEs": "Definición en español",
+        "definitionEn": "Definición en inglés",
+        "sources": "Fuentes permitidas",
+        "sourcesHelp": "Códigos separados por comas.",
+        "examples": "Ejemplos minimizados",
+        "examplesHelp": "Una síntesis sin datos personales por línea."
+      },
+      "candidateQueue": "Propuestas ({count})",
+      "catalogue": "Catálogo ({count})",
+      "decisionTitle": "Decisión sobre {code}",
+      "status": "Nuevo estado",
+      "mergeTarget": "Destino de la fusión",
+      "noTarget": "Sin destino",
+      "reason": "Motivo auditable",
+      "apply": "Aplicar decisión",
+      "cancel": "Cancelar",
+      "review": "Revisar propuesta",
+      "govern": "Gobernar atributo",
+      "forbidden": "La sesión no tiene permisos para gobernar la ontología.",
+      "unavailable": "No pudimos cargar o aplicar la decisión.",
+      "states": {
+        "draft": "Borrador",
+        "in_review": "En revisión",
+        "published": "Publicado",
+        "merged": "Fusionado",
+        "retired": "Retirado",
+        "rejected": "Rechazado"
+      }
     },
     "categories": {
       "title": "Gestión de categorías",

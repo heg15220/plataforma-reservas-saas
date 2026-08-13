@@ -35712,3 +35712,140 @@ Los 44 atributos son una hipótesis gobernada, no un modelo aprendido ni garant�
 calidad de traducciones y definiciones debe revisarse con Product/Privacy antes de experimento. El
 workflow de revisión/fusión/retirada y auditoría admin pertenece a 19.13; evidencia y perfil a 19.14;
 agregación a 19.15; extracción y modelado a fase 20.
+
+## Iteración 2026-08-13 - Tarea 19.13: persistencia y gobierno administrativo de la ontología
+
+### Objetivo, requisitos y decisiones
+
+- Tarea exacta: 19.13.
+- Objetivo: convertir `personal-care.v1` en un catálogo persistente sin perder su condición de
+  contrato editorial, y habilitar revisión humana auditable de descubrimientos.
+- Requisitos: RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015; diseño 14.6, 14.8, 14.9 y 14.17.
+
+Flyway V48 crea `DemandAttributes` y `DemandAttributeCandidates`. El primero conserva versión de
+ontología, código estable, familia/padre, tipo, textos ES/EN, fuentes/usos JSONB, modo de vigencia,
+TTL, evidencia mínima, estado, destino de fusión, versión optimista y tiempos/actor de decisión. El
+segundo conserva propuesta, clúster técnico, ejemplos resumidos, decisión y atributo resultante. Las
+FK impiden borrar padres, destinos o revisores de forma incoherente; índices cubren cola por estado,
+familia, padre y clúster. Checks validan códigos, enums, JSON acotado, TTL, timestamps y dependencia
+estado-destino. `@Version` empieza en cero y la restricción lo admite; las revisiones incrementan el
+contador mediante JPA.
+
+`DemandOntologySeedInitializer` empaqueta el JSON contractual como recurso Maven y lo proyecta solo
+si la tabla está vacía. No actualiza instalaciones parciales ni sobreescribe decisiones. Inserta las
+44 filas publicadas en orden de catálogo, incluidos padres antes de hojas. El JSON continúa siendo
+la fuente única; una modificación semántica requiere nueva versión.
+
+### API, workflow, seguridad y UI
+
+`DemandAttributeGovernanceService` aplica una máquina cerrada: borrador a revisión; revisión a
+publicado, fusionado, retirado o rechazado; publicado a fusionado o retirado. Publicar un candidato
+crea el término; fusionar exige destino publicado distinto; fusión/retiro/rechazo requieren motivo.
+No hay DELETE. Cada cambio registra dos snapshots minimizados cuando procede mediante `AuditLogs`,
+con actor obtenido de `AuthenticatedAccount`, IP/user-agent observados y sin aceptar actor del JSON.
+Las fuentes se allowlistean y ejemplos con email o URL se rechazan.
+
+La API `/api/admin/demand-ontology` lista, crea borrador y transiciona candidatos/atributos. Hereda
+`ROLE_ADMIN`, CSRF de navegador y cookie HttpOnly del namespace existente. El panel responsive
+`/admin/ontologia` valida respuestas con Zod, ofrece cola y catálogo, destino explícito y motivo. Los
+textos y estados son completos en ES/EN; los artículos tienen jerarquía semántica y la navegación
+marca `aria-current`.
+
+### Archivos, pruebas y evidencia
+
+- V48, dos entidades, dos DAOs, seed, seis DTOs/controlador/servicio y package-info documentados.
+- Cliente, dashboard, ruta, navegación y mensajes ES/EN en web.
+- `DemandAttributeGovernanceServiceTests`: rechazo de identificadores y publicación auditada.
+- Maven compila con Spotless; prueba focalizada correcta. ESLint dirigido y ausencia de errores
+  TypeScript en los archivos nuevos: correctos.
+- Flyway directo sobre PostgreSQL 17.5 validó/aplicó V1-V49; por tanto V48 quedó ejercitada.
+- La prueba Spring global sigue bloqueada por el baseline previo `BehaviorEvents.countryCode`
+  `char(2)` frente a entidad `varchar(2)`. Checkstyle global conserva sus 34 incidencias históricas.
+
+### Riesgos y pendientes
+
+La publicación administrativa usa valores conservadores (`ttl=180`, mínimo cinco y usos
+profile/ranking/explanation); una futura edición completa deberá exponer esos campos con validación
+equivalente. La creación automática de candidatos pertenece a fase 20. El seed no repara una tabla
+parcial deliberadamente: esa situación requiere operación explícita para evitar mezcla de versiones.
+
+## Iteración 2026-08-13 - Tarea 19.14: evidencias y perfiles de atributos de local
+
+### Objetivo, modelo físico y contratos
+
+- Tarea exacta: 19.14.
+- Objetivo: conservar evidencia verificable y una proyección agregada interpretable por
+  local/atributo, con expiración y reproducción de cálculo.
+- Requisitos: RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015; diseño 14.6-14.9 y 14.17.
+
+V49 crea `VenueAttributeEvidences` append-only. La clave de procedencia combina local, atributo,
+fuente, referencia técnica y versión; no se sobrescriben contradicciones. La fila incluye score y
+confianza [0,1], grupo independiente, muestra, extractor, versión, observación, expiración y creación.
+FK de local usa cascada para derecho de supresión; atributo usa restrict para preservar semántica.
+La referencia prohíbe parámetros que aparenten email, teléfono, nombre, cliente o usuario y no
+admite texto libre.
+
+`VenueAttributeProfiles` impone una fila por local/atributo y materializa score/confianza,
+diversidad, acuerdo, recencia, conteos, muestra, versión, última evidencia, expiración y tiempos. Su
+JSONB exige `algorithm`, `evidenceIds` y `weights`, tamaño máximo 16 KiB y nunca contiene contenido
+original. Índices soportan recomputación vigente, análisis por fuente, ranking por atributo/confianza
+y barrido de expiración.
+
+### Implementación, validación y evidencia
+
+Se añadieron entidades JPA documentadas y DAOs. El DAO de evidencia devuelve únicamente filas no
+expiradas en orden determinista, pero conserva físicamente las expiradas para auditoría/retención. El
+DAO de perfil resuelve la proyección única. Todos los decimales usan precisión `numeric(9,8)` y los
+timestamps son UTC `Instant`.
+
+Flyway validó y aplicó las 49 migraciones en PostgreSQL 17.5 real. Maven compiló entidades y DAOs.
+La validación completa de contexto conserva el fallo histórico de tipo en `BehaviorEvents`, no
+originado por V49. No se creó endpoint ni UI: la tarea define la capa de conocimiento interna; la
+ingesta de fuentes llega en fase 20 y el cálculo en 19.15.
+
+### Riesgos y pendientes
+
+El borrado físico/particionado se concreta en 19.18. `sourceReference` exige que cada extractor
+genere referencias opacas; no debe reutilizar URLs con query personal. La expiración nula solo es
+válida para evidencia estable y su política debe derivarse de la ontología al ingerir.
+
+## Iteración 2026-08-13 - Tarea 19.15: agregador configurable de evidencias
+
+### Objetivo, algoritmo y configuración
+
+- Tarea exacta: 19.15.
+- Objetivo: producir un perfil reproducible donde fiabilidad, confianza de origen, volumen,
+  acuerdo, diversidad y edad tengan impacto explícito.
+- Requisitos: RF-035, RF-036, RNF-005, RNF-014 y RNF-015; diseño 14.6, 14.8, 14.9 y 14.17.
+
+`DemandAggregationProperties` valida versión, vida media positiva, saturación positiva, pesos en
+`(0,1]` y factores de confianza no negativos que suman exactamente uno. Los defaults versionados
+son: declaración 0,10; catálogo 0,15; operación 0,20; agregado de clientes 0,15; auditoría 0,30;
+imagen 0,10. Vida media 90 días, saturación 20 muestras y factores diversidad 0,25, volumen 0,25,
+acuerdo 0,30 y recencia 0,20; todos pueden parametrizarse mediante configuración/entorno.
+
+Para cada evidencia vigente se calcula `peso = fiabilidad * confianza * 0.5^(edad/vidaMedia)`.
+Score es la media ponderada. Acuerdo es `1 - min(1, 4 * varianzaPonderada)`, diversidad es fuentes
+distintas/seis, volumen es muestra/saturación acotada y recencia es la media de decaimientos. La
+confianza combina esos cuatro términos y queda en [0,1]. Así, evidencia contradictoria baja acuerdo
+sin desaparecer; imagen o autodeclaración aisladas no dominan.
+
+### Flujo, trazabilidad, errores y observabilidad
+
+`VenueAttributeAggregationService.aggregate` abre una transacción, carga evidencia vigente, falla
+explícitamente si no existe, calcula y hace upsert lógico del perfil único. Conserva creación inicial,
+actualiza cálculo/expiración y escribe versión, algoritmo, IDs, pesos efectivos, pesos fuente y vida
+media. Una fuente no configurada falla cerrada. No se registran cuerpos, PII ni scores personales;
+las métricas son de local.
+
+### Archivos, tests, evidencia y riesgos
+
+- Configuración tipada, activador, servicio y package-info; propiedades en `application.yaml`.
+- `VenueAttributeAggregationServiceTests` verifica tres fuentes, fiabilidad desigual, antigüedad,
+  volumen 31, diversidad, desacuerdo, traza y persistencia.
+- Las dos suites focalizadas (gobierno y agregación) ejecutaron tres casos correctamente; compilación
+  Maven y Spotless correctos. Flyway V1-V49 correcto en PostgreSQL 17.5.
+- El cálculo es síncrono por pareja; jobs batch/reintentos y telemetría operacional se añadirán con
+  extractores en fase 20. La vida media única es una base configurable; una evolución puede resolver
+  TTL/vida media por tipo sin cambiar la fórmula versionada. Cambiar pesos exige cambiar versión para
+  no perder reproducibilidad.

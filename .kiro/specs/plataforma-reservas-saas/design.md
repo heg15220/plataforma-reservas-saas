@@ -2893,6 +2893,23 @@ afirmaciones no sustentadas y equidad laboral. JSON Schema aporta interoperabili
 valida unicidad, ciclos, padres, fuentes, TTL y separación de prohibiciones. 19.13 persistirá este
 artefacto y añadirá workflow; no se crean tablas en 19.12.
 
+Desde 19.13, Flyway V48 materializa el vocabulario y la cola de candidatos. El JSON continúa como
+fuente editorial única y un inicializador idempotente solo siembra una tabla vacía. El workflow
+cerrado es `draft -> in_review -> published|merged|retired|rejected`; un término publicado solo puede
+fusionarse o retirarse. Las fusiones conservan origen/destino, las decisiones terminales exigen
+motivo y todas las mutaciones se auditan con el administrador autenticado. El panel ES/EN vive en
+`/admin/ontologia` y hereda `ROLE_ADMIN` del namespace.
+
+V49 implementa evidencias append-only y un perfil materializado único por local/atributo. La
+procedencia es referencia técnica allowlisted, no texto personal; cada fila conserva fuente, grupo,
+score, confianza, muestra, extractor, versión, observación y expiración. El perfil guarda score,
+confianza, diversidad, acuerdo, recencia, conteos, versión y una traza JSON acotada con IDs y pesos.
+
+El agregador `weighted-v1` usa `reliability * evidenceConfidence * 0.5^(age/halfLife)` como peso y
+media ponderada para score. La confianza combina diversidad, saturación de volumen, acuerdo y
+recencia con factores configurables que suman uno. Evidencia contradictoria permanece intacta y
+reduce acuerdo; declaración propia e imagen no dominan por sus pesos bajos.
+
 ### 14.7 Texto, embeddings e imágenes
 
 Pipeline de texto por madurez:

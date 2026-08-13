@@ -9271,3 +9271,33 @@ Fuente de verdad del avance:
   - Se usa el vertical aprobado en 19.1; no se amplía el piloto.
   - Imagen es fuente auxiliar visual y accesibilidad describe el local, nunca a la persona.
   - El catálogo es seed gobernado; persistencia y workflow pertenecen a 19.13.
+
+# Conversación 207 - Gobierno, evidencia y agregación de atributos de demanda
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se persistió el catálogo contractual y una cola separada de candidatos con workflow humano,
+    auditoría, API protegida y panel ES/EN.
+  - Se crearon evidencias append-only y perfiles materializados con procedencia técnica, expiración,
+    diversidad, acuerdo, recencia, conteos y traza reproducible.
+  - Se implementó el agregador configurable ponderado por fiabilidad, confianza y decaimiento, con
+    confianza compuesta por diversidad, volumen, acuerdo y recencia.
+- Archivos modificados:
+  - Flyway V48/V49; entidades, DAOs, seed contractual, administración y agregación bajo
+    `apps/api/src/main/java/com/reserly/platform/demand/attribute`.
+  - Configuración backend y tres pruebas focalizadas; versiones esperadas de Flyway actualizadas.
+  - Cliente, ruta, panel, navegación y locales ES/EN del admin web.
+  - Diseño, tareas, seguimiento y documento técnico único.
+- Requisitos impactados: RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015.
+- Tareas impactadas: 19.13, 19.14 y 19.15; prepara 19.16, 19.18, 19.19 y fase 20.
+- Tareas completadas: 19.13, 19.14 y 19.15.
+- Siguiente tarea pendiente recomendada: 17.1; en fase 19, 19.16.
+- Decisiones o aclaraciones relevantes:
+  - El JSON v1 sigue siendo fuente editorial; la base es su proyección gobernada.
+  - Candidatos nunca se publican automáticamente y las decisiones terminales no borran historia.
+  - Contradicción reduce acuerdo/confianza; no sobrescribe evidencias.
+  - Declaración propia e imagen auxiliar tienen pesos bajos y ninguna imagen prueba por sí sola un
+    atributo sensible, de seguridad, higiene, tranquilidad o accesibilidad.
+  - Flyway V1-V49 y tres pruebas focalizadas pasan. El contexto Spring global conserva el baseline
+    previo de `BehaviorEvents.countryCode`; Checkstyle y typecheck global conservan fallos históricos
+    fuera de estos archivos.
