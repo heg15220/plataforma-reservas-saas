@@ -35640,3 +35640,75 @@ Bloqueo de JS, cierre de pestaña, telemetría best-effort o clientes sin cabece
 parciales esperables. Su ratio debe medirse en 19.20; orden/completitud se valida en 19.19. Una
 correlación por búsqueda puede abarcar varias evaluaciones dentro de la pestaña, decisión deliberada
 para atribución de recorrido. No se afirma incrementalidad sin experimento válido.
+
+## Iteración 2026-08-13 - Tarea 19.12: ontología gobernada de cuidado personal
+
+### Objetivo, alcance y requisitos
+
+- Tarea exacta: 19.12.
+- Objetivo: definir un vocabulario inicial interpretable, bilingüe y verificable para el vertical
+  cerrado en 19.1, con límites explícitos contra inferencias sensibles o no sustentadas.
+- Requisitos: RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015; diseño 14.1, 14.6-14.9 y 14.17.
+
+La versión inmutable personal-care.v1 se limita a peluquería y centro de estética, cita individual,
+capacidad uno y servicios cosméticos no clínicos. Declara fecha efectiva y locales ES/EN. No
+incorpora salud, restauración, grupos, menores, promociones o pricing.
+
+### Familias, jerarquía y catálogo
+
+Se publican 44 atributos: ambiente 7, espacio 6, experiencia 7, oferta 10, operación 8 y
+accesibilidad 6. Oferta materializa jerarquía con raíces hairServices/skinCareServices y hojas de
+corte, coloración, peinado, cuidado capilar, facial y corporal. El resto usa raíces independientes.
+
+Cada atributo contiene código lowerCamel estable, familia, padre opcional de la misma familia,
+nombre/definición ES/EN, tipo, fuentes, vigencia, usos, mínimo de evidencias y estado published.
+Tipos estables duran hasta retirada; dinámicos, relativos y agregados usan TTL 1-365 días. Los
+subjetivos exigen customerAggregate y mínimo cinco; el catálogo aplica 5-15 según dimensión.
+
+### Fuentes, evidencia y restricciones
+
+Seis fuentes: venueDeclaration, structuredCatalog, operational, customerAggregate, verifiedAudit e
+imageAuxiliary, cada una con clase de fiabilidad. Imagen solo auxilia estilo, luz o espacio visible.
+Accesibilidad requiere declaración/auditoría y describe instalaciones, no discapacidad. Agregados no
+almacenan texto; evidencias/procedencia se implementan en 19.14 y ponderación en 19.15.
+
+Los usos se cierran a profile, filtering, ranking y explanation. Una impresión no cuenta como
+preferencia positiva. Códigos y traducciones podrán producir explicaciones, pero no afirmaciones
+psicológicas ni causales.
+
+### Prohibiciones, privacidad y equidad
+
+Se enumeran 24 prohibiciones: salud, atributos sensibles, demografía inferida, vigilancia, perfil
+psicológico, higiene/seguridad no demostradas y evaluación individual de trabajadores. No pueden
+solaparse con publicados, convertirse en candidatos ni actuar como features, filtros o explicaciones.
+La lista operacionaliza RNF-002 sin contener datos personales ni evidencia real.
+
+### Contratos, validación y evolución
+
+demand-ontology.v1.schema.json usa JSON Schema 2020-12, additionalProperties=false, enums, rangos y
+cardinalidad 30-50. ontology_v1.py usa Pydantic estricto y añade familias completas, códigos únicos,
+fuentes conocidas, padre existente de la misma familia, grafo sin ciclos, vigencia coherente,
+subjetivo con agregado/muestra y catálogo disjunto de prohibiciones.
+
+El JSON es el seed de 19.13, pero esta tarea no crea migración, entidad, DAO, API ni panel. Cambiar
+significado exige nueva versión; candidatos descubiertos no modifican v1.
+
+### Archivos, tests y evidencia
+
+- Creados catálogo personal-care.v1.json, JSON Schema y modelo ontology_v1.py.
+- Añadidos cuatro tests de ontología y documentación en README, arquitectura y .kiro.
+- python -m json.tool valida ambos JSON.
+- PYTHONPATH=src python -m unittest discover -s tests -v: ocho tests correctos, cuatro históricos
+  de eventos y cuatro nuevos de ontología.
+- Casos negativos: fuente desconocida, ciclo parental y dinámico sin TTL; también se comprueban 44
+  atributos, seis familias/fuentes, bilingüismo y prohibiciones críticas.
+- Prettier dirigido: correcto. El validador global de español conserva su baseline histórico en
+  documentos, migraciones, fixtures, emails y catálogo web; no señala ningún archivo de 19.12.
+- No hay migración, endpoint, UI, permiso, log ni cambio de infraestructura.
+
+### Riesgos y siguientes pasos
+
+Los 44 atributos son una hipótesis gobernada, no un modelo aprendido ni garantía de inventario. La
+calidad de traducciones y definiciones debe revisarse con Product/Privacy antes de experimento. El
+workflow de revisión/fusión/retirada y auditoría admin pertenece a 19.13; evidencia y perfil a 19.14;
+agregación a 19.15; extracción y modelado a fase 20.

@@ -2885,6 +2885,14 @@ Los pesos del PDF (`local 0,10`, `texto 0,15`, `imagen 0,10`, `reseña 0,30`, `c
 calibrarse y versionarse. La autodeclaración nunca domina; las imágenes solo soportan dimensiones
 visuales. Un tema descubierto por BERTopic/HDBSCAN/UMAP permanece candidato hasta revisión humana.
 
+Implementación 19.12: personal-care.v1 materializa 44 atributos en ambiente (7), espacio (6),
+experiencia (7), oferta (10), operación (8) y accesibilidad (6). Cada código tiene jerarquía,
+nombre/definición ES/EN, tipo, fuentes, vigencia, usos, mínimo de evidencias y estado. Seis fuentes
+gobernadas y 24 prohibiciones cubren salud, sensibilidad, demografía inferida, vigilancia,
+afirmaciones no sustentadas y equidad laboral. JSON Schema aporta interoperabilidad y Pydantic
+valida unicidad, ciclos, padres, fuentes, TTL y separación de prohibiciones. 19.13 persistirá este
+artefacto y añadirá workflow; no se crean tablas en 19.12.
+
 ### 14.7 Texto, embeddings e imágenes
 
 Pipeline de texto por madurez:

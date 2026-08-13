@@ -26,6 +26,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `demand-instrumentation.md`: cobertura web/backend, proxy server-only, emisión post-commit, aislamiento y pérdida best-effort observable.
   - `recommendation-impression-integrity.md`: validación transaccional de candidatos visibles, datos observables e idempotencia de impresiones.
   - `demand-event-correlation.md`: UUID de recorrido, propagación web/API y reconciliación minimizada entre productores.
+  - `personal-care-demand-ontology.md`: ontología v1 de 44 atributos, fuentes, vigencia, jerarquía y prohibiciones.
   - `visual-system.md`: tokens, tema MUI, estados, iconografía y catálogo visual.
 - `configuration.md`: variables, perfiles y reglas de seguridad por entorno.
 - `continuous-integration.md`: eventos, checks, seguridad y protección de ramas del pipeline CI.

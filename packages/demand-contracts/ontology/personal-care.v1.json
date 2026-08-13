@@ -1,0 +1,993 @@
+{
+  "ontologyVersion": "personal-care.v1",
+  "verticalCode": "personalCareIndividualAppointment",
+  "effectiveFrom": "2026-08-13",
+  "locales": ["es", "en"],
+  "families": [
+    {
+      "code": "ambience",
+      "name": { "es": "Ambiente", "en": "Ambience" },
+      "definition": {
+        "es": "Percepción agregada y rasgos observables del ambiente durante la cita.",
+        "en": "Aggregated perception and observable ambience traits during an appointment."
+      }
+    },
+    {
+      "code": "space",
+      "name": { "es": "Espacio", "en": "Space" },
+      "definition": {
+        "es": "Configuración física verificable del establecimiento y sus zonas de atención.",
+        "en": "Verifiable physical configuration of the venue and its service areas."
+      }
+    },
+    {
+      "code": "experience",
+      "name": { "es": "Experiencia", "en": "Experience" },
+      "definition": {
+        "es": "Cualidades del recorrido de servicio observadas o agregadas con muestra suficiente.",
+        "en": "Service journey qualities observed or aggregated with sufficient evidence."
+      }
+    },
+    {
+      "code": "offer",
+      "name": { "es": "Oferta", "en": "Offer" },
+      "definition": {
+        "es": "Familias de servicios estructurados que pueden reservarse en el piloto.",
+        "en": "Structured service families that can be booked in the pilot."
+      }
+    },
+    {
+      "code": "operation",
+      "name": { "es": "Operación", "en": "Operation" },
+      "definition": {
+        "es": "Condiciones transaccionales, temporales y de disponibilidad derivadas del sistema.",
+        "en": "Transactional, temporal and availability conditions derived from the system."
+      }
+    },
+    {
+      "code": "accessibility",
+      "name": { "es": "Accesibilidad", "en": "Accessibility" },
+      "definition": {
+        "es": "Adaptaciones declaradas o verificadas sin inferir discapacidad de una persona.",
+        "en": "Declared or verified accommodations without inferring a person's disability."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "code": "venueDeclaration",
+      "name": { "es": "Declaración del local", "en": "Venue declaration" },
+      "reliabilityClass": "declared"
+    },
+    {
+      "code": "structuredCatalog",
+      "name": { "es": "Catálogo estructurado", "en": "Structured catalog" },
+      "reliabilityClass": "verified"
+    },
+    {
+      "code": "operational",
+      "name": { "es": "Datos operativos", "en": "Operational data" },
+      "reliabilityClass": "transactional"
+    },
+    {
+      "code": "customerAggregate",
+      "name": { "es": "Agregado de clientes", "en": "Customer aggregate" },
+      "reliabilityClass": "aggregated"
+    },
+    {
+      "code": "verifiedAudit",
+      "name": { "es": "Auditoría verificada", "en": "Verified audit" },
+      "reliabilityClass": "verified"
+    },
+    {
+      "code": "imageAuxiliary",
+      "name": { "es": "Imagen auxiliar", "en": "Auxiliary image" },
+      "reliabilityClass": "auxiliary"
+    }
+  ],
+  "attributes": [
+    {
+      "code": "calmAtmosphere",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Ambiente tranquilo", "en": "Calm atmosphere" },
+      "definition": {
+        "es": "Percepción agregada de calma durante el servicio, sin inferir rasgos psicológicos.",
+        "en": "Aggregated perception of calm during service without psychological inference."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 90 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 10,
+      "status": "published"
+    },
+    {
+      "code": "livelyAtmosphere",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Ambiente animado", "en": "Lively atmosphere" },
+      "definition": {
+        "es": "Percepción agregada de actividad ambiental durante la cita.",
+        "en": "Aggregated perception of environmental activity during the appointment."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 90 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 10,
+      "status": "published"
+    },
+    {
+      "code": "modernStyle",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Estilo moderno", "en": "Modern style" },
+      "definition": {
+        "es": "Estética visual moderna declarada y apoyada de forma auxiliar por imágenes.",
+        "en": "Declared modern visual style with auxiliary image support."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["venueDeclaration", "customerAggregate", "imageAuxiliary"],
+      "validity": { "mode": "ttl", "ttlDays": 365 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 5,
+      "status": "published"
+    },
+    {
+      "code": "classicStyle",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Estilo clásico", "en": "Classic style" },
+      "definition": {
+        "es": "Estética visual clásica declarada y apoyada de forma auxiliar por imágenes.",
+        "en": "Declared classic visual style with auxiliary image support."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["venueDeclaration", "customerAggregate", "imageAuxiliary"],
+      "validity": { "mode": "ttl", "ttlDays": 365 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 5,
+      "status": "published"
+    },
+    {
+      "code": "naturalLight",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Luz natural visible", "en": "Visible natural light" },
+      "definition": {
+        "es": "Presencia verificable de luz natural en las zonas mostradas al público.",
+        "en": "Verifiable natural light in areas shown to the public."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit", "imageAuxiliary"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "lowNoiseAppointments",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Citas de baja sonoridad", "en": "Low-noise appointments" },
+      "definition": {
+        "es": "Franjas declaradas y operadas con medidas objetivas para reducir ruido ambiental.",
+        "en": "Declared and operated slots with objective measures to reduce ambient noise."
+      },
+      "type": "dynamic",
+      "allowedSources": ["venueDeclaration", "operational"],
+      "validity": { "mode": "ttl", "ttlDays": 30 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 3,
+      "status": "published"
+    },
+    {
+      "code": "privateExperience",
+      "family": "ambience",
+      "parentCode": null,
+      "name": { "es": "Experiencia privada", "en": "Private experience" },
+      "definition": {
+        "es": "Percepción agregada de privacidad basada en el servicio, no en la identidad del cliente.",
+        "en": "Aggregated privacy perception based on service, not customer identity."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 90 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 10,
+      "status": "published"
+    },
+
+    {
+      "code": "privateCabin",
+      "family": "space",
+      "parentCode": null,
+      "name": { "es": "Cabina privada", "en": "Private treatment room" },
+      "definition": {
+        "es": "Zona de tratamiento individual separada visualmente de otras estaciones.",
+        "en": "Individual treatment area visually separated from other stations."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "dedicatedWaitingArea",
+      "family": "space",
+      "parentCode": null,
+      "name": { "es": "Zona de espera dedicada", "en": "Dedicated waiting area" },
+      "definition": {
+        "es": "Espacio identificable destinado a esperar antes de la cita.",
+        "en": "Identifiable area intended for waiting before the appointment."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit", "imageAuxiliary"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "outdoorWaitingArea",
+      "family": "space",
+      "parentCode": null,
+      "name": { "es": "Espera exterior", "en": "Outdoor waiting area" },
+      "definition": {
+        "es": "Zona exterior habilitada y declarada para la espera previa.",
+        "en": "Declared outdoor area available for waiting before service."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "climateControlledSpace",
+      "family": "space",
+      "parentCode": null,
+      "name": { "es": "Espacio climatizado", "en": "Climate-controlled space" },
+      "definition": {
+        "es": "Zona de atención con climatización operativa declarada o verificada.",
+        "en": "Service area with declared or verified operational climate control."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "individualServiceStation",
+      "family": "space",
+      "parentCode": null,
+      "name": { "es": "Puesto individual", "en": "Individual service station" },
+      "definition": {
+        "es": "Puesto delimitado para atender una cita individual cada vez.",
+        "en": "Defined station serving one individual appointment at a time."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "structuredCatalog", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "spaciousServiceArea",
+      "family": "space",
+      "parentCode": null,
+      "name": { "es": "Zona de atención amplia", "en": "Spacious service area" },
+      "definition": {
+        "es": "Percepción agregada de amplitud con muestra suficiente, sin sustituir medidas de accesibilidad.",
+        "en": "Aggregated perception of spaciousness that does not replace accessibility measurements."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 180 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 10,
+      "status": "published"
+    },
+
+    {
+      "code": "consultationBeforeService",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Consulta previa", "en": "Pre-service consultation" },
+      "definition": {
+        "es": "El flujo estructurado incluye una consulta antes de iniciar el servicio.",
+        "en": "The structured journey includes a consultation before service starts."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "appointmentPunctuality",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Puntualidad de citas", "en": "Appointment punctuality" },
+      "definition": {
+        "es": "Cumplimiento agregado del inicio programado medido sin evaluar a trabajadores individuales.",
+        "en": "Aggregated scheduled start compliance without evaluating individual workers."
+      },
+      "type": "relative",
+      "allowedSources": ["operational", "customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 30 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 10,
+      "status": "published"
+    },
+    {
+      "code": "staffAttentiveness",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Atención percibida", "en": "Perceived attentiveness" },
+      "definition": {
+        "es": "Valoración agregada de atención durante el servicio, nunca score de un profesional.",
+        "en": "Aggregated service attentiveness, never an individual professional score."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 90 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 10,
+      "status": "published"
+    },
+    {
+      "code": "serviceConsistency",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Consistencia del servicio", "en": "Service consistency" },
+      "definition": {
+        "es": "Acuerdo agregado sobre consistencia entre citas, sin ranking laboral individual.",
+        "en": "Aggregated agreement on consistency across appointments without worker ranking."
+      },
+      "type": "subjectiveAggregate",
+      "allowedSources": ["customerAggregate"],
+      "validity": { "mode": "ttl", "ttlDays": 180 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 15,
+      "status": "published"
+    },
+    {
+      "code": "multilingualService",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Atención multilingüe", "en": "Multilingual service" },
+      "definition": {
+        "es": "Idiomas de atención declarados por el local como capacidad del servicio.",
+        "en": "Service languages declared by the venue as an offered capability."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "professionalChoice",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Elección de profesional", "en": "Professional selection" },
+      "definition": {
+        "es": "La reserva permite elegir un recurso profesional activo compatible.",
+        "en": "Booking allows selection of a compatible active professional resource."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog", "operational"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "transparentServiceInformation",
+      "family": "experience",
+      "parentCode": null,
+      "name": { "es": "Información clara del servicio", "en": "Clear service information" },
+      "definition": {
+        "es": "La ficha publica duración, alcance y condiciones estructuradas del servicio.",
+        "en": "The profile publishes structured duration, scope and service conditions."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+
+    {
+      "code": "hairServices",
+      "family": "offer",
+      "parentCode": null,
+      "name": { "es": "Servicios capilares", "en": "Hair services" },
+      "definition": {
+        "es": "Familia estructurada de servicios para cabello dentro del piloto.",
+        "en": "Structured family of hair services within the pilot."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "hairCutService",
+      "family": "offer",
+      "parentCode": "hairServices",
+      "name": { "es": "Corte de cabello", "en": "Haircut service" },
+      "definition": {
+        "es": "Servicio reservable de corte con duración y capacidad estructuradas.",
+        "en": "Bookable haircut with structured duration and capacity."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "hairColorService",
+      "family": "offer",
+      "parentCode": "hairServices",
+      "name": { "es": "Coloración capilar", "en": "Hair colour service" },
+      "definition": {
+        "es": "Servicio reservable de coloración sin inferir condición o tratamiento médico.",
+        "en": "Bookable hair colour service without medical condition inference."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "hairStylingService",
+      "family": "offer",
+      "parentCode": "hairServices",
+      "name": { "es": "Peinado", "en": "Hair styling service" },
+      "definition": {
+        "es": "Servicio reservable de peinado o acabado con duración conocida.",
+        "en": "Bookable styling or finishing service with known duration."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "hairTreatmentService",
+      "family": "offer",
+      "parentCode": "hairServices",
+      "name": { "es": "Cuidado capilar", "en": "Hair care service" },
+      "definition": {
+        "es": "Servicio cosmético capilar estructurado, excluyendo finalidad clínica.",
+        "en": "Structured cosmetic hair care service excluding clinical purposes."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "skinCareServices",
+      "family": "offer",
+      "parentCode": null,
+      "name": { "es": "Servicios de cuidado estético", "en": "Aesthetic care services" },
+      "definition": {
+        "es": "Familia cosmética no clínica de tratamientos faciales y corporales.",
+        "en": "Non-clinical cosmetic family of facial and body treatments."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "facialTreatmentService",
+      "family": "offer",
+      "parentCode": "skinCareServices",
+      "name": { "es": "Tratamiento facial estético", "en": "Aesthetic facial treatment" },
+      "definition": {
+        "es": "Tratamiento facial cosmético reservable sin diagnóstico ni finalidad sanitaria.",
+        "en": "Bookable cosmetic facial treatment without diagnosis or healthcare purpose."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "bodyTreatmentService",
+      "family": "offer",
+      "parentCode": "skinCareServices",
+      "name": { "es": "Tratamiento corporal estético", "en": "Aesthetic body treatment" },
+      "definition": {
+        "es": "Tratamiento corporal cosmético reservable, fuera de salud y rehabilitación.",
+        "en": "Bookable cosmetic body treatment outside healthcare and rehabilitation."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "nailService",
+      "family": "offer",
+      "parentCode": null,
+      "name": { "es": "Servicio de uñas", "en": "Nail service" },
+      "definition": {
+        "es": "Servicio estético reservable de manicura, pedicura o acabado de uñas.",
+        "en": "Bookable manicure, pedicure or nail finishing service."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "makeupService",
+      "family": "offer",
+      "parentCode": null,
+      "name": { "es": "Servicio de maquillaje", "en": "Makeup service" },
+      "definition": {
+        "es": "Servicio cosmético reservable de maquillaje con duración definida.",
+        "en": "Bookable cosmetic makeup service with defined duration."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+
+    {
+      "code": "exactTimeAppointments",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Citas a hora exacta", "en": "Exact-time appointments" },
+      "definition": {
+        "es": "El servicio se reserva para una hora concreta y no solo por día.",
+        "en": "The service is booked for a specific time rather than day-only."
+      },
+      "type": "stable",
+      "allowedSources": ["structuredCatalog", "operational"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "sameDayAvailability",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Disponibilidad hoy", "en": "Same-day availability" },
+      "definition": {
+        "es": "Existe al menos una franja realmente reservable en la fecha actual.",
+        "en": "At least one genuinely bookable slot exists on the current date."
+      },
+      "type": "dynamic",
+      "allowedSources": ["operational"],
+      "validity": { "mode": "ttl", "ttlDays": 1 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "eveningAvailability",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Disponibilidad de tarde", "en": "Evening availability" },
+      "definition": {
+        "es": "Existen franjas reservables en el periodo de tarde definido por locale.",
+        "en": "Bookable slots exist in the locale-defined evening period."
+      },
+      "type": "dynamic",
+      "allowedSources": ["operational"],
+      "validity": { "mode": "ttl", "ttlDays": 7 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "weekendAvailability",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Disponibilidad en fin de semana", "en": "Weekend availability" },
+      "definition": {
+        "es": "Existen franjas reservables durante sábado o domingo.",
+        "en": "Bookable slots exist on Saturday or Sunday."
+      },
+      "type": "dynamic",
+      "allowedSources": ["operational"],
+      "validity": { "mode": "ttl", "ttlDays": 7 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "averageAppointmentDuration",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Duración media de cita", "en": "Average appointment duration" },
+      "definition": {
+        "es": "Duración relativa calculada desde servicios activos comparables del local.",
+        "en": "Relative duration calculated from comparable active venue services."
+      },
+      "type": "relative",
+      "allowedSources": ["structuredCatalog", "operational"],
+      "validity": { "mode": "ttl", "ttlDays": 30 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 3,
+      "status": "published"
+    },
+    {
+      "code": "lowDemandTimeAvailability",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Disponibilidad en horas valle", "en": "Off-peak availability" },
+      "definition": {
+        "es": "Capacidad reservable en periodos valle definidos por una política versionada.",
+        "en": "Bookable capacity in off-peak periods defined by a versioned policy."
+      },
+      "type": "dynamic",
+      "allowedSources": ["operational"],
+      "validity": { "mode": "ttl", "ttlDays": 1 },
+      "allowedUses": ["profile", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "onlineBooking",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Reserva online", "en": "Online booking" },
+      "definition": {
+        "es": "El local permite completar una reserva operativa dentro de Reserly.",
+        "en": "The venue allows an operational booking to be completed within Reserly."
+      },
+      "type": "stable",
+      "allowedSources": ["operational"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "flexibleCancellationPolicy",
+      "family": "operation",
+      "parentCode": null,
+      "name": { "es": "Cancelación flexible", "en": "Flexible cancellation policy" },
+      "definition": {
+        "es": "Política relativa calculada desde el plazo estructurado y versionado del local.",
+        "en": "Relative policy calculated from the venue's structured versioned notice window."
+      },
+      "type": "relative",
+      "allowedSources": ["structuredCatalog", "operational"],
+      "validity": { "mode": "ttl", "ttlDays": 30 },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+
+    {
+      "code": "stepFreeAccess",
+      "family": "accessibility",
+      "parentCode": null,
+      "name": { "es": "Acceso sin escalones", "en": "Step-free access" },
+      "definition": {
+        "es": "Entrada accesible sin escalones declarada o comprobada físicamente.",
+        "en": "Declared or physically verified step-free entrance."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "accessibleRestroom",
+      "family": "accessibility",
+      "parentCode": null,
+      "name": { "es": "Aseo accesible", "en": "Accessible restroom" },
+      "definition": {
+        "es": "Aseo adaptado declarado o verificado mediante criterios objetivos.",
+        "en": "Adapted restroom declared or verified against objective criteria."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "accessibleParking",
+      "family": "accessibility",
+      "parentCode": null,
+      "name": { "es": "Aparcamiento accesible", "en": "Accessible parking" },
+      "definition": {
+        "es": "Plaza accesible asociada al local y declarada o verificada.",
+        "en": "Accessible parking space associated with the venue and declared or verified."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "elevatorAccess",
+      "family": "accessibility",
+      "parentCode": null,
+      "name": { "es": "Acceso mediante ascensor", "en": "Lift access" },
+      "definition": {
+        "es": "Ascensor operativo para alcanzar la zona de atención cuando existe desnivel.",
+        "en": "Operational lift to reach the service area where levels differ."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "wheelchairManeuveringSpace",
+      "family": "accessibility",
+      "parentCode": null,
+      "name": { "es": "Espacio de maniobra", "en": "Wheelchair manoeuvring space" },
+      "definition": {
+        "es": "Espacio de giro y circulación verificado con medidas objetivas.",
+        "en": "Turning and circulation space verified with objective measurements."
+      },
+      "type": "stable",
+      "allowedSources": ["verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    },
+    {
+      "code": "accessibleCommunication",
+      "family": "accessibility",
+      "parentCode": null,
+      "name": { "es": "Comunicación accesible", "en": "Accessible communication" },
+      "definition": {
+        "es": "Canales o adaptaciones de comunicación declarados como servicio, sin inferir discapacidad.",
+        "en": "Communication channels or accommodations declared as a service without disability inference."
+      },
+      "type": "stable",
+      "allowedSources": ["venueDeclaration", "verifiedAudit"],
+      "validity": { "mode": "untilRetired", "ttlDays": null },
+      "allowedUses": ["profile", "filtering", "ranking", "explanation"],
+      "minimumEvidence": 1,
+      "status": "published"
+    }
+  ],
+  "prohibitedAttributes": [
+    {
+      "code": "medicalCondition",
+      "category": "health",
+      "reason": {
+        "es": "Revelaría o inferiría una condición de salud fuera del vertical aprobado.",
+        "en": "It would reveal or infer a health condition outside the approved vertical."
+      }
+    },
+    {
+      "code": "medicalTreatmentIntent",
+      "category": "health",
+      "reason": {
+        "es": "Convertiría una necesidad cosmética en una inferencia clínica no autorizada.",
+        "en": "It would turn a cosmetic need into an unauthorised clinical inference."
+      }
+    },
+    {
+      "code": "allergyInference",
+      "category": "health",
+      "reason": {
+        "es": "Las alergias no pueden inferirse desde comportamiento, texto o servicios.",
+        "en": "Allergies must not be inferred from behaviour, text or services."
+      }
+    },
+    {
+      "code": "pregnancyInference",
+      "category": "health",
+      "reason": {
+        "es": "El embarazo es información de salud sensible y queda excluido.",
+        "en": "Pregnancy is sensitive health information and is excluded."
+      }
+    },
+    {
+      "code": "disabilityInference",
+      "category": "health",
+      "reason": {
+        "es": "La accesibilidad describe el local, nunca la discapacidad de una persona.",
+        "en": "Accessibility describes the venue, never a person's disability."
+      }
+    },
+    {
+      "code": "ethnicityInference",
+      "category": "sensitive",
+      "reason": {
+        "es": "No se permite inferir origen racial o étnico.",
+        "en": "Racial or ethnic origin inference is prohibited."
+      }
+    },
+    {
+      "code": "religiousBelief",
+      "category": "sensitive",
+      "reason": {
+        "es": "No se permite inferir religión o creencias.",
+        "en": "Religion or belief inference is prohibited."
+      }
+    },
+    {
+      "code": "sexualOrientation",
+      "category": "sensitive",
+      "reason": {
+        "es": "No se permite inferir orientación sexual.",
+        "en": "Sexual orientation inference is prohibited."
+      }
+    },
+    {
+      "code": "politicalOpinion",
+      "category": "sensitive",
+      "reason": {
+        "es": "No se permite inferir opinión o afinidad política.",
+        "en": "Political opinion or affiliation inference is prohibited."
+      }
+    },
+    {
+      "code": "tradeUnionMembership",
+      "category": "sensitive",
+      "reason": {
+        "es": "No se permite inferir afiliación sindical.",
+        "en": "Trade union membership inference is prohibited."
+      }
+    },
+    {
+      "code": "biometricIdentity",
+      "category": "sensitive",
+      "reason": {
+        "es": "Imágenes y comportamiento no pueden crear identificación biométrica.",
+        "en": "Images and behaviour must not create biometric identification."
+      }
+    },
+    {
+      "code": "inferredGender",
+      "category": "demographic",
+      "reason": {
+        "es": "El género no se infiere por nombre, servicio, imagen o conducta.",
+        "en": "Gender is not inferred from name, service, image or behaviour."
+      }
+    },
+    {
+      "code": "inferredAge",
+      "category": "demographic",
+      "reason": {
+        "es": "La edad no se infiere y los menores están fuera del piloto.",
+        "en": "Age is not inferred and minors are outside the pilot."
+      }
+    },
+    {
+      "code": "familyStatusInference",
+      "category": "demographic",
+      "reason": {
+        "es": "No se infiere estado familiar o convivencia.",
+        "en": "Family or household status is not inferred."
+      }
+    },
+    {
+      "code": "socioeconomicStatus",
+      "category": "demographic",
+      "reason": {
+        "es": "Precio, zona o dispositivo no pueden actuar como proxy socioeconómico.",
+        "en": "Price, area or device must not act as socioeconomic proxies."
+      }
+    },
+    {
+      "code": "financialVulnerability",
+      "category": "sensitive",
+      "reason": {
+        "es": "No se infiere vulnerabilidad económica para ranking o promociones.",
+        "en": "Financial vulnerability is not inferred for ranking or promotions."
+      }
+    },
+    {
+      "code": "preciseLocationHistory",
+      "category": "behavioralSurveillance",
+      "reason": {
+        "es": "Solo se admite zona aproximada actual con finalidad válida.",
+        "en": "Only current approximate area is allowed for a valid purpose."
+      }
+    },
+    {
+      "code": "deviceFingerprint",
+      "category": "behavioralSurveillance",
+      "reason": {
+        "es": "Queda prohibido identificar mediante fingerprinting.",
+        "en": "Identification through fingerprinting is prohibited."
+      }
+    },
+    {
+      "code": "crossSiteBehavior",
+      "category": "behavioralSurveillance",
+      "reason": {
+        "es": "No se incorporan brokers ni seguimiento entre sitios.",
+        "en": "Data brokers and cross-site tracking are excluded."
+      }
+    },
+    {
+      "code": "psychologicalProfile",
+      "category": "unsupportedInference",
+      "reason": {
+        "es": "Las preferencias no se presentan como rasgos psicológicos.",
+        "en": "Preferences must not be presented as psychological traits."
+      }
+    },
+    {
+      "code": "hygieneInference",
+      "category": "unsupportedInference",
+      "reason": {
+        "es": "Imágenes o reseñas no prueban limpieza o higiene de forma suficiente.",
+        "en": "Images or reviews do not sufficiently prove cleanliness or hygiene."
+      }
+    },
+    {
+      "code": "safetyInference",
+      "category": "unsupportedInference",
+      "reason": {
+        "es": "No se afirma seguridad desde señales visuales o agregados subjetivos.",
+        "en": "Safety is not asserted from visual signals or subjective aggregates."
+      }
+    },
+    {
+      "code": "individualWorkerPerformance",
+      "category": "workerFairness",
+      "reason": {
+        "es": "El piloto no puntúa ni ordena profesionales individuales por clientes.",
+        "en": "The pilot does not score or rank individual professionals from customer data."
+      }
+    },
+    {
+      "code": "workerSensitiveTrait",
+      "category": "workerFairness",
+      "reason": {
+        "es": "No se infieren rasgos sensibles de trabajadores para asignación o exposición.",
+        "en": "Worker sensitive traits are not inferred for allocation or exposure."
+      }
+    }
+  ]
+}

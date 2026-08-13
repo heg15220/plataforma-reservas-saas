@@ -9249,3 +9249,25 @@ Fuente de verdad del avance:
   - Backend sigue siendo autoridad; correlación no equivale a resultado ni causalidad.
   - Las trazas parciales se conservan como estado medible y no se unen mediante PII o fingerprint.
   - La rotación ocurre al iniciar una búsqueda; la pestaña mantiene el recorrido posterior.
+
+# Conversación 206 - Ontología gobernada del vertical de cuidado personal
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se definió personal-care.v1 con 44 atributos dentro de seis familias para peluquería y estética
+    con cita individual.
+  - Cada atributo incorpora jerarquía, textos ES/EN, tipo, fuentes permitidas, vigencia, usos,
+    mínimo de evidencias y estado publicado.
+  - Se gobernaron seis fuentes y 24 prohibiciones; JSON Schema y Pydantic validan el catálogo.
+- Archivos modificados:
+  - Catálogo JSON, JSON Schema, modelo Pydantic y cuatro tests de ontología en demand-contracts.
+  - README del paquete y docs/architecture/personal-care-demand-ontology.md.
+  - Índice, diseño, tareas, seguimiento y documento técnico único.
+- Requisitos impactados: RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015.
+- Tareas impactadas: 19.12; prepara 19.13, 19.14, 19.15, 20.3, 20.7 y 20.8.
+- Tareas completadas: 19.12.
+- Siguiente tarea pendiente recomendada: 17.1; en fase 19, 19.13.
+- Decisiones o aclaraciones relevantes:
+  - Se usa el vertical aprobado en 19.1; no se amplía el piloto.
+  - Imagen es fuente auxiliar visual y accesibilidad describe el local, nunca a la persona.
+  - El catálogo es seed gobernado; persistencia y workflow pertenecen a 19.13.

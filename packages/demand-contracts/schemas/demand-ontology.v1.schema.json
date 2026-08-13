@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reserly.example/schemas/demand-ontology.v1.schema.json",
+  "title": "Reserly Demand Ontology v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ontologyVersion",
+    "verticalCode",
+    "effectiveFrom",
+    "locales",
+    "families",
+    "sources",
+    "attributes",
+    "prohibitedAttributes"
+  ],
+  "properties": {
+    "ontologyVersion": { "const": "personal-care.v1" },
+    "verticalCode": { "const": "personalCareIndividualAppointment" },
+    "effectiveFrom": { "type": "string", "format": "date" },
+    "locales": { "const": ["es", "en"] },
+    "families": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/family" }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "attributes": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/attribute" }
+    },
+    "prohibitedAttributes": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/prohibited" }
+    }
+  },
+  "$defs": {
+    "code": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{1,63}$" },
+    "localized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["es", "en"],
+      "properties": {
+        "es": { "type": "string", "minLength": 3, "maxLength": 240 },
+        "en": { "type": "string", "minLength": 3, "maxLength": 240 }
+      }
+    },
+    "family": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "name", "definition"],
+      "properties": {
+        "code": {
+          "enum": ["ambience", "space", "experience", "offer", "operation", "accessibility"]
+        },
+        "name": { "$ref": "#/$defs/localized" },
+        "definition": { "$ref": "#/$defs/localized" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "name", "reliabilityClass"],
+      "properties": {
+        "code": {
+          "enum": [
+            "venueDeclaration",
+            "structuredCatalog",
+            "operational",
+            "customerAggregate",
+            "verifiedAudit",
+            "imageAuxiliary"
+          ]
+        },
+        "name": { "$ref": "#/$defs/localized" },
+        "reliabilityClass": {
+          "enum": ["declared", "transactional", "aggregated", "verified", "auxiliary"]
+        }
+      }
+    },
+    "validity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "ttlDays"],
+      "properties": {
+        "mode": { "enum": ["untilRetired", "ttl"] },
+        "ttlDays": { "type": ["integer", "null"], "minimum": 1, "maximum": 365 }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "family",
+        "parentCode",
+        "name",
+        "definition",
+        "type",
+        "allowedSources",
+        "validity",
+        "allowedUses",
+        "minimumEvidence",
+        "status"
+      ],
+      "properties": {
+        "code": { "$ref": "#/$defs/code" },
+        "family": {
+          "enum": ["ambience", "space", "experience", "offer", "operation", "accessibility"]
+        },
+        "parentCode": { "anyOf": [{ "$ref": "#/$defs/code" }, { "type": "null" }] },
+        "name": { "$ref": "#/$defs/localized" },
+        "definition": { "$ref": "#/$defs/localized" },
+        "type": { "enum": ["stable", "dynamic", "relative", "subjectiveAggregate"] },
+        "allowedSources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/code" }
+        },
+        "validity": { "$ref": "#/$defs/validity" },
+        "allowedUses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["profile", "filtering", "ranking", "explanation"] }
+        },
+        "minimumEvidence": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "status": { "const": "published" }
+      }
+    },
+    "prohibited": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "category", "reason"],
+      "properties": {
+        "code": { "$ref": "#/$defs/code" },
+        "category": {
+          "enum": [
+            "sensitive",
+            "health",
+            "demographic",
+            "behavioralSurveillance",
+            "unsupportedInference",
+            "workerFairness"
+          ]
+        },
+        "reason": { "$ref": "#/$defs/localized" }
+      }
+    }
+  }
+}
