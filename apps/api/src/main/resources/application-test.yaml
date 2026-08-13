@@ -26,5 +26,12 @@ reserly:
     secureCookies: false
   rate-limit:
     enabled: false
+  demand:
+    ingestion:
+      enabled: true
+      serviceId: test-producer
+      serviceToken: test-demand-token-at-least-32-characters
+      maximumBatchSize: 100
+      retention: 90d
   features:
     realPaymentsEnabled: false

@@ -35393,3 +35393,59 @@ La primera ejecución de tests detectó un fixture que ordenaba categorías por 
 y el comportamiento `UNKNOWN` de PostgreSQL para parejas experiment/variant parcialmente nulas. Se
 corrigieron el fixture y los `CHECK` explícitos; la repetición pasó. Generación de candidatos,
 ranking, impresiones elegibles y explicaciones pertenecen a 19.10/fase 20.
+
+## Iteración 2026-08-13 - Tarea 19.8: API interna idempotente de eventos
+
+### Objetivo, requisitos y arquitectura
+
+- Tarea exacta: `19.8`.
+- Objetivo: exponer una frontera interna autenticada para eventos/lotes con validación fail-closed,
+  cuota distribuida, idempotencia, errores opacos, métricas y cero payloads en logs.
+- Requisitos: `RF-033`, `RF-034`, `RNF-001`-`RNF-003`, `RNF-005`, `RNF-006`, `RNF-014`, `RNF-015`
+  y diseño 14.4/14.14.
+
+`DemandServiceAuthenticationFilter` solo procesa `/api/internal/demand/v1/events`, compara
+`X-Reserly-Service-Token` mediante `MessageDigest.isEqual` y crea `ROLE_DEMAND_INGESTOR` con principal
+técnico. Security exige ese rol antes del controlador. El secreto/configuración se valida con
+`DemandIngestionProperties`: identificador cerrado, token mínimo 32, lote 1-100 y retención 1-365d.
+Staging/producción deben inyectar el secreto por entorno/gestor y TLS.
+
+### Contrato, validación y flujo
+
+El request es un lote de `EventIngestionRequest`; el response informa accepted/duplicate por
+`eventId`. Bean Validation protege presencia/formato y Jackson rechaza propiedades desconocidas.
+El servicio posee una representación Java inmutable del catálogo v1: familia, productor e IDs
+permitidos para los 22 eventos. Valida finalidad, ocurrencia, claves por familia, valores planos,
+enteros/rangos, códigos, fechas, instantes, UUID contextuales, importe/moneda, booleanos y 4096 bytes.
+
+Identidades opcionales se buscan y revalidan contra versión de consentimiento, revocación, vigencia
+y retención. Solo tras validar todo el lote se escribe. `receivedAt` es servidor y retención se deriva
+de configuración. Una fila previa devuelve duplicate; `saveAndFlush` y la unicidad V46 resuelven la
+carrera recuperando el ganador. Un fallo inesperado después de aceptar elementos puede producir
+aceptación parcial; el consumidor reintenta el lote con los mismos IDs y converge sin duplicados.
+
+### Cuotas, errores, seguridad y observabilidad
+
+`DEMAND_EVENT_INGESTION` amplía el rate limiter Redis atómico. Discrimina por serviceId y la clave
+Redis solo contiene SHA-256. Redis caído falla cerrado. Configuración inicial: 600 peticiones/minuto,
+independiente del máximo 100 eventos/lote.
+
+El advice reduce contrato/JSON/constraint a `EVENT_INVALID`; disabled devuelve 503 estable y cuota
+mantiene 429/503 global. No se devuelven campos, valores ni códigos internos. Ninguna clase nueva
+invoca logger. Actuator aporta Micrometer; contadores usan result y reject-code allowlisted, sin IDs,
+contexto o PII.
+
+### Archivos, tests, limitaciones y evidencia
+
+- Código: 14 tipos bajo `demand.ingestion`; cambios en security y rate limit.
+- Configuración: Actuator, YAML base/test y ejemplo local con token placeholder no productivo.
+- Tests: `DemandEventIngestionServiceTests` (3), `DemandServiceAuthenticationFilterTests` (1) y
+  `DemandEventIngestionControllerTests` (2): seis correctos.
+- Verificaciones: `mvn -q spotless:apply`, batería dirigida y `test-compile`, correctos.
+- `backend:conventions:check` mantiene las mismas 18 incidencias históricas ajenas y no señala
+  ningún archivo nuevo de `demand.ingestion`.
+- Una compilación intermedia detectó alcance de pattern variable tras un método que siempre lanza;
+  se sustituyó por cast explícito y la repetición pasó.
+
+No se implementa rotación solapada/múltiples productores, reconciliación ni dashboard. Corresponden
+a fase 20, 19.11 y 19.20. La instrumentación de superficies y resultados comienza en 19.9.

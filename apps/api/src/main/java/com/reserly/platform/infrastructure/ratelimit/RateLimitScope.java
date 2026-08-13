@@ -14,7 +14,8 @@ public enum RateLimitScope {
   RESERVATION("reservation"),
   PUBLIC_LINK("public-link"),
   REVIEW("review"),
-  BUSINESS_VERIFICATION("business-verification");
+  BUSINESS_VERIFICATION("business-verification"),
+  DEMAND_EVENT_INGESTION("demand-event-ingestion");
 
   private final String keySegment;
 

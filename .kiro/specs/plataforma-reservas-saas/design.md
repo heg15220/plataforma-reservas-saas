@@ -3069,6 +3069,12 @@ metadatos de fallback. Spring aplica timeout/circuit breaker, valida respuesta P
 candidatos no elegibles. Los errores públicos se traducen al catálogo estable existente sin reflejar
 detalles Python, librerías, features o proveedores.
 
+Implementación 19.8: `POST /api/internal/demand/v1/events` exige token de servicio comparado en
+tiempo constante y rol técnico, aplica cuota Redis por productor y admite lotes de 1-100. Spring
+revalida catálogo, IDs, contexto tipado, tamaño, finalidad y consentimiento antes de escribir.
+`eventId` resuelve reintentos y carreras; la respuesta solo expone accepted/duplicate. Errores de
+contrato son opacos, no se registra payload y Micrometer cuenta resultados/códigos acotados.
+
 ### 14.15 Herramientas y criterio de adopción
 
 | Capacidad | Herramienta inicial | Criterio |

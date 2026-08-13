@@ -9150,3 +9150,30 @@ Fuente de verdad del avance:
   - Spring sigue siendo dueño de elegibilidad y capacidad; el ranking es consultivo.
   - Se conservan candidatos inelegibles para auditoría, pero nunca pueden marcarse visibles.
   - El texto de explicación no se persiste: solo un código derivado de contribuciones reales.
+
+# Conversación 202 - API interna idempotente de eventos
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se implementó `POST /api/internal/demand/v1/events` con token de servicio, rol dedicado, lotes
+    acotados, cuota Redis y configuración validada.
+  - El servicio valida el catálogo, IDs permitidos, contexto tipado, finalidad y consentimiento antes
+    de persistir, y resuelve reintentos/race de `eventId` como duplicados.
+  - Los errores HTTP no reflejan payload ni códigos internos; Micrometer registra solo contadores
+    de baja cardinalidad y el código no contiene logging de eventos.
+  - Se añadieron seis pruebas unitarias/HTTP para aceptación, duplicado, lote inválido, PII,
+    identificadores, autenticación y error opaco.
+- Archivos modificados:
+  - Nuevo contexto `demand.ingestion`, configuración, DTOs, filtro, controlador, servicio y handler.
+  - `SecurityConfiguration`, rate limiting, `application*.yaml`, `.env.local.example` y `pom.xml`.
+  - Tres clases de tests y `docs/architecture/demand-event-ingestion-api.md`.
+  - Índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-033`, `RF-034`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-005`, `RNF-006`,
+  `RNF-014` y `RNF-015`.
+- Tareas impactadas: `19.8`; prepara `19.9`, `19.11`, `19.19`, `19.20` y `20.1`/`20.2`.
+- Tareas completadas: `19.8`.
+- Siguiente tarea pendiente recomendada: `17.1`; en fase 19, `19.9`.
+- Decisiones o aclaraciones relevantes:
+  - La ingesta usa credencial técnica, no cookie ni sesión de usuario.
+  - Un lote inválido no escribe; un fallo inesperado puede reintentarse por IDs sin duplicar.
+  - La primera versión tiene una credencial allowlisted; rotación solapada queda para fase 20.

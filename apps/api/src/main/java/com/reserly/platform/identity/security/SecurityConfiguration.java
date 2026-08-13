@@ -1,6 +1,7 @@
 package com.reserly.platform.identity.security;
 
 import com.reserly.platform.configuration.ReserlyProperties;
+import com.reserly.platform.demand.ingestion.DemandServiceAuthenticationFilter;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,7 @@ public class SecurityConfiguration {
   SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       BrowserCsrfProtectionFilter browserCsrfProtectionFilter,
+      DemandServiceAuthenticationFilter demandServiceAuthenticationFilter,
       SessionAuthenticationFilter sessionAuthenticationFilter,
       RestAuthenticationEntryPoint authenticationEntryPoint,
       RestAccessDeniedHandler accessDeniedHandler,
@@ -50,6 +52,8 @@ public class SecurityConfiguration {
         .authorizeHttpRequests(
             authorization ->
                 authorization
+                    .requestMatchers("/api/internal/demand/v1/events")
+                    .hasRole("DEMAND_INGESTOR")
                     .requestMatchers("/api/admin", "/api/admin/**")
                     .hasRole("ADMIN")
                     .requestMatchers("/api/venue/me", "/api/venue/me/**")
@@ -61,6 +65,8 @@ public class SecurityConfiguration {
                     .anyRequest()
                     .permitAll())
         .addFilterBefore(browserCsrfProtectionFilter, SessionAuthenticationFilter.class)
+        .addFilterBefore(
+            demandServiceAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }

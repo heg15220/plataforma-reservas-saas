@@ -33,7 +33,8 @@ public record RateLimitProperties(
     @NotNull @Valid Limit reservation,
     @NotNull @Valid Limit publicLink,
     @NotNull @Valid Limit review,
-    @NotNull @Valid Limit businessVerification) {
+    @NotNull @Valid Limit businessVerification,
+    @NotNull @Valid Limit demandEventIngestion) {
 
   /** Devuelve la cuota inmutable asociada a una operación. */
   public Limit limitFor(RateLimitScope scope) {
@@ -46,6 +47,7 @@ public record RateLimitProperties(
       case PUBLIC_LINK -> publicLink;
       case REVIEW -> review;
       case BUSINESS_VERIFICATION -> businessVerification;
+      case DEMAND_EVENT_INGESTION -> demandEventIngestion;
     };
   }
 
