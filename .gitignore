@@ -33,3 +33,6 @@ tmp/
 # Contenedores y volúmenes locales
 .docker/
 volumes/
+# Bytecode Python local de contratos y servicios.
+__pycache__/
+*.py[cod]
