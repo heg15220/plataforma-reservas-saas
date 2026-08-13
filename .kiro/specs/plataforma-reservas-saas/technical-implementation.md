@@ -34986,3 +34986,68 @@ validadores de texto español/formato y `git diff --check`; y confirmar que solo
 Los umbrales son hipótesis de piloto, no garantías estadísticas. La tarea 20.20 debe recalcular muestra
 con baseline real. Todavía faltan inventario real, instrumentación y revisión jurídica. Si no se
 alcanza inventario en ocho semanas, se abandona o rediseña el piloto sin ampliar prematuramente.
+
+## Iteración 2026-08-13 - Tarea 19.2: ADR de límites entre Spring y Demand Engine
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea: `19.2`.
+- Objetivo: convertir la separación conceptual en una decisión verificable de ownership, contratos,
+  fallos, seguridad y despliegue antes de crear el servicio Python.
+- Requisitos: `RF-029`, `RF-033`, `RF-036`, `RF-041`, `RNF-001` a `RNF-006`, `RNF-008`,
+  `RNF-014`, `RNF-015` y `RB-015`.
+
+### Arquitectura aplicada
+
+ADR-0001 declara `Demand Engine` consultivo. Spring es el único punto público y escritor del dominio
+operativo; genera candidatos con restricciones duras, pide reordenación y revalida la respuesta. El
+motor no recibe cookies, no confirma/cancela, no altera capacidad/precio y no posee credenciales de
+escritura operativa. Python tampoco ejecuta Flyway.
+
+La frontera síncrona será un puerto Spring `DemandRankingClient` con adaptador HTTP interno a
+`POST /internal/demand/v1/rankings`. El sobre incluye request/schema/policy version, UTC, locale,
+contexto minimizado y candidatos ya elegibles. La respuesta solo puede reordenar/subseleccionar UUID
+enviados, con score finito, rank único, componentes acotados y códigos de explicación. Cualquier
+candidato desconocido, duplicado, versión incompatible o explicación libre invalida toda la
+respuesta. Spring completa omisiones mediante fallback y localiza razones.
+
+### Eventos, datos y consistencia
+
+Los eventos confirmados usarán outbox PostgreSQL atómico con la transacción de negocio y RabbitMQ con
+entrega al menos una vez. `DemandEventEnvelopeV1` tendrá identificador, versión, tipo, agregado,
+correlación, finalidad y payload tipado/minimizado. El consumidor deduplicará; incompatibles irán a
+dead-letter sin payload en logs. RabbitMQ caído acumula outbox y no afecta al resultado de reserva.
+
+Spring posee identidades/consentimientos, catálogo, disponibilidad, reservas, eventos canónicos,
+alternativas, atribución y gobernanza. Data/ML posee features/embeddings/modelos; Spring persiste lo
+auditable por contrato. Mientras compartan PostgreSQL, Flyway posee el esquema y cualquier réplica o
+almacén requiere otro ADR.
+
+### Resiliencia, errores y observabilidad
+
+Valores iniciales externalizables: conexión 50 ms, total 200 ms, p95 añadido 150 ms, cero reintentos,
+100 candidatos, 64 KiB, bulkhead y circuito 30 s al superar 50 % de fallos con 20 llamadas. Timeout,
+HTTP, contrato inválido, versión, confianza o modelo activan fallback determinista local. La readiness
+del motor no se agrega a la del monolito.
+
+Métricas: solicitudes, latencia, timeout, circuito, inválidos, fallback por causa, candidatos y
+versiones. Logs: request/correlation/versión/duración/código; se prohíben payloads, listas completas,
+vectores, texto libre y PII. `traceparent` se propaga sin convertirse en identidad.
+
+### Seguridad, privacidad e internacionalización
+
+Producción usará identidad de workload y mTLS o equivalente; local, secreto dedicado no versionado.
+`/internal/demand/**` es deny-by-default y no reenvía cabeceras públicas. Solo se envía zona agregada,
+identidad seudónima consentida cuando sea necesaria y nunca email/teléfono/tokens. Las explicaciones
+son códigos estables localizados por catálogos del producto, no texto Python.
+
+### Archivos, verificación y límites
+
+- Creado `docs/architecture/adr/0001-demand-engine-boundaries.md`.
+- Actualizados índice documental y cuatro documentos `.kiro`.
+- No se crean endpoints, clientes, colas, outbox ni configuración: corresponden a tareas posteriores.
+
+Se verifica presencia de estado/fecha/ownership, matriz de datos, contratos sync/async, invariantes,
+presupuestos, fallback, seguridad, compatibilidad, observabilidad, alternativas y consecuencias;
+Prettier, calidad española focal y `git diff --check`. El contrato es conceptual hasta que 20.2 lo
+materialice y sus valores de resiliencia deben validarse mediante carga antes de producción.

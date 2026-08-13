@@ -8972,3 +8972,33 @@ Fuente de verdad del avance:
   - La ampliación preferente es geográfica dentro del mismo vertical.
   - Ninguna métrica autoriza automatización ni permite presentar atribución como causalidad.
   - Cualquier vulneración de privacidad, elegibilidad, capacidad o rollback pausa el piloto.
+
+# Conversación 196 - ADR de límites del Demand Engine
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se aprobó ADR-0001: `Demand Engine` es interno y consultivo; Spring mantiene entrada pública,
+    ownership operativo, elegibilidad final, capacidad, holds y confirmación.
+  - Se definió el contrato síncrono de ranking, validación de permutación/subconjunto, sobre
+    versionado, explicaciones por código y rechazo total de respuestas inconsistentes.
+  - Se definió el contrato asíncrono futuro mediante outbox y RabbitMQ, con entrega al menos una vez,
+    deduplicación y prohibición de PII.
+  - Se fijaron timeout, circuit breaker, bulkhead, tamaño máximo, fallback determinista, seguridad,
+    compatibilidad, despliegue shadow/canary, observabilidad y alternativas rechazadas.
+- Archivos modificados:
+  - `docs/architecture/adr/0001-demand-engine-boundaries.md`.
+  - `docs/README.md`.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-029`, `RF-033`, `RF-036`, `RF-041`, `RNF-001`, `RNF-002`, `RNF-003`, `RNF-004`,
+    `RNF-005`, `RNF-006`, `RNF-008`, `RNF-014`, `RNF-015` y `RB-015`.
+- Tareas impactadas: `19.2`; prepara `19.5` a `19.11`, `20.1`, `20.2` y `20.11`.
+- Tareas completadas:
+  - `19.2. Crear ADR de límites entre el monolito transaccional y Demand Engine`.
+- Siguiente tarea pendiente recomendada:
+  - `17.1`; dentro de la prioridad explícita de fase 19, `19.3`.
+- Decisiones o aclaraciones relevantes:
+  - Python no escribe tablas operativas ni ejecuta migraciones Flyway.
+  - No existen reintentos síncronos en ranking; Spring posee el fallback y lo audita por código.
+  - RabbitMQ o Demand Engine caídos nunca revierten ni bloquean una reserva.
+  - Dar acceso directo a PostgreSQL o autoridad de mutación requiere un ADR sustitutorio.

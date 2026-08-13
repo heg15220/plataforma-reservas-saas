@@ -2770,6 +2770,13 @@ Invariantes:
 - Entrenamiento y promoción no escriben sobre tablas transaccionales; publican artefactos
   versionados que inferencia carga de forma atómica.
 
+La tarea 19.2 cierra estos límites en
+`docs/architecture/adr/0001-demand-engine-boundaries.md`. Spring genera candidatos y actúa como
+única autoridad; Python no tiene escritura operativa. El ranking usa HTTP interno versionado, con
+timeout total inicial de 200 ms, sin reintentos síncronos, circuit breaker y fallback local. Los
+eventos confirmados usarán outbox + RabbitMQ con entrega al menos una vez e idempotencia. Ninguna
+readiness, error o despliegue del motor participa en la disponibilidad del monolito.
+
 ### 14.3 Módulos lógicos
 
 - **Demand Sensing:** búsquedas, necesidades no satisfechas, demanda por zona/categoría/periodo.
