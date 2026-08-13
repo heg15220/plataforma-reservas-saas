@@ -1,2 +1,2 @@
-/** Auditoría reproducible de peticiones, alternativas y rankings del motor de demanda. */
+/** Auditoría reproducible de peticiones, alternativas, rankings e impresiones elegibles. */
 package com.reserly.platform.demand.recommendation;

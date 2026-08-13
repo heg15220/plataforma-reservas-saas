@@ -385,7 +385,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 19.7. Crear `RecommendationRequests`, `RecommendationCandidates` y `RecommendationRankings` para conservar alternativas, posiciones, componentes de score, versión y experimento.
 - [x] 19.8. Implementar API interna idempotente de ingestión de eventos con validación, cuotas, lotes, contrato opaco de error y ausencia de payloads en logs.
 - [x] 19.9. Instrumentar búsqueda, resultados, ficha, filtros, fotos, reseñas, disponibilidad, reserva, cancelación, asistencia y no-show en web y backend.
-- [ ] 19.10. Garantizar que cada impresión registra únicamente candidatos realmente elegibles y la información que el usuario pudo observar.
+- [x] 19.10. Garantizar que cada impresión registra únicamente candidatos realmente elegibles y la información que el usuario pudo observar.
 - [ ] 19.11. Implementar reconciliación entre eventos de frontend y resultados transaccionales de backend mediante identificadores de correlación.
 - [ ] 19.12. Definir la ontología inicial gobernada de 30-50 atributos para el vertical elegido con familias, jerarquía, ES/EN, fuentes, vigencia y atributos prohibidos.
 - [ ] 19.13. Crear migraciones, entidades, DAOs y panel admin de `DemandAttributes` y `DemandAttributeCandidates` con workflow de borrador, revisión, publicación, fusión y retirada.

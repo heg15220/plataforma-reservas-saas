@@ -3081,6 +3081,12 @@ hold, confirmación, cancelación, asistencia, no-show y reseña tras retorno/co
 asíncrono acotado absorbe fallos y mide descartes; ningún flujo crítico depende de telemetría. Las
 impresiones con conjunto elegible y la reconciliación quedan explícitamente en 19.10/19.11.
 
+Implementación 19.10: `RecommendationImpressionService` acepta solo IDs que el consumidor confirma
+haber renderizado y reconstruye posición, política y explicación desde el agregado auditable. Antes
+de escribir valida pertenencia, elegibilidad, disponibilidad y ranking de todo el conjunto. Marca
+`wasVisible` y crea `recommendationShown` idempotentes dentro de la misma transacción, sin copiar
+score, componentes, features ocultas, PII o texto libre.
+
 ### 14.15 Herramientas y criterio de adopción
 
 | Capacidad | Herramienta inicial | Criterio |

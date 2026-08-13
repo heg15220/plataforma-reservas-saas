@@ -35518,3 +35518,64 @@ acoplar el commit. 19.20 debe alertar descartes/cobertura.
 
 No se instrumentan aún impresiones/rankings sin conjunto elegible: 19.10. La correlación completa y
 deduplicación semántica web/backend: 19.11. Dashboard de cobertura/descartes: 19.20.
+
+## Iteración 2026-08-13 - Tarea 19.10: integridad de impresiones elegibles
+
+### Objetivo, requisitos y decisión arquitectónica
+
+- Tarea exacta: `19.10`.
+- Objetivo: impedir que una impresión reintroduzca candidatos descartados o registre información
+  distinta de la que la superficie pudo mostrar.
+- Requisitos relacionados: `RF-029`, `RF-033`, `RF-036`, `RNF-002`, `RNF-014`, `RNF-015` y diseño
+  14.2/14.9/14.13.
+
+`RecommendationImpressionService` es la frontera transaccional que consumirá la API de ranking de
+fase 20. Su comando contiene exclusivamente `impressionId`, `recommendationRequestId`, IDs visibles
+ordenados y `occurredAt`. No acepta posición, elegibilidad, disponibilidad, score, contribuciones,
+explicación ni señales porque esos datos ya pertenecen al agregado reproducible de 19.7.
+
+### Flujo, invariantes y modelo afectado
+
+El servicio resuelve el `requestId` público, carga conjunto completo y ranking, crea mapas locales y
+valida la lista entera antes de mutar. El sobre exige 1-100 IDs no nulos y únicos y un instante no
+futuro. Cada candidato debe pertenecer a la petición, estar `eligible`, conservar
+`observedAvailability=true` y poseer ranking final. Un fallo lanza
+`RECOMMENDATION_IMPRESSION_INVALID` sin identificar el candidato y no escribe nada.
+
+Tras validar, cambia `RecommendationCandidates.wasVisible` a verdadero y envía un
+`recommendationShown` por candidato mediante la ingesta trusted. La transacción engloba marca y
+eventos: una excepción revierte el conjunto. `eventId` se deriva establemente de impresión+candidato;
+el reintento converge como duplicado y la marca booleana es idempotente. No fue necesaria migración:
+V46/V47 ya poseen idempotencia, correlación, snapshot visible y visibilidad.
+
+### Privacidad, seguridad, errores y observabilidad
+
+El evento conserva `venueId`, `requestId`, `activationId`, posición, versión de política y código
+de explicación normalizado. No copia score, componentes, consulta, texto, identidad directa ni
+features ocultas. Identidades opcionales solo se propagan desde la petición ya validada con su
+consentimiento. El contexto vuelve a atravesar catálogo/allowlist de ingesta. No se añadieron logs.
+
+La ingesta conserva sus contadores accepted/duplicate/rejected. La cobertura de impresión puede
+calcularse uniendo `BehaviorEvents.requestId` con candidatos elegibles y `wasVisible`; 19.20 creará
+el dashboard y alertas. No hay UI, i18n ni cambio responsive en esta tarea.
+
+### Archivos, tests y evidencia verificable
+
+- Creados cinco tipos documentados en `demand.recommendation` y
+  `RecommendationImpressionServiceTests` con cuatro casos.
+- Creado `docs/architecture/recommendation-impression-integrity.md`; actualizados índice y cuatro
+  documentos `.kiro`.
+- `mvn -q spotless:apply`: correcto.
+- Batería dirigida: `RecommendationImpressionServiceTests`,
+  `RecommendationPersistenceIntegrationTests` y `DemandEventIngestionServiceTests`; 10 tests sin
+  fallos. Testcontainers aplicó Flyway V1-V47 sobre PostgreSQL 17.5 real.
+- Casos negativos: candidato ajeno/desconocido, inelegible, sin disponibilidad, sin ranking,
+  duplicado e instante futuro; todos fallan antes de eventos o `saveAll`.
+
+### Riesgos, limitaciones y trabajo posterior
+
+El servicio presupone que el consumidor invoca la confirmación después del render real; el servidor
+no puede inferir viewport. La futura API debe enviar solo tarjetas observadas y mantener Spring como
+autoridad. La marca booleana resume exposición al menos una vez; el historial detallado vive en
+eventos. Correlación frontend/backend corresponde a 19.11 y controles de calidad/cobertura a
+19.19/19.20.

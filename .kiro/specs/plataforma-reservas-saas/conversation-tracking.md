@@ -9201,3 +9201,26 @@ Fuente de verdad del avance:
   - No se crean impresiones sin el conjunto elegible: esa garantía pertenece a 19.10.
   - Backend es autoridad de resultados; eventos web se reconciliarán en 19.11.
   - Entrega backend es best-effort y observable; outbox durable queda como deuda explícita.
+
+# Conversación 204 - Integridad transaccional de impresiones
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se implementó una frontera Spring para confirmar candidatos realmente renderizados sin aceptar
+    del consumidor posiciones, scores, versiones ni señales libres.
+  - La operación valida de forma atómica pertenencia, elegibilidad, disponibilidad y ranking, marca
+    visibilidad y emite un `recommendationShown` idempotente por candidato.
+  - Se verificaron cuatro casos de unidad y la persistencia/ingesta existente sobre PostgreSQL real.
+- Archivos modificados:
+  - Nuevos comando, resultado, excepción, interfaz e implementación en `demand.recommendation`.
+  - `RecommendationImpressionServiceTests` y
+    `docs/architecture/recommendation-impression-integrity.md`.
+  - Índice, diseño, tareas, seguimiento y documento técnico único.
+- Requisitos impactados: `RF-029`, `RF-033`, `RF-036`, `RNF-002`, `RNF-014` y `RNF-015`.
+- Tareas impactadas: `19.10`; prepara `19.11`, `19.19`, `19.20` y `20.1`/`20.2`.
+- Tareas completadas: `19.10`.
+- Siguiente tarea pendiente recomendada: `17.1`; en fase 19, `19.11`.
+- Decisiones o aclaraciones relevantes:
+  - Una impresión confirma renderizado; no puede crear ni reintroducir candidatos.
+  - La disponibilidad observada es un requisito fail-closed para registrar exposición.
+  - El endpoint de recomendaciones de fase 20 invocará esta frontera tras conocer el viewport real.

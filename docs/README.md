@@ -24,6 +24,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `recommendation-audit-persistence.md`: peticiones, alternativas, elegibilidad, rankings, scores, versiones y experimentos reproducibles.
   - `demand-event-ingestion-api.md`: autenticación interna, cuotas, lotes, validación, idempotencia, errores opacos y métricas de eventos.
   - `demand-instrumentation.md`: cobertura web/backend, proxy server-only, emisión post-commit, aislamiento y pérdida best-effort observable.
+  - `recommendation-impression-integrity.md`: validación transaccional de candidatos visibles, datos observables e idempotencia de impresiones.
   - `visual-system.md`: tokens, tema MUI, estados, iconografía y catálogo visual.
 - `configuration.md`: variables, perfiles y reglas de seguridad por entorno.
 - `continuous-integration.md`: eventos, checks, seguridad y protección de ramas del pipeline CI.
