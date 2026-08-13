@@ -115,6 +115,22 @@ reserly:
       requests: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_REQUESTS:600}
       window: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_WINDOW:1m}
   demand:
+    aggregation:
+      version: ${RESERLY_DEMAND_AGGREGATION_VERSION:weighted-v1}
+      halfLife: ${RESERLY_DEMAND_AGGREGATION_HALF_LIFE:90d}
+      volumeSaturation: ${RESERLY_DEMAND_AGGREGATION_VOLUME_SATURATION:20}
+      sourceWeights:
+        venueDeclaration: 0.10
+        structuredCatalog: 0.15
+        operational: 0.20
+        customerAggregate: 0.15
+        verifiedAudit: 0.30
+        imageAuxiliary: 0.10
+      confidenceFactors:
+        diversity: 0.25
+        volume: 0.25
+        agreement: 0.30
+        recency: 0.20
     ingestion:
       enabled: ${RESERLY_DEMAND_INGESTION_ENABLED:true}
       serviceId: ${RESERLY_DEMAND_INGESTION_SERVICE_ID:web-gateway}
