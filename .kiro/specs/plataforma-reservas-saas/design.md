@@ -3087,6 +3087,12 @@ de escribir valida pertenencia, elegibilidad, disponibilidad y ranking de todo e
 `wasVisible` y crea `recommendationShown` idempotentes dentro de la misma transacción, sin copiar
 score, componentes, features ocultas, PII o texto libre.
 
+Implementación 19.11: la web inicia un UUID de recorrido por búsqueda y lo propaga mediante
+`X-Reserly-Correlation-Id` a disponibilidad, reservas y reseñas. Un filtro Spring valida o sustituye
+la cabecera y el aspecto de telemetría la usa como `requestId` de resultados canónicos. El servicio
+de reconciliación consulta eventos ordenados y clasifica cobertura web/Spring sin proyectar contexto,
+identidades o sujetos. La correlación no concede permisos ni se presenta como causalidad.
+
 ### 14.15 Herramientas y criterio de adopción
 
 | Capacidad | Herramienta inicial | Criterio |

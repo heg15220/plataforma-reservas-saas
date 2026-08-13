@@ -4,6 +4,7 @@ import {
   localizedTextSchema,
   reservationFormPreviewFieldSchema,
 } from "@/features/reservation-form/reservation-form-api";
+import { demandCorrelationHeaders } from "@/features/demand-telemetry/demand-correlation";
 
 const publicReservationFormSchema = z.object({
   venueId: z.uuid(),
@@ -63,7 +64,10 @@ function apiBaseUrl() {
 async function request<T>(path: string, init: RequestInit, parser: z.ZodType<T>): Promise<T> {
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     ...init,
-    headers: init.body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...demandCorrelationHeaders(),
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+    },
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);

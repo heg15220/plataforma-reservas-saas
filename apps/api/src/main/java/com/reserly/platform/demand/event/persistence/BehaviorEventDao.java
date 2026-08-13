@@ -16,6 +16,16 @@ public interface BehaviorEventDao extends JpaRepository<BehaviorEventEntity, UUI
   @Query("select event from BehaviorEventEntity event where event.eventId = :eventId")
   Optional<BehaviorEventEntity> findByEventId(@Param("eventId") UUID eventId);
 
+  /** Recupera una traza correlacionada en orden causal estable, sin consultar contexto JSON. */
+  @Query(
+      """
+      select event
+      from BehaviorEventEntity event
+      where event.requestId = :requestId
+      order by event.occurredAt, event.eventId
+      """)
+  List<BehaviorEventEntity> findByRequestIdOrdered(@Param("requestId") UUID requestId);
+
   /**
    * Recupera un lote temporal estable por tipo usando ocurrencia y eventId como cursor conceptual.
    */

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { demandCorrelationHeaders } from "@/features/demand-telemetry/demand-correlation";
+
 const eligibilitySchema = z.discriminatedUnion("eligible", [
   z
     .object({
@@ -14,10 +16,7 @@ const eligibilitySchema = z.discriminatedUnion("eligible", [
       eligible: z.literal(false),
       canReview: z.literal(false),
       error: z.enum(["REVIEW_NOT_ELIGIBLE", "REVIEW_ALREADY_SUBMITTED"]),
-      messageKey: z.enum([
-        "reviews.notEligibleForVenue",
-        "reviews.alreadySubmittedForVenue",
-      ]),
+      messageKey: z.enum(["reviews.notEligibleForVenue", "reviews.alreadySubmittedForVenue"]),
     })
     .strict(),
 ]);
@@ -45,11 +44,7 @@ export interface PublicReviewCreateCommand {
 
 export class PublicReviewApiError extends Error {
   constructor(
-    public readonly kind:
-      | "invalid"
-      | "notEligible"
-      | "alreadySubmitted"
-      | "unavailable",
+    public readonly kind: "invalid" | "notEligible" | "alreadySubmitted" | "unavailable",
     options?: ErrorOptions,
   ) {
     super(kind, options);
@@ -103,6 +98,7 @@ async function request(path: string, body: unknown, signal?: AbortSignal) {
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
+        ...demandCorrelationHeaders(),
       },
       method: "POST",
       signal,

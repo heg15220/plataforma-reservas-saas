@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { demandCorrelationHeaders } from "@/features/demand-telemetry/demand-correlation";
+
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const localTimeSchema = z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/);
 
@@ -241,7 +243,7 @@ async function request(url: string, init: RequestInit, authenticated: boolean) {
   try {
     response = await fetch(url, {
       credentials: authenticated ? "include" : "omit",
-      headers: { Accept: "application/json", ...init.headers },
+      headers: { Accept: "application/json", ...demandCorrelationHeaders(), ...init.headers },
       ...init,
     });
   } catch (error) {

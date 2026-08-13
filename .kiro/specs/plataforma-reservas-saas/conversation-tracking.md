@@ -9224,3 +9224,28 @@ Fuente de verdad del avance:
   - Una impresión confirma renderizado; no puede crear ni reintroducir candidatos.
   - La disponibilidad observada es un requisito fail-closed para registrar exposición.
   - El endpoint de recomendaciones de fase 20 invocará esta frontera tras conocer el viewport real.
+
+# Conversación 205 - Correlación web y resultados backend
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se propagó un UUID de recorrido desde búsqueda hacia interacciones y API públicas sin crear
+    cookie, identidad persistente ni capacidad de autorización.
+  - Spring valida/sustituye la cabecera y los eventos operativos capturan la misma correlación antes
+    de su entrega asíncrona.
+  - Se implementó consulta ordenada y reconciliación minimizada `matched`, `frontend_only`,
+    `backend_only` y `not_found`.
+- Archivos modificados:
+  - Nuevo paquete backend `demand.correlation`, filtro, contexto, DTOs/servicio y cuatro tests.
+  - DAO de eventos, configuración de seguridad/CORS y aspecto de telemetría.
+  - Utilidad web de correlación, telemetría, búsqueda y clientes de disponibilidad/reserva/reseña.
+  - Arquitectura, índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-033`, `RF-034`, `RF-038`, `RNF-001`, `RNF-002`, `RNF-005`, `RNF-006`,
+  `RNF-014` y `RNF-015`.
+- Tareas impactadas: `19.11`; prepara `19.19`, `19.20`, `20.19` y `20.20`.
+- Tareas completadas: `19.11`.
+- Siguiente tarea pendiente recomendada: `17.1`; en fase 19, `19.12`.
+- Decisiones o aclaraciones relevantes:
+  - Backend sigue siendo autoridad; correlación no equivale a resultado ni causalidad.
+  - Las trazas parciales se conservan como estado medible y no se unen mediante PII o fingerprint.
+  - La rotación ocurre al iniciar una búsqueda; la pestaña mantiene el recorrido posterior.

@@ -20,6 +20,7 @@ import { NavigationLink } from "@/components/navigation-link";
 import { StatusChip, type StatusTone } from "@/components/visual";
 import { visualTokens } from "@/theme/visual-tokens";
 import { toDemandCode, trackDemandEvent } from "@/features/demand-telemetry/demand-telemetry";
+import { startDemandCorrelation } from "@/features/demand-telemetry/demand-correlation";
 
 import {
   type PublicSearchCategory,
@@ -60,11 +61,16 @@ export function PublicSearchResultsView({
   const resultCount = t("summary.count", { count: response.totalElements });
 
   useEffect(() => {
-    trackDemandEvent("searchPerformed", {
-      queryLength: filters.q?.length ?? 0,
-      resultCount: response.totalElements,
-      ...(filters.category ? { categoryCode: toDemandCode(filters.category) } : {}),
-    });
+    const requestId = startDemandCorrelation();
+    trackDemandEvent(
+      "searchPerformed",
+      {
+        queryLength: filters.q?.length ?? 0,
+        resultCount: response.totalElements,
+        ...(filters.category ? { categoryCode: toDemandCode(filters.category) } : {}),
+      },
+      requestId,
+    );
   }, [filters.category, filters.q, response.totalElements]);
 
   return (

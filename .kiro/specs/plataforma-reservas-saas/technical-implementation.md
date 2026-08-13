@@ -35579,3 +35579,64 @@ no puede inferir viewport. La futura API debe enviar solo tarjetas observadas y 
 autoridad. La marca booleana resume exposición al menos una vez; el historial detallado vive en
 eventos. Correlación frontend/backend corresponde a 19.11 y controles de calidad/cobertura a
 19.19/19.20.
+
+## Iteración 2026-08-13 - Tarea 19.11: correlación web/backend
+
+### Objetivo, requisitos y contrato
+
+- Tarea exacta: `19.11`.
+- Objetivo: enlazar observaciones frontend y resultados transaccionales backend mediante un UUID
+  técnico, preservando autoridad, minimización y trazas parciales.
+- Requisitos: `RF-033`, `RF-034`, `RF-038`, `RNF-001`, `RNF-002`, `RNF-005`, `RNF-006`, `RNF-014`,
+  `RNF-015`; diseño 14.2/14.4/14.12/14.16.
+
+La web crea `X-Reserly-Correlation-Id` al iniciar cada búsqueda y lo guarda solo en
+`sessionStorage`. `searchPerformed` recibe explícitamente ese UUID y el resto de eventos reutiliza la
+cadena activa. Los clientes públicos de disponibilidad, reserva y reseña propagan la cabecera. La
+sesión analítica y la correlación son conceptos separados; ninguna crea cookie, anonymousId o perfil.
+
+### Backend, seguridad y flujo de ejecución
+
+`DemandCorrelationFilter`, anterior a CSRF/sesión, solo procesa `/api/public/**`. Acepta exactamente
+un UUID canónico; ausencia o formato arbitrario generan uno nuevo. Guarda un objeto UUID como atributo
+del servlet y devuelve solo el valor normalizado. Security/CORS permite y expone la cabecera para los
+orígenes exactos configurados. La cabecera no interviene en autenticación, permisos, objeto, cuota o
+claves Redis.
+
+`DemandCorrelationContext` lee el atributo tipado y genera fallback para jobs/tests sin request.
+`DemandOperationalTelemetryAspect` captura ese valor al finalizar la operación, antes de publicar el
+record async, por lo que no depende de que el contexto servlet sobreviva en otro hilo. Disponibilidad,
+hold, confirmación, cancelación, asistencia, no-show y reseña lo conservan como `requestId`.
+
+### Reconciliación, datos y privacidad
+
+`BehaviorEventDao.findByRequestIdOrdered` consulta la columna indexada creada en V46 y ordena por
+`occurredAt,eventId`, compatible con llegadas tardías e idempotencia. No fue necesaria migración.
+`DemandEventReconciliationService` separa productores gobernados `web`/`spring` y devuelve
+`matched`, `frontend_only`, `backend_only` o `not_found`.
+
+La respuesta interna contiene solo `eventId`, `eventType`, `producer` y `occurredAt`; no proyecta
+contexto JSON, sessionId, anonymous/customer identity, local, servicio, recurso ni franja. No intenta
+rellenar huecos mediante email, IP, user-agent o fingerprint. Un evento web nunca sustituye el
+resultado canónico Spring y la clasificación es observacional, no causal.
+
+### Archivos, pruebas, errores y evidencia
+
+- Backend: ocho tipos en `demand.correlation`, consulta DAO, CORS/security y aspecto actualizados.
+- Web: nueva utilidad `demand-correlation`, telemetría/búsqueda y tres clientes API actualizados.
+- Tests backend: `DemandCorrelationFilterTests` (2),
+  `DemandEventReconciliationServiceTests` (2), `DemandOperationalTelemetryTests` (2) y
+  `BehaviorEventPersistenceIntegrationTests` (3): nueve correctos; Flyway V1-V47 sobre PostgreSQL
+  17.5 real.
+- Tests web: telemetría/correlación (3), resultados (5) y reserva (3), once correctos. La primera
+  ejecución conjunta tuvo un timeout circunstancial de 5 s en el render de resultados (7,1 s); la
+  repetición aislada completó los cinco casos, incluido ese render en 2,7 s.
+- `spotless:check`, `test-compile`, ESLint dirigido y Prettier dirigido: correctos.
+- No se añadieron logs, endpoints públicos, persistencia de cabecera ni textos UI/i18n.
+
+### Riesgos y pendientes
+
+Bloqueo de JS, cierre de pestaña, telemetría best-effort o clientes sin cabecera producen estados
+parciales esperables. Su ratio debe medirse en 19.20; orden/completitud se valida en 19.19. Una
+correlación por búsqueda puede abarcar varias evaluaciones dentro de la pestaña, decisión deliberada
+para atribución de recorrido. No se afirma incrementalidad sin experimento válido.

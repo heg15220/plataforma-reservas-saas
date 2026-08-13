@@ -1,6 +1,8 @@
 package com.reserly.platform.identity.security;
 
 import com.reserly.platform.configuration.ReserlyProperties;
+import com.reserly.platform.demand.correlation.DemandCorrelationContext;
+import com.reserly.platform.demand.correlation.DemandCorrelationFilter;
 import com.reserly.platform.demand.ingestion.DemandServiceAuthenticationFilter;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +30,7 @@ public class SecurityConfiguration {
   SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       BrowserCsrfProtectionFilter browserCsrfProtectionFilter,
+      DemandCorrelationFilter demandCorrelationFilter,
       DemandServiceAuthenticationFilter demandServiceAuthenticationFilter,
       SessionAuthenticationFilter sessionAuthenticationFilter,
       RestAuthenticationEntryPoint authenticationEntryPoint,
@@ -65,6 +68,7 @@ public class SecurityConfiguration {
                     .anyRequest()
                     .permitAll())
         .addFilterBefore(browserCsrfProtectionFilter, SessionAuthenticationFilter.class)
+        .addFilterBefore(demandCorrelationFilter, BrowserCsrfProtectionFilter.class)
         .addFilterBefore(
             demandServiceAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -81,7 +85,13 @@ public class SecurityConfiguration {
         properties.allowedOrigins().stream().map(Object::toString).toList());
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(
-        List.of("Accept", "Accept-Language", "Content-Type", "X-CSRF-Token"));
+        List.of(
+            "Accept",
+            "Accept-Language",
+            "Content-Type",
+            "X-CSRF-Token",
+            DemandCorrelationContext.HEADER_NAME));
+    configuration.setExposedHeaders(List.of(DemandCorrelationContext.HEADER_NAME));
     configuration.setAllowCredentials(true);
     configuration.setMaxAge(3_600L);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

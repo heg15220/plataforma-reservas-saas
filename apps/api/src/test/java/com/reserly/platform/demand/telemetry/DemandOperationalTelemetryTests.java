@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.reserly.platform.availability.dto.PublicVenueAvailabilityResponse;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
+import com.reserly.platform.demand.correlation.DemandCorrelationContext;
 import com.reserly.platform.demand.ingestion.DemandEventIngestionService;
 import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
@@ -39,8 +40,12 @@ class DemandOperationalTelemetryTests {
   @Test
   void publishesAllCanonicalBackendOutcomesWithoutPersonalData() {
     ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+    DemandCorrelationContext correlation = mock(DemandCorrelationContext.class);
+    UUID correlationId = UUID.randomUUID();
+    when(correlation.currentOrNew()).thenReturn(correlationId);
     DemandOperationalTelemetryAspect aspect =
-        new DemandOperationalTelemetryAspect(publisher, Clock.fixed(NOW, ZoneOffset.UTC));
+        new DemandOperationalTelemetryAspect(
+            publisher, Clock.fixed(NOW, ZoneOffset.UTC), correlation);
     UUID reservationId = UUID.randomUUID();
     UUID venueId = UUID.randomUUID();
 
@@ -98,6 +103,9 @@ class DemandOperationalTelemetryTests {
             "attendanceConfirmed",
             "noShow",
             "reviewSubmitted");
+    assertThat(events.getAllValues())
+        .extracting(DemandTelemetryEvent::requestId)
+        .containsOnly(correlationId);
     assertThat(events.getAllValues().toString()).doesNotContain("private@example.invalid");
   }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { demandSessionId, getDemandCorrelationId } from "./demand-correlation";
+
 export type WebDemandEventType =
   | "searchPerformed"
   | "categoryViewed"
@@ -12,22 +14,24 @@ export type WebDemandEventType =
 
 type DemandContext = Readonly<Record<string, string | number | boolean | null>>;
 
-const SESSION_KEY = "reserly-demand-session-v1";
-
 /**
  * Emite telemetría minimizada sin bloquear navegación ni render.
  *
  * Solo conserva una sesión UUID en sessionStorage; no crea cookie, anonymousId, fingerprint ni
  * identidad persistente. El Route Handler añade la credencial interna exclusivamente en servidor.
  */
-export function trackDemandEvent(eventType: WebDemandEventType, context: DemandContext = {}) {
+export function trackDemandEvent(
+  eventType: WebDemandEventType,
+  context: DemandContext = {},
+  requestId = getDemandCorrelationId(),
+) {
   if (typeof window === "undefined") return;
   const event = {
     eventId: crypto.randomUUID(),
     schemaVersion: 1,
     eventType,
     occurredAt: new Date().toISOString(),
-    requestId: crypto.randomUUID(),
+    requestId,
     purpose: "analytics",
     sessionId: demandSessionId(),
     context,
@@ -52,16 +56,4 @@ export function toDemandCode(value: string) {
     .join("")
     .slice(0, 64);
   return /^[a-z][a-zA-Z0-9]{0,63}$/.test(code) ? code : "unknown";
-}
-
-function demandSessionId() {
-  try {
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
-    if (existing) return existing;
-    const created = crypto.randomUUID();
-    window.sessionStorage.setItem(SESSION_KEY, created);
-    return created;
-  } catch {
-    return crypto.randomUUID();
-  }
 }

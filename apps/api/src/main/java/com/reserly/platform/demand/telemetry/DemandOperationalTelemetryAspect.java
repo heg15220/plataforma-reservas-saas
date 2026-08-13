@@ -1,6 +1,7 @@
 package com.reserly.platform.demand.telemetry;
 
 import com.reserly.platform.availability.dto.PublicVenueAvailabilityResponse;
+import com.reserly.platform.demand.correlation.DemandCorrelationContext;
 import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
 import com.reserly.platform.reservations.dto.ReservationConfirmResponse;
@@ -32,10 +33,15 @@ public class DemandOperationalTelemetryAspect {
 
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
+  private final DemandCorrelationContext correlationContext;
 
-  public DemandOperationalTelemetryAspect(ApplicationEventPublisher eventPublisher, Clock clock) {
+  public DemandOperationalTelemetryAspect(
+      ApplicationEventPublisher eventPublisher,
+      Clock clock,
+      DemandCorrelationContext correlationContext) {
     this.eventPublisher = eventPublisher;
     this.clock = clock;
+    this.correlationContext = correlationContext;
   }
 
   /** Registra cada consulta de disponibilidad ya calculada por Spring. */
@@ -47,7 +53,7 @@ public class DemandOperationalTelemetryAspect {
       String slug, LocalDate date, PublicVenueAvailabilityResponse response) {
     publish(
         "availabilityChecked",
-        UUID.randomUUID(),
+        correlationContext.currentOrNew(),
         null,
         null,
         null,
@@ -65,7 +71,7 @@ public class DemandOperationalTelemetryAspect {
   public void bookingStarted(ReservationHoldRequest request, ReservationHoldResponse response) {
     publish(
         "bookingStarted",
-        response.reservationId(),
+        correlationContext.currentOrNew(),
         request.venueId(),
         request.serviceId(),
         null,
@@ -81,7 +87,7 @@ public class DemandOperationalTelemetryAspect {
   public void bookingCompleted(ReservationConfirmResponse response) {
     publish(
         "bookingCompleted",
-        response.reservationId(),
+        correlationContext.currentOrNew(),
         null,
         null,
         null,
@@ -95,7 +101,7 @@ public class DemandOperationalTelemetryAspect {
   public void bookingCancelledByCustomer() {
     publish(
         "bookingCancelled",
-        UUID.randomUUID(),
+        correlationContext.currentOrNew(),
         null,
         null,
         null,
@@ -131,7 +137,7 @@ public class DemandOperationalTelemetryAspect {
   public void noShowReported(NoShowIncidentEntity incident) {
     publish(
         "noShow",
-        incident.getReservationId(),
+        correlationContext.currentOrNew(),
         incident.getVenueId(),
         null,
         null,
@@ -147,7 +153,7 @@ public class DemandOperationalTelemetryAspect {
   public void reviewSubmitted(ReviewCreateResponse response) {
     publish(
         "reviewSubmitted",
-        response.reservationId(),
+        correlationContext.currentOrNew(),
         response.venueId(),
         null,
         null,
@@ -159,7 +165,7 @@ public class DemandOperationalTelemetryAspect {
       String eventType, ReservationEntity reservation, Map<String, Object> context) {
     publish(
         eventType,
-        reservation.getId(),
+        correlationContext.currentOrNew(),
         reservation.getVenue().getId(),
         reservation.getServiceId(),
         reservation.getEmployeeResourceId(),
