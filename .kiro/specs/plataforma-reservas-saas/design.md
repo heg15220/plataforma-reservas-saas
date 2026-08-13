@@ -3046,6 +3046,12 @@ persistentes exigen versión de consentimiento y sus FKs, al igual que los sujet
 `ON DELETE SET NULL` para permitir supresión sin copiar PII. Se indexan tiempo, tipo, local,
 identidades, petición y retención; el particionado se aplaza hasta disponer de métricas reales.
 
+Implementación 19.7: Flyway V47 materializa el agregado auditable de recomendación. La petición es
+idempotente y fija contexto minimizado, estrategia, política, modelo y experimento. Los candidatos
+conservan posición previa, elegibilidad, disponibilidad, precio y señales visibles allowlisted. El
+ranking conserva posición final, score/componentes normalizados, explicación por código y versiones.
+Una FK compuesta candidato-petición impide mezclar decisiones; posiciones y alternativas son únicas.
+
 ### 14.14 Contratos internos orientativos
 
 Namespace interno, autenticado entre servicios y no público:

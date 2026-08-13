@@ -9126,3 +9126,27 @@ Fuente de verdad del avance:
   - Las FKs usan `SET NULL` para que retirar un sujeto no impida conservar evidencia agregable.
   - No se particiona sin mediciones; el índice temporal permite operar y medir el volumen inicial.
   - El endpoint, cuotas, lotes, error opaco y política de logs corresponden a 19.8.
+
+# Conversación 201 - Conjunto candidato y ranking reproducible
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Flyway V47 crea peticiones idempotentes, candidatos con elegibilidad/señales visibles y rankings
+    con posiciones, scores/componentes, explicación, política, modelo y experimento.
+  - Los JSONB están limitados por tamaño y allowlist; no admiten PII, texto libre ni features ad hoc.
+  - La FK compuesta del ranking impide asociar un candidato perteneciente a otra petición.
+  - Testcontainers aplicó V1-V47 y validó persistencia y restricciones con tres pruebas.
+- Archivos modificados:
+  - `V47__create_recommendation_audit_tables.sql`.
+  - Nuevo contexto `demand.recommendation.persistence`, tres entidades y tres DAOs.
+  - `RecommendationPersistenceIntegrationTests.java` y expectativas Flyway existentes.
+  - `docs/architecture/recommendation-audit-persistence.md`, índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-029`, `RF-033`, `RF-036`, `RF-038`, `RNF-002`, `RNF-014`, `RNF-015`
+  y `RB-015`.
+- Tareas impactadas: `19.7`; prepara `19.10`, `20.2`, `20.6` y `20.9`-`20.12`.
+- Tareas completadas: `19.7`.
+- Siguiente tarea pendiente recomendada: `17.1`; en fase 19, `19.8`.
+- Decisiones o aclaraciones relevantes:
+  - Spring sigue siendo dueño de elegibilidad y capacidad; el ranking es consultivo.
+  - Se conservan candidatos inelegibles para auditoría, pero nunca pueden marcarse visibles.
+  - El texto de explicación no se persiste: solo un código derivado de contribuciones reales.

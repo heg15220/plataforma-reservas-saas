@@ -35339,3 +35339,57 @@ crearon superficies de usuario.
   repetición autorizada completó correctamente. No fue un fallo del código.
 - Permanecen pendientes API/cuotas/lotes/logs (19.8), instrumentación (19.9), propagación de
   revocación (19.16/19.17) y job de retención (19.18). El particionado se evaluará con datos reales.
+
+## Iteración 2026-08-13 - Tarea 19.7: conjunto candidato y ranking reproducible
+
+### Objetivo y trazabilidad
+
+- Tarea exacta: `19.7`.
+- Objetivo: conservar de forma idempotente y reproducible el sobre de decisión, todas las
+  alternativas, su elegibilidad, el orden emitido, contribuciones y versiones.
+- Requisitos: `RF-029`, `RF-033`, `RF-036`, `RF-038`, `RNF-002`, `RNF-014`, `RNF-015`, `RB-015` y
+  diseño 14.4/14.8/14.13.
+
+### Migración, modelo e invariantes
+
+V47 crea tres tablas. `RecommendationRequests` separa UUID físico de `requestId` único y fija v1,
+sesión/identidades opcionales, finalidad, estrategia `rules|model|fallback`, política, modelo,
+experimento, contexto, tiempos y retención. Estrategia `model` exige modelo; experimento y variante
+son atómicos; identidad exige consentimiento. El contexto JSONB es objeto de hasta 4096 bytes y solo
+admite nueve claves técnicas sin consulta textual ni ubicación precisa.
+
+`RecommendationCandidates` conserva local, posición previa única, elegibilidad/código, visibilidad,
+disponibilidad, precio/moneda y señales observables. Un ineligible no puede ser visible. Precio y
+moneda aparecen juntos. Las señales JSONB son allowlisted. `RecommendationRankings` conserva
+posición final única, score `[0,1]`, siete componentes allowlisted, explicación por código, política,
+modelo, experimento y tiempo.
+
+La FK compuesta `(recommendationCandidateId, recommendationRequestId)` prueba que cada posición
+pertenece al mismo agregado; evita una inconsistencia que dos FKs independientes aceptarían. Borrar
+la petición elimina hijos, retirar identidad la desvincula y borrar un local referenciado requiere
+decisión explícita. Índices cubren tiempo, identidad, experimento, retención, elegibilidad y posición.
+
+### Código, flujos, privacidad y errores
+
+Tres entidades documentadas usan relaciones lazy, UUID/Instant/BigDecimal y JSON Hibernate. Tres
+DAOs declaran `@Query` para idempotencia, retención, conjunto completo, subconjunto elegible y orden
+final. No hay endpoint, job, UI ni ejecución de modelo. Spring seguirá validando elegibilidad;
+Demand Engine solo reordena candidatos suministrados.
+
+La minimización impide PII, texto libre, coordenadas y features no gobernadas. Versiones y códigos
+son cerrados. Una violación aborta la transacción; los futuros servicios deben mapearla a error
+opaco sin payload. Retención efectiva y particionado siguen en 19.18. No hay i18n visible; las
+explicaciones futuras traducirán códigos, no texto almacenado.
+
+### Archivos y evidencia
+
+- Migración V47; 3 entidades; 3 DAOs; documentación de paquetes.
+- `RecommendationPersistenceIntegrationTests`: 3 tests correctos sobre PostgreSQL 17.5 y Flyway
+  V1-V47: esquema/agregado, idempotencia/visibilidad/señales y versiones/experimento/FK compuesta.
+- Expectativas Flyway actualizadas a 47; `mvn -q spotless:apply` correcto.
+- Documentación arquitectónica, índice, diseño, tareas, seguimiento y este registro actualizados.
+
+La primera ejecución de tests detectó un fixture que ordenaba categorías por una columna inexistente
+y el comportamiento `UNKNOWN` de PostgreSQL para parejas experiment/variant parcialmente nulas. Se
+corrigieron el fixture y los `CHECK` explícitos; la repetición pasó. Generación de candidatos,
+ranking, impresiones elegibles y explicaciones pertenecen a 19.10/fase 20.
