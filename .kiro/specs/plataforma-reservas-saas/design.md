@@ -3038,6 +3038,14 @@ Los eventos de alto volumen deben particionarse por tiempo cuando las mediciones
 vector. Los JSON quedan limitados por esquema/tamaño; los campos consultados regularmente son
 columnas tipadas.
 
+Implementación 19.6: Flyway V46 materializa `BehaviorEvents` para el contrato v1. `eventId` es único;
+ocurrencia y recepción son instantes separados; tipo, familia, productor, finalidad, sujetos y
+retención son columnas. `contextJson` es un objeto JSONB de hasta 4096 bytes con claves allowlisted
+por familia, mientras Pydantic conserva la validación de tipos antes de insertar. Identidades
+persistentes exigen versión de consentimiento y sus FKs, al igual que los sujetos operativos, usan
+`ON DELETE SET NULL` para permitir supresión sin copiar PII. Se indexan tiempo, tipo, local,
+identidades, petición y retención; el particionado se aplaza hasta disponer de métricas reales.
+
 ### 14.14 Contratos internos orientativos
 
 Namespace interno, autenticado entre servicios y no público:

@@ -47,7 +47,7 @@ class PgvectorMigrationIntegrationTests {
 
   @Test
   void enablesPinnedPgvectorVersionThroughFlyway() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("44");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("46");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT \"extversion\" FROM \"pg_extension\" WHERE \"extname\" = 'vector'",

@@ -9097,3 +9097,32 @@ Fuente de verdad del avance:
   - El paquete es independiente y no adelanta el servicio FastAPI de fase 20.
   - Los contratos no aceptan texto libre ni PII; la ingesta futura revalidará consentimiento real.
   - Un cambio breaking crea v2; no modifica la semántica de v1.
+
+# Conversación 200 - Persistencia minimizada de eventos de comportamiento
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Flyway V46 crea `BehaviorEvents` como persistencia del contrato v1, con `eventId` único,
+    ocurrencia y recepción separadas, finalidad, versión de consentimiento y retención explícita.
+  - Los 22 pares tipo/familia y las claves de los seis contextos se protegen con allowlists SQL;
+    `contextJson` debe ser objeto JSONB y no superar 4096 bytes.
+  - Se añadieron entidad Hibernate y DAO con acceso por idempotencia, ventanas temporales e
+    inventario paginado de registros vencidos, sin consultas ad hoc sobre JSON.
+  - Testcontainers aplicó Flyway V1-V46 y verificó índices, llegada tardía, duplicados, familia,
+    claves desconocidas, consentimiento obligatorio y orden temporal.
+- Archivos modificados:
+  - `V46__create_behavior_events.sql`.
+  - Nuevo contexto `demand.event.persistence`, entidad, DAO y documentación de paquetes.
+  - `BehaviorEventPersistenceIntegrationTests.java` y expectativas Flyway existentes.
+  - `docs/architecture/behavior-event-persistence.md`, índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-033`, `RF-034`, `RNF-002`, `RNF-005`, `RNF-014`, `RNF-015` y
+  `RB-016`.
+- Tareas impactadas: `19.6`; prepara `19.8`, `19.9`, `19.16`, `19.17` y `19.18`.
+- Tareas completadas: `19.6`.
+- Siguiente tarea pendiente recomendada:
+  - `17.1`; dentro de la prioridad explícita de fase 19, `19.7`.
+- Decisiones o aclaraciones relevantes:
+  - La base es una segunda barrera; Pydantic valida tipos y límites internos antes de insertar.
+  - Las FKs usan `SET NULL` para que retirar un sujeto no impida conservar evidencia agregable.
+  - No se particiona sin mediciones; el índice temporal permite operar y medir el volumen inicial.
+  - El endpoint, cuotas, lotes, error opaco y política de logs corresponden a 19.8.

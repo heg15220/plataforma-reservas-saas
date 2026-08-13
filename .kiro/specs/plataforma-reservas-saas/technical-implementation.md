@@ -35247,3 +35247,95 @@ desconocida. No existe migración de datos en esta tarea.
 
 No se crea endpoint, persistencia, cola ni instrumentación. Esas responsabilidades quedan en
 19.6/19.8/19.9. La validación de IDs permitidos se ejecutará en la ingesta usando el catálogo.
+
+## Iteración 2026-08-13 - Tarea 19.6: persistencia minimizada de eventos de comportamiento
+
+### Objetivo técnico, requisitos y decisiones
+
+- Tarea exacta: `19.6`.
+- Objetivo: persistir eventos v1 ya validados conservando idempotencia, temporalidad, finalidad y
+  contexto minimizado sin introducir PII ni un almacén de JSON abierto.
+- Requisitos y diseño: `RF-033`, `RF-034`, `RNF-002`, `RNF-005`, `RNF-014`, `RNF-015`, `RB-016` y
+  diseño 14.4/14.13.
+
+Flyway mantiene ownership del esquema. V46 materializa el catálogo creado en 19.5; Spring posee la
+entidad/DAO y la futura frontera de ingesta. Python no escribe el esquema operativo. La reserva no
+consulta esta tabla y sigue siendo viable si el motor de demanda está caído, conforme a ADR-0001.
+
+### Modelo físico, migración, índices y restricciones
+
+`BehaviorEvents` tiene UUID físico y `eventId` global único. Conserva `schemaVersion`, tipo, familia,
+productor, finalidad, consentimiento, `occurredAt`, `receivedAt`, correlación, sesión, identidades
+seudónimas, sujetos operativos, país aproximado, contexto, vencimiento y creación. No almacena email,
+teléfono, texto de consulta/reseña, IP, user-agent, fingerprint ni payload original.
+
+Constraints restringen v1, productores, finalidades, país y los 22 pares tipo/familia. Una identidad
+anónima o de cliente exige `consentVersion` no nulo con formato controlado. Esta nulabilidad se hace
+explícita porque un `CHECK` SQL acepta el resultado `UNKNOWN`; la prueba detectó y permitió corregir
+esa sutileza. Los tiempos imponen recepción no anterior a ocurrencia, retención posterior y creación
+no anterior a recepción.
+
+`contextJson` debe ser objeto JSONB, ocupar como máximo 4096 bytes y contener exclusivamente claves
+allowlisted para su familia. El contrato Pydantic valida tipos/rangos antes de persistir; SQL evita
+expansiones no migradas o PII ante errores de integración. Las FKs de identidad, local, servicio,
+recurso y franja usan `ON DELETE SET NULL`, posibilitando supresión sin cascadas destructivas.
+
+Índices: ocurrencia/id, tipo/ocurrencia, local/ocurrencia, identidad anónima/ocurrencia, identidad de
+cliente/ocurrencia, `requestId` y retención. Los índices de columnas opcionales son parciales. No se
+particiona sin volumen medido; una migración posterior podrá introducirlo con benchmark y plan de
+operación forward-only.
+
+### Entidad, DAO, contratos y flujos
+
+`BehaviorEventEntity` documenta cada campo, usa `Instant`, UUID y JSON Hibernate tipado, y relaciones
+lazy solo para identidades. Los sujetos operativos se conservan como UUID para impedir cargas
+accidentales del grafo. `BehaviorEventDao` recupera por `eventId`, recorre ventanas estables por tipo
+o local y selecciona vencidos con `Pageable`; no expone consultas dinámicas sobre JSON.
+
+El flujo de 19.8 deberá validar JSON/Pydantic, catálogo, finalidad, consentimiento e IDs permitidos;
+asignar recepción; insertar; y resolver conflicto de `eventId` recuperando el registro existente.
+Eventos tardíos preservan el tiempo de origen. Errores de contrato se rechazan con código opaco y
+métrica, sin payload en logs. No se añadieron endpoints, jobs ni UI en esta iteración.
+
+### Seguridad, privacidad, retención y observabilidad
+
+El contexto cerrado, el límite de bytes, las FKs seudónimas y el consentimiento obligatorio aplican
+minimización y separación de finalidades. La revocación y supresión podrán desvincular identidades;
+`retentionExpiresAt` prepara el job idempotente de 19.18. Hasta implementarlo existe deuda operativa:
+la columna e índice no ejecutan por sí solos el borrado/agregación.
+
+Las métricas futuras deben contar aceptados, duplicados y rechazos por código, retraso de recepción,
+tamaño de contexto, lag de retención y latencia. Logs y etiquetas solo pueden contener metadatos
+técnicos acotados; nunca contexto ni identidad. No hay impacto de i18n o accesibilidad porque no se
+crearon superficies de usuario.
+
+### Archivos creados o modificados
+
+- Esquema: `V46__create_behavior_events.sql`.
+- Código: paquetes `demand.event`/`demand.event.persistence`, `BehaviorEventEntity` y
+  `BehaviorEventDao`.
+- Tests: `BehaviorEventPersistenceIntegrationTests` y versión esperada 46 en
+  `DatabaseMigrationIntegrationTests`/`PgvectorMigrationIntegrationTests`.
+- Documentación: `docs/architecture/behavior-event-persistence.md`, índice, diseño, tareas,
+  seguimiento y este documento técnico.
+- No se eliminaron archivos ni se alteraron endpoints, componentes, jobs o traducciones.
+
+### Tests, evidencia, riesgos y trabajo posterior
+
+- `mvn -q spotless:apply`: formato Java aplicado.
+- `mvn -q -Dtest=BehaviorEventPersistenceIntegrationTests -Dcheckstyle.skip=true test`: 3 tests
+  correctos; imagen PostgreSQL 17.5 real, validación/aplicación de Flyway V1-V46 e inspección de
+  persistencia, índices y constraints.
+- Casos negativos verificados: `eventId` duplicado, tipo/familia incoherentes, clave no permitida,
+  identidad sin consentimiento y recepción anterior a ocurrencia.
+- Verificación cruzada de 19.4-19.6: `DemandIdentityPersistenceIntegrationTests` (3),
+  `BehaviorEventPersistenceIntegrationTests` (3) y `PgvectorMigrationIntegrationTests` (2), ocho
+  tests sin fallos; `spotless:check` y `test-compile` correctos. Los 4 tests Pydantic v1 también
+  pasan, y `npm run db:config` valida Compose.
+- `npm run backend:conventions:check` conserva 18 incidencias históricas en administración,
+  billing, verificación empresarial, formularios, notificaciones, reservas, reseñas y locales; no
+  señala ningún archivo nuevo de `demand.event`.
+- La primera ejecución posterior al cambio fue bloqueada por red del sandbox al resolver el POM; la
+  repetición autorizada completó correctamente. No fue un fallo del código.
+- Permanecen pendientes API/cuotas/lotes/logs (19.8), instrumentación (19.9), propagación de
+  revocación (19.16/19.17) y job de retención (19.18). El particionado se evaluará con datos reales.
