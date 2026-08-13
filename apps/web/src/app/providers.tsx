@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 
 import { defaultTimeZone, type Messages, type SupportedLocale } from "@/i18n/config";
+import { DemandConsentManager } from "@/features/privacy/demand-consent-manager";
 import { baseTheme } from "@/theme/base-theme";
 
 export interface AppProvidersProps {
@@ -27,6 +28,7 @@ export function AppProviders({ children, locale, messages }: Readonly<AppProvide
         <ThemeProvider theme={baseTheme}>
           <CssBaseline />
           {children}
+          <DemandConsentManager />
         </ThemeProvider>
       </NextIntlClientProvider>
     </AppRouterCacheProvider>

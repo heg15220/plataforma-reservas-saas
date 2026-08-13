@@ -248,7 +248,7 @@
         {
           "title": "3. Purposes and legal bases",
           "paragraphs": [
-            "We process data to create and manage the requested account or booking, send transactional messages, verify businesses, prevent abuse, resolve incidents, and meet legal duties. Depending on the operation, the basis may be performance of the service, explicit consent, a legal obligation, or legitimate interests in protecting the platform."
+            "We process data to create and manage the requested account or booking, send transactional messages, verify businesses, prevent abuse, resolve incidents, and meet legal duties. Analytics, personalisation and commercial activation are requested separately, start disabled and may be rejected without preventing a booking. Depending on the operation, the basis may be performance of the service, explicit consent, a legal obligation, or legitimate interests in protecting the platform."
           ]
         },
         {
@@ -2344,6 +2344,20 @@
       "description": "Latest critical actions with actor and changes, without network metadata.",
       "error": "We could not load the audit trail."
     }
+  },
+  "DemandConsent": {
+    "title": "Your data preferences",
+    "description": "Choose each optional use separately. No option is preselected.",
+    "operational": "Search, availability and booking continue to work if you reject everything.",
+    "purposes": {
+      "analytics": "Minimised analytics to improve the service",
+      "personalization": "Personalised results and recommendations",
+      "commercialActivation": "Promotions and commercial activation"
+    },
+    "save": "Save preferences",
+    "reject": "Reject optional uses",
+    "policy": "Read the policy",
+    "manage": "Data preferences"
   },
   "PublicErrors": {
     "title": "We could not complete the operation",

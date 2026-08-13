@@ -248,7 +248,7 @@
         {
           "title": "3. Finalidades y bases",
           "paragraphs": [
-            "Tratamos los datos para crear y gestionar la cuenta o reserva solicitada, enviar comunicaciones transaccionales, verificar negocios, prevenir abuso, resolver incidencias y cumplir obligaciones legales. La base puede ser la ejecución del servicio, el consentimiento explícito, una obligación legal o el interés legítimo en proteger la plataforma, según cada operación."
+            "Tratamos los datos para crear y gestionar la cuenta o reserva solicitada, enviar comunicaciones transaccionales, verificar negocios, prevenir abuso, resolver incidencias y cumplir obligaciones legales. Analítica, personalización y activación comercial se solicitan por separado, parten desactivadas y pueden rechazarse sin impedir una reserva. La base puede ser la ejecución del servicio, el consentimiento explícito, una obligación legal o el interés legítimo en proteger la plataforma, según cada operación."
           ]
         },
         {
@@ -2344,6 +2344,20 @@
       "description": "Últimas acciones críticas, con actor y cambios, sin metadatos de red.",
       "error": "No pudimos cargar la auditoría."
     }
+  },
+  "DemandConsent": {
+    "title": "Tus preferencias de datos",
+    "description": "Elige por separado qué usos opcionales autorizas. Ninguna opción está premarcada.",
+    "operational": "La búsqueda, disponibilidad y reserva siguen funcionando aunque rechaces todo.",
+    "purposes": {
+      "analytics": "Analítica minimizada para mejorar el servicio",
+      "personalization": "Personalización de resultados y recomendaciones",
+      "commercialActivation": "Promociones y activación comercial"
+    },
+    "save": "Guardar preferencias",
+    "reject": "Rechazar usos opcionales",
+    "policy": "Leer la política",
+    "manage": "Preferencias de datos"
   },
   "PublicErrors": {
     "title": "No pudimos completar la operación",

@@ -6,11 +6,20 @@ import {
   startDemandCorrelation,
 } from "./demand-correlation";
 import { toDemandCode, trackDemandEvent } from "./demand-telemetry";
+import { saveDemandConsent } from "@/features/privacy/demand-consent";
 
 describe("demand telemetry", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    saveDemandConsent({ analytics: true, personalization: false, commercialActivation: false });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+  });
+
+  it("does not emit optional analytics when consent is absent", () => {
+    window.localStorage.clear();
+    trackDemandEvent("searchPerformed", { queryLength: 12 });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("reuses an ephemeral session and never adds direct identifiers", async () => {

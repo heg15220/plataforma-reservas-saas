@@ -1,6 +1,7 @@
 "use client";
 
 import { demandSessionId, getDemandCorrelationId } from "./demand-correlation";
+import { hasDemandConsent } from "@/features/privacy/demand-consent";
 
 export type WebDemandEventType =
   | "searchPerformed"
@@ -25,7 +26,7 @@ export function trackDemandEvent(
   context: DemandContext = {},
   requestId = getDemandCorrelationId(),
 ) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !hasDemandConsent("analytics")) return;
   const event = {
     eventId: crypto.randomUUID(),
     schemaVersion: 1,
