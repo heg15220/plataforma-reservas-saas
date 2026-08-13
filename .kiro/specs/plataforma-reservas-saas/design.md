@@ -2818,6 +2818,11 @@ auditar ingestión. Los contextos son DTOs tipados por versión, no JSON libre i
 inválidos, PII no permitida y valores fuera de allowlist se rechazan antes de persistir y nunca se
 copian a logs.
 
+El contrato v1 queda materializado en `packages/demand-contracts`: catálogo JSON con 22 eventos y
+ownership, JSON Schema interoperable del sobre y modelos Pydantic estrictos con seis contextos de
+familia. `extra=forbid`, allowlists, límites y validaciones cruzadas impiden extensiones ad hoc. Una
+ruptura crea nueva `schemaVersion` y mantiene dos versiones activas; v1 nunca cambia de semántica.
+
 ### 14.5 Identidad progresiva y separación de finalidades
 
 Identificadores:

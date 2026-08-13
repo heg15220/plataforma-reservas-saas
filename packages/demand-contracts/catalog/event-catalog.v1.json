@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "catalogVersion": 1,
+  "status": "active",
+  "compatibility": {
+    "mode": "backward",
+    "minimumConsumerVersion": 1,
+    "producerWindow": "two active schema versions",
+    "breakingChange": "new schemaVersion and parallel migration window"
+  },
+  "families": {
+    "discovery": {
+      "defaultPurpose": "analytics",
+      "contextModel": "DiscoveryContextV1",
+      "events": ["searchPerformed", "categoryViewed", "venueImpression", "venueClicked"]
+    },
+    "evaluation": {
+      "defaultPurpose": "analytics",
+      "contextModel": "EvaluationContextV1",
+      "events": ["filterApplied", "photosViewed", "reviewsViewed", "availabilityChecked"]
+    },
+    "conversion": {
+      "defaultPurpose": "analytics",
+      "contextModel": "ConversionContextV1",
+      "events": ["bookingStarted", "bookingAbandoned", "bookingCompleted"]
+    },
+    "postBooking": {
+      "defaultPurpose": "analytics",
+      "contextModel": "PostBookingContextV1",
+      "events": ["bookingCancelled", "attendanceConfirmed", "noShow", "reviewSubmitted"]
+    },
+    "activation": {
+      "defaultPurpose": "commercial_activation",
+      "contextModel": "ActivationContextV1",
+      "events": ["recommendationShown", "promotionShown", "promotionOpened", "waitlistOffer"]
+    },
+    "experiment": {
+      "defaultPurpose": "experimentation",
+      "contextModel": "ExperimentContextV1",
+      "events": ["experimentAssigned", "rankingGenerated", "modelVersionUsed"]
+    }
+  },
+  "events": [
+    {
+      "type": "searchPerformed",
+      "family": "discovery",
+      "producer": "web",
+      "subject": "search",
+      "allowedIds": ["sessionId", "anonymousId"]
+    },
+    {
+      "type": "categoryViewed",
+      "family": "discovery",
+      "producer": "web",
+      "subject": "category",
+      "allowedIds": ["sessionId", "anonymousId"]
+    },
+    {
+      "type": "venueImpression",
+      "family": "discovery",
+      "producer": "spring",
+      "subject": "venue",
+      "allowedIds": ["sessionId", "anonymousId", "venueId"]
+    },
+    {
+      "type": "venueClicked",
+      "family": "discovery",
+      "producer": "web",
+      "subject": "venue",
+      "allowedIds": ["sessionId", "anonymousId", "venueId"]
+    },
+    {
+      "type": "filterApplied",
+      "family": "evaluation",
+      "producer": "web",
+      "subject": "search",
+      "allowedIds": ["sessionId", "anonymousId"]
+    },
+    {
+      "type": "photosViewed",
+      "family": "evaluation",
+      "producer": "web",
+      "subject": "venue",
+      "allowedIds": ["sessionId", "anonymousId", "venueId"]
+    },
+    {
+      "type": "reviewsViewed",
+      "family": "evaluation",
+      "producer": "web",
+      "subject": "venue",
+      "allowedIds": ["sessionId", "anonymousId", "venueId"]
+    },
+    {
+      "type": "availabilityChecked",
+      "family": "evaluation",
+      "producer": "spring",
+      "subject": "availability",
+      "allowedIds": ["sessionId", "anonymousId", "venueId", "serviceId", "resourceId"]
+    },
+    {
+      "type": "bookingStarted",
+      "family": "conversion",
+      "producer": "spring",
+      "subject": "booking",
+      "allowedIds": ["sessionId", "anonymousId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "bookingAbandoned",
+      "family": "conversion",
+      "producer": "web",
+      "subject": "booking",
+      "allowedIds": ["sessionId", "anonymousId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "bookingCompleted",
+      "family": "conversion",
+      "producer": "spring",
+      "subject": "booking",
+      "allowedIds": ["sessionId", "anonymousId", "customerId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "bookingCancelled",
+      "family": "postBooking",
+      "producer": "spring",
+      "subject": "booking",
+      "allowedIds": ["customerId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "attendanceConfirmed",
+      "family": "postBooking",
+      "producer": "spring",
+      "subject": "booking",
+      "allowedIds": ["customerId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "noShow",
+      "family": "postBooking",
+      "producer": "spring",
+      "subject": "booking",
+      "allowedIds": ["customerId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "reviewSubmitted",
+      "family": "postBooking",
+      "producer": "spring",
+      "subject": "review",
+      "allowedIds": ["customerId", "venueId"]
+    },
+    {
+      "type": "recommendationShown",
+      "family": "activation",
+      "producer": "spring",
+      "subject": "recommendation",
+      "allowedIds": ["sessionId", "anonymousId", "customerId", "venueId"]
+    },
+    {
+      "type": "promotionShown",
+      "family": "activation",
+      "producer": "spring",
+      "subject": "promotion",
+      "allowedIds": ["sessionId", "anonymousId", "customerId", "venueId"]
+    },
+    {
+      "type": "promotionOpened",
+      "family": "activation",
+      "producer": "web",
+      "subject": "promotion",
+      "allowedIds": ["sessionId", "anonymousId", "customerId", "venueId"]
+    },
+    {
+      "type": "waitlistOffer",
+      "family": "activation",
+      "producer": "spring",
+      "subject": "waitlist",
+      "allowedIds": ["customerId", "venueId", "serviceId", "timeSlotId"]
+    },
+    {
+      "type": "experimentAssigned",
+      "family": "experiment",
+      "producer": "spring",
+      "subject": "experiment",
+      "allowedIds": ["sessionId", "anonymousId", "customerId"]
+    },
+    {
+      "type": "rankingGenerated",
+      "family": "experiment",
+      "producer": "spring",
+      "subject": "ranking",
+      "allowedIds": ["sessionId", "anonymousId", "customerId"]
+    },
+    {
+      "type": "modelVersionUsed",
+      "family": "experiment",
+      "producer": "demand-engine",
+      "subject": "model",
+      "allowedIds": ["sessionId", "anonymousId", "customerId"]
+    }
+  ],
+  "forbiddenFields": [
+    "email",
+    "phone",
+    "ip",
+    "ipAddress",
+    "userAgent",
+    "fingerprint",
+    "reviewText",
+    "formAnswers",
+    "rawQuery",
+    "payload"
+  ]
+}

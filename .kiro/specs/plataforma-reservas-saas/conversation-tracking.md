@@ -9073,3 +9073,27 @@ Fuente de verdad del avance:
   - La reserva no depende de consentimiento de personalización.
   - Revocar es terminal para una fila; una nueva aceptación crea evidencia nueva.
   - Las FKs no usan cascada para que la futura supresión propagada sea explícita y auditable.
+
+# Conversación 199 - Catálogo y contratos v1 de eventos
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se creó un catálogo JSON v1 de 22 eventos en seis familias con productor, sujeto, finalidad por
+    defecto e identificadores permitidos.
+  - Se definió JSON Schema estricto del sobre interoperable y modelos Pydantic 2.11.3 para sobre y
+    contextos tipados de cada familia.
+  - Se impusieron `extra=forbid`, tipos/límites, consentimiento para identidad persistente,
+    coherencia evento-contexto, orden temporal e importe/moneda completo.
+  - Se documentó compatibilidad backward, ventana de dos versiones y prohibición de reinterpretar v1.
+- Archivos modificados:
+  - `packages/demand-contracts`: `pyproject.toml`, catálogo, schema, modelos Python, README y tests.
+  - `docs/architecture/demand-event-catalog.md`, índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-033`, `RF-034`, `RNF-002`, `RNF-005`, `RNF-014` y `RNF-015`.
+- Tareas impactadas: `19.5`; prepara `19.6`, `19.8`, `19.9` y `20.1`/`20.2`.
+- Tareas completadas: `19.5`.
+- Siguiente tarea pendiente recomendada:
+  - `17.1`; dentro de la prioridad explícita de fase 19, `19.6`.
+- Decisiones o aclaraciones relevantes:
+  - El paquete es independiente y no adelanta el servicio FastAPI de fase 20.
+  - Los contratos no aceptan texto libre ni PII; la ingesta futura revalidará consentimiento real.
+  - Un cambio breaking crea v2; no modifica la semántica de v1.

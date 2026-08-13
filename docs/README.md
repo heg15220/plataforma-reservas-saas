@@ -19,6 +19,7 @@ Este directorio agrupa documentación transversal que no sustituye a la especifi
   - `adr/0001-demand-engine-boundaries.md`: ownership, contratos, resiliencia y prohibiciones entre Spring y Demand Engine.
   - `pgvector-foundation.md`: imagen reproducible, migración, compatibilidad, índices, entornos y rollback lógico de pgvector.
   - `demand-identity-foundation.md`: HMAC versionado, identidad anónima, vínculos por finalidad, revocación y retención.
+  - `demand-event-catalog.md`: catálogo v1, contratos JSON/Pydantic, compatibilidad y minimización de eventos.
   - `visual-system.md`: tokens, tema MUI, estados, iconografía y catálogo visual.
 - `configuration.md`: variables, perfiles y reglas de seguridad por entorno.
 - `continuous-integration.md`: eventos, checks, seguridad y protección de ramas del pipeline CI.

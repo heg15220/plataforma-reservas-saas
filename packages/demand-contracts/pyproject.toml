@@ -1,0 +1,6 @@
+[project]
+name = "reserly-demand-contracts"
+version = "0.1.0"
+description = "Contratos versionados del motor de demanda de Reserly"
+requires-python = ">=3.13,<3.14"
+dependencies = ["pydantic==2.11.3"]

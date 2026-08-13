@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.reserly.internal/demand/behavior-event.v1.schema.json",
+  "title": "BehaviorEventV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "schemaVersion",
+    "eventType",
+    "occurredAt",
+    "requestId",
+    "purpose",
+    "context"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "schemaVersion": { "const": 1 },
+    "eventType": {
+      "enum": [
+        "searchPerformed",
+        "categoryViewed",
+        "venueImpression",
+        "venueClicked",
+        "filterApplied",
+        "photosViewed",
+        "reviewsViewed",
+        "availabilityChecked",
+        "bookingStarted",
+        "bookingAbandoned",
+        "bookingCompleted",
+        "bookingCancelled",
+        "attendanceConfirmed",
+        "noShow",
+        "reviewSubmitted",
+        "recommendationShown",
+        "promotionShown",
+        "promotionOpened",
+        "waitlistOffer",
+        "experimentAssigned",
+        "rankingGenerated",
+        "modelVersionUsed"
+      ]
+    },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "receivedAt": { "type": ["string", "null"], "format": "date-time" },
+    "requestId": { "type": "string", "format": "uuid" },
+    "purpose": {
+      "enum": ["analytics", "personalization", "experimentation", "commercial_activation"]
+    },
+    "consentVersion": { "type": ["string", "null"], "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+    "sessionId": { "type": ["string", "null"], "format": "uuid" },
+    "anonymousId": { "type": ["string", "null"], "format": "uuid" },
+    "customerId": { "type": ["string", "null"], "format": "uuid" },
+    "venueId": { "type": ["string", "null"], "format": "uuid" },
+    "serviceId": { "type": ["string", "null"], "format": "uuid" },
+    "resourceId": { "type": ["string", "null"], "format": "uuid" },
+    "timeSlotId": { "type": ["string", "null"], "format": "uuid" },
+    "countryCode": { "type": ["string", "null"], "pattern": "^[A-Z]{2}$" },
+    "context": { "type": "object", "maxProperties": 8 }
+  }
+}

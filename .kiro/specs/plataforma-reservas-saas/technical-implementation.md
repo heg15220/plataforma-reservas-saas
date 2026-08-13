@@ -35202,3 +35202,48 @@ cookies ni logs. Revocar no toca la reserva operativa.
 No se implementan derivación HMAC, cookies, API, UI ni job de borrado. Corresponden a 19.8 y
 19.16-19.18. El test aislado evita la regresión previa del filtro Spring sin rebajar la prueba real
 de PostgreSQL.
+
+## Iteración 2026-08-13 - Tarea 19.5: catálogo y contratos v1 de eventos
+
+### Objetivo, requisitos y arquitectura
+
+- Tarea: `19.5`.
+- Objetivo: convertir la lista conceptual de eventos en contratos versionados, ejecutables y
+  compartibles antes de persistir o exponer ingesta.
+- Requisitos: `RF-033`, `RF-034`, `RNF-002`, `RNF-005`, `RNF-014`, `RNF-015` y diseño 14.4/14.18.
+
+Se crea `packages/demand-contracts`, separado del futuro FastAPI. El catálogo JSON v1 registra 22
+tipos, seis familias, productor (`web`, `spring`, `demand-engine`), sujeto, finalidad por defecto,
+modelo de contexto e IDs permitidos. Esto hace revisable el ownership y evita que el cliente declare
+resultados transaccionales como canónicos.
+
+`behavior-event.v1.schema.json` define el sobre interoperable, required fields, enum, formatos UUID,
+fecha/hora, finalidad y `additionalProperties=false`. `events_v1.py` usa Pydantic 2.11.3, modelos
+inmutables/estrictos y seis contextos cerrados. Valida códigos, recuentos, distancia, fecha,
+importe/moneda, rating, exposición, política/modelo y experimento sin payload libre.
+
+### Contratos, privacidad y compatibilidad
+
+El sobre conserva `eventId`, versión, tipo, ocurrencia, recepción opcional, correlación, finalidad,
+consentimiento e IDs opcionales. Identidad persistente exige `consentVersion`; el servidor futuro
+debe contrastarla con tablas, pues el payload no es autoridad. `receivedAt` no puede preceder
+`occurredAt`. Cada tipo exige contexto de su familia.
+
+Se prohíben por catálogo email, teléfono, IP, user-agent, fingerprint, texto de consulta/reseña,
+respuestas de formulario y payload genérico. Las claves desconocidas fallan cerradas. Los errores no
+incluyen payload en logs; API y métricas corresponden a 19.8.
+
+V1 es inmutable semánticamente. Cambios aditivos actualizan las tres representaciones y tests; una
+ruptura crea v2 y mantiene dos versiones activas hasta medir retirada. Consumidores rechazan versión
+desconocida. No existe migración de datos en esta tarea.
+
+### Archivos y evidencia
+
+- `pyproject.toml` fija Python 3.13 y Pydantic 2.11.3.
+- Catálogo JSON, JSON Schema, `events_v1.py`, export del paquete, README y contrato arquitectónico.
+- `test_events_v1.py`: 4 tests verifican igualdad de catálogos, evento tardío, rechazo de PII/campo
+  extra/identidad sin consentimiento/contexto erróneo y paridad del sobre JSON-Pydantic.
+- `$env:PYTHONPATH='src'; python -m unittest discover -s tests -v`: 4 tests correctos.
+
+No se crea endpoint, persistencia, cola ni instrumentación. Esas responsabilidades quedan en
+19.6/19.8/19.9. La validación de IDs permitidos se ejecutará en la ingesta usando el catálogo.
