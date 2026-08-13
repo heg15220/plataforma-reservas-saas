@@ -35051,3 +35051,103 @@ Se verifica presencia de estado/fecha/ownership, matriz de datos, contratos sync
 presupuestos, fallback, seguridad, compatibilidad, observabilidad, alternativas y consecuencias;
 Prettier, calidad española focal y `git diff --check`. El contrato es conceptual hasta que 20.2 lo
 materialice y sus valores de resiliencia deben validarse mediante carga antes de producción.
+
+## Iteración 2026-08-13 - Tarea 19.3: fundamento ejecutable de pgvector
+
+### Identificador, objetivo y trazabilidad
+
+- Tarea: `19.3`.
+- Objetivo técnico: instalar pgvector de forma reproducible y demostrar que PostgreSQL puede crear,
+  consultar e indexar vectores sin introducir aún un modelo de embeddings prematuro.
+- Requisitos y decisiones: `RF-029`, `RF-033`, `RNF-001`, `RNF-003`, `RNF-005`, `RNF-014`,
+  `RB-015`, secciones 14.7/14.9 del diseño y ADR-0001.
+
+### Imagen, entornos y cadena de suministro
+
+Se añadió `infrastructure/postgres/Dockerfile`. Su etapa final conserva
+`postgis/postgis:17-3.5` y recibe desde `pgvector/pgvector:0.8.6-pg17-bookworm` solamente
+`vector.so`, bitcode LLVM y archivos de control/SQL para PostgreSQL 17. Las dos referencias están
+fijadas por digest; el digest pgvector multi-arquitectura fue contrastado mediante
+`docker buildx imagetools inspect`.
+
+La copia multi-stage evita compiladores y gestores de paquetes en runtime, conserva el entrypoint
+conocido de PostGIS y produce `reserly/postgres:17-3.5-vector0.8.6`. `compose.yaml` construye esa
+imagen desde la raíz. Staging/producción deben publicar y promover por digest este mismo artefacto,
+con escaneo y backup ensayado; no deben instalar pgvector interactivamente.
+
+Para tests, `application-test.yaml` usa el nuevo esquema JDBC
+`jdbc:tc:reserly:17-3.5-vector0.8.6`. `ReserlyPostgreSqlContainerProvider` implementa
+`JdbcDatabaseContainerProvider`, valida exactamente la etiqueta soportada, localiza de forma
+acotada el Dockerfile desde la raíz o `apps/api`, construye la imagen y devuelve un
+`PostgreSQLContainer` marcado como sustituto compatible. El registro bajo `META-INF/services`
+permite que `ContainerDatabaseDriver` lo descubra sin modificar cada test Spring.
+
+### Migración, modelo físico y permisos
+
+`V44__enable_pgvector_extension.sql` ejecuta `CREATE EXTENSION IF NOT EXISTS vector` y documenta la
+finalidad con `COMMENT ON EXTENSION`. No crea tabla, columna ni índice de negocio. Esta separación es
+deliberada: una futura proyección debe declarar sujeto, `modelVersion`, dimensiones,
+`contentChecksum`, locale, vigencia y operador antes de fijar el tipo `vector(n)`.
+
+La cuenta Flyway necesita `CREATE EXTENSION` en cada base nueva. La cuenta ordinaria de la API no
+necesita ese privilegio ni superusuario. Un error de instalación aborta migración/despliegue; no se
+oculta como fallback, porque el fallback de ADR-0001 corresponde al ranking durante runtime.
+
+### Compatibilidad, índices y flujos ejecutados
+
+`DatabaseMigrationIntegrationTests` se actualizó a la versión Flyway 44 y ahora exige `vector`
+además de `postgis`, `pg_trgm` y `unaccent`. Para aislar la infraestructura del arranque completo de
+Spring, `PgvectorMigrationIntegrationTests` inicia la imagen real, ejecuta Flyway V1-V44 directamente
+y prueba:
+
+1. exige `extversion = 0.8.6`;
+2. crea `PgvectorCompatibilityProbe` con `vector(3)`;
+3. inserta tres vectores y obtiene el más próximo mediante distancia coseno `<=>`;
+4. crea y audita un índice HNSW con `vector_cosine_ops`;
+5. comprueba que PostgreSQL rechaza una dimensión de dos elementos;
+6. elimina en `finally` la tabla sonda y confirma que la extensión permanece instalada.
+
+Esto prueba disponibilidad de HNSW, no autoriza crearlo indiscriminadamente. Cada índice real debe
+comparar recall con búsqueda exacta, p95/p99, memoria, tamaño, escritura y reconstrucción, además de
+fijar modelo/dimensión/operador. Hasta que el volumen lo justifique se mantiene búsqueda exacta.
+
+### Rollback, errores, seguridad y observabilidad
+
+Flyway es forward-only. El rollback lógico desactiva el consumidor o feature flag, detiene
+recomputaciones y elimina índices/proyecciones concretas mediante una migración posterior. Se
+prohíbe `DROP EXTENSION vector CASCADE`, que podría destruir dependencias no inventariadas. Un
+downgrade binario no sustituye restaurar un backup verificado.
+
+No se añaden endpoints, PII ni datos. Los futuros logs vectoriales deben limitarse a modelo/versión,
+dimensiones, operador, candidatos, duración y código de fallback; nunca incluir embeddings ni texto
+fuente. La API de reserva sigue independiente de pgvector conforme a ADR-0001.
+
+### Archivos creados o modificados
+
+- Imagen/operación: `infrastructure/postgres/Dockerfile`, `infrastructure/compose.yaml`,
+  `infrastructure/README.md`.
+- Esquema/configuración: `V44__enable_pgvector_extension.sql`, `application-test.yaml`.
+- Tests: `ReserlyPostgreSqlContainerProvider.java`, `PgvectorMigrationIntegrationTests.java`,
+  descriptor `META-INF/services` y `DatabaseMigrationIntegrationTests.java`.
+- Documentación: `docs/architecture/pgvector-foundation.md`, índice y cuatro documentos `.kiro`.
+- No se eliminaron archivos ni se alteraron datos existentes, endpoints, UI o traducciones.
+
+### Verificación, evidencia, limitaciones y deuda
+
+- `docker buildx imagetools inspect pgvector/pgvector:0.8.6-pg17-bookworm`: digest
+  multi-arquitectura `sha256:7ae6051e...75e38`, amd64 y arm64.
+- `mvn -q spotless:apply`: formato Java aplicado.
+- `mvn -q -DskipTests "-Dcheckstyle.skip=true" test-compile`: compilación principal y de tests
+  correcta. Checkstyle completo conserva incidencias históricas ajenas en imports wildcard y
+  plantillas de email; las líneas nuevas se corrigieron a su límite.
+- `mvn -q -Dtest=PgvectorMigrationIntegrationTests -Dcheckstyle.skip=true test`: 2 tests correctos;
+  construcción de `reserly/postgres:17-3.5-vector0.8.6`, validación de 44 migraciones, aplicación
+  V1-V44 sobre PostgreSQL 17.5 y verificaciones de extensión/tipo/distancia/HNSW/dimensión/rollback.
+- La primera ejecución de `DatabaseMigrationIntegrationTests` alcanzó una base migrada, pero el
+  contexto completo falló después por la deuda previa `SessionAuthenticationFilter does not have a
+  registered order`. No pertenece a 19.3; el test aislado demuestra la infraestructura sin ocultar
+  esa regresión.
+- `npm run db:config`, `npm run format:check:api` y `git diff --check`: correctos.
+- Los validadores globales de convenciones, Checkstyle y español conservan incidencias históricas
+  ajenas (DTO/DAO/nombres, imports/plantillas y signos/tildes antiguos); no se introdujeron nuevas.
+- Las tablas reales de embeddings, benchmark y tuning HNSW corresponden a tareas posteriores.

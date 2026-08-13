@@ -9002,3 +9002,46 @@ Fuente de verdad del avance:
   - No existen reintentos síncronos en ranking; Spring posee el fallback y lo audita por código.
   - RabbitMQ o Demand Engine caídos nunca revierten ni bloquean una reserva.
   - Dar acceso directo a PostgreSQL o autoridad de mutación requiere un ADR sustitutorio.
+
+# Conversación 197 - Fundamento ejecutable de pgvector
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se habilitó pgvector 0.8.6 mediante la migración Flyway `V44`, sin crear todavía columnas ni
+    índices de producto que carezcan de contrato dimensional y de modelo.
+  - Se creó una imagen multi-stage reproducible de PostgreSQL 17, PostGIS 3.5 y pgvector 0.8.6,
+    con bases oficiales fijadas por versión y digest.
+  - Compose y la suite Java pasan a compartir el mismo Dockerfile mediante un proveedor JDBC
+    Testcontainers registrado por `ServiceLoader`.
+  - La prueba aislada `PgvectorMigrationIntegrationTests` aplica las 44 migraciones y verifica
+    versión, tipo `vector(3)`, distancia coseno, rechazo de dimensión incorrecta, creación de HNSW y
+    rollback lógico sin retirar la extensión.
+  - Se documentaron matriz de entornos, privilegios, promoción, criterios para índices y runbook de
+    recuperación forward-only.
+- Archivos modificados:
+  - `infrastructure/postgres/Dockerfile`, `infrastructure/compose.yaml` e
+    `infrastructure/README.md`.
+  - `apps/api/src/main/resources/db/migration/V44__enable_pgvector_extension.sql` y
+    `apps/api/src/main/resources/application-test.yaml`.
+  - `ReserlyPostgreSqlContainerProvider.java`, `PgvectorMigrationIntegrationTests.java`, su registro
+    `META-INF/services` y `DatabaseMigrationIntegrationTests.java`.
+  - `docs/architecture/pgvector-foundation.md` y `docs/README.md`.
+  - `design.md`, `tasks.md`, `conversation-tracking.md` y `technical-implementation.md`.
+- Requisitos impactados:
+  - `RF-029`, `RF-033`, `RNF-001`, `RNF-003`, `RNF-005`, `RNF-014` y `RB-015`.
+- Tareas impactadas: `19.3`; prepara `19.14`, `20.3`, `20.4` y `20.5`.
+- Tareas completadas:
+  - `19.3. Habilitar la extensión pgvector mediante Flyway y verificar compatibilidad, rollback
+    lógico, índices y entornos`.
+- Siguiente tarea pendiente recomendada:
+  - `17.1`; dentro de la prioridad explícita de fase 19, `19.4`.
+- Decisiones o aclaraciones relevantes:
+  - Flyway conserva ownership exclusivo del esquema compartido; Python no instala extensiones.
+  - HNSW queda disponible y probado, pero no se crea sobre datos reales sin benchmark y contrato.
+  - Se prohíbe `DROP EXTENSION vector CASCADE`; el rollback operativo es desactivar consumidores y
+    retirar proyecciones mediante una migración posterior explícita.
+  - Docker Desktop se inició para la verificación: la imagen se construyó y la prueba aislada aplicó
+    correctamente Flyway V1-V44 sobre PostgreSQL 17.5 antes de validar pgvector.
+  - El test histórico que levanta todo Spring sigue bloqueado por un problema previo e independiente
+    en el orden de `SessionAuthenticationFilter`; la prueba aislada evita confundir ese fallo de
+    aplicación con la compatibilidad de base de datos.

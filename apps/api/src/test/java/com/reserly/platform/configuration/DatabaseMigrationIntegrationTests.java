@@ -19,7 +19,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
- * Verifica una migración completa sobre una instancia PostGIS efímera y vacía.
+ * Verifica una migración completa sobre una instancia PostgreSQL efímera con PostGIS y pgvector.
  *
  * <p>El perfil {@code test} usa Testcontainers JDBC. Flyway debe crear su historial y activar las
  * extensiones antes de que Hibernate valide el esquema.
@@ -34,19 +34,19 @@ class DatabaseMigrationIntegrationTests {
 
   @Test
   void migratesEmptyPostgisDatabaseToLatestVersion() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("40");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("44");
 
     List<String> extensions =
         jdbcTemplate.queryForList(
             """
                         SELECT "extname"
                         FROM "pg_extension"
-                        WHERE "extname" IN ('postgis', 'pg_trgm', 'unaccent')
+                        WHERE "extname" IN ('postgis', 'pg_trgm', 'unaccent', 'vector')
                         ORDER BY "extname"
                         """,
             String.class);
 
-    assertThat(extensions).containsExactly("pg_trgm", "postgis", "unaccent");
+    assertThat(extensions).containsExactly("pg_trgm", "postgis", "unaccent", "vector");
 
     assertThat(
             jdbcTemplate.queryForList(

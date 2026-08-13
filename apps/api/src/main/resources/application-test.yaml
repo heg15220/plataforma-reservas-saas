@@ -6,7 +6,7 @@ spring:
       url: redis://localhost:1
   datasource:
     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
-    url: jdbc:tc:postgis:17-3.5:///reserly_test
+    url: jdbc:tc:reserly:17-3.5-vector0.8.6:///reserly_test
     username: test
     password: test
     hikari:

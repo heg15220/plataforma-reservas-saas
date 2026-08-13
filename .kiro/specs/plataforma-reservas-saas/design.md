@@ -2888,6 +2888,13 @@ Los embeddings guardan `subjectType`, `subjectId`, `locale`, `modelVersion`, `di
 recalculo idempotente. pgvector se usa dentro de PostgreSQL al inicio; HNSW se habilita tras medir
 recall, latencia, tamaño y coste de actualización.
 
+La base soportada queda fijada en PostgreSQL 17, PostGIS 3.5 y pgvector 0.8.6 mediante una imagen
+multi-stage compartida por Compose y Testcontainers. Flyway habilita la extensión de forma
+forward-only; una retirada desactiva consumidores y elimina proyecciones mediante migraciones
+explícitas, nunca con `DROP EXTENSION vector CASCADE`. La compatibilidad se prueba con tipo
+dimensionado, distancia coseno e índice HNSW, pero cada índice productivo exige contrato de modelo,
+dimensión, operador y benchmark propio.
+
 El análisis visual con CLIP es posterior y auxiliar. Debe registrar modelo/prompt/evidencia y no
 inferir limpieza, seguridad, ambiente familiar, tranquilidad ni atributos sensibles a partir de una
 fotografía.

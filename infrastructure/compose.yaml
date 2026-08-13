@@ -2,7 +2,10 @@ name: reserly
 
 services:
   postgres:
-    image: postgis/postgis:17-3.5@sha256:5bc4a94e294a98370b91f597d631ac7d757dd3b33cfce7fde9670c9c3fd3cc19
+    image: reserly/postgres:17-3.5-vector0.8.6
+    build:
+      context: ..
+      dockerfile: infrastructure/postgres/Dockerfile
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${RESERLY_DATABASE_NAME:-reserly}
