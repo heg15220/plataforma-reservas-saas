@@ -35849,3 +35849,114 @@ las métricas son de local.
   extractores en fase 20. La vida media única es una base configurable; una evolución puede resolver
   TTL/vida media por tipo sin cambiar la fórmula versionada. Cambiar pesos exige cambiar versión para
   no perder reproducibilidad.
+
+## Iteración 2026-08-13 - Tarea 19.16: consentimiento granular del motor de demanda
+
+### Objetivo, requisitos y contrato
+
+- Tarea exacta: 19.16.
+- Objetivo: recoger por separado analítica, personalización y activación comercial sin convertir
+  ninguna finalidad opcional en requisito para buscar, consultar disponibilidad o reservar.
+- Requisitos y diseño: RF-033, RF-034, RF-038, RNF-002, RNF-005, RNF-006 y RNF-015; secciones 14.5,
+  14.17 y 14.19.
+
+`demand-consent.ts` define el contrato `demand-consent.v1`: tres booleanos independientes, versión
+y fecha ISO. El parser es fail-closed: JSON inválido, campos ausentes o versión distinta equivalen a
+no haber decidido y fuerzan una nueva elección. `localStorage` no contiene identificadores ni crea
+cookie; el evento local de cambio permite que productores opcionales reaccionen en la misma pestaña.
+`hasDemandConsent` es la única frontera de lectura por finalidad.
+
+`DemandConsentManager`, montado globalmente desde `providers.tsx`, muestra un diálogo accesible con
+los tres interruptores inicialmente apagados, acciones guardar/rechazar y enlace a privacidad. Tras
+decidir queda un control permanente para reabrir preferencias. Textos equivalentes ES/EN explican
+finalidad y garantía operativa. La política versionada vive en
+`docs/privacy/demand-consent-policy.md`; el texto legal de la aplicación refleja la separación.
+
+### Flujo, privacidad, archivos y verificación
+
+La telemetría web comprueba analítica antes de construir/enviar eventos. En ausencia o revocación
+no emite. Personalización y activación se almacenan para consumidores futuros, pero no se ejecuta
+tratamiento anticipado. Los clientes de disponibilidad/reserva y backend operacional no importan ni
+consultan este módulo, por lo que rechazo y errores de almacenamiento no bloquean el servicio.
+
+Archivos creados: `features/privacy/demand-consent.ts`, manager y test, más la política. Archivos
+modificados: providers, telemetría/test, locales ES/EN. Vitest ejecutó 6 casos entre consentimiento y
+telemetría; ESLint focalizado terminó sin avisos. Riesgo pendiente: sincronización servidor/cuenta y
+prueba UI completa cuando exista identidad consentida; hasta entonces no se infiere consentimiento.
+
+## Iteración 2026-08-13 - Tarea 19.17: derechos y borrado propagado
+
+### Objetivo, modelo y frontera de seguridad
+
+- Tarea exacta: 19.17.
+- Objetivo: ejecutar acceso, corrección, oposición, revocación, desvinculación y supresión sobre
+  identidades seudónimas y derivados reconstruibles, con reintentos idempotentes.
+- Requisitos y diseño: RF-034, RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015; 14.5, 14.13,
+  14.17 y 14.18.
+
+Flyway V50 crea `DemandPrivacyRequests` con `requestId` único, sujeto/tipo, acción, finalidad,
+estado, resultado JSON allowlisted, tiempos y expiración a tres años. El resultado está limitado a
+4 KiB y solo admite existencia, contadores y booleanos; no guarda email, HMAC, contexto, features ni
+payload. Índices soportan idempotencia, consulta por sujeto y retención. El UUID de sujeto queda como
+referencia opaca de la solicitud aun cuando la identidad sea suprimida.
+
+`POST /api/internal/demand/v1/privacy/requests` requiere la autenticación de servicio existente y
+rol `DEMAND_INGESTOR` para todo `/api/internal/demand/v1/**`; no es una API pública de autoservicio.
+El sistema responsable debe autenticar/verificar al interesado. Bean Validation restringe tipos,
+acciones, finalidades, HMAC hexadecimal de 64 caracteres y versión. Corrección solo acepta HMAC y
+versión ya derivados, nunca correo claro.
+
+### Ejecución, concurrencia, errores y verificación
+
+El servicio transaccional toma `pg_advisory_xact_lock` derivado del request UUID, devuelve el
+resultado persistido en reintentos y serializa operaciones concurrentes. Acceso informa contadores;
+oposición revoca links y consentimiento de personalización; revocación acota links por finalidad;
+desvinculación revoca links; supresión borra eventos y peticiones de recomendación, cuya cascada
+retira candidatos/rankings, después links e identidad. Reservas, pagos y auditoría legal no se tocan.
+Sujeto inexistente produce `not_found` auditable; comandos semánticamente inválidos producen 400.
+
+No existe aún perfil personal materializado; acceso y supresión publican `profiles=0` y
+`profilesDeleted=0`. `VenueAttributeProfiles` describe locales, no personas, y no debe borrarse por
+un derecho individual. Cualquier perfil personal futuro debe ampliar esta transacción antes de ser
+habilitado. Se crearon DTOs, controller, servicio, package-info, V50 y test PostgreSQL; se modificaron
+filtro y configuración de seguridad. `DemandPrivacyIntegrationTests` verificó cascada, supresión e
+idempotencia; Flyway validó V1-V51 en PostgreSQL 17.5. Pendiente de producto: flujo autenticado de
+solicitud/validación humana, fuera de esta frontera interna.
+
+## Iteración 2026-08-13 - Tarea 19.18: retención, índices y particionado temporal
+
+### Política, modelo físico y arquitectura
+
+- Tarea exacta: 19.18.
+- Objetivo: limitar conservación y coste operacional de eventos/rankings mediante expiración,
+  índices, lotes y una puerta cuantitativa de particionado.
+- Requisitos y diseño: RF-033, RF-034, RF-036, RNF-005, RNF-014 y RNF-015; 14.13, 14.17 y 14.18.
+
+La política inicial mantiene eventos y peticiones/rankings 90 días por defecto, respeta siempre el
+`retentionExpiresAt` ya persistido, limpia 500 filas por agregado/ejecución y conserva auditoría
+minimizada de derechos tres años. Evidencias/perfiles de local usan su `expiresAt`; links e identidades
+usan retención propia. `minimumAggregateCohort=10` impide publicar agregados por debajo de diez
+unidades independientes y no autoriza prolongar datos vencidos.
+
+V51 añade BRIN (`pages_per_range=64`) sobre `BehaviorEvents.receivedAt`,
+`RecommendationRequests.requestedAt` y `RecommendationRankings.rankedAt`; conserva los B-tree de
+expiración/idempotencia existentes. No se particiona prematuramente: la unicidad global de `eventId`
+y la operación de migración requieren medidas. La puerta documentada activa RANGE mensual si hay
+5.000.000 filas, 1 GiB o p95 de borrado >2 s durante siete ejecuciones. El runbook exige partición
+default y tres futuras, doble escritura, copia por ventanas, conteos/checksums, swap y rollback.
+
+### Job, orden de borrado, observabilidad y verificación
+
+`DemandRetentionProperties` valida lotes 1..10.000, duraciones no negativas, cohorte mínima 10 y
+umbrales positivos. `DemandRetentionJob` dispara por cron UTC diario (03:35). El servicio ejecuta
+CTE por `ctid`, ordena por expiración y limita cada tabla dentro de una transacción: eventos,
+peticiones (cascada a ranking/candidatos), perfiles/evidencias de local, links, identidades expiradas
+sin links y auditorías. Devuelve contadores, no IDs; un fallo revierte el lote y el siguiente cron
+reintenta sin cursor. Nunca incluye reservas, pagos ni auditoría general.
+
+Se crearon V51, propiedades/configuración, servicio, job, resultado, package-info, prueba PostgreSQL y
+`docs/architecture/demand-retention-partitioning.md`; se modificaron `application.yaml` y expectativas
+Flyway a 51. `DemandRetentionIntegrationTests` comprobó que solo se elimina la fila vencida y que la
+vigente permanece. Las tres suites Maven focalizadas pasaron y Flyway aplicó 51 migraciones. Riesgos:
+medir backlog/duración y alertar en 19.20; ejecutar el runbook de particionado solo tras la puerta;
+versionar cualquier cambio de plazo y aplicarlo prospectivamente, nunca alargando filas existentes.

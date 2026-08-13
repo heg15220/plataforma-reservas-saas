@@ -9301,3 +9301,34 @@ Fuente de verdad del avance:
   - Flyway V1-V49 y tres pruebas focalizadas pasan. El contexto Spring global conserva el baseline
     previo de `BehaviorEvents.countryCode`; Checkstyle y typecheck global conservan fallos históricos
     fuera de estos archivos.
+
+# Conversación 208 - Consentimiento, derechos y retención del motor de demanda
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se implementó un centro global ES/EN de consentimiento opcional, granular, desactivado por
+    defecto, revocable y sin dependencia desde disponibilidad o reserva.
+  - Se creó una frontera interna idempotente para acceso, corrección seudónima, oposición,
+    revocación por finalidad, desvinculación y supresión propagada de derivados.
+  - Se fijaron plazos, lotes, índices BRIN, umbral agregado y criterios medibles para activar
+    particionado temporal, además de un job diario de limpieza.
+- Archivos modificados:
+  - Gestor, almacenamiento y tests de consentimiento web; proveedores, telemetría y locales ES/EN.
+  - Políticas `docs/privacy/demand-consent-policy.md` y
+    `docs/architecture/demand-retention-partitioning.md`.
+  - Flyway V50/V51, paquetes backend `demand.privacy` y `demand.retention`, seguridad interna,
+    configuración y pruebas PostgreSQL.
+  - Diseño, tareas, seguimiento y documento técnico único.
+- Requisitos impactados: RF-033, RF-034, RF-035, RF-036, RF-038, RNF-002, RNF-005, RNF-006,
+  RNF-014 y RNF-015.
+- Tareas impactadas: 19.16, 19.17 y 19.18; prepara 19.19, 19.20, 19.21 y perfiles de fase 21.
+- Tareas completadas: 19.16, 19.17 y 19.18.
+- Siguiente tarea pendiente recomendada: 17.1; en fase 19, 19.19.
+- Decisiones o aclaraciones relevantes:
+  - Rechazar todas las finalidades opcionales no bloquea ni degrada la reserva operativa.
+  - Privacidad no recibe email en claro; corrección recibe HMAC y versión desde el sistema que ya
+    verificó al interesado.
+  - No existe perfil personal persistido en fase 19; el contrato reporta cero y cualquier perfil
+    futuro deberá integrarse en acceso/supresión antes de activarse.
+  - Se aplaza particionado hasta datos reales: 5 millones de filas, 1 GiB o p95 de borrado superior
+    a 2 s en siete ejecuciones. Flyway V1-V51 y las suites focalizadas pasan.

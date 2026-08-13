@@ -115,6 +115,14 @@ reserly:
       requests: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_REQUESTS:600}
       window: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_WINDOW:1m}
   demand:
+    retention:
+      batchSize: ${RESERLY_DEMAND_RETENTION_BATCH_SIZE:500}
+      eventRetention: ${RESERLY_DEMAND_EVENT_RETENTION:90d}
+      recommendationRetention: ${RESERLY_DEMAND_RECOMMENDATION_RETENTION:90d}
+      minimumAggregateCohort: ${RESERLY_DEMAND_MINIMUM_AGGREGATE_COHORT:10}
+      partitionRowThreshold: ${RESERLY_DEMAND_PARTITION_ROW_THRESHOLD:5000000}
+      partitionBytesThreshold: ${RESERLY_DEMAND_PARTITION_BYTES_THRESHOLD:1073741824}
+      cron: ${RESERLY_DEMAND_RETENTION_CRON:0 35 3 * * *}
     aggregation:
       version: ${RESERLY_DEMAND_AGGREGATION_VERSION:weighted-v1}
       halfLife: ${RESERLY_DEMAND_AGGREGATION_HALF_LIFE:90d}

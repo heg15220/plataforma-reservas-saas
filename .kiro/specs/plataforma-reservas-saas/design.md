@@ -2852,6 +2852,15 @@ finalidad, conserva motivo y versión/fecha de consentimiento, admite revocació
 retención explícita. FKs restrictivas obligan a retirar primero vínculos y derivados. Los DAOs solo
 resuelven personalización si consentimiento, vigencia y retención siguen activos.
 
+Implementación 19.16-19.17: el navegador conserva un registro versionado con decisiones separadas
+para analítica, personalización y activación comercial, todas inicialmente desactivadas. Solo la
+telemetría web opcional consulta analítica; disponibilidad y reserva no dependen del registro. La
+frontera interna de privacidad aplica acciones idempotentes sobre UUID verificados, acepta para
+corrección exclusivamente HMAC/version ya calculados, revoca links por finalidad y suprime eventos,
+peticiones de recomendación y sus rankings antes de retirar la identidad. No existe todavía un
+perfil personal materializado: el contrato devuelve cero y obliga a integrar cualquier perfil futuro
+en esta propagación antes de activarlo.
+
 ### 14.6 Ontología, evidencias y perfil de local
 
 Familias iniciales: ambiente, espacio, experiencia, oferta, operación y accesibilidad. Cada atributo
@@ -3071,6 +3080,14 @@ persistentes exigen versión de consentimiento y sus FKs, al igual que los sujet
 `ON DELETE SET NULL` para permitir supresión sin copiar PII. Se indexan tiempo, tipo, local,
 identidades, petición y retención; el particionado se aplaza hasta disponer de métricas reales.
 
+Implementación 19.18: se mantienen los B-tree de expiración y se añaden BRIN de tiempo a eventos,
+peticiones y rankings. Un job diario elimina lotes acotados por `retentionExpiresAt`, empezando por
+derivados y links; borrar una petición propaga a candidatos/rankings. El particionado RANGE mensual
+se mantiene aplazado hasta superar 5.000.000 filas, 1 GiB o p95 de limpieza superior a 2 s durante
+siete ejecuciones. La migración posterior deberá preservar unicidad de `eventId`, doble escritura,
+reconciliación por checksum y rollback. El umbral inicial de publicación agregada es 10 unidades
+independientes por cohorte.
+
 Implementación 19.7: Flyway V47 materializa el agregado auditable de recomendación. La petición es
 idempotente y fija contexto minimizado, estrategia, política, modelo y experimento. Los candidatos
 conservan posición previa, elegibilidad, disponibilidad, precio y señales visibles allowlisted. El
@@ -3188,6 +3205,13 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 - Revisión humana de atributos, modelos y acciones comerciales materiales.
 - Auditoría de cambios de ontología, políticas, modelos, experimentos y optimización.
 - Evaluación de impacto y revisión jurídica antes de personalización persistente o promociones.
+
+La implementación 19.16-19.18 materializa estas fronteras mediante consentimiento local versionado,
+endpoint interno autenticado `POST /api/internal/demand/v1/privacy/requests`, auditoría minimizada
+de derechos durante tres años y borrado diario acotado. Los resultados de derechos solo contienen
+UUID, estado y contadores; nunca email, HMAC, contexto, features o payloads. La oposición revoca toda
+personalización y links activos; la revocación puede acotarse a finalidad; la supresión borra
+derivados reconstruibles sin tocar reservas, pagos ni evidencia legal operativa.
 
 ### 14.18 Estrategia de pruebas y aceptación
 
