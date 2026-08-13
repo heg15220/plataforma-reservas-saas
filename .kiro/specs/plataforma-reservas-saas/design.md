@@ -36,7 +36,9 @@ Contextos principales:
 - **Cola de trabajos:** emails, expiración de bloqueos, estadísticas, recordatorios y callbacks externos.
 - **Proveedor de email:** confirmaciones, avisos, verificación y recordatorios.
 - **RedSys:** pagos externos de suscripciones.
-- **Motor de recomendaciones:** batch posterior basado en interacciones y valoraciones.
+- **Reserly Demand Engine:** servicio de inteligencia extraíble, inicialmente fuera del camino
+  transaccional, para eventos, atributos, embeddings, candidatos, ranking explicable, demanda,
+  experimentos y atribución. Su indisponibilidad nunca debe impedir buscar disponibilidad ni reservar.
 - **Servicio de internacionalización:** resolución de idioma, catálogos `es`/`en`, traducción de emails y textos configurables.
 - **Proveedor de verificación empresarial:** adaptadores remotos para validar identificadores fiscales o registrales de negocios.
 
@@ -58,6 +60,9 @@ Stack por capa:
 - **Persistencia y ORM:** PostgreSQL como base de datos principal y Hibernate/JPA mediante Spring Data JPA. Las operaciones críticas de reservas deben usar transacciones explícitas, bloqueo pesimista `SELECT ... FOR UPDATE` o locks JPA equivalentes, e índices diseñados para concurrencia.
 - **Migraciones:** Flyway como fuente versionada de esquema y datos iniciales. No se deben usar `schema.sql` y `data.sql` como mecanismo principal de evolución de producción.
 - **Búsqueda:** PostgreSQL full-text search, índices trigram y PostGIS desde MVP para búsqueda por radio, ordenación por cercanía e índices espaciales.
+- **Búsqueda semántica post-MVP:** extensión pgvector en el mismo PostgreSQL al inicio, embeddings
+  multilingües de Sentence Transformers e índice HNSW solo cuando el volumen y las mediciones lo
+  justifiquen. Los filtros transaccionales siguen ejecutándose como restricciones duras.
 - **Cache y rate limiting:** Redis mediante Spring Data Redis y Spring Cache para cache, rate limits, TTLs auxiliares y coordinación de procesos no críticos.
 - **Cola de trabajos:** RabbitMQ con Spring AMQP para emails, reintentos, trabajos asíncronos y eventos internos que no deben bloquear la transacción de reserva.
 - **Jobs programados:** Quartz con store JDBC o Spring Scheduler con lock distribuido persistente. Para despliegues con más de una instancia, ningún job crítico debe ejecutarse sin coordinación.
@@ -65,6 +70,12 @@ Stack por capa:
 - **Archivos privados y públicos:** almacenamiento S3-compatible, con MinIO en local y proveedor S3/R2/equivalente en producción. No se deben guardar imágenes o documentos sensibles como BLOB principal en base de datos salvo caso justificado.
 - **Pagos:** interfaz de proveedor con adaptador simulado en MVP y adaptador RedSys por redirección preparado, desactivado en producción hasta disponer de contrato bancario, credenciales y validación del entorno de pruebas.
 - **Observabilidad:** Spring Boot Actuator, Micrometer, OpenTelemetry, logs estructurados y métricas de reservas, jobs, emails, pagos y errores.
+- **Servicio de inteligencia post-MVP:** Python 3, FastAPI y Pydantic; NumPy y Polars o Pandas para
+  procesamiento, scikit-learn para baselines, spaCy para reglas lingüísticas y Sentence Transformers
+  para embeddings. Las dependencias avanzadas solo se incorporan en la fase que las utiliza.
+- **MLOps post-MVP:** MLflow como registro inicial de experimentos/modelos, Prefect como orquestador
+  inicial, Prometheus/Grafana para operación y Evidently como apoyo para calidad y drift. Airflow no
+  se incorpora sin una necesidad de orquestación que Prefect no cubra.
 - **Testing backend:** JUnit 5, Spring Boot Test, MockMvc, Testcontainers para PostgreSQL, Redis y RabbitMQ, y tests de concurrencia sobre la base real.
 - **Testing frontend:** Vitest, React Testing Library y Playwright para flujos críticos responsive e i18n.
 - **Infraestructura local:** Docker Compose para PostgreSQL, Redis, RabbitMQ, MinIO y backend/frontend.
@@ -2688,35 +2699,420 @@ Medidas:
 - Almacenamiento mínimo de respuestas de verificación empresarial.
 - Conservación de evidencia de verificación mediante referencia, hash o campos mínimos.
 
-## 14. Recomendaciones post-MVP
+## 14. Motor inteligente de generación de demanda
 
-### 14.1 Datos de entrada
+Esta sección convierte el documento técnico externo
+`Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de 2026, en una
+arquitectura compatible con el estado real del proyecto. El documento es una fuente de propuesta;
+las decisiones normativas y ejecutables quedan consolidadas aquí, en `requirements.md` y en
+`tasks.md`.
 
-- Reservas completadas.
-- Valoraciones.
-- Categorías visitadas.
-- Locales reservados.
-- Ubicación habitual aproximada.
-- Frecuencia de uso.
-- Similitud entre usuarios.
-- Similitud entre locales.
+### 14.1 Objetivo, alcance y progresividad
 
-### 14.2 Arquitectura
+El objetivo no es sustituir el núcleo de reservas, sino transformar disponibilidad en oportunidades
+comerciales medibles. La unidad analítica es:
 
-- Generar matriz usuario-local con email anonimizado o pseudonimizado.
-- Entrenar modelo batch de factorización matricial.
-- Guardar recomendaciones en tabla `recommendation_results`.
-- Servir recomendaciones filtradas por disponibilidad, ubicación y estado publicado.
+```text
+Opportunity = (identity, need, context, venue, service, resource?, timeSlot?)
+```
 
-### 14.3 Fall-back
+La inteligencia debe degradarse de forma progresiva:
 
-Si no hay datos suficientes:
+1. Usuario nuevo: contexto actual, contenido, popularidad contextual, disponibilidad y exploración.
+2. Sesión con actividad: filtros, clics, comparaciones y disponibilidad consultada.
+3. Identidad reconocida con consentimiento: historial seudónimo y preferencias implícitas.
+4. Marketplace con volumen: modelos de elección, conversión, Learning to Rank, causalidad y
+   optimización.
 
-- Populares cerca de ti.
-- Mejor valorados.
-- Disponibles hoy.
-- Nuevos locales.
-- Locales destacados por plan o criterio editorial.
+No se implementan inicialmente Kafka, redes profundas, pricing dinámico, causalidad sin experimento,
+fingerprinting, data brokers ni un catálogo de sectores sin modelo de recursos validado.
+
+### 14.2 Límites arquitectónicos y ownership
+
+El monolito Spring continúa siendo fuente de verdad de usuarios operativos, locales, servicios,
+recursos, franjas, capacidad, holds, reservas, pagos, reglas, permisos y comunicaciones. El `Demand
+Engine` es un servicio Python extraíble que lee proyecciones minimizadas, calcula artefactos
+derivados y devuelve candidatos/scores. No confirma reservas ni modifica capacidad.
+
+```text
+Web/Android futuro
+  -> Spring API (autorización, consentimiento, búsqueda y reserva)
+     -> PostgreSQL/PostGIS/pgvector (fuente transaccional + proyecciones versionadas)
+     -> RabbitMQ (eventos confirmados y jobs)
+     -> Redis (sesión, caché corta, rate limit y coordinación no crítica)
+     -> Demand Engine / FastAPI (features, candidatos, ranking y predicciones)
+        -> MLflow (experimentos/modelos)
+        -> Prefect (pipelines batch)
+        -> Prometheus/Grafana/Evidently (operación, calidad y drift)
+```
+
+Invariantes:
+
+- El navegador no llama directamente al `Demand Engine`.
+- Spring vuelve a validar publicación, filtros, disponibilidad y capacidad después de recibir un
+  ranking.
+- Timeout, error, modelo ausente o pgvector degradado activan un fallback determinista.
+- El camino `hold -> confirmación` no depende del servicio Python.
+- Entrenamiento y promoción no escriben sobre tablas transaccionales; publican artefactos
+  versionados que inferencia carga de forma atómica.
+
+### 14.3 Módulos lógicos
+
+- **Demand Sensing:** búsquedas, necesidades no satisfechas, demanda por zona/categoría/periodo.
+- **Venue Intelligence:** ontología, evidencias y perfiles dinámicos de local/servicio.
+- **Customer Preference Engine:** perfil contextual de sesión y perfil implícito seudónimo.
+- **Smart Match:** generación de candidatos, compatibilidad y ranking explicable.
+- **Capacity Optimizer:** necesidad de capacidad, horas valle, listas de espera y promociones.
+- **Incrementality Analytics:** atribución, experimentación y estimación causal.
+- **Governance:** catálogo de eventos, ontología, datasets, modelos, políticas y auditoría.
+
+### 14.4 Eventos, alternativas y contrato de instrumentación
+
+Catálogo mínimo versionado:
+
+| Familia | Eventos |
+| --- | --- |
+| Descubrimiento | `searchPerformed`, `categoryViewed`, `venueImpression`, `venueClicked` |
+| Evaluación | `filterApplied`, `photosViewed`, `reviewsViewed`, `availabilityChecked` |
+| Conversión | `bookingStarted`, `bookingAbandoned`, `bookingCompleted` |
+| Post-reserva | `bookingCancelled`, `attendanceConfirmed`, `noShow`, `reviewSubmitted` |
+| Activación | `recommendationShown`, `promotionShown`, `promotionOpened`, `waitlistOffer` |
+| Experimento | `experimentAssigned`, `rankingGenerated`, `modelVersionUsed` |
+
+Sobre el wire se puede usar `snake_case` si se declara como contrato externo versionado; las clases,
+atributos y tablas internas siguen `UpperCamelCase`/`lowerCamelCase` según RNF-011.
+
+Cada evento contiene como máximo:
+
+- `eventId`, `schemaVersion`, `eventType`, `occurredAt`, `receivedAt` y `requestId`.
+- `sessionId`, `anonymousId` y `customerId` opcionales según consentimiento.
+- `venueId`, `serviceId`, `resourceId` o `timeSlotId` si son necesarios.
+- Contexto temporal, zona aproximada, distancia, precio, capacidad y ocupación observada.
+- Ranking, posición, explicación, versión de política/modelo y experimento.
+- Resultado normalizado: reserva, asistencia, cancelación, importe/moneda y nuevo cliente.
+
+Las impresiones guardan también el conjunto candidato elegible y lo visible para el usuario. El
+evento es idempotente por `eventId`; `occurredAt` permite ordenar actividad tardía y `receivedAt`
+auditar ingestión. Los contextos son DTOs tipados por versión, no JSON libre ilimitado. Payloads
+inválidos, PII no permitida y valores fuera de allowlist se rechazan antes de persistir y nunca se
+copian a logs.
+
+### 14.5 Identidad progresiva y separación de finalidades
+
+Identificadores:
+
+- `sessionId`: una navegación; TTL corto y orden de acciones.
+- `anonymousId`: navegador o instalación, aleatorio de primera parte y revocable.
+- `installationId`: reservado para una app Android futura.
+- `customerId`: perfil seudónimo analítico derivado del correo.
+- `emailHmac`: valor de unión interno, nunca feature ni texto de log.
+
+Derivación:
+
+```text
+customerId = HMAC-SHA-256(normalize(email), keyVersion)
+```
+
+El email operativo se conserva donde ya lo exige la reserva, cifrado o protegido según su contexto,
+y no se replica en el dominio analítico. `IdentityLinks` conserva vínculo, motivo, finalidad,
+consentimiento y fecha. La ausencia o revocación de consentimiento mantiene operativa la reserva y
+limita recomendaciones a contexto no personal/agregados. La rotación de HMAC requiere versión de
+clave y reidentificación controlada; nunca se intenta recuperar una identidad con diccionarios.
+
+### 14.6 Ontología, evidencias y perfil de local
+
+Familias iniciales: ambiente, espacio, experiencia, oferta, operación y accesibilidad. Cada atributo
+define código estable, jerarquía, nombre/definición ES/EN, tipo (`stable`, `dynamic`, `relative`,
+`subjectiveAggregate`), fuentes permitidas, caducidad, estado y restricciones de uso.
+
+Modelo de evidencia conceptual:
+
+```text
+VenueAttributeEvidence {
+  venueId, attributeId, sourceType, score, confidence,
+  sourceReference, extractorVersion, createdAt, expiresAt
+}
+
+VenueAttributeProfile {
+  venueId, attributeId, score, confidence,
+  evidenceCount, sourceCount, calculationVersion, lastCalculatedAt
+}
+```
+
+Agregación inicial:
+
+```text
+score(venue, attribute) = sum(sourceWeight * confidence * evidence)
+                          / sum(sourceWeight * confidence)
+confidence = f(sourceDiversity, volume, agreement, recency)
+```
+
+Los pesos del PDF (`local 0,10`, `texto 0,15`, `imagen 0,10`, `reseña 0,30`, `comportamiento
+0,15`, `operación 0,20`) son hipótesis iniciales configurables, no constantes aprobadas. Deben
+calibrarse y versionarse. La autodeclaración nunca domina; las imágenes solo soportan dimensiones
+visuales. Un tema descubierto por BERTopic/HDBSCAN/UMAP permanece candidato hasta revisión humana.
+
+### 14.7 Texto, embeddings e imágenes
+
+Pipeline de texto por madurez:
+
+1. Normalización de idioma, limpieza y segmentación con spaCy/reglas.
+2. Entidades, aspectos, negación y diccionario de sinónimos.
+3. Clasificación multilabel baseline con TF-IDF + regresión logística/SVM.
+4. Embeddings multilingües con Sentence Transformers.
+5. ABSA o transformer ajustado únicamente con dataset etiquetado/evaluado.
+
+Los embeddings guardan `subjectType`, `subjectId`, `locale`, `modelVersion`, `dimensions`,
+`contentChecksum`, vector y fechas. Una modificación de texto invalida el checksum y encola un
+recalculo idempotente. pgvector se usa dentro de PostgreSQL al inicio; HNSW se habilita tras medir
+recall, latencia, tamaño y coste de actualización.
+
+El análisis visual con CLIP es posterior y auxiliar. Debe registrar modelo/prompt/evidencia y no
+inferir limpieza, seguridad, ambiente familiar, tranquilidad ni atributos sensibles a partir de una
+fotografía.
+
+### 14.8 Perfil implícito y recencia
+
+Pesos de señal iniciales, sujetos a calibración: impresión `0`, clic `1`, disponibilidad `3`, inicio
+de reserva `5`, reserva `10`, asistencia `12`, repetición `15`, valoración positiva `15`.
+
+```text
+preference(user, attribute) = sum(signalWeight * venueAttribute)
+                              / sum(signalWeight)
+timeWeight = baseWeight * exp(-lambda * elapsedTime)
+```
+
+Cada preferencia conserva valor, confianza, evidencias, origen, versión y fecha. Una impresión sirve
+como alternativa mostrada, no como preferencia positiva. El perfil es corregible y las explicaciones
+no lo presentan como descripción psicológica.
+
+### 14.9 Generación de candidatos y ranking inicial
+
+La recuperación combina full-text, trigram, vector y reglas. Antes del ranking se aplican categoría,
+radio, publicación, servicio, recurso, franja y demás filtros. Después del ranking Spring vuelve a
+validar las restricciones transaccionales.
+
+```text
+Affinity = sum(Preference * Attribute * Confidence)
+CapacityNeed = 1 - ExpectedOccupancy / Capacity
+ScoreMvp = 0.30*Affinity + 0.20*ConversionBaseline + 0.15*Proximity
+         + 0.15*Availability + 0.10*CapacityNeed + 0.05*Quality
+         + 0.05*Exploration
+```
+
+Estos pesos son una configuración de arranque del documento, no una verdad de producto. Cada
+componente se normaliza, acota y versiona. `Exploration` tiene presupuesto máximo y guardrails. La
+explicación se construye con las contribuciones reales de mayor peso, por ejemplo distancia,
+disponibilidad y atributos con evidencia/confianza suficientes.
+
+Fallback ordenado:
+
+1. Popularidad contextual y disponibilidad por categoría/zona.
+2. Valoración con muestra mínima.
+3. Cercanía si existe permiso de ubicación.
+4. Locales nuevos elegibles con cuota controlada.
+5. Orden determinista estable para evitar parpadeos y facilitar auditoría.
+
+### 14.10 Evolución de modelos y puertas de promoción
+
+| Problema | Baseline | Evolución condicionada |
+| --- | --- | --- |
+| Conversión | Regresión logística calibrada | LightGBM/CatBoost |
+| Elección | Logit condicional | Bayes jerárquico |
+| Interacción dispersa | Content-based | Factorization Machines |
+| Ranking | Score ponderado | LambdaMART/LightGBM Ranker |
+| Demanda | Media día-hora/EMA | SARIMA/boosting/modelo jerárquico |
+| Exploración | Thompson Sampling básico | LinUCB/Thompson contextual |
+| No-show | Regresión logística calibrada | LightGBM/CatBoost |
+| Incrementalidad | A/B | S/T/X-learner, Causal Forest, Doubly Robust |
+
+Un modelo solo se promueve si supera baseline en separación temporal, calibración, relevancia,
+valor, latencia, estabilidad, privacidad y equidad. El ranking no optimiza clic aislado; usa reserva,
+asistencia, nuevos clientes, diversidad y valor permitido. SHAP puede explicar modelos complejos,
+pero la explicación pública solo usa contribuciones estables y comprensibles.
+
+### 14.11 Demanda, capacidad y recuperación de huecos
+
+El baseline predice ocupación por local/franja con día, hora, temporada, festivos y datos internos.
+Clima o eventos externos requieren una integración futura y evaluación de finalidad/licencia.
+
+```text
+CapacityNeed(venue, time) = 1 - ExpectedOccupancy / Capacity
+UnsatisfiedDemand(zone, category, time) = eligibleSearches - completedBookings
+WaitlistPriority = P(acceptance) * P(attendance) * allowedBookingValue
+```
+
+`UnsatisfiedDemand` se publica solo de forma agregada. Las listas de espera crean ofertas escalonadas,
+expirables e idempotentes para contactos consentidos. La aceptación siempre pasa por hold y
+confirmación transaccional. Si las probabilidades no son fiables, se usa FIFO/prioridad determinista.
+
+La optimización OR-Tools es posterior y maximiza valor esperado sujeto a capacidad, presupuesto,
+distancia, margen, frecuencia, consentimiento y equidad. Las promociones requieren uplift fiable;
+no deben descontar automáticamente a quien reservaría sin incentivo.
+
+### 14.12 Atribución, experimentos e incrementalidad
+
+Clasificación comercial:
+
+- `direct`: entrada o búsqueda específica del local sin intervención decisiva.
+- `assisted`: comparación o descubrimiento categórico con influencia registrada.
+- `generated`: recomendación/promoción presenta un local nuevo dentro de la ventana.
+- `recovered`: una oferta cubre capacidad liberada.
+
+La política de atribución registra versión, señales y ventana y puede recalcularse. Esta clasificación
+es observacional. Solo un experimento válido permite afirmar incrementalidad:
+
+```text
+uplift = P(outcome | treatment) - P(outcome | control)
+```
+
+La asignación se persiste antes de exponer, es estable y mutuamente excluyente. Se registran versión
+de ranking/modelo, reserva, asistencia, importe neto y nuevo cliente. Sin control o muestra suficiente,
+la UI utiliza `atribuido`/`estimado`, no `incremental demostrado`.
+
+### 14.13 Modelo de datos planificado
+
+Todas las tablas físicas seguirán RNF-011. Este esquema es planificado y requiere migraciones Flyway
+por tarea; su presencia aquí no implica implementación:
+
+- `CustomerIdentities`: `id`, `emailHmac`, `keyVersion`, consentimiento, revocación y timestamps.
+- `AnonymousIdentities`: `id`, canal, consentimiento, creación, última actividad y expiración.
+- `IdentityLinks`: identidades, motivo, finalidad, consentimiento, vínculo y revocación.
+- `BehaviorEvents`: evento, esquema, tipo, identidades opcionales, sujeto, contexto tipado y tiempos.
+- `DemandAttributes`: código, familia, jerarquía, tipo, textos i18n, fuentes, vigencia y estado.
+- `DemandAttributeCandidates`: propuesta, clúster, ejemplos minimizados, decisión y actor.
+- `VenueAttributeEvidences`: local/atributo, fuente, score, confianza, extractor y expiración.
+- `VenueAttributeProfiles`: local/atributo, score/confianza agregados, recuentos y versión.
+- `SubjectEmbeddings`: sujeto, locale, vector, modelo, checksum, dimensiones y vigencia.
+- `RecommendationRequests`: petición, contexto minimizado, política, modelo y experimento.
+- `RecommendationCandidates`: petición, candidato, elegibilidad, posición previa y señales visibles.
+- `RecommendationRankings`: candidato, posición final, score/componentes, explicación y versión.
+- `ExperimentDefinitions` y `ExperimentAssignments`: hipótesis, variantes, población, asignación y estado.
+- `BookingAttributions`: reserva, clase, política, ventana, evidencia y confianza.
+- `DemandForecasts`: granularidad, horizonte, valor, intervalo, modelo y fecha de corte.
+- `WaitlistEntries` y `WaitlistOffers`: intención, franja, prioridad, oferta, expiración y resultado.
+- `ModelDeployments`: artefacto, versión, entorno, estado, métricas, promoción y rollback.
+
+Los eventos de alto volumen deben particionarse por tiempo cuando las mediciones lo justifiquen. Los
+índices mínimos cubren idempotencia, tiempo, tipo, local, identidad seudónima, petición de ranking y
+vector. Los JSON quedan limitados por esquema/tamaño; los campos consultados regularmente son
+columnas tipadas.
+
+### 14.14 Contratos internos orientativos
+
+Namespace interno, autenticado entre servicios y no público:
+
+- `POST /internal/demand/v1/events`: evento o lote idempotente.
+- `POST /internal/demand/v1/recommendations`: candidatos y ranking explicable.
+- `POST /internal/demand/v1/ranking`: reordenación de candidatos ya elegibles.
+- `GET /internal/demand/v1/venues/{venueId}/attributes`: perfil y evidencias autorizadas.
+- `POST /internal/demand/v1/conversion/predict`: predicción versionada y calibrada.
+- `GET /internal/demand/v1/demand/{venueId}`: capacidad/demanda agregada autorizada.
+- `POST /internal/demand/v1/waitlist/allocate`: propuesta de asignación; Spring ejecuta reservas.
+
+Todos los contratos incluyen `requestId`, versión, locale, timestamp, versión de política/modelo y
+metadatos de fallback. Spring aplica timeout/circuit breaker, valida respuesta Pydantic y descarta
+candidatos no elegibles. Los errores públicos se traducen al catálogo estable existente sin reflejar
+detalles Python, librerías, features o proveedores.
+
+### 14.15 Herramientas y criterio de adopción
+
+| Capacidad | Herramienta inicial | Criterio |
+| --- | --- | --- |
+| API ML | FastAPI + Pydantic | Contratos tipados, OpenAPI interna y validación estricta |
+| Vectores | pgvector | Evita una base separada durante el arranque |
+| Datos | Polars o Pandas | Polars preferido en lotes grandes; Pandas permitido por ecosistema |
+| ML baseline | scikit-learn | Modelos interpretables, pipelines y calibración |
+| NLP | spaCy + Sentence Transformers | Reglas ES/EN y semántica multilingüe |
+| Estadística | statsmodels; PyMC posterior | Elección interpretable e incertidumbre cuando proceda |
+| Boosting | LightGBM o CatBoost | Solo tras superar baseline |
+| Temas | UMAP + HDBSCAN + BERTopic | Candidatos sometidos a revisión humana |
+| Visión | CLIP + PyTorch | Solo señales visuales auxiliares en fase avanzada |
+| Causalidad | EconML/DoWhy; CausalML opcional | Solo tras experimentación válida |
+| Optimización | OR-Tools | Restricciones explícitas y soluciones auditables |
+| Online/drift | River + Evidently | River para actualización/detección; Evidently para informes |
+| Registro | MLflow | Experimentos, métricas, artefactos y promoción |
+| Orquestación | Prefect | Menor carga inicial; reevaluar Airflow por escala/operación |
+| Métricas | Prometheus + Grafana | Integración con observabilidad existente |
+
+No se fija una librería por mera aparición en el PDF. Cada incorporación debe documentar licencia,
+versión, CVE, tamaño de artefacto, consumo, latencia, reproducibilidad y estrategia de actualización.
+
+Inventario evaluado pero no seleccionado como dependencia inicial:
+
+- Hugging Face Transformers y PyTorch para clasificación/fine-tuning cuando exista dataset validado.
+- statsmodels y PyMC para elección/estadística; XGBoost, LightGBM o CatBoost para boosting.
+- LightFM, xLearn y DeepCTR-Torch como alternativas de Factorization Machines.
+- Prophet y SARIMA para series; cualquier uso debe compararse con baselines temporales simples.
+- Vowpal Wabbit para bandits online cuando el volumen justifique una infraestructura adicional.
+- EconML, CausalML y DoWhy para causalidad, únicamente después de experimentos válidos.
+- PuLP, Pyomo y SciPy Optimize como alternativas; OR-Tools es preferido por restricciones/asignación.
+- LIME e InterpretML como análisis complementario; SHAP o contribución directa no sustituyen una
+  explicación de producto estable.
+- Airflow como alternativa de orquestación cuando Prefect deje de cubrir escala o gobierno.
+
+Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
+
+- `https://github.com/pgvector/pgvector`: búsqueda exacta/aproximada, HNSW/IVFFlat y búsqueda híbrida.
+- `https://fastapi.tiangolo.com/`: validación mediante tipos/Pydantic y contratos OpenAPI.
+- `https://www.sbert.net/`: embeddings y rerankers de Sentence Transformers.
+- `https://mlflow.org/docs/latest/ml/tracking/`: runs, parámetros, métricas, datasets y artefactos.
+- `https://docs.prefect.io/v3/get-started`: flujos y orquestación de tareas Python.
+- `https://docs.evidentlyai.com/introduction`: evaluación y monitorización de calidad de sistemas ML.
+
+### 14.16 MLOps, observabilidad y rollback
+
+- Dataset, ontología, features, embedding, configuración, modelo y ranking tienen versiones enlazadas.
+- MLflow registra parámetros, métricas, artefactos, model card y estado (`candidate`, `shadow`,
+  `canary`, `champion`, `retired`).
+- Prefect ejecuta lotes idempotentes con fecha de corte, reintentos, checkpoints y locks.
+- Prometheus mide ingestión, latencia, fallback, errores, cobertura, distribución de scores,
+  calibración, diversidad, exposición, drift y valor.
+- La promoción es atómica; el artefacto campeón anterior permanece disponible para rollback.
+- Un kill switch desactiva personalización, exploración, promoción o asignación por separado.
+- Logs/trazas usan identificadores de correlación y versiones, nunca email, texto de reseña, vectores
+  completos, payloads ni features personales.
+
+### 14.17 Seguridad, privacidad, equidad y gobernanza
+
+- Separación de finalidades operativa, analítica, personalización, experimento y activación.
+- Consentimiento granular, revocable y no necesario para reservar.
+- HMAC con clave versionada; secretos en gestor seguro y rotación ensayada.
+- Retención limitada, borrado propagado y datasets derivados reconstruibles.
+- Prohibición de fingerprinting, data brokers e inferencias sensibles enumeradas en RNF-002.
+- Umbrales de agregación para paneles y demanda insatisfecha.
+- Cuotas de exploración, diversidad y exposición para evitar bucles de popularidad.
+- Revisión humana de atributos, modelos y acciones comerciales materiales.
+- Auditoría de cambios de ontología, políticas, modelos, experimentos y optimización.
+- Evaluación de impacto y revisión jurídica antes de personalización persistente o promociones.
+
+### 14.18 Estrategia de pruebas y aceptación
+
+- Contratos: compatibilidad de esquemas, idempotencia, lotes y eventos tardíos.
+- Datos: calidad, completitud, duplicidad, PII, consentimiento, leakage y separación temporal.
+- Ranking: restricciones duras, determinismo, fallback, explicación, diversidad y locales nuevos.
+- Modelos: baseline, calibración, intervalos, robustez, sesgo, reproducibilidad y model cards.
+- Experimentos: asignación estable, exclusión mutua, contaminación y cálculo de métricas.
+- Carga: presupuesto p95/p99, timeouts, circuit breaker, caché y dependencia caída.
+- Privacidad: revocación, rotación HMAC, supresión y ausencia de identificadores en logs/artefactos.
+- Operación: shadow/canary, rollback, kill switch, artefacto corrupto y job reanudado.
+- E2E: búsqueda -> alternativas -> recomendación -> hold -> reserva -> asistencia -> atribución.
+
+### 14.19 Fases y puertas de madurez
+
+1. **Fundamentos:** vertical limitado, consentimiento, identidad, eventos, alternativas, ontología y
+   calidad. No se entrena un modelo complejo.
+2. **MVP diferencial:** contenido, embeddings, sesión, score explicable, baseline de ocupación,
+   Thompson Sampling y panel atribuido.
+3. **Primeros datos:** perfil implícito, ABSA, regresión logística, elección, boosting condicionado,
+   A/B y descubrimiento de atributos.
+4. **Marketplace:** Learning to Rank, bandits contextuales, uplift, OR-Tools, multimodal, drift y
+   recuperación avanzada.
+5. **Industrialización transversal:** MLflow, orquestación, monitorización, auditoría, privacidad,
+   equidad, SLO y rollback en cada fase.
+
+Las tareas exactas y sus verificaciones están en las fases 19-23 de `tasks.md`. Ningún elemento de
+esta sección está implementado por el mero hecho de quedar diseñado.
 
 ## 15. Estrategia de tests
 
@@ -2781,6 +3177,15 @@ Si no hay datos suficientes:
 | Disponibilidad lenta | Medio | Índices, cache, agregaciones |
 | Complejidad de empleados/recursos | Medio | MVP básico y extensión posterior |
 | Recomendaciones pobres al inicio | Bajo | Fall-back por popularidad, cercanía y disponibilidad |
+| Eventos incompletos o sesgados | Alto | Contratos versionados, alternativas, calidad y reconciliación transaccional |
+| Perfilado invasivo | Alto | Consentimiento granular, HMAC, separación de finalidades, revocación y prohibiciones explícitas |
+| Fuga de información o leakage | Alto | Separación temporal, validación PII/features, datasets versionados y revisión previa |
+| Bucle de popularidad | Alto | Exploración acotada, diversidad, métricas de exposición y guardrails de calidad |
+| Atribución presentada como causalidad | Alto | Terminología diferenciada, grupos de control e intervalos antes de afirmar incrementalidad |
+| Caída del motor de inteligencia | Medio | Timeout, circuit breaker, fallback determinista y reserva desacoplada |
+| Drift o degradación silenciosa | Alto | Baselines, métricas, Evidently/River, alertas, champion/challenger y rollback |
+| Optimización que vulnera capacidad o equidad | Alto | Restricciones duras en Spring/OR-Tools, auditoría, tests y supervisión humana |
+| Coste prematuro de MLOps | Medio | Adopción por fases, pgvector/Prefect iniciales y puertas de volumen medibles |
 
 ## 17. Decisiones pendientes
 

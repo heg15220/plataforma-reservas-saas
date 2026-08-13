@@ -8893,3 +8893,51 @@ Fuente de verdad del avance:
     `git diff --check`. El validador i18n global mantiene 43 incidencias históricas fuera de los
     archivos modificados. No se arrancó Docker/PostgreSQL para respetar el alcance acotado pedido;
     V43 quedó cubierta por prueba estática y los consumidores dependientes compilaron.
+
+# Conversación 194 - Integración documental del motor de generación de demanda
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se analizó íntegramente el PDF técnico de Reserly sobre generación de demanda: 25 páginas,
+    incluidos arquitectura, modelos matemáticos, librerías, eventos, identidad seudónima,
+    ontología, recomendación, capacidad, causalidad, optimización, MLOps, privacidad y anexos.
+  - El texto completo se extrajo con `pypdf`; las 25 páginas se renderizaron con Poppler y se
+    revisaron visualmente mediante siete hojas de contacto.
+  - La propuesta se adaptó al estado real: Spring conserva el núcleo transaccional y se planifica un
+    `Demand Engine` Python interno, desacoplado, con timeout, fallback y prohibición de participar en
+    la confirmación de reservas.
+  - Se sustituyó el backlog genérico de factorización matricial por una hoja de ruta que empieza por
+    consentimiento, eventos, alternativas y ontología; continúa con un MVP content-based explicable;
+    y condiciona modelos aprendidos, causalidad y optimización a datos y guardrails.
+- Archivos modificados:
+  - `.kiro/specs/plataforma-reservas-saas/requirements.md`.
+  - `.kiro/specs/plataforma-reservas-saas/design.md`.
+  - `.kiro/specs/plataforma-reservas-saas/tasks.md`.
+  - `.kiro/specs/plataforma-reservas-saas/conversation-tracking.md`.
+  - `.kiro/specs/plataforma-reservas-saas/technical-implementation.md`.
+- Requisitos impactados:
+  - Ampliado `RF-029`.
+  - Añadidos `RF-033` a `RF-041` para instrumentación, identidad, ontología, matching, demanda,
+    incrementalidad, recuperación de huecos, analítica y gobernanza.
+  - Ampliado `RNF-002`; añadidos `RNF-014` y `RNF-015`.
+  - Añadidas `RB-014`, `RB-015` y `RB-016`.
+- Tareas impactadas:
+  - La antigua fase 18 genérica de recomendaciones se sustituye por una planificación verificable.
+  - La QA del MVP pasa de fase 19 a fase 18 sin alterar su contenido funcional.
+  - Se añaden fases 19-23: fundamentos de datos, MVP diferencial, primeros datos reales,
+    marketplace con volumen e industrialización/MLOps/gobernanza.
+- Tareas completadas:
+  - Ninguna. La conversación solo cambia especificación y planificación; no implementa producto.
+- Siguiente tarea pendiente recomendada:
+  - `17.1. Implementar logs estructurados`.
+- Decisiones o aclaraciones relevantes:
+  - No se implementarán primero Kafka, Airflow, redes profundas, pricing dinámico, modelos causales
+    sin experimento, fingerprinting ni enriquecimiento externo invasivo.
+  - pgvector se mantiene inicialmente dentro de PostgreSQL; FastAPI/Pydantic constituye el límite
+    interno del servicio de inteligencia; MLflow y Prefect son las herramientas MLOps iniciales.
+  - Los pesos y algoritmos del PDF son hipótesis versionadas y evaluables, no constantes aprobadas.
+  - La reserva funciona sin consentimiento de personalización y sin disponibilidad del motor.
+  - HMAC-SHA-256 versionado sustituye cualquier hash simple del correo para identidad analítica.
+  - Atribución observacional e incrementalidad causal se muestran y calculan como conceptos distintos.
+  - Las capacidades avanzadas requieren volumen, baseline superado, calibración, privacidad,
+    explicabilidad, equidad, shadow/canary y rollback.

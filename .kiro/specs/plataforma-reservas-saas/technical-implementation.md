@@ -34785,3 +34785,135 @@ obtendrán localización hasta adoptarlo. La respuesta genérica reduce diagnós
 la observabilidad segura necesita identificador de correlación y campos estructurados allowlisted,
 no mensajes crudos. La auditoría automatizada global de literales conserva deuda previa que deberá
 resolverse en las tareas transversales correspondientes.
+
+## Iteración 2026-08-13 - Plan técnico del motor de generación de demanda
+
+### Naturaleza, objetivo y trazabilidad
+
+Esta iteración es de análisis y planificación; no implementa código ni completa ninguna tarea. Integra
+las 25 páginas de `Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de
+2026, con la arquitectura y el estado real del proyecto.
+
+El análisis amplía `RF-029`, crea `RF-033` a `RF-041`, amplía `RNF-002` y añade `RNF-014`,
+`RNF-015`, `RB-014`, `RB-015` y `RB-016`. Las tareas genéricas de recomendación se sustituyen por
+las fases 19-23 y la QA pendiente del MVP pasa a fase 18. La primera tarea pendiente continúa siendo
+`17.1`; ninguna casilla se marca como completada.
+
+### Fuente y cobertura verificadas
+
+`pdfinfo` confirmó 25 páginas Letter, PDF 1.7, sin cifrado, formularios ni JavaScript. Se extrajo el
+texto completo con `pypdf`, se renderizaron las 25 páginas con Poppler y se inspeccionaron visualmente
+siete hojas de contacto. La revisión cubrió arquitectura, eventos, identidad, ontología, NLP,
+embeddings, imágenes, evidencia, perfiles, elección, conversión, ranking, demanda, bandits,
+causalidad, optimización, listas de espera, drift, explicabilidad, métricas, MLOps, privacidad,
+gobernanza, hoja de ruta, fórmulas y anexos.
+
+La copia analizada queda identificada por SHA-256
+`2D5B77CA36B4C6EA53387A5E396AF21EBA83A33A419DC0A238F0F23E232996D4`, de modo que una revisión
+futura puede detectar si el archivo fuente fue sustituido.
+
+### Arquitectura y flujo planificados
+
+Spring Boot conserva ownership exclusivo de locales, servicios, recursos, franjas, capacidad, holds,
+reservas, pagos, permisos y comunicaciones. El `Demand Engine` será un servicio Python interno con
+FastAPI/Pydantic que calcula proyecciones, candidatos, scores y predicciones. No confirma reservas ni
+es llamado directamente por el navegador.
+
+Spring filtra antes de invocarlo y vuelve a validar publicación, permisos, disponibilidad y capacidad
+después del ranking. Timeout, artefacto ausente o fallo vectorial activan fallback determinista. El
+flujo `hold -> confirmación` nunca depende del motor. Entrenamiento y promoción publican artefactos
+versionados y no escriben directamente en tablas transaccionales.
+
+### Datos, eventos e identidad
+
+El diseño planifica, sin crear aún migraciones:
+
+- Identidad: `CustomerIdentities`, `AnonymousIdentities`, `IdentityLinks`.
+- Eventos/ranking: `BehaviorEvents`, `RecommendationRequests`, `RecommendationCandidates`,
+  `RecommendationRankings`.
+- Conocimiento: `DemandAttributes`, `DemandAttributeCandidates`, `VenueAttributeEvidences`,
+  `VenueAttributeProfiles`, `SubjectEmbeddings`.
+- Medición/activación: `ExperimentDefinitions`, `ExperimentAssignments`, `BookingAttributions`,
+  `DemandForecasts`, `WaitlistEntries`, `WaitlistOffers`, `ModelDeployments`.
+
+Cada evento tendrá identificador idempotente, versión, horas de ocurrencia/recepción, correlación,
+identidades opcionales consentidas y contexto acotado. Las impresiones guardarán el conjunto de
+alternativas realmente elegible, posiciones y señales visibles, no solo el ganador. Los contextos
+serán DTOs tipados; PII fuera de contrato se rechazará antes de persistir y no se copiará a logs.
+
+La continuidad por correo usará HMAC-SHA-256 con secreto y versión de clave. El email operativo no
+se replica en datasets, features, logs o artefactos. Los vínculos conservan motivo, finalidad,
+consentimiento y revocación. Sin consentimiento, la reserva continúa y la recomendación se limita a
+contexto actual y agregados.
+
+### Ontología, features y ranking
+
+La ontología inicial se limita a 30-50 atributos del primer vertical con código, familia, jerarquía,
+ES/EN, tipo, fuentes, vigencia, estado y restricciones. La evidencia conserva score, confianza,
+fuente, extractor y expiración; el perfil agregado pondera fiabilidad, confianza, diversidad,
+volumen, acuerdo y recencia. Los pesos del PDF quedan como hipótesis configurables y versionadas.
+
+El orden de madurez es: reglas/full-text; Sentence Transformers + pgvector; content-based y score
+explicable; regresión logística/logit condicional; boosting/Learning to Rank; y solo entonces
+Factorization Machines, bandits contextuales, uplift y optimización. ABSA, BERTopic/HDBSCAN/UMAP y
+CLIP quedan condicionados a datos y revisión humana.
+
+`ScoreMvp` combinará afinidad, conversión baseline, proximidad, disponibilidad, necesidad de
+capacidad, calidad y exploración. Los pesos 0,30/0,20/0,15/0,15/0,10/0,05/0,05 son parámetros de
+arranque, no verdad fija. Filtros, publicación, capacidad y permisos prevalecen. Las explicaciones
+proceden de contribuciones reales y no de inferencias psicológicas.
+
+### Demanda, atribución y optimización
+
+La ocupación empieza con medias día-hora, medias móviles o suavizado exponencial e incertidumbre. La
+demanda insatisfecha solo se agrega por zona/categoría/periodo. La clasificación `direct`,
+`assisted`, `generated` y `recovered` es versionada y recalculable, pero observacional. Solo una
+asignación A/B previa, grupos válidos y muestra suficiente permiten afirmar incrementalidad.
+
+Las listas de espera reutilizarán holds y confirmación transaccional. OR-Tools solo propondrá
+asignaciones sujetas a capacidad, presupuesto, distancia, margen, frecuencia, consentimiento y
+equidad; Spring ejecutará la mutación. Las promociones no se activarán sin uplift y margen fiables.
+
+### Herramientas, MLOps y operación
+
+Stack inicial seleccionado: PostgreSQL + pgvector, Redis, RabbitMQ, FastAPI, Pydantic,
+scikit-learn, spaCy, Sentence Transformers, NumPy, Polars/Pandas, MLflow, Prefect,
+Prometheus/Grafana y Evidently. Quedan condicionados: statsmodels/PyMC, LightGBM/CatBoost,
+UMAP/HDBSCAN/BERTopic, CLIP/PyTorch, EconML/DoWhy/CausalML, OR-Tools y River. Kafka, Airflow y redes
+profundas no se adoptan sin necesidad demostrada; Prefect es el orquestador inicial.
+
+MLflow registrará datasets, parámetros, métricas, artefactos, model cards y estados de despliegue.
+Prefect ejecutará jobs idempotentes y reanudables. Se diseñan champion/challenger, shadow/canary,
+kill switches y rollback a reglas. Prometheus/Grafana medirán ingestión, latencia, fallback,
+calibración, cobertura, diversidad, exposición, drift y valor; Evidently será apoyo, no autoridad.
+
+La vigencia de las capacidades principales se contrastó el 2026-08-13 con documentación oficial de
+pgvector, FastAPI, Sentence Transformers, MLflow, Prefect y Evidently. El inventario técnico conserva
+además las alternativas del PDF (Transformers/PyTorch, statsmodels/PyMC, boosting, LightFM/xLearn,
+Prophet/SARIMA, Vowpal Wabbit, librerías causales, PuLP/Pyomo/SciPy, LIME/InterpretML y Airflow), pero
+no las convierte en dependencias sin una tarea y un criterio de adopción satisfecho.
+
+### Seguridad, privacidad, equidad y pruebas
+
+Se separan finalidades operativa, analítica, personalización, experimento y activación. Se prohíben
+fingerprinting, data brokers e inferencias de género, edad, domicilio, personalidad, situación
+económica, estado emocional, salud, religión, orientación e ideología. Se exigen revocación,
+supresión propagada, rotación HMAC, umbrales de agregación, exploración acotada, auditoría, revisión
+humana y evaluación jurídica antes de personalización persistente o promociones.
+
+Las fases obligan a probar contratos, idempotencia, eventos tardíos, reconciliación, pgvector,
+calidad, consentimiento, PII, leakage, separación temporal, calibración, filtros duros, fallback,
+explicación, diversidad, exposición, A/B, carga, circuit breaker, revocación, rotación HMAC,
+supresión, shadow/canary, rollback, artefactos corruptos y recuperación de jobs.
+
+### Archivos, verificación y límites
+
+Se modificaron `requirements.md`, `design.md`, `tasks.md`, `conversation-tracking.md` y este documento.
+No se modificaron código, migraciones, dependencias ni configuración. La verificación documental
+incluye checkboxes/encabezados, identificadores, UTF-8/mojibake, `git diff --check` y revisión del diff
+limitado a `.kiro`; no aplican pruebas de producto.
+
+El PDF expresa una estrategia, no demuestra volumen, licencias, coste, calidad de datos ni validez
+causal. El primer vertical, consentimiento y métricas de éxito son puertas explícitas. Quedan
+pendientes revisión jurídica, selección del vertical, SLO/coste y modelos concretos. Se debe cerrar
+observabilidad y QA del MVP antes de iniciar la fase 19.
