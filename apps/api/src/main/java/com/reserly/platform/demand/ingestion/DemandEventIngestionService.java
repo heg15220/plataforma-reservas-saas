@@ -9,4 +9,7 @@ public interface DemandEventIngestionService {
    * @throws DemandIngestionException si contrato, catálogo, identidad o lote son inválidos
    */
   EventBatchIngestionResponse ingest(String producerId, EventBatchIngestionRequest request);
+
+  /** Persiste un evento originado dentro de Spring sin cuota Redis ni credencial HTTP. */
+  EventBatchIngestionResponse ingestTrusted(EventIngestionRequest request);
 }

@@ -3075,6 +3075,12 @@ revalida catálogo, IDs, contexto tipado, tamaño, finalidad y consentimiento an
 `eventId` resuelve reintentos y carreras; la respuesta solo expone accepted/duplicate. Errores de
 contrato son opacos, no se registra payload y Micrometer cuenta resultados/códigos acotados.
 
+Implementación 19.9: web instrumenta búsqueda/resultados, clic a ficha, filtros, fotos, reseñas y
+abandono mediante sessionId efímero y proxy Next server-only. Spring instrumenta disponibilidad,
+hold, confirmación, cancelación, asistencia, no-show y reseña tras retorno/commit exitoso. Un listener
+asíncrono acotado absorbe fallos y mide descartes; ningún flujo crítico depende de telemetría. Las
+impresiones con conjunto elegible y la reconciliación quedan explícitamente en 19.10/19.11.
+
 ### 14.15 Herramientas y criterio de adopción
 
 | Capacidad | Herramienta inicial | Criterio |

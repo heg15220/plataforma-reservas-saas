@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { PublicAvailabilityCalendar } from "@/features/availability/public-availability-calendar";
+import { trackDemandEvent } from "@/features/demand-telemetry/demand-telemetry";
 
 import type { PublicVenueProfile } from "./public-venue-api";
 import { ReviewEntryDialog } from "./review-entry-dialog";
@@ -65,6 +67,18 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
     ["#reviews", t("tabs.reviews")],
     ["#gallery", t("tabs.gallery")],
   ];
+
+  useEffect(() => {
+    if (galleryImages.length > 0) {
+      trackDemandEvent("photosViewed", { itemCount: galleryImages.length });
+    }
+  }, [galleryImages.length]);
+
+  function trackSection(href: string) {
+    if (href === "#reviews") {
+      trackDemandEvent("reviewsViewed", { itemCount: venue.reviews.reviewsCount });
+    }
+  }
 
   return (
     <PublicShell>
@@ -241,7 +255,11 @@ export function PublicVenueProfileView({ venue }: PublicVenueProfileProps) {
             </Stack>
           </Box>
 
-          <VenueSectionNav ariaLabel={t("tabs.label")} links={sectionLinks} />
+          <VenueSectionNav
+            ariaLabel={t("tabs.label")}
+            links={sectionLinks}
+            onNavigate={trackSection}
+          />
 
           <PublicAvailabilityCalendar venueSlug={venue.slug} />
 
@@ -549,9 +567,11 @@ function VenueGallery({ images, total, venueName, viewGalleryLabel }: VenueGalle
 function VenueSectionNav({
   ariaLabel,
   links,
+  onNavigate,
 }: {
   ariaLabel: string;
   links: Array<[string, string]>;
+  onNavigate: (href: string) => void;
 }) {
   return (
     <Box
@@ -571,6 +591,7 @@ function VenueSectionNav({
           key={href}
           component="a"
           href={href}
+          onClick={() => onNavigate(href)}
           sx={{
             borderBottom: 2,
             borderColor: index === 0 ? "primary.main" : "transparent",

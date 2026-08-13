@@ -35449,3 +35449,72 @@ contexto o PII.
 
 No se implementa rotación solapada/múltiples productores, reconciliación ni dashboard. Corresponden
 a fase 20, 19.11 y 19.20. La instrumentación de superficies y resultados comienza en 19.9.
+
+## Iteración 2026-08-13 - Tarea 19.9: instrumentación web y backend
+
+### Objetivo, cobertura y trazabilidad
+
+- Tarea exacta: `19.9`.
+- Objetivo: emitir el recorrido observable y resultados operativos del catálogo v1 sin PII y sin
+  introducir dependencia crítica desde búsqueda/reserva hacia telemetría.
+- Requisitos: `RF-033`, `RF-034`, `RF-036`, `RF-038`, `RNF-001`, `RNF-002`, `RNF-004`-`RNF-006`,
+  `RNF-014`, `RNF-015` y diseño 14.2/14.4.
+
+Cobertura web: `searchPerformed` incluye queryLength/resultCount/categoría codificada;
+`venueClicked` se emite desde resultados; `filterApplied`, al enviar filtros; `photosViewed`, al
+renderizar galería observable; `reviewsViewed`, al navegar a sección; `bookingAbandoned`, al desmontar
+un hold no confirmado. No se envían búsqueda, slug/nombre, email, token ni formulario.
+
+Cobertura Spring canónica: `availabilityChecked` tras cálculo; `bookingStarted` tras hold;
+`bookingCompleted` tras confirmación; `bookingCancelled` cliente/local; `attendanceConfirmed` solo
+para attended; `noShow` después de incidencia/auditoría/penalización; `reviewSubmitted` tras persistir.
+
+### Arquitectura frontend y seguridad
+
+`demand-telemetry.ts` usa Web Crypto para event/request/session UUID. `sessionId` vive en
+sessionStorage y no cruza pestañas; fallo de storage crea UUID solo para el evento. Fetch keepalive
+same-origin no bloquea UI y absorbe red. `toDemandCode` transforma slugs, nunca consultas.
+
+El Route Handler `/api/demand/events` es BFF: máximo 128 KiB, timeout 2s, no logs/parsing y token
+`RESERLY_DEMAND_INGESTION_SERVICE_TOKEN` server-only. Reenvía estado/body opaco. Token ausente falla
+503. El navegador nunca conoce la URL interna ni la credencial.
+
+### Arquitectura backend, transacciones y resiliencia
+
+Se añadieron `spring-aop`/AspectJ gestionados por BOM y `DemandOperationalTelemetryAspect`. Su orden
+`LOWEST_PRECEDENCE - 1` envuelve al interceptor transaccional: advice after-returning ocurre después
+de commit, por lo que una transacción fallida no genera resultado canónico. No se modifican firmas de
+servicios ni tests de dominio existentes.
+
+El aspecto publica un record minimizado. `DemandTelemetryEventListener` usa `@Async` y listener
+transaccional con fallback porque el evento normalmente se publica ya fuera de la transacción. Pool:
+core 1, max 2, cola 1000 y DiscardPolicy. `ingestTrusted` omite credencial/cuota Redis para origen
+interno, pero conserva feature flag, catálogo, contexto, consentimiento e idempotencia. Excepciones se
+absorben y `reserly.demand.telemetry.dropped{eventType}` aumenta; no hay logs de payload.
+
+Esta decisión garantiza independencia, pero no durabilidad absoluta: crash entre commit y ejecución
+puede perder eventos. Un outbox futuro cerrará el hueco. RabbitMQ sin outbox no lo resolvería y podría
+acoplar el commit. 19.20 debe alertar descartes/cobertura.
+
+### Archivos, pruebas y evidencia
+
+- Backend: paquete `demand.telemetry`, ampliación trusted de ingesta, dependencias AOP y
+  `DemandOperationalTelemetryTests`.
+- Web: cliente/normalizador/test, Route Handler/test y cambios en resultados, ficha y reserva.
+- Documentación: contrato arquitectónico, índice, diseño, tareas, seguimiento y este registro.
+- Batería Maven conjunta 19.1-19.9: 19 tests correctos, sin fallos ni errores. Incluye
+  `DemandIdentityPersistenceIntegrationTests`, `BehaviorEventPersistenceIntegrationTests`,
+  `RecommendationPersistenceIntegrationTests`, `PgvectorMigrationIntegrationTests`, los seis tests
+  de ingesta y los dos de telemetría; Testcontainers aplicó correctamente Flyway V1-V47 sobre
+  PostgreSQL 17.5. `spotless:check` y `test-compile` también finalizaron correctamente.
+- Vitest dirigido: 5 archivos, 16 tests correctos para telemetría/proxy y pantallas modificadas.
+- Contratos Python: `python -m unittest discover -s tests -v`, cuatro tests correctos para catálogo,
+  sobre, minimización y compatibilidad JSON/Pydantic.
+- ESLint dirigido: correcto sin warnings; Prettier dirigido: todos los archivos conformes.
+- `env:check` y `db:config`: correctos. `backend:conventions:check` conserva exactamente sus 18
+  incidencias históricas y no menciona ningún archivo incorporado o modificado por esta iteración.
+- TypeScript global conserva errores históricos ajenos en layouts/admin/forms/fixtures; no reportó
+  archivos nuevos o modificados por 19.9.
+
+No se instrumentan aún impresiones/rankings sin conjunto elegible: 19.10. La correlación completa y
+deduplicación semántica web/backend: 19.11. Dashboard de cobertura/descartes: 19.20.

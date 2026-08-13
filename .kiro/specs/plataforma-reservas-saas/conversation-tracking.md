@@ -9177,3 +9177,27 @@ Fuente de verdad del avance:
   - La ingesta usa credencial técnica, no cookie ni sesión de usuario.
   - Un lote inválido no escribe; un fallo inesperado puede reintentarse por IDs sin duplicar.
   - La primera versión tiene una credencial allowlisted; rotación solapada queda para fase 20.
+
+# Conversación 203 - Instrumentación web y resultados transaccionales
+
+- Fecha: 2026-08-13.
+- Resumen de la conversación:
+  - Se instrumentaron búsqueda/recuento, clic a ficha, filtros, fotos, reseñas y abandono en web con
+    sesión efímera, sin PII ni texto de consulta.
+  - Un Route Handler Next limita tamaño/timeout y añade el secreto exclusivamente en servidor.
+  - Un aspecto backend publica después de éxito/commit disponibilidad, hold, confirmación,
+    cancelación, asistencia, no-show y reseña; el listener async absorbe fallos y mide descartes.
+  - Se verificaron 16 tests web de las superficies modificadas y 8 backend de ingesta/telemetría.
+- Archivos modificados:
+  - Nuevo `demand-telemetry` web, Route Handler y tests; búsqueda, ficha y reserva instrumentadas.
+  - Nuevo contexto backend `demand.telemetry`, AOP/async y test; ingesta trusted sin cuota HTTP.
+  - `pom.xml`, `docs/architecture/demand-instrumentation.md`, índice y cuatro documentos `.kiro`.
+- Requisitos impactados: `RF-033`, `RF-034`, `RF-036`, `RF-038`, `RNF-001`, `RNF-002`, `RNF-004`,
+  `RNF-005`, `RNF-006`, `RNF-014` y `RNF-015`.
+- Tareas impactadas: `19.9`; prepara `19.10`, `19.11`, `19.19` y `19.20`.
+- Tareas completadas: `19.9`.
+- Siguiente tarea pendiente recomendada: `17.1`; en fase 19, `19.10`.
+- Decisiones o aclaraciones relevantes:
+  - No se crean impresiones sin el conjunto elegible: esa garantía pertenece a 19.10.
+  - Backend es autoridad de resultados; eventos web se reconciliarán en 19.11.
+  - Entrega backend es best-effort y observable; outbox durable queda como deuda explícita.

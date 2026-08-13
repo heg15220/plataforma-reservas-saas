@@ -83,6 +83,18 @@ public class DemandEventIngestionServiceImpl implements DemandEventIngestionServ
       reject("PRODUCER_INVALID");
     }
     rateLimitService.check(RateLimitScope.DEMAND_EVENT_INGESTION, producerId);
+    return ingestValidated(request);
+  }
+
+  @Override
+  public EventBatchIngestionResponse ingestTrusted(EventIngestionRequest request) {
+    if (!properties.enabled()) {
+      throw new DemandIngestionDisabledException();
+    }
+    return ingestValidated(new EventBatchIngestionRequest(List.of(request)));
+  }
+
+  private EventBatchIngestionResponse ingestValidated(EventBatchIngestionRequest request) {
     if (request.events().size() > properties.maximumBatchSize()) {
       reject("BATCH_TOO_LARGE");
     }

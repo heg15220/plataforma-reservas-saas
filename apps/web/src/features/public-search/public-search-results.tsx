@@ -13,12 +13,13 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Filter, MapPin, SlidersHorizontal, Star, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { NavigationLink } from "@/components/navigation-link";
 import { StatusChip, type StatusTone } from "@/components/visual";
 import { visualTokens } from "@/theme/visual-tokens";
+import { toDemandCode, trackDemandEvent } from "@/features/demand-telemetry/demand-telemetry";
 
 import {
   type PublicSearchCategory,
@@ -57,6 +58,14 @@ export function PublicSearchResultsView({
 }: PublicSearchResultsViewProps) {
   const t = useTranslations("PublicSearch");
   const resultCount = t("summary.count", { count: response.totalElements });
+
+  useEffect(() => {
+    trackDemandEvent("searchPerformed", {
+      queryLength: filters.q?.length ?? 0,
+      resultCount: response.totalElements,
+      ...(filters.category ? { categoryCode: toDemandCode(filters.category) } : {}),
+    });
+  }, [filters.category, filters.q, response.totalElements]);
 
   return (
     <PublicShell currentPath={EXPLORE_PATH}>
@@ -103,8 +112,8 @@ export function PublicSearchResultsView({
                     gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
                   }}
                 >
-                  {response.results.map((venue) => (
-                    <VenueResultCard key={venue.slug} venue={venue} />
+                  {response.results.map((venue, index) => (
+                    <VenueResultCard key={venue.slug} position={index + 1} venue={venue} />
                   ))}
                 </Box>
               )}
@@ -379,6 +388,11 @@ function SearchFilterFields({
       component="form"
       action={EXPLORE_PATH}
       method="get"
+      onSubmit={() =>
+        trackDemandEvent("filterApplied", {
+          filterCode: "searchFilters",
+        })
+      }
       role="search"
       aria-label={t("filters.ariaLabel")}
     >
@@ -447,7 +461,7 @@ function SearchFilterFields({
  * Resultado navegable a la ficha mediante un enlace extendido, sin absorber la acción secundaria
  * de reserva directa ni crear enlaces anidados.
  */
-function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
+function VenueResultCard({ venue, position }: { venue: PublicVenueSearchItem; position: number }) {
   const t = useTranslations("PublicSearch");
   const location = [venue.address, venue.postalCode, venue.city, venue.province, venue.country]
     .filter(Boolean)
@@ -535,6 +549,12 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
             <Box
               component={NavigationLink}
               href={venueHref}
+              onClick={() =>
+                trackDemandEvent("venueClicked", {
+                  categoryCode: toDemandCode(venue.categorySlug),
+                  position,
+                })
+              }
               sx={{
                 color: "inherit",
                 textDecoration: "none",
@@ -568,6 +588,12 @@ function VenueResultCard({ venue }: { venue: PublicVenueSearchItem }) {
             component={NavigationLink}
             fullWidth
             href={venueHref}
+            onClick={() =>
+              trackDemandEvent("venueClicked", {
+                categoryCode: toDemandCode(venue.categorySlug),
+                position,
+              })
+            }
             sx={{ minHeight: 44, position: "relative", zIndex: 1 }}
             variant={venue.bookingAvailable ? "outlined" : "contained"}
           >

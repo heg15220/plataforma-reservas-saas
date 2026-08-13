@@ -24,11 +24,12 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { PageContainer, PublicShell, Surface } from "@/components/layout";
 import { NavigationLink } from "@/components/navigation-link";
 import { storeReservationConfirmation } from "@/features/reservation-booking/reservation-confirmation-storage";
+import { trackDemandEvent } from "@/features/demand-telemetry/demand-telemetry";
 
 import {
   confirmReservation,
@@ -95,6 +96,17 @@ export function PublicReservationFormView({
   const [failed, setFailed] = useState(false);
   const [restrictedUntil, setRestrictedUntil] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const activeHold = useRef<ReservationHold | null>(null);
+  const completed = useRef(false);
+
+  useEffect(
+    () => () => {
+      if (activeHold.current && !completed.current) {
+        trackDemandEvent("bookingAbandoned", { stepCode: "holdAbandoned" });
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,6 +141,7 @@ export function PublicReservationFormView({
         partySize,
       });
       setHold(next);
+      activeHold.current = next;
     } catch {
       setFailed(true);
     } finally {
@@ -163,6 +176,7 @@ export function PublicReservationFormView({
         acceptsPrivacyPolicy: data.has("acceptsPrivacyPolicy"),
         acceptsBookingRules: data.has("acceptsBookingRules"),
       });
+      completed.current = true;
       storeReservationConfirmation(response);
       router.push(`/reservas/${response.reservationId}/confirmacion`);
     } catch (confirmationError) {
