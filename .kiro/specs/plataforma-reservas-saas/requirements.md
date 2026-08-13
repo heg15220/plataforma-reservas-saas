@@ -50,7 +50,12 @@ La primera versión debe priorizar un MVP sólido: buscador público, ficha de l
 
 ### 2.3 Preparado para fases posteriores
 
-El diseño debe dejar puntos de extensión para recomendaciones, pagos RedSys, multiusuario, motor de reglas avanzado, formularios por servicio/recurso, estadísticas avanzadas, auditoría ampliada e integraciones externas.
+El diseño debe dejar puntos de extensión para el motor de generación de demanda, pagos RedSys,
+multiusuario, motor de reglas avanzado, formularios por servicio/recurso, estadísticas avanzadas,
+auditoría ampliada e integraciones externas. El motor de demanda comprende identidad seudónima,
+eventos y alternativas, ontología, búsqueda semántica, ranking explicable, predicción de capacidad,
+experimentación, incrementalidad, recuperación de huecos y MLOps, pero ninguna de estas capacidades
+debe bloquear la entrega ni el camino transaccional del MVP.
 
 ## 3. Perfiles de usuario
 
@@ -643,6 +648,213 @@ La plataforma debe poder incorporar recomendaciones personalizadas y listas dest
   automática se pausa o desactiva respectivamente.
 - WHEN las recomendaciones cambien durante una rotación, THEN ninguna tarjeta debe quedar
   parcialmente recortada por los límites izquierdo o derecho del carril.
+- WHEN el motor inteligente todavía no disponga de datos suficientes, THEN debe degradar de forma
+  explícita y determinista a señales de contenido, contexto, popularidad, valoración, cercanía,
+  disponibilidad y exploración controlada.
+- WHEN una opción se muestre como recomendada, THEN debe incluir una explicación comprensible
+  basada en señales permitidas y no en inferencias sensibles u opacas.
+- WHEN una recomendación se genere, THEN deben quedar versionados el conjunto candidato, el orden,
+  los componentes normalizados del score, la política o modelo, el experimento y la configuración
+  utilizada, sin incluir datos personales directos.
+
+Los requisitos `RF-033` a `RF-041` se documentan inmediatamente después de `RF-029` porque lo
+especializan como bloque cohesivo. Los identificadores `RF-030` a `RF-032` se conservan sin
+renumerar para no romper su trazabilidad histórica.
+
+### RF-033 Instrumentación de demanda y conjuntos de alternativas
+
+**Prioridad:** Post-MVP fundacional
+
+La plataforma debe registrar el recorrido de descubrimiento, evaluación, conversión y resultado
+posterior para aprender de elecciones reales y medir demanda generada.
+
+#### Criterios de aceptación
+
+- WHEN ocurra una búsqueda, vista de categoría, impresión, clic, aplicación de filtro, consulta de
+  fotos/reseñas/disponibilidad, inicio/abandono/finalización de reserva, cancelación, asistencia,
+  no-show, reseña, recomendación, promoción, oferta de lista de espera o asignación experimental,
+  THEN se registra un evento tipado, versionado e idempotente.
+- WHEN se registre una impresión o ranking, THEN se conserva el conjunto de alternativas elegibles,
+  su posición, atributos visibles, restricciones y disponibilidad observada, no solo la opción elegida.
+- WHEN se registre contexto, THEN se limita a identificadores técnicos, momento, zona aproximada,
+  distancia, capacidad, ocupación prevista, precio, versión de ranking y resultado permitido.
+- WHEN un evento llegue tarde o duplicado, THEN su identificador idempotente impide duplicidad y su
+  hora de ocurrencia se conserva separada de la hora de recepción.
+- WHEN el esquema de un evento cambie, THEN el consumidor puede distinguir su versión y los
+  productores antiguos permanecen compatibles durante una ventana documentada.
+- WHEN un evento no cumpla contrato, consentimiento o finalidad, THEN se rechaza o minimiza antes
+  de persistir y se registra una métrica técnica sin copiar el payload a logs.
+
+### RF-034 Identidad seudónima y perfil implícito
+
+**Prioridad:** Post-MVP fundacional
+
+La personalización debe funcionar para usuarios invitados mediante una identidad progresiva,
+seudónima, limitada, transparente y revocable.
+
+#### Criterios de aceptación
+
+- WHEN comienza una navegación, THEN el sistema puede crear `sessionId` y, solo con base jurídica y
+  consentimiento aplicables, un `anonymousId` propio y aleatorio para navegador o instalación.
+- WHEN una reserva aporta email, THEN el identificador analítico estable se deriva con
+  HMAC-SHA-256 y clave secreta versionada; nunca se usa un hash simple ni el email en claro como
+  feature de modelos.
+- WHEN se vinculan una sesión, dispositivo e identidad de cliente, THEN se registra motivo, fecha,
+  finalidad y versión de consentimiento, y la vinculación puede revocarse.
+- WHEN no existe consentimiento de personalización, THEN el flujo de reserva sigue operativo y las
+  recomendaciones se limitan a contexto no personal y agregados permitidos.
+- WHEN se actualiza un perfil implícito, THEN cada preferencia conserva valor, confianza, fuentes,
+  número de evidencias y recencia, con decaimiento temporal configurable.
+- WHEN la persona ejerce acceso, corrección, oposición o supresión, THEN las identidades y perfiles
+  vinculados pueden localizarse y atenderse sin depender de datos incluidos en artefactos de modelo.
+
+### RF-035 Ontología y perfil dinámico de establecimientos
+
+**Prioridad:** Post-MVP fundacional
+
+La plataforma debe describir locales, servicios y necesidades con una ontología gobernada de
+atributos absolutos, dinámicos, relativos y subjetivos agregados.
+
+#### Criterios de aceptación
+
+- WHEN se crea un atributo, THEN dispone de código estable, nombres ES/EN, definición, familia,
+  jerarquía, tipo, fuentes permitidas, caducidad y estado de gobernanza.
+- WHEN una fuente aporta evidencia, THEN se conserva puntuación, confianza, procedencia, versión,
+  fecha, expiración y referencia verificable sin almacenar texto personal innecesario.
+- WHEN se calcula el perfil local-atributo, THEN se ponderan fiabilidad, confianza, diversidad,
+  volumen, acuerdo y recencia, y se conservan recuentos y fecha de cálculo.
+- WHEN se contradigan evidencias, THEN el score no se sobrescribe sin trazabilidad y la confianza
+  refleja el desacuerdo.
+- WHEN el sistema descubra un tema nuevo mediante clustering, THEN permanece como candidato hasta
+  que una revisión humana lo nombre, fusione, rechace o publique.
+- WHEN se analicen imágenes, THEN solo actúan como fuente auxiliar de atributos visuales; no pueden
+  afirmar por sí solas limpieza, seguridad, carácter familiar, tranquilidad ni atributos sensibles.
+
+### RF-036 Matching semántico, ranking y explicabilidad
+
+**Prioridad:** Post-MVP diferencial
+
+El sistema debe generar candidatos y ordenar oportunidades compatibles con la necesidad, el
+contexto, el local, el servicio, el recurso y la franja disponible.
+
+#### Criterios de aceptación
+
+- WHEN una consulta abierta se procese, THEN se combinan filtros duros transaccionales con búsqueda
+  textual/vectorial multilingüe y ninguna recomendación puede eludir publicación, permisos,
+  disponibilidad o capacidad.
+- WHEN todavía no exista volumen, THEN el ranking usa una función ponderada y versionada de
+  afinidad, conversión estimada, proximidad, disponibilidad, necesidad de capacidad, calidad y
+  exploración.
+- WHEN exista evidencia suficiente y se apruebe el cambio, THEN el componente de conversión puede
+  evolucionar de regresión logística a boosting y el ranking a Learning to Rank sin cambiar el
+  contrato público.
+- WHEN se muestre una recomendación, THEN se explican como máximo las señales de mayor contribución,
+  con traducciones ES/EN y sin presentar correlaciones como certezas psicológicas o causales.
+- WHEN un modelo, vector store o pipeline no esté disponible, THEN se aplica un fallback
+  determinista, observable y seguro basado en reglas; la reserva nunca depende del motor de ML.
+- WHEN se evalúe el ranking, THEN se miden relevancia, conversión, asistencia, cobertura, diversidad,
+  exposición de locales nuevos, latencia y valor comercial.
+
+### RF-037 Predicción de demanda y capacidad comercial
+
+**Prioridad:** Post-MVP diferencial
+
+La plataforma debe detectar capacidad que probablemente quedará libre y demanda insatisfecha por
+zona, categoría y periodo.
+
+#### Criterios de aceptación
+
+- WHEN no haya historial suficiente, THEN la previsión usa baselines auditables por día-hora, medias
+  móviles o suavizado exponencial y publica su incertidumbre.
+- WHEN se calcule necesidad de capacidad, THEN se usan capacidad y ocupación esperada compatibles
+  con la fuente transaccional y su zona horaria.
+- WHEN se estime demanda insatisfecha, THEN se comparan búsquedas elegibles y reservas agregadas sin
+  revelar consultas o personas individuales.
+- WHEN se importen históricos de un local, THEN el origen, finalidad, calidad, zona temporal,
+  permisos, deduplicación y retención se validan antes de entrenar o calcular features.
+- WHEN la calidad o el volumen no alcancen el umbral definido, THEN no se presenta una predicción
+  como fiable ni se activa una acción automática irreversible.
+
+### RF-038 Experimentación, atribución e incrementalidad
+
+**Prioridad:** Post-MVP fundacional para medición
+
+Reserly debe distinguir reservas directas, asistidas, generadas y recuperadas, y separar correlación
+de impacto causal.
+
+#### Criterios de aceptación
+
+- WHEN se confirma una reserva, THEN su clasificación comercial se deriva mediante reglas
+  versionadas a partir de fuente de entrada, búsquedas, impresiones, recomendaciones y ventana de
+  atribución; la evidencia queda auditable.
+- WHEN una cancelación o franja liberada se cubra por una oferta o recomendación, THEN puede
+  clasificarse como reserva recuperada sin perder su historial transaccional.
+- WHEN se ejecute un experimento, THEN la asignación de tratamiento/control es estable,
+  mutuamente excluyente, versionada y registrada antes de mostrar la intervención.
+- WHEN no existe control válido, THEN el panel usa términos como `atribuido` o `estimado` y no afirma
+  causalidad ni ventas incrementales demostradas.
+- WHEN exista volumen y diseño experimental suficiente, THEN se pueden estimar uplift y efectos
+  heterogéneos con intervalos, diagnósticos y supuestos documentados.
+- WHEN se calcule ingreso incremental, THEN se incluyen asistencia, cancelación, importe neto,
+  nuevo cliente y ventana de atribución, evitando doble conteo entre canales.
+
+### RF-039 Recuperación de huecos y optimización de oportunidades
+
+**Prioridad:** Post-MVP avanzado
+
+La plataforma debe poder priorizar listas de espera, promociones y asignaciones sin exceder
+capacidad, presupuesto, frecuencia de contacto ni restricciones de equidad.
+
+#### Criterios de aceptación
+
+- WHEN se libere una franja, THEN se identifican candidatos compatibles y con consentimiento de
+  contacto antes de crear ofertas escalonadas y expirables.
+- WHEN una oferta sea aceptada, THEN la reserva usa el mismo hold y control transaccional de
+  capacidad que el flujo ordinario.
+- WHEN se priorice una lista de espera, THEN se combinan probabilidad de aceptación, asistencia y
+  valor permitido, con límites de frecuencia y desempate auditable.
+- WHEN se optimicen promociones, THEN el objetivo usa margen neto e incrementalidad estimada y evita
+  aplicar descuentos a quien previsiblemente reservaría sin incentivo.
+- WHEN no haya estimaciones fiables, THEN se usa una política de cola o prioridad determinista y no
+  una optimización opaca.
+
+### RF-040 Analítica comercial del motor de demanda
+
+**Prioridad:** Post-MVP diferencial
+
+El local debe conocer el valor generado por Reserly con métricas trazables y niveles de confianza.
+
+#### Criterios de aceptación
+
+- WHEN el local consulte su panel, THEN puede separar reservas totales, directas, asistidas,
+  generadas y recuperadas, además de clientes nuevos/recurrentes y horas valle cubiertas.
+- WHEN se muestren ingresos atribuidos o incrementales, THEN se indica moneda, periodo, definición,
+  versión de atribución, cobertura y calidad de la estimación.
+- WHEN no haya muestra suficiente, THEN el panel presenta estado insuficiente y no extrapola cifras.
+- WHEN se muestren demanda insatisfecha, conversión, coste por cliente, asistencia, cancelación,
+  no-show o atributos que convierten, THEN se aplican umbrales de agregación y aislamiento por local.
+- WHEN el usuario cambie local, rango o zona temporal, THEN las métricas se recalculan con permisos,
+  filtros y definiciones coherentes.
+
+### RF-041 Gobernanza del motor inteligente
+
+**Prioridad:** Obligatoria antes de automatización avanzada
+
+La administración debe gobernar ontología, datasets, modelos, experimentos, políticas de ranking y
+acciones automáticas.
+
+#### Criterios de aceptación
+
+- WHEN se registre un modelo, THEN dispone de propietario, finalidad, dataset, features, métricas,
+  versión, estado, fecha, limitaciones, umbrales y procedimiento de rollback.
+- WHEN se promueva una versión, THEN supera validaciones offline, privacidad, sesgo, estabilidad,
+  latencia y shadow/canary definidas para su riesgo.
+- WHEN cambie un peso, política, atributo o modelo, THEN queda auditoría de actor, motivo, versión
+  anterior/nueva y periodo de vigencia.
+- WHEN se detecte drift, degradación, fuga de datos o comportamiento inseguro, THEN el sistema puede
+  detener la automatización y volver a una política determinista aprobada.
+- WHEN una decisión tenga impacto comercial material, THEN existe explicación, supervisión humana y
+  mecanismo de impugnación o corrección cuando corresponda.
 
 ### RF-030 Administración de plataforma
 
@@ -744,6 +956,16 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - El sistema debe permitir acceso, rectificación y supresión cuando sea legalmente aplicable.
 - La ubicación del usuario solo debe usarse con autorización.
 - La información del personal del local solo debe mostrarse si el local la configura como pública.
+- Las finalidades operativa, analítica, de personalización, experimentación y activación comercial
+  deben estar separadas y disponer de base jurídica, consentimiento y retención propios cuando
+  corresponda.
+- Los perfiles de personalización y datasets de ML no deben contener email en claro; la unión estable
+  por correo debe usar HMAC-SHA-256 con clave secreta versionada y procedimiento de rotación.
+- No se permite fingerprinting, enriquecimiento con data brokers ni inferencia automática de género,
+  edad, domicilio, personalidad, situación económica, estado emocional, salud, religión, orientación
+  o ideología.
+- La revocación de personalización debe impedir nuevas inferencias y activar desvinculación,
+  anonimización o eliminación conforme a retención, incluidos features y recomendaciones derivadas.
 
 ### RNF-003 Concurrencia y consistencia
 
@@ -843,6 +1065,35 @@ El sistema debe diferenciar cuentas normales de cuentas de local mediante un tip
 - Las correcciones urgentes de producción deben partir de `main` en una rama `hotfix/*` y reintegrarse tanto en `main` como en `develop`.
 - Las ramas `main`, `develop` y de fase deben protegerse contra pushes directos cuando la plataforma del repositorio lo permita; la integración debe pasar por revisión y verificaciones automáticas.
 
+### RNF-014 Rendimiento, resiliencia y MLOps del motor de demanda
+
+- La búsqueda y reserva transaccionales no deben depender de la disponibilidad de la API de
+  inteligencia, del vector store, del registro de modelos ni del pipeline de entrenamiento.
+- La generación de candidatos y ranking debe tener presupuesto de latencia, timeout, circuit breaker,
+  caché acotada y fallback determinista medidos por entorno.
+- Entrenamiento batch e inferencia online deben permanecer separados; ningún entrenamiento puede
+  escribir directamente sobre la fuente transaccional ni promoverse sin control de versión.
+- Datasets, features, ontología, parámetros, modelos, embeddings, rankings y experimentos deben ser
+  reproducibles y versionados.
+- Deben monitorizarse calidad de datos, drift, calibración, cobertura, diversidad, exposición,
+  latencia, errores y métricas de negocio, con alertas y rollback.
+- Los jobs de recomputación deben ser idempotentes, reanudables, observables y coordinados entre
+  instancias.
+
+### RNF-015 Equidad, explicabilidad y seguridad de decisiones automatizadas
+
+- Los filtros de elegibilidad y capacidad son restricciones duras y prevalecen sobre cualquier score.
+- La exploración debe tener cuota máxima, guardrails de calidad y métricas de exposición para evitar
+  bucles de popularidad y dar oportunidades controladas a locales nuevos.
+- Ningún atributo sensible, proxy no justificado o inferencia prohibida puede participar en features,
+  segmentación, ranking, promociones o experimentos.
+- Las explicaciones deben derivarse de contribuciones reales del modelo o reglas ejecutadas y no de
+  texto generado sin trazabilidad.
+- Las acciones de alto impacto deben admitir supervisión humana, auditoría y rollback; la confianza
+  insuficiente debe degradar a reglas seguras.
+- Las métricas deben segmentarse de forma que permita detectar perjuicios sistemáticos sin exponer
+  individuos ni crear categorías sensibles nuevas.
+
 ## 6. Reglas de negocio clave
 
 ### RB-001 Identidad del usuario final
@@ -932,6 +1183,31 @@ Reglas:
 - Si existen varias reservas elegibles sin reseña, el sistema puede asociar la reseña a la reserva elegible más reciente.
 - Si no existe reserva elegible o todas las reservas elegibles ya fueron reseñadas, el sistema debe rechazar la creación con un mensaje público claro e internacionalizado.
 - La respuesta pública de elegibilidad no debe exponer datos de reservas, fechas ni historial del email.
+
+### RB-014 Clasificación comercial de reservas
+
+- `direct`: el usuario buscó o abrió específicamente el local sin intervención decisiva registrada.
+- `assisted`: el usuario comparó categoría, resultados o alternativas y Reserly influyó en la elección.
+- `generated`: una recomendación, promoción o descubrimiento atribuible presentó un local nuevo al
+  perfil dentro de la ventana configurada.
+- `recovered`: una franja liberada se cubrió mediante lista de espera u oferta automática registrada.
+- La clasificación debe ser única para el informe principal, versionada, recalculable y acompañada
+  de evidencia; no equivale por sí sola a causalidad.
+
+### RB-015 Prevalencia de restricciones sobre ranking
+
+- Un local, servicio, recurso o franja no publicado, no elegible, sin capacidad o fuera de filtros
+  nunca puede reintroducirse por score, exploración, promoción o modelo.
+- Los componentes del score deben normalizarse, versionarse y configurarse sin despliegue de código.
+- Confianza o datos insuficientes obligan a fallback determinista y explicación correspondiente.
+
+### RB-016 Vinculación y revocación de identidad analítica
+
+- Una sesión solo se vincula a una identidad seudónima por un motivo permitido y registrado.
+- El email original permanece separado de datos analíticos y cifrado donde deba conservarse por el
+  flujo operativo.
+- La revocación impide continuar personalizando con esa vinculación y debe propagarse a perfiles y
+  datasets derivados conforme a la política de retención.
 
 ## 7. Pantallas mínimas del MVP
 

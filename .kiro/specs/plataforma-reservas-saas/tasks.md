@@ -342,51 +342,137 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [ ] 17.7. Crear alertas para fallos críticos.
 - [ ] 17.8. Documentar runbook de incidencias básicas.
 
-## 20. Fase 18 - Recomendaciones post-MVP
+## 20. Fase 18 - QA de aceptación MVP
 
-- [ ] 18.1. Definir eventos de interacción para recomendación.
-- [ ] 18.2. Crear tabla de interacciones usuario-local con email pseudonimizado.
-- [ ] 18.3. Crear dataset de reservas, valoraciones, categorías y ubicación aproximada.
-- [ ] 18.4. Implementar recomendaciones simples por popularidad, valoración, cercanía y disponibilidad.
-- [ ] 18.5. Preparar pipeline batch de factorización matricial.
-- [ ] 18.6. Guardar resultados en tabla de recomendaciones.
-- [ ] 18.7. Servir "Recomendados para ti", "Populares cerca de ti", "Mejor valorados", "Locales similares" y "Nuevos disponibles".
-- [ ] 18.8. Combinar recomendaciones con filtros activos.
-- [ ] 18.9. Crear métricas de clics y reservas generadas por recomendaciones.
+- [ ] 18.1. Validar flujo completo de registro de local.
+- [ ] 18.2. Validar registro con identificador empresarial válido.
+- [ ] 18.3. Validar rechazo o revisión pendiente con identificador empresarial inválido o proveedor no disponible.
+- [ ] 18.4. Validar subida y revisión de documento de respaldo cuando la verificación automática no sea concluyente.
+- [ ] 18.5. Validar publicación de local tras verificación de email y verificación empresarial.
+- [ ] 18.6. Validar selección automática de español con navegador `es-*`.
+- [ ] 18.7. Validar selección automática de inglés con navegador no `es-*`.
+- [ ] 18.8. Validar que emails, errores, estados y textos legales se muestran en el idioma resuelto.
+- [ ] 18.9. Validar configuración de horarios, franjas y capacidad.
+- [ ] 18.10. Validar búsqueda por nombre.
+- [ ] 18.11. Validar filtros por ubicación, categoría y disponibilidad.
+- [ ] 18.12. Validar ficha pública con calendario.
+- [ ] 18.13. Validar reserva sin cuenta.
+- [ ] 18.14. Validar email de confirmación y enlace seguro.
+- [ ] 18.15. Validar cancelación por usuario dentro de plazo.
+- [ ] 18.16. Validar bloqueo de última plaza con dos usuarios simultáneos.
+- [ ] 18.17. Validar expiración de hold.
+- [ ] 18.18. Validar panel de reservas del local.
+- [ ] 18.19. Validar marcado de asistida.
+- [ ] 18.20. Validar reporte de no asistencia.
+- [ ] 18.21. Validar penalización activa en nueva reserva.
+- [ ] 18.22. Validar cancelación por local con auditoría.
+- [ ] 18.23. Validar reseña tras reserva desde el botón de la ficha con email elegible.
+- [ ] 18.24. Validar estadísticas básicas.
+- [ ] 18.25. Validar navegación móvil de usuario final.
+- [ ] 18.26. Validar navegación móvil de local.
+- [ ] 18.27. Validar rechazo de reseña cuando el email no tenga reserva pasada en ese local.
+- [ ] 18.28. Validar pestañas personalizadas de la ficha pública, incluyendo carta, menú, precios, orden, i18n y responsive.
+- [ ] 18.29. Validar que todo texto español visible en UI, emails, errores, estados, seeds y documentación de usuario conserva tildes, eñes, signos `¿`/`¡`, caracteres especiales y codificación UTF-8 correcta.
 
-## 21. Fase 19 - QA de aceptación MVP
+## 21. Fase 19 - Fundamentos de datos del motor de demanda
 
-- [ ] 19.1. Validar flujo completo de registro de local.
-- [ ] 19.2. Validar registro con identificador empresarial válido.
-- [ ] 19.3. Validar rechazo o revisión pendiente con identificador empresarial inválido o proveedor no disponible.
-- [ ] 19.4. Validar subida y revisión de documento de respaldo cuando la verificación automática no sea concluyente.
-- [ ] 19.5. Validar publicación de local tras verificación de email y verificación empresarial.
-- [ ] 19.6. Validar selección automática de español con navegador `es-*`.
-- [ ] 19.7. Validar selección automática de inglés con navegador no `es-*`.
-- [ ] 19.8. Validar que emails, errores, estados y textos legales se muestran en el idioma resuelto.
-- [ ] 19.9. Validar configuración de horarios, franjas y capacidad.
-- [ ] 19.10. Validar búsqueda por nombre.
-- [ ] 19.11. Validar filtros por ubicación, categoría y disponibilidad.
-- [ ] 19.12. Validar ficha pública con calendario.
-- [ ] 19.13. Validar reserva sin cuenta.
-- [ ] 19.14. Validar email de confirmación y enlace seguro.
-- [ ] 19.15. Validar cancelación por usuario dentro de plazo.
-- [ ] 19.16. Validar bloqueo de última plaza con dos usuarios simultáneos.
-- [ ] 19.17. Validar expiración de hold.
-- [ ] 19.18. Validar panel de reservas del local.
-- [ ] 19.19. Validar marcado de asistida.
-- [ ] 19.20. Validar reporte de no asistencia.
-- [ ] 19.21. Validar penalización activa en nueva reserva.
-- [ ] 19.22. Validar cancelación por local con auditoría.
-- [ ] 19.23. Validar reseña tras reserva desde el botón de la ficha con email elegible.
-- [ ] 19.24. Validar estadísticas básicas.
-- [ ] 19.25. Validar navegación móvil de usuario final.
-- [ ] 19.26. Validar navegación móvil de local.
-- [ ] 19.27. Validar rechazo de reseña cuando el email no tenga reserva pasada en ese local.
-- [ ] 19.28. Validar pestañas personalizadas de la ficha pública, incluyendo carta, menú, precios, orden, i18n y responsive.
-- [ ] 19.29. Validar que todo texto español visible en UI, emails, errores, estados, seeds y documentación de usuario conserva tildes, eñes, signos `¿`/`¡`, caracteres especiales y codificación UTF-8 correcta.
+- [ ] 19.1. Seleccionar y documentar el primer vertical o conjunto limitado de servicios, sus métricas de éxito y los criterios de abandono o ampliación.
+- [ ] 19.2. Crear ADR de límites entre el monolito transaccional y `Demand Engine`, incluyendo contratos, ownership de datos, fallbacks y prohibición de dependencia crítica desde reserva.
+- [ ] 19.3. Habilitar la extensión `pgvector` mediante Flyway y verificar compatibilidad, rollback lógico, índices y entornos.
+- [ ] 19.4. Crear migraciones, entidades y DAOs de `CustomerIdentities`, `AnonymousIdentities` e `IdentityLinks` con HMAC versionado, consentimiento, revocación y retención.
+- [ ] 19.5. Crear catálogo versionado de eventos y contratos JSON/Pydantic para descubrimiento, evaluación, conversión, post-reserva, activación y experimentación.
+- [ ] 19.6. Crear migraciones, entidades y DAOs de `BehaviorEvents` con idempotencia, fecha de ocurrencia/recepción, finalidad y contexto minimizado.
+- [ ] 19.7. Crear `RecommendationRequests`, `RecommendationCandidates` y `RecommendationRankings` para conservar alternativas, posiciones, componentes de score, versión y experimento.
+- [ ] 19.8. Implementar API interna idempotente de ingestión de eventos con validación, cuotas, lotes, contrato opaco de error y ausencia de payloads en logs.
+- [ ] 19.9. Instrumentar búsqueda, resultados, ficha, filtros, fotos, reseñas, disponibilidad, reserva, cancelación, asistencia y no-show en web y backend.
+- [ ] 19.10. Garantizar que cada impresión registra únicamente candidatos realmente elegibles y la información que el usuario pudo observar.
+- [ ] 19.11. Implementar reconciliación entre eventos de frontend y resultados transaccionales de backend mediante identificadores de correlación.
+- [ ] 19.12. Definir la ontología inicial gobernada de 30-50 atributos para el vertical elegido con familias, jerarquía, ES/EN, fuentes, vigencia y atributos prohibidos.
+- [ ] 19.13. Crear migraciones, entidades, DAOs y panel admin de `DemandAttributes` y `DemandAttributeCandidates` con workflow de borrador, revisión, publicación, fusión y retirada.
+- [ ] 19.14. Crear `VenueAttributeEvidence` y `VenueAttributeProfiles` con score, confianza, procedencia, diversidad, expiración y trazabilidad de cálculo.
+- [ ] 19.15. Implementar agregador configurable de evidencias con fiabilidad, confianza, volumen, acuerdo, diversidad y decaimiento temporal.
+- [ ] 19.16. Crear política y UI ES/EN de consentimiento separado para analítica, personalización y activación comercial, sin bloquear la reserva operativa.
+- [ ] 19.17. Implementar acceso, corrección, oposición, revocación, desvinculación y supresión para identidades, eventos, perfiles y resultados derivados.
+- [ ] 19.18. Definir retención, particionado temporal, índices, umbrales de agregación y estrategia de borrado de eventos y rankings.
+- [ ] 19.19. Implementar validaciones de calidad, completitud, duplicidad, orden temporal, consentimiento y fuga de PII sobre el dataset fundacional.
+- [ ] 19.20. Crear dashboards internos de volumen, rechazo, duplicados, latencia y cobertura de instrumentación por evento y versión.
+- [ ] 19.21. Crear tests unitarios, integración PostgreSQL, contrato, privacidad e idempotencia del sistema de eventos, identidad y ontología.
 
-## 22. Criterios de salida del MVP
+## 22. Fase 20 - MVP diferencial de matching y demanda
+
+- [ ] 20.1. Crear el servicio Python `Demand Engine` con FastAPI, Pydantic, health checks, autenticación servicio-a-servicio, timeouts y configuración por entorno.
+- [ ] 20.2. Definir contratos de `POST /events`, `POST /recommendations`, `POST /ranking`, `GET /venues/{id}/attributes`, `POST /conversion/predict` y `GET /demand/{venueId}` sin exponerlos directamente a Internet.
+- [ ] 20.3. Implementar perfil inicial de local desde formulario, servicios, texto localizado y datos operativos mediante reglas y clasificación interpretable.
+- [ ] 20.4. Seleccionar, versionar y evaluar un modelo multilingüe de Sentence Transformers con licencia, dimensiones, idiomas, latencia y calidad documentados.
+- [ ] 20.5. Generar embeddings de consultas, locales y servicios en jobs batch idempotentes y persistir versión, checksum, locale y vigencia en pgvector.
+- [ ] 20.6. Crear generación híbrida de candidatos con full-text, trigram, vector, categoría, radio, estado publicado, servicio y disponibilidad.
+- [ ] 20.7. Construir perfil contextual de sesión desde filtros, clics, comparaciones y consultas de disponibilidad con consentimiento aplicable.
+- [ ] 20.8. Implementar afinidad content-based por coseno y contribución por atributos con confianza.
+- [ ] 20.9. Implementar `ScoreMvp` configurable y versionado con afinidad, conversión baseline, proximidad, disponibilidad, necesidad de capacidad, calidad y exploración.
+- [ ] 20.10. Aplicar restricciones duras de elegibilidad, capacidad, permisos, filtros y frecuencia después de generar candidatos y antes de ordenar.
+- [ ] 20.11. Implementar fallbacks deterministas por popularidad contextual, valoración, cercanía, disponibilidad y novedad ante datos o dependencias insuficientes.
+- [ ] 20.12. Implementar explicaciones ES/EN derivadas de las contribuciones reales del score y limitar su contenido a señales permitidas.
+- [ ] 20.13. Implementar baseline de ocupación por día-hora con media móvil o suavizado exponencial, incertidumbre y zona horaria.
+- [ ] 20.14. Calcular necesidad de capacidad y demanda insatisfecha agregada por zona, categoría y periodo con umbrales de privacidad.
+- [ ] 20.15. Implementar Thompson Sampling básico con prior, cuota máxima de exploración, guardrails de calidad y actualización idempotente.
+- [ ] 20.16. Integrar recomendaciones en inicio y resultados respetando filtros, disponibilidad, accesibilidad, responsive, i18n y reducción de movimiento.
+- [ ] 20.17. Clasificar reservas directas, asistidas, generadas y recuperadas mediante una política de atribución versionada y auditable.
+- [ ] 20.18. Crear panel inicial de nuevos clientes, reservas originadas, horas valle cubiertas e ingresos atribuidos con definiciones y cobertura visibles.
+- [ ] 20.19. Implementar asignación A/B estable, registro previo a exposición y exclusiones mutuas para políticas de ranking.
+- [ ] 20.20. Definir métricas offline/online, dataset de evaluación, baseline, umbrales de promoción y guardrails de negocio.
+- [ ] 20.21. Crear tests de relevancia, determinismo, filtros duros, fallback, explicación, aislamiento, carga, accesibilidad y experimento.
+
+## 23. Fase 21 - Aprendizaje con primeros datos reales
+
+- [ ] 21.1. Implementar vinculación progresiva de sesión e identidad de cliente mediante HMAC-SHA-256 versionado y rotación de clave.
+- [ ] 21.2. Construir perfiles implícitos por atributo con jerarquía de señales, decaimiento temporal, confianza y posibilidad de corrección.
+- [ ] 21.3. Implementar pipeline NLP ES/EN de normalización, entidades, negación, clasificación multilabel y mapeo de sinónimos.
+- [ ] 21.4. Implementar ABSA sobre reseñas verificadas con scores separados por aspecto, confianza, vigencia y evaluación humana.
+- [ ] 21.5. Entrenar y calibrar regresión logística de conversión con separación temporal, prevención de leakage y model card.
+- [ ] 21.6. Implementar modelo de elección discreta sobre conjuntos de alternativas para interpretar distancia, precio, atributos y contexto.
+- [ ] 21.7. Evaluar LightGBM o CatBoost para conversión y ranking solo si supera baseline, calibración, latencia, estabilidad y equidad.
+- [ ] 21.8. Implementar predicción calibrada de no-show como señal de riesgo, sin automatizar penalizaciones ni denegaciones.
+- [ ] 21.9. Ejecutar pruebas A/B del ranking con potencia, muestra, periodo, métricas primarias, guardrails y criterio de parada documentados.
+- [ ] 21.10. Implementar descubrimiento de atributos candidatos con embeddings, UMAP, HDBSCAN, BERTopic y c-TF-IDF bajo revisión humana.
+- [ ] 21.11. Añadir analítica de conversión por servicio, franja, zona, segmento permitido y atributo con intervalos y muestra mínima.
+- [ ] 21.12. Crear tests de reproducibilidad, leakage, calibración, sesgo, robustez lingüística, revocación y promoción de modelos.
+
+## 24. Fase 22 - Marketplace con volumen y optimización
+
+- [ ] 22.1. Evaluar Factorization Machines para interacciones dispersas y desplegarlas solo si mejoran el baseline content-based.
+- [ ] 22.2. Implementar Learning to Rank con LambdaMART/LightGBM Ranker y evaluación NDCG, conversión, diversidad y exposición.
+- [ ] 22.3. Evolucionar la exploración a LinUCB o Thompson Sampling contextual con política offline y límites de riesgo.
+- [ ] 22.4. Implementar previsión avanzada de demanda con variables temporales y modelos jerárquicos o boosting, comparada siempre con baseline.
+- [ ] 22.5. Diseñar y validar estimación causal mediante A/B antes de usar S/T/X-learner, Causal Forest o Doubly Robust.
+- [ ] 22.6. Implementar estimación de uplift con intervalos, overlap, sensibilidad y separación explícita de atribución observacional.
+- [ ] 22.7. Crear optimizador OR-Tools de oportunidades sujeto a capacidad, presupuesto, distancia, margen, frecuencia, consentimiento y equidad.
+- [ ] 22.8. Implementar listas de espera y `POST /waitlist/allocate` con ofertas escalonadas, expiración e idempotencia.
+- [ ] 22.9. Integrar aceptación de ofertas con holds y confirmación transaccional para impedir sobreventa.
+- [ ] 22.10. Implementar promociones inteligentes solo con uplift y margen fiables, aprobación del local y límites de contacto.
+- [ ] 22.11. Evaluar señales visuales con CLIP como evidencia auxiliar y prohibir inferencias no verificables o sensibles.
+- [ ] 22.12. Implementar recomendaciones cruzadas entre categorías con compatibilidad de intención y controles de diversidad.
+- [ ] 22.13. Implementar aprendizaje incremental y detección de drift con River, ADWIN, Page-Hinkley o CUSUM donde proceda.
+- [ ] 22.14. Medir incrementalidad robusta, reservas recuperadas, coste por cliente y retorno con controles y ventanas documentadas.
+- [ ] 22.15. Crear pruebas de optimización, capacidad, frecuencia, equidad, causalidad, drift, rollback y degradación segura.
+
+## 25. Fase 23 - Industrialización, MLOps y gobernanza
+
+- [ ] 23.1. Desplegar MLflow para tracking y registro de datasets, parámetros, métricas, artefactos y modelos con almacenamiento y acceso protegidos.
+- [ ] 23.2. Seleccionar Prefect como orquestador inicial y documentar el umbral que justificaría Airflow u otra alternativa.
+- [ ] 23.3. Versionar datasets, features, ontología, embeddings, configuraciones, modelos, experimentos y decisiones de promoción de extremo a extremo.
+- [ ] 23.4. Implementar validación automática de esquema, calidad, distribución, PII, leakage y sesgo antes de entrenar o promover.
+- [ ] 23.5. Separar entornos y permisos de entrenamiento, registro e inferencia con secretos rotables y mínimo privilegio.
+- [ ] 23.6. Implementar despliegue shadow/canary, comparación con campeón, rollback automático y fallback a reglas.
+- [ ] 23.7. Exponer métricas Prometheus y paneles Grafana para latencia, errores, drift, calibración, cobertura, diversidad, exposición y valor.
+- [ ] 23.8. Integrar Evidently para informes de calidad y drift sin convertirlo en fuente única de decisión.
+- [ ] 23.9. Crear auditoría administrativa de ontología, pesos, modelos, experimentos, promociones, listas de espera y acciones automáticas.
+- [ ] 23.10. Crear model cards, data sheets, evaluación de impacto de privacidad y matriz de atributos prohibidos por versión.
+- [ ] 23.11. Implementar revisión humana, corrección e impugnación para atributos y decisiones comerciales materiales.
+- [ ] 23.12. Definir SLO, presupuesto de latencia/coste, capacidad, alertas y runbooks del `Demand Engine` y pipelines.
+- [ ] 23.13. Ejecutar pruebas de recuperación, pérdida de dependencia, corrupción de artefacto, rotación de secretos y eliminación de datos.
+- [ ] 23.14. Realizar revisión jurídica, privacidad, seguridad y equidad antes de activar personalización persistente, promociones u optimización.
+
+## 26. Criterios de salida del MVP
 
 - [ ] Hay documentación de configuración y ejecución local.
 - [ ] Todas las migraciones se aplican desde cero.
@@ -405,7 +491,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [ ] No hay textos de sistema hardcodeados fuera del sistema de traducciones.
 - [ ] Ningún local puede publicarse sin verificación empresarial aprobada o revisión administrativa aprobada.
 
-## 23. Backlog priorizado
+## 27. Backlog priorizado
 
 ### P0 - Imprescindible MVP
 
@@ -439,7 +525,15 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ### P2 - Post-MVP
 
-- Recomendaciones por factorización matricial.
+- Motor de demanda fundacional con identidad seudónima, eventos, alternativas y ontología gobernada.
+- Recomendación content-based explicable, búsqueda semántica, exploración controlada y predicción
+  baseline de ocupación antes de introducir modelos aprendidos complejos.
+- Clasificación trazable de reservas directas, asistidas, generadas y recuperadas.
+- Experimentación A/B e incrementalidad causal solo cuando exista muestra y grupo de control válidos.
+- Factorization Machines, Learning to Rank, bandits contextuales, optimización y señales
+  multimodales únicamente tras superar baselines y guardrails.
+- Listas de espera, recuperación automática de huecos y promociones inteligentes.
+- MLOps, drift, explicabilidad, equidad y gobernanza obligatorios para cualquier automatización.
 - Activación completa de RedSys en producción tras contrato con entidad adquirente, credenciales reales y validación del entorno de pruebas.
 - Estadísticas avanzadas.
 - Servicios con duración variable avanzada.
@@ -450,7 +544,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - SMS/WhatsApp.
 - Integraciones con calendarios externos.
 
-## 24. Orden técnico recomendado
+## 28. Orden técnico recomendado
 
 1. Base del proyecto, identidad y roles.
 2. Internacionalización base y verificación empresarial.
@@ -465,5 +559,14 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 11. Reseñas y estadísticas.
 12. Responsive completo.
 13. Suscripciones, RedSys y admin.
+14. Observabilidad y QA de aceptación del MVP.
+15. Fundamentos de datos del motor de demanda: consentimiento, identidad, eventos, alternativas y ontología.
+16. MVP diferencial content-based, semántico, explicable y medible.
+17. Modelos aprendidos con primeros datos reales y experimentos controlados.
+18. Optimización de marketplace solo con volumen, causalidad y guardrails suficientes.
+19. Industrialización MLOps, gobernanza y revisión jurídica antes de automatización material.
 
-La razón técnica es que disponibilidad y reservas forman el núcleo del producto. Todo lo demás debe integrarse sobre ese flujo sin comprometer consistencia ni permisos.
+La razón técnica es que disponibilidad y reservas forman el núcleo del producto. El motor de demanda
+se construye después sobre eventos y contratos verificables, pero nunca entra en el camino crítico de
+confirmación. Los modelos complejos quedan subordinados a volumen real, experimentación, privacidad,
+explicabilidad, equidad y capacidad de rollback.
