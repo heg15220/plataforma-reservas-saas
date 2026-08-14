@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .api import internal_api_router
+from .affinity import ContentAffinityCalculator
 from .config import DemandEngineSettings
 from .errors import DemandEngineError
 from .embedding_batch import EmbeddingBatchProcessor
@@ -39,6 +40,7 @@ def create_app(
     app.state.venue_profiles = InMemoryVenueProfileRepository()
     app.state.venue_profile_builder = VenueProfileBuilder()
     app.state.session_context_builder = SessionContextBuilder()
+    app.state.affinity_calculator = ContentAffinityCalculator(settings.embedding_model_promoted)
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
     )

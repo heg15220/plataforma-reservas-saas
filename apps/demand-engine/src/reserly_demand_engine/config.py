@@ -23,6 +23,7 @@ class DemandEngineSettings(BaseModel):
     maximum_request_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
     docs_enabled: bool = False
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    embedding_model_promoted: bool = False
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "DemandEngineSettings":
@@ -44,4 +45,7 @@ class DemandEngineSettings(BaseModel):
             ),
             docs_enabled=values.get("RESERLY_DEMAND_ENGINE_DOCS_ENABLED", docs_default),
             log_level=values.get("RESERLY_DEMAND_ENGINE_LOG_LEVEL", "INFO"),
+            embedding_model_promoted=values.get(
+                "RESERLY_DEMAND_ENGINE_EMBEDDING_MODEL_PROMOTED", "false"
+            ),
         )

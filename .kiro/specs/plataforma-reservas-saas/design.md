@@ -4078,3 +4078,18 @@ derivada de clics, comparación o disponibilidad. El resultado declara cuántas 
 si aplicó personalización, la versión de consentimiento y la ventana de validez. El endpoint
 `POST /internal/demand/v1/session/context` hereda autenticación servicio-a-servicio, límite de cuerpo,
 timeout y errores opacos del perímetro interno.
+### 14.26 Afinidad content-based trazable
+
+`content-affinity-v1` cruza preferencias contextuales con atributos vigentes del local. Por atributo
+calcula `preferenceValue * candidateValue * preferenceConfidence * candidateConfidence`; normaliza la
+suma por el máximo compatible de las preferencias coincidentes y devuelve cada término real ordenado
+por contribución. Atributos vencidos, ausentes o sin coincidencia no participan. Valor, confianza,
+cobertura y códigos se acotan y no se rellenan con inferencias.
+
+El segundo canal calcula coseno únicamente entre vectores L2 de 384 dimensiones con la misma versión
+de modelo. Valores no finitos, norma distinta de uno, pareja incompleta o versión divergente fallan.
+Cuando el modelo está promovido, coseno y atributos se combinan 60/40; si solo existe uno, no se
+diluye. En el despliegue actual `RESERLY_DEMAND_ENGINE_EMBEDDING_MODEL_PROMOTED=false`, por lo que
+`vectorApplied=false`, `vectorAffinity=0` y la afinidad procede enteramente de atributos. El endpoint
+interno `POST /internal/demand/v1/affinity/evaluate` devuelve canales, cobertura y contribuciones sin
+texto ni identidad.

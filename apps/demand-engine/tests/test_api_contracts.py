@@ -59,6 +59,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/conversion/predict",
             "/internal/demand/v1/demand/{venue_id}",
             "/internal/demand/v1/session/context",
+            "/internal/demand/v1/affinity/evaluate",
         }
         self.assertTrue(expected <= set(document["paths"]))
         self.assertFalse(any(path.startswith("/api/") for path in document["paths"]))
@@ -189,6 +190,27 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertEqual(1, response.json()["usedSignalCount"])
         self.assertEqual(1, response.json()["ignoredSignalCount"])
         self.assertEqual("onlineBooking", response.json()["attributePreferences"][0]["attributeCode"])
+
+    def test_affinity_endpoint_exposes_real_attribute_contribution(self) -> None:
+        body = self._envelope()
+        body.update(
+            {
+                "venueId": str(uuid4()),
+                "preferences": [
+                    {"attributeCode": "onlineBooking", "value": 1.0, "confidence": 0.8}
+                ],
+                "candidateAttributes": [
+                    {"attributeCode": "onlineBooking", "value": 0.75, "confidence": 0.5}
+                ],
+            }
+        )
+        response = self.client.post(
+            "/internal/demand/v1/affinity/evaluate", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual(0.75, response.json()["affinity"])
+        self.assertFalse(response.json()["vectorApplied"])
+        self.assertEqual(0.4, response.json()["contributions"][0]["combinedConfidence"])
 
 
 if __name__ == "__main__":

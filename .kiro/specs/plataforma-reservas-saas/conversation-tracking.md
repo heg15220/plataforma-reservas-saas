@@ -9548,3 +9548,23 @@ Fuente de verdad del avance:
   - No existe persistencia nueva: el perfil contextual es efímero y reconstruible.
   - UUID de señal evita amplificación duplicada y timestamps futuros/anteriores a 24 h se rechazan.
   - La suite acumulada ejecuta 24 casos tras añadir la comprobación HTTP.
+
+# Conversación 219 - Afinidad content-based por atributos y coseno
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementó `content-affinity-v1` con contribuciones atributo a atributo ponderadas por confianza
+    de preferencia y local, exclusión de evidencia vencida y cobertura explícita.
+  - Se implementó coseno para vectores normalizados/versionados de 384 dimensiones, detrás de la misma
+    puerta de promoción cerrada del encoder.
+  - Se añadió endpoint interno autenticado y configuración por entorno no controlable por el caller.
+- Archivos modificados:
+  - Nuevo `affinity.py`, configuración/router/factoría, pruebas unitarias/HTTP y documentos `.kiro`.
+- Requisitos impactados: RF-034, RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015.
+- Tareas impactadas: 20.8; prepara 20.9, 20.12 y 21.2.
+- Tareas completadas: 20.8.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.9.
+- Decisiones o aclaraciones relevantes:
+  - Runtime actual usa solo atributos; el coseno existe y se prueba, pero no participa sin promoción.
+  - El blend promovido es 60 % coseno y 40 % atributos; un único canal disponible conserva su escala.
+  - Ninguna contribución se deriva de atributo vencido, desconocido o con confianza implícita.

@@ -36511,3 +36511,56 @@ texto. Comparación es una señal derivada por Spring porque el catálogo v1 aú
 añadirlo al catálogo requerirá nueva tarea compatible. El perfil no cruza sesiones: el perfil implícito
 persistente y revocable corresponde a 21.1. 20.8 consumirá estas preferencias y conservará sus
 contribuciones reales.
+
+## Iteración 2026-08-14 - Tarea 20.8: afinidad content-based y contribuciones
+
+### Objetivo, contratos y normalización
+
+- Identificador exacto: 20.8.
+- Objetivo técnico: producir afinidad normalizada y explicable entre contexto y local mediante
+  atributos gobernados y, tras promoción, similitud semántica versionada.
+- Requisitos/diseño: RF-034, RF-035 y RF-036; RNF-002, RNF-005, RNF-014 y RNF-015; secciones
+  14.7-14.10, 14.22, 14.25 y 14.26.
+
+Se creó `affinity.py`. `AffinityPreference` acepta código, valor y confianza [0,1].
+`CandidateAttribute` añade valor/confianza y expiración zonificada. `AffinityRequest` hereda el sobre
+interno y contiene venue UUID, hasta 44 preferencias/atributos y una pareja opcional de vectores;
+rechaza códigos duplicados y vectores incompletos. `SemanticVector` exige versión gobernada, 384
+floats finitos y norma L2 entre 0,999 y 1,001. No acepta dimensiones configurables desde el request,
+texto, identidad, fuente sensible ni un booleano para activar el modelo.
+
+Por código coincidente y vigente se calcula confianza combinada
+`preferenceConfidence*candidateConfidence` y contribución real
+`preferenceValue*candidateValue*combinedConfidence`. La afinidad de atributos divide la suma de
+contribuciones entre `sum(preferenceValue*combinedConfidence)`, manteniéndola [0,1]. Se devuelven
+preferencia, valor del candidato, confianza y contribución por código, ordenadas por contribución
+descendente/código. Atributos vencidos a `occurredAt`, ausentes o no coincidentes no entran en
+numerador ni denominador; cobertura cero produce afinidad cero, no una señal inventada.
+
+### Coseno, promoción y flujo HTTP
+
+`ContentAffinityCalculator` recibe la puerta exclusivamente al arrancar desde
+`RESERLY_DEMAND_ENGINE_EMBEDDING_MODEL_PROMOTED`, false por defecto. Con gate cerrado ignora incluso
+una pareja válida y declara `vectorApplied=false`, `vectorAffinity=0`; este es el comportamiento de
+producción mientras 20.4 siga no promovido. Con gate abierto exige misma versión y calcula producto
+punto, equivalente a coseno sobre L2; lo acota a [0,1]. Si hay ambos canales usa 60 % vector/40 %
+atributos; si falta cobertura de atributos conserva el vector completo. Sin vector usa el atributo
+completo, evitando reducir artificialmente candidatos por dependencia ausente.
+
+`POST /internal/demand/v1/affinity/evaluate` usa autenticación del router y devuelve request/venue,
+`content-affinity-v1`, total, ambos canales, flag, cobertura y contribuciones. No persiste estado ni
+registra payloads. La salida queda preparada para que 20.9 la consuma y 20.12 seleccione únicamente
+explicaciones sustentadas por contribuciones reales.
+
+### Archivos, pruebas, seguridad y deuda
+
+Se creó `affinity.py` y `test_affinity.py`; se modificaron `config.py`, `application.py`, `api.py`,
+pruebas HTTP y cuatro documentos `.kiro`. No hubo migración, UI ni cambios de reserva. Los tests
+validan doble confianza, fórmula/orden, exclusión de expirados, ausencia de cobertura, gate cerrado,
+coseno 0,8, blend 60/40 y endpoint con contribución serializada. La suite acumulada ejecuta 28 casos
+tras la prueba HTTP, además de `compileall` y `git diff --check`.
+
+Riesgos: 60/40 es configuración v1 todavía no calibrada; un cambio exige nueva versión y evaluación.
+Los atributos deben venir del perfil autoritativo vigente de Spring, no de códigos declarados por el
+navegador. El vector de sesión aún requiere una estrategia de construcción revisada y no se usa en
+runtime. La afinidad expresa coincidencia, no causalidad, intención psicológica ni garantía de reserva.

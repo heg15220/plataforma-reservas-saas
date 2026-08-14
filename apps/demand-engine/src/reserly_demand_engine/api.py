@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 
 from .auth import service_auth_dependency
+from .affinity import AffinityRequest, AffinityResponse
 from .config import DemandEngineSettings
 from .contracts import (
     ConversionPredictRequest,
@@ -96,6 +97,11 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     ) -> SessionContextResponse:
         """Construye un perfil efímero y limita señales cuando falta consentimiento."""
         return request.app.state.session_context_builder.build(body)
+
+    @router.post("/affinity/evaluate", response_model=AffinityResponse)
+    async def evaluate_affinity(body: AffinityRequest, request: Request) -> AffinityResponse:
+        """Evalúa contenido y deja el coseno cerrado hasta promoción explícita."""
+        return request.app.state.affinity_calculator.calculate(body)
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(
