@@ -36128,3 +36128,60 @@ usa `Content-Length`, por lo que un proxy interno debe rechazar streaming/chunke
 la readiness aún no incluye dependencias porque no existen. 20.2 deberá aplicar autenticación a toda
 ruta funcional y contratos acotados; tareas posteriores incorporarán dependencias con degradación,
 observabilidad distribuida y pruebas de carga.
+
+## Iteración 2026-08-14 - Tarea 20.2: contratos HTTP internos v1
+
+### Objetivo, requisitos y contratos
+
+- Identificador exacto: 20.2.
+- Objetivo técnico: fijar una API privada, limitada y versionada para eventos, recomendaciones,
+  ranking, atributos, conversión y demanda antes de implementar modelos.
+- Requisitos y diseño: RF-033, RF-034, RF-035, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y
+  RNF-015; secciones 14.2, 14.3, 14.6, 14.14, 14.19 y ADR-0001.
+
+`contracts.py` introduce una base inmutable `extra=forbid`, un envelope común con UUID,
+`schemaVersion=1`, timestamp obligatorio con zona, locale ES/EN y `policyVersion` acotada. UUID y
+datetime se interpretan según representación JSON de OpenAPI; los eventos conservan el modo estricto
+del paquete canónico validando cada diccionario mediante `BehaviorEventV1.model_validate_json`.
+Los lotes de eventos y candidatos admiten 1..100 elementos. Cada candidato porta únicamente IDs
+operativos, distancia, capacidad, elegibilidad y códigos gobernados; exige `eligible=true`, capacidad
+positiva, distancia acotada y atributos únicos, por lo que una entrada Python nunca puede reintroducir
+un local eliminado por Spring.
+
+`api.py` crea un router con dependencia de autenticación en su raíz. Implementa `POST /events`,
+`POST /recommendations`, `POST /ranking`, `GET /venues/{venue_id}/attributes`,
+`POST /conversion/predict` y `GET /demand/{venue_id}` bajo `/internal/demand/v1`. No existe alias en
+`/api` ni router público. El documento `docs/api/demand-engine-v1.md` explicita headers, semántica y
+autoridad. Compose continúa publicando exclusivamente en loopback; el ingress de producción deberá
+omitir el servicio y Spring lo consumirá en red privada autenticada.
+
+### Semántica bootstrap, datos y flujos
+
+La implementación evita respuestas ficticias. Eventos responde `status=validated`, contador validado
+y `persistedCount=0`, ya que la persistencia idempotente pertenece a Spring. Recomendación y ranking
+devuelven `deferred`, `modelVersion=not-available` y `fallbackRequired=true`, sin lista que pudiera
+interpretarse como decisión. Conversión devuelve probabilidad nula y demanda estimación nula con
+`available=false`. Atributos devuelve 404 opaco hasta que 20.3 calcule una proyección. Todas las
+respuestas contienen request/policy/model/profile/ontology según aplique y los errores siguen
+limitados a código/request ID.
+
+No se añadió migración ni almacenamiento autoritativo. `app.state.venue_profiles` es una frontera de
+lectura vacía y no representa persistencia. No se procesan PII, precios, promociones, salud, menores,
+grupos ni texto de reserva. `ConversionPredictRequest` solo acepta venue/service opcional, distancia,
+slots disponibles, hora y día; los desconocidos, incluido email, se rechazan y jamás aparecen en la
+respuesta o log. El timeout, cuerpo máximo, correlación y logging de 20.1 envuelven todas las rutas.
+
+### Pruebas, evidencia, riesgos y pendientes
+
+`InternalApiContractTests` valida que OpenAPI contiene exactamente el namespace interno esperado,
+que auth se aplica a GET funcionales, que 101 candidatos y campos desconocidos generan 422 opaco,
+que ranking/recomendación no producen items, que conversión/demanda declaran indisponibilidad, que
+un perfil ausente da 404 y que eventos exige correlación y nunca afirma persistencia. Tras corregir la
+distinción entre validación estricta de objetos Python y representaciones JSON de UUID/datetime, el
+comando `npm run test:demand` ejecutó 9 casos, cero fallos. `python -m compileall` y
+`git diff --check` completan la verificación de sintaxis/formato.
+
+Riesgos y deuda: no hay aún generación, scoring o modelo; Spring debe ejecutar siempre su fallback.
+La consulta GET usa una policy bootstrap por defecto y deberá recibir la versión efectiva desde el
+cliente interno al activarse. 20.3 instalará cálculo de perfil interpretable; 20.4+ versionará modelos
+y 20.10 volverá a verificar restricciones duras después de la generación, nunca solo al entrar.

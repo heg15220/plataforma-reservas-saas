@@ -9413,3 +9413,26 @@ Fuente de verdad del avance:
   - Loopback evita exposición accidental local, pero producción debe complementar el token con mTLS
     o identidad de workload en la red privada.
   - `npm run test:demand`, compilación Python, validación Compose y `git diff --check` pasan.
+
+# Conversación 213 - Contratos HTTP internos del Demand Engine
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementaron y documentaron los seis endpoints v1 bajo namespace interno con autenticación
+    obligatoria, envelopes versionados, timestamps zonificados y errores opacos.
+  - Se limitaron lotes/candidatos a 100, se exigió elegibilidad/capacidad positiva proveniente de
+    Spring y se prohibieron extensiones de payload no gobernadas.
+  - Los contratos bootstrap expresan fallback o ausencia real de modelo/baseline y no fabrican
+    ranking, probabilidad, demanda, persistencia ni perfiles.
+- Archivos modificados:
+  - `contracts.py`, `api.py`, factoría FastAPI, pruebas de contrato,
+    `docs/api/demand-engine-v1.md` y documentos `.kiro`.
+- Requisitos impactados: RF-033, RF-034, RF-035, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y
+  RNF-015.
+- Tareas impactadas: 20.2; prepara 20.3, 20.6, 20.9, 20.11, 20.13 y 20.14.
+- Tareas completadas: 20.2.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.3.
+- Decisiones o aclaraciones relevantes:
+  - `/events` valida pero no persiste: Spring conserva la ingesta canónica e idempotente.
+  - No hay rutas equivalentes en `/api` ni acceso de navegador; Compose sigue ligado a loopback.
+  - La suite acumulada ejecuta 9 casos sin fallos, incluido OpenAPI, auth y límites opacos.

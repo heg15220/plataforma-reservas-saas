@@ -1,0 +1,91 @@
+"""Router interno v1; todas sus operaciones exigen identidad de servicio."""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Request
+
+from .auth import service_auth_dependency
+from .config import DemandEngineSettings
+from .contracts import (
+    ConversionPredictRequest,
+    ConversionPredictResponse,
+    DeferredDecisionResponse,
+    DemandResponse,
+    EventsRequest,
+    EventsResponse,
+    RecommendationRequest,
+    RankingRequest,
+    Version,
+    VenueAttributesResponse,
+)
+from .errors import DemandEngineError
+
+
+def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
+    """Construye la API privada y aplica autenticación una vez al router completo."""
+    router = APIRouter(
+        prefix="/internal/demand/v1",
+        tags=["internal-demand"],
+        dependencies=[Depends(service_auth_dependency(settings))],
+    )
+
+    @router.post("/events", response_model=EventsResponse)
+    async def validate_events(body: EventsRequest) -> EventsResponse:
+        """Valida eventos para consumidores internos; la persistencia canónica sigue en Spring."""
+        return EventsResponse(
+            requestId=body.requestId,
+            policyVersion=body.policyVersion,
+            validatedCount=len(body.events),
+        )
+
+    @router.post("/recommendations", response_model=DeferredDecisionResponse)
+    async def recommend(body: RecommendationRequest) -> DeferredDecisionResponse:
+        """Fuerza fallback hasta que tareas posteriores instalen generación y scoring."""
+        return _deferred(body.requestId, body.policyVersion, len(body.candidates))
+
+    @router.post("/ranking", response_model=DeferredDecisionResponse)
+    async def rank(body: RankingRequest) -> DeferredDecisionResponse:
+        """No reordena ni amplía candidatos mientras no exista una política aprobada."""
+        return _deferred(body.requestId, body.policyVersion, len(body.candidates))
+
+    @router.get("/venues/{venue_id}/attributes", response_model=VenueAttributesResponse)
+    async def venue_attributes(venue_id: UUID, request: Request) -> VenueAttributesResponse:
+        """Lee un perfil calculado; 20.3 instalará el repositorio de proyecciones."""
+        profile = request.app.state.venue_profiles.get(venue_id)
+        if profile is None:
+            raise DemandEngineError("VENUE_PROFILE_NOT_FOUND", 404)
+        return profile
+
+    @router.post("/conversion/predict", response_model=ConversionPredictResponse)
+    async def predict_conversion(body: ConversionPredictRequest) -> ConversionPredictResponse:
+        """Declara modelo ausente para que Spring use su baseline determinista."""
+        return ConversionPredictResponse(
+            requestId=body.requestId,
+            policyVersion=body.policyVersion,
+        )
+
+    @router.get("/demand/{venue_id}", response_model=DemandResponse)
+    async def venue_demand(
+        venue_id: UUID,
+        request: Request,
+        policyVersion: Version = "demand-bootstrap-v1",
+    ) -> DemandResponse:
+        """Declara baseline ausente sin fabricar una estimación de demanda."""
+        return DemandResponse(
+            requestId=UUID(request.state.request_id),
+            venueId=venue_id,
+            policyVersion=policyVersion,
+        )
+
+    return router
+
+
+def _deferred(request_id: UUID, policy_version: str, count: int) -> DeferredDecisionResponse:
+    """Centraliza la respuesta temporal y mantiene semántica idéntica en ambos endpoints."""
+    return DeferredDecisionResponse(
+        requestId=request_id,
+        policyVersion=policy_version,
+        candidateCount=count,
+    )

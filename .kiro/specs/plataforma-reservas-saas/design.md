@@ -2715,6 +2715,20 @@ desactivado salvo opt-in local. El contenedor corre sin privilegios y Compose pu
 únicamente en loopback; producción deberá añadir mTLS o una identidad de workload equivalente sin
 retirar la autenticación de aplicación.
 
+### 14.20 Contratos HTTP internos v1
+
+Los seis contratos funcionales usan exclusivamente `/internal/demand/v1`, autenticación de servicio
+en el router completo y cuerpos Pydantic con allowlist. Los POST comparten `requestId`, versión de
+schema, timestamp zonificado, locale y política. Spring entrega un máximo de cien candidatos que ya
+deben ser elegibles y tener capacidad positiva; Python no puede añadir candidatos ni reinterpretar
+ese snapshot como autoridad transaccional.
+
+Mientras no existan las capacidades de fases posteriores, el protocolo expresa indisponibilidad:
+ranking/recomendación solicitan fallback, conversión no devuelve probabilidad, demanda no devuelve
+estimación y eventos confirman validación pero cero persistencia. Esto evita confundir un stub con un
+modelo operativo. El contrato de atributos admite solo códigos, scores, confianza, fuentes, reglas,
+versión y vigencia; nunca texto de origen o evidencia personal.
+
 Esta sección convierte el documento técnico externo
 `Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de 2026, en una
 arquitectura compatible con el estado real del proyecto. El documento es una fuente de propuesta;

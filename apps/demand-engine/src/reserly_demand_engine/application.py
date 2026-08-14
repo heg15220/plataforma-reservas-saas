@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from .api import internal_api_router
 from .config import DemandEngineSettings
 from .errors import DemandEngineError
 from .health import RuntimeState, health_router
@@ -28,8 +29,10 @@ def create_app(
     )
     app.state.settings = settings
     app.state.runtime = state or RuntimeState()
+    app.state.venue_profiles = {}
     app.add_middleware(DemandEngineBoundaryMiddleware, settings=settings)
     app.include_router(health_router(app.state.runtime))
+    app.include_router(internal_api_router(settings))
 
     @app.exception_handler(DemandEngineError)
     async def expected_error(request: Request, error: DemandEngineError) -> JSONResponse:
