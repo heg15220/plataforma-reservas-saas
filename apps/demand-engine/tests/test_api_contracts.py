@@ -68,18 +68,51 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertEqual(401, response.status_code)
         self.assertEqual("SERVICE_AUTH_INVALID", response.json()["code"])
 
-    def test_recommendation_and_ranking_defer_without_mutating_candidates(self) -> None:
-        for path in ("recommendations", "ranking"):
-            body = self._envelope()
-            body["candidates"] = [self._candidate(), self._candidate()]
-            response = self.client.post(
-                f"/internal/demand/v1/{path}", json=body, headers=HEADERS
-            )
-            self.assertEqual(200, response.status_code, response.text)
-            self.assertEqual("deferred", response.json()["status"])
-            self.assertTrue(response.json()["fallbackRequired"])
-            self.assertEqual(2, response.json()["candidateCount"])
-            self.assertNotIn("items", response.json())
+    def test_recommendation_defers_without_mutating_candidates(self) -> None:
+        body = self._envelope()
+        body["candidates"] = [self._candidate(), self._candidate()]
+        response = self.client.post(
+            "/internal/demand/v1/recommendations", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("deferred", response.json()["status"])
+        self.assertTrue(response.json()["fallbackRequired"])
+        self.assertEqual(2, response.json()["candidateCount"])
+        self.assertNotIn("items", response.json())
+
+    def test_ranking_uses_versioned_score_and_preserves_candidate_set(self) -> None:
+        body = self._envelope()
+        body["policyVersion"] = "score-mvp-v1"
+        first, second = uuid4(), uuid4()
+        body["candidates"] = [
+            self._score_candidate(first, 0.2), self._score_candidate(second, 0.9)
+        ]
+        response = self.client.post(
+            "/internal/demand/v1/ranking", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("ranked", response.json()["status"])
+        self.assertFalse(response.json()["fallbackRequired"])
+        self.assertEqual(
+            {str(first), str(second)}, {item["venueId"] for item in response.json()["items"]}
+        )
+        self.assertEqual(str(second), response.json()["items"][0]["venueId"])
+        self.assertEqual(7, len(response.json()["items"][0]["contributions"]))
+
+        body["policyVersion"] = "unknown-v1"
+        mismatch = self.client.post(
+            "/internal/demand/v1/ranking", json=body, headers=HEADERS
+        )
+        self.assertEqual(409, mismatch.status_code)
+        self.assertEqual("SCORE_POLICY_VERSION_MISMATCH", mismatch.json()["code"])
+
+    def _score_candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
+        return {
+            "venueId": str(venue_id), "eligible": True, "availableCapacity": 1,
+            "affinity": affinity, "conversion": 0.5, "proximity": 0.5,
+            "availability": 0.8, "capacityNeed": 0.4, "quality": 0.6,
+            "exploration": 0.0,
+        }
 
     def test_candidate_limit_and_unknown_fields_are_rejected_opaquely(self) -> None:
         too_many = self._envelope()

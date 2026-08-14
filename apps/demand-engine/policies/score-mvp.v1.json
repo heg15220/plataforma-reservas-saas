@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "score-mvp-v1",
+  "modelVersion": "weighted-baseline-v1",
+  "weights": {
+    "affinity": 0.30,
+    "conversion": 0.20,
+    "proximity": 0.15,
+    "availability": 0.15,
+    "capacityNeed": 0.10,
+    "quality": 0.05,
+    "exploration": 0.05
+  },
+  "maximumExplorationContribution": 0.05,
+  "tieBreakers": ["scoreDesc", "venueIdAsc", "serviceIdAsc"]
+}

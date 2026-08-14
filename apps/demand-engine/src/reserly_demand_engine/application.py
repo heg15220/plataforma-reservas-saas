@@ -19,6 +19,7 @@ from .health import RuntimeState, health_router
 from .middleware import DemandEngineBoundaryMiddleware
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
+from .scoring import ScoreMvp, ScorePolicy
 
 
 def create_app(
@@ -41,6 +42,9 @@ def create_app(
     app.state.venue_profile_builder = VenueProfileBuilder()
     app.state.session_context_builder = SessionContextBuilder()
     app.state.affinity_calculator = ContentAffinityCalculator(settings.embedding_model_promoted)
+    app.state.score_mvp = ScoreMvp(
+        ScorePolicy.load(Path(__file__).resolve().parents[2] / "policies" / "score-mvp.v1.json")
+    )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
     )

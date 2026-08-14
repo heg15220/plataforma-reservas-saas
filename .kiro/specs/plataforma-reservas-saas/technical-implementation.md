@@ -36564,3 +36564,58 @@ Riesgos: 60/40 es configuración v1 todavía no calibrada; un cambio exige nueva
 Los atributos deben venir del perfil autoritativo vigente de Spring, no de códigos declarados por el
 navegador. El vector de sesión aún requiere una estrategia de construcción revisada y no se usa en
 runtime. La afinidad expresa coincidencia, no causalidad, intención psicológica ni garantía de reserva.
+
+## Iteración 2026-08-14 - Tarea 20.9: ScoreMvp configurable y versionado
+
+### Objetivo y artefacto de política
+
+- Identificador exacto: 20.9.
+- Objetivo técnico: ordenar el conjunto elegible mediante un baseline explícito, reproducible y
+  configurable, conservando todas las contribuciones necesarias para auditoría y explicación.
+- Requisitos/diseño: RF-036; RNF-005, RNF-006, RNF-014 y RNF-015; RB-015; secciones 14.9, 14.10,
+  14.16, 14.17 y 14.27.
+
+`policies/score-mvp.v1.json` es el artefacto único de configuración. Declara schema 1,
+`score-mvp-v1`, modelo `weighted-baseline-v1`, pesos afinidad 0,30, conversión 0,20, proximidad 0,15,
+disponibilidad 0,15, necesidad de capacidad 0,10, calidad 0,05 y exploración 0,05, presupuesto máximo
+de exploración 0,05 y desempates `scoreDesc/venueIdAsc/serviceIdAsc`. `ScorePolicy` rechaza claves
+extra, omisiones, valores fuera de rango, suma distinta de uno, presupuesto mayor a 0,10, exploración
+superior a presupuesto y orden de desempate no reconocido. La política se carga al arrancar; un JSON
+inválido impide readiness en vez de usar pesos parciales o silenciosos. Cambiar pesos requiere un nuevo
+artefacto/versionado y evaluación, no modificar lógica Python.
+
+### Contrato, fórmula y flujo de ejecución
+
+`ScoreCandidate` contiene UUID de venue/service, literal `eligible=true`, capacidad 1..10.000 y los
+siete valores [0,1]. `ScoreMvpRequest` acepta 1..100 y rechaza pares venue/service repetidos. Esta
+frontera hace imposible que el motor reciba un candidato explícitamente ineligible o sin capacidad,
+pero 20.10 volverá a contrastar el estado autoritativo después del ranking. No hay texto, email,
+identidad, precio, promoción o campos abiertos.
+
+Para cada componente `ScoreMvp` calcula `value*weight`; exploración además usa
+`min(producto, maximumExplorationContribution)`. Suma contribuciones, acota [0,1], redondea a ocho
+decimales y ordena score descendente, venue UUID y service UUID. El orden no depende del orden del
+payload ni de aleatoriedad. `RankedCandidate` devuelve posición, score y exactamente siete objetos con
+código, valor, peso y contribución. La respuesta expone política/modelo y `fallbackRequired=false`,
+pero no disponibilidad futura ni garantía de reserva.
+
+`POST /internal/demand/v1/ranking` reemplaza el deferred bootstrap solo para ranking. Antes de
+calcular exige que la versión solicitada sea exactamente la cargada; `ScorePolicyVersionMismatch` se
+traduce a 409 con `SCORE_POLICY_VERSION_MISMATCH`, sin filtrar configuración. Recomendaciones siguen
+deferred hasta integrar la orquestación completa. Spring conserva el candidato original, persiste en
+`RecommendationRankings`/`scoreComponentsJson` y revalida restricciones; Python no escribe base.
+
+### Archivos, pruebas, seguridad y pendientes
+
+Se añadieron política, `scoring.py` y `test_scoring.py`; se modificaron router, factoría, pruebas HTTP,
+documentación API y cuatro documentos `.kiro`. No hubo migración porque V47 ya admite política,
+modelo, score y componentes. Los tests comprueban suma de pesos, política inválida, presupuesto,
+score/contribuciones exactos, orden por afinidad, desempate UUID, mismatch, conjunto preservado y
+contrato HTTP ranked. La suite acumulada ejecuta 32 casos antes de la comprobación final; se ejecutan
+también `compileall` y `git diff --check`.
+
+Riesgos/deuda: los valores de conversión, capacidad y exploración todavía son baselines entregados por
+Spring y sus productores se completan en 20.11, 20.13-20.15. Pesos no calibrados pueden favorecer una
+señal aunque esté normalizada; shadow y evaluación deben preceder exposición. 20.10 debe repetir
+elegibilidad después de ranking; 20.12 elegirá explicaciones solo desde estas contribuciones. No se
+habilita Learning to Rank ni entrenamiento con datos insuficientes.

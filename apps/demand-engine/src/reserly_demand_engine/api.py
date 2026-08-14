@@ -17,7 +17,6 @@ from .contracts import (
     EventsRequest,
     EventsResponse,
     RecommendationRequest,
-    RankingRequest,
     Version,
     VenueAttributesResponse,
 )
@@ -25,6 +24,7 @@ from .errors import DemandEngineError
 from .embedding_batch import EmbeddingBatchRequest, EmbeddingBatchResponse
 from .profiles import VenueProfileRequest
 from .session_context import SessionContextRequest, SessionContextResponse
+from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -49,10 +49,13 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
         """Fuerza fallback hasta que tareas posteriores instalen generación y scoring."""
         return _deferred(body.requestId, body.policyVersion, len(body.candidates))
 
-    @router.post("/ranking", response_model=DeferredDecisionResponse)
-    async def rank(body: RankingRequest) -> DeferredDecisionResponse:
-        """No reordena ni amplía candidatos mientras no exista una política aprobada."""
-        return _deferred(body.requestId, body.policyVersion, len(body.candidates))
+    @router.post("/ranking", response_model=ScoreMvpResponse)
+    async def rank(body: ScoreMvpRequest, request: Request) -> ScoreMvpResponse:
+        """Ordena el conjunto cerrado mediante la política MVP versionada."""
+        try:
+            return request.app.state.score_mvp.rank(body)
+        except ScorePolicyVersionMismatch as error:
+            raise DemandEngineError("SCORE_POLICY_VERSION_MISMATCH", 409) from error
 
     @router.get("/venues/{venue_id}/attributes", response_model=VenueAttributesResponse)
     async def venue_attributes(venue_id: UUID, request: Request) -> VenueAttributesResponse:

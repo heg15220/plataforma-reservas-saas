@@ -4044,6 +4044,7 @@ reemplaza vector y ventana de validez. PostgreSQL valida sujeto, ES/EN, versión
 384 dimensiones y vigencia. Se crean índices B-tree de lookup, expiración y checksum. No se crea HNSW:
 el baseline 20.4 no está promovido y el índice aproximado solo se justificará tras benchmark de recall,
 latencia, memoria y volumen. Los artefactos quedan en modo shadow y no alteran elegibilidad ni ranking.
+
 ### 14.24 Recuperación híbrida y filtros duros de candidatos
 
 Spring genera candidatos dentro de una transacción de solo lectura y una única fotografía de datos.
@@ -4061,6 +4062,7 @@ persona. La capacidad resta reservas confirmadas/pending y holds no vencidos; se
 local, servicio o slot. Se devuelve un solo servicio ganador por local con distancia, conteo de huecos
 y componentes de recuperación. V53 añade GIN full-text/trigram y un índice parcial de disponibilidad;
 no añade HNSW mientras la promoción vectorial siga cerrada.
+
 ### 14.25 Perfil contextual efímero de sesión
 
 El Demand Engine recibe snapshots minimizados de hasta 200 señales gobernadas de filtro, clic,
@@ -4078,6 +4080,7 @@ derivada de clics, comparación o disponibilidad. El resultado declara cuántas 
 si aplicó personalización, la versión de consentimiento y la ventana de validez. El endpoint
 `POST /internal/demand/v1/session/context` hereda autenticación servicio-a-servicio, límite de cuerpo,
 timeout y errores opacos del perímetro interno.
+
 ### 14.26 Afinidad content-based trazable
 
 `content-affinity-v1` cruza preferencias contextuales con atributos vigentes del local. Por atributo
@@ -4093,3 +4096,18 @@ diluye. En el despliegue actual `RESERLY_DEMAND_ENGINE_EMBEDDING_MODEL_PROMOTED=
 `vectorApplied=false`, `vectorAffinity=0` y la afinidad procede enteramente de atributos. El endpoint
 interno `POST /internal/demand/v1/affinity/evaluate` devuelve canales, cobertura y contribuciones sin
 texto ni identidad.
+
+### 14.27 ScoreMvp configurable y versionado
+
+La política `score-mvp-v1` es un artefacto JSON estricto cargado al arrancar, no constantes dispersas.
+Declara modelo `weighted-baseline-v1`, los siete pesos 0,30/0,20/0,15/0,15/0,10/0,05/0,05 para
+afinidad, conversión baseline, proximidad, disponibilidad, necesidad de capacidad, calidad y
+exploración, presupuesto máximo de exploración 0,05 y desempate score/venue/service. Los pesos deben
+estar completos, en [0,1] y sumar uno; exploración no puede superar su presupuesto.
+
+Spring entrega hasta 100 pares venue/service únicos, `eligible=true`, capacidad positiva y los siete
+componentes normalizados. El scorer multiplica valor por peso, acota exploración, suma a [0,1], ordena
+de forma estable y devuelve cada contribución real. Nunca añade candidatos ni declara que la capacidad
+seguirá disponible. `POST /internal/demand/v1/ranking` exige que `policyVersion` coincida exactamente
+con la cargada; el drift devuelve 409 opaco. La respuesta declara política, modelo, posición, score y
+desglose completo para que Spring persista el ranking de V47 y vuelva a validar en 20.10.

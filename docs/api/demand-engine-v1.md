@@ -10,9 +10,12 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | --- | --- | --- |
 | `POST /events` | Validar lotes v1 de hasta 100 eventos | Spring persiste; responde `persistedCount=0` |
 | `POST /recommendations` | Validar contexto y hasta 100 candidatos elegibles | `deferred`; Spring aplica fallback |
-| `POST /ranking` | Validar candidatos ya filtrados | `deferred`; no reordena ni añade candidatos |
+| `POST /ranking` | Ordenar candidatos mediante `score-mvp-v1` | Devuelve score y siete contribuciones; Spring revalida/persiste |
 | `GET /venues/{id}/attributes` | Leer la proyección interpretable vigente | 404 opaco si no existe perfil |
 | `POST /venues/{id}/attributes/evaluate` | Calcular perfil inicial interpretable | Spring persiste; caché Python acotada |
+| `POST /embeddings/generate` | Calcular lotes query/venue/service | Spring persiste en pgvector |
+| `POST /session/context` | Agregar contexto efímero condicionado por consentimiento | Sin consentimiento solo usa filtro actual |
+| `POST /affinity/evaluate` | Calcular atributos/coseno con contribuciones | Coseno cerrado hasta promoción |
 | `POST /conversion/predict` | Validar features agregadas permitidas | Modelo no disponible; probabilidad nula |
 | `GET /demand/{venueId}` | Leer futura estimación agregada | Baseline no disponible; estimación nula |
 
@@ -28,6 +31,8 @@ cinco minutos. Devuelve reglas, fuentes, confianza, versión y vigencia, nunca t
 La memoria del proceso es una caché LRU de lectura, no la base autoritativa; Spring debe persistir el
 resultado gobernado.
 
-El contrato bootstrap no simula modelos: recomendación/ranking piden fallback, conversión y demanda
-devuelven `available=false`, y eventos solo confirman validación. Versiones futuras podrán enriquecer
-la respuesta dentro de un nuevo `schemaVersion`, sin cambiar silenciosamente esta semántica.
+El contrato bootstrap no simula modelos: recomendación todavía pide fallback, conversión y demanda
+devuelven `available=false`, y eventos solo confirman validación. Ranking exige los siete componentes
+normalizados, política `score-mvp-v1`, elegibilidad true y capacidad positiva; nunca añade candidatos.
+Versiones futuras podrán enriquecer la respuesta dentro de un nuevo `schemaVersion`, sin cambiar
+silenciosamente esta semántica.

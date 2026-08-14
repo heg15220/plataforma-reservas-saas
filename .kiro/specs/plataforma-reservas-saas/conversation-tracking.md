@@ -9568,3 +9568,23 @@ Fuente de verdad del avance:
   - Runtime actual usa solo atributos; el coseno existe y se prueba, pero no participa sin promoción.
   - El blend promovido es 60 % coseno y 40 % atributos; un único canal disponible conserva su escala.
   - Ninguna contribución se deriva de atributo vencido, desconocido o con confianza implícita.
+
+# Conversación 220 - ScoreMvp configurable y versionado
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se materializó `score-mvp-v1` en JSON con siete pesos normalizados, modelo baseline, presupuesto de
+    exploración y desempates estables.
+  - `/ranking` dejó el estado deferred y ahora ordena exclusivamente candidatos elegibles recibidos,
+    devolviendo score y siete contribuciones reproducibles.
+  - El drift de versión falla con 409 opaco; Spring conserva persistencia y revalidación transaccional.
+- Archivos modificados:
+  - Política JSON, nuevo `scoring.py`, router/factoría, pruebas unitarias/HTTP, contrato API y `.kiro`.
+- Requisitos impactados: RF-036, RNF-005, RNF-006, RNF-014, RNF-015 y RB-015.
+- Tareas impactadas: 20.9; prepara 20.10, 20.11, 20.12 y 21.7.
+- Tareas completadas: 20.9.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.10.
+- Decisiones o aclaraciones relevantes:
+  - Pesos iniciales: 30/20/15/15/10/5/5; cualquier cambio requiere nueva política evaluada.
+  - Un candidate debe tener siete componentes [0,1], elegibilidad true y capacidad positiva.
+  - El score no reintroduce alternativas ni sustituye locks/holds de reserva.
