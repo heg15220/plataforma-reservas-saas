@@ -404,7 +404,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 20.2. Definir contratos de `POST /events`, `POST /recommendations`, `POST /ranking`, `GET /venues/{id}/attributes`, `POST /conversion/predict` y `GET /demand/{venueId}` sin exponerlos directamente a Internet.
 - [x] 20.3. Implementar perfil inicial de local desde formulario, servicios, texto localizado y datos operativos mediante reglas y clasificación interpretable.
 - [x] 20.4. Seleccionar, versionar y evaluar un modelo multilingüe de Sentence Transformers con licencia, dimensiones, idiomas, latencia y calidad documentados.
-- [ ] 20.5. Generar embeddings de consultas, locales y servicios en jobs batch idempotentes y persistir versión, checksum, locale y vigencia en pgvector.
+- [x] 20.5. Generar embeddings de consultas, locales y servicios en jobs batch idempotentes y persistir versión, checksum, locale y vigencia en pgvector.
 - [ ] 20.6. Crear generación híbrida de candidatos con full-text, trigram, vector, categoría, radio, estado publicado, servicio y disponibilidad.
 - [ ] 20.7. Construir perfil contextual de sesión desde filtros, clics, comparaciones y consultas de disponibilidad con consentimiento aplicable.
 - [ ] 20.8. Implementar afinidad content-based por coseno y contribución por atributos con confianza.

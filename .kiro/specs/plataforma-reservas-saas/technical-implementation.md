@@ -36314,3 +36314,75 @@ cross-locale. No se permiten inferencias sensibles ni elegibilidad por embedding
 shadow embeddings con versión/checksum; 20.6 debe implementar fusión y filtros, pero mantener peso
 vectorial cero mientras `promotionStatus=not_promoted`. Una nueva promoción exige dataset revisado,
 separación temporal cuando haya datos reales y una nueva evaluación íntegra.
+
+## Iteración 2026-08-14 - Tarea 20.5: lotes idempotentes y persistencia pgvector
+
+### Objetivo, contratos y arquitectura
+
+- Identificador exacto: 20.5.
+- Objetivo técnico: generar embeddings ES/EN de consultas, locales y servicios de forma repetible y
+  persistir únicamente derivados versionados, detectables por checksum y sujetos a vigencia.
+- Requisitos/diseño: RF-036 y RF-038; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015; secciones
+  14.2, 14.7, 14.9, 14.10, 14.22 y 14.23.
+
+Se añadió `embedding_batch.py` como capa de aplicación independiente del framework. Sus modelos
+Pydantic son `extra=forbid` e inmutables: `EmbeddingSubject` admite únicamente UUID, tipo
+`query|venue|service`, locale `es|en`, texto transitorio de 1-4.000 caracteres y ventana de validez;
+`query` exige `expiresAt`. `EmbeddingBatchRequest` admite 1-100 sujetos y un request UUID. El
+procesador separa índices de consultas y documentos, invoca respectivamente `encode_queries` y
+`encode_documents`, recompone el orden original y verifica 384 dimensiones. Cada salida lleva
+`modelVersion=multilingual-e5-small-v1`, SHA-256 canónico sensible a locale, vector, validez y ninguna
+copia del texto. El endpoint interno autenticado `POST /internal/demand/v1/embeddings/generate` expone
+ese cálculo. La carga del encoder continúa lazy y fija la revisión declarada en 20.4.
+
+La frontera de autoridad no cambió: Python no abre conexión a PostgreSQL ni escribe estado operativo.
+Spring recibe lotes de hasta 100 artefactos mediante
+`PUT /api/internal/demand/v1/embeddings`, protegido por el filtro de token de servicio y
+`ROLE_DEMAND_INGESTOR`. El DTO Jakarta Validation rechaza tipos/locales/versiones/checksums, tamaños y
+valores no finitos; el constructor comprueba vigencia cruzada. El servicio JDBC transaccional consulta
+la clave natural y clasifica cada item como inserted, updated o unchanged. Si el checksum coincide,
+no ejecuta UPDATE y conserva `updatedAt`; si cambia, reemplaza vector/checksum/vigencia mediante
+`ON CONFLICT`. El adaptador HTTP no registra payloads y devuelve solo contadores.
+
+### Modelo físico, índices, seguridad y operación
+
+Flyway V52 crea `SubjectEmbeddings`: UUID técnico, sujeto/tipo, locale, versión, dimensión fija 384,
+checksum hexadecimal, `vector(384)`, `validFrom`, `expiresAt` y timestamps. La unicidad
+`(subjectType, subjectId, locale, modelVersion)` garantiza una fila por artefacto reproducible. CHECK
+constraints duplican en base las allowlists, patrón de versión, checksum, dimensión, orden temporal y
+caducidad obligatoria de consultas. Hay índices B-tree para lectura por sujeto/locale/vigencia,
+limpieza por expiración y detección por versión/checksum. No se añadió FK polimórfica: `subjectId`
+puede representar una consulta efímera; la integridad de venue/service se valida en el job autoritativo
+y la expiración limita consultas. Tampoco se añadió HNSW: el encoder de 20.4 falló la puerta de
+calidad, por lo que estos vectores son shadow. Un índice aproximado antes de medir volumen, memoria y
+recall sería coste y deuda sin tráfico permitido.
+
+Privacidad: no se persiste texto, email, teléfono, identidad de cliente ni payload de origen; checksum
+y vector son derivados sujetos a retención/invalidez. Los locales se allowlistean a ES/EN. Los errores
+de contrato atraviesan los handlers opacos existentes y los endpoints son internos, sin ruta de
+navegador. La reejecución es segura tras timeout: el mismo checksum no produce escritura falsa y un
+checksum nuevo sustituye atómicamente el artefacto de esa versión. No se añadieron reintentos dentro
+del encoder ni acceso directo de Python a datos.
+
+### Archivos y evidencia de verificación
+
+Se crearon V52 y ocho tipos Java en `demand.embedding`, además de su integración Testcontainers. En
+Demand Engine se creó `embedding_batch.py` y `test_embedding_batch.py`; se modificaron `api.py` y
+`application.py`. Se actualizaron diseño, tareas, seguimiento y este documento. No se eliminaron
+archivos ni se modificó la ruta crítica de reserva.
+
+`npm run test:demand` ejecutó 20 casos, todos correctos: los dos nuevos verifican separación de rol,
+orden, 384 dimensiones, checksum, expiración y rechazo de campos desconocidos. La prueba Java
+`SubjectEmbeddingPersistenceIntegrationTests` compiló 942 fuentes y 224 tests, aplicó las 52
+migraciones en PostgreSQL 17/PostGIS 3.5/pgvector 0.8.6 y pasó 2/2 casos: insert, replay unchanged sin
+cambio de timestamp, actualización por checksum, rechazo de query persistente y vector de dimensión
+incorrecta. Spotless aplicó formato a los ocho archivos nuevos. El Checkstyle global reportó 49
+infracciones, cuatro de esta iteración y 45 preexistentes; se corrigieron las cuatro nuevas y la prueba
+aislada se reejecutó omitiendo solo esa puerta global heredada.
+
+Riesgos y deuda: el endpoint calcula sin deduplicación previa y puede gastar CPU en un replay, aunque
+la escritura sea idempotente; un job posterior puede consultar checksums antes del cálculo. No existe
+HNSW ni uso online mientras el modelo no sea promovido. La eliminación de un venue/service requiere
+una política de purga de derivados; por ahora vencimiento/checksum/versionado evitan consumo obsoleto.
+20.6 debe generar candidatos con full-text/trigram activos y componente vectorial explícitamente cero;
+20.8 podrá usar estos artefactos únicamente después de una evaluación aprobada.

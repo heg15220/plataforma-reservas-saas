@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -11,13 +12,17 @@ from fastapi.responses import JSONResponse
 from .api import internal_api_router
 from .config import DemandEngineSettings
 from .errors import DemandEngineError
+from .embedding_batch import EmbeddingBatchProcessor
+from .embeddings import EmbeddingModelManifest, SentenceTransformerEmbedder, TextEmbedder
 from .health import RuntimeState, health_router
 from .middleware import DemandEngineBoundaryMiddleware
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 
 
 def create_app(
-    settings: DemandEngineSettings, state: RuntimeState | None = None
+    settings: DemandEngineSettings,
+    state: RuntimeState | None = None,
+    embedding_embedder: TextEmbedder | None = None,
 ) -> FastAPI:
     """Construye la aplicación con límites homogéneos y documentación solo si se habilita."""
     logging.basicConfig(level=settings.log_level)
@@ -32,6 +37,12 @@ def create_app(
     app.state.runtime = state or RuntimeState()
     app.state.venue_profiles = InMemoryVenueProfileRepository()
     app.state.venue_profile_builder = VenueProfileBuilder()
+    manifest = EmbeddingModelManifest.load(
+        Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
+    )
+    app.state.embedding_batch_processor = EmbeddingBatchProcessor(
+        embedding_embedder or SentenceTransformerEmbedder(manifest), manifest.modelKey
+    )
     app.add_middleware(DemandEngineBoundaryMiddleware, settings=settings)
     app.include_router(health_router(app.state.runtime))
     app.include_router(internal_api_router(settings))

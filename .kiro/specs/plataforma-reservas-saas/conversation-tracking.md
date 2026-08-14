@@ -9482,3 +9482,27 @@ Fuente de verdad del avance:
   - Revisión E5 exacta, MIT, 384 dimensiones, 94 idiomas; solo ES/EN entran en el piloto.
   - E5: calidad no aprobada, latencia aprobada. MiniLM mejoró Recall@3 pero tampoco pasó la puerta.
   - Los umbrales originales se conservaron; los embeddings de 20.5 serán shadow hasta promoción.
+
+# Conversación 216 - Lotes idempotentes de embeddings en pgvector
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementó la generación interna en lotes acotados para consultas, locales y servicios,
+    separando los prompts query/documento y conservando orden, versión, locale, checksum y vigencia.
+  - Se añadió la migración V52 con `vector(384)`, restricciones físicas e índices de lookup,
+    expiración y checksum, sin HNSW mientras el modelo continúe sin promoción.
+  - Spring quedó como única autoridad de escritura mediante UPSERT transaccional; una reejecución con
+    el mismo checksum no escribe ni modifica `updatedAt`.
+- Archivos modificados:
+  - `embedding_batch.py`, router/factoría y tests del Demand Engine; V52, paquete Spring
+    `demand.embedding`, prueba PostgreSQL/pgvector y documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.5; prepara 20.6, 20.8 y 20.12.
+- Tareas completadas: 20.5.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.6.
+- Decisiones o aclaraciones relevantes:
+  - El texto fuente solo vive durante el cálculo; PostgreSQL recibe vector y metadatos auditables.
+  - Las consultas deben caducar; locales/servicios se invalidan por checksum, versión o vigencia.
+  - `npm run test:demand` pasó 20 casos y la integración física pasó 2 casos sobre 52 migraciones.
+  - El Checkstyle global conserva 45 infracciones previas ajenas; el código nuevo quedó formateado y
+    sin las cuatro infracciones inicialmente detectadas en esta iteración.

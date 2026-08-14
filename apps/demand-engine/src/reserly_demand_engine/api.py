@@ -21,6 +21,7 @@ from .contracts import (
     VenueAttributesResponse,
 )
 from .errors import DemandEngineError
+from .embedding_batch import EmbeddingBatchRequest, EmbeddingBatchResponse
 from .profiles import VenueProfileRequest
 
 
@@ -82,6 +83,11 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             requestId=body.requestId,
             policyVersion=body.policyVersion,
         )
+
+    @router.post("/embeddings/generate", response_model=EmbeddingBatchResponse)
+    async def generate_embeddings(body: EmbeddingBatchRequest, request: Request) -> EmbeddingBatchResponse:
+        """Calcula un lote en sombra; Spring conserva la única escritura a pgvector."""
+        return request.app.state.embedding_batch_processor.generate(body)
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

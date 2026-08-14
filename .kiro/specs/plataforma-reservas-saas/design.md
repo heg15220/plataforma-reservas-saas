@@ -4027,3 +4027,20 @@ su fallback de traducción y sus cambios de publicación continúan bajo
 `ReservationFormPublicationService`. La API pública de formulario comparte el manejador acotado de
 perfil y transforma local inexistente, no publicado o formulario despublicado en
 `404 VENUE_PROFILE_NOT_FOUND`, evitando respuestas 500 y detalles internos.
+### 14.23 Lotes de embeddings y persistencia autoritativa
+
+La generación vectorial mantiene una frontera explícita. Spring selecciona los textos públicos de
+consulta, local o servicio y llama al endpoint autenticado
+`POST /internal/demand/v1/embeddings/generate` con lotes de hasta 100 sujetos ES/EN. Demand Engine
+aplica el prompt de consulta exclusivamente a `query` y el prompt documental a `venue`/`service`,
+calcula SHA-256 canónico sobre locale y texto normalizado y devuelve el vector de 384 dimensiones con
+versión y vigencia. El texto es transitorio: no aparece en respuesta de persistencia, base de datos ni
+logs. Las consultas requieren expiración; locales y servicios pueden invalidarse por checksum/version.
+
+Spring es la única autoridad de escritura mediante `PUT /api/internal/demand/v1/embeddings`. La tabla
+`SubjectEmbeddings` usa unicidad `(subjectType, subjectId, locale, modelVersion)` y un UPSERT
+transaccional. Un checksum idéntico se clasifica `unchanged` sin tocar `updatedAt`; uno distinto
+reemplaza vector y ventana de validez. PostgreSQL valida sujeto, ES/EN, versión, checksum hexadecimal,
+384 dimensiones y vigencia. Se crean índices B-tree de lookup, expiración y checksum. No se crea HNSW:
+el baseline 20.4 no está promovido y el índice aproximado solo se justificará tras benchmark de recall,
+latencia, memoria y volumen. Los artefactos quedan en modo shadow y no alteran elegibilidad ni ranking.
