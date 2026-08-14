@@ -17,6 +17,7 @@ from .embeddings import EmbeddingModelManifest, SentenceTransformerEmbedder, Tex
 from .health import RuntimeState, health_router
 from .middleware import DemandEngineBoundaryMiddleware
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
+from .session_context import SessionContextBuilder
 
 
 def create_app(
@@ -37,6 +38,7 @@ def create_app(
     app.state.runtime = state or RuntimeState()
     app.state.venue_profiles = InMemoryVenueProfileRepository()
     app.state.venue_profile_builder = VenueProfileBuilder()
+    app.state.session_context_builder = SessionContextBuilder()
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
     )

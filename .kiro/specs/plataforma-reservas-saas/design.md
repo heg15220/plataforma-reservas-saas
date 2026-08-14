@@ -4061,3 +4061,20 @@ persona. La capacidad resta reservas confirmadas/pending y holds no vencidos; se
 local, servicio o slot. Se devuelve un solo servicio ganador por local con distancia, conteo de huecos
 y componentes de recuperación. V53 añade GIN full-text/trigram y un índice parcial de disponibilidad;
 no añade HNSW mientras la promoción vectorial siga cerrada.
+### 14.25 Perfil contextual efímero de sesión
+
+El Demand Engine recibe snapshots minimizados de hasta 200 señales gobernadas de filtro, clic,
+comparación y consulta de disponibilidad. Cada señal lleva UUID idempotente, timestamp zonificado,
+tipo y referencias estructuradas; nunca texto libre, email, IP, user-agent o respuestas de reserva.
+El perfil `session-context-v1` vive en memoria durante la petición, caduca a los 15 minutos y solo
+acepta señales de las últimas 24 horas. Filtro, clic, comparación y disponibilidad parten de pesos
+2/1/2/3, respectivamente, con half-life de 30 minutos. Cada preferencia conserva valor, confianza,
+recuento, fuentes y última observación.
+
+El consentimiento se vuelve a comprobar en cada cálculo. Con consentimiento activo y versión
+presente pueden participar las cuatro familias. Sin consentimiento, el builder ignora toda historia y
+solo utiliza filtros marcados como contexto explícito actual; no devuelve ni conserva una preferencia
+derivada de clics, comparación o disponibilidad. El resultado declara cuántas señales usó e ignoró,
+si aplicó personalización, la versión de consentimiento y la ventana de validez. El endpoint
+`POST /internal/demand/v1/session/context` hereda autenticación servicio-a-servicio, límite de cuerpo,
+timeout y errores opacos del perímetro interno.

@@ -9528,3 +9528,23 @@ Fuente de verdad del avance:
   - La rama vectorial exige gate, versión, locale y vigencia, y combina local/servicio por mejor coseno.
   - La integración aplicó 53 migraciones y pasó tres casos; también se revalidó aisladamente la rama
     vectorial venue/servicio.
+
+# Conversación 218 - Perfil contextual de sesión condicionado por consentimiento
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementó `session-context-v1` para agregar filtros, clics, comparaciones y consultas de
+    disponibilidad mediante pesos explícitos, decaimiento de 30 minutos y TTL de 15 minutos.
+  - Sin consentimiento se descarta toda señal histórica y solo se admite el filtro actual explícito;
+    con consentimiento se conserva versión, fuentes, evidencia, confianza y recencia.
+  - Se publicó un endpoint interno autenticado y contratos estrictos sin texto ni PII.
+- Archivos modificados:
+  - Nuevo `session_context.py`, router/factoría FastAPI, pruebas unitarias/HTTP y documentos `.kiro`.
+- Requisitos impactados: RF-034, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015.
+- Tareas impactadas: 20.7; prepara 20.8, 20.9 y 21.1.
+- Tareas completadas: 20.7.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.8.
+- Decisiones o aclaraciones relevantes:
+  - No existe persistencia nueva: el perfil contextual es efímero y reconstruible.
+  - UUID de señal evita amplificación duplicada y timestamps futuros/anteriores a 24 h se rechazan.
+  - La suite acumulada ejecuta 24 casos tras añadir la comprobación HTTP.

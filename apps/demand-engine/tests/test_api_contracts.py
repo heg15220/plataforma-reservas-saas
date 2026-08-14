@@ -58,6 +58,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/venues/{venue_id}/attributes",
             "/internal/demand/v1/conversion/predict",
             "/internal/demand/v1/demand/{venue_id}",
+            "/internal/demand/v1/session/context",
         }
         self.assertTrue(expected <= set(document["paths"]))
         self.assertFalse(any(path.startswith("/api/") for path in document["paths"]))
@@ -156,6 +157,38 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/events", json=body, headers=HEADERS
         )
         self.assertEqual(422, response.status_code)
+
+    def test_session_context_endpoint_does_not_personalize_without_consent(self) -> None:
+        body = self._envelope()
+        body.update(
+            {
+                "sessionId": str(uuid4()),
+                "personalizationConsent": False,
+                "signals": [
+                    {
+                        "signalId": str(uuid4()),
+                        "signalType": "filter",
+                        "occurredAt": body["occurredAt"],
+                        "attributeCodes": ["onlineBooking"],
+                        "currentContext": True,
+                    },
+                    {
+                        "signalId": str(uuid4()),
+                        "signalType": "click",
+                        "occurredAt": body["occurredAt"],
+                        "attributeCodes": ["modernStyle"],
+                    },
+                ],
+            }
+        )
+        response = self.client.post(
+            "/internal/demand/v1/session/context", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertFalse(response.json()["personalizationApplied"])
+        self.assertEqual(1, response.json()["usedSignalCount"])
+        self.assertEqual(1, response.json()["ignoredSignalCount"])
+        self.assertEqual("onlineBooking", response.json()["attributePreferences"][0]["attributeCode"])
 
 
 if __name__ == "__main__":

@@ -36454,3 +36454,60 @@ EXPLAIN ANALYZE y quizá crear una proyección de capacidad reciente, sin relaja
 vectorial no debe habilitarse hasta superar la puerta 20.4 y benchmarkear índice/recall. 20.10 repetirá
 los filtros después de generación para cubrir carreras entre snapshot y ranking; confirmación de
 reserva sigue siendo la única autoridad final.
+
+## Iteración 2026-08-14 - Tarea 20.7: perfil contextual de sesión con consentimiento
+
+### Objetivo, contrato y frontera de privacidad
+
+- Identificador exacto: 20.7.
+- Objetivo técnico: transformar el contexto reciente de una sesión en preferencias interpretables sin
+  convertir navegación no consentida en un perfil personal ni introducir identificadores directos.
+- Requisitos/diseño: RF-034 y RF-036; RNF-002, RNF-005, RNF-014 y RNF-015; secciones 14.2, 14.8,
+  14.17 y 14.25.
+
+Se creó `session_context.py` con contratos Pydantic estrictos, inmutables y `extra=forbid`.
+`SessionSignal` contiene `signalId`, tipo cerrado `filter|click|comparison|availability`, timestamp,
+atributos gobernados, categoría e IDs opcionales de venue/service. Rechaza timestamp sin zona,
+atributos duplicados, señales vacías y `currentContext` fuera de filtros. No existe campo de consulta,
+email, teléfono, IP, cookie, user-agent, fingerprint, texto de reseña ni formulario. Spring debe
+resolver previamente los atributos del venue/service y revalidar el estado de consentimiento.
+
+`SessionContextRequest` añade session UUID, booleano de consentimiento, versión y hasta 200 señales.
+Booleano y versión deben aparecer conjuntamente. Se rechazan UUID de señal repetidos, eventos con más
+de cinco segundos de futuro y señales anteriores a 24 horas. Esta deduplicación impide que un retry o
+payload repetido amplifique preferencias. La sesión es seudónima y el builder no recibe anonymousId ni
+customerId. El endpoint interno `POST /internal/demand/v1/session/context` está bajo el router con
+token de servicio, timeout de 200 ms, cuerpo de 64 KiB y errores opacos ya existentes.
+
+### Cálculo, consentimiento, vigencia y ejecución
+
+`SessionContextBuilder` usa pesos iniciales explícitos: filtro 2, clic 1, comparación 2 y consulta de
+disponibilidad 3. Aplica `exp(-ln(2)*edad/30min)` y agrega por atributo. El valor es peso decaído entre
+el máximo sin decaimiento; la confianza combina 70 % saturación de volumen
+`1-exp(-evidencias/3)` y 30 % diversidad de fuentes, con máximo 0,95. Cada preferencia devuelve valor
+y confianza redondeados, evidencias, fuentes ordenadas y última observación. El resultado conserva
+`session-context-v1`, timestamp de cálculo y `validUntil` de 15 minutos, además de filtros actuales de
+categoría/venue/service y contadores de señales usadas/ignoradas.
+
+Con personalización consentida participan todas las señales y se propaga la versión. Sin ella solo se
+admite `filter + currentContext=true`; clics, comparaciones y disponibilidad se cuentan como ignorados
+y no afectan salida. Esto permite respetar el filtro que la persona acaba de solicitar sin construir
+historia implícita. No se persiste ni cachea el perfil, por lo que revocación o cambio de versión se
+aplican en la siguiente llamada y no requieren purga adicional. El flujo de reserva permanece ajeno.
+
+### Archivos, pruebas, seguridad y deuda
+
+Se crearon `session_context.py` y `test_session_context.py`; se modificaron router, factoría,
+`test_api_contracts.py` y los cuatro documentos `.kiro`. No hubo migración ni cambios Spring/UI. La
+suite `npm run test:demand` pasó inicialmente 23 casos; tras añadir la prueba HTTP ejecuta 24. Los
+casos nuevos cubren ausencia de consentimiento, filtro actual, descarte de historia, combinación de
+tres fuentes, decaimiento, confianza, TTL, UUID duplicado, futuro, mismatch de consentimiento,
+autenticación y serialización sin campos personales. `compileall` y `git diff --check` completan el
+cierre.
+
+Riesgos: los pesos y half-life son hipótesis de arranque, no una calibración; deben versionarse al
+cambiar. El caller todavía debe correlacionar señales canónicas con atributos publicados sin copiar
+texto. Comparación es una señal derivada por Spring porque el catálogo v1 aún no tiene evento propio;
+añadirlo al catálogo requerirá nueva tarea compatible. El perfil no cruza sesiones: el perfil implícito
+persistente y revocable corresponde a 21.1. 20.8 consumirá estas preferencias y conservará sus
+contribuciones reales.

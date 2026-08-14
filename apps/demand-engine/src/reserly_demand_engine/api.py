@@ -23,6 +23,7 @@ from .contracts import (
 from .errors import DemandEngineError
 from .embedding_batch import EmbeddingBatchRequest, EmbeddingBatchResponse
 from .profiles import VenueProfileRequest
+from .session_context import SessionContextRequest, SessionContextResponse
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -88,6 +89,13 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     async def generate_embeddings(body: EmbeddingBatchRequest, request: Request) -> EmbeddingBatchResponse:
         """Calcula un lote en sombra; Spring conserva la única escritura a pgvector."""
         return request.app.state.embedding_batch_processor.generate(body)
+
+    @router.post("/session/context", response_model=SessionContextResponse)
+    async def build_session_context(
+        body: SessionContextRequest, request: Request
+    ) -> SessionContextResponse:
+        """Construye un perfil efímero y limita señales cuando falta consentimiento."""
+        return request.app.state.session_context_builder.build(body)
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(
