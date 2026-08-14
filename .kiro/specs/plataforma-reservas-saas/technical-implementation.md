@@ -36072,3 +36072,59 @@ con `$env:PYTHONPATH='src'` y la matriz documenta ese requisito. Spotless se apl
 de payload ni etiquetas de alta cardinalidad. Riesgo pendiente: la matriz focalizada no sustituye el
 pipeline global; fases 20-23 deberán extenderla con FastAPI, modelos, experimentos y E2E sin retirar
 estas regresiones fundacionales.
+
+## Iteración 2026-08-14 - Tarea 20.1: bootstrap ejecutable del Demand Engine
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 20.1.
+- Objetivo técnico: crear la frontera Python interna sobre la que se implementarán matching,
+  atributos y estimaciones, manteniendo Spring como autoridad de elegibilidad y reserva.
+- Requisitos y diseño relacionados: RF-033, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.1, 14.2, 14.3, 14.14 y ADR-0001.
+
+Se creó `apps/demand-engine` como paquete instalable Python 3.13 con versiones exactas de FastAPI,
+Pydantic, Uvicorn y HTTPX. `create_app` recibe settings y estado runtime explícitos, por lo que los
+tests no dependen del entorno ni arrancan sockets. `main.py` es el composition root para proceso real
+y `cli.py` desactiva el access log de Uvicorn para impedir duplicar o ampliar el logging controlado.
+La configuración es un modelo inmutable con `extra=forbid`: valida entorno, host, puerto, token
+secreto de mínimo 32 caracteres, timeout, tamaño máximo, documentación y nivel de log. Los ejemplos
+local/staging/production contienen el contrato completo y producción conserva OpenAPI desactivado.
+
+`DemandEngineBoundaryMiddleware` establece una correlación UUID confiable, rechaza `Content-Length`
+inválido o superior a 65.536 bytes y cancela el procesamiento a los 200 ms iniciales. Todas las
+respuestas añaden correlación y `nosniff`. Sus logs se limitan a request ID, método, ruta normalizada,
+estado y duración: nunca cuerpo, token, candidatos, texto, identidad o contexto. Los handlers de
+dominio, validación e inesperados exponen exclusivamente `code` y `requestId`; los detalles quedan
+en el log interno. El token se compara en tiempo constante junto con un service ID exacto. La
+dependencia `require_service_auth` es el único punto de entrada permitido para rutas funcionales.
+
+### Health, despliegue, seguridad y operación
+
+`GET /internal/demand/v1/health/live` demuestra vida del proceso. `ready` informa 503 hasta que el
+estado runtime esté listo y publica solo nombre/versiones, nunca configuración o dependencias. Las
+sondas quedan sin autenticación deliberadamente; OpenAPI solo aparece mediante opt-in explícito.
+El Dockerfile instala ambos paquetes locales, ejecuta con UID/GID 65532 y no contiene credenciales.
+Compose inyecta secretos desde entorno, publica `8090` únicamente en `127.0.0.1` y usa la sonda ready.
+Esto evita acceso directo desde el navegador en local; staging/producción requieren red privada y
+mTLS o identidad de workload además del token, según ADR-0001.
+
+No hay modelo de datos, migraciones, jobs ni llamadas externas en esta tarea. El servicio es
+consultivo y no puede escribir reservas, holds, capacidad o elegibilidad. Los scripts `dev:demand`
+y `test:demand` ofrecen entrada reproducible desde la raíz. Los módulos, APIs y helpers documentan
+responsabilidad, entradas, efectos y restricciones mediante docstrings; README documenta operación,
+frontera de confianza y variables obligatorias.
+
+### Pruebas, evidencia, riesgos y pendientes
+
+`DemandEngineBootstrapTests` cubre health y ready, ausencia de docs, rechazo/autorización de servicio,
+error opaco, timeout, límite de cuerpo y validación de token/configuración. Evidencia ejecutada:
+`npm run test:demand` — 4 casos, cero fallos; `python -m compileall -q apps/demand-engine/src
+apps/demand-engine/tests packages/demand-contracts/src` — correcto; `npm run infra:config` — Compose
+válido; `git diff --check` — correcto.
+
+Limitaciones: el header token es una credencial bootstrap, no sustituye mTLS; el límite preventivo
+usa `Content-Length`, por lo que un proxy interno debe rechazar streaming/chunked sobredimensionado;
+la readiness aún no incluye dependencias porque no existen. 20.2 deberá aplicar autenticación a toda
+ruta funcional y contratos acotados; tareas posteriores incorporarán dependencias con degradación,
+observabilidad distribuida y pruebas de carga.

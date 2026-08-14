@@ -2701,6 +2701,20 @@ Medidas:
 
 ## 14. Motor inteligente de generación de demanda
 
+### 14.19 Bootstrap ejecutable del Demand Engine
+
+El motor se despliega como servicio Python 3.13 independiente bajo `apps/demand-engine`, con una
+factoría FastAPI libre de efectos laterales para pruebas. Todo endpoint funcional vive en
+`/internal/demand/v1`; los health checks son la única excepción a la autenticación para permitir
+sondas de plataforma. La configuración se valida al arrancar con Pydantic y no admite claves
+desconocidas. El token de servicio es obligatorio, secreto y de un mínimo de 32 caracteres.
+
+La frontera HTTP impone 64 KiB y 200 ms por defecto, genera o normaliza un UUID de correlación,
+devuelve errores opacos y registra solo request ID, método, ruta, estado y duración. OpenAPI está
+desactivado salvo opt-in local. El contenedor corre sin privilegios y Compose publica el puerto
+únicamente en loopback; producción deberá añadir mTLS o una identidad de workload equivalente sin
+retirar la autenticación de aplicación.
+
 Esta sección convierte el documento técnico externo
 `Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de 2026, en una
 arquitectura compatible con el estado real del proyecto. El documento es una fuente de propuesta;

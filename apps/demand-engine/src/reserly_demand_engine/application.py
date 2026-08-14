@@ -1,0 +1,60 @@
+"""Factoría FastAPI sin efectos laterales para tests y despliegues controlados."""
+
+from __future__ import annotations
+
+import logging
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from .config import DemandEngineSettings
+from .errors import DemandEngineError
+from .health import RuntimeState, health_router
+from .middleware import DemandEngineBoundaryMiddleware
+
+
+def create_app(
+    settings: DemandEngineSettings, state: RuntimeState | None = None
+) -> FastAPI:
+    """Construye la aplicación con límites homogéneos y documentación solo si se habilita."""
+    logging.basicConfig(level=settings.log_level)
+    app = FastAPI(
+        title="Reserly Demand Engine (internal)",
+        version="0.1.0",
+        docs_url="/internal/demand/docs" if settings.docs_enabled else None,
+        redoc_url=None,
+        openapi_url="/internal/demand/openapi.json" if settings.docs_enabled else None,
+    )
+    app.state.settings = settings
+    app.state.runtime = state or RuntimeState()
+    app.add_middleware(DemandEngineBoundaryMiddleware, settings=settings)
+    app.include_router(health_router(app.state.runtime))
+
+    @app.exception_handler(DemandEngineError)
+    async def expected_error(request: Request, error: DemandEngineError) -> JSONResponse:
+        return _error_response(request, error.code, error.status_code)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, _: RequestValidationError) -> JSONResponse:
+        return _error_response(request, "CONTRACT_INVALID", 422)
+
+    @app.exception_handler(Exception)
+    async def unexpected_error(request: Request, _: Exception) -> JSONResponse:
+        logging.getLogger("reserly.demand_engine").exception(
+            "demand_unexpected requestId=%s", _request_id(request)
+        )
+        return _error_response(request, "INTERNAL_ERROR", 500)
+
+    return app
+
+
+def _error_response(request: Request, code: str, status_code: int) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"code": code, "requestId": _request_id(request)},
+    )
+
+
+def _request_id(request: Request) -> str:
+    return getattr(request.state, "request_id", "unavailable")

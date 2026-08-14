@@ -400,7 +400,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 22. Fase 20 - MVP diferencial de matching y demanda
 
-- [ ] 20.1. Crear el servicio Python `Demand Engine` con FastAPI, Pydantic, health checks, autenticación servicio-a-servicio, timeouts y configuración por entorno.
+- [x] 20.1. Crear el servicio Python `Demand Engine` con FastAPI, Pydantic, health checks, autenticación servicio-a-servicio, timeouts y configuración por entorno.
 - [ ] 20.2. Definir contratos de `POST /events`, `POST /recommendations`, `POST /ranking`, `GET /venues/{id}/attributes`, `POST /conversion/predict` y `GET /demand/{venueId}` sin exponerlos directamente a Internet.
 - [ ] 20.3. Implementar perfil inicial de local desde formulario, servicios, texto localizado y datos operativos mediante reglas y clasificación interpretable.
 - [ ] 20.4. Seleccionar, versionar y evaluar un modelo multilingüe de Sentence Transformers con licencia, dimensiones, idiomas, latencia y calidad documentados.

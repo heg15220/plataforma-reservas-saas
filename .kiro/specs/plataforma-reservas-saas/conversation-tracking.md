@@ -9391,3 +9391,25 @@ Fuente de verdad del avance:
   - La matriz ejecutó 26 casos Maven, 8 contratos Python y 6 casos web: 40 casos, cero fallos.
   - PostgreSQL aplicó Flyway V1-V51 en contenedores aislados y verificó constraints/cascadas reales.
   - El primer intento Python carecía de `PYTHONPATH=src`; el comando reproducible queda corregido.
+
+# Conversación 212 - Bootstrap del Demand Engine
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se creó el servicio interno Python 3.13 con FastAPI/Pydantic, factoría testeable, sondas live y
+    ready, configuración validada por entorno, autenticación servicio-a-servicio y errores opacos.
+  - Se aplicaron límites de 64 KiB y 200 ms, correlación UUID, logging minimizado y documentación
+    OpenAPI desactivada por defecto fuera de desarrollo local.
+  - Se añadió ejecución npm y un contenedor no privilegiado publicado solo en loopback por Compose.
+- Archivos modificados:
+  - Nuevo `apps/demand-engine`, ejemplos de entorno, `package.json`, `infrastructure/compose.yaml` y
+    documentos de especificación `.kiro`.
+- Requisitos impactados: RF-033, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.1; prepara los contratos internos 20.2.
+- Tareas completadas: 20.1.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.2.
+- Decisiones o aclaraciones relevantes:
+  - Health no requiere credenciales; cualquier endpoint funcional sí las requerirá por dependencia.
+  - Loopback evita exposición accidental local, pero producción debe complementar el token con mTLS
+    o identidad de workload en la red privada.
+  - `npm run test:demand`, compilación Python, validación Compose y `git diff --check` pasan.

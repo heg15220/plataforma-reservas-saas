@@ -1,6 +1,35 @@
 name: reserly
 
 services:
+  demand-engine:
+    build:
+      context: ..
+      dockerfile: apps/demand-engine/Dockerfile
+    restart: unless-stopped
+    environment:
+      RESERLY_DEMAND_ENGINE_ENVIRONMENT: ${RESERLY_DEMAND_ENGINE_ENVIRONMENT:-local}
+      RESERLY_DEMAND_ENGINE_HOST: 0.0.0.0
+      RESERLY_DEMAND_ENGINE_PORT: 8090
+      RESERLY_DEMAND_ENGINE_SERVICE_ID: ${RESERLY_DEMAND_ENGINE_SERVICE_ID:?RESERLY_DEMAND_ENGINE_SERVICE_ID is required}
+      RESERLY_DEMAND_ENGINE_SERVICE_TOKEN: ${RESERLY_DEMAND_ENGINE_SERVICE_TOKEN:?RESERLY_DEMAND_ENGINE_SERVICE_TOKEN is required}
+      RESERLY_DEMAND_ENGINE_REQUEST_TIMEOUT_SECONDS: ${RESERLY_DEMAND_ENGINE_REQUEST_TIMEOUT_SECONDS:-0.2}
+      RESERLY_DEMAND_ENGINE_MAXIMUM_REQUEST_BYTES: ${RESERLY_DEMAND_ENGINE_MAXIMUM_REQUEST_BYTES:-65536}
+      RESERLY_DEMAND_ENGINE_DOCS_ENABLED: ${RESERLY_DEMAND_ENGINE_DOCS_ENABLED:-false}
+      RESERLY_DEMAND_ENGINE_LOG_LEVEL: ${RESERLY_DEMAND_ENGINE_LOG_LEVEL:-INFO}
+    ports:
+      - 127.0.0.1:${RESERLY_DEMAND_ENGINE_PORT:-8090}:8090
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/internal/demand/v1/health/ready', timeout=1)"
+      interval: 10s
+      timeout: 2s
+      retries: 6
+      start_period: 5s
+    stop_grace_period: 10s
+
   postgres:
     image: reserly/postgres:17-3.5-vector0.8.6
     build:
