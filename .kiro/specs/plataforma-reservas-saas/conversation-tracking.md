@@ -9460,3 +9460,25 @@ Fuente de verdad del avance:
   - Texto e IDs de servicio son transitorios y nunca aparecen en perfil, cache, respuesta o log.
   - Salud/medicina, vertical no aprobada y capacidad distinta de uno fallan de forma cerrada.
   - `npm run test:demand` ejecuta 14 casos sin fallos y valida fuentes/TTL contra la ontología JSON.
+
+# Conversación 215 - Selección y evaluación del encoder multilingüe
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se seleccionó y pinneó multilingual E5 small con manifiesto estricto, adaptador lazy y contrato
+    explícito de prefijos, normalización, dimensiones, locale, licencia y revisión.
+  - Se creó un dataset sintético ES/EN, un evaluador reproducible de Recall@1/3, MRR, cross-locale y
+    p95 warm, y un informe agregado sin textos ni vectores.
+  - E5 y MiniLM cumplieron latencia pero no todas las puertas de calidad; ninguno fue promovido y se
+    mantiene full-text/trigram como única recuperación activa.
+- Archivos modificados:
+  - Manifiesto/model card, dataset e informe, `embeddings.py`, `embedding_evaluation.py`, tests,
+    `pyproject.toml` y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.4; prepara 20.5 y condiciona la activación vectorial de 20.6.
+- Tareas completadas: 20.4.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.5.
+- Decisiones o aclaraciones relevantes:
+  - Revisión E5 exacta, MIT, 384 dimensiones, 94 idiomas; solo ES/EN entran en el piloto.
+  - E5: calidad no aprobada, latencia aprobada. MiniLM mejoró Recall@3 pero tampoco pasó la puerta.
+  - Los umbrales originales se conservaron; los embeddings de 20.5 serán shadow hasta promoción.

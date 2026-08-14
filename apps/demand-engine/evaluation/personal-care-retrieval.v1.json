@@ -1,0 +1,34 @@
+{
+  "datasetVersion": "personal-care-retrieval.v1",
+  "scope": "synthetic-pilot-contract",
+  "documents": [
+    {"id": "hair-cut", "locale": "es", "text": "Peluquería con corte de cabello y cambio de estilo."},
+    {"id": "hair-color", "locale": "en", "text": "Hair salon offering colour, highlights and balayage services."},
+    {"id": "hair-style", "locale": "es", "text": "Peinados, recogidos y secado profesional para eventos."},
+    {"id": "hair-treatment", "locale": "en", "text": "Hair repair and nourishing treatment appointment."},
+    {"id": "facial", "locale": "es", "text": "Centro de estética con tratamiento facial y cuidado de la piel."},
+    {"id": "body", "locale": "en", "text": "Beauty centre with non-medical body treatment appointments."},
+    {"id": "nails", "locale": "es", "text": "Manicura, pedicura y servicio profesional de uñas."},
+    {"id": "makeup", "locale": "en", "text": "Professional makeup appointment for celebrations."},
+    {"id": "medical", "locale": "es", "text": "Clínica médica con inyecciones y diagnóstico sanitario."},
+    {"id": "restaurant", "locale": "en", "text": "Restaurant serving dinner with table reservations."}
+  ],
+  "queries": [
+    {"id": "q01", "locale": "es", "text": "quiero cortarme el pelo", "relevantDocumentIds": ["hair-cut"]},
+    {"id": "q02", "locale": "en", "text": "I need a haircut", "relevantDocumentIds": ["hair-cut"]},
+    {"id": "q03", "locale": "es", "text": "mechas y cambio de color", "relevantDocumentIds": ["hair-color"]},
+    {"id": "q04", "locale": "en", "text": "hair colouring and highlights", "relevantDocumentIds": ["hair-color"]},
+    {"id": "q05", "locale": "es", "text": "peinado para una celebración", "relevantDocumentIds": ["hair-style"]},
+    {"id": "q06", "locale": "en", "text": "hairstyle for an event", "relevantDocumentIds": ["hair-style"]},
+    {"id": "q07", "locale": "es", "text": "tratamiento reparador para el cabello", "relevantDocumentIds": ["hair-treatment"]},
+    {"id": "q08", "locale": "en", "text": "nourishing hair treatment", "relevantDocumentIds": ["hair-treatment"]},
+    {"id": "q09", "locale": "es", "text": "cuidado facial de la piel", "relevantDocumentIds": ["facial"]},
+    {"id": "q10", "locale": "en", "text": "facial skin care appointment", "relevantDocumentIds": ["facial"]},
+    {"id": "q11", "locale": "es", "text": "tratamiento corporal estético", "relevantDocumentIds": ["body"]},
+    {"id": "q12", "locale": "en", "text": "non medical body beauty treatment", "relevantDocumentIds": ["body"]},
+    {"id": "q13", "locale": "es", "text": "quiero hacerme la manicura", "relevantDocumentIds": ["nails"]},
+    {"id": "q14", "locale": "en", "text": "professional nail and pedicure service", "relevantDocumentIds": ["nails"]},
+    {"id": "q15", "locale": "es", "text": "maquillaje profesional para una fiesta", "relevantDocumentIds": ["makeup"]},
+    {"id": "q16", "locale": "en", "text": "makeup appointment for a celebration", "relevantDocumentIds": ["makeup"]}
+  ]
+}

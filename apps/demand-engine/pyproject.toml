@@ -10,6 +10,11 @@ dependencies = [
   "uvicorn==0.34.1",
 ]
 
+[project.optional-dependencies]
+ml = [
+  "sentence-transformers==5.7.0",
+]
+
 [build-system]
 requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
@@ -19,3 +24,4 @@ where = ["src"]
 
 [project.scripts]
 reserly-demand-engine = "reserly_demand_engine.cli:run"
+reserly-demand-evaluate-embeddings = "reserly_demand_engine.embedding_evaluation:run"

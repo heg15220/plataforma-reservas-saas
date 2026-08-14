@@ -1,0 +1,42 @@
+{
+  "resultVersion": 1,
+  "modelVersion": "multilingual-e5-small-v1",
+  "modelRevision": "d1d99a1efae6779390caba937d92c54b5bc70e51",
+  "datasetVersion": "personal-care-retrieval.v1",
+  "evaluatedAt": "2026-08-14T13:27:51.788245+00:00",
+  "environment": {
+    "os": "Windows",
+    "processor": "AMD64 Family 23 Model 24 Stepping 1, AuthenticAMD",
+    "logicalProcessors": 8,
+    "python": "3.13.2",
+    "sentenceTransformers": "5.7.0",
+    "transformers": "4.56.2",
+    "torch": "2.8.0",
+    "device": "cpu"
+  },
+  "queryCount": 16,
+  "documentCount": 10,
+  "metrics": {
+    "recallAt1": 0.6875,
+    "recallAt3": 0.8125,
+    "meanReciprocalRank": 0.775521,
+    "crossLocaleRecallAt3": 0.625,
+    "warmQueryP95Ms": 50.648,
+    "warmDocumentPerItemP95Ms": 26.852
+  },
+  "qualityPassed": false,
+  "latencyPassed": true,
+  "promotionStatus": "not_promoted",
+  "fallback": "full_text_trigram_only",
+  "comparison": {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "recallAt1": 0.6875,
+    "recallAt3": 0.9375,
+    "meanReciprocalRank": 0.822917,
+    "crossLocaleRecallAt3": 0.875,
+    "warmQueryP95Ms": 52.982,
+    "warmDocumentPerItemP95Ms": 24.775,
+    "promoted": false
+  }
+}

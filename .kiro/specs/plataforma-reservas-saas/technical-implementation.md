@@ -36257,3 +36257,60 @@ deben ampliar sin dataset, evaluación y versión nueva. La denylist es defensa 
 el filtro categórico autoritativo de Spring. La caché no es distribuida ni durable. 20.4 debe evaluar
 un modelo multilingüe sin retirar estas reglas auditables; 20.5 deberá generar derivados idempotentes
 y 20.8 combinar afinidad manteniendo trazas y gobierno de fuentes.
+
+## Iteración 2026-08-14 - Tarea 20.4: encoder multilingüe versionado y evaluado
+
+### Objetivo, selección y fuentes técnicas
+
+- Identificador exacto: 20.4.
+- Objetivo: elegir un encoder ES/EN reproducible, documentar licencia/capacidad y medir calidad y
+  latencia antes de permitir que participe en recuperación.
+- Requisitos/diseño: RF-036, RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015; 14.2, 14.7, 14.9,
+  14.10 y 14.22.
+
+Se contrastaron model cards oficiales de Hugging Face, repositorio Microsoft UNILM/E5,
+documentación oficial de Sentence Transformers y PyPI. El manifiesto
+`models/multilingual-e5-small.v1.json` fija repositorio `intfloat/multilingual-e5-small`, commit
+`d1d99a1efae6779390caba937d92c54b5bc70e51`, licencia MIT, 384 dimensiones, 512 tokens, 94 idiomas,
+locales activos ES/EN, Sentence Transformers 5.7.0, prefijos literales `query: `/`passage: `,
+normalización L2, coseno y `trustRemoteCode=false`. Una rama/tag mutable, locale distinto, dimensión
+o configuración extra falla Pydantic. El cambio de cualquier elemento crea otra versión y obliga a
+recalcular derivados.
+
+`SentenceTransformerEmbedder` carga de forma lazy la revisión exacta, limita texto a 4.000
+caracteres, aplica prefijo por rol, solicita float32 normalizado y comprueba cantidad, dimensión y
+finitud. La carga fría se reserva para job/readiness, nunca para una petición bajo 200 ms. El puerto
+`TextEmbedder` desacopla batch/evaluación de PyTorch y permite tests deterministas. El checksum
+SHA-256 canónico incorpora locale y espacios normalizados, sin exponer texto.
+
+### Dataset, evaluación, resultados y decisión
+
+`personal-care-retrieval.v1.json` contiene 16 consultas ES/EN y diez fichas sintéticas de corte,
+color, peinado, tratamiento capilar, facial, corporal, uñas y maquillaje, con negativos de medicina y
+restauración. Es un smoke contractual, no un dataset de promoción con tráfico. El evaluador codifica
+consulta/documentos por separado, usa producto punto equivalente a coseno sobre vectores L2, calcula
+Recall@1, Recall@3, MRR y Recall@3 cross-locale y mide p95 warm de query y batch documental. El
+informe solo conserva agregados, entorno y versiones; no contiene texto, IDs de personas o vectores.
+
+En Windows CPU AMD64 Family 23 (8 lógicos), Python 3.13.2, ST 5.7.0, Transformers 4.56.2 y Torch
+2.8.0, E5 obtuvo 0,6875/0,8125 de Recall@1/3, MRR 0,775521, cross-locale 0,625, p95 query 50,648 ms y
+p95 documental 26,852 ms/item. Calidad falló; latencia pasó. Como contraste, MiniLM revision
+`e8f8c211226b894fcb81acc59f3b34ba3efd5f42` obtuvo 0,6875/0,9375, MRR 0,822917, cross-locale 0,875,
+52,982 ms y 24,775 ms/item: tampoco superó todas las puertas. No se relajaron umbrales a posteriori.
+E5 queda baseline técnico pinneado para shadow e infraestructura, **no promovido online**;
+full-text/trigram es la única recuperación activa hasta una evaluación aprobada.
+
+### Archivos, pruebas, seguridad y pendientes
+
+Se añadieron manifiesto, dataset, resultado JSON, model card, adaptador, evaluador y cuatro tests; se
+añadió el extra `ml` y CLI al paquete. No hay migración, endpoint ni almacenamiento en esta tarea. La
+evaluación real descargó exclusivamente la revisión declarada, con código remoto deshabilitado. Las
+pruebas unitarias verifican manifiesto, revisión inmutable, locales, prompts, checksum y cálculo de
+métricas sin red. `npm run test:demand` ejecutó 18 casos, cero fallos; el CLI real terminó con exit 1
+esperado porque la puerta de calidad falló, dejando el informe trazable.
+
+Riesgos: fixture pequeño/sintético, latencia dependiente del hardware, truncación y confusión
+cross-locale. No se permiten inferencias sensibles ni elegibilidad por embedding. 20.5 podrá persistir
+shadow embeddings con versión/checksum; 20.6 debe implementar fusión y filtros, pero mantener peso
+vectorial cero mientras `promotionStatus=not_promoted`. Una nueva promoción exige dataset revisado,
+separación temporal cuando haya datos reales y una nueva evaluación íntegra.

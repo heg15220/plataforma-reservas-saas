@@ -2744,6 +2744,19 @@ evidencias independientes, ordena códigos y conserva fuentes, reglas, `venue-pr
 de ontología. Ambiente subjetivo, atención, privacidad percibida y rasgos sensibles no se infieren.
 Spring persiste el resultado; Python mantiene únicamente una caché LRU acotada de conveniencia.
 
+### 14.22 Modelo de embeddings v1 y puerta de promoción
+
+El baseline técnico es `intfloat/multilingual-e5-small` en revisión inmutable
+`d1d99a1efae6779390caba937d92c54b5bc70e51`: MIT, 384 dimensiones, 94 idiomas publicados, 512 tokens,
+prefijos E5 `query:`/`passage:`, normalización L2 y coseno. Sentence Transformers queda fijado en
+5.7.0 y `trust_remote_code=false`. ES/EN son los únicos locales activables del piloto.
+
+La evaluación sintética v1 no supera calidad: Recall@1 0,6875, Recall@3 0,8125, MRR 0,775521 y
+cross-locale Recall@3 0,625, aunque sí cumple p95 CPU warm (50,648 ms query; 26,852 ms por documento).
+MiniLM tampoco supera todas las puertas. El modelo queda versionado para shadow, jobs y validación de
+infraestructura, pero no promovido online; full-text/trigram sigue siendo el fallback hasta que una
+nueva versión supere umbrales predeclarados. Los umbrales no se ajustan después de medir.
+
 Esta sección convierte el documento técnico externo
 `Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de 2026, en una
 arquitectura compatible con el estado real del proyecto. El documento es una fuente de propuesta;

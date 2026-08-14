@@ -1,0 +1,29 @@
+{
+  "manifestVersion": 1,
+  "modelKey": "multilingual-e5-small-v1",
+  "repository": "intfloat/multilingual-e5-small",
+  "revision": "d1d99a1efae6779390caba937d92c54b5bc70e51",
+  "license": "MIT",
+  "library": "sentence-transformers",
+  "libraryVersion": "5.7.0",
+  "dimensions": 384,
+  "maximumTokens": 512,
+  "languages": 94,
+  "requiredLocales": ["es", "en"],
+  "queryPrefix": "query: ",
+  "documentPrefix": "passage: ",
+  "normalizeEmbeddings": true,
+  "similarity": "cosine",
+  "trustRemoteCode": false,
+  "evaluationDataset": "personal-care-retrieval.v1",
+  "qualityThresholds": {
+    "recallAt1": 0.8,
+    "recallAt3": 0.95,
+    "meanReciprocalRank": 0.85,
+    "crossLocaleRecallAt3": 0.9
+  },
+  "latencyThresholdsMs": {
+    "warmQueryP95": 100.0,
+    "warmDocumentPerItemP95": 50.0
+  }
+}
