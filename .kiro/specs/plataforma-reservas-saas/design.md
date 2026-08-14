@@ -2729,6 +2729,21 @@ estimación y eventos confirman validación pero cero persistencia. Esto evita c
 modelo operativo. El contrato de atributos admite solo códigos, scores, confianza, fuentes, reglas,
 versión y vigencia; nunca texto de origen o evidencia personal.
 
+### 14.21 Perfil inicial interpretable de local
+
+El perfil v1 acepta únicamente `personalCareIndividualAppointment`, categorías `peluqueria` y
+`centro-de-estetica`, servicios activos con capacidad simultánea uno y fuentes explícitas: selección
+allowlisted de formulario, descripción ES/EN del propio local, catálogo estructurado y snapshot
+operativo agregado con máximo cinco minutos de antigüedad. Términos de salud/medicina cierran el
+contrato en vez de ser clasificados parcialmente.
+
+Las reglas normalizan texto sin conservarlo, mapean vocabulario ES/EN a estilo, luz y atención
+multilingüe, clasifican oferta de cabello/estética por catálogo y calculan señales operativas
+normalizadas. Cada salida se agrega mediante media ponderada por confianza, combina confianza de
+evidencias independientes, ordena códigos y conserva fuentes, reglas, `venue-profile-rules-v1` y TTL
+de ontología. Ambiente subjetivo, atención, privacidad percibida y rasgos sensibles no se infieren.
+Spring persiste el resultado; Python mantiene únicamente una caché LRU acotada de conveniencia.
+
 Esta sección convierte el documento técnico externo
 `Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de 2026, en una
 arquitectura compatible con el estado real del proyecto. El documento es una fuente de propuesta;

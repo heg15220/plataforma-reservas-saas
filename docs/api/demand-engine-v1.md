@@ -12,6 +12,7 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | `POST /recommendations` | Validar contexto y hasta 100 candidatos elegibles | `deferred`; Spring aplica fallback |
 | `POST /ranking` | Validar candidatos ya filtrados | `deferred`; no reordena ni añade candidatos |
 | `GET /venues/{id}/attributes` | Leer la proyección interpretable vigente | 404 opaco si no existe perfil |
+| `POST /venues/{id}/attributes/evaluate` | Calcular perfil inicial interpretable | Spring persiste; caché Python acotada |
 | `POST /conversion/predict` | Validar features agregadas permitidas | Modelo no disponible; probabilidad nula |
 | `GET /demand/{venueId}` | Leer futura estimación agregada | Baseline no disponible; estimación nula |
 
@@ -19,6 +20,13 @@ Los POST requieren `requestId`, `schemaVersion=1`, timestamp con zona, `locale` 
 `policyVersion`. Todas las respuestas identifican petición y versiones aplicables. Los errores
 contienen exclusivamente `code` y `requestId`. Pydantic rechaza campos desconocidos; los candidatos
 requieren `eligible=true` y capacidad positiva porque Spring conserva elegibilidad y capacidad.
+
+La evaluación de atributos admite exclusivamente el vertical de cuidado personal individual, las
+categorías `peluqueria` y `centro-de-estetica`, servicios activos de capacidad uno, declaraciones de
+formulario allowlisted, descripción localizada ES/EN y agregados operativos con antigüedad máxima de
+cinco minutos. Devuelve reglas, fuentes, confianza, versión y vigencia, nunca texto o IDs de servicio.
+La memoria del proceso es una caché LRU de lectura, no la base autoritativa; Spring debe persistir el
+resultado gobernado.
 
 El contrato bootstrap no simula modelos: recomendación/ranking piden fallback, conversión y demanda
 devuelven `available=false`, y eventos solo confirman validación. Versiones futuras podrán enriquecer

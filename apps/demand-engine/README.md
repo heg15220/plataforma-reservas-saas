@@ -21,6 +21,12 @@ Health checks internos:
 Los endpoints funcionales exigen `X-Reserly-Service-Id` y `X-Reserly-Service-Token`. Los logs nunca
 incluyen bodies, candidatos, texto libre, tokens ni datos personales.
 
+El perfil inicial se calcula mediante `POST
+/internal/demand/v1/venues/{venue_id}/attributes/evaluate` y se consulta con `GET
+/internal/demand/v1/venues/{venue_id}/attributes`. Solo admite el piloto de cuidado personal con cita
+individual y devuelve fuentes/reglas versionadas; Spring debe persistir la proyección porque la caché
+local LRU no es autoritativa ni durable.
+
 ## Tests
 
 ```powershell

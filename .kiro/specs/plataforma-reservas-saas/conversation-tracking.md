@@ -9436,3 +9436,27 @@ Fuente de verdad del avance:
   - `/events` valida pero no persiste: Spring conserva la ingesta canónica e idempotente.
   - No hay rutas equivalentes en `/api` ni acceso de navegador; Compose sigue ligado a loopback.
   - La suite acumulada ejecuta 9 casos sin fallos, incluido OpenAPI, auth y límites opacos.
+
+# Conversación 214 - Perfil inicial interpretable de local
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementó un constructor determinista de perfiles desde formulario allowlisted, catálogo de
+    servicios, texto localizado ES/EN y snapshot operativo agregado y reciente.
+  - Se añadieron reglas explícitas de cabello y estética, agregación ponderada, confianza combinada,
+    trazas por regla/fuente, versión fija y vigencias coherentes con la ontología.
+  - Se habilitó evaluación interna autenticada y lectura desde una caché LRU acotada, manteniendo a
+    Spring como persistencia autoritativa.
+- Archivos modificados:
+  - Nuevo `profiles.py`, router/factoría FastAPI, `test_profiles.py`, documentación HTTP y cuatro
+    documentos `.kiro`.
+- Requisitos impactados: RF-034, RF-035, RF-036, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y
+  RNF-015.
+- Tareas impactadas: 20.3; prepara 20.4, 20.5, 20.8 y 20.12.
+- Tareas completadas: 20.3.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.4.
+- Decisiones o aclaraciones relevantes:
+  - No se infieren `calmAtmosphere`, `privateExperience`, atención o consistencia desde marketing.
+  - Texto e IDs de servicio son transitorios y nunca aparecen en perfil, cache, respuesta o log.
+  - Salud/medicina, vertical no aprobada y capacidad distinta de uno fallan de forma cerrada.
+  - `npm run test:demand` ejecuta 14 casos sin fallos y valida fuentes/TTL contra la ontología JSON.

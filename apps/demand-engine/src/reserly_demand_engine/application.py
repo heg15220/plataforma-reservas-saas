@@ -13,6 +13,7 @@ from .config import DemandEngineSettings
 from .errors import DemandEngineError
 from .health import RuntimeState, health_router
 from .middleware import DemandEngineBoundaryMiddleware
+from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 
 
 def create_app(
@@ -29,7 +30,8 @@ def create_app(
     )
     app.state.settings = settings
     app.state.runtime = state or RuntimeState()
-    app.state.venue_profiles = {}
+    app.state.venue_profiles = InMemoryVenueProfileRepository()
+    app.state.venue_profile_builder = VenueProfileBuilder()
     app.add_middleware(DemandEngineBoundaryMiddleware, settings=settings)
     app.include_router(health_router(app.state.runtime))
     app.include_router(internal_api_router(settings))

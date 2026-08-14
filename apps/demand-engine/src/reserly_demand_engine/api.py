@@ -21,6 +21,7 @@ from .contracts import (
     VenueAttributesResponse,
 )
 from .errors import DemandEngineError
+from .profiles import VenueProfileRequest
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -56,6 +57,22 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
         profile = request.app.state.venue_profiles.get(venue_id)
         if profile is None:
             raise DemandEngineError("VENUE_PROFILE_NOT_FOUND", 404)
+        return profile.model_copy(update={"requestId": UUID(request.state.request_id)})
+
+    @router.post(
+        "/venues/{venue_id}/attributes/evaluate",
+        response_model=VenueAttributesResponse,
+    )
+    async def evaluate_venue_attributes(
+        venue_id: UUID,
+        body: VenueProfileRequest,
+        request: Request,
+    ) -> VenueAttributesResponse:
+        """Calcula una proyección interpretable; Spring conserva la persistencia autoritativa."""
+        if venue_id != body.venueId:
+            raise DemandEngineError("VENUE_ID_MISMATCH", 409)
+        profile = request.app.state.venue_profile_builder.build(body)
+        request.app.state.venue_profiles.put(profile)
         return profile
 
     @router.post("/conversion/predict", response_model=ConversionPredictResponse)

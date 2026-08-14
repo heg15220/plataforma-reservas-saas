@@ -36185,3 +36185,75 @@ Riesgos y deuda: no hay aún generación, scoring o modelo; Spring debe ejecutar
 La consulta GET usa una policy bootstrap por defecto y deberá recibir la versión efectiva desde el
 cliente interno al activarse. 20.3 instalará cálculo de perfil interpretable; 20.4+ versionará modelos
 y 20.10 volverá a verificar restricciones duras después de la generación, nunca solo al entrar.
+
+## Iteración 2026-08-14 - Tarea 20.3: perfil inicial interpretable de local
+
+### Objetivo, alcance y modelo de entrada
+
+- Identificador exacto: 20.3.
+- Objetivo técnico: transformar fuentes ya gobernadas por Spring en atributos de local reproducibles,
+  explicables y minimizados para el MVP de cuidado personal.
+- Requisitos y diseño: RF-034, RF-035, RF-036, RF-038, RNF-002, RNF-005, RNF-006, RNF-014 y
+  RNF-015; secciones 14.1, 14.2, 14.3, 14.6, 14.12, 14.17, 14.20 y ADR-0001.
+
+`profiles.py` define `VenueProfileRequest`: el envelope 20.2, venue UUID, vertical literal
+`personalCareIndividualAppointment`, categoría cerrada a `peluqueria`/`centro-de-estetica`, hasta 16
+declaraciones de formulario permitidas por la ontología, texto localizado opcional, hasta 100
+servicios y un snapshot operacional agregado. Cada servicio debe estar activo, usar capacidad
+simultánea exactamente uno, aportar nombre ES, nombre EN opcional y duración 5..480 minutos. El
+snapshot operativo incluye timestamp zonificado, tamaño de muestra, ratios/slots acotados y flags
+operativos; debe ser contemporáneo al request con máximo cinco minutos y tolerancia de reloj de cinco
+segundos. Un request sin fuente falla.
+
+La allowlist de formulario contiene solo atributos cuyo `allowedSources` incluye
+`venueDeclaration`. Accesibilidad solo se acepta como declaración explícita; no se deduce de texto o
+imagen. El texto se normaliza con casefold, NFKD, retirada de diacríticos y espacios, se mantiene solo
+en memoria durante la llamada y reconoce reglas bilingües cerradas para moderno, clásico, luz natural
+y servicio multilingüe. No clasifica ambiente tranquilo/animado, experiencia privada, atención,
+consistencia ni rasgos subjetivos porque sus fuentes requieren agregados de clientes. Una denylist
+de medicina/salud, inyecciones, Botox, filler, dental y psicología rechaza el snapshot completo.
+
+### Clasificación, agregación, vigencia y flujos
+
+El catálogo reconoce corte, color, peinado, tratamiento capilar, facial, corporal, uñas y maquillaje
+en ES/EN. Las clases hijas incorporan `hairServices` o `skinCareServices`; cualquier catálogo activo
+produce información estructurada transparente. Con al menos tres servicios se calcula duración media
+relativa normalizada a 240 minutos, respetando `minimumEvidence=3`. Operación calcula puntualidad,
+disponibilidad del día/tarde/fin de semana/horas valle, duración media, reserva online, cancelación
+flexible y elección de profesional. Los contadores se escalan a [0,1] y ratios se conservan acotados.
+
+Cada `_Evidence` contiene exclusivamente código, score, confianza, fuente y regla. Por atributo se
+calcula media ponderada por confianza y confianza combinada `1-product(1-c)`, limitada a 0,99. La
+salida se ordena por código y expone `venue-profile-rules-v1`, `personal-care.v1`, timestamp, fuentes,
+reglas y `validUntil`. Los TTL (1, 7, 30 o 365 días) replican la ontología; atributos estables usan
+vigencia hasta retirada. No se devuelven texto, IDs de servicio, términos detectados o evidencia
+personal. Una prueba contractual cruza toda salida contra `allowedSources` y TTL del JSON canónico.
+
+`POST /internal/demand/v1/venues/{id}/attributes/evaluate` requiere la autenticación 20.1/20.2,
+comprueba igualdad entre path/body, construye el perfil y responde la proyección. Spring debe guardar
+ese resultado en las tablas gobernadas de fase 19; el motor conserva una caché LRU thread-safe de
+10.000 perfiles únicamente para `GET /venues/{id}/attributes`. La caché no amplía vigencia, expulsa
+el menos reciente, desaparece al reiniciar y nunca reemplaza la base. GET sustituye el request ID
+original por la correlación actual. Un mismatch devuelve 409 opaco; ausencia, 404 opaco.
+
+### Archivos, seguridad, i18n, pruebas y riesgos
+
+Se creó `profiles.py` y `test_profiles.py`; se modificaron `application.py`, `api.py`, el contrato HTTP
+y los documentos de especificación. No hay migraciones nuevas: reutilizar la persistencia gobernada
+de fase 19 corresponde al adaptador Spring futuro. No hay red, modelo ML, imágenes, PII, cookies,
+precio, promoción, grupo, menor o capacidad mutable. ES/EN se procesan de forma equivalente y las
+reglas usan códigos estables, no textos de explicación al usuario. Middleware conserva 200 ms,
+64 KiB, logs minimizados y errores sin detalles.
+
+Evidencia: `npm run test:demand` ejecutó 14 casos, cero fallos. Los cinco casos nuevos cubren fuentes
+múltiples, clasificación de peluquería y estética, orden determinista, TTL, trazabilidad, ausencia de
+texto/IDs, exclusión de atributos subjetivos, ontología fuente-vigencia, rechazo de salud/vertical y
+capacidad, endpoint autenticado, nueva correlación, caché y mismatch. `python -m compileall -q
+apps/demand-engine/src apps/demand-engine/tests packages/demand-contracts/src` y `git diff --check`
+se usan como cierre.
+
+Riesgos y deuda: las keywords son un baseline conservador y pueden producir falsos negativos; no se
+deben ampliar sin dataset, evaluación y versión nueva. La denylist es defensa adicional, no sustituye
+el filtro categórico autoritativo de Spring. La caché no es distribuida ni durable. 20.4 debe evaluar
+un modelo multilingüe sin retirar estas reglas auditables; 20.5 deberá generar derivados idempotentes
+y 20.8 combinar afinidad manteniendo trazas y gobierno de fuentes.
