@@ -9332,3 +9332,22 @@ Fuente de verdad del avance:
     futuro deberá integrarse en acceso/supresión antes de activarse.
   - Se aplaza particionado hasta datos reales: 5 millones de filas, 1 GiB o p95 de borrado superior
     a 2 s en siete ejecuciones. Flyway V1-V51 y las suites focalizadas pasan.
+
+# Conversación 209 - Calidad del dataset fundacional
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementó una auditoría agregada para completitud, duplicidad, orden temporal,
+    consentimiento y fuga de PII sobre ventanas UTC acotadas.
+  - Se añadió ejecución interna bajo demanda y monitor horario con gauges sin alta cardinalidad.
+- Archivos modificados:
+  - Nuevo paquete backend `demand.quality`, configuración cron y prueba PostgreSQL.
+  - Diseño, tareas, seguimiento y documento técnico único.
+- Requisitos impactados: RF-033, RF-034, RNF-002, RNF-005, RNF-014 y RNF-015.
+- Tareas impactadas: 19.19; prepara 19.20, 19.21 y la puerta de calidad de fase 20.
+- Tareas completadas: 19.19.
+- Siguiente tarea pendiente recomendada: 17.1; en fase 19, 19.20.
+- Decisiones o aclaraciones relevantes:
+  - Los resultados nunca contienen muestras, identificadores ni contexto; solo tiempos y contadores.
+  - Las constraints siguen siendo primera barrera; el auditor detecta drift y cargas fuera de API.
+  - La prueba PostgreSQL detecta email dentro de una clave permitida y preserva la minimización.

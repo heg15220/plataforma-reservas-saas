@@ -115,6 +115,8 @@ reserly:
       requests: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_REQUESTS:600}
       window: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_WINDOW:1m}
   demand:
+    quality:
+      cron: "${DEMAND_QUALITY_CRON:0 15 * * * *}"
     retention:
       batchSize: ${RESERLY_DEMAND_RETENTION_BATCH_SIZE:500}
       eventRetention: ${RESERLY_DEMAND_EVENT_RETENTION:90d}

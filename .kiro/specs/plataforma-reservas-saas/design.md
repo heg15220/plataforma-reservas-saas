@@ -3217,6 +3217,11 @@ derivados reconstruibles sin tocar reservas, pagos ni evidencia legal operativa.
 
 - Contratos: compatibilidad de esquemas, idempotencia, lotes y eventos tardíos.
 - Datos: calidad, completitud, duplicidad, PII, consentimiento, leakage y separación temporal.
+- Implementación 19.19: una auditoría SQL agregada revisa ventanas UTC acotadas y devuelve solo
+  contadores de incompletitud, IDs duplicados, orden temporal, consentimiento y PII. La detección de
+  PII cubre claves prohibidas y patrones de email/teléfono incluso ante escrituras fuera de la API;
+  nunca devuelve muestras, UUID ni contexto. Un monitor horario publica gauges de cardinalidad baja
+  y la frontera interna permite auditoría manual autenticada.
 - Ranking: restricciones duras, determinismo, fallback, explicación, diversidad y locales nuevos.
 - Modelos: baseline, calibración, intervalos, robustez, sesgo, reproducibilidad y model cards.
 - Experimentos: asignación estable, exclusión mutua, contaminación y cálculo de métricas.

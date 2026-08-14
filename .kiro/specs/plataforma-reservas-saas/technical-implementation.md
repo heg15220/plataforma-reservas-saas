@@ -35960,3 +35960,39 @@ Flyway a 51. `DemandRetentionIntegrationTests` comprobó que solo se elimina la 
 vigente permanece. Las tres suites Maven focalizadas pasaron y Flyway aplicó 51 migraciones. Riesgos:
 medir backlog/duración y alertar en 19.20; ejecutar el runbook de particionado solo tras la puerta;
 versionar cualquier cambio de plazo y aplicarlo prospectivamente, nunca alargando filas existentes.
+
+## Iteración 2026-08-14 - Tarea 19.19: calidad del dataset fundacional
+
+### Objetivo, requisitos y arquitectura
+
+- Tarea exacta: 19.19.
+- Objetivo: impedir que datasets con filas incompletas, duplicadas, temporalmente imposibles, sin
+  consentimiento válido o con PII se consideren aptos para agregación o aprendizaje.
+- Requisitos y diseño: RF-033, RF-034, RNF-002, RNF-005, RNF-014 y RNF-015; 14.13, 14.17 y 14.18.
+
+`DemandDatasetQualityService` ejecuta una sola lectura agregada sobre una ventana UTC positiva y
+máxima de 31 días. Cuenta: campos fundacionales nulos; excedente de filas por `eventId`; ocurrencia
+posterior a recepción, recepción posterior a creación o expiración no futura; eventos vinculados sin
+consentimiento o producidos después de revocación/antes de consentimiento; y contexto que contenga
+claves prohibidas, email o teléfono plausible. Los joins solo se usan dentro de SQL; el resultado no
+extrae HMAC, UUID, JSON, ejemplos ni valores coincidentes.
+
+Las constraints de V45/V46 siguen rechazando la mayor parte de anomalías al escribir. Esta segunda
+capa detecta drift de migraciones, importaciones heredadas o acceso directo que haya evitado la API.
+`DemandDatasetQualityReport.valid()` falla cerrado ante cualquier contador no cero. La frontera
+autenticada `GET /api/internal/demand/v1/quality?hours=24` limita 1..744 horas. El monitor horario
+actualiza cinco gauges `reserly.demand.dataset.quality{dimension=...}` sin IDs ni tipos de evento;
+un fallo conserva la lectura previa y queda visible por el mecanismo de jobs de Spring.
+
+### Archivos, seguridad, pruebas y riesgos
+
+Se crearon report, servicio, controller, monitor y `package-info` bajo `demand.quality`; se añadió
+`reserly.demand.quality.cron` a `application.yaml`. El namespace ya exige autenticación de servicio
+y rol `DEMAND_INGESTOR`. `DemandDatasetQualityIntegrationTests` aplica Flyway V1-V51 en PostgreSQL
+17.5, inserta un evento limpio y otro con email oculto en `approximateZone`, verifica un único hallazgo
+sin exponerlo en el DTO y comprueba el límite de ventana. Maven compila y ejecuta dos casos.
+
+Durante la primera prueba el operador JSONB `?|` fue interpretado por JDBC como placeholder; se
+sustituyó por `jsonb_exists_any`, semánticamente equivalente y segura en prepared statements. Riesgos:
+los patrones son deliberadamente conservadores y pueden requerir calibración; 19.20 debe presentar
+los contadores junto a volumen/cobertura, y 19.21 ampliará la matriz de contrato e idempotencia.

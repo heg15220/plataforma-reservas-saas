@@ -394,7 +394,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 19.16. Crear política y UI ES/EN de consentimiento separado para analítica, personalización y activación comercial, sin bloquear la reserva operativa.
 - [x] 19.17. Implementar acceso, corrección, oposición, revocación, desvinculación y supresión para identidades, eventos, perfiles y resultados derivados.
 - [x] 19.18. Definir retención, particionado temporal, índices, umbrales de agregación y estrategia de borrado de eventos y rankings.
-- [ ] 19.19. Implementar validaciones de calidad, completitud, duplicidad, orden temporal, consentimiento y fuga de PII sobre el dataset fundacional.
+- [x] 19.19. Implementar validaciones de calidad, completitud, duplicidad, orden temporal, consentimiento y fuga de PII sobre el dataset fundacional.
 - [ ] 19.20. Crear dashboards internos de volumen, rechazo, duplicados, latencia y cobertura de instrumentación por evento y versión.
 - [ ] 19.21. Crear tests unitarios, integración PostgreSQL, contrato, privacidad e idempotencia del sistema de eventos, identidad y ontología.
 
