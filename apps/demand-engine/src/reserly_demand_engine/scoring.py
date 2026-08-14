@@ -16,6 +16,7 @@ from .fallback import (
     FallbackReason,
     FallbackSignals,
 )
+from .explanations import ExplanationBuilder, ExplanationPermissions, RankingExplanation
 
 
 ComponentCode = Literal[
@@ -92,6 +93,7 @@ class ScoreCandidate(StrictContract):
     quality: float = Field(ge=0, le=1)
     exploration: float = Field(ge=0, le=1)
     fallback: FallbackSignals
+    explanationPermissions: ExplanationPermissions
 
 
 class ScoreMvpRequest(RequestEnvelope):
@@ -126,6 +128,7 @@ class RankedCandidate(StrictContract):
     score: float | None = Field(default=None, ge=0, le=1)
     contributions: list[ScoreContribution] = Field(default_factory=list, max_length=7)
     fallbackEvidence: list[FallbackEvidence] = Field(default_factory=list, max_length=5)
+    explanations: list[RankingExplanation] = Field(default_factory=list, max_length=2)
 
 
 class ExcludedCandidate(StrictContract):
@@ -161,9 +164,15 @@ class ScoreMvp:
         "capacityNeed", "quality", "exploration",
     )
 
-    def __init__(self, policy: ScorePolicy, fallback: DeterministicFallback) -> None:
+    def __init__(
+        self,
+        policy: ScorePolicy,
+        fallback: DeterministicFallback,
+        explanations: ExplanationBuilder,
+    ) -> None:
         self._policy = policy
         self._fallback = fallback
+        self._explanations = explanations
 
     def rank(self, request: ScoreMvpRequest) -> ScoreMvpResponse:
         if request.policyVersion != self._policy.policyVersion:
@@ -191,7 +200,20 @@ class ScoreMvp:
                 str(item.serviceId) if item.serviceId is not None else "",
             )
         )
-        ranked = [item.model_copy(update={"position": index}) for index, item in enumerate(scored, 1)]
+        by_key = {(item.venueId, item.serviceId): item for item in eligible}
+        ranked = [
+            item.model_copy(
+                update={
+                    "position": index,
+                    "explanations": self._explanations.build_score(
+                        request.locale,
+                        item.contributions,
+                        by_key[(item.venueId, item.serviceId)].explanationPermissions,
+                    ),
+                }
+            )
+            for index, item in enumerate(scored, 1)
+        ]
         return ScoreMvpResponse(
             requestId=request.requestId, policyVersion=self._policy.policyVersion,
             modelVersion=self._policy.modelVersion,
@@ -211,12 +233,18 @@ class ScoreMvp:
         excluded: list[ExcludedCandidate],
     ) -> ScoreMvpResponse:
         fallback_ranked = self._fallback.rank(eligible)
+        by_key = {(item.venueId, item.serviceId): item for item in eligible}
         items = [
             RankedCandidate(
                 venueId=item.venueId,
                 serviceId=item.serviceId,
                 position=index,
                 fallbackEvidence=item.evidence,
+                explanations=self._explanations.build_fallback(
+                    request.locale,
+                    item.evidence,
+                    by_key[(item.venueId, item.serviceId)].explanationPermissions,
+                ),
             )
             for index, item in enumerate(fallback_ranked, 1)
         ]

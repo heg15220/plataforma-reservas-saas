@@ -4144,3 +4144,20 @@ a la tercera posición; el resto conserva el orden base. El resultado usa modelo
 `fallbackApplied=true`. Esto evita presentar una suma inventada como probabilidad o relevancia. Si no
 queda elegible, el fallback tampoco produce elementos. El artefacto se valida al arrancar y cambiar
 umbrales o cuota exige nueva versión y evaluación.
+
+### 14.30 Explicaciones trazables ES/EN
+
+`explanation-mvp-v1.json` contiene seis plantillas editoriales cerradas con código, fuente, modo,
+permiso requerido y texto ES/EN. La respuesta admite exactamente un máximo de dos. Para ScoreMvp solo
+son explicables afinidad, disponibilidad y proximidad: la contribución real debe ser al menos 0,03 y
+se ordena descendente. Conversión, necesidad de capacidad, calidad y exploración permanecen internas.
+Afinidad exige personalización permitida, proximidad permiso de ubicación y disponibilidad confirmación
+de que la señal es visible. No se deducen intenciones, rasgos psicológicos ni causalidad.
+
+En fallback no existe contribución aditiva: se seleccionan por prioridad únicamente evidencias con
+`applied=true`, valor mínimo 0,50 y permiso de visibilidad. Popularidad, rating, disponibilidad,
+proximidad y novedad conservan el valor y la regla reales; una muestra insuficiente nunca produce
+texto. Cada explicación devuelve código, locale, plantilla localizada, fuente, valor, contribución
+cuando existe y `explanation-mvp-v1`. Spring entrega una allowlist booleana por candidato y es
+responsable de que corresponda al consentimiento, permisos y superficie pública actuales. La política
+se carga al arrancar; no hay LLM, interpolación libre ni texto procedente de usuario o reseña.

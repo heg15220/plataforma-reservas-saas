@@ -36745,3 +36745,78 @@ Popularidad contextual debe venir agregada por categoría/zona con privacidad su
 no calcula el agregado. La cuota de una alternativa controla cada respuesta, no exposición global;
 20.15/23.7 deberán monitorizarla. Spring sigue siendo responsable de activar fallback por circuit
 breaker y de persistir la razón. 20.12 seleccionará texto solo desde evidencia marcada `applied=true`.
+
+## Iteración 2026-08-14 - Tarea 20.12: explicaciones ES/EN desde evidencia real
+
+### Objetivo, política editorial y contrato
+
+- Identificador exacto: 20.12.
+- Objetivo técnico: explicar una recomendación con mensajes comprensibles y localizados que puedan
+  trazarse hasta el cálculo ejecutado, sin convertir correlaciones o señales internas en afirmaciones
+  causales, psicológicas o personales.
+- Requisitos/diseño: RF-034, RF-035 y RF-036; RNF-002, RNF-005, RNF-006 y RNF-015; secciones 14.8,
+  14.9, 14.10, 14.17, 14.26-14.30.
+
+Se creó `policies/explanation-mvp.v1.json`. El artefacto fija schema/política
+`explanation-mvp-v1`, máximo exacto de dos mensajes, contribución ScoreMvp mínima 0,03 y valor
+fallback mínimo 0,50. Contiene seis plantillas con código técnico uppercase, componente fuente, modo
+`score|fallback|both`, permiso obligatorio y textos literales ES/EN de hasta 160 caracteres. La carga
+Pydantic rechaza claves extra, umbrales fuera de [0,1], fuentes duplicadas, locale ausente, código no
+allowlisted o cardinalidad distinta de dos. Fallar política impide arrancar; no existe fallback de
+texto improvisado.
+
+Las plantillas cubren coincidencia de contexto, disponibilidad, cercanía, popularidad contextual,
+valoración con muestra y opción nueva elegible. Su redacción usa términos observables como
+“coincide”, “disponibilidad”, “cercana” o “muestra suficiente”; no afirma que la persona prefiera un
+rasgo de personalidad, que una señal cause la reserva ni que un local sea objetivamente mejor. No se
+ingiere texto libre, reseña, consulta, descripción, identidad o contenido remoto. ES y EN se eligen
+por el locale validado del sobre, sin traducción automática en runtime.
+
+### Selección ScoreMvp, fallback y permisos
+
+`explanations.py` define contratos inmutables para política, permisos y salida.
+`ExplanationPermissions` recibe por candidato seis decisiones de Spring: personalización,
+disponibilidad visible, ubicación, popularidad, rating y novedad. Es una allowlist contextual, no una
+base jurídica resuelta por Python. Afinidad requiere `personalization=true`; proximidad requiere
+`location=true`; las demás exigen que el caller confirme su visibilidad. Esto permite que dos
+candidatos del mismo ranking tengan superficies explicables distintas sin filtrar el estado concreto
+del consentimiento.
+
+`build_score` cruza las siete contribuciones exactas de 20.9 con el catálogo. Solo afinidad,
+disponibilidad y proximidad tienen plantilla ScoreMvp. Excluye señal bajo 0,03 o sin permiso, ordena
+por contribución descendente/código y toma dos. Conversión, necesidad de capacidad, calidad y
+exploración no tienen plantilla y nunca se explican aunque dominen el score. Cada resultado conserva
+`sourceValue` y `sourceContribution`, por lo que la afirmación puede reconstruirse y auditarse.
+
+`build_fallback` consume las cinco evidencias de 20.11. Exige `applied=true`, valor al menos 0,50 y
+permiso; ordena por la prioridad lexicográfica realmente ejecutada y limita a dos. No calcula ni
+rellena contribución: `sourceContribution=null` expresa honestamente que el fallback no es aditivo.
+Rating con muestra insuficiente, cercanía sin permiso o novedad sin guardrail llevan `applied=false`
+y no pueden producir texto. Candidatos excluidos por 20.10 carecen de item y explicación.
+
+`RankedCandidate.explanations` contiene código, locale, texto, fuente, valor, contribución opcional y
+versión. `ScoreMvp` construye un mapa por pareja venue/service después de restricciones y adjunta los
+mensajes al ordenar, tanto en modo ponderado como fallback. No cambia score, posición, elegibilidad ni
+evidencia; la explicación es una proyección derivada y reproducible.
+
+### Archivos, pruebas, seguridad, i18n y evidencia
+
+Se crearon `explanation-mvp.v1.json`, `explanations.py` y `test_explanations.py`; se modificaron
+`scoring.py`, `application.py`, fixtures de scoring/fallback/API, documentación HTTP y cuatro archivos
+`.kiro`. No hubo migración porque V47 ya conserva componentes JSON y política; Spring deberá incluir
+la proyección al persistir/servir la recomendación. No hubo UI: 20.16 decidirá presentación accesible,
+responsive y reducción de movimiento.
+
+Los tests unitarios verifican selección de las dos mayores contribuciones, valor/contribución exactos,
+texto español, supresión simultánea de afinidad y proximidad sin permiso, exclusión de conversión y
+umbral, textos ingleses de fallback, rechazo de evidencia `applied=false` y contribución nula en
+reglas. Las pruebas HTTP verifican máximo dos, locale español, códigos esperados en fallback y que la
+salida mantiene score/modelo correctos. La suite de cierre ejecuta `npm run test:demand`, seguida de
+`compileall` y `git diff --check`.
+
+Seguridad/privacidad: no se registra payload ni explicación; no se expone el motivo de permisos; no
+se usa un LLM; no se concatena contenido controlado por cliente. Internacionalización: ambos idiomas
+son obligatorios por plantilla y el locale es cerrado ES/EN. Observabilidad futura puede contar
+códigos/política sin texto. Riesgos: las plantillas requieren revisión UX/legal antes de exposición y
+las traducciones aún no viven en el catálogo web porque la integración UI corresponde a 20.16. Un
+cambio de redacción o umbral debe crear una nueva versión para conservar reproducibilidad histórica.

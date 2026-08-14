@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import UUID
 
 from reserly_demand_engine.fallback import DeterministicFallback, FallbackPolicy
+from reserly_demand_engine.explanations import ExplanationBuilder, ExplanationPolicy
 from reserly_demand_engine.scoring import ScoreMvp, ScoreMvpRequest, ScorePolicy
 
 
@@ -20,7 +21,8 @@ class DeterministicFallbackTests(unittest.TestCase):
             FallbackPolicy.load(ROOT / "policies" / "fallback-mvp.v1.json")
         )
         self.ranker = ScoreMvp(
-            ScorePolicy.load(ROOT / "policies" / "score-mvp.v1.json"), fallback
+            ScorePolicy.load(ROOT / "policies" / "score-mvp.v1.json"), fallback,
+            ExplanationBuilder(ExplanationPolicy.load(ROOT / "policies" / "explanation-mvp.v1.json")),
         )
 
     def _candidate(self, suffix: int, **signals: object) -> dict[str, object]:
@@ -43,6 +45,10 @@ class DeterministicFallbackTests(unittest.TestCase):
             "affinity": 0.5, "conversion": 0.5, "proximity": 0.5,
             "availability": 0.5, "capacityNeed": 0.5, "quality": 0.8,
             "exploration": 0.0, "fallback": fallback,
+            "explanationPermissions": {
+                "personalization": True, "availability": True, "location": True,
+                "popularity": True, "rating": True, "novelty": True,
+            },
         }
 
     def _request(self, candidates: list[dict[str, object]]) -> ScoreMvpRequest:

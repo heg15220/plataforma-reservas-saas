@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "explanation-mvp-v1",
+  "maximumExplanations": 2,
+  "minimumScoreContribution": 0.03,
+  "minimumFallbackValue": 0.50,
+  "templates": [
+    {
+      "code": "CONTEXT_MATCH",
+      "sourceComponent": "affinity",
+      "sourceMode": "score",
+      "requiredPermission": "personalization",
+      "text": {
+        "es": "Coincide con los filtros y preferencias que has permitido.",
+        "en": "It matches the filters and preferences you allowed."
+      }
+    },
+    {
+      "code": "GOOD_AVAILABILITY",
+      "sourceComponent": "availability",
+      "sourceMode": "both",
+      "requiredPermission": "availability",
+      "text": {
+        "es": "Tiene buena disponibilidad para tu búsqueda.",
+        "en": "It has good availability for your search."
+      }
+    },
+    {
+      "code": "NEARBY_OPTION",
+      "sourceComponent": "proximity",
+      "sourceMode": "both",
+      "requiredPermission": "location",
+      "text": {
+        "es": "Está entre las opciones más cercanas para esta búsqueda.",
+        "en": "It is among the closest options for this search."
+      }
+    },
+    {
+      "code": "POPULAR_IN_CONTEXT",
+      "sourceComponent": "contextualPopularity",
+      "sourceMode": "fallback",
+      "requiredPermission": "popularity",
+      "text": {
+        "es": "Es una opción popular en este contexto de búsqueda.",
+        "en": "It is a popular option in this search context."
+      }
+    },
+    {
+      "code": "WELL_RATED",
+      "sourceComponent": "rating",
+      "sourceMode": "fallback",
+      "requiredPermission": "rating",
+      "text": {
+        "es": "Tiene buenas valoraciones con una muestra suficiente.",
+        "en": "It has good ratings with a sufficient sample."
+      }
+    },
+    {
+      "code": "NEW_ELIGIBLE_OPTION",
+      "sourceComponent": "novelty",
+      "sourceMode": "fallback",
+      "requiredPermission": "novelty",
+      "text": {
+        "es": "Es una opción nueva que cumple los filtros de tu búsqueda.",
+        "en": "It is a new option that matches your search filters."
+      }
+    }
+  ]
+}

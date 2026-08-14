@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from reserly_demand_engine.scoring import ScoreMvp, ScoreMvpRequest, ScorePolicy
 from reserly_demand_engine.fallback import DeterministicFallback, FallbackPolicy
+from reserly_demand_engine.explanations import ExplanationBuilder, ExplanationPolicy
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +24,11 @@ class ScoreMvpTests(unittest.TestCase):
         self.fallback = DeterministicFallback(
             FallbackPolicy.load(ROOT / "policies" / "fallback-mvp.v1.json")
         )
-        self.scorer = ScoreMvp(self.policy, self.fallback)
+        self.scorer = ScoreMvp(
+            self.policy,
+            self.fallback,
+            ExplanationBuilder(ExplanationPolicy.load(ROOT / "policies" / "explanation-mvp.v1.json")),
+        )
 
     def _candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
         return {
@@ -33,6 +38,10 @@ class ScoreMvpTests(unittest.TestCase):
             "availability": 0.8, "capacityNeed": 0.4, "quality": 0.6,
             "exploration": 1.0,
             "fallback": self._fallback(),
+            "explanationPermissions": {
+                "personalization": True, "availability": True, "location": True,
+                "popularity": True, "rating": True, "novelty": True,
+            },
         }
 
     def _fallback(self, **overrides: object) -> dict[str, object]:

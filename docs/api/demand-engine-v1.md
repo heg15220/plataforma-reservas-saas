@@ -40,5 +40,10 @@ Cuando Spring informa `fallbackReason`, se omite el score y se aplica una cascad
 popularidad contextual, disponibilidad, valoración con muestra mínima y cercanía con permiso. La
 novedad puede promover como máximo un local con guardrail de calidad. La respuesta usa score nulo,
 expone la política real y cinco evidencias `applied/value/priority`; no simula una probabilidad.
+Cada item puede incluir como máximo dos explicaciones de `explanation-mvp-v1`. En score proceden de
+las mayores contribuciones allowlisted que superan 0,03; en fallback, de evidencia realmente aplicada
+con valor mínimo 0,50. Cada mensaje conserva fuente, valor, contribución cuando existe y locale ES/EN.
+Afinidad, ubicación y demás señales se suprimen si Spring no las marca permitidas/visibles. No se usa
+texto generado ni se explican conversión, capacidad interna, exploración u otras señales opacas.
 Versiones futuras podrán enriquecer la respuesta dentro de un nuevo `schemaVersion`, sin cambiar
 silenciosamente esta semántica.

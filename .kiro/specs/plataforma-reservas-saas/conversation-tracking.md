@@ -9632,3 +9632,24 @@ Fuente de verdad del avance:
   - El fallback devuelve `score=null` y evidencia de reglas porque no representa un modelo aditivo.
   - Popularidad y rating sin muestra suficiente quedan explícitamente no aplicados.
   - La ubicación no participa sin permiso y la novedad nunca supera su cuota/guardrail.
+
+# Conversación 223 - Explicaciones bilingües trazables
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se creó una política cerrada de seis plantillas ES/EN y máximo dos explicaciones por resultado.
+  - ScoreMvp selecciona únicamente contribuciones reales allowlisted sobre umbral; fallback usa solo
+    evidencia de regla marcada como aplicada y no fabrica contribuciones.
+  - Afinidad personalizada, ubicación y señales visibles se suprimen cuando Spring no confirma su
+    permiso; conversión, capacidad interna, calidad y exploración nunca generan texto público.
+- Archivos modificados:
+  - Política JSON, nuevo `explanations.py`, scorer/factoría, pruebas unitarias/HTTP, contrato API y
+    cuatro documentos `.kiro`.
+- Requisitos impactados: RF-034, RF-035 y RF-036; RNF-002, RNF-005, RNF-006 y RNF-015.
+- Tareas impactadas: 20.12; prepara 20.16 y 21.8.
+- Tareas completadas: 20.12.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.13.
+- Decisiones o aclaraciones relevantes:
+  - No existe generación libre, LLM ni interpolación de texto de usuario/reseña.
+  - La salida conserva política, fuente, valor y contribución real cuando el modo es ScoreMvp.
+  - El máximo de dos y los textos ES/EN forman parte del artefacto validado al arrancar.

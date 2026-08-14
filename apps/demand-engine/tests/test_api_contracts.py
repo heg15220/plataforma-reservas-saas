@@ -98,6 +98,10 @@ class InternalApiContractTests(unittest.TestCase):
         )
         self.assertEqual(str(second), response.json()["items"][0]["venueId"])
         self.assertEqual(7, len(response.json()["items"][0]["contributions"]))
+        self.assertEqual(2, len(response.json()["items"][0]["explanations"]))
+        self.assertTrue(
+            all(item["locale"] == "es" for item in response.json()["items"][0]["explanations"])
+        )
 
         body["policyVersion"] = "unknown-v1"
         mismatch = self.client.post(
@@ -127,6 +131,10 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertEqual(str(high), payload["items"][0]["venueId"])
         self.assertIsNone(payload["items"][0]["score"])
         self.assertEqual(5, len(payload["items"][0]["fallbackEvidence"]))
+        self.assertEqual(
+            ["POPULAR_IN_CONTEXT", "GOOD_AVAILABILITY"],
+            [item["code"] for item in payload["items"][0]["explanations"]],
+        )
 
     def _score_candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
         return {
@@ -146,6 +154,10 @@ class InternalApiContractTests(unittest.TestCase):
                 "rating": 0.8, "ratingSampleCount": 10,
                 "proximity": 0.5, "locationPermissionGranted": True,
                 "availability": 0.8, "novelty": 0.0, "isNewVenue": False,
+            },
+            "explanationPermissions": {
+                "personalization": True, "availability": True, "location": True,
+                "popularity": True, "rating": True, "novelty": True,
             },
         }
 

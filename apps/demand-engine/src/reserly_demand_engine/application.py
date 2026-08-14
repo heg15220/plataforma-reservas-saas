@@ -17,6 +17,7 @@ from .embedding_batch import EmbeddingBatchProcessor
 from .embeddings import EmbeddingModelManifest, SentenceTransformerEmbedder, TextEmbedder
 from .health import RuntimeState, health_router
 from .fallback import DeterministicFallback, FallbackPolicy
+from .explanations import ExplanationBuilder, ExplanationPolicy
 from .middleware import DemandEngineBoundaryMiddleware
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
@@ -47,6 +48,7 @@ def create_app(
     app.state.score_mvp = ScoreMvp(
         ScorePolicy.load(policy_root / "score-mvp.v1.json"),
         DeterministicFallback(FallbackPolicy.load(policy_root / "fallback-mvp.v1.json")),
+        ExplanationBuilder(ExplanationPolicy.load(policy_root / "explanation-mvp.v1.json")),
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
