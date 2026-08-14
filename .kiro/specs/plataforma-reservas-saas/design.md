@@ -4044,3 +4044,20 @@ reemplaza vector y ventana de validez. PostgreSQL valida sujeto, ES/EN, versión
 384 dimensiones y vigencia. Se crean índices B-tree de lookup, expiración y checksum. No se crea HNSW:
 el baseline 20.4 no está promovido y el índice aproximado solo se justificará tras benchmark de recall,
 latencia, memoria y volumen. Los artefactos quedan en modo shadow y no alteran elegibilidad ni ranking.
+### 14.24 Recuperación híbrida y filtros duros de candidatos
+
+Spring genera candidatos dentro de una transacción de solo lectura y una única fotografía de datos.
+El corpus combina nombre/descripción de local y servicio; `ts_rank_cd` con diccionario `simple` y
+`reserlyUnaccent` aporta full-text, `pg_trgm.similarity` tolera errores tipográficos y, únicamente tras
+feature gate de promoción, pgvector aporta el máximo coseno válido entre embedding de local y servicio.
+La política activa `hybrid-retrieval-text-v1` pondera 0,65/0,35 full-text/trigram y fuerza vector a
+cero. La política preparada `hybrid-retrieval-vector-v1` pondera 0,55/0,30/0,15 y exige locale,
+versión y vigencia coincidentes. El orden final es score, distancia y UUID para ser reproducible.
+
+Antes del score se exige categoría activa del piloto, local publicado y no marcado unavailable,
+geolocalización dentro de un máximo de 25 km, servicio activo de capacidad requerida uno, servicio
+explícito si fue solicitado y al menos un `TimeSlot` de la fecha con capacidad residual para una
+persona. La capacidad resta reservas confirmadas/pending y holds no vencidos; se excluyen bloques de
+local, servicio o slot. Se devuelve un solo servicio ganador por local con distancia, conteo de huecos
+y componentes de recuperación. V53 añade GIN full-text/trigram y un índice parcial de disponibilidad;
+no añade HNSW mientras la promoción vectorial siga cerrada.

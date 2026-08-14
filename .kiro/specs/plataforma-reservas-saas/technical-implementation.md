@@ -36386,3 +36386,71 @@ HNSW ni uso online mientras el modelo no sea promovido. La eliminación de un ve
 una política de purga de derivados; por ahora vencimiento/checksum/versionado evitan consumo obsoleto.
 20.6 debe generar candidatos con full-text/trigram activos y componente vectorial explícitamente cero;
 20.8 podrá usar estos artefactos únicamente después de una evaluación aprobada.
+
+## Iteración 2026-08-14 - Tarea 20.6: generación híbrida con filtros autoritativos
+
+### Objetivo, contrato y política de recuperación
+
+- Identificador exacto: 20.6.
+- Objetivo técnico: recuperar un conjunto acotado y reproducible de venue/servicio combinando señales
+  léxicas y vectoriales sin permitir que relevancia invalide publicación, geografía o capacidad.
+- Requisitos/diseño: RF-033, RF-034, RF-036 y RF-038; RNF-002, RNF-005, RNF-006 y RNF-015;
+  secciones 14.2, 14.7, 14.9, 14.10, 14.22-14.24.
+
+`HybridCandidateQuery` recibe consulta de hasta 240 caracteres, locale ES/EN, una de las dos
+categorías piloto, coordenadas, radio máximo 25 km, fecha, servicio opcional, party size fijo uno,
+límite 1-100, instante de evaluación y vector opcional de 384 valores finitos. El constructor falla
+cerrado ante cualquier contexto fuera del piloto. `HybridCandidate` devuelve exclusivamente IDs de
+venue/servicio, categoría, distancia, cantidad de slots y cuatro componentes de recuperación, junto a
+la versión de política; no expone texto, ubicación exacta, identidad ni datos de reserva.
+
+`HybridCandidateServiceImpl` ejecuta una consulta JDBC parametrizada dentro de transacción read-only.
+El documento léxico concatena nombres/descripciones públicas de venue y servicio, normaliza con la
+función inmutable `reserlyUnaccent`, calcula `ts_rank_cd` frente a `websearch_to_tsquery('simple')` y
+toma la mayor similitud trigram de venue/servicio. La rama predeterminada
+`hybrid-retrieval-text-v1` calcula `0.65*fullText + 0.35*trigram` y materializa `vectorScore=0.0`.
+`RESERLY_DEMAND_VECTOR_ENABLED` vale false por defecto porque 20.4 no superó calidad. Si una promoción
+explícita lo habilita y existe query vector, la rama `hybrid-retrieval-vector-v1` enlaza embeddings de
+venue y service por modelo, locale y vigencia, toma el mejor coseno no negativo y pondera
+0.55/0.30/0.15. Un embedding ausente o vencido aporta cero. La selección usa `row_number` para emitir
+un servicio ganador por venue y ordena por score, distancia y UUID, haciendo reproducibles los ties.
+
+### Elegibilidad, capacidad e índices
+
+Los filtros ocurren dentro del CTE previo al ranking: `Venues.status=published`, disponibilidad manual
+distinta de unavailable, location no nula y `ST_DWithin`; categoría activa, slug solicitado y allowlist
+`peluqueria|centro-de-estetica`; servicio activo, `capacityRequired=1` e ID exacto cuando se solicita.
+Un lateral exige al menos un slot `available` para la fecha y servicio. Se excluyen
+`AvailabilityBlocks` de venue, service o slot. La capacidad residual resta `partySize` de reservas
+pending/confirmed y holds cuyo `holdExpiresAt` supera el instante inyectado; debe quedar al menos uno.
+Esto evita depender del reloj de base en tests y permite repetir exactamente una decisión. La ruta de
+reserva mantiene su propio lock y revalidación: este resultado es candidato, nunca garantía ni hold.
+
+Flyway V53 crea GIN full-text parcial de venues publicados, GIN full-text y trigram parcial de
+servicios activos de capacidad uno y B-tree parcial de slots disponibles con capacidad incluida. Los
+documentos indexados contienen nombres, descripciones y variantes ES/EN públicas. Se reutilizan GiST
+de `Venues.location`, trigram de venue y los índices de reservas existentes. No se crea HNSW: el
+volumen y la calidad aún no justifican ANN y la rama activa no consulta vector.
+
+### Archivos, seguridad, pruebas, observabilidad y riesgos
+
+Se crearon V53, `package-info`, configuración tipada, records de consulta/resultado, interfaz y
+servicio en `demand.candidate`, además de `HybridCandidateIntegrationTests`; se añadió la feature gate
+a `application.yaml` y se actualizaron los cuatro documentos `.kiro`. No se creó endpoint público ni
+acceso desde navegador. Todo SQL usa parámetros, el vector se valida antes de serializarse y no se
+registran consulta, coordenadas, slots ni reservas. Los códigos de política permiten auditar qué
+componentes participaron; 20.9/20.12 incorporarán scoring final y explicaciones de usuario.
+
+La suite física compiló 949 fuentes y 225 tests, aplicó las 53 migraciones en PostgreSQL
+17/PostGIS 3.5/pgvector 0.8.6 y pasó 3/3 casos: solo devuelve el local publicado, de categoría/radio y
+servicio solicitados con slot; fuerza vector cero con gate cerrado; desaparece al bloquear el slot; y
+con gate abierto consume un embedding versionado/vigente y devuelve coseno uno. Tras ampliar la fusión
+a venue+service se reejecutó aisladamente ese caso con éxito. Spotless formateó todos los Java nuevos;
+la ejecución omitió el Checkstyle global por las 45 infracciones heredadas documentadas en 20.5.
+
+Riesgos/deuda: el score léxico no está calibrado entre consultas y el umbral trigram 0,1 deberá medirse
+con tráfico shadow. La consulta exacta agrega ocupación al vuelo; antes de gran volumen deben medirse
+EXPLAIN ANALYZE y quizá crear una proyección de capacidad reciente, sin relajar revalidación. El score
+vectorial no debe habilitarse hasta superar la puerta 20.4 y benchmarkear índice/recall. 20.10 repetirá
+los filtros después de generación para cubrir carreras entre snapshot y ranking; confirmación de
+reserva sigue siendo la única autoridad final.

@@ -115,6 +115,9 @@ reserly:
       requests: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_REQUESTS:600}
       window: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_WINDOW:1m}
   demand:
+    candidates:
+      vectorEnabled: ${RESERLY_DEMAND_VECTOR_ENABLED:false}
+      modelVersion: ${RESERLY_DEMAND_EMBEDDING_MODEL_VERSION:multilingual-e5-small-v1}
     quality:
       cron: "${DEMAND_QUALITY_CRON:0 15 * * * *}"
     retention:

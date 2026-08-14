@@ -9506,3 +9506,25 @@ Fuente de verdad del avance:
   - `npm run test:demand` pasó 20 casos y la integración física pasó 2 casos sobre 52 migraciones.
   - El Checkstyle global conserva 45 infracciones previas ajenas; el código nuevo quedó formateado y
     sin las cuatro infracciones inicialmente detectadas en esta iteración.
+
+# Conversación 217 - Generación híbrida de candidatos con elegibilidad previa
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se implementó un generador Spring de candidatos que fusiona full-text y trigram y deja pgvector
+    preparado tras un feature gate cerrado por defecto.
+  - Los filtros autoritativos de vertical, publicación, radio, servicio y disponibilidad/capacidad se
+    ejecutan antes del score y no pueden ser anulados por el componente vectorial.
+  - V53 añadió índices GIN para corpus público y trigram de servicios, más acceso parcial a slots.
+- Archivos modificados:
+  - Nuevo paquete `demand.candidate`, V53, `application.yaml`, prueba de integración y documentos
+    `.kiro`.
+- Requisitos impactados: RF-033, RF-034, RF-036, RF-038, RNF-002, RNF-005, RNF-006 y RNF-015.
+- Tareas impactadas: 20.6; prepara 20.8, 20.9, 20.10, 20.11 y 20.12.
+- Tareas completadas: 20.6.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.7.
+- Decisiones o aclaraciones relevantes:
+  - Política activa: 65 % full-text y 35 % trigram; vector exactamente cero.
+  - La rama vectorial exige gate, versión, locale y vigencia, y combina local/servicio por mejor coseno.
+  - La integración aplicó 53 migraciones y pasó tres casos; también se revalidó aisladamente la rama
+    vectorial venue/servicio.
