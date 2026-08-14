@@ -10,6 +10,7 @@ import com.reserly.platform.infrastructure.ratelimit.RateLimitScope;
 import com.reserly.platform.infrastructure.ratelimit.RateLimitService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -103,20 +104,33 @@ public class DemandEventIngestionServiceImpl implements DemandEventIngestionServ
     Set<UUID> batchIds = new HashSet<>();
     List<ValidatedEvent> validated = new ArrayList<>(request.events().size());
     for (EventIngestionRequest event : request.events()) {
+      Timer.Sample validationTimer = Timer.start(meterRegistry);
       if (!batchIds.add(event.eventId())) {
+        detailedRejection(event, "BATCH_DUPLICATE_ID");
+        stopTimer(validationTimer, event, "validation", "rejected");
         reject("BATCH_DUPLICATE_ID");
       }
-      validated.add(validate(event, receivedAt));
+      try {
+        validated.add(validate(event, receivedAt));
+        stopTimer(validationTimer, event, "validation", "accepted");
+      } catch (DemandIngestionException exception) {
+        detailedRejection(event, exception.code());
+        stopTimer(validationTimer, event, "validation", "rejected");
+        throw exception;
+      }
     }
 
     List<EventIngestionItemResponse> results = new ArrayList<>(validated.size());
     int accepted = 0;
     int duplicates = 0;
     for (ValidatedEvent event : validated) {
+      Timer.Sample storageTimer = Timer.start(meterRegistry);
       if (eventDao.findByEventId(event.request().eventId()).isPresent()) {
         duplicates++;
         results.add(new EventIngestionItemResponse(event.request().eventId(), "duplicate"));
         metric("duplicate").increment();
+        detailedOutcome(event.request(), "duplicate");
+        stopTimer(storageTimer, event.request(), "storage", "duplicate");
         continue;
       }
       try {
@@ -124,13 +138,18 @@ public class DemandEventIngestionServiceImpl implements DemandEventIngestionServ
         accepted++;
         results.add(new EventIngestionItemResponse(event.request().eventId(), "accepted"));
         metric("accepted").increment();
+        detailedOutcome(event.request(), "accepted");
+        stopTimer(storageTimer, event.request(), "storage", "accepted");
       } catch (DataIntegrityViolationException exception) {
         if (eventDao.findByEventId(event.request().eventId()).isEmpty()) {
+          stopTimer(storageTimer, event.request(), "storage", "failed");
           throw exception;
         }
         duplicates++;
         results.add(new EventIngestionItemResponse(event.request().eventId(), "duplicate"));
         metric("duplicate").increment();
+        detailedOutcome(event.request(), "duplicate");
+        stopTimer(storageTimer, event.request(), "storage", "duplicate");
       }
     }
     return new EventBatchIngestionResponse(accepted, duplicates, List.copyOf(results));
@@ -369,6 +388,48 @@ public class DemandEventIngestionServiceImpl implements DemandEventIngestionServ
     return Counter.builder("reserly.demand.events.ingestion")
         .tag("result", result)
         .register(meterRegistry);
+  }
+
+  /**
+   * Catálogo efectivo utilizado por la ingesta; las pruebas de contrato lo comparan con JSON v1.
+   */
+  public static Set<String> supportedEventTypes() {
+    return CATALOG.keySet();
+  }
+
+  private void detailedOutcome(EventIngestionRequest event, String result) {
+    Counter.builder("reserly.demand.events.outcomes")
+        .tag("eventType", safeEventType(event))
+        .tag("schemaVersion", String.valueOf(event.schemaVersion()))
+        .tag("result", result)
+        .register(meterRegistry)
+        .increment();
+  }
+
+  private void detailedRejection(EventIngestionRequest event, String code) {
+    detailedOutcome(event, "rejected");
+    Counter.builder("reserly.demand.events.rejections")
+        .tag("eventType", safeEventType(event))
+        .tag("schemaVersion", String.valueOf(event.schemaVersion()))
+        .tag("code", code)
+        .register(meterRegistry)
+        .increment();
+  }
+
+  private void stopTimer(
+      Timer.Sample sample, EventIngestionRequest event, String phase, String result) {
+    sample.stop(
+        Timer.builder("reserly.demand.events.latency")
+            .tag("eventType", safeEventType(event))
+            .tag("schemaVersion", String.valueOf(event.schemaVersion()))
+            .tag("phase", phase)
+            .tag("result", result)
+            .register(meterRegistry));
+  }
+
+  private String safeEventType(EventIngestionRequest event) {
+    String eventType = event.eventType();
+    return eventType != null && CATALOG.containsKey(eventType) ? eventType : "unknown";
   }
 
   private void reject(String code) {

@@ -9351,3 +9351,23 @@ Fuente de verdad del avance:
   - Los resultados nunca contienen muestras, identificadores ni contexto; solo tiempos y contadores.
   - Las constraints siguen siendo primera barrera; el auditor detecta drift y cargas fuera de API.
   - La prueba PostgreSQL detecta email dentro de una clave permitida y preserva la minimización.
+
+# Conversación 210 - Dashboard interno de observabilidad de demanda
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se instrumentó validación y persistencia con outcomes y latencia por evento/versión.
+  - Se creó un dashboard JSON interno de volumen, rechazos, duplicados, latencia, cobertura y
+    calidad, junto con umbrales operativos documentados.
+- Archivos modificados:
+  - Ingesta de eventos y sus tests; nuevo paquete `demand.observability` y prueba PostgreSQL.
+  - Runbook `docs/operations/demand-observability-dashboard.md` y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-033, RF-038, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 19.20; prepara 19.21 y observabilidad de fases 20-23.
+- Tareas completadas: 19.20.
+- Siguiente tarea pendiente recomendada: 17.1; en fase 19, 19.21.
+- Decisiones o aclaraciones relevantes:
+  - Volumen/cobertura usan la ventana solicitada; counters/timers Micrometer son vida del proceso y
+    la respuesta lo declara para evitar comparaciones engañosas.
+  - Las únicas etiquetas son tipo, versión, fase, resultado y código opaco; nunca IDs o contexto.
+  - Las pruebas focalizadas de dashboard e ingesta pasan sobre PostgreSQL 17.5.

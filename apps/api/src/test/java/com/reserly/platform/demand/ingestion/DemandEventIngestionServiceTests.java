@@ -32,12 +32,14 @@ class DemandEventIngestionServiceTests {
   private static final Instant NOW = Instant.parse("2026-08-13T12:00:00Z");
   private BehaviorEventDao eventDao;
   private RateLimitService rateLimitService;
+  private SimpleMeterRegistry meterRegistry;
   private DemandEventIngestionServiceImpl service;
 
   @BeforeEach
   void setUp() {
     eventDao = mock(BehaviorEventDao.class);
     rateLimitService = mock(RateLimitService.class);
+    meterRegistry = new SimpleMeterRegistry();
     service =
         new DemandEventIngestionServiceImpl(
             eventDao,
@@ -51,7 +53,7 @@ class DemandEventIngestionServiceTests {
                 100,
                 Duration.ofDays(90)),
             new ObjectMapper(),
-            new SimpleMeterRegistry(),
+            meterRegistry,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -74,6 +76,19 @@ class DemandEventIngestionServiceTests {
         .containsExactly("accepted", "duplicate");
     verify(rateLimitService).check(any(), any());
     verify(eventDao).saveAndFlush(any(BehaviorEventEntity.class));
+    assertThat(
+            meterRegistry
+                .get("reserly.demand.events.outcomes")
+                .tags("eventType", "searchPerformed", "schemaVersion", "1", "result", "accepted")
+                .counter()
+                .count())
+        .isOne();
+    assertThat(
+            meterRegistry
+                .find("reserly.demand.events.latency")
+                .tags("eventType", "searchPerformed", "schemaVersion", "1")
+                .timers())
+        .isNotEmpty();
   }
 
   @Test
@@ -90,6 +105,14 @@ class DemandEventIngestionServiceTests {
         .extracting("code")
         .isEqualTo("CONTEXT_INVALID");
     verify(eventDao, never()).saveAndFlush(any());
+    assertThat(
+            meterRegistry
+                .get("reserly.demand.events.rejections")
+                .tags(
+                    "eventType", "searchPerformed", "schemaVersion", "1", "code", "CONTEXT_INVALID")
+                .counter()
+                .count())
+        .isOne();
   }
 
   @Test

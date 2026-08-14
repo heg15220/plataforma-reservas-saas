@@ -35996,3 +35996,40 @@ Durante la primera prueba el operador JSONB `?|` fue interpretado por JDBC como 
 sustituyó por `jsonb_exists_any`, semánticamente equivalente y segura en prepared statements. Riesgos:
 los patrones son deliberadamente conservadores y pueden requerir calibración; 19.20 debe presentar
 los contadores junto a volumen/cobertura, y 19.21 ampliará la matriz de contrato e idempotencia.
+
+## Iteración 2026-08-14 - Tarea 19.20: dashboard interno de observabilidad
+
+### Objetivo, contrato y fuentes
+
+- Tarea exacta: 19.20.
+- Objetivo: hacer visible volumen, rechazo, duplicidad, latencia y cobertura por evento/versión sin
+  introducir dimensiones personales ni confundir métricas runtime con ventanas persistidas.
+- Requisitos y diseño: RF-033, RF-038, RNF-005, RNF-006, RNF-014 y RNF-015; 14.13, 14.17 y 14.18.
+
+La ingesta registra `reserly.demand.events.outcomes` por `eventType`, `schemaVersion` y resultado
+accepted/rejected/duplicate. Los rechazos detallan solo un código opaco allowlisted por el flujo. Dos
+timers por evento miden validación y storage con resultado; las muestras rechazadas paran el timer
+antes de propagar el error. El tipo inválido se reduce a `unknown`, evitando convertir entrada no
+confiable en una etiqueta de cardinalidad ilimitada. Los contadores globales anteriores se conservan
+para compatibilidad.
+
+`DemandEventIngestionServiceImpl.supportedEventTypes()` expone de forma inmutable el catálogo
+efectivo que valida la API. El dashboard usa ese conjunto como denominador de cobertura, consulta
+PostgreSQL agrupando exclusivamente tipo/versión y combina los meters registrados. El read model
+incluye volumen persistido, outcomes, muestras/media/máximo de latencia, cobertura booleana, tipos
+ausentes, razones de rechazo y el reporte 19.19.
+
+### Seguridad, endpoint, archivos y pruebas
+
+`GET /api/internal/demand/v1/observability/dashboard?hours=24` acepta 1..744 horas y hereda
+autenticación de servicio/rol `DEMAND_INGESTOR`. No consulta ni devuelve sesiones, identidades,
+locales, payloads o ejemplos. `persistedVolume` y cobertura son de la ventana UTC; outcomes y timers
+son vida del proceso y `runtimeCounterScope=process_lifetime` lo declara. El runbook define lectura y
+alertas iniciales de PII/consentimiento, rechazo, duplicados, latencia y recorridos sin cobertura.
+
+Se crearon cinco tipos bajo `demand.observability`, controller, service, DTOs, package-info, prueba
+PostgreSQL y `docs/operations/demand-observability-dashboard.md`; se modificó ingesta y su test.
+`DemandObservabilityIntegrationTests` verificó volumen, accepted, timer, scope, cobertura y calidad
+en PostgreSQL 17.5. `DemandEventIngestionServiceTests` protege generación de outcomes/rechazos/timers
+y atomicidad previa. Riesgo: Micrometer en memoria se reinicia con el proceso; una plataforma de
+métricas externa debe conservar series para alertas históricas sin cambiar el contrato interno.

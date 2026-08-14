@@ -3228,6 +3228,10 @@ derivados reconstruibles sin tocar reservas, pagos ni evidencia legal operativa.
 - Carga: presupuesto p95/p99, timeouts, circuit breaker, caché y dependencia caída.
 - Privacidad: revocación, rotación HMAC, supresión y ausencia de identificadores en logs/artefactos.
 - Operación: shadow/canary, rollback, kill switch, artefacto corrupto y job reanudado.
+- Observabilidad 19.20: la ingesta publica outcomes y timers por tipo/versión con etiquetas de
+  cardinalidad cerrada. El dashboard interno combina volumen/cobertura persistidos en ventana UTC,
+  contadores runtime declarados como vida del proceso, razones opacas de rechazo y el reporte de
+  calidad 19.19. No admite dimensiones de identidad, sesión, local ni contenido.
 - E2E: búsqueda -> alternativas -> recomendación -> hold -> reserva -> asistencia -> atribución.
 
 ### 14.19 Fases y puertas de madurez
