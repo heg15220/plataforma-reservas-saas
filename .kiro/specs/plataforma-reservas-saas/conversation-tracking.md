@@ -9371,3 +9371,23 @@ Fuente de verdad del avance:
     la respuesta lo declara para evitar comparaciones engañosas.
   - Las únicas etiquetas son tipo, versión, fase, resultado y código opaco; nunca IDs o contexto.
   - Las pruebas focalizadas de dashboard e ingesta pasan sobre PostgreSQL 17.5.
+
+# Conversación 211 - Puerta integral de pruebas de fundamentos
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se cerró la matriz unitaria, PostgreSQL, contrato, privacidad e idempotencia de eventos,
+    identidad, recomendaciones y ontología.
+  - Se añadió paridad Java con el catálogo JSON y se ampliaron los derechos probados a acceso,
+    corrección, oposición, revocación, unlink y supresión idempotente.
+- Archivos modificados:
+  - `pom.xml`, nueva suite `DemandFoundationContractTests` y ampliación de privacidad PostgreSQL.
+  - Matriz `docs/testing/demand-foundations-test-matrix.md` y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-033, RF-034, RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015.
+- Tareas impactadas: 19.21; completa la fase 19 y habilita la puerta de entrada a fase 20.
+- Tareas completadas: 19.21.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.1.
+- Decisiones o aclaraciones relevantes:
+  - La matriz ejecutó 26 casos Maven, 8 contratos Python y 6 casos web: 40 casos, cero fallos.
+  - PostgreSQL aplicó Flyway V1-V51 en contenedores aislados y verificó constraints/cascadas reales.
+  - El primer intento Python carecía de `PYTHONPATH=src`; el comando reproducible queda corregido.

@@ -131,6 +131,13 @@
                 </includes>
                 <targetPath>ontology</targetPath>
             </resource>
+            <resource>
+                <directory>../../packages/demand-contracts/catalog</directory>
+                <includes>
+                    <include>event-catalog.v1.json</include>
+                </includes>
+                <targetPath>catalog</targetPath>
+            </resource>
         </resources>
         <plugins>
             <plugin>

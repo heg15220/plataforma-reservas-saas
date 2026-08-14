@@ -36033,3 +36033,42 @@ PostgreSQL y `docs/operations/demand-observability-dashboard.md`; se modificó i
 en PostgreSQL 17.5. `DemandEventIngestionServiceTests` protege generación de outcomes/rechazos/timers
 y atomicidad previa. Riesgo: Micrometer en memoria se reinicia con el proceso; una plataforma de
 métricas externa debe conservar series para alertas históricas sin cambiar el contrato interno.
+
+## Iteración 2026-08-14 - Tarea 19.21: puerta integral de pruebas fundacionales
+
+### Objetivo, alcance y contratos
+
+- Tarea exacta: 19.21.
+- Objetivo: disponer de una puerta reproducible que cubra unitarios, PostgreSQL real, contrato,
+  privacidad e idempotencia del sistema fundacional de eventos, identidad y ontología.
+- Requisitos y diseño: RF-033, RF-034, RF-035, RF-036, RNF-002, RNF-005, RNF-014 y RNF-015;
+  secciones 14.5, 14.6, 14.13, 14.17 y 14.18.
+
+El build Maven empaqueta ahora `event-catalog.v1.json` desde el paquete canónico, igual que ya hacía
+con `personal-care.v1.json`. `DemandFoundationContractTests` lee ambos artefactos del classpath y
+verifica que Spring acepte exactamente los mismos 22 tipos del JSON, que los forbidden fields
+críticos sigan presentes y que la ontología empaquetada conserve 44 atributos con nombre/definición
+ES/EN, sin solaparse con `medicalCondition`, `psychologicalProfile` u otras prohibiciones. Esto evita
+drift entre Python, JSON, recursos desplegados y validación Java.
+
+`DemandPrivacyIntegrationTests` se amplió de supresión/idempotencia a acceso agregado, corrección
+mediante HMAC versionado, revocación por finalidad, desvinculación y oposición global. Las pruebas
+usan HMAC sintéticos únicos, verifican revocación física de links/consentimiento y comprueban que
+`resultJson` no contiene el HMAC corregido. Supresión sigue demostrando un solo audit record ante
+retry y cascada de eventos/derivados.
+
+### Matriz ejecutada y evidencia
+
+`docs/testing/demand-foundations-test-matrix.md` relaciona cada capa con sus invariantes y comandos.
+La ejecución Maven incluyó 12 suites: contrato, ingesta, telemetría, gobierno/agregación, identidad,
+eventos, recomendaciones, privacidad, calidad, observabilidad y retención. Resultado: 26 casos,
+cero fallos/errores/omitidos; los tests de persistencia aplicaron Flyway V1-V51 sobre PostgreSQL 17.5
+real con PostGIS/pgvector. Python ejecutó 8 casos JSON Schema/Pydantic/ontología, cero fallos. Vitest
+ejecutó 6 casos de consentimiento y telemetría web, cero fallos. Total focalizado: 40 casos.
+
+El primer comando Python falló al no incluir el layout `src`; no fue un fallo contractual. Se repitió
+con `$env:PYTHONPATH='src'` y la matriz documenta ese requisito. Spotless se aplicó antes de Maven y
+`git diff --check` se usa como cierre. No se añadieron fixtures con datos personales reales, snapshots
+de payload ni etiquetas de alta cardinalidad. Riesgo pendiente: la matriz focalizada no sustituye el
+pipeline global; fases 20-23 deberán extenderla con FastAPI, modelos, experimentos y E2E sin retirar
+estas regresiones fundacionales.

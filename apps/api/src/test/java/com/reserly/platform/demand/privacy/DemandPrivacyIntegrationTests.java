@@ -69,6 +69,71 @@ class DemandPrivacyIntegrationTests {
     assertThat(count("DemandPrivacyRequests", "requestId", request.requestId())).isOne();
   }
 
+  @Test
+  void supportsAccessCorrectionPurposeRevocationAndUnlinkWithoutExposingHmac() {
+    UUID customerId = UUID.randomUUID();
+    UUID anonymousId = insertAnonymous();
+    insertCustomer(customerId);
+    insertLink(anonymousId, customerId, "personalization");
+    insertLink(anonymousId, customerId, "analytics");
+    DemandPrivacyService service = service();
+
+    DemandPrivacyResponse access = service.execute(request(customerId, "access", null, null, null));
+    assertThat(access.result())
+        .containsEntry("identityFound", true)
+        .containsEntry("profiles", 0)
+        .containsEntry("links", 2);
+
+    String replacementHmac = "b".repeat(64);
+    DemandPrivacyResponse correction =
+        service.execute(request(customerId, "correction", null, replacementHmac, "hmac-v2"));
+    assertThat(correction.result()).containsEntry("corrected", true);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT \"emailHmac\" FROM \"CustomerIdentities\" WHERE \"id\" = ?",
+                String.class,
+                customerId))
+        .isEqualTo(replacementHmac);
+
+    DemandPrivacyResponse revocation =
+        service.execute(request(customerId, "revocation", "personalization", null, null));
+    assertThat(revocation.result())
+        .containsEntry("linksRevoked", 1)
+        .containsEntry("consentRevoked", true);
+    DemandPrivacyResponse unlink = service.execute(request(customerId, "unlink", null, null, null));
+    assertThat(unlink.result()).containsEntry("linksRevoked", 1);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT bool_and(\"revokedAt\" IS NOT NULL) FROM \"IdentityLinks\" "
+                    + "WHERE \"customerIdentityId\" = ?",
+                Boolean.class,
+                customerId))
+        .isTrue();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT string_agg(\"resultJson\"::text, '') FROM \"DemandPrivacyRequests\" "
+                    + "WHERE \"subjectId\" = ?",
+                String.class,
+                customerId))
+        .doesNotContain(replacementHmac);
+  }
+
+  @Test
+  void oppositionRevokesEveryActivePurpose() {
+    UUID customerId = UUID.randomUUID();
+    UUID anonymousId = insertAnonymous();
+    insertCustomer(customerId);
+    insertLink(anonymousId, customerId, "personalization");
+    insertLink(anonymousId, customerId, "analytics");
+
+    DemandPrivacyResponse opposition =
+        service().execute(request(customerId, "objection", null, null, null));
+
+    assertThat(opposition.result())
+        .containsEntry("linksRevoked", 2)
+        .containsEntry("consentRevoked", true);
+  }
+
   private void insertCustomer(UUID id) {
     jdbc.update(
         """
@@ -78,11 +143,56 @@ class DemandPrivacyIntegrationTests {
         ) VALUES (?, ?, 'hmac-v1', 'demand-consent.v1', ?, ?, ?, ?)
         """,
         id,
-        "a".repeat(64),
+        id.toString().replace("-", "").repeat(2),
         timestamp(NOW.minus(Duration.ofDays(2))),
         timestamp(NOW.plus(Duration.ofDays(365))),
         timestamp(NOW.minus(Duration.ofDays(2))),
         timestamp(NOW.minus(Duration.ofDays(2))));
+  }
+
+  private UUID insertAnonymous() {
+    UUID id = UUID.randomUUID();
+    jdbc.update(
+        """
+        INSERT INTO "AnonymousIdentities" (
+          "id", "channel", "personalizationConsentVersion", "personalizationConsentedAt",
+          "createdAt", "lastSeenAt", "expiresAt", "retentionExpiresAt"
+        ) VALUES (?, 'browser', 'demand-consent.v1', ?, ?, ?, ?, ?)
+        """,
+        id,
+        timestamp(NOW.minus(Duration.ofDays(2))),
+        timestamp(NOW.minus(Duration.ofDays(2))),
+        timestamp(NOW.minus(Duration.ofDays(1))),
+        timestamp(NOW.plus(Duration.ofDays(30))),
+        timestamp(NOW.plus(Duration.ofDays(90))));
+    return id;
+  }
+
+  private void insertLink(UUID anonymousId, UUID customerId, String purpose) {
+    jdbc.update(
+        """
+        INSERT INTO "IdentityLinks" (
+          "anonymousIdentityId", "customerIdentityId", "linkReason", "purpose",
+          "consentVersion", "consentedAt", "linkedAt", "retentionExpiresAt", "createdAt"
+        ) VALUES (?, ?, 'booking_email_confirmed', ?, 'demand-consent.v1', ?, ?, ?, ?)
+        """,
+        anonymousId,
+        customerId,
+        purpose,
+        timestamp(NOW.minus(Duration.ofDays(2))),
+        timestamp(NOW.minus(Duration.ofDays(1))),
+        timestamp(NOW.plus(Duration.ofDays(90))),
+        timestamp(NOW.minus(Duration.ofDays(1))));
+  }
+
+  private DemandPrivacyService service() {
+    return new DemandPrivacyService(jdbc, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
+  }
+
+  private DemandPrivacyRequest request(
+      UUID subjectId, String action, String purpose, String hmac, String keyVersion) {
+    return new DemandPrivacyRequest(
+        UUID.randomUUID(), subjectId, "customer", action, purpose, hmac, keyVersion);
   }
 
   private void insertEvent(UUID eventId, UUID customerId, Instant retention) {

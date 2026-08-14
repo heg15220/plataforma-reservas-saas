@@ -3234,6 +3234,13 @@ derivados reconstruibles sin tocar reservas, pagos ni evidencia legal operativa.
   calidad 19.19. No admite dimensiones de identidad, sesión, local ni contenido.
 - E2E: búsqueda -> alternativas -> recomendación -> hold -> reserva -> asistencia -> atribución.
 
+La puerta 19.21 ejecuta una matriz trazable de unitarios, PostgreSQL real, contratos JSON/Pydantic/
+Java, privacidad e idempotencia. El catálogo JSON se empaqueta como recurso y se compara contra los
+22 tipos aceptados realmente por Spring; la ontología empaquetada conserva 44 atributos bilingües y
+prohibiciones disjuntas. Las pruebas de privacidad ejercitan todas las acciones y confirman que los
+resultados auditados no contienen HMAC. La matriz y comandos reproducibles viven en
+`docs/testing/demand-foundations-test-matrix.md`.
+
 ### 14.19 Fases y puertas de madurez
 
 1. **Fundamentos:** vertical limitado, consentimiento, identidad, eventos, alternativas, ontología y
