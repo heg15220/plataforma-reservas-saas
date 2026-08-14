@@ -4127,3 +4127,20 @@ Si queda vacío, responde `no_eligible_candidates` y solicita fallback, pero los
 reaparecer en él. La respuesta conserva conteos, candidatos excluidos y razones técnicas minimizadas.
 Spring debe volver a comprobar disponibilidad y capacidad al presentar y, de forma transaccional, al
 crear/confirmar un hold: este snapshot reduce carreras, pero nunca constituye una reserva garantizada.
+
+### 14.29 Fallback determinista y observable
+
+`fallback-mvp-v1.json` gobierna la degradación cuando el modelo, una dependencia o la cobertura de
+señales son insuficientes. Spring declara una razón cerrada; las restricciones de 14.28 se ejecutan
+antes y ningún excluido vuelve a entrar. La política ordena lexicográficamente popularidad contextual
+con muestra mínima de 10, disponibilidad, valoración con al menos 5 reseñas, cercanía solo con permiso
+de ubicación y UUID de venue/service. Una señal sin muestra o permiso aporta valor efectivo cero y la
+respuesta declara `applied=false`, sin imputaciones silenciosas.
+
+La novedad no altera el score ni se mezcla con popularidad. Entre locales nuevos con calidad mínima
+0,60 se elige determinísticamente el de mayor señal de novedad y se permite promover como máximo uno
+a la tercera posición; el resto conserva el orden base. El resultado usa modelo
+`deterministic-rules-v1`, score nulo, cinco evidencias de regla, razón de activación y
+`fallbackApplied=true`. Esto evita presentar una suma inventada como probabilidad o relevancia. Si no
+queda elegible, el fallback tampoco produce elementos. El artefacto se valida al arrancar y cambiar
+umbrales o cuota exige nueva versión y evaluación.

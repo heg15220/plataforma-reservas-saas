@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "fallback-mvp-v1",
+  "modelVersion": "deterministic-rules-v1",
+  "minimumPopularitySample": 10,
+  "minimumRatingSample": 5,
+  "noveltyMinimumQuality": 0.60,
+  "maximumNoveltyItems": 1,
+  "noveltyTargetPosition": 3,
+  "tieBreakers": ["venueIdAsc", "serviceIdAsc"]
+}

@@ -10,7 +10,7 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | --- | --- | --- |
 | `POST /events` | Validar lotes v1 de hasta 100 eventos | Spring persiste; responde `persistedCount=0` |
 | `POST /recommendations` | Validar contexto y hasta 100 candidatos elegibles | `deferred`; Spring aplica fallback |
-| `POST /ranking` | Revalidar restricciones y ordenar con `score-mvp-v1` | Excluye fallos duros antes del score; Spring persiste y revalida al mostrar/reservar |
+| `POST /ranking` | Revalidar restricciones y ordenar con score o fallback | Excluye fallos duros; degrada mediante `fallback-mvp-v1` y Spring revalida |
 | `GET /venues/{id}/attributes` | Leer la proyección interpretable vigente | 404 opaco si no existe perfil |
 | `POST /venues/{id}/attributes/evaluate` | Calcular perfil inicial interpretable | Spring persiste; caché Python acotada |
 | `POST /embeddings/generate` | Calcular lotes query/venue/service | Spring persiste en pgvector |
@@ -36,5 +36,9 @@ devuelven `available=false`, y eventos solo confirman validación. Ranking exige
 normalizados, política `score-mvp-v1` y un snapshot de publicación, servicio, elegibilidad, permiso,
 filtros, frecuencia y capacidad. Un fallo o snapshot vencido se excluye antes del score con códigos
 allowlisted; si no queda ninguna alternativa, la respuesta solicita fallback sin reutilizar excluidos.
+Cuando Spring informa `fallbackReason`, se omite el score y se aplica una cascada versionada de
+popularidad contextual, disponibilidad, valoración con muestra mínima y cercanía con permiso. La
+novedad puede promover como máximo un local con guardrail de calidad. La respuesta usa score nulo,
+expone la política real y cinco evidencias `applied/value/priority`; no simula una probabilidad.
 Versiones futuras podrán enriquecer la respuesta dentro de un nuevo `schemaVersion`, sin cambiar
 silenciosamente esta semántica.

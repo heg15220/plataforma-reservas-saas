@@ -106,6 +106,28 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertEqual(409, mismatch.status_code)
         self.assertEqual("SCORE_POLICY_VERSION_MISMATCH", mismatch.json()["code"])
 
+    def test_ranking_applies_deterministic_fallback_and_reports_actual_policy(self) -> None:
+        body = self._envelope()
+        body["policyVersion"] = "score-mvp-v1"
+        body["fallbackReason"] = "dependency_unavailable"
+        low, high = uuid4(), uuid4()
+        low_candidate = self._score_candidate(low, 1.0)
+        high_candidate = self._score_candidate(high, 0.0)
+        low_candidate["fallback"]["contextualPopularity"] = 0.1
+        high_candidate["fallback"]["contextualPopularity"] = 0.9
+        body["candidates"] = [low_candidate, high_candidate]
+        response = self.client.post(
+            "/internal/demand/v1/ranking", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        payload = response.json()
+        self.assertEqual("fallback_ranked", payload["status"])
+        self.assertEqual("fallback-mvp-v1", payload["policyVersion"])
+        self.assertEqual("deterministic-rules-v1", payload["modelVersion"])
+        self.assertEqual(str(high), payload["items"][0]["venueId"])
+        self.assertIsNone(payload["items"][0]["score"])
+        self.assertEqual(5, len(payload["items"][0]["fallbackEvidence"]))
+
     def _score_candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
         return {
             "venueId": str(venue_id),
@@ -119,6 +141,12 @@ class InternalApiContractTests(unittest.TestCase):
             "affinity": affinity, "conversion": 0.5, "proximity": 0.5,
             "availability": 0.8, "capacityNeed": 0.4, "quality": 0.6,
             "exploration": 0.0,
+            "fallback": {
+                "contextualPopularity": 0.5, "popularitySampleCount": 20,
+                "rating": 0.8, "ratingSampleCount": 10,
+                "proximity": 0.5, "locationPermissionGranted": True,
+                "availability": 0.8, "novelty": 0.0, "isNewVenue": False,
+            },
         }
 
     def test_candidate_limit_and_unknown_fields_are_rejected_opaquely(self) -> None:

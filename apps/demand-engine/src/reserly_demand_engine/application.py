@@ -16,6 +16,7 @@ from .errors import DemandEngineError
 from .embedding_batch import EmbeddingBatchProcessor
 from .embeddings import EmbeddingModelManifest, SentenceTransformerEmbedder, TextEmbedder
 from .health import RuntimeState, health_router
+from .fallback import DeterministicFallback, FallbackPolicy
 from .middleware import DemandEngineBoundaryMiddleware
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
@@ -42,8 +43,10 @@ def create_app(
     app.state.venue_profile_builder = VenueProfileBuilder()
     app.state.session_context_builder = SessionContextBuilder()
     app.state.affinity_calculator = ContentAffinityCalculator(settings.embedding_model_promoted)
+    policy_root = Path(__file__).resolve().parents[2] / "policies"
     app.state.score_mvp = ScoreMvp(
-        ScorePolicy.load(Path(__file__).resolve().parents[2] / "policies" / "score-mvp.v1.json")
+        ScorePolicy.load(policy_root / "score-mvp.v1.json"),
+        DeterministicFallback(FallbackPolicy.load(policy_root / "fallback-mvp.v1.json")),
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

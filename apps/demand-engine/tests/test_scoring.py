@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from pydantic import ValidationError
 
 from reserly_demand_engine.scoring import ScoreMvp, ScoreMvpRequest, ScorePolicy
+from reserly_demand_engine.fallback import DeterministicFallback, FallbackPolicy
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,10 @@ ROOT = Path(__file__).resolve().parents[1]
 class ScoreMvpTests(unittest.TestCase):
     def setUp(self) -> None:
         self.policy = ScorePolicy.load(ROOT / "policies" / "score-mvp.v1.json")
+        self.fallback = DeterministicFallback(
+            FallbackPolicy.load(ROOT / "policies" / "fallback-mvp.v1.json")
+        )
+        self.scorer = ScoreMvp(self.policy, self.fallback)
 
     def _candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
         return {
@@ -27,7 +32,18 @@ class ScoreMvpTests(unittest.TestCase):
             "affinity": affinity, "conversion": 0.5, "proximity": 0.5,
             "availability": 0.8, "capacityNeed": 0.4, "quality": 0.6,
             "exploration": 1.0,
+            "fallback": self._fallback(),
         }
+
+    def _fallback(self, **overrides: object) -> dict[str, object]:
+        values: dict[str, object] = {
+            "contextualPopularity": 0.5, "popularitySampleCount": 20,
+            "rating": 0.8, "ratingSampleCount": 10,
+            "proximity": 0.5, "locationPermissionGranted": True,
+            "availability": 0.8, "novelty": 0.0, "isNewVenue": False,
+        }
+        values.update(overrides)
+        return values
 
     def _constraints(self, **overrides: object) -> dict[str, object]:
         values: dict[str, object] = {
@@ -59,7 +75,7 @@ class ScoreMvpTests(unittest.TestCase):
 
     def test_ranks_by_weighted_score_and_returns_exact_contributions(self) -> None:
         low, high = uuid4(), uuid4()
-        result = ScoreMvp(self.policy).rank(
+        result = self.scorer.rank(
             self._request([self._candidate(low, 0.1), self._candidate(high, 0.9)])
         )
         self.assertEqual([high, low], [item.venueId for item in result.items])
@@ -73,9 +89,9 @@ class ScoreMvpTests(unittest.TestCase):
         first = UUID("00000000-0000-0000-0000-000000000001")
         second = UUID("00000000-0000-0000-0000-000000000002")
         request = self._request([self._candidate(second, 0.5), self._candidate(first, 0.5)])
-        self.assertEqual(first, ScoreMvp(self.policy).rank(request).items[0].venueId)
+        self.assertEqual(first, self.scorer.rank(request).items[0].venueId)
         with self.assertRaisesRegex(ValueError, "SCORE_POLICY_VERSION_MISMATCH"):
-            ScoreMvp(self.policy).rank(request.model_copy(update={"policyVersion": "wrong-v1"}))
+            self.scorer.rank(request.model_copy(update={"policyVersion": "wrong-v1"}))
 
     def test_excludes_hard_constraint_failures_before_scoring(self) -> None:
         accepted, rejected = uuid4(), uuid4()
@@ -84,7 +100,7 @@ class ScoreMvpTests(unittest.TestCase):
             permissionAllowed=False, filtersMatched=False,
             availableCapacity=0, frequencyAllowed=False,
         )
-        result = ScoreMvp(self.policy).rank(
+        result = self.scorer.rank(
             self._request([blocked, self._candidate(accepted, 0.1)])
         )
         self.assertEqual([accepted], [item.venueId for item in result.items])
@@ -99,7 +115,7 @@ class ScoreMvpTests(unittest.TestCase):
         candidate["constraints"] = self._constraints(
             validUntil=datetime(2026, 8, 14, 11, 59, tzinfo=UTC).isoformat()
         )
-        result = ScoreMvp(self.policy).rank(self._request([candidate]))
+        result = self.scorer.rank(self._request([candidate]))
         self.assertEqual("no_eligible_candidates", result.status)
         self.assertTrue(result.fallbackRequired)
         self.assertEqual([], result.items)

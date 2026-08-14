@@ -36680,3 +36680,68 @@ breve; una decisión falsa positiva no sustituye la protección transaccional. E
 la regla detallada de frecuencia para evitar PII, por lo que la auditoría completa permanece en
 Spring/V47. 20.11 debe consumir solo elegibles y declarar por qué activó fallback; 20.16 deberá repetir
 revalidación antes de exponer una tarjeta.
+
+## Iteración 2026-08-14 - Tarea 20.11: fallback determinista de ranking
+
+### Objetivo, política y condiciones de activación
+
+- Identificador exacto: 20.11.
+- Objetivo técnico: mantener una ordenación segura, reproducible y observable cuando el modelo no
+  exista, exceda timeout, pierda una dependencia o carezca de señales suficientes.
+- Requisitos/diseño: RF-036 y RF-039; RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.2, 14.9,
+  14.10, 14.16, 14.17, 14.28 y 14.29.
+
+Se creó `policies/fallback-mvp.v1.json`, validado al construir la aplicación. Fija schema y política
+`fallback-mvp-v1`, modelo de reglas `deterministic-rules-v1`, mínimo de 10 observaciones para
+popularidad contextual, 5 para valoración, calidad mínima 0,60 para novedad, una única promoción y
+tercera posición objetivo. Los desempates exactos son venue UUID y service UUID ascendentes. Pydantic
+prohíbe claves extra, muestras negativas, ratios fuera de [0,1], cuotas diferentes de uno y orden de
+desempate divergente. Un artefacto inválido impide arranque; no existe configuración parcial.
+
+`ScoreMvpRequest.fallbackReason` admite solo `model_not_available`, `model_timeout`,
+`dependency_unavailable` o `insufficient_signals`. Es una decisión interna de Spring basada en salud,
+timeout/circuit breaker y cobertura, no un parámetro público. Si está ausente se conserva ScoreMvp; si
+está presente se ejecuta la revalidación 20.10 y después se omiten por completo los siete componentes
+del score. Esto evita mezclar silenciosamente modelo y reglas. La respuesta publica la política/modelo
+real, razón, `fallbackApplied` y estado `fallback_ranked`; con cero elegibles conserva
+`no_eligible_candidates` y no inventa alternativas.
+
+### Cascada, evidencia y cuota de novedad
+
+`FallbackSignals` recibe exclusivamente agregados normalizados: popularidad y tamaño de muestra,
+rating y número de reseñas, proximidad y permiso de ubicación, disponibilidad, novedad y condición de
+local nuevo. No admite identidad, coordenadas, texto, historial individual o precio. La clave estable
+ordena popularidad contextual válida, disponibilidad, valoración válida, proximidad autorizada y los
+dos UUID. Si una muestra queda bajo umbral o falta permiso, su valor efectivo es cero. La disponibilidad
+se aplica siempre, pero continúa subordinada a la capacidad dura y su revalidación transaccional.
+
+Después del orden base se buscan locales nuevos con `novelty>0` y `quality>=0.60`. Se elige solo uno
+por mayor novedad y UUID; si estaba por debajo se mueve como máximo a posición tres. No se promueven
+todos los locales nuevos ni se rebaja el guardrail por falta de candidatos. `maximumNoveltyItems=1`
+queda materializado para que la exposición sea controlable. Esta exploración determinista es distinta
+del futuro Thompson Sampling de 20.15.
+
+Cada item fallback lleva `score=null`, contribuciones aditivas vacías y cinco `FallbackEvidence` con
+componente, valor observado, `applied`, prioridad y muestra cuando aplica. No se fabrica una suma ni
+probabilidad. Esto permite persistir exactamente las reglas ejecutadas y habilita 20.12 sin generar
+texto libre. Los items de ScoreMvp mantienen score y siete contribuciones, con evidencia fallback
+vacía.
+
+### Archivos, pruebas, seguridad y verificación
+
+Se crearon `fallback-mvp.v1.json`, `fallback.py` y `test_fallback.py`; se modificaron `scoring.py`,
+`application.py`, pruebas HTTP, documentación API y cuatro documentos `.kiro`. No hubo migración:
+V47 ya conserva versión, modelo y componentes JSON. Tampoco hubo UI, red externa o escritura Python.
+La API continúa privada, autenticada, acotada y sin payload en logs.
+
+Las pruebas verifican popularidad/disponibilidad y UUID, neutralización de rating sin cinco muestras,
+neutralización de cercanía sin permiso, promoción de un único local nuevo de mayor novedad a tercera
+posición y representación sin score. El caso HTTP demuestra que una afinidad superior no prevalece
+durante fallback, y que respuesta/artefacto declaran política y modelo reales. La suite de cierre usa
+`npm run test:demand`, `compileall` y `git diff --check`.
+
+Riesgos y deuda: los umbrales son hipótesis iniciales y requieren métricas de cobertura/exposición.
+Popularidad contextual debe venir agregada por categoría/zona con privacidad suficiente; este módulo
+no calcula el agregado. La cuota de una alternativa controla cada respuesta, no exposición global;
+20.15/23.7 deberán monitorizarla. Spring sigue siendo responsable de activar fallback por circuit
+breaker y de persistir la razón. 20.12 seleccionará texto solo desde evidencia marcada `applied=true`.

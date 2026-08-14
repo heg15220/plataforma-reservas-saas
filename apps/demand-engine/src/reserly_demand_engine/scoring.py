@@ -10,6 +10,12 @@ from pydantic import Field, model_validator
 
 from .contracts import RequestEnvelope, StrictContract, Version
 from .constraints import ConstraintReason, HardConstraintSnapshot
+from .fallback import (
+    DeterministicFallback,
+    FallbackEvidence,
+    FallbackReason,
+    FallbackSignals,
+)
 
 
 ComponentCode = Literal[
@@ -85,12 +91,14 @@ class ScoreCandidate(StrictContract):
     capacityNeed: float = Field(ge=0, le=1)
     quality: float = Field(ge=0, le=1)
     exploration: float = Field(ge=0, le=1)
+    fallback: FallbackSignals
 
 
 class ScoreMvpRequest(RequestEnvelope):
     """Conjunto candidato cerrado; el scorer no puede incorporar alternativas nuevas."""
 
     candidates: list[ScoreCandidate] = Field(min_length=1, max_length=100)
+    fallbackReason: FallbackReason | None = None
 
     @model_validator(mode="after")
     def unique_candidates(self) -> "ScoreMvpRequest":
@@ -115,8 +123,9 @@ class RankedCandidate(StrictContract):
     venueId: UUID
     serviceId: UUID | None
     position: int = Field(ge=1, le=100)
-    score: float = Field(ge=0, le=1)
-    contributions: list[ScoreContribution] = Field(min_length=7, max_length=7)
+    score: float | None = Field(default=None, ge=0, le=1)
+    contributions: list[ScoreContribution] = Field(default_factory=list, max_length=7)
+    fallbackEvidence: list[FallbackEvidence] = Field(default_factory=list, max_length=5)
 
 
 class ExcludedCandidate(StrictContract):
@@ -134,8 +143,10 @@ class ScoreMvpResponse(StrictContract):
     schemaVersion: Literal[1] = 1
     policyVersion: Version
     modelVersion: Version
-    status: Literal["ranked", "no_eligible_candidates"]
+    status: Literal["ranked", "fallback_ranked", "no_eligible_candidates"]
     fallbackRequired: bool
+    fallbackApplied: bool
+    fallbackReason: FallbackReason | None = None
     candidateCount: int = Field(ge=1, le=100)
     eligibleCount: int = Field(ge=0, le=100)
     items: list[RankedCandidate] = Field(max_length=100)
@@ -150,8 +161,9 @@ class ScoreMvp:
         "capacityNeed", "quality", "exploration",
     )
 
-    def __init__(self, policy: ScorePolicy) -> None:
+    def __init__(self, policy: ScorePolicy, fallback: DeterministicFallback) -> None:
         self._policy = policy
+        self._fallback = fallback
 
     def rank(self, request: ScoreMvpRequest) -> ScoreMvpResponse:
         if request.policyVersion != self._policy.policyVersion:
@@ -170,6 +182,8 @@ class ScoreMvp:
                 )
             else:
                 eligible.append(candidate)
+        if request.fallbackReason is not None:
+            return self._fallback_response(request, eligible, excluded)
         scored = [self._score(candidate) for candidate in eligible]
         scored.sort(
             key=lambda item: (
@@ -183,9 +197,40 @@ class ScoreMvp:
             modelVersion=self._policy.modelVersion,
             status="ranked" if ranked else "no_eligible_candidates",
             fallbackRequired=not ranked,
+            fallbackApplied=False,
             candidateCount=len(request.candidates),
             eligibleCount=len(ranked),
             items=ranked,
+            excluded=excluded,
+        )
+
+    def _fallback_response(
+        self,
+        request: ScoreMvpRequest,
+        eligible: list[ScoreCandidate],
+        excluded: list[ExcludedCandidate],
+    ) -> ScoreMvpResponse:
+        fallback_ranked = self._fallback.rank(eligible)
+        items = [
+            RankedCandidate(
+                venueId=item.venueId,
+                serviceId=item.serviceId,
+                position=index,
+                fallbackEvidence=item.evidence,
+            )
+            for index, item in enumerate(fallback_ranked, 1)
+        ]
+        return ScoreMvpResponse(
+            requestId=request.requestId,
+            policyVersion=self._fallback.policy.policyVersion,
+            modelVersion=self._fallback.policy.modelVersion,
+            status="fallback_ranked" if items else "no_eligible_candidates",
+            fallbackRequired=not items,
+            fallbackApplied=bool(items),
+            fallbackReason=request.fallbackReason,
+            candidateCount=len(request.candidates),
+            eligibleCount=len(items),
+            items=items,
             excluded=excluded,
         )
 

@@ -410,7 +410,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 20.8. Implementar afinidad content-based por coseno y contribución por atributos con confianza.
 - [x] 20.9. Implementar `ScoreMvp` configurable y versionado con afinidad, conversión baseline, proximidad, disponibilidad, necesidad de capacidad, calidad y exploración.
 - [x] 20.10. Aplicar restricciones duras de elegibilidad, capacidad, permisos, filtros y frecuencia después de generar candidatos y antes de ordenar.
-- [ ] 20.11. Implementar fallbacks deterministas por popularidad contextual, valoración, cercanía, disponibilidad y novedad ante datos o dependencias insuficientes.
+- [x] 20.11. Implementar fallbacks deterministas por popularidad contextual, valoración, cercanía, disponibilidad y novedad ante datos o dependencias insuficientes.
 - [ ] 20.12. Implementar explicaciones ES/EN derivadas de las contribuciones reales del score y limitar su contenido a señales permitidas.
 - [ ] 20.13. Implementar baseline de ocupación por día-hora con media móvil o suavizado exponencial, incertidumbre y zona horaria.
 - [ ] 20.14. Calcular necesidad de capacidad y demanda insatisfecha agregada por zona, categoría y periodo con umbrales de privacidad.
