@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import Field, model_validator
 
 from .contracts import RequestEnvelope, StrictContract, Version
+from .constraints import ConstraintReason, HardConstraintSnapshot
 
 
 ComponentCode = Literal[
@@ -72,12 +73,11 @@ class ScorePolicy(StrictContract):
 
 
 class ScoreCandidate(StrictContract):
-    """Señales ya normalizadas de un candidato elegible generado por Spring."""
+    """Señales normalizadas y snapshot autoritativo que debe superar restricciones duras."""
 
     venueId: UUID
     serviceId: UUID | None = None
-    eligible: Literal[True]
-    availableCapacity: int = Field(ge=1, le=10_000)
+    constraints: HardConstraintSnapshot
     affinity: float = Field(ge=0, le=1)
     conversion: float = Field(ge=0, le=1)
     proximity: float = Field(ge=0, le=1)
@@ -119,16 +119,27 @@ class RankedCandidate(StrictContract):
     contributions: list[ScoreContribution] = Field(min_length=7, max_length=7)
 
 
+class ExcludedCandidate(StrictContract):
+    """Alternativa descartada antes del score, sin datos personales ni detalles transaccionales."""
+
+    venueId: UUID
+    serviceId: UUID | None
+    reasonCodes: list[ConstraintReason] = Field(min_length=1, max_length=8)
+
+
 class ScoreMvpResponse(StrictContract):
-    """Ranking ejecutado sin declarar capacidad ni elegibilidad futuras."""
+    """Partición auditable y ranking; una lista vacía exige fallback fuera de candidatos rechazados."""
 
     requestId: UUID
     schemaVersion: Literal[1] = 1
     policyVersion: Version
     modelVersion: Version
-    status: Literal["ranked"] = "ranked"
-    fallbackRequired: Literal[False] = False
-    items: list[RankedCandidate] = Field(min_length=1, max_length=100)
+    status: Literal["ranked", "no_eligible_candidates"]
+    fallbackRequired: bool
+    candidateCount: int = Field(ge=1, le=100)
+    eligibleCount: int = Field(ge=0, le=100)
+    items: list[RankedCandidate] = Field(max_length=100)
+    excluded: list[ExcludedCandidate] = Field(max_length=100)
 
 
 class ScoreMvp:
@@ -145,7 +156,21 @@ class ScoreMvp:
     def rank(self, request: ScoreMvpRequest) -> ScoreMvpResponse:
         if request.policyVersion != self._policy.policyVersion:
             raise ScorePolicyVersionMismatch("SCORE_POLICY_VERSION_MISMATCH")
-        scored = [self._score(candidate) for candidate in request.candidates]
+        eligible: list[ScoreCandidate] = []
+        excluded: list[ExcludedCandidate] = []
+        for candidate in request.candidates:
+            reasons = candidate.constraints.rejection_reasons(request.occurredAt)
+            if reasons:
+                excluded.append(
+                    ExcludedCandidate(
+                        venueId=candidate.venueId,
+                        serviceId=candidate.serviceId,
+                        reasonCodes=list(reasons),
+                    )
+                )
+            else:
+                eligible.append(candidate)
+        scored = [self._score(candidate) for candidate in eligible]
         scored.sort(
             key=lambda item: (
                 -item.score, str(item.venueId),
@@ -155,7 +180,13 @@ class ScoreMvp:
         ranked = [item.model_copy(update={"position": index}) for index, item in enumerate(scored, 1)]
         return ScoreMvpResponse(
             requestId=request.requestId, policyVersion=self._policy.policyVersion,
-            modelVersion=self._policy.modelVersion, items=ranked,
+            modelVersion=self._policy.modelVersion,
+            status="ranked" if ranked else "no_eligible_candidates",
+            fallbackRequired=not ranked,
+            candidateCount=len(request.candidates),
+            eligibleCount=len(ranked),
+            items=ranked,
+            excluded=excluded,
         )
 
     def _score(self, candidate: ScoreCandidate) -> RankedCandidate:

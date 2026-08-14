@@ -4105,9 +4105,25 @@ afinidad, conversión baseline, proximidad, disponibilidad, necesidad de capacid
 exploración, presupuesto máximo de exploración 0,05 y desempate score/venue/service. Los pesos deben
 estar completos, en [0,1] y sumar uno; exploración no puede superar su presupuesto.
 
-Spring entrega hasta 100 pares venue/service únicos, `eligible=true`, capacidad positiva y los siete
-componentes normalizados. El scorer multiplica valor por peso, acota exploración, suma a [0,1], ordena
-de forma estable y devuelve cada contribución real. Nunca añade candidatos ni declara que la capacidad
-seguirá disponible. `POST /internal/demand/v1/ranking` exige que `policyVersion` coincida exactamente
-con la cargada; el drift devuelve 409 opaco. La respuesta declara política, modelo, posición, score y
-desglose completo para que Spring persista el ranking de V47 y vuelva a validar en 20.10.
+Spring entrega hasta 100 pares venue/service únicos, un snapshot autoritativo de restricciones y los
+siete componentes normalizados. El scorer multiplica valor por peso, acota exploración, suma a [0,1],
+ordena de forma estable y devuelve cada contribución real. Nunca añade candidatos ni declara que la
+capacidad seguirá disponible. `POST /internal/demand/v1/ranking` exige que `policyVersion` coincida
+exactamente con la cargada; el drift devuelve 409 opaco. La respuesta declara política, modelo,
+posición, score y desglose completo para que Spring persista el ranking de V47.
+
+### 14.28 Revalidación dura posterior a recuperación
+
+Cada candidato de ranking incorpora `HardConstraintSnapshot`, calculado por Spring contra la fuente
+transaccional después de la recuperación. Declara publicación del local, servicio reservable,
+elegibilidad de negocio, permiso, coincidencia con filtros, límite de frecuencia, capacidad disponible
+y solicitada y `validUntil` zonificado. No incluye identidad, motivo personal, consulta, dirección ni
+detalle de reservas. Un snapshot vencido falla cerrado igual que una restricción negativa.
+
+`ScoreMvp.rank` particiona el conjunto antes de invocar la fórmula. La precedencia estable de rechazo
+es snapshot vencido, local, servicio, elegibilidad, permiso, filtro, frecuencia y capacidad; conserva
+todos los códigos aplicables para auditoría. Solo el subconjunto sin fallos llega al score y se ordena.
+Si queda vacío, responde `no_eligible_candidates` y solicita fallback, pero los rechazados no pueden
+reaparecer en él. La respuesta conserva conteos, candidatos excluidos y razones técnicas minimizadas.
+Spring debe volver a comprobar disponibilidad y capacidad al presentar y, de forma transaccional, al
+crear/confirmar un hold: este snapshot reduce carreras, pero nunca constituye una reserva garantizada.

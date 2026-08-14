@@ -36619,3 +36619,64 @@ Spring y sus productores se completan en 20.11, 20.13-20.15. Pesos no calibrados
 señal aunque esté normalizada; shadow y evaluación deben preceder exposición. 20.10 debe repetir
 elegibilidad después de ranking; 20.12 elegirá explicaciones solo desde estas contribuciones. No se
 habilita Learning to Rank ni entrenamiento con datos insuficientes.
+
+## Iteración 2026-08-14 - Tarea 20.10: restricciones duras antes del ranking
+
+### Objetivo, autoridad y contrato
+
+- Identificador exacto: 20.10.
+- Objetivo técnico: impedir que una señal de relevancia, exploración o popularidad ordene una
+  alternativa que dejó de cumplir elegibilidad, capacidad, permisos, filtros o frecuencia tras la
+  recuperación.
+- Requisitos/diseño: RF-036 y RF-039; RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.2, 14.9,
+  14.16, 14.17, 14.24, 14.27 y 14.28.
+
+Se creó `constraints.py`. `HardConstraintSnapshot` es un contrato Pydantic estricto e inmutable con
+ocho comprobaciones: local publicado, servicio reservable, elegibilidad de negocio, permiso efectivo,
+coincidencia con filtros, frecuencia permitida, capacidad disponible frente a solicitada y vigencia.
+`validUntil` exige zona horaria; capacidad disponible admite cero para representar agotamiento y la
+solicitada exige al menos uno. Los booleanos son decisiones ya resueltas por Spring contra PostgreSQL,
+no permisos otorgados por Python ni campos controlables desde navegador. El contrato no acepta email,
+identidad, razón personal, texto, ubicación exacta, slot ni detalle de reservas.
+
+`rejection_reasons(evaluated_at)` evalúa contra el `occurredAt` zonificado del sobre. Devuelve todos
+los fallos en precedencia fija: `CONSTRAINT_SNAPSHOT_EXPIRED`, `VENUE_NOT_PUBLISHED`,
+`SERVICE_NOT_BOOKABLE`, `NOT_ELIGIBLE`, `PERMISSION_DENIED`, `FILTER_MISMATCH`,
+`FREQUENCY_LIMIT_REACHED` e `INSUFFICIENT_CAPACITY`. Conservar varios motivos evita ocultar calidad de
+datos y hace reproducible la auditoría; los códigos no revelan la regla transaccional o la persona que
+originó el límite.
+
+### Flujo de ejecución y respuesta
+
+`ScoreCandidate` sustituye la antigua precondición `eligible=true/availableCapacity>0` por el snapshot
+completo. `ScoreMvp.rank` valida primero versión y unicidad, recorre una vez los candidatos y los
+particiona. Solo el subconjunto sin razones se entrega a `_score`; por tanto, un candidato bloqueado no
+obtiene contribuciones, posición ni oportunidad de desempate. El orden ponderado de 20.9 permanece
+idéntico para los elegibles.
+
+`ScoreMvpResponse` añade `candidateCount`, `eligibleCount` y `excluded`. Cada `ExcludedCandidate`
+contiene únicamente venue/service y uno a ocho códigos allowlisted. Si el subconjunto elegible queda
+vacío responde `status=no_eligible_candidates`, lista de items vacía y `fallbackRequired=true`. Ese
+flag solicita a 20.11 buscar una política segura, pero el conjunto excluido queda fuera de cualquier
+fallback. Con al menos uno mantiene `status=ranked`. Spring debe revalidar antes de hacer visible la
+impresión y bajo lock al crear/confirmar el hold, porque el TTL limita pero no elimina carreras.
+
+### Archivos, seguridad, pruebas y evidencia
+
+Se creó `apps/demand-engine/src/reserly_demand_engine/constraints.py`; se modificaron `scoring.py`,
+`test_scoring.py`, `test_api_contracts.py`, el contrato HTTP, diseño, tareas, seguimiento y este
+documento. No hubo migración, escritura en base, UI o cambios en la ruta transaccional. La API sigue
+autenticada servicio-a-servicio, con cuerpo/timeout acotados y errores opacos. Los rechazos forman
+parte de la respuesta funcional para auditoría y no se copian a logs junto con el payload.
+
+Las pruebas nuevas acreditan que permiso, filtro, frecuencia y capacidad fallidos excluyen incluso al
+candidato de afinidad máxima; verifican orden exacto de motivos y que un snapshot expirado produce
+lista vacía y fallback requerido. Las pruebas existentes se adaptaron al contrato autoritativo y
+siguen verificando fórmula, contribuciones, desempate, versión, cardinalidad y perímetro HTTP. El
+comando de cierre es `npm run test:demand`, complementado por `compileall` y `git diff --check`.
+
+Riesgos y deuda: Python depende de que Spring calcule correctamente el snapshot y mantenga un TTL
+breve; una decisión falsa positiva no sustituye la protección transaccional. El contrato no expresa
+la regla detallada de frecuencia para evitar PII, por lo que la auditoría completa permanece en
+Spring/V47. 20.11 debe consumir solo elegibles y declarar por qué activó fallback; 20.16 deberá repetir
+revalidación antes de exponer una tarjeta.

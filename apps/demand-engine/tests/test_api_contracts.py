@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
@@ -108,7 +108,14 @@ class InternalApiContractTests(unittest.TestCase):
 
     def _score_candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
         return {
-            "venueId": str(venue_id), "eligible": True, "availableCapacity": 1,
+            "venueId": str(venue_id),
+            "constraints": {
+                "venuePublished": True, "serviceBookable": True,
+                "eligibilityAllowed": True, "permissionAllowed": True,
+                "filtersMatched": True, "frequencyAllowed": True,
+                "availableCapacity": 1, "requestedCapacity": 1,
+                "validUntil": (datetime.now(UTC) + timedelta(minutes=5)).isoformat(),
+            },
             "affinity": affinity, "conversion": 0.5, "proximity": 0.5,
             "availability": 0.8, "capacityNeed": 0.4, "quality": 0.6,
             "exploration": 0.0,

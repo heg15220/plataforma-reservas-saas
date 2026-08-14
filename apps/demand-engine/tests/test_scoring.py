@@ -22,11 +22,23 @@ class ScoreMvpTests(unittest.TestCase):
 
     def _candidate(self, venue_id: UUID, affinity: float) -> dict[str, object]:
         return {
-            "venueId": str(venue_id), "eligible": True, "availableCapacity": 1,
+            "venueId": str(venue_id),
+            "constraints": self._constraints(),
             "affinity": affinity, "conversion": 0.5, "proximity": 0.5,
             "availability": 0.8, "capacityNeed": 0.4, "quality": 0.6,
             "exploration": 1.0,
         }
+
+    def _constraints(self, **overrides: object) -> dict[str, object]:
+        values: dict[str, object] = {
+            "venuePublished": True, "serviceBookable": True,
+            "eligibilityAllowed": True, "permissionAllowed": True,
+            "filtersMatched": True, "frequencyAllowed": True,
+            "availableCapacity": 2, "requestedCapacity": 1,
+            "validUntil": datetime(2026, 8, 14, 12, 5, tzinfo=UTC).isoformat(),
+        }
+        values.update(overrides)
+        return values
 
     def _request(self, candidates: list[dict[str, object]]) -> ScoreMvpRequest:
         return ScoreMvpRequest.model_validate(
@@ -64,6 +76,34 @@ class ScoreMvpTests(unittest.TestCase):
         self.assertEqual(first, ScoreMvp(self.policy).rank(request).items[0].venueId)
         with self.assertRaisesRegex(ValueError, "SCORE_POLICY_VERSION_MISMATCH"):
             ScoreMvp(self.policy).rank(request.model_copy(update={"policyVersion": "wrong-v1"}))
+
+    def test_excludes_hard_constraint_failures_before_scoring(self) -> None:
+        accepted, rejected = uuid4(), uuid4()
+        blocked = self._candidate(rejected, 1.0)
+        blocked["constraints"] = self._constraints(
+            permissionAllowed=False, filtersMatched=False,
+            availableCapacity=0, frequencyAllowed=False,
+        )
+        result = ScoreMvp(self.policy).rank(
+            self._request([blocked, self._candidate(accepted, 0.1)])
+        )
+        self.assertEqual([accepted], [item.venueId for item in result.items])
+        self.assertEqual(1, result.eligibleCount)
+        self.assertEqual(
+            ["PERMISSION_DENIED", "FILTER_MISMATCH", "FREQUENCY_LIMIT_REACHED", "INSUFFICIENT_CAPACITY"],
+            result.excluded[0].reasonCodes,
+        )
+
+    def test_expired_snapshot_cannot_be_ranked_or_reused_as_fallback(self) -> None:
+        candidate = self._candidate(uuid4(), 1.0)
+        candidate["constraints"] = self._constraints(
+            validUntil=datetime(2026, 8, 14, 11, 59, tzinfo=UTC).isoformat()
+        )
+        result = ScoreMvp(self.policy).rank(self._request([candidate]))
+        self.assertEqual("no_eligible_candidates", result.status)
+        self.assertTrue(result.fallbackRequired)
+        self.assertEqual([], result.items)
+        self.assertEqual(["CONSTRAINT_SNAPSHOT_EXPIRED"], result.excluded[0].reasonCodes)
 
 
 if __name__ == "__main__":

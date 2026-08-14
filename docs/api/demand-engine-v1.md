@@ -10,7 +10,7 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | --- | --- | --- |
 | `POST /events` | Validar lotes v1 de hasta 100 eventos | Spring persiste; responde `persistedCount=0` |
 | `POST /recommendations` | Validar contexto y hasta 100 candidatos elegibles | `deferred`; Spring aplica fallback |
-| `POST /ranking` | Ordenar candidatos mediante `score-mvp-v1` | Devuelve score y siete contribuciones; Spring revalida/persiste |
+| `POST /ranking` | Revalidar restricciones y ordenar con `score-mvp-v1` | Excluye fallos duros antes del score; Spring persiste y revalida al mostrar/reservar |
 | `GET /venues/{id}/attributes` | Leer la proyección interpretable vigente | 404 opaco si no existe perfil |
 | `POST /venues/{id}/attributes/evaluate` | Calcular perfil inicial interpretable | Spring persiste; caché Python acotada |
 | `POST /embeddings/generate` | Calcular lotes query/venue/service | Spring persiste en pgvector |
@@ -22,7 +22,7 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 Los POST requieren `requestId`, `schemaVersion=1`, timestamp con zona, `locale` ES/EN y
 `policyVersion`. Todas las respuestas identifican petición y versiones aplicables. Los errores
 contienen exclusivamente `code` y `requestId`. Pydantic rechaza campos desconocidos; los candidatos
-requieren `eligible=true` y capacidad positiva porque Spring conserva elegibilidad y capacidad.
+incluyen un snapshot transaccional vigente porque Spring conserva la autoridad de elegibilidad y capacidad.
 
 La evaluación de atributos admite exclusivamente el vertical de cuidado personal individual, las
 categorías `peluqueria` y `centro-de-estetica`, servicios activos de capacidad uno, declaraciones de
@@ -33,6 +33,8 @@ resultado gobernado.
 
 El contrato bootstrap no simula modelos: recomendación todavía pide fallback, conversión y demanda
 devuelven `available=false`, y eventos solo confirman validación. Ranking exige los siete componentes
-normalizados, política `score-mvp-v1`, elegibilidad true y capacidad positiva; nunca añade candidatos.
+normalizados, política `score-mvp-v1` y un snapshot de publicación, servicio, elegibilidad, permiso,
+filtros, frecuencia y capacidad. Un fallo o snapshot vencido se excluye antes del score con códigos
+allowlisted; si no queda ninguna alternativa, la respuesta solicita fallback sin reutilizar excluidos.
 Versiones futuras podrán enriquecer la respuesta dentro de un nuevo `schemaVersion`, sin cambiar
 silenciosamente esta semántica.

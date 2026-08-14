@@ -9588,3 +9588,25 @@ Fuente de verdad del avance:
   - Pesos iniciales: 30/20/15/15/10/5/5; cualquier cambio requiere nueva política evaluada.
   - Un candidate debe tener siete componentes [0,1], elegibilidad true y capacidad positiva.
   - El score no reintroduce alternativas ni sustituye locks/holds de reserva.
+
+# Conversación 221 - Restricciones duras posteriores a candidatos
+
+- Fecha: 2026-08-14.
+- Resumen de la conversación:
+  - Se añadió una fotografía autoritativa y temporal de publicación, servicio, elegibilidad,
+    permisos, filtros, frecuencia y capacidad a cada candidato de ranking.
+  - `/ranking` particiona el conjunto antes del score, excluye todo fallo de forma reproducible y
+    devuelve razones allowlisted y conteos para auditoría.
+  - Un snapshot vencido o un conjunto sin elegibles falla cerrado; ningún rechazado puede convertirse
+    en fallback por tener un score alto.
+- Archivos modificados:
+  - Nuevo `constraints.py`; `scoring.py`, pruebas unitarias/HTTP, contrato API y cuatro documentos
+    `.kiro`.
+- Requisitos impactados: RF-036, RF-039, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.10; prepara 20.11, 20.12 y 20.16.
+- Tareas completadas: 20.10.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.11.
+- Decisiones o aclaraciones relevantes:
+  - Spring calcula el snapshot y conserva la revalidación final de presentación, hold y reserva.
+  - Los límites de frecuencia llegan como decisión booleana y nunca exponen identidad o historial.
+  - Se conservan todos los motivos aplicables en un orden fijo; no se calcula score para excluidos.
