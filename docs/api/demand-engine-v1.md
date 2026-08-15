@@ -17,6 +17,7 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | `POST /session/context` | Agregar contexto efímero condicionado por consentimiento | Sin consentimiento solo usa filtro actual |
 | `POST /affinity/evaluate` | Calcular atributos/coseno con contribuciones | Coseno cerrado hasta promoción |
 | `POST /occupancy/baseline` | Calcular EMA por día-hora local | Publica incertidumbre; Spring aporta agregados y persiste |
+| `POST /demand/aggregate` | Calcular capacidad necesaria y gap agregado | Suprime conteos bajo umbral; nunca devuelve sujetos |
 | `POST /conversion/predict` | Validar features agregadas permitidas | Modelo no disponible; probabilidad nula |
 | `GET /demand/{venueId}` | Leer futura estimación agregada | Baseline no disponible; estimación nula |
 
@@ -53,3 +54,9 @@ El baseline de ocupación exige zona IANA, objetivo y entre 1 y 366 agregados de
 ocupada/ofertada con UUID. Filtra el bucket día-hora local, aplica `hourly-ema-v1` y devuelve muestra,
 tamaño efectivo, estimación, intervalo, incertidumbre y vigencia. Una muestra inferior a ocho se
 declara `insufficient_history`; el valor no debe presentarse como fiable ni activar automatismos.
+
+La agregación de demanda admite hasta 100 buckets únicos de zona aproximada, categoría piloto y
+periodo máximo de siete días. Publica `max(búsquedas elegibles-reservas,0)` y capacidad necesaria solo
+cuando corresponda. Menos de 10 búsquedas, 10 sesiones distintas o entre 1 y 4 reservas suprime todos
+los conteos/ratios; la respuesta conserva únicamente razones allowlisted. Coordenadas, consultas e
+identidades no forman parte del contrato.

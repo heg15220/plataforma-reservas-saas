@@ -4177,3 +4177,19 @@ ocho observaciones conserva el cálculo como prior/baseline, pero obliga a
 `status=insufficient_history` y `reliable=false`; no puede activar decisiones automáticas. La zona
 inválida, el timestamp sin offset, IDs duplicados, observaciones futuras u ocupación superior a la
 capacidad fallan cerrado.
+
+### 14.32 Capacidad necesaria y demanda insatisfecha privada
+
+`demand-aggregation-v1` opera únicamente sobre buckets preagregados por zona aproximada, categoría
+piloto y periodo máximo de siete días. Exige diez búsquedas elegibles y diez sesiones distintas; un
+recuento de reservas no nulo inferior a cinco también se suprime. Cero reservas es publicable solo si
+los dos umbrales k anteriores se cumplen. La salida suprimida reemplaza todos los conteos y ratios por
+null y conserva únicamente códigos técnicos; no devuelve valores pequeños junto a una bandera.
+
+Para buckets publicables, `UnsatisfiedDemand=max(eligibleSearches-completedBookings,0)` y su ratio se
+normaliza por búsquedas. `CapacityNeed=1-ExpectedOccupancy` solo existe si 20.13 declaró ocupación
+fiable y hay capacidad ofertada; de otro modo queda null y el resultado es parcial. Un bucket puede
+mantener necesidad de capacidad fiable aunque sus métricas de demanda estén suprimidas, porque la
+primera procede de agregados operativos independientes. No se aceptan coordenadas, texto de consulta,
+identidad, localidad libre ni vertical fuera del piloto. Spring conserva la construcción temporal,
+aislamiento por permisos y persistencia de los agregados publicados.

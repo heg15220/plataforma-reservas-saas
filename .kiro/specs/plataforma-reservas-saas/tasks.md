@@ -413,7 +413,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 20.11. Implementar fallbacks deterministas por popularidad contextual, valoración, cercanía, disponibilidad y novedad ante datos o dependencias insuficientes.
 - [x] 20.12. Implementar explicaciones ES/EN derivadas de las contribuciones reales del score y limitar su contenido a señales permitidas.
 - [x] 20.13. Implementar baseline de ocupación por día-hora con media móvil o suavizado exponencial, incertidumbre y zona horaria.
-- [ ] 20.14. Calcular necesidad de capacidad y demanda insatisfecha agregada por zona, categoría y periodo con umbrales de privacidad.
+- [x] 20.14. Calcular necesidad de capacidad y demanda insatisfecha agregada por zona, categoría y periodo con umbrales de privacidad.
 - [ ] 20.15. Implementar Thompson Sampling básico con prior, cuota máxima de exploración, guardrails de calidad y actualización idempotente.
 - [ ] 20.16. Integrar recomendaciones en inicio y resultados respetando filtros, disponibilidad, accesibilidad, responsive, i18n y reducción de movimiento.
 - [ ] 20.17. Clasificar reservas directas, asistidas, generadas y recuperadas mediante una política de atribución versionada y auditable.

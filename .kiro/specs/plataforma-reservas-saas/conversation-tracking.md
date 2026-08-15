@@ -9674,3 +9674,25 @@ Fuente de verdad del avance:
   - Alpha 0,30, prior 0,50/fuerza 3, mínimo fiable 8 e intervalo z=1,96 quedan versionados.
   - La conversión de tiempo ocurre antes de seleccionar bucket y admite cambios DST de zona IANA.
   - Un baseline insuficiente puede servir como fallback auditable, nunca como predicción fiable.
+
+# Conversación 225 - Demanda insatisfecha agregada y privada
+
+- Fecha: 2026-08-15.
+- Resumen de la conversación:
+  - Se implementó cálculo de capacidad necesaria y gap entre búsquedas elegibles y reservas sobre
+    buckets agregados por zona aproximada, categoría piloto y periodo.
+  - Los buckets bajo k=10 búsquedas/sesiones o con 1-4 reservas eliminan conteos y ratios de la salida;
+    no se devuelven valores pequeños ocultos detrás de una bandera.
+  - La necesidad de capacidad solo usa ocupación 20.13 fiable y puede conservarse separada de una
+    métrica de demanda suprimida.
+- Archivos modificados:
+  - Política JSON, nuevo `demand_aggregation.py`, router/factoría, pruebas unitarias/HTTP, contrato API
+    y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-037 y RF-040; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.14; prepara 20.18 y 21.11.
+- Tareas completadas: 20.14.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.15.
+- Decisiones o aclaraciones relevantes:
+  - Política: 10 búsquedas, 10 sesiones, reservas no nulas >=5 y periodo máximo 168 horas.
+  - Cero reservas solo se publica cuando existe suficiente cohorte de búsquedas/sesiones.
+  - La zona es un código aproximado gobernado; coordenadas o localidad libre fallan contrato.

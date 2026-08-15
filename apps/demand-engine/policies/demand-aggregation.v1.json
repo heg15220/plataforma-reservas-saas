@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "demand-aggregation-v1",
+  "calculationVersion": "capacity-gap-v1",
+  "minimumEligibleSearches": 10,
+  "minimumDistinctSessions": 10,
+  "minimumNonZeroBookings": 5,
+  "maximumPeriodHours": 168
+}

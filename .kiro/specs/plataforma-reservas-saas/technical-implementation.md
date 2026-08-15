@@ -36884,3 +36884,63 @@ calibración y comparación temporal pertenecen a 20.20/21.5. El bucket hora ign
 22.4 evaluará modelos avanzados solo contra este baseline. Spring debe evitar mezclar capacidad
 ofertada con capacidad restante y asegurar una política temporal homogénea. La respuesta no sustituye
 la disponibilidad actual ni la revalidación de reserva.
+
+## Iteración 2026-08-15 - Tarea 20.14: necesidad de capacidad y demanda insatisfecha
+
+### Objetivo, agregación y política de privacidad
+
+- Identificador exacto: 20.14.
+- Objetivo técnico: cuantificar capacidad potencialmente libre y demanda no convertida sin publicar
+  consultas, personas ni cohortes pequeñas.
+- Requisitos/diseño: RF-037 y RF-040; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.11,
+  14.17, 14.31 y 14.32.
+
+Se creó `policies/demand-aggregation.v1.json` con schema 1, política
+`demand-aggregation-v1`, cálculo `capacity-gap-v1`, mínimos de diez búsquedas elegibles, diez sesiones
+distintas, cinco reservas cuando el recuento sea no nulo y periodo máximo de 168 horas. Los parámetros
+se cargan al inicio y están acotados por Pydantic; cualquier drift impide readiness. El caso cero
+reservas es distinto de un recuento 1-4: puede publicarse si existe una cohorte k>=10 de búsquedas y
+sesiones, mientras un valor pequeño no nulo se suprime para evitar revelar actividad individual.
+
+`DemandAggregateBucket` contiene UUID idempotente, `zoneCode` aproximado con país, una de las dos
+categorías piloto, inicio/fin zonificados, cuatro conteos agregados y la pareja opcional
+ocupación/fiabilidad. No admite query, sessionId, customerId, venueId, coordenada, dirección, ciudad
+libre o dimensión demográfica. Sesiones y reservas no pueden superar búsquedas; la estimación solo
+puede aparecer con `occupancyReliable=true`. Los buckets se deduplican por UUID y clave
+zona/categoría/periodo, no pueden terminar en el futuro y el cálculo rechaza ventanas mayores a siete
+días con error opaco `DEMAND_PERIOD_INVALID`.
+
+### Fórmulas, supresión y semántica de salida
+
+`DemandCapacityCalculator` evalúa primero tres umbrales con precedencia fija:
+`INSUFFICIENT_ELIGIBLE_SEARCHES`, `INSUFFICIENT_DISTINCT_SESSIONS` y
+`SMALL_NON_ZERO_BOOKING_COUNT`. Si existe cualquiera, todos los conteos de búsquedas, sesiones,
+reservas, gap y ratio salen null. Esta supresión ocurre al construir el DTO; el valor pequeño no queda
+oculto en otra propiedad ni se escribe en log. El resultado es `suppressed`, salvo que exista
+capacidad necesaria fiable independiente, en cuyo caso es `partial`.
+
+Con privacidad suficiente se calcula `unsatisfied=max(eligibleSearchCount-completedBookingCount,0)` y
+`ratio=unsatisfied/eligibleSearchCount`. La resta acotada evita valores negativos por correcciones
+agregadas. `capacityNeed=1-expectedOccupancy` únicamente si el baseline 20.13 fue fiable y
+`offeredCapacity>0`; no se imputa desde búsquedas ni se usa una ocupación insuficiente. Un resultado
+con gap publicable pero sin capacidad fiable es `partial`; ambos canales disponibles producen
+`published`. La salida conserva bucket, dimensión agregada, periodo, política/cálculo y motivos.
+
+### Archivos, API, pruebas, seguridad y evidencia
+
+Se crearon política, `demand_aggregation.py` y `test_demand_aggregation.py`; se modificaron factoría,
+router, pruebas HTTP, documentación API y cuatro documentos `.kiro`. El nuevo endpoint interno es
+`POST /internal/demand/v1/demand/aggregate`; hereda autenticación, límite, timeout y error opaco. No
+hubo migración, Java o UI: Spring debe construir/persistir únicamente agregados permitidos y resolver
+aislamiento del local; Python no tiene credenciales de base.
+
+Las pruebas cubren gap 15/20, ratio 0,75, capacidad 0,35, publicación completa, supresión simultánea
+de tres umbrales sin fuga de ninguno de los conteos, conservación independiente de capacidad fiable,
+ocupación no fiable, zona exacta rechazada, sesiones incoherentes y contrato HTTP suprimido. Se
+ejecutan `npm run test:demand`, `compileall` y `git diff --check`.
+
+Riesgos/deuda: zoneCode necesita un catálogo de zonas estables en Spring; regex evita coordenadas pero
+no demuestra que el código exista. La resta es demanda observada no causal ni forecast; no representa
+usuarios únicos ni ingreso incremental. Los umbrales requieren revisión de privacidad antes de
+producción y pueden necesitar ruido/differential privacy a mayor escala. 20.18/21.11 deberán mostrar
+definición, cobertura y supresión, nunca extrapolar buckets ocultos.

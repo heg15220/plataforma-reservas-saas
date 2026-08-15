@@ -24,6 +24,11 @@ from .errors import DemandEngineError
 from .embedding_batch import EmbeddingBatchRequest, EmbeddingBatchResponse
 from .profiles import VenueProfileRequest
 from .occupancy import OccupancyBaselineRequest, OccupancyBaselineResponse
+from .demand_aggregation import (
+    DemandAggregationPolicyError,
+    DemandAggregationRequest,
+    DemandAggregationResponse,
+)
 from .session_context import SessionContextRequest, SessionContextResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 
@@ -113,6 +118,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     ) -> OccupancyBaselineResponse:
         """Calcula un baseline día-hora sin acceder a reservas ni persistir datos."""
         return request.app.state.occupancy_baseline.calculate(body)
+
+    @router.post("/demand/aggregate", response_model=DemandAggregationResponse)
+    async def aggregate_demand(
+        body: DemandAggregationRequest, request: Request
+    ) -> DemandAggregationResponse:
+        """Calcula gaps agregados y suprime conteos que no alcanzan privacidad mínima."""
+        try:
+            return request.app.state.demand_capacity_calculator.calculate(body)
+        except DemandAggregationPolicyError as error:
+            raise DemandEngineError("DEMAND_PERIOD_INVALID", 422) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

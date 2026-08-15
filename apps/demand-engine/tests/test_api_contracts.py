@@ -62,6 +62,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/session/context",
             "/internal/demand/v1/affinity/evaluate",
             "/internal/demand/v1/occupancy/baseline",
+            "/internal/demand/v1/demand/aggregate",
         }
         self.assertTrue(expected <= set(document["paths"]))
         self.assertFalse(any(path.startswith("/api/") for path in document["paths"]))
@@ -318,6 +319,29 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertTrue(payload["reliable"])
         self.assertLessEqual(payload["lowerBound"], payload["expectedOccupancy"])
         self.assertGreaterEqual(payload["upperBound"], payload["expectedOccupancy"])
+
+    def test_demand_aggregation_suppresses_small_counts_over_http(self) -> None:
+        body = self._envelope()
+        body["policyVersion"] = "demand-aggregation-v1"
+        current = datetime.fromisoformat(str(body["occurredAt"]))
+        body["buckets"] = [{
+            "bucketId": str(uuid4()), "zoneCode": "ES-madrid-centro",
+            "category": "centro-de-estetica",
+            "periodStart": (current - timedelta(hours=24)).isoformat(),
+            "periodEnd": current.isoformat(), "eligibleSearchCount": 8,
+            "distinctSessionCount": 7, "completedBookingCount": 1,
+            "offeredCapacity": 20, "expectedOccupancy": None,
+            "occupancyReliable": False,
+        }]
+        response = self.client.post(
+            "/internal/demand/v1/demand/aggregate", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        result = response.json()["results"][0]
+        self.assertEqual("suppressed", result["status"])
+        self.assertIsNone(result["eligibleSearchCount"])
+        self.assertIsNone(result["completedBookingCount"])
+        self.assertIsNone(result["unsatisfiedDemand"])
 
 
 if __name__ == "__main__":
