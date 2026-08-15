@@ -21,6 +21,7 @@ from .explanations import ExplanationBuilder, ExplanationPolicy
 from .middleware import DemandEngineBoundaryMiddleware
 from .occupancy import HourlyOccupancyBaseline, OccupancyPolicy
 from .demand_aggregation import DemandAggregationPolicy, DemandCapacityCalculator
+from .exploration import BasicThompsonSampler, ThompsonPolicy
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
 from .scoring import ScoreMvp, ScorePolicy
@@ -57,6 +58,9 @@ def create_app(
     )
     app.state.demand_capacity_calculator = DemandCapacityCalculator(
         DemandAggregationPolicy.load(policy_root / "demand-aggregation.v1.json")
+    )
+    app.state.thompson_sampler = BasicThompsonSampler(
+        ThompsonPolicy.load(policy_root / "thompson-basic.v1.json")
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

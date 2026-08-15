@@ -63,6 +63,8 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/affinity/evaluate",
             "/internal/demand/v1/occupancy/baseline",
             "/internal/demand/v1/demand/aggregate",
+            "/internal/demand/v1/exploration/select",
+            "/internal/demand/v1/exploration/update",
         }
         self.assertTrue(expected <= set(document["paths"]))
         self.assertFalse(any(path.startswith("/api/") for path in document["paths"]))
@@ -342,6 +344,56 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertIsNone(result["eligibleSearchCount"])
         self.assertIsNone(result["completedBookingCount"])
         self.assertIsNone(result["unsatisfiedDemand"])
+
+    def test_thompson_selection_and_update_are_bounded_and_idempotent(self) -> None:
+        body = self._envelope()
+        body["policyVersion"] = "thompson-basic-v1"
+        body["requestedSlots"] = 10
+        candidates = []
+        for _ in range(10):
+            venue_id = uuid4()
+            candidates.append({
+                "venueId": str(venue_id), "quality": 0.8,
+                "explorationAllowed": True,
+                "constraints": {
+                    "venuePublished": True, "serviceBookable": True,
+                    "eligibilityAllowed": True, "permissionAllowed": True,
+                    "filtersMatched": True, "frequencyAllowed": True,
+                    "availableCapacity": 1, "requestedCapacity": 1,
+                    "validUntil": (datetime.now(UTC) + timedelta(minutes=5)).isoformat(),
+                },
+                "posterior": {
+                    "venueId": str(venue_id), "alpha": 1, "beta": 1,
+                    "posteriorVersion": 0, "appliedOutcomeIds": [],
+                },
+            })
+        body["candidates"] = candidates
+        selection = self.client.post(
+            "/internal/demand/v1/exploration/select", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, selection.status_code, selection.text)
+        self.assertEqual(1, selection.json()["maximumExplorationSlots"])
+        self.assertEqual(1, len(selection.json()["selections"]))
+
+        outcome_id = uuid4()
+        update_body = self._envelope()
+        update_body.update({
+            "policyVersion": "thompson-basic-v1",
+            "outcomeEventId": str(outcome_id), "reward": "success",
+            "state": candidates[0]["posterior"],
+        })
+        applied = self.client.post(
+            "/internal/demand/v1/exploration/update", json=update_body, headers=HEADERS
+        )
+        self.assertEqual(200, applied.status_code, applied.text)
+        self.assertTrue(applied.json()["applied"])
+        update_body["state"] = applied.json()["state"]
+        replay = self.client.post(
+            "/internal/demand/v1/exploration/update", json=update_body, headers=HEADERS
+        )
+        self.assertEqual(200, replay.status_code, replay.text)
+        self.assertFalse(replay.json()["applied"])
+        self.assertEqual(applied.json()["state"], replay.json()["state"])
 
 
 if __name__ == "__main__":

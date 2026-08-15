@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "thompson-basic-v1",
+  "modelVersion": "beta-bernoulli-v1",
+  "priorAlpha": 1.0,
+  "priorBeta": 1.0,
+  "maximumExplorationShare": 0.10,
+  "minimumQuality": 0.60,
+  "maximumOutcomeLedgerSize": 1000
+}

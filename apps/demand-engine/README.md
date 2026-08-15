@@ -27,6 +27,13 @@ El perfil inicial se calcula mediante `POST
 individual y devuelve fuentes/reglas versionadas; Spring debe persistir la proyección porque la caché
 local LRU no es autoritativa ni durable.
 
+El explorador básico se invoca con `POST /internal/demand/v1/exploration/select` después de que
+Spring haya formado el conjunto elegible. Aplica de nuevo restricciones duras, calidad mínima y una
+cuota máxima del 10 % mediante Thompson Sampling Beta-Bernoulli reproducible por `requestId`. Los
+outcomes se aplican con `POST /internal/demand/v1/exploration/update`; Spring debe persistir el
+posterior y el ledger de `outcomeEventId` con unicidad y actualización atómica. El servicio no
+mantiene estado durable ni puede publicar, reservar o consumir capacidad.
+
 ## Tests
 
 ```powershell

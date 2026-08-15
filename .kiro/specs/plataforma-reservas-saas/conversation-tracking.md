@@ -9696,3 +9696,26 @@ Fuente de verdad del avance:
   - Política: 10 búsquedas, 10 sesiones, reservas no nulas >=5 y periodo máximo 168 horas.
   - Cero reservas solo se publica cuando existe suficiente cohorte de búsquedas/sesiones.
   - La zona es un código aproximado gobernado; coordenadas o localidad libre fallan contrato.
+
+# Conversación 226 - Thompson Sampling básico y controlado
+
+- Fecha: 2026-08-15.
+- Resumen de la conversación:
+  - Se implementó Thompson Sampling Beta-Bernoulli con prior Beta(1,1) y muestreo reproducible por
+    política y `requestId`.
+  - Calidad mínima, permiso y restricciones duras se aplican antes de una cuota máxima del 10 % del
+    conjunto apto; menos de diez candidatos aptos no genera plaza de exploración.
+  - La actualización usa UUID de outcome, posterior versionado y replay `applied=false` para impedir
+    doble conteo; Spring conserva la persistencia transaccional autoritativa.
+- Archivos modificados:
+  - Política JSON, nuevo `exploration.py`, router/factoría, pruebas unitarias/HTTP, documentación API
+    y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036 y RF-039; RNF-005, RNF-006, RNF-014, RNF-015 y RB-015.
+- Tareas impactadas: 20.15; prepara 20.16, 20.20, 21.7 y 23.7.
+- Tareas completadas: 20.15.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.16.
+- Decisiones o aclaraciones relevantes:
+  - Política inicial: prior alpha/beta 1, cuota 0,10, calidad 0,60 y ledger de 1.000 UUID por brazo.
+  - La cuota se calcula tras los guardrails y se redondea hacia abajo para ser un máximo efectivo.
+  - La reproducibilidad sirve para reintentos y auditoría; no sustituye aleatorización experimental
+    persistida ni la revalidación de capacidad de Spring.

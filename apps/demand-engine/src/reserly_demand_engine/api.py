@@ -29,6 +29,13 @@ from .demand_aggregation import (
     DemandAggregationRequest,
     DemandAggregationResponse,
 )
+from .exploration import (
+    ThompsonPolicyError,
+    ThompsonSelectionRequest,
+    ThompsonSelectionResponse,
+    ThompsonUpdateRequest,
+    ThompsonUpdateResponse,
+)
 from .session_context import SessionContextRequest, SessionContextResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 
@@ -128,6 +135,26 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.demand_capacity_calculator.calculate(body)
         except DemandAggregationPolicyError as error:
             raise DemandEngineError("DEMAND_PERIOD_INVALID", 422) from error
+
+    @router.post("/exploration/select", response_model=ThompsonSelectionResponse)
+    async def select_exploration(
+        body: ThompsonSelectionRequest, request: Request
+    ) -> ThompsonSelectionResponse:
+        """Selecciona una cuota acotada después de restricciones y calidad."""
+        try:
+            return request.app.state.thompson_sampler.select(body)
+        except ThompsonPolicyError as error:
+            raise DemandEngineError("THOMPSON_POLICY_INVALID", 409) from error
+
+    @router.post("/exploration/update", response_model=ThompsonUpdateResponse)
+    async def update_exploration(
+        body: ThompsonUpdateRequest, request: Request
+    ) -> ThompsonUpdateResponse:
+        """Aplica un outcome una sola vez; Spring persiste state y ledger atómicamente."""
+        try:
+            return request.app.state.thompson_sampler.update(body)
+        except ThompsonPolicyError as error:
+            raise DemandEngineError("THOMPSON_UPDATE_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

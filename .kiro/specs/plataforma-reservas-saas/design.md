@@ -4193,3 +4193,28 @@ mantener necesidad de capacidad fiable aunque sus métricas de demanda estén su
 primera procede de agregados operativos independientes. No se aceptan coordenadas, texto de consulta,
 identidad, localidad libre ni vertical fuera del piloto. Spring conserva la construcción temporal,
 aislamiento por permisos y persistencia de los agregados publicados.
+
+### 14.33 Exploración Thompson básica, acotada e idempotente
+
+`thompson-basic-v1.json` gobierna el modelo Beta-Bernoulli `beta-bernoulli-v1`: prior uniforme
+Beta(1,1), calidad mínima 0,60, cuota máxima de exploración 10 % y ledger máximo de 1.000 outcomes por
+brazo. Spring entrega pares venue/service únicos con posterior y el mismo snapshot duro temporal de
+20.10. Demand Engine vuelve a excluir permiso de exploración denegado, calidad insuficiente y
+cualquier fallo de publicación, servicio, elegibilidad, permisos, filtros, frecuencia o capacidad
+antes de calcular la cuota. La cuota es `floor(guardedCandidates*0.10)` y nunca se redondea hacia
+arriba: con menos de diez candidatos aptos no se consume una plaza de exploración.
+
+Para una petición, los brazos aptos se ordenan por UUID y se muestrean con `Beta(alpha,beta)`. La
+semilla deriva de SHA-256 de política y `requestId`, de modo que reintentos del mismo snapshot dan el
+mismo resultado sin introducir un estado aleatorio oculto. Se devuelve muestra, score de exploración,
+posición y conteos; no se añade un candidato, no se altera la elegibilidad y la selección no garantiza
+capacidad. Spring combina la señal únicamente dentro del presupuesto ya versionado de ScoreMvp y
+revalida antes de presentar o reservar.
+
+`POST /internal/demand/v1/exploration/update` recibe un `outcomeEventId`, reward binario y posterior.
+Éxito incrementa alpha, fallo incrementa beta y una aplicación nueva incrementa
+`posteriorVersion`. Si el UUID ya figura en el ledger, responde `applied=false` y conserva el estado
+byte a byte. Python implementa la transición pura; Spring debe persistir posterior y ledger en una
+única transacción con unicidad. Estado inferior al prior, drift de política o ledger lleno falla
+cerrado con error opaco. No se reciben identidades, atributos sensibles, texto libre ni datos de
+reserva.

@@ -36944,3 +36944,89 @@ no demuestra que el código exista. La resta es demanda observada no causal ni f
 usuarios únicos ni ingreso incremental. Los umbrales requieren revisión de privacidad antes de
 producción y pueden necesitar ruido/differential privacy a mayor escala. 20.18/21.11 deberán mostrar
 definición, cobertura y supresión, nunca extrapolar buckets ocultos.
+
+## Iteración 2026-08-15 - Tarea 20.15: Thompson Sampling básico
+
+### Objetivo, política y contrato de brazo
+
+- Identificador exacto: 20.15.
+- Objetivo técnico: ofrecer exploración controlada para romper parcialmente bucles de popularidad sin
+  reintroducir opciones inválidas, exceder una cuota explícita ni contar dos veces un outcome.
+- Requisitos/diseño: RF-036 y RF-039; RNF-005, RNF-006, RNF-014, RNF-015 y RB-015; secciones 14.3,
+  14.8-14.10, 14.17, 14.27-14.29 y 14.33.
+
+Se creó `policies/thompson-basic.v1.json`, cargado y validado durante el arranque. Declara schema 1,
+política `thompson-basic-v1`, modelo `beta-bernoulli-v1`, prior alpha=1/beta=1, cuota máxima 0,10,
+calidad mínima 0,60 y ledger máximo de 1.000 outcomes por brazo. `ThompsonPolicy` impide valores no
+positivos, probabilidades fuera de rango, una cuota superior al 10 % o un ledger sin cota razonable.
+Todo cambio de prior, umbral o cuota exige un artefacto/versionado nuevo; una petición con versión
+distinta falla con `409 THOMPSON_POLICY_INVALID` sin exponer detalles internos.
+
+`ArmPosterior` representa el estado que Spring debe persistir: pareja venue/service, alpha, beta,
+versión monotónica y UUID de outcomes aplicados. No contiene identidad, consulta, coordenadas, rasgos
+personales ni payload de reserva. El contrato limita alpha/beta, versión y cardinalidad, rechaza UUID
+duplicados y correlaciona estrictamente el posterior con el brazo candidato. Un posterior inferior al
+prior configurado no se acepta, evitando fabricar evidencia negativa anterior al modelo inicial.
+
+`ExplorationCandidate` incorpora calidad, autorización explícita de exploración y
+`HardConstraintSnapshot` de 20.10. Antes de muestrear se exigen calidad >=0,60, permiso y ausencia de
+fallos de vigencia, publicación, servicio reservable, elegibilidad, permiso, filtros, frecuencia y
+capacidad. Por tanto, Thompson nunca puede rescatar un candidato excluido. Spring sigue siendo la
+autoridad que calcula el snapshot y debe revalidar disponibilidad/capacidad al presentar, crear hold y
+confirmar; la selección solo es una decisión de ranking.
+
+### Selección, reproducibilidad y cuota
+
+`BasicThompsonSampler.select` ordena el conjunto ya protegido por UUID de venue/service y genera una
+muestra Beta(alpha,beta) por brazo. El generador se inicializa con los primeros 64 bits de
+SHA-256(`policyVersion:requestId`). Esto hace que el mismo request id, política y estado produzcan la
+misma selección aunque cambie el orden del payload, permitiendo reintentos y auditoría sin conservar
+estado aleatorio en Python. Un request id nuevo produce otra trayectoria de exploración.
+
+La cuota se calcula después de los guardrails como
+`min(10,floor(guardedCandidateCount*maximumExplorationShare))`. Las plazas efectivas son además el
+mínimo con `requestedSlots` y el número apto. El redondeo hacia abajo mantiene el 10 % como máximo
+real: nueve candidatos aptos producen cero plazas, diez producen una y veinte producen dos. La
+respuesta declara candidatos recibidos, candidatos protegidos, cuota, muestra redondeada a ocho
+decimales, score de exploración y posición. El desempate por UUID es estable. Este componente no
+modifica el peso de exploración 0,05 de `score-mvp-v1`; Spring/flujo de ranking debe integrar la señal
+sin superar tampoco aquel presupuesto.
+
+### Actualización idempotente, errores y persistencia
+
+`POST /internal/demand/v1/exploration/update` acepta reward cerrado `success|failure` y
+`outcomeEventId`. Un éxito suma uno solo a alpha; un fallo suma uno solo a beta; ambos incrementan
+`posteriorVersion` y anexan el UUID. Si el UUID ya existe, devuelve `applied=false` con el mismo
+posterior, sin incrementar parámetros o versión. Al alcanzar 1.000 UUID el servicio falla cerrado con
+`409 THOMPSON_UPDATE_REJECTED`; no poda el ledger silenciosamente porque perdería la garantía de
+replay. La compactación segura requerirá una estrategia posterior respaldada por almacenamiento
+durable de outcomes.
+
+La implementación Python es deliberadamente una máquina de transición pura y sin repositorio.
+Spring debe leer el estado vigente, aplicar el resultado y persistir posterior, versión y ledger en
+una sola transacción con control optimista/unicidad por outcome. Dos llamadas concurrentes con estados
+antiguos no quedan resueltas por el proceso Python; la autoridad transaccional debe rechazar la versión
+obsoleta y reintentar desde estado fresco. Tampoco se escriben payloads en logs: el middleware conserva
+solo requestId, ruta, estado y duración. Los endpoints son exclusivamente internos, autenticados,
+acotados por body/timeout y con errores opacos.
+
+### Archivos, pruebas, observabilidad y evidencia
+
+Se crearon `thompson-basic.v1.json`, `exploration.py` y `test_exploration.py`; se modificaron
+`application.py`, `api.py`, `test_api_contracts.py`, README del servicio y los documentos `.kiro`.
+No hubo migración, Java ni UI: el contrato y la transición quedan preparados, mientras la integración
+visual pertenece a 20.16 y la persistencia/exposición agregada debe materializarse en Spring sin
+otorgar escritura operativa a Python.
+
+Las pruebas unitarias acreditan reproducibilidad, cuota 2/20, cuota cero con nueve, cálculo sobre 17
+candidatos tras tres exclusiones, calidad, permiso, capacidad, success, failure y replay idempotente.
+La prueba HTTP acredita rutas OpenAPI internas, cuota 1/10, aplicación y repetición sin mutación. La
+suite acumulada ejecuta 56 casos. El cierre usa `npm run test:demand`, `python -m compileall` sobre
+fuentes/contratos/tests y `git diff --check`.
+
+Observabilidad futura debe contar política/modelo, cuota, candidatos protegidos, selección, outcomes
+nuevos/repetidos y exposición por cohortes suficientemente agregadas, nunca IDs de usuario o texto.
+Riesgos/deuda: el prior y reward binario son hipótesis sin calibración; 20.20/21.5 deben medir regret,
+conversión, diversidad y calidad. La semilla reproducible no sustituye asignación experimental durable.
+El ledger embebido está acotado y requiere almacenamiento/compactación antes de alto volumen. 23.7
+deberá alertar ante exceso de exposición y 20.16 deberá etiquetar/explicar sin revelar el sample.
