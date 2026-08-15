@@ -23,6 +23,7 @@ from .contracts import (
 from .errors import DemandEngineError
 from .embedding_batch import EmbeddingBatchRequest, EmbeddingBatchResponse
 from .profiles import VenueProfileRequest
+from .occupancy import OccupancyBaselineRequest, OccupancyBaselineResponse
 from .session_context import SessionContextRequest, SessionContextResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 
@@ -105,6 +106,13 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     async def evaluate_affinity(body: AffinityRequest, request: Request) -> AffinityResponse:
         """Evalúa contenido y deja el coseno cerrado hasta promoción explícita."""
         return request.app.state.affinity_calculator.calculate(body)
+
+    @router.post("/occupancy/baseline", response_model=OccupancyBaselineResponse)
+    async def calculate_occupancy_baseline(
+        body: OccupancyBaselineRequest, request: Request
+    ) -> OccupancyBaselineResponse:
+        """Calcula un baseline día-hora sin acceder a reservas ni persistir datos."""
+        return request.app.state.occupancy_baseline.calculate(body)
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

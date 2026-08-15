@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "occupancy-baseline-v1",
+  "modelVersion": "hourly-ema-v1",
+  "alpha": 0.30,
+  "priorMean": 0.50,
+  "priorStrength": 3.0,
+  "minimumReliableObservations": 8,
+  "intervalZScore": 1.96,
+  "minimumVariance": 0.01,
+  "validityHours": 24
+}

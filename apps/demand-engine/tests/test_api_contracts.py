@@ -28,6 +28,7 @@ class InternalApiContractTests(unittest.TestCase):
             service_id="spring-api",
             service_token=TOKEN,
             docs_enabled=True,
+            request_timeout_seconds=1,
         )
         self.client = TestClient(create_app(settings), raise_server_exceptions=False)
 
@@ -60,6 +61,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/demand/{venue_id}",
             "/internal/demand/v1/session/context",
             "/internal/demand/v1/affinity/evaluate",
+            "/internal/demand/v1/occupancy/baseline",
         }
         self.assertTrue(expected <= set(document["paths"]))
         self.assertFalse(any(path.startswith("/api/") for path in document["paths"]))
@@ -291,6 +293,31 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertEqual(0.75, response.json()["affinity"])
         self.assertFalse(response.json()["vectorApplied"])
         self.assertEqual(0.4, response.json()["contributions"][0]["combinedConfidence"])
+
+    def test_occupancy_baseline_reports_timezone_uncertainty_and_reliability(self) -> None:
+        body = self._envelope()
+        body["policyVersion"] = "occupancy-baseline-v1"
+        body.update({
+            "venueId": str(uuid4()), "targetAt": body["occurredAt"],
+            "timeZone": "Europe/Madrid", "observations": [],
+        })
+        current = datetime.fromisoformat(str(body["occurredAt"]))
+        for index in range(1, 9):
+            body["observations"].append({
+                "observationId": str(uuid4()),
+                "observedAt": (current - timedelta(weeks=index)).isoformat(),
+                "occupiedCapacity": 7, "offeredCapacity": 10,
+            })
+        response = self.client.post(
+            "/internal/demand/v1/occupancy/baseline", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        payload = response.json()
+        self.assertEqual("hourly-ema-v1", payload["modelVersion"])
+        self.assertEqual("Europe/Madrid", payload["timeZone"])
+        self.assertTrue(payload["reliable"])
+        self.assertLessEqual(payload["lowerBound"], payload["expectedOccupancy"])
+        self.assertGreaterEqual(payload["upperBound"], payload["expectedOccupancy"])
 
 
 if __name__ == "__main__":

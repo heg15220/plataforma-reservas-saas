@@ -36820,3 +36820,67 @@ son obligatorios por plantilla y el locale es cerrado ES/EN. Observabilidad futu
 códigos/política sin texto. Riesgos: las plantillas requieren revisión UX/legal antes de exposición y
 las traducciones aún no viven en el catálogo web porque la integración UI corresponde a 20.16. Un
 cambio de redacción o umbral debe crear una nueva versión para conservar reproducibilidad histórica.
+
+## Iteración 2026-08-15 - Tarea 20.13: baseline de ocupación por día-hora
+
+### Objetivo, política y frontera de datos
+
+- Identificador exacto: 20.13.
+- Objetivo técnico: producir una referencia reproducible de ocupación esperada para un bucket local
+  día-hora, mostrando su incertidumbre y evitando declarar fiabilidad con historia escasa.
+- Requisitos/diseño: RF-037 y RF-040; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.9,
+  14.10, 14.11, 14.17 y 14.31.
+
+Se creó `policies/occupancy-baseline.v1.json` como fuente única de parámetros. Declara schema 1,
+política `occupancy-baseline-v1`, modelo `hourly-ema-v1`, alpha 0,30, prior medio 0,50 con fuerza 3,
+mínimo de ocho observaciones comparables, z 1,96, suelo de varianza 0,01 y TTL 24 horas. El contrato
+Pydantic rechaza claves extra, alpha nulo, probabilidades fuera de [0,1], fuerzas/umbrales no acotados
+y versiones inválidas. La aplicación carga el artefacto al arrancar y falla readiness ante drift.
+
+`OccupancyObservation` contiene UUID, instante zonificado, capacidad ocupada y capacidad ofertada.
+La ocupada no puede superar la ofertada y esta última es al menos uno. No se aceptan ID de reserva,
+email, cliente, consulta, precio, status individual, timeSlotId ni texto. Spring construye estos
+agregados desde la fuente transaccional y conserva persistencia; Python realiza un cálculo puro sin
+base, caché ni logs de payload. UUID únicos impiden amplificar por duplicación dentro del lote y una
+observación posterior a `occurredAt` se rechaza.
+
+`OccupancyBaselineRequest` añade venue, target zonificado, zona IANA y hasta 366 observaciones. La
+zona se valida con `zoneinfo.ZoneInfo`, no mediante offset fijo: cada observación y el objetivo se
+convierten individualmente, preservando horario de verano. Solo entra el par `(isoweekday, hour)` del
+objetivo. El orden canónico `(observedAt, observationId)` hace el resultado independiente del orden del
+payload y reproduce llegadas empatadas.
+
+### EMA, varianza, incertidumbre y fiabilidad
+
+`HourlyOccupancyBaseline` arranca de la media prior y varianza mínima. Para cada ratio
+`occupiedCapacity/offeredCapacity` aplica `mean_t=alpha*x_t+(1-alpha)*mean_(t-1)` y la actualización
+estable de varianza exponencial `alpha*(x-prev)*(x-new)+(1-alpha)*variance`. El tamaño efectivo es el
+mínimo entre la muestra observada y `(2-alpha)/alpha`; evita presentar 100 observaciones antiguas como
+100 independientes bajo decaimiento. El error estándar usa `sqrt(max(varianza,suelo)/(n_eff+prior))`.
+El semiancho es `min(1,z*SE)` y ambos límites se acotan a [0,1]. `uncertainty` es la anchura real del
+intervalo después de acotar.
+
+La salida conserva política/modelo, zona, día/hora, conteo, tamaño efectivo, estimación, límites,
+incertidumbre, cálculo y vencimiento. Ocho o más observaciones producen `reliable=true/status=reliable`;
+menos producen `insufficient_history` aunque exista un número. Esta separación impide que downstream
+confunda prior o dos semanas con una predicción aprobada. 20.14 podrá calcular capacidad necesaria,
+pero deberá propagar la fiabilidad y no activar acciones irreversibles.
+
+### Archivos, API, pruebas y evidencia
+
+Se crearon política, `occupancy.py` y `test_occupancy.py`; se modificaron `application.py`, `api.py`,
+pruebas HTTP, documentación API y los cuatro documentos `.kiro`. Se añadió
+`POST /internal/demand/v1/occupancy/baseline`, bajo autenticación, timeout, body limit y errores opacos
+existentes. No hubo migración, Java o UI porque Spring ya dispone de capacidad/ocupación agregables y
+continúa como autoridad de almacenamiento.
+
+Los tests validan ocho semanas comparables, invariancia al orden, bucket Europe/Madrid, fiabilidad,
+intervalo y TTL; con dos observaciones comprueban estado insuficiente e incertidumbre positiva;
+también rechazan zona desconocida y sobreocupación. El caso HTTP acredita serialización, zona, modelo y
+límites. La verificación de cierre ejecuta `npm run test:demand`, `compileall` y `git diff --check`.
+
+Riesgos/deuda: el intervalo es una aproximación operacional, no un intervalo bayesiano calibrado; la
+calibración y comparación temporal pertenecen a 20.20/21.5. El bucket hora ignora festivos y estación;
+22.4 evaluará modelos avanzados solo contra este baseline. Spring debe evitar mezclar capacidad
+ofertada con capacidad restante y asegurar una política temporal homogénea. La respuesta no sustituye
+la disponibilidad actual ni la revalidación de reserva.

@@ -19,6 +19,7 @@ from .health import RuntimeState, health_router
 from .fallback import DeterministicFallback, FallbackPolicy
 from .explanations import ExplanationBuilder, ExplanationPolicy
 from .middleware import DemandEngineBoundaryMiddleware
+from .occupancy import HourlyOccupancyBaseline, OccupancyPolicy
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
 from .scoring import ScoreMvp, ScorePolicy
@@ -49,6 +50,9 @@ def create_app(
         ScorePolicy.load(policy_root / "score-mvp.v1.json"),
         DeterministicFallback(FallbackPolicy.load(policy_root / "fallback-mvp.v1.json")),
         ExplanationBuilder(ExplanationPolicy.load(policy_root / "explanation-mvp.v1.json")),
+    )
+    app.state.occupancy_baseline = HourlyOccupancyBaseline(
+        OccupancyPolicy.load(policy_root / "occupancy-baseline.v1.json")
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

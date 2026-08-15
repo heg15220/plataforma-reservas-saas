@@ -4161,3 +4161,19 @@ texto. Cada explicación devuelve código, locale, plantilla localizada, fuente,
 cuando existe y `explanation-mvp-v1`. Spring entrega una allowlist booleana por candidato y es
 responsable de que corresponda al consentimiento, permisos y superficie pública actuales. La política
 se carga al arrancar; no hay LLM, interpolación libre ni texto procedente de usuario o reseña.
+
+### 14.31 Baseline horario de ocupación
+
+`occupancy-baseline-v1.json` gobierna el baseline `hourly-ema-v1`: alpha 0,30, prior de ocupación
+0,50 con fuerza tres, varianza mínima 0,01, intervalo normal 1,96, ocho observaciones para declarar
+fiabilidad y vigencia de 24 horas. Spring agrega desde capacidad ofertada y ocupada y envía hasta 366
+observaciones con UUID; Python nunca recibe reservas, identidades o detalle de slots.
+
+Cada instante se convierte con `zoneinfo` a la zona IANA del local. Solo participan observaciones con
+el mismo día ISO y hora local que el objetivo; se ordenan por instante/UUID y se aplica EMA junto con
+varianza exponencial. La respuesta publica bucket, muestra, tamaño efectivo acotado por
+`(2-alpha)/alpha`, estimación, intervalo [0,1], anchura de incertidumbre, estado y vigencia. Menos de
+ocho observaciones conserva el cálculo como prior/baseline, pero obliga a
+`status=insufficient_history` y `reliable=false`; no puede activar decisiones automáticas. La zona
+inválida, el timestamp sin offset, IDs duplicados, observaciones futuras u ocupación superior a la
+capacidad fallan cerrado.

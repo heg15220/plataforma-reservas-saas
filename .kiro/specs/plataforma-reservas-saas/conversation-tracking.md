@@ -9653,3 +9653,24 @@ Fuente de verdad del avance:
   - No existe generación libre, LLM ni interpolación de texto de usuario/reseña.
   - La salida conserva política, fuente, valor y contribución real cuando el modo es ScoreMvp.
   - El máximo de dos y los textos ES/EN forman parte del artefacto validado al arrancar.
+
+# Conversación 224 - Baseline horario de ocupación con incertidumbre
+
+- Fecha: 2026-08-15.
+- Resumen de la conversación:
+  - Se implementó `hourly-ema-v1` para estimar ocupación por día ISO y hora local mediante zona IANA.
+  - El resultado publica intervalo, anchura de incertidumbre, tamaño efectivo, muestra, fiabilidad y
+    vigencia; menos de ocho observaciones queda explícitamente insuficiente.
+  - Spring conserva agregación y persistencia; Demand Engine solo recibe capacidad ocupada/ofertada
+    sin reservas, slots detallados ni identidades.
+- Archivos modificados:
+  - Política JSON, nuevo `occupancy.py`, router/factoría, pruebas unitarias/HTTP, contrato API y cuatro
+    documentos `.kiro`.
+- Requisitos impactados: RF-037 y RF-040; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.13; prepara 20.14 y 20.18.
+- Tareas completadas: 20.13.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.14.
+- Decisiones o aclaraciones relevantes:
+  - Alpha 0,30, prior 0,50/fuerza 3, mínimo fiable 8 e intervalo z=1,96 quedan versionados.
+  - La conversión de tiempo ocurre antes de seleccionar bucket y admite cambios DST de zona IANA.
+  - Un baseline insuficiente puede servir como fallback auditable, nunca como predicción fiable.

@@ -16,6 +16,7 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | `POST /embeddings/generate` | Calcular lotes query/venue/service | Spring persiste en pgvector |
 | `POST /session/context` | Agregar contexto efímero condicionado por consentimiento | Sin consentimiento solo usa filtro actual |
 | `POST /affinity/evaluate` | Calcular atributos/coseno con contribuciones | Coseno cerrado hasta promoción |
+| `POST /occupancy/baseline` | Calcular EMA por día-hora local | Publica incertidumbre; Spring aporta agregados y persiste |
 | `POST /conversion/predict` | Validar features agregadas permitidas | Modelo no disponible; probabilidad nula |
 | `GET /demand/{venueId}` | Leer futura estimación agregada | Baseline no disponible; estimación nula |
 
@@ -47,3 +48,8 @@ Afinidad, ubicación y demás señales se suprimen si Spring no las marca permit
 texto generado ni se explican conversión, capacidad interna, exploración u otras señales opacas.
 Versiones futuras podrán enriquecer la respuesta dentro de un nuevo `schemaVersion`, sin cambiar
 silenciosamente esta semántica.
+
+El baseline de ocupación exige zona IANA, objetivo y entre 1 y 366 agregados de capacidad
+ocupada/ofertada con UUID. Filtra el bucket día-hora local, aplica `hourly-ema-v1` y devuelve muestra,
+tamaño efectivo, estimación, intervalo, incertidumbre y vigencia. Una muestra inferior a ocho se
+declara `insufficient_history`; el valor no debe presentarse como fiable ni activar automatismos.
