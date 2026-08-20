@@ -13,9 +13,8 @@ vi.mock("./venue-statistics-api", async (importOriginal) => {
 });
 
 vi.mock("@/features/venue-profile/venue-profile-api", async (importOriginal) => {
-  const original = await importOriginal<
-    typeof import("@/features/venue-profile/venue-profile-api")
-  >();
+  const original =
+    await importOriginal<typeof import("@/features/venue-profile/venue-profile-api")>();
   return { ...original, fetchVenueProfiles: vi.fn() };
 });
 
@@ -44,6 +43,36 @@ const statistics = {
   reviewsCount: 3,
   incidentsCount: 2,
   averageRating: 4.5,
+  demandMetrics: {
+    status: "available" as const,
+    policyVersion: "booking-attribution-v1" as const,
+    definitionsVersion: "demand-commercial-metrics-v1" as const,
+    timeZone: "Europe/Madrid",
+    minimumSampleSize: 10,
+    eligibleReservations: 10,
+    classifiedReservations: 10,
+    coveragePercent: 100,
+    newCustomers: 4,
+    originatedReservations: 7,
+    offPeakCovered: 3,
+    attributedIncome: 245,
+    attributedCurrency: "EUR",
+    incomeStatus: "available" as const,
+    directReservations: 3,
+    assistedReservations: 2,
+    generatedReservations: 4,
+    recoveredReservations: 1,
+    definitions: [
+      { key: "newCustomers" as const, definitionCode: "NEW_CUSTOMER_FIRST_CONFIRMED_AT_VENUE" },
+      { key: "originatedReservations" as const, definitionCode: "NON_DIRECT_ATTRIBUTION_CLASSES" },
+      { key: "offPeakCovered" as const, definitionCode: "WEEKDAY_14_TO_18_LOCAL_NON_DIRECT" },
+      {
+        key: "attributedIncome" as const,
+        definitionCode: "VISIBLE_PRICE_ASSOCIATED_NOT_INCREMENTAL",
+      },
+      { key: "coverage" as const, definitionCode: "CLASSIFIED_OVER_CONFIRMED_PERIOD" },
+    ],
+  },
   series: [
     {
       date: "2026-07-28",
@@ -89,7 +118,43 @@ describe("VenueStatisticsDashboard", () => {
     expect(screen.getByLabelText("Gráfico diario de incidencias activadas")).toBeVisible();
     expect(screen.getByLabelText("28 jul 2026: 2 incidencias activadas")).toBeVisible();
     expect(screen.getByText("Incidencias activadas")).toBeVisible();
+    expect(screen.getByText("Valor generado por Reserly")).toBeVisible();
+    expect(screen.getByText(/245,00/)).toBeVisible();
+    expect(screen.getByText("10 de 10 reservas confirmadas (100,0 %)")).toBeVisible();
+    expect(
+      screen.getByRole("group", { name: "Desglose de reservas por atribución" }),
+    ).toBeVisible();
+    expect(screen.getByText(/No es ingreso incremental/)).toBeVisible();
     expect(screen.queryByText(/@/)).not.toBeInTheDocument();
+  });
+
+  it("muestra cobertura pero suprime cifras comerciales con muestra insuficiente", async () => {
+    vi.mocked(fetchVenueStatistics).mockResolvedValue({
+      ...statistics,
+      demandMetrics: {
+        ...statistics.demandMetrics,
+        status: "insufficient_sample",
+        classifiedReservations: 4,
+        coveragePercent: 40,
+        newCustomers: null,
+        originatedReservations: null,
+        offPeakCovered: null,
+        attributedIncome: null,
+        attributedCurrency: null,
+        incomeStatus: "insufficient_sample",
+        directReservations: null,
+        assistedReservations: null,
+        generatedReservations: null,
+        recoveredReservations: null,
+      },
+    });
+
+    renderWithIntl(<VenueStatisticsDashboard />);
+
+    expect(await screen.findByText(/Muestra insuficiente: hacen falta al menos 10/)).toBeVisible();
+    expect(screen.getByText("4 de 10 reservas confirmadas (40,0 %)")).toBeVisible();
+    expect(screen.getAllByText("Muestra insuficiente").length).toBeGreaterThanOrEqual(4);
+    expect(screen.queryByRole("group", { name: "Desglose de reservas por atribución" })).toBeNull();
   });
 
   it("aplica un rango custom explícito y no lanza solicitudes incompletas", async () => {

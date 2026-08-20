@@ -4251,3 +4251,20 @@ operativas previas del local sin trasladar identidad al dominio analítico. El i
 para clases no directas cuando existe un precio visible del candidato V47; representa ingreso asociado,
 no ingreso incremental. Un replay devuelve la proyección existente y los fallos asíncronos se miden sin
 alterar la confirmación.
+
+### 14.36 Panel comercial inicial y cobertura
+
+El endpoint privado existente de estadísticas añade `demandMetrics` después de resolver el local con
+la misma autorización multi-local. `demand-commercial-metrics-v1` agrega en PostgreSQL por clase y
+moneda sobre el mismo rango inclusivo de fechas locales de reserva que el panel operativo. Publica
+política de atribución, versión de definiciones, zona temporal, muestra mínima, denominador confirmado,
+reservas clasificadas y cobertura. Ninguna fila, evidencia o identidad cruza el contrato.
+
+Con menos de diez reservas clasificadas, `status=insufficient_sample`: cobertura y denominadores propios
+permanecen visibles, pero nuevos clientes, reservas originadas, valle, ingreso y desglose son null. Con
+muestra suficiente, originadas suma `assisted+generated+recovered`; horas valle cubiertas cuenta reservas
+no directas de lunes a viernes entre 14:00 inclusive y 18:00 exclusive según la hora local almacenada.
+Ingreso atribuido suma exclusivamente precios visibles asociados y solo cuando existe una moneda única;
+sin precio o con monedas mixtas se muestra estado, no una suma falsa. La UI ES/EN presenta cuatro
+tarjetas, desglose, cobertura, versiones, zona y cinco definiciones; recuerda de forma permanente que
+la medición es observacional y no incremental.

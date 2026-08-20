@@ -42,7 +42,8 @@ class VenueStatisticsServiceTests {
             stats(LocalDate.of(2026, 7, 2), 6, 5, 1, 2, 3, 9, 20, 3, 1, "3.00"));
     when(statsDao.findRange(VENUE_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 29)))
         .thenReturn(days);
-    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
+    DemandCommercialMetricsAssembler demandMetrics = mock(DemandCommercialMetricsAssembler.class);
+    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, demandMetrics, CLOCK);
 
     var response = service.findOwned(OWNER_ID, null, "month", null, null);
 
@@ -62,6 +63,13 @@ class VenueStatisticsServiceTests {
     verify(statsDao)
         .aggregateVenueRange(
             VENUE_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 29), "Europe/Madrid", NOW);
+    verify(demandMetrics)
+        .assemble(
+            VENUE_ID,
+            LocalDate.of(2026, 7, 1),
+            LocalDate.of(2026, 7, 29),
+            8,
+            ZoneId.of("Europe/Madrid"));
   }
 
   @Test
@@ -76,7 +84,7 @@ class VenueStatisticsServiceTests {
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any()))
         .thenReturn(List.of());
-    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
+    var service = service(venueDao, statsDao);
 
     assertThat(service.findOwned(OWNER_ID, null, "today", null, null).fromDate())
         .isEqualTo("2026-07-29");
@@ -97,7 +105,7 @@ class VenueStatisticsServiceTests {
   void rejectsInvalidRangesBeforeResolvingVenue() {
     VenueDao venueDao = mock(VenueDao.class);
     StatsDailyVenueDao statsDao = mock(StatsDailyVenueDao.class);
-    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
+    var service = service(venueDao, statsDao);
 
     assertThatThrownBy(() -> service.findOwned(OWNER_ID, null, "unknown", null, null))
         .isInstanceOf(VenueStatisticsFilterInvalidException.class);
@@ -124,7 +132,7 @@ class VenueStatisticsServiceTests {
     VenueDao venueDao = mock(VenueDao.class);
     StatsDailyVenueDao statsDao = mock(StatsDailyVenueDao.class);
     when(venueDao.findCurrentByOwnerUserId(OWNER_ID)).thenReturn(Optional.empty());
-    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
+    var service = service(venueDao, statsDao);
 
     assertThatThrownBy(() -> service.findOwned(OWNER_ID, null, "today", null, null))
         .isInstanceOf(VenueStatisticsNotFoundException.class);
@@ -140,7 +148,7 @@ class VenueStatisticsServiceTests {
     when(venueDao.findAccessibleById(OWNER_ID, VENUE_ID)).thenReturn(Optional.of(venue));
     when(statsDao.findRange(VENUE_ID, LocalDate.of(2026, 7, 29), LocalDate.of(2026, 7, 29)))
         .thenReturn(List.of());
-    var service = new VenueStatisticsServiceImpl(venueDao, statsDao, CLOCK);
+    var service = service(venueDao, statsDao);
 
     assertThat(service.findOwned(OWNER_ID, VENUE_ID, "today", null, null).period())
         .isEqualTo("today");
@@ -177,5 +185,10 @@ class VenueStatisticsServiceTests {
     result.setIncidentsCount(incidents);
     result.setAverageRating(new BigDecimal(average));
     return result;
+  }
+
+  private VenueStatisticsServiceImpl service(VenueDao venueDao, StatsDailyVenueDao statsDao) {
+    DemandCommercialMetricsAssembler demandMetrics = mock(DemandCommercialMetricsAssembler.class);
+    return new VenueStatisticsServiceImpl(venueDao, statsDao, demandMetrics, CLOCK);
   }
 }

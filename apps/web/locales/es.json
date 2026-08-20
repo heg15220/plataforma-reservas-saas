@@ -1952,6 +1952,44 @@
       "reviews": "Reseñas recibidas",
       "incidents": "Incidencias activadas"
     },
+    "demand": {
+      "title": "Valor generado por Reserly",
+      "description": "Métricas observacionales del periodo seleccionado. No representan impacto causal ni ingreso incremental.",
+      "insufficient": "Muestra insuficiente: hacen falta al menos {minimum} reservas clasificadas. Se muestra la cobertura, pero no se extrapolan cifras comerciales.",
+      "insufficientValue": "Muestra insuficiente",
+      "metrics": {
+        "newCustomers": "Clientes nuevos",
+        "originated": "Reservas originadas",
+        "offPeak": "Horas valle cubiertas",
+        "income": "Ingresos atribuidos"
+      },
+      "coverage": "Cobertura de atribución",
+      "coverageValue": "{classified} de {eligible} reservas confirmadas ({percent} %)",
+      "policy": "Política de atribución",
+      "timeZone": "Zona temporal aplicada",
+      "definitionsVersion": "Versión de definiciones",
+      "incomeStatus": {
+        "available": "Disponible",
+        "no_visible_price": "Sin precio visible atribuible",
+        "mixed_currency": "Varias monedas; no se suman",
+        "insufficient_sample": "Muestra insuficiente"
+      },
+      "breakdown": {
+        "aria": "Desglose de reservas por atribución",
+        "direct": "Directas",
+        "assisted": "Asistidas",
+        "generated": "Generadas",
+        "recovered": "Recuperadas"
+      },
+      "definitionsTitle": "Cómo se calculan",
+      "definitions": {
+        "newCustomers": "Cliente nuevo: primera reserva confirmada identificable en este local.",
+        "originatedReservations": "Reserva originada: suma de asistidas, generadas y recuperadas; excluye directas.",
+        "offPeakCovered": "Hora valle cubierta: reserva no directa de lunes a viernes, entre las 14:00 y las 18:00, en la zona indicada.",
+        "attributedIncome": "Ingreso atribuido: precio visible asociado a reservas no directas. No es ingreso incremental.",
+        "coverage": "Cobertura: reservas con clasificación divididas entre reservas confirmadas del periodo."
+      }
+    },
     "errors": {
       "unauthenticated": "Tu sesión ha caducado. Vuelve a acceder.",
       "forbidden": "No tienes permisos para consultar estas estadísticas.",

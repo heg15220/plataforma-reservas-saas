@@ -17,6 +17,7 @@ const validStatistics = {
   reviewsCount: 3,
   incidentsCount: 2,
   averageRating: 4.5,
+  demandMetrics: demandMetricsFixture(),
   series: [
     {
       date: "2026-07-28",
@@ -34,6 +35,39 @@ const validStatistics = {
     },
   ],
 };
+
+function demandMetricsFixture() {
+  return {
+    status: "available" as const,
+    policyVersion: "booking-attribution-v1" as const,
+    definitionsVersion: "demand-commercial-metrics-v1" as const,
+    timeZone: "Europe/Madrid",
+    minimumSampleSize: 10,
+    eligibleReservations: 10,
+    classifiedReservations: 10,
+    coveragePercent: 100,
+    newCustomers: 4,
+    originatedReservations: 7,
+    offPeakCovered: 3,
+    attributedIncome: 245,
+    attributedCurrency: "EUR",
+    incomeStatus: "available" as const,
+    directReservations: 3,
+    assistedReservations: 2,
+    generatedReservations: 4,
+    recoveredReservations: 1,
+    definitions: [
+      { key: "newCustomers" as const, definitionCode: "NEW_CUSTOMER_FIRST_CONFIRMED_AT_VENUE" },
+      { key: "originatedReservations" as const, definitionCode: "NON_DIRECT_ATTRIBUTION_CLASSES" },
+      { key: "offPeakCovered" as const, definitionCode: "WEEKDAY_14_TO_18_LOCAL_NON_DIRECT" },
+      {
+        key: "attributedIncome" as const,
+        definitionCode: "VISIBLE_PRICE_ASSOCIATED_NOT_INCREMENTAL",
+      },
+      { key: "coverage" as const, definitionCode: "CLASSIFIED_OVER_CONFIRMED_PERIOD" },
+    ],
+  };
+}
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://api.test/");

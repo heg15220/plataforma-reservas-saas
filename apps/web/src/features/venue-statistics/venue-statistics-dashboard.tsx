@@ -13,8 +13,13 @@ import {
   CalendarRange,
   ChartNoAxesColumnIncreasing,
   CirclePercent,
+  Clock3,
+  Euro,
+  Info,
   ShieldAlert,
   Star,
+  TrendingUp,
+  UserPlus,
   UsersRound,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -297,6 +302,8 @@ export function VenueStatisticsDashboard() {
             />
           </Box>
 
+          <DemandCommercialPanel data={data.demandMetrics} locale={locale} />
+
           <Box
             sx={{
               display: "grid",
@@ -366,15 +373,148 @@ export function VenueStatisticsDashboard() {
               <Detail label={t("details.cancelled")} value={number.format(data.cancelledCount)} />
               <Detail label={t("details.attended")} value={number.format(data.attendedCount)} />
               <Detail label={t("details.reviews")} value={number.format(data.reviewsCount)} />
-              <Detail
-                label={t("details.incidents")}
-                value={number.format(data.incidentsCount)}
-              />
+              <Detail label={t("details.incidents")} value={number.format(data.incidentsCount)} />
             </Box>
           </Surface>
         </>
       )}
     </Stack>
+  );
+}
+
+/**
+ * Presenta valor comercial observado con cobertura y definiciones siempre visibles. Las cifras se
+ * sustituyen por el estado insuficiente cuando el backend aplica el umbral de agregación.
+ */
+function DemandCommercialPanel({
+  data,
+  locale,
+}: {
+  data: VenueStatistics["demandMetrics"];
+  locale: string;
+}) {
+  const t = useTranslations("VenueStatistics");
+  const number = new Intl.NumberFormat(locale);
+  const percent = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  });
+  const unavailable = t("demand.insufficientValue");
+  const income =
+    data.attributedIncome !== null && data.attributedCurrency
+      ? new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency: data.attributedCurrency,
+        }).format(data.attributedIncome)
+      : t(`demand.incomeStatus.${data.incomeStatus}`);
+
+  return (
+    <Surface component="section">
+      <Stack spacing={3}>
+        <Box>
+          <Typography component="h2" variant="h2">
+            {t("demand.title")}
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            {t("demand.description")}
+          </Typography>
+        </Box>
+        {data.status === "insufficient_sample" && (
+          <Alert severity="info">
+            {t("demand.insufficient", { minimum: data.minimumSampleSize })}
+          </Alert>
+        )}
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              xl: "repeat(4, minmax(0, 1fr))",
+            },
+          }}
+        >
+          <MetricCard
+            icon={UserPlus}
+            label={t("demand.metrics.newCustomers")}
+            value={data.newCustomers === null ? unavailable : number.format(data.newCustomers)}
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label={t("demand.metrics.originated")}
+            value={
+              data.originatedReservations === null
+                ? unavailable
+                : number.format(data.originatedReservations)
+            }
+          />
+          <MetricCard
+            icon={Clock3}
+            label={t("demand.metrics.offPeak")}
+            value={data.offPeakCovered === null ? unavailable : number.format(data.offPeakCovered)}
+          />
+          <MetricCard icon={Euro} label={t("demand.metrics.income")} value={income} />
+        </Box>
+        <Box
+          component="dl"
+          sx={{
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: { sm: "repeat(2, minmax(0, 1fr))" },
+            m: 0,
+          }}
+        >
+          <Detail
+            label={t("demand.coverage")}
+            value={t("demand.coverageValue", {
+              classified: number.format(data.classifiedReservations),
+              eligible: number.format(data.eligibleReservations),
+              percent: percent.format(data.coveragePercent),
+            })}
+          />
+          <Detail label={t("demand.policy")} value={data.policyVersion} />
+          <Detail label={t("demand.timeZone")} value={data.timeZone} />
+          <Detail label={t("demand.definitionsVersion")} value={data.definitionsVersion} />
+        </Box>
+        {data.status === "available" && (
+          <Box
+            aria-label={t("demand.breakdown.aria")}
+            component="dl"
+            role="group"
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, 1fr)" },
+              m: 0,
+            }}
+          >
+            {(["direct", "assisted", "generated", "recovered"] as const).map((kind) => (
+              <Detail
+                key={kind}
+                label={t(`demand.breakdown.${kind}`)}
+                value={number.format(data[`${kind}Reservations`] ?? 0)}
+              />
+            ))}
+          </Box>
+        )}
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Info aria-hidden="true" size={18} />
+            <Typography component="h3" variant="h3">
+              {t("demand.definitionsTitle")}
+            </Typography>
+          </Stack>
+          <Box component="ul" sx={{ m: 0, pl: 3 }}>
+            {data.definitions.map((definition) => (
+              <Typography component="li" key={definition.key} sx={{ mt: 1 }}>
+                {t(`demand.definitions.${definition.key}`)}
+              </Typography>
+            ))}
+          </Box>
+        </Stack>
+      </Stack>
+    </Surface>
   );
 }
 

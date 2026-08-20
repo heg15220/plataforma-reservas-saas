@@ -30,11 +30,17 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
 
   private final VenueDao venueDao;
   private final StatsDailyVenueDao statsDao;
+  private final DemandCommercialMetricsAssembler demandMetricsAssembler;
   private final Clock clock;
 
-  public VenueStatisticsServiceImpl(VenueDao venueDao, StatsDailyVenueDao statsDao, Clock clock) {
+  public VenueStatisticsServiceImpl(
+      VenueDao venueDao,
+      StatsDailyVenueDao statsDao,
+      DemandCommercialMetricsAssembler demandMetricsAssembler,
+      Clock clock) {
     this.venueDao = venueDao;
     this.statsDao = statsDao;
+    this.demandMetricsAssembler = demandMetricsAssembler;
     this.clock = clock;
   }
 
@@ -53,7 +59,7 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
         venueId, range.fromDate(), range.toDate(), clock.getZone().getId(), clock.instant());
     List<StatsDailyVenueEntity> days =
         statsDao.findRange(venueId, range.fromDate(), range.toDate());
-    return toResponse(period, range, days);
+    return toResponse(venueId, period, range, days);
   }
 
   /** Resuelve el local solicitado sin distinguir entre un UUID inexistente, archivado o ajeno. */
@@ -91,7 +97,10 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
   }
 
   private VenueStatisticsResponse toResponse(
-      VenueStatisticsPeriod period, DateRange range, List<StatsDailyVenueEntity> days) {
+      UUID venueId,
+      VenueStatisticsPeriod period,
+      DateRange range,
+      List<StatsDailyVenueEntity> days) {
     long reservations = sum(days, Metric.RESERVATIONS);
     long confirmed = sum(days, Metric.CONFIRMED);
     long cancelled = sum(days, Metric.CANCELLED);
@@ -116,7 +125,9 @@ public class VenueStatisticsServiceImpl implements VenueStatisticsService {
         reviews,
         incidents,
         weightedRating(days, reviews),
-        days.stream().map(this::toDaily).toList());
+        days.stream().map(this::toDaily).toList(),
+        demandMetricsAssembler.assemble(
+            venueId, range.fromDate(), range.toDate(), confirmed, clock.getZone()));
   }
 
   private VenueStatisticsDailyResponse toDaily(StatsDailyVenueEntity day) {

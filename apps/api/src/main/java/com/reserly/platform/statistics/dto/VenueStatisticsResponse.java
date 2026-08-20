@@ -25,7 +25,8 @@ public record VenueStatisticsResponse(
     long reviewsCount,
     long incidentsCount,
     BigDecimal averageRating,
-    List<VenueStatisticsDailyResponse> series) {
+    List<VenueStatisticsDailyResponse> series,
+    DemandCommercialMetricsResponse demandMetrics) {
 
   /** Impide que el llamador pueda mutar la evolución después de construir la respuesta. */
   public VenueStatisticsResponse {

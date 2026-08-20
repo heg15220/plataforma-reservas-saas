@@ -39,7 +39,8 @@ class VenueStatisticsControllerTests {
             2,
             3,
             new BigDecimal("4.50"),
-            List.of());
+            List.of(),
+            null);
     UUID venueId = UUID.fromString("20000000-0000-4000-8000-000000000001");
     when(service.findOwned(
             ownerId, venueId, "custom", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 10)))

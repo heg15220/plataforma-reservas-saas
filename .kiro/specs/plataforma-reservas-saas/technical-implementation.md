@@ -37174,3 +37174,101 @@ revenue incremental. Un fallo asíncrono queda medido pero requiere un job de re
 cobertura completa. La política es observacional y debe validarse con experimentos 20.19/20.20 antes
 de atribuir uplift. 20.18 debe publicar cobertura, denominadores, definiciones y umbral de privacidad,
 nunca convertir estas clases en una afirmación causal.
+
+## Iteración 2026-08-20 - Tarea 20.18: panel comercial inicial
+
+### Objetivo, contrato y aislamiento
+
+- Identificador exacto: 20.18.
+- Objetivo técnico: exponer al local métricas comerciales derivadas de la atribución con definición,
+  periodo, versión, cobertura y calidad visibles, sin filas individuales ni extrapolaciones.
+- Requisitos/diseño: RF-037, RF-038 y RF-040; RNF-005, RNF-006, RNF-007, RNF-014 y RNF-015;
+  secciones 14.11, 14.15, 14.17, 14.35 y 14.36.
+
+Se amplió `GET /api/venue/me/statistics`; no se creó un perímetro de autorización paralelo. El
+controlador sigue derivando `userId` del principal y `VenueStatisticsServiceImpl` resuelve el local
+actual o el `venueId` explícito mediante `findCurrentByOwnerUserId`/`findAccessibleById`. Solo después
+de esa comprobación invoca `DemandCommercialMetricsAssembler`. El cambio de local y rango reutiliza
+el flujo existente de la UI y vuelve a consultar el backend; un UUID ajeno conserva el mismo 404
+opaco. El contrato `VenueStatisticsResponse` añade un único agregado `demandMetrics` y no contiene
+reservationId, email, evidencia, consulta o contexto personal.
+
+`DemandCommercialMetricsResponse` publica `status`, `booking-attribution-v1`,
+`demand-commercial-metrics-v1`, zona, mínimo de muestra, reservas confirmadas elegibles, reservas
+clasificadas, porcentaje de cobertura, cuatro métricas, moneda/estado monetario, cuatro clases y cinco
+pares key/código de definición. Las definiciones se codifican para localizarse en frontend sin aceptar
+texto libre del backend. La lista se copia defensivamente. El schema Zod es estricto, limita enums,
+rangos, vocabulario, cardinalidad y pareja importe/moneda; rechaza campos inesperados y exige que un
+estado insuficiente no transporte cifras comerciales.
+
+### Consulta agregada, fórmulas y muestra mínima
+
+`BookingAttributionDao.aggregatePeriod` ejecuta una consulta PostgreSQL nativa agrupada por
+`attributionClass`/moneda. Une únicamente la reserva necesaria para fecha y hora local; filtra por
+`venueId` y el mismo rango inclusivo `Reservations.date` que alimenta `StatsDailyVenue`. Devuelve una
+proyección agregada con conteos, clientes nuevos, valle e importe; no materializa entidades ni
+evidencia en JVM. El índice V54 por local sigue soportando el aislamiento y el join usa PK/FK. Al
+usar la fecha snapshot de reserva, el numerador clasificado y el denominador confirmado tienen la
+misma semántica temporal incluso si la confirmación ocurrió en otra fecha.
+
+La política define mínimo diez atribuciones. `coveragePercent=classified/confirmed*100`, escala una
+decimal y devuelve 0,0 con denominador cero. Si `classified<10`, el assembler conserva status,
+denominadores, cobertura, versiones, zona y definiciones, pero devuelve null en nuevos clientes,
+originadas, valle, ingreso, moneda y desglose. No se extrapola ni se transforma una cohorte pequeña en
+porcentaje comercial. Con muestra suficiente: nuevos clientes suma `isNewCustomer`; originadas suma
+`assisted`, `generated` y `recovered`; desglose cuenta las cuatro clases; valle suma únicamente
+atribuciones no directas con fecha lunes-viernes y hora `[14:00,18:00)` local.
+
+Ingreso suma `attributedAmount` a dos decimales solo cuando todas las filas monetarias comparten una
+moneda. Ningún precio produce `no_visible_price`; más de una moneda produce `mixed_currency` y deja
+importe/moneda null. Esto evita sumar unidades incompatibles. Incluso en estado available el texto y
+la definición llaman a la cifra ingreso atribuido observado, no uplift, margen, cobro final ni ingreso
+incremental. Las cinco definiciones visibles fijan cliente nuevo, originada, valle, ingreso y cobertura.
+
+### UI, accesibilidad, responsive e internacionalización
+
+`DemandCommercialPanel` se integra en `VenueStatisticsDashboard` tras el resumen general. Cuatro
+tarjetas responsive muestran cliente nuevo, originadas, valle e ingreso. Muestra insuficiente produce
+un `Alert` informativo y sustituye los cuatro valores por texto, manteniendo cobertura. En estado
+available aparece un `dl` con rol/grupo y nombre accesible para directa, asistida, generada y recuperada.
+Otro bloque presenta cobertura con numerador/denominador/porcentaje, política, zona y versión; una lista
+explica las cinco definiciones. Iconos son decorativos, los encabezados conservan jerarquía y la cuadrícula
+usa 1/2/4 columnas sin ancho fijo. `Intl.NumberFormat` localiza número, porcentaje y moneda.
+
+Los catálogos `es.json`/`en.json` incluyen todos los estados y definiciones. No se concatena texto
+procedente de datos ni se usa color como único indicador. El panel participa en carga, errores,
+auto-refresh, foco, rango y selector multi-local ya accesibles. El API web usa cookie HttpOnly,
+`no-store`, `AbortSignal` y los errores privados existentes; un contrato inválido degrada a
+`unavailable` sin renderizar una métrica engañosa.
+
+### Archivos, pruebas, errores y evidencia
+
+Se crearon `BookingAttributionAggregate`, `DemandCommercialMetricsResponse`,
+`DemandMetricDefinitionResponse`, `DemandCommercialMetricsAssembler` y su suite. Se modificaron DAO,
+respuesta/servicio de estadísticas, tres suites backend, API/schema web, dashboard/suite y catálogos.
+No hubo migración adicional: V54 ya provee tabla, FK e índice. Todo módulo/contrato nuevo y la lógica
+no evidente de consulta, supresión e ingreso quedaron documentados en código.
+
+Las pruebas del assembler cubren el umbral exacto diez, cobertura 83,3 %, suma originada 7, valle 3,
+EUR 245,00, desglose/definiciones y supresión total bajo nueve manteniendo cobertura 90 %. Las suites
+de servicio/controlador/autorización acreditan rango, denominador confirmado, zona e aislamiento. En
+frontend, nueve casos cubren schema privado, campos inesperados, tarjetas, moneda, cobertura,
+definiciones, desglose accesible, muestra insuficiente, multi-local, rangos y refresco.
+
+Evidencia ejecutada: Spotless correcto; Maven focalizado ejecutó diez casos sin fallos; Vitest dirigido
+ejecutó nueve casos sin fallos; ESLint sobre los cuatro archivos web modificados terminó sin hallazgos;
+Prettier dirigido y `git diff --check` quedaron correctos. El typecheck global se ejecutó: tras corregir
+el único hallazgo propio, conserva exclusivamente incidencias históricas de MUI/tipos en módulos no
+tocados. `validate-i18n` conserva asimismo hallazgos históricos fuera de estos archivos; no señaló el
+panel ni los catálogos añadidos. Una ejecución adicional con PostgreSQL Testcontainers validó y aplicó
+las 54 migraciones, incluida V54; el contexto completo no llegó a ejecutar la consulta por dos deudas
+preexistentes sucesivas (`BehaviorEvents.countryCode` char/varchar y orden de
+`SessionAuthenticationFilter`). La prueba dirigida no se incorporó a una suite ya roja por esos motivos.
+
+Riesgos/deuda: valle 14:00-18:00 es una definición MVP transversal y no aprende el patrón específico
+del local; una definición adaptativa debe versionarse y usar un baseline 20.13 fiable. El denominador
+excluye canceladas y sigue el estado operativo actual; futuras vistas de cohortes pueden necesitar
+snapshots históricos. La supresión evita interpretación con muestra pequeña, pero el umbral 10 debe
+revisarse con privacidad/producto. La cobertura puede caer por fallo asíncrono 20.17 y requiere alerta
+y reparación antes de SLA. La atribución permanece correlacional; 20.19/20.20 deben medir experimento
+e incrementalidad antes de cualquier afirmación de valor causal.

@@ -112,7 +112,8 @@ class VenueStatisticsAuthorizationTests {
         0,
         0,
         null,
-        List.of());
+        List.of(),
+        null);
   }
 
   private FilterChainProxy securityFilter() {

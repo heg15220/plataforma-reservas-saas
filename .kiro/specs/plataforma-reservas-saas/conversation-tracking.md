@@ -9766,3 +9766,26 @@ Fuente de verdad del avance:
   - Solo una señal del mismo local permite `generated` o `recovered`; actividad genérica solo puede
     justificar `assisted`.
   - Los siete casos dirigidos de clasificador, servicio y telemetría quedaron verdes.
+
+# Conversación 229 - Panel comercial inicial del motor de demanda
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se amplió el panel privado de estadísticas con nuevos clientes, reservas originadas, horas valle
+    cubiertas, ingreso atribuido y desglose directo/asistido/generado/recuperado.
+  - Cobertura, política, zona, versión y definiciones son siempre visibles; bajo diez atribuciones se
+    informa muestra insuficiente y se suprimen cifras comerciales sin extrapolar.
+  - La consulta agrega en PostgreSQL por local/rango/clase/moneda y la UI valida estrictamente el
+    contrato, localiza ES/EN y distingue asociación de incrementalidad.
+- Archivos modificados:
+  - DAO/proyección de atribución, assembler y DTOs de estadísticas, servicio privado, panel/API web,
+    catálogos ES/EN, pruebas backend/frontend y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-037, RF-038 y RF-040; RNF-005, RNF-006, RNF-007, RNF-014 y RNF-015.
+- Tareas impactadas: 20.18; prepara 20.19, 20.20, 21.5 y 21.11.
+- Tareas completadas: 20.18.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.19.
+- Decisiones o aclaraciones relevantes:
+  - `demand-commercial-metrics-v1` define valle como lunes-viernes, 14:00-18:00 local, para que el
+    MVP sea interpretable; una política adaptativa futura necesitará nueva versión.
+  - Monedas distintas nunca se suman y el precio visible no se denomina ingreso incremental.
+  - Diez pruebas backend y nueve frontend dirigidas quedaron verdes; lint focalizado también pasó.
