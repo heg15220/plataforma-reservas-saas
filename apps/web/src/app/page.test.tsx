@@ -1,4 +1,4 @@
-import { act, cleanup, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
@@ -127,5 +127,22 @@ describe("HomePage", () => {
     act(() => vi.advanceTimersByTime(20_000));
 
     expect(carousel).toHaveAttribute("data-active-index", "0");
+  });
+
+  it("expone el carril como región y pausa la rotación durante navegación por teclado", () => {
+    vi.useFakeTimers();
+    renderWithIntl(<HomePageView venues={venues} />);
+
+    const region = screen.getByRole("region", { name: "Recomendados para ti" });
+    const carousel = within(region).getByTestId("recommended-carousel");
+    expect(carousel).toHaveAttribute("aria-live", "off");
+    const firstLink = within(carousel).getByRole("link", { name: "Local 1" });
+    fireEvent.focus(firstLink);
+    act(() => vi.advanceTimersByTime(8_000));
+    expect(carousel).toHaveAttribute("data-active-index", "0");
+
+    fireEvent.blur(firstLink, { relatedTarget: null });
+    act(() => vi.advanceTimersByTime(4_000));
+    expect(carousel).toHaveAttribute("data-active-index", "1");
   });
 });

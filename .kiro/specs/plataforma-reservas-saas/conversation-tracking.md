@@ -9835,3 +9835,26 @@ Fuente de verdad del avance:
   - Shadow a piloto no exige uplift; piloto a rollout sí exige potencia, muestra y efecto con IC95.
   - El baseline sintético solo protege regresión offline y nunca se interpreta como control causal.
   - Seis pruebas dirigidas quedaron verdes y los artefactos JSON pasaron formato/validación estricta.
+
+# Conversación 232 - Puerta transversal de aceptación del MVP
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se creó una suite de aceptación Python para relevancia, determinismo, ocho filtros duros,
+    fallback, explicación, aislamiento y carga máxima de 100 candidatos.
+  - Se verificó accesibilidad del carril mediante región nombrada, ausencia de anuncios automáticos,
+    pausa por foco y respeto de reducción de movimiento.
+  - Se amplió experimento con reparto 50/50 sobre 1.000 UUID y se orquestaron Python, Vitest y Maven
+    bajo un único comando que falla cerrado.
+- Archivos modificados:
+  - Suite de aceptación Python, suite Java experimental, carril/prueba web, scripts npm, matriz de
+    verificación y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-029, RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-007, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: 20.21; prepara 21.1, 21.5, 21.10 y 21.11.
+- Tareas completadas: 20.21.
+- Siguiente tarea pendiente recomendada: 17.1; siguiente fase del motor de demanda: 21.1.
+- Decisiones o aclaraciones relevantes:
+  - El test p95 en memoria detecta regresión local, pero no sustituye siete días de shadow end-to-end.
+  - La sección existente conserva el landmark; el carril interno usa `aria-live=off` y evita duplicarlo.
+  - La puerta final pasó 11 tests Python, 5 web y 11 Java; el motor completo pasó 67 tests.

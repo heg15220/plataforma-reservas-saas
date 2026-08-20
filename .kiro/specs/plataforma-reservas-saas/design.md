@@ -4308,3 +4308,23 @@ El evaluador rechaza campos desconocidos, métricas ausentes, NaN, versiones cru
 insuficientes. Compara las métricas offline compartidas contra baseline sin regresión y luego aplica
 los umbrales de la etapa. Devuelve cada gate observado/requerido y `promotable` solo si todos pasan.
 No despliega ni muta configuración: la decisión sigue siendo humana, auditada y reversible.
+
+### 14.39 Puerta transversal de aceptación del MVP
+
+`npm run test:demand:mvp` compone una señal única, local y sin red sobre tres runtimes. Python prueba
+relevancia, replay determinista, los ocho filtros duros, fallback, explicaciones, aislamiento de
+contrato y el máximo de 100 candidatos. Web verifica que la región recomendada está nombrada, la
+rotación no se anuncia, se pausa con foco y se anula por reducción de movimiento. Java prueba
+estabilidad/replay, reparto A/B, exclusión, vínculo previo y bloqueo de impresión. Las pruebas de
+promoción completan muestra, versiones y tolerancia cero.
+
+La prueba de carga realiza warm-up y veinte rankings en memoria con el máximo contractual, calcula
+p95 por nearest-rank y exige <=150 ms. Es un detector de regresión del algoritmo, no el SLO servidor:
+shadow sigue midiendo el delta p95 end-to-end contra control. El reparto experimental usa 1.000 UUID
+deterministas y admite 43–57 % para una configuración 50/50; valida sesgo grueso sin convertir una
+prueba probabilística en garantía de balance para cohortes pequeñas.
+
+La matriz `demand-mvp-verification-matrix.md` enlaza cada dimensión con prueba e invariante. La puerta
+omite únicamente Checkstyle global al invocar Maven por deuda histórica; conserva Spotless,
+compilación y tests. Ningún fallo se transforma en warning y la tarea solo puede cerrarse con los tres
+bloques verdes.

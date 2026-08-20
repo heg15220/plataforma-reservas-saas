@@ -62,6 +62,7 @@ export function HomeRecommendedCarousel({ venues }: HomeRecommendedCarouselProps
 
   return (
     <Box
+      aria-live="off"
       data-active-index={activeIndex}
       data-testid="recommended-carousel"
       onBlur={(event) => {

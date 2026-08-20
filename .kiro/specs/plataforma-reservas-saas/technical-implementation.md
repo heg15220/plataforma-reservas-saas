@@ -37413,3 +37413,83 @@ pero no calcula potencia ni intervalos a partir de filas individuales. Los coste
 financiera gobernada y la diversidad una agregación por local. 21.5/21.11 deberán operacionalizar
 datasets, informes y auditoría; 20.21 debe demostrar transversalmente que los productores calculan las
 métricas y guardrails sin romper aislamiento.
+
+## Iteración 2026-08-20 - Tarea 20.21: aceptación transversal del MVP
+
+### Objetivo, alcance y arquitectura de prueba
+
+- Identificador exacto: 20.21.
+- Objetivo técnico: crear una puerta repetible que demuestre relevancia, determinismo, filtros duros,
+  fallback, explicación, aislamiento, carga, accesibilidad y experimento cruzando Python, web y Java.
+- Requisitos/diseño: RF-029, RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-007, RNF-009,
+  RNF-014 y RNF-015; secciones 14.28, 14.29, 14.30, 14.34, 14.37, 14.38 y 14.39.
+
+Se añadieron cuatro scripts npm: bloque Python, bloque web, bloque API y orquestador
+`test:demand:mvp`. El orquestador usa `&&`: cualquier retorno distinto de cero impide ejecutar o
+aceptar como verde el resto de la cadena. Todo es hermético: políticas y reloj son fijos, IDs
+deterministas, no hay red, Testcontainers, credenciales, modelo descargado o datos reales. La matriz
+`docs/testing/demand-mvp-verification-matrix.md` relaciona cada dimensión, test y criterio y explicita
+qué no demuestra la prueba local.
+
+### Relevancia, determinismo, restricciones, fallback y explicación
+
+`DemandMvpAcceptanceTests` construye snapshots contractuales completos. El caso de relevancia mantiene
+seis componentes constantes, varía afinidad y exige que la mayor ocupe posición uno. Ejecuta el mismo
+request dos veces y compara `model_dump(mode=json)` completo, no solo IDs. Otro caso activa a la vez
+caducidad, local no publicado, servicio no reservable, inelegibilidad, permiso denegado, filtro no
+coincidente, frecuencia agotada y capacidad insuficiente; exige las ocho razones en precedencia estable
+y demuestra que `fallbackReason=model_timeout` no reintroduce el candidato.
+
+La degradación por dependencia se ejecuta dos veces y exige equivalencia, política fallback, score
+nulo y explicación basada solo en evidencia aplicada. Para un candidato sin personalización,
+ubicación, popularidad, rating o novedad permitidos, solo se admite `GOOD_AVAILABILITY`. Ninguna
+explicación fallback recibe contribución aditiva. Estas pruebas complementan —sin duplicar como única
+evidencia— `ScoreMvpTests`, `DeterministicFallbackTests`, `ExplanationBuilderTests` y la suite
+Thompson existente.
+
+### Aislamiento, carga, accesibilidad y experimento
+
+El caso de aislamiento añade `email` al sobre y Pydantic lo rechaza por contrato extra-forbid. Después
+serializa una respuesta válida y verifica ausencia de `email`, `customer` y `session`. Java mantiene
+la defensa de impresión: solo IDs persistidos/elegibles/rankeados del request, y para tráfico A/B
+asignación y exposición previas coincidentes.
+
+La carga crea exactamente 100 candidatos únicos, realiza warm-up y veinte iteraciones, verifica 100
+salidas por vuelta, calcula percentil 95 nearest-rank y exige <=150 ms. Mide scorer Python en memoria;
+no incluye FastAPI, JVM, red o PostgreSQL y no sustituye `addedLatencyP95Ms` de shadow. Es estable y
+suficientemente holgada frente al algoritmo local para detectar una regresión material sin afirmar un
+SLO productivo.
+
+En web, el contenedor interno del carril recibe `aria-live=off`; la sección padre ya aporta la región
+y nombre accesible, evitando landmarks duplicados. La nueva prueba localiza la región por su nombre,
+enfoca la primera tarjeta, avanza 8 s y exige índice inmóvil; al perder foco, una ventana de 4 s vuelve
+a rotar. El caso existente mantiene índice cero durante 20 s con `prefers-reduced-motion`. Las tarjetas
+siguen teniendo artículo y único enlace nombrado.
+
+La suite Java añade 1.000 UUID deterministas a una definición 50/50 y exige que tratamiento quede
+entre 430 y 570; además conserva tests de bucket/replay, exclusión mutua, exposición idempotente,
+divergencia temporal/política y bloqueo de impresión. Es una detección de sesgo grueso, no promesa de
+balance exacto. `PromotionGateTests` añade la evidencia de muestra, potencia, versiones y guardrails.
+
+### Archivos, comandos, resultados y limitaciones
+
+Se creó `test_mvp_acceptance.py` y la matriz de verificación. Se modificaron scripts raíz, suite Java,
+carril y prueba de inicio, además de tareas, diseño, documento técnico y seguimiento. El código de
+prueba documenta intención, entradas e invariantes; el ajuste UI no incorpora texto nuevo ni cambia
+catálogos.
+
+Evidencia final:
+
+- `npm run test:demand:mvp`: 11 tests Python, 5 tests Vitest y 11 tests Java; cero fallos/errores y
+  `BUILD SUCCESS`.
+- `npm run test:demand`: 67 tests del motor; cero fallos/errores.
+- `npx eslint` focalizado desde `apps/web`: dos archivos, cero hallazgos.
+- Spotless mantuvo 1.203 archivos Java limpios; Prettier focalizado y `git diff --check` correctos.
+
+La ejecución Maven del orquestador usa `-Dcheckstyle.skip=true` porque la verificación global conserva
+45 incidencias históricas en archivos ajenos; no omite formato, compilación ni tests. La primera
+ejecución aislada tampoco pudo resolver el parent POM por sandbox de red y se repitió con autorización,
+completando correctamente. La integración PostgreSQL completa sigue limitada por las deudas previas
+de `BehaviorEvents.countryCode` y orden de `SessionAuthenticationFilter`; por eso el test transversal
+no afirma haber medido base/red. Próximos pasos: 21.1 debe operacionalizar el pipeline con observación
+real, y 21.5/21.11 deben producir datasets e informes temporales gobernados.

@@ -70,6 +70,31 @@ class ExperimentAssignmentServiceTests {
   }
 
   @Test
+  void distributesVersionedUnitsAcrossBothVariantsWithinDeclaredAllocationTolerance() {
+    ExperimentDefinitionEntity definition = definition("rankingPilot", "ranking-summer-2026");
+    when(definitionDao.findActive(any(), any(), any(Pageable.class)))
+        .thenReturn(List.of(definition));
+    when(assignmentDao.findByExperimentDefinitionIdAndAssignmentUnitId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(assignmentDao.findByExclusionGroupAndExclusionWindowKeyAndAssignmentUnitId(
+            any(), any(), any()))
+        .thenReturn(Optional.empty());
+
+    long treatmentCount =
+        java.util.stream.IntStream.rangeClosed(1, 1_000)
+            .mapToObj(index -> new UUID(0, index))
+            .map(
+                unitId ->
+                    service.assign(
+                        new ExperimentAssignmentCommand(
+                            "rankingPilot", unitId, NOW.minusSeconds(1))))
+            .filter(result -> result.variantKey().equals("treatment"))
+            .count();
+
+    assertThat(treatmentCount).isBetween(430L, 570L);
+  }
+
+  @Test
   void returnsThePersistedAssignmentWithoutResampling() {
     ExperimentDefinitionEntity definition = definition("rankingPilot", "ranking-summer-2026");
     ExperimentAssignmentEntity persisted = assignment(definition, "control", "rules.v1");
