@@ -4233,3 +4233,21 @@ ES/EN. No exponen contribuciones internas, muestra Thompson ni causalidad. El ca
 dos o cuatro tarjetas completas según viewport, pausa con interacción y desactiva intervalo y
 animación ante `prefers-reduced-motion`. El fallback no reintroduce locales no reservables y un fallo
 de carga sigue degradando a navegación/búsqueda ordinarias, independientes del motor inteligente.
+
+### 14.35 Atribución observacional de reservas
+
+`booking-attribution-v1` materializa exactamente una clase por reserva confirmada con precedencia
+`recovered > generated > assisted > direct` y ventana retrospectiva cerrada de siete días. Recuperada
+exige `waitlistOffer` del mismo local; generada exige recomendación o promoción mostrada/abierta del
+mismo local; asistida reconoce descubrimiento o evaluación dentro del `requestId` correlacionado; sin
+señal decisiva queda directa. La clasificación expresa asociación observada, nunca causalidad o
+incrementalidad.
+
+Spring publica la solicitud de atribución después de confirmar y un listener posterior al commit la
+resuelve sin poner en riesgo la reserva. `BookingAttributions` impone unicidad por reserva y persiste
+clase, razón, política, ventana, confianza, local, correlación y hasta veinte UUID/tipos técnicos de
+evidencia. No copia email, consulta ni contexto libre. `isNewCustomer` se calcula contra reservas
+operativas previas del local sin trasladar identidad al dominio analítico. El importe solo se conserva
+para clases no directas cuando existe un precio visible del candidato V47; representa ingreso asociado,
+no ingreso incremental. Un replay devuelve la proyección existente y los fallos asíncronos se miden sin
+alterar la confirmación.

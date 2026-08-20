@@ -1,6 +1,7 @@
 package com.reserly.platform.demand.telemetry;
 
 import com.reserly.platform.availability.dto.PublicVenueAvailabilityResponse;
+import com.reserly.platform.demand.attribution.BookingAttributionRequestedEvent;
 import com.reserly.platform.demand.correlation.DemandCorrelationContext;
 import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
 import com.reserly.platform.incidents.persistence.NoShowIncidentEntity;
@@ -85,14 +86,11 @@ public class DemandOperationalTelemetryAspect {
           "execution(* com.reserly.platform.reservations.service.ReservationConfirmationServiceImpl.confirm(..))",
       returning = "response")
   public void bookingCompleted(ReservationConfirmResponse response) {
+    UUID requestId = correlationContext.currentOrNew();
     publish(
-        "bookingCompleted",
-        correlationContext.currentOrNew(),
-        null,
-        null,
-        null,
-        null,
-        Map.of("outcomeCode", "confirmed"));
+        "bookingCompleted", requestId, null, null, null, null, Map.of("outcomeCode", "confirmed"));
+    eventPublisher.publishEvent(
+        new BookingAttributionRequestedEvent(response.reservationId(), requestId, clock.instant()));
   }
 
   /** Registra cancelación del cliente sin observar ni conservar su token. */

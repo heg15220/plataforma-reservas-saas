@@ -416,7 +416,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 20.14. Calcular necesidad de capacidad y demanda insatisfecha agregada por zona, categoría y periodo con umbrales de privacidad.
 - [x] 20.15. Implementar Thompson Sampling básico con prior, cuota máxima de exploración, guardrails de calidad y actualización idempotente.
 - [x] 20.16. Integrar recomendaciones en inicio y resultados respetando filtros, disponibilidad, accesibilidad, responsive, i18n y reducción de movimiento.
-- [ ] 20.17. Clasificar reservas directas, asistidas, generadas y recuperadas mediante una política de atribución versionada y auditable.
+- [x] 20.17. Clasificar reservas directas, asistidas, generadas y recuperadas mediante una política de atribución versionada y auditable.
 - [ ] 20.18. Crear panel inicial de nuevos clientes, reservas originadas, horas valle cubiertas e ingresos atribuidos con definiciones y cobertura visibles.
 - [ ] 20.19. Implementar asignación A/B estable, registro previo a exposición y exclusiones mutuas para políticas de ranking.
 - [ ] 20.20. Definir métricas offline/online, dataset de evaluación, baseline, umbrales de promoción y guardrails de negocio.

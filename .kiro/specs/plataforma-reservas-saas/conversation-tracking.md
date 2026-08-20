@@ -9743,3 +9743,26 @@ Fuente de verdad del avance:
   - La explicación procede de la regla visible ejecutada y nunca de un texto o score inventado.
   - Los chequeos globales de typecheck/i18n mantienen incidencias históricas fuera del alcance; las
     nueve pruebas dirigidas de la integración quedan verdes.
+
+# Conversación 228 - Atribución observacional de reservas
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se materializó una clasificación única por reserva con precedencia recuperada, generada,
+    asistida y directa, ventana de siete días y política `booking-attribution-v1`.
+  - La atribución se solicita al confirmar y se persiste después del commit de forma asíncrona e
+    idempotente, de modo que una caída analítica no revierte ni bloquea la reserva.
+  - La evidencia queda minimizada a UUID/tipos técnicos; nuevo cliente se deriva sin copiar email y
+    el importe visible se etiqueta como asociado, nunca incremental o causal.
+- Archivos modificados:
+  - Migración V54, nuevo módulo Java `demand.attribution`, DAOs de reserva/recomendación, aspecto y
+    prueba de telemetría, pruebas unitarias y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-033, RF-037, RF-038 y RF-040; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.17; prepara 20.18, 20.20 y 21.5.
+- Tareas completadas: 20.17.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.18.
+- Decisiones o aclaraciones relevantes:
+  - La precedencia evita doble conteo y una constraint única hace inmutable el primer resultado.
+  - Solo una señal del mismo local permite `generated` o `recovered`; actividad genérica solo puede
+    justificar `assisted`.
+  - Los siete casos dirigidos de clasificador, servicio y telemetría quedaron verdes.

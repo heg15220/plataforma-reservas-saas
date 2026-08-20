@@ -258,6 +258,23 @@ public interface ReservationDao extends JpaRepository<ReservationEntity, UUID> {
       """)
   Optional<ReservationEntity> findByIdForUpdate(@Param("reservationId") UUID reservationId);
 
+  /** Comprueba recurrencia anterior sin devolver ni persistir el email en analítica. */
+  @Query(
+      """
+      select (count(reservation) > 0)
+      from ReservationEntity reservation
+      where reservation.venue.id = :venueId
+        and reservation.customerEmailNormalized = :email
+        and reservation.id <> :reservationId
+        and reservation.createdAt < :confirmedAt
+        and reservation.status in ('confirmed', 'attended', 'no_show', 'reported')
+      """)
+  boolean existsPriorConfirmedCustomer(
+      @Param("venueId") UUID venueId,
+      @Param("email") String customerEmailNormalized,
+      @Param("reservationId") UUID reservationId,
+      @Param("confirmedAt") Instant confirmedAt);
+
   /**
    * Comprueba si el email tiene alguna visita pasada válida en el local, aunque ya esté reseñada.
    *

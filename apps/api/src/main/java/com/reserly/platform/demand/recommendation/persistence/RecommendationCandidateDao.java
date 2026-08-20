@@ -32,4 +32,17 @@ public interface RecommendationCandidateDao
       """)
   List<RecommendationCandidateEntity> findEligibleByRequestIdOrdered(
       @Param("requestId") UUID recommendationRequestId);
+
+  /** Recupera el snapshot del local elegido para atribuir solo precio realmente visible. */
+  @Query(
+      """
+      select candidate
+      from RecommendationCandidateEntity candidate
+      where candidate.recommendationRequest.id = :requestId
+        and candidate.venueId = :venueId
+        and candidate.wasVisible = true
+        and candidate.eligibilityStatus = 'eligible'
+      """)
+  java.util.Optional<RecommendationCandidateEntity> findVisibleByRequestIdAndVenue(
+      @Param("requestId") UUID recommendationRequestId, @Param("venueId") UUID venueId);
 }

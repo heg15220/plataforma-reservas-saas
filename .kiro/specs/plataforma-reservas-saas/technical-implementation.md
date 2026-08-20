@@ -37097,3 +37097,80 @@ corregir los hallazgos propios iniciales, no queda error dirigido de esta integr
 la política pública es un fallback de disponibilidad, no el ScoreMvp. Una promoción futura deberá
 orquestar Spring -> Demand Engine, persistir V47 antes de impresión y conservar fallback/circuit
 breaker. 20.19 registrará experimento previo a exposición y 20.21 ampliará pruebas E2E/a11y.
+
+## Iteración 2026-08-20 - Tarea 20.17: clasificación de atribución de reservas
+
+### Objetivo, política e invariantes
+
+- Identificador exacto: 20.17.
+- Objetivo técnico: transformar el recorrido observable de una reserva confirmada en una única
+  clasificación comercial versionada, reproducible y auditable, sin afirmar causalidad.
+- Requisitos/diseño: RF-033, RF-037, RF-038 y RF-040; RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.9, 14.15, 14.17 y 14.35.
+
+`BookingAttributionPolicy` declara `booking-attribution-v1`, ventana de siete días y máximo veinte
+evidencias. `BookingAttributionClassifier` recorta eventos al intervalo cerrado anterior a
+`confirmedAt`, los ordena por instante/UUID y aplica una precedencia total: `recovered` por
+`waitlistOffer` del mismo local (confianza 0,95), `generated` por recomendación/promoción del mismo
+local (0,90), `assisted` por búsqueda, categoría, impresión, clic, filtro, fotos, reseñas o consulta de
+disponibilidad correlacionadas (0,70), y `direct` sin señal decisiva (0,50). Esto impide doble conteo y
+hace estable el resultado ante distinto orden de entrada. Las confianzas son marcas heurísticas de la
+política, no probabilidades calibradas.
+
+### Persistencia, privacidad e idempotencia
+
+V54 crea `BookingAttributions` con UUID, FK a reserva/local, referencia opcional a V47, `requestId`,
+clase, razón cerrada, versión, ventana, confianza, indicador de cliente nuevo, importe/moneda
+opcionales, JSONB de evidencia y tiempos. La unicidad de `reservationId` materializa exactamente una
+clasificación. Checks SQL validan el vocabulario, orden temporal, confianza, pareja monetaria ISO en
+mayúsculas y JSON limitado a las claves `eventIds`/`eventTypes`, 4 KiB y veinte posiciones. Índices
+por local/periodo/clase, correlación y recomendación sirven al panel 20.18. Borrar la reserva elimina
+la proyección; borrar una solicitud de recomendación conserva la clasificación y anula solo su FK.
+
+`BookingAttributionServiceImpl` devuelve la fila existente en replay, acepta únicamente reservas en
+estado atribuible y lee eventos por el `requestId` originado en el flujo de confirmación. Consulta el
+snapshot visible del candidato V47 para el mismo local. Solo clases no directas pueden conservar aquel
+precio/moneda; se denomina importe atribuido observado y no ingreso incremental. Para `isNewCustomer`
+se pregunta al repositorio operativo si existe una reserva confirmada anterior del email normalizado
+en ese local, excluyendo la actual. La tabla analítica nunca recibe email, nombre, teléfono, consulta,
+coordenadas ni metadata de comportamiento. La evidencia persistida contiene únicamente UUID y tipos
+técnicos ya gobernados por el catálogo.
+
+### Flujo, errores, concurrencia y observabilidad
+
+`DemandOperationalTelemetryAspect.bookingCompleted` obtiene una única correlación, publica el evento
+canónico existente y `BookingAttributionRequestedEvent`. `BookingAttributionEventListener` se ejecuta
+en `demandTelemetryExecutor` con `AFTER_COMMIT` y fallback cuando no hay transacción. Por tanto, la
+confirmación operativa termina antes del cálculo. El listener cuenta resultados completados/fallidos y
+absorbe fallos de repositorio o clasificación; la reserva no se revierte. La transacción del servicio
+y la constraint única cubren replay y carrera de persistencia. La primera clasificación confirmada se
+considera inmutable; una futura reclasificación requerirá un proceso explícito con nueva política y
+traza, no un overwrite silencioso.
+
+Se modificaron `RecommendationCandidateDao` para resolver el snapshot visible por solicitud/local y
+`ReservationDao` para detectar historial confirmado anterior mediante comparación del email ya
+normalizado. Ambos contratos usan parámetros y límites de dominio; no incorporan logging de payload.
+Se crearon entidad/DAO, servicio/interfaz, listener/evento, política, decisión, clasificador y
+`package-info`, todos documentados con responsabilidad, efectos e invariantes. No se añadió endpoint
+público ni permiso: la proyección queda interna hasta el panel autorizado 20.18.
+
+### Pruebas, evidencia y deuda
+
+`BookingAttributionClassifierTests` cubre la precedencia recovered sobre las demás señales, impide que
+una recomendación de otro local genere la reserva y descarta eventos fuera de ventana/futuros.
+`BookingAttributionServiceTests` demuestra persistencia `generated` con precio EUR visible, indicador
+de cliente nuevo, evidencia minimizada y replay sin volver a leer reserva. La prueba operativa acredita
+nueve publicaciones —ocho eventos canónicos y una solicitud de atribución— con misma correlación y sin
+filtrar el email privado.
+
+Evidencia ejecutada: `mvn -f apps/api/pom.xml spotless:apply` terminó correctamente; compilación Java
+de 960 fuentes fue satisfactoria; la suite dirigida
+`BookingAttributionClassifierTests,BookingAttributionServiceTests,DemandOperationalTelemetryTests`
+ejecutó siete casos, cero fallos y cero errores. `git diff --check` no detectó whitespace inválido.
+
+Riesgos/deuda: el indicador nuevo depende de coincidencia exacta del email normalizado y no fusiona
+identidades legítimas; el precio visible puede diferir del cobro final y por eso no se presenta como
+revenue incremental. Un fallo asíncrono queda medido pero requiere un job de reparación futuro para
+cobertura completa. La política es observacional y debe validarse con experimentos 20.19/20.20 antes
+de atribuir uplift. 20.18 debe publicar cobertura, denominadores, definiciones y umbral de privacidad,
+nunca convertir estas clases en una afirmación causal.

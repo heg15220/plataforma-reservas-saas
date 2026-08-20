@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.reserly.platform.availability.dto.PublicVenueAvailabilityResponse;
 import com.reserly.platform.availability.persistence.TimeSlotEntity;
+import com.reserly.platform.demand.attribution.BookingAttributionRequestedEvent;
 import com.reserly.platform.demand.correlation.DemandCorrelationContext;
 import com.reserly.platform.demand.ingestion.DemandEventIngestionService;
 import com.reserly.platform.incidents.dto.AttendanceUpdateRequest;
@@ -89,10 +90,14 @@ class DemandOperationalTelemetryTests {
         new ReviewCreateResponse(
             "created", UUID.randomUUID(), venueId, reservationId, 5, BigDecimal.valueOf(4.8), 10));
 
-    ArgumentCaptor<DemandTelemetryEvent> events =
-        ArgumentCaptor.forClass(DemandTelemetryEvent.class);
-    verify(publisher, org.mockito.Mockito.times(8)).publishEvent(events.capture());
-    assertThat(events.getAllValues())
+    ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
+    verify(publisher, org.mockito.Mockito.times(9)).publishEvent(published.capture());
+    List<DemandTelemetryEvent> events =
+        published.getAllValues().stream()
+            .filter(DemandTelemetryEvent.class::isInstance)
+            .map(DemandTelemetryEvent.class::cast)
+            .toList();
+    assertThat(events)
         .extracting(DemandTelemetryEvent::eventType)
         .containsExactly(
             "availabilityChecked",
@@ -103,10 +108,19 @@ class DemandOperationalTelemetryTests {
             "attendanceConfirmed",
             "noShow",
             "reviewSubmitted");
-    assertThat(events.getAllValues())
-        .extracting(DemandTelemetryEvent::requestId)
-        .containsOnly(correlationId);
-    assertThat(events.getAllValues().toString()).doesNotContain("private@example.invalid");
+    assertThat(events).extracting(DemandTelemetryEvent::requestId).containsOnly(correlationId);
+    assertThat(published.getAllValues())
+        .filteredOn(BookingAttributionRequestedEvent.class::isInstance)
+        .singleElement()
+        .satisfies(
+            event -> {
+              BookingAttributionRequestedEvent attribution =
+                  (BookingAttributionRequestedEvent) event;
+              assertThat(attribution.reservationId()).isEqualTo(reservationId);
+              assertThat(attribution.requestId()).isEqualTo(correlationId);
+              assertThat(attribution.confirmedAt()).isEqualTo(NOW);
+            });
+    assertThat(published.getAllValues().toString()).doesNotContain("private@example.invalid");
   }
 
   @Test
