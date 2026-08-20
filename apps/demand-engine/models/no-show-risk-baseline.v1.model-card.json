@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "noShowRiskBaseline",
+  "modelVersion": "no-show-risk-baseline-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Estimate calibrated aggregate no-show risk for operational capacity planning and reminder evaluation only.",
+  "intendedUse": ["aggregateCapacityPlanning", "reminderStrategyEvaluation"],
+  "prohibitedUse": [
+    "denyBooking",
+    "penalizeCustomer",
+    "changePrice",
+    "reduceAvailability",
+    "contactWithoutConsent",
+    "inferSensitiveTraits",
+    "employeePerformance"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "no-show-risk-training-v1",
+  "featureSetVersion": "no-show-operational-features-v1",
+  "limitations": [
+    "The output is not an individual reliability score.",
+    "Historical attendance can encode unequal access and must be audited by allowed cohorts.",
+    "Synthetic validation does not authorize production use.",
+    "The signal cannot trigger any automated customer action."
+  ],
+  "rollback": "Return unavailable risk and continue ordinary capacity, booking and reminder rules without customer-level changes.",
+  "humanApprovalRequired": true
+}

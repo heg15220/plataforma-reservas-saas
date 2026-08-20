@@ -10003,3 +10003,21 @@ Fuente de verdad del avance:
   - El idioma se usa solo para auditoría de cohortes y nunca cruza el entrenamiento.
   - LightGBM 4.7.0 se descartó por fallo de carga de su DLL nativa en Windows; no se alteró el SO.
   - Cuatro pruebas focalizadas ejecutaron CatBoost real y quedaron verdes.
+
+# Conversación 240 - Señal calibrada de riesgo de no-show
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se creó un baseline logístico calibrado con train/calibration/evaluation y outcomes maduros.
+  - La señal minimizada solo autoriza planificación agregada y niega por contrato sanción, denegación,
+    precio o cualquier acción automática.
+  - Se añadieron gates de AUC, Brier, ECE y brecha Brier ES/EN; sintético no permite promoción.
+- Archivos modificados: política/model card, módulo/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.8; prepara 21.9, 21.11 y 21.12.
+- Tareas completadas: 21.8.
+- Siguiente tarea pendiente recomendada: 17.1; para esta fase del motor, 21.9.
+- Decisiones o aclaraciones relevantes:
+  - No se persiste riesgo individual ni se incluye un identificador de persona/reserva en la salida.
+  - Historial de asistencia queda auditado como posible fuente de desigualdad y nunca autoriza trato.
+  - Cinco pruebas focalizadas quedaron verdes.

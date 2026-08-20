@@ -4452,3 +4452,18 @@ limitaciones y rollback, y exige revisión CVE y aprobación humana. Incluso sup
 con XOR sintético solo demuestra el evaluador: `productionEvidence=false` bloquea promoción. La
 alternativa LightGBM 4.7.0 se descartó en este entorno porque su wheel no pudo cargar la DLL nativa;
 no se modificó el sistema operativo ni se simuló su resultado.
+
+### 14.47 Riesgo calibrado de no-show sin autoridad decisoria
+
+`no-show-risk-training-v1` usa una logística estandarizada y Platt con tres ventanas temporales para
+producir una probabilidad efímera destinada solo a planificación agregada de capacidad. La allowlist
+contiene contexto operativo disponible antes de la cita; outcome, IDs, contacto, pago, localización y
+rasgos protegidos están prohibidos. ES/EN se conserva únicamente como cohorte de auditoría Brier con
+muestra mínima, nunca como feature.
+
+La señal no acepta ni devuelve cliente o reserva y su contrato fija literalmente `false` para acción
+automática, penalización, denegación y cambio de precio. Caduca en sesenta minutos y no sustituye
+capacidad, recordatorios consentidos o reglas ordinarias de reserva. AUC, Brier, ECE y brecha por
+cohorte deben superar gates; evidencia sintética mantiene bloqueada la revisión de promoción. La model
+card prohíbe además evaluar trabajadores y advierte que el historial de asistencia puede reflejar
+desigualdad de acceso.

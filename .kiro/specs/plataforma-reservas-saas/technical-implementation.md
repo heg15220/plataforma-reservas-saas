@@ -37940,3 +37940,61 @@ auditoría mínima y debe ampliarse solo a segmentos permitidos con potencia suf
 sustituye shadow end-to-end. CatBoost añade una dependencia pesada y una API privada de serialización
 solo para medir tamaño; una actualización exige nueva política, model card y prueba de compatibilidad.
 21.9 deberá medir impacto causal y 21.12 incorporará CVE, drift y reproducibilidad al registro formal.
+
+## Iteración 2026-08-20 - Tarea 21.8: señal calibrada de no-show
+
+### Objetivo, requisitos y modelo de datos analítico
+
+- Identificador exacto: 21.8.
+- Objetivo técnico: estimar riesgo probabilístico de no-show para planificación agregada, haciendo
+  imposible que el contrato autorice penalizaciones, denegaciones, precios o acciones automáticas.
+- Requisitos/diseño: RF-036, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.8, 14.16, 14.17 y 14.47.
+
+`NoShowDataset` admite solo finalidad `aggregateOperationsAnalytics`, declara ausencia de datos
+personales y aplicación de revocaciones. Cada fila contiene UUID técnico de observación, momento de
+predicción, maduración de resultado, segmento ES/EN de auditoría, siete features `[0,1]` y label. No se
+crearon tablas ni migraciones: el artefacto guarda parámetros agregados, nunca observaciones o riesgo
+asociado a persona/reserva.
+
+La allowlist incluye antelación, recordatorio entregado, flexibilidad, tasa histórica de asistencia,
+reprogramaciones normalizadas, tarde y fin de semana. La coincidencia del schema es exacta y una
+denylist adicional prohíbe outcome, IDs, email, teléfono, edad, género, nacionalidad, discapacidad,
+salud, código postal y pago. Aunque la tasa histórica es operativa, la model card documenta que puede
+codificar desigualdad de acceso; por ello el resultado no habilita trato individual y debe auditarse.
+
+### Entrenamiento, calibración y gates
+
+`NoShowRiskTrainer` separa train antes de mayo, calibration en mayo y evaluation en junio de 2026.
+Cada split exige veinte filas, cinco positivos y cinco negativos, y el outcome debe madurar antes de
+su frontera. Media/desviación y logística L2 se ajustan solo en train; un calibrador Platt aprende solo
+de calibration. Evaluation produce ROC AUC, Brier, log-loss y ECE sin reajuste.
+
+Los gates exigen AUC >=0,70, Brier <=0,22, ECE <=0,15 y brecha Brier ES/EN <=0,05, con diez filas
+mínimas por cohorte. ES/EN no cruza `_matrix`. `promotionReviewAllowed` requiere simultáneamente gates
+y evidencia productiva; significa elegibilidad para revisión humana, no registro/despliegue. El
+artefacto portable incluye versiones, scaler, pesos, calibrador, métricas y model card.
+
+### Contrato de señal, seguridad y operación
+
+`NoShowArtifact.signal` acepta únicamente las siete features y reloj con zona; no admite customerId,
+reservationId ni texto. `NoShowRiskSignal` devuelve probabilidad, versiones y vigencia de sesenta
+minutos. Sus literales inmutables son `allowedUse=aggregateCapacityPlanning`,
+`automatedActionAllowed=false`, `penaltyAllowed=false`, `bookingDenialAllowed=false` y
+`priceChangeAllowed=false`. No hay endpoint, job ni escritura en base: la orquestación futura deberá
+verificar promoción, consentimiento y agregación antes de invocarlo. Rollback significa probabilidad
+indisponible y reglas ordinarias sin cambios por cliente.
+
+### Tests, evidencia, riesgos y deuda
+
+Se crearon política, model card, módulo y cinco pruebas; se actualizaron tareas, diseño, documento
+técnico y seguimiento. Las pruebas cubren ajuste/calibración, gates y bloqueo sintético; señal sin
+autoridad; rechazo de feature sensible/outcome; label inmadura; y muestra de auditoría insuficiente.
+Evidencia: `python -m unittest apps/demand-engine/tests/test_no_show_risk.py -v`, con los dos roots en
+`PYTHONPATH`, ejecutó cinco casos en 0,596 s, todos correctos.
+
+Riesgos/deuda: el fixture separable demuestra implementación, no prevalencia, calibración ni equidad
+real. El histórico de asistencia debe probarse mediante ablación y segmentos permitidos antes de
+promoción. ECE con diez bins es inestable en muestras pequeñas. No se implementa sobrebooking ni
+acción automática deliberadamente. 21.9 medirá resultados causales del ranking y 21.12 deberá añadir
+drift, intervalos, model registry y revisión de leakage/adverse impact.
