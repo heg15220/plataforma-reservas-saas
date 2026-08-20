@@ -4514,3 +4514,18 @@ cualquiera, oculta muestra, numerador, tasa e intervalo y publica únicamente
 zona horaria, versiones, cobertura y alcance `singleAuthorizedVenue`, y etiqueta toda relación como
 asociación observacional no causal. Otro local, atributo fuera de ontología, periodo incoherente,
 outcome inmaduro o más de 5.000 grupos falla cerrado. El cálculo es batch/CLI y no afecta reservas.
+
+### 14.51 Puerta transversal de gobernanza de modelos
+
+`model-governance-acceptance-v1` enlaza siete riesgos obligatorios —reproducibilidad, leakage,
+calibración, sesgo, robustez lingüística, revocación y promoción— con 22 pruebas concretas, componente,
+invariante y respuesta segura. Cada categoría exige al menos dos evidencias. Un validador AST confirma
+que archivo y método siguen existiendo dentro de `tests`; renombrar o eliminar una prueba rompe la
+suite en vez de dejar documentación obsoleta.
+
+Siete pruebas meta verifican cobertura completa, referencias, ausencia de features sensibles/outcome,
+ECE y brechas Brier acotadas con muestra, políticas ES/EN, `consentRevocationsApplied=true` literal en
+cinco datasets y model cards candidatas con aprobación humana/rollback. La matriz no sustituye las
+pruebas enlazadas: `unittest discover` ejecuta ambas y las implementaciones reales, incluido el stack
+de clustering. La aceptación acumulada exige 125 tests verdes; cualquier fallo rechaza input, bloquea
+promoción, activa fallback, suprime salida, exige revisión o detiene experimento según el riesgo.

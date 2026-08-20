@@ -10079,3 +10079,23 @@ Fuente de verdad del avance:
   - Mínimo: 30 exposiciones, 5 conversiones y 5 no conversiones por grupo.
   - Supresión no revela ni siquiera el tamaño del bucket insuficiente.
   - Cinco pruebas focalizadas quedaron verdes en 0,018 s.
+
+# Conversación 244 - Puerta transversal de gobernanza del aprendizaje
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se creó una matriz versionada con 22 evidencias ejecutables para reproducibilidad, leakage,
+    calibración, sesgo, robustez lingüística, revocación y promoción.
+  - Un validador AST impide que la matriz apunte a archivos/métodos eliminados o renombrados.
+  - Siete tests meta inspeccionan features, gates, cohortes, idiomas, contratos de revocación y model
+    cards candidatas con aprobación humana y rollback.
+- Archivos modificados: matriz de evaluación, validador/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-035, RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: 21.12; cierra la Fase 21 de aprendizaje con primeros datos.
+- Tareas completadas: 21.12.
+- Siguiente tarea pendiente recomendada: 17.1 según el orden global; para el motor, 22.1.
+- Decisiones o aclaraciones relevantes:
+  - La matriz complementa y referencia pruebas reales; no declara cobertura sin ejecución.
+  - Cada riesgo tiene al menos dos evidencias y una respuesta segura explícita.
+  - `npm run test:demand` ejecutó 125 tests en 68,611 s, todos verdes.

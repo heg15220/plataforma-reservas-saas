@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "matrixVersion": "model-governance-acceptance-v1",
+  "requiredCategories": [
+    "reproducibility",
+    "leakage",
+    "calibration",
+    "bias",
+    "linguisticRobustness",
+    "revocation",
+    "promotion"
+  ],
+  "checks": [
+    {
+      "category": "reproducibility",
+      "component": "conversionLogistic",
+      "testFile": "test_conversion_training.py",
+      "testMethod": "test_trains_calibrates_evaluates_and_is_deterministic",
+      "invariant": "Same governed cohort produces identical portable parameters and metrics.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "reproducibility",
+      "component": "discreteChoice",
+      "testFile": "test_discrete_choice.py",
+      "testMethod": "test_trains_expected_signs_and_future_fit_deterministically",
+      "invariant": "Conditional logit training and evaluation replay deterministically.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "reproducibility",
+      "component": "lexicalNlp",
+      "testFile": "test_nlp.py",
+      "testMethod": "test_replay_is_deterministic_and_response_contains_no_text",
+      "invariant": "Bilingual lexical extraction is byte-equivalent for a replay.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "leakage",
+      "component": "conversionLogistic",
+      "testFile": "test_conversion_training.py",
+      "testMethod": "test_rejects_outcome_and_identity_leakage",
+      "invariant": "Outcome and direct identity never enter conversion features.",
+      "failureResponse": "rejectInput"
+    },
+    {
+      "category": "leakage",
+      "component": "discreteChoice",
+      "testFile": "test_discrete_choice.py",
+      "testMethod": "test_rejects_position_and_outcome_leakage",
+      "invariant": "Displayed position and post-choice outcome never enter utility.",
+      "failureResponse": "rejectInput"
+    },
+    {
+      "category": "leakage",
+      "component": "noShowRisk",
+      "testFile": "test_no_show_risk.py",
+      "testMethod": "test_rejects_sensitive_or_outcome_feature_leakage",
+      "invariant": "Sensitive and outcome fields never enter no-show risk.",
+      "failureResponse": "rejectInput"
+    },
+    {
+      "category": "calibration",
+      "component": "conversionLogistic",
+      "testFile": "test_conversion_training.py",
+      "testMethod": "test_trains_calibrates_evaluates_and_is_deterministic",
+      "invariant": "Platt calibration is isolated and ECE/Brier gates are evaluated in the future.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "calibration",
+      "component": "catBoostChallenger",
+      "testFile": "test_boosting_evaluation.py",
+      "testMethod": "test_real_catboost_beats_baseline_but_synthetic_data_blocks_promotion",
+      "invariant": "Challenger cannot regress baseline Brier or expected calibration error.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "calibration",
+      "component": "noShowRisk",
+      "testFile": "test_no_show_risk.py",
+      "testMethod": "test_trains_calibrates_and_synthetic_evidence_blocks_promotion",
+      "invariant": "No-show probability passes future Brier and ECE gates before review.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "bias",
+      "component": "catBoostChallenger",
+      "testFile": "test_boosting_evaluation.py",
+      "testMethod": "test_small_audit_segment_fails_closed",
+      "invariant": "No equity conclusion is emitted for an undersized allowed cohort.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "bias",
+      "component": "noShowRisk",
+      "testFile": "test_no_show_risk.py",
+      "testMethod": "test_small_audit_cohort_fails_closed",
+      "invariant": "No-show calibration requires sufficient ES and EN audit cohorts.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "bias",
+      "component": "rankingExperiment",
+      "testFile": "test_ab_testing.py",
+      "testMethod": "test_guardrail_breach_has_priority_and_stops",
+      "invariant": "Safety and equity guardrails stop an experiment before uplift is considered.",
+      "failureResponse": "stopExperiment"
+    },
+    {
+      "category": "bias",
+      "component": "conversionAnalytics",
+      "testFile": "test_conversion_analytics.py",
+      "testMethod": "test_small_groups_hide_all_counts_rates_and_intervals",
+      "invariant": "Small permitted segments are fully suppressed rather than extrapolated.",
+      "failureResponse": "suppressOutput"
+    },
+    {
+      "category": "linguisticRobustness",
+      "component": "lexicalNlp",
+      "testFile": "test_nlp.py",
+      "testMethod": "test_spanish_normalization_synonyms_and_multilabel",
+      "invariant": "Spanish accents, synonyms and multilabel intent remain governed.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "linguisticRobustness",
+      "component": "lexicalNlp",
+      "testFile": "test_nlp.py",
+      "testMethod": "test_english_longest_phrase_and_multilabel",
+      "invariant": "English longest-phrase matching avoids overlapping labels.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "linguisticRobustness",
+      "component": "attributeDiscovery",
+      "testFile": "test_attribute_discovery.py",
+      "testMethod": "test_executes_real_stack_and_only_emits_review_candidates",
+      "invariant": "Discovered clusters require minimum evidence in both ES and EN.",
+      "failureResponse": "requireHumanReview"
+    },
+    {
+      "category": "revocation",
+      "component": "allGovernedDatasets",
+      "testFile": "test_model_governance_acceptance.py",
+      "testMethod": "test_revocation_is_mandatory_across_governed_datasets",
+      "invariant": "Every train, discovery and analytics dataset requires revocations applied.",
+      "failureResponse": "rejectInput"
+    },
+    {
+      "category": "revocation",
+      "component": "attributeDiscovery",
+      "testFile": "test_attribute_discovery.py",
+      "testMethod": "test_rejects_pii_sensitive_terms_and_version_drift",
+      "invariant": "Privacy manifest cannot bypass runtime PII and sensitivity rejection.",
+      "failureResponse": "rejectInput"
+    },
+    {
+      "category": "promotion",
+      "component": "catBoostChallenger",
+      "testFile": "test_boosting_evaluation.py",
+      "testMethod": "test_promotion_requires_quality_production_and_approved_cve_review",
+      "invariant": "Quality, production evidence and CVE approval are conjunctive.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "promotion",
+      "component": "rankingExperiment",
+      "testFile": "test_ab_testing.py",
+      "testMethod": "test_synthetic_execution_never_allows_causal_claim",
+      "invariant": "Synthetic A/B execution never permits a causal or rollout claim.",
+      "failureResponse": "blockPromotion"
+    },
+    {
+      "category": "promotion",
+      "component": "attributeDiscovery",
+      "testFile": "test_attribute_discovery.py",
+      "testMethod": "test_executes_real_stack_and_only_emits_review_candidates",
+      "invariant": "Topic discovery can only enqueue a candidate for human review.",
+      "failureResponse": "requireHumanReview"
+    },
+    {
+      "category": "promotion",
+      "component": "modelCards",
+      "testFile": "test_model_governance_acceptance.py",
+      "testMethod": "test_model_cards_and_policies_require_human_promotion",
+      "invariant": "Every registered candidate remains human-approved and reversible.",
+      "failureResponse": "blockPromotion"
+    }
+  ]
+}

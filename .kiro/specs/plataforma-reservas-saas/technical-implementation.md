@@ -38210,3 +38210,75 @@ segmento dependen de una derivación Spring coherente/versionada. No se calcula 
 incremental sin control A/B. Una futura integración podrá persistir snapshots agregados con retención,
 pero nunca observaciones o buckets pequeños. 21.12 probará de forma transversal leakage, sesgo,
 revocación, lenguaje, reproducibilidad y promoción.
+
+## Iteración 2026-08-20 - Tarea 21.12: aceptación transversal de modelos
+
+### Objetivo, requisitos y arquitectura de evidencia
+
+- Identificador exacto: 21.12.
+- Objetivo técnico: convertir reproducibilidad, leakage, calibración, sesgo, robustez lingüística,
+  revocación y promoción en una puerta ejecutable, trazable y resistente a documentación obsoleta.
+- Requisitos/diseño: RF-035, RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009,
+  RNF-014 y RNF-015; secciones 14.16, 14.17 y 14.51.
+
+`model-governance-acceptance.v1.json` es una matriz de 22 checks. Cada entrada fija categoría,
+componente, archivo/método unittest, invariante verificable y una de seis respuestas: rechazar input,
+bloquear promoción, fallback seguro, suprimir salida, revisión humana o detener experimento. Pydantic
+exige exactamente las siete categorías, al menos dos checks por categoría, mínimo catorce evidencias y
+unicidad de referencia dentro de cada categoría. Nombres de archivo/método están restringidos a tests
+locales, sin rutas relativas ni carga dinámica.
+
+`GovernanceAcceptanceMatrix.validate_test_references` resuelve cada archivo bajo el directorio exacto
+de tests, comprueba que no escape al root y parsea su AST en UTF-8. Reúne `FunctionDef` y
+`AsyncFunctionDef` que empiezan por `test_`; una referencia ausente produce un error estable. No
+importa ni ejecuta módulos durante esta validación, evitando efectos laterales y asegurando que
+`unittest discover` siga siendo el único ejecutor. La suite completa ejecuta después todos los tests
+referenciados, por lo que existencia no se confunde con éxito.
+
+### Cobertura de los siete riesgos
+
+- Reproducibilidad enlaza entrenamiento logístico, elección condicional y replay NLP deterministas.
+- Leakage enlaza rechazo de outcome/identidad en conversión, posición/outcome en elección y
+  sensibilidad/outcome en no-show.
+- Calibración enlaza Platt de conversión/no-show y no regresión Brier/ECE de CatBoost.
+- Sesgo enlaza muestra ES/EN de CatBoost/no-show, parada de guardrails A/B y supresión de segmentos.
+- Robustez lingüística enlaza normalización/sinónimos ES, longest-match EN y clusters bilingües.
+- Revocación enlaza el contrato transversal literal y rechazo defensivo PII/sensibilidad.
+- Promoción enlaza calidad+producción+CVE, bloqueo causal sintético, revisión de atributos y model cards.
+
+Esta cobertura usa cohortes permitidas de auditoría y no crea segmentos sensibles. Las respuestas
+seguras reflejan la arquitectura existente: el ranking vuelve a baseline, candidatos de atributos
+esperan revisión, analítica pequeña se suprime y experimentos con guardrail se detienen.
+
+### Tests meta y controles adversariales
+
+`test_model_governance_acceptance.py` añade siete pruebas. Valida categorías y 22 referencias AST;
+inspecciona las allowlists de conversión, elección y no-show contra email, IDs, edad, género, salud,
+postcode, pago y outcomes, además de su intersección con la denylist gobernada. Verifica ECE máximo
+0,15, brecha Brier máxima 0,05 y diez filas mínimas por cohorte.
+
+La robustez lingüística exige diccionarios ES/EN de NLP y ABSA y dos documentos por locale en
+discovery. Revocación inspecciona la anotación Pydantic de `ConversionDataset`, `ChoiceDataset`,
+`NoShowDataset`, `AttributeDiscoveryDataset` y `ConversionAnalyticsDataset` y exige exactamente
+`Literal[True]`; `False` no puede validarse ni ser default. Promoción recorre todas las model cards,
+exige `status=candidate`, `humanApprovalRequired=true` y rollback no vacío, y confirma que discovery
+prohíbe autopublicación y requiere `ROLE_ADMIN`.
+
+### Archivos, comandos, evidencia, observabilidad y deuda
+
+Se crearon matriz JSON, `governance_acceptance.py` y siete tests; se actualizaron tareas, diseño,
+seguimiento y este documento. No hubo endpoint, migración, persistencia ni cambio de inferencia. La
+matriz ofrece trazabilidad de riesgo a test y respuesta; el test runner/CI conserva resultado,
+duración y fallo exacto sin copiar datasets.
+
+Evidencia focalizada: `python -m unittest apps/demand-engine/tests/test_model_governance_acceptance.py
+-v` ejecutó siete casos en 0,050 s. Evidencia completa: `npm run test:demand` ejecutó 125 tests en
+68,611 s, incluyendo BERTopic/UMAP/HDBSCAN/c-TF-IDF reales, y terminó `OK`; `git diff --check` quedó
+limpio. Prettier validó la matriz.
+
+Riesgos/deuda: AST demuestra presencia, mientras el runner completo demuestra ejecución; ambos deben
+permanecer juntos en CI. Los fixtures sintéticos no reemplazan auditoría productiva, revisión CVE,
+shadow/canary ni potencia A/B. La denylist meta no es un detector semántico exhaustivo y debe crecer
+con incidentes/revisión. Drift temporal, fairness en nuevas cohortes permitidas y estabilidad de
+clustering productivo necesitarán datos reales y nuevas versiones. Esta tarea cierra la Fase 21 sin
+promover ningún modelo ni afirmar causalidad productiva.
