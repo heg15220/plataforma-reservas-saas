@@ -17,6 +17,7 @@ ml = [
   "umap-learn==0.5.12",
   "hdbscan==0.8.44",
   "bertopic==0.17.4",
+  "xgboost==3.3.0",
 ]
 
 [build-system]

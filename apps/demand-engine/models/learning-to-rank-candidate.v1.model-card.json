@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "learningToRankCandidate",
+  "modelVersion": "xgboost-lambdamart-candidate-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Rerank complete eligible candidate sets only after governed offline comparison with the active ranking baseline.",
+  "intendedUse": ["offlineRankingEvaluation", "shadowAfterApproval"],
+  "prohibitedUse": [
+    "automaticDeployment",
+    "candidateGeneration",
+    "changeEligibility",
+    "replaceCapacityChecks",
+    "inferSensitiveTraits",
+    "changePrice"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "learning-to-rank-evaluation-v1",
+  "featureSetVersion": "ranking-preoutcome-v1",
+  "limitations": [
+    "Offline relevance labels and conversion are not causal treatment effects.",
+    "The model can rerank only the complete candidate set already approved by hard constraints.",
+    "Synthetic quality does not authorize shadow traffic or production promotion.",
+    "Diversity and new venue exposure gates must remain satisfied on future production evidence."
+  ],
+  "rollback": "Disable the LambdaMART signal and restore the versioned baseline score with deterministic candidate-id tie breaking.",
+  "humanApprovalRequired": true
+}

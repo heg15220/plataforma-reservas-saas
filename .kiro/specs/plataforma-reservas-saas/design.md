@@ -4549,3 +4549,24 @@ evidencia sintética bloquea incluso revisión de promoción y evidencia product
 habilita para aprobación humana. Elegibilidad, capacidad y restricciones duras permanecen fuera de
 la FM. Ante rechazo, drift, feature desconocida o rollback se conserva el baseline content-based y
 el fallback determinista.
+
+### 14.53 Learning to Rank LambdaMART con guardrails de marketplace
+
+`learning-to-rank-evaluation-v1` usa XGBoost 3.3.0 `XGBRanker` con objetivo `rank:ndcg`, una
+implementación LambdaMART ejecutable en Python 3.13/Windows. LightGBM 4.7.0 permanece descartado en
+este entorno porque su wheel instalado no puede cargar `lib_lightgbm.dll`; no se altera el sistema
+operativo ni se simula el algoritmo. Semilla, árboles, profundidad, learning rate, L2, CPU e histograma
+quedan fijados para reproducción.
+
+Cada consulta aporta el conjunto completo de alternativas que Spring ya declaró elegibles y con
+capacidad. Todas comparten ancho de features pre-outcome y contienen baseline congelado, relevancia,
+conversión madura, categoría y condición de local nuevo solo para evaluación. Posición, outcomes,
+identidad y rasgos sensibles están prohibidos como features. Train y evaluación futura no se solapan,
+y el ranker se entrena únicamente con relevancia agrupada por consulta.
+
+Champion y challenger ordenan exactamente las mismas alternativas y se miden a `K=3`: NDCG,
+captura de conversión, diversidad de categoría y exposición de locales nuevos. Promoción exige ganar
+0,05 NDCG, no perder conversión, diversidad ni exposición y repetir scores dentro de `1e-8`. El hash
+del booster identifica el modelo evaluado. Evidencia sintética solo prueba el evaluador; producción
+habilita revisión humana, nunca despliegue automático. El rollback restaura score baseline y desempate
+por UUID, conservando intactas restricciones duras.

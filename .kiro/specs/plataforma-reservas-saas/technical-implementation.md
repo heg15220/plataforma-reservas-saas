@@ -38347,3 +38347,73 @@ asociaciones matemáticas, no rasgos humanos interpretables ni efectos causales.
 memorizar ruido aun con L2; hacen falta datos productivos, estabilidad entre ventanas y auditoría de
 exposición. Features nuevas requieren nueva versión: el predictor falla cerrado en vez de imputarlas.
 La tarea 22.2 comparará ranking por consulta, donde AUC binaria no sustituye NDCG ni diversidad.
+
+## Iteración 2026-08-20 - Tarea 22.2: Learning to Rank con LambdaMART
+
+### Objetivo, requisitos y selección técnica
+
+- Identificador exacto: 22.2.
+- Objetivo técnico: entrenar un ranker por consulta y promoverlo solo si mejora NDCG/conversión sin
+  degradar diversidad, exposición de locales nuevos, restricciones duras ni reproducibilidad.
+- Requisitos/diseño: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.16, 14.17, 14.36 y 14.53.
+
+LightGBM 4.7.0 volvió a comprobarse y sigue fallando al cargar su DLL nativa en Windows. Se seleccionó
+XGBoost 3.3.0, cuyo objetivo oficial `rank:ndcg` implementa LambdaMART, ofrece wheel para Python 3.13
+y licencia Apache-2.0. La dependencia quedó fijada en el extra `ml`; no se modificó el SO. La política
+congela 40 árboles, profundidad 3, learning rate 0,08, L2 1, semilla 17, `hist`, subsample/columnas 1
+y un único thread. Se entrena dos veces para comparar scores y no solo configuración declarativa.
+
+### Contratos, fronteras y flujo de entrenamiento
+
+`LearningToRankDataset` declara versión/finalidad, extracción aware, ausencia de datos personales y
+revocaciones aplicadas. La lista de features es cerrada, única y de ancho común. La denylist impide
+email, teléfono, IDs, rasgos sensibles, posición y outcomes como feature. `extra=forbid` protege todos
+los contratos ante ampliaciones silenciosas.
+
+Cada `RankingQuery` contiene UUID técnico, instante, maduración, `completeCandidateSet=true` y de dos
+a cien alternativas únicas. `RankingCandidate` exige literalmente `eligible=true` y
+`capacityAvailable=true`; si Spring entrega una alternativa rechazada, Pydantic detiene el pipeline.
+Features y baseline deben ser finitos. Relevancia 0..3, conversión binaria, categoría y condición de
+nuevo local son labels/dimensiones de evaluación: únicamente `featureValues` entra en XGBoost. Hay
+como máximo una conversión por consulta y al menos una alternativa relevante.
+
+Las consultas se ordenan por instante/UUID y se agrupan mediante tamaños de query para `XGBRanker`.
+Train acaba antes de 2026-06-01 y evaluación antes de 2026-07-01; outcomes deben madurar dentro de su
+frontera. Cada split exige diez consultas y cuatro candidatos por consulta. No existe split aleatorio,
+relleno de alternativas ni uso de la evaluación para ajustar árboles.
+
+### Métricas, promoción, errores y artefacto
+
+El baseline ordena su score congelado y el challenger su score LambdaMART, ambos con UUID como
+desempate determinista. A `K=3`, NDCG usa ganancia `2^relevancia-1`; conversión mide consultas cuya
+reserva está en top-K; diversidad es categorías únicas/K y exposición es locales nuevos/K. Las medias
+se calculan sobre las mismas consultas futuras. Los gates requieren delta NDCG >=0,05, delta conversión
+>=0, regresión de diversidad <=0, regresión de exposición <=0 y estabilidad <=1e-8.
+
+El reporte incorpora versiones, métricas champion/challenger, deltas, SHA-256 del booster JSON,
+evidencia y model card; no copia consultas. El fixture produjo NDCG 0→1, conversión 0→1, diversidad
+1→1 y exposición 0→0,3333, con delta de repetición 0. Es una prueba sintética deliberadamente
+separable, no expectativa productiva ni causalidad. `promotionReviewAllowed` requiere además evidencia
+productiva; `automaticDeploymentAllowed` permanece `Literal[False]`. Revisión humana y rollback al
+baseline con empate UUID son obligatorios.
+
+Errores estables cubren versión de model card, política temporal, feature prohibida, dataset inválido,
+consulta fuera de split, label inmaduro y muestra insuficiente. No se añadieron endpoints, migraciones,
+persistencia ni inferencia online; restricciones duras siguen siendo responsabilidad autoritativa de
+Spring y precondición del dataset.
+
+### Archivos, pruebas, evidencia y deuda
+
+Se añadieron XGBoost al `pyproject.toml`, política/model card, `learning_to_rank.py` y cinco pruebas;
+se actualizaron tareas, diseño, seguimiento y este documento. Evidencia focalizada:
+`python -m unittest apps/demand-engine/tests/test_learning_to_rank.py -v`, con ambos roots Python,
+ejecutó cinco casos en 0,129 s y terminó `OK`. También se inspeccionó el reporte completo. Prettier,
+compilación Python, suite acumulada y `git diff --check` se ejecutan antes del commit final.
+
+Riesgos/deuda: relevancia offline puede codificar sesgo del ranking histórico y conversión es una
+asociación expuesta, no uplift. NDCG del fixture extremo no generaliza. Producción requiere propensity
+logging, evaluación por cohortes permitidas, latencia p95, revisión CVE/licencia, drift, shadow/canary
+y experimento con potencia. El hash hace identificable el booster pero este reporte no lo despliega;
+un registro de modelos futuro deberá almacenar bytes, firma y provenance protegidos. La tarea 22.3
+añadirá evaluación offline de una política contextual con soporte y presupuesto explícito de riesgo.

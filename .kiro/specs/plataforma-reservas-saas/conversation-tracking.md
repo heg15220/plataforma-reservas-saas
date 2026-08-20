@@ -10119,3 +10119,25 @@ Fuente de verdad del avance:
   - La FM recibe solo códigos cerrados pre-outcome y no crea rasgos latentes de personas.
   - La mejora mínima es +0,03 ROC AUC sin regresión de log-loss y con delta determinista <=1e-8.
   - Cuatro pruebas focalizadas quedaron verdes en 62,475 s.
+
+# Conversación 246 - Learning to Rank con LambdaMART
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó `XGBRanker` 3.3.0 con objetivo `rank:ndcg`/LambdaMART sobre conjuntos completos de
+    alternativas ya elegibles y con capacidad.
+  - La comparación future holdout calcula NDCG@3, conversión@3, diversidad@3 y exposición de locales
+    nuevos@3 para baseline y challenger, además de estabilidad entre dos entrenamientos.
+  - Las puertas bloquean cualquier regresión de guardrails; evidencia sintética y el contrato literal
+    impiden promoción o despliegue automáticos.
+- Archivos modificados: dependencia ML, política/model card LTR, evaluador/pruebas Python y cuatro
+  documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 22.2; prepara 22.3 y evaluación online posterior.
+- Tareas completadas: 22.2.
+- Siguiente tarea pendiente recomendada: 17.1 según el orden global; para esta fase del motor, 22.3.
+- Decisiones o aclaraciones relevantes:
+  - XGBoost se eligió porque su `rank:ndcg` es LambdaMART y su wheel funciona en Python 3.13/Windows;
+    LightGBM continúa sin cargar su DLL nativa.
+  - El ranker no genera candidatos ni puede reintroducir alternativas excluidas por capacidad.
+  - Cinco pruebas focalizadas quedaron verdes en 0,129 s.
