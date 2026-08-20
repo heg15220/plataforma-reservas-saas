@@ -155,6 +155,10 @@
       "viewAvailability": "View availability",
       "viewMap": "View on map"
     },
+    "recommendationReasons": {
+      "GOOD_AVAILABILITY": "Recommended because it is currently available.",
+      "MATCHES_ACTIVE_FILTERS": "Matches your filters and has availability."
+    },
     "card": {
       "closed": "Closed",
       "imageAlt": "Image of {name}",
@@ -1242,6 +1246,10 @@
       "clear": "Clear filters",
       "registerVenue": "Register this venue",
       "viewVenue": "View venue"
+    },
+    "recommendationReasons": {
+      "GOOD_AVAILABILITY": "Recommended because it is currently available.",
+      "MATCHES_ACTIVE_FILTERS": "Matches the active filters and has availability."
     },
     "card": {
       "imageAlt": "Main image of {name}",

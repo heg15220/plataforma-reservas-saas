@@ -19,6 +19,7 @@ import {
   HomeVenueCard,
 } from "@/features/public-search/home-recommended-carousel";
 import { enrichHomeVenueCards } from "@/features/public-search/home-venue-enrichment";
+import { buildPublicRecommendationFallback } from "@/features/public-search/public-recommendations";
 import { visualTokens } from "@/theme/visual-tokens";
 
 const quickCategories = [
@@ -59,6 +60,10 @@ export default async function HomePage() {
 export function HomePageView({ venues = [] }: { venues?: PublicVenueSearchItem[] }) {
   const t = useTranslations("HomePage");
   const heroImage = venues.find((venue) => venue.mainImageUrl)?.mainImageUrl;
+  const recommendations = buildPublicRecommendationFallback(venues, {
+    activeFilters: false,
+    limit: 8,
+  });
 
   return (
     <PublicShell>
@@ -166,7 +171,7 @@ export function HomePageView({ venues = [] }: { venues?: PublicVenueSearchItem[]
             carousel
             emptyDescription={t("discovery.empty")}
             title={t("discovery.recommended")}
-            venues={venues}
+            venues={recommendations}
           />
           <VenueSection
             emptyDescription={t("discovery.empty")}

@@ -1,4 +1,4 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test-utils/render-with-intl";
@@ -50,6 +50,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -94,8 +95,11 @@ describe("HomePage", () => {
     expect(
       within(carousel).getAllByText("Calle Mayor 1 · 28013 · Madrid · Madrid · ES"),
     ).toHaveLength(4);
-    expect(within(carousel).getAllByText("Abierto")).toHaveLength(3);
-    expect(within(carousel).getAllByText("Cerrado")).toHaveLength(1);
+    expect(within(carousel).getAllByText("Abierto")).toHaveLength(4);
+    expect(within(carousel).queryByText("Cerrado")).not.toBeInTheDocument();
+    expect(within(carousel).getAllByText("Recomendado por su disponibilidad actual.")).toHaveLength(
+      4,
+    );
     expect(within(carousel).queryByText("Ver disponibilidad")).not.toBeInTheDocument();
 
     act(() => vi.advanceTimersByTime(4_000));
@@ -108,13 +112,20 @@ describe("HomePage", () => {
 
     act(() => vi.advanceTimersByTime(12_000));
     expect(carousel).toHaveAttribute("data-active-index", "4");
-    expect(within(carousel).getByRole("link", { name: "Local 8" })).toHaveAttribute(
-      "href",
-      "/locales/local-8",
-    );
-    expect(within(carousel).getByText("Cerrado")).toBeVisible();
+    expect(within(carousel).queryByRole("link", { name: "Local 8" })).not.toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(16_000));
+    act(() => vi.advanceTimersByTime(8_000));
+    expect(carousel).toHaveAttribute("data-active-index", "0");
+  });
+
+  it("desactiva la rotación automática cuando se prefiere movimiento reducido", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
+    renderWithIntl(<HomePageView venues={venues} />);
+
+    const carousel = screen.getByTestId("recommended-carousel");
+    act(() => vi.advanceTimersByTime(20_000));
+
     expect(carousel).toHaveAttribute("data-active-index", "0");
   });
 });

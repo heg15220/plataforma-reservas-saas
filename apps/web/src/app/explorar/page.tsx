@@ -8,6 +8,7 @@ import {
   searchSortOptions,
 } from "@/features/public-search/public-search-api";
 import { PublicSearchResultsView } from "@/features/public-search/public-search-results";
+import { buildPublicRecommendationFallback } from "@/features/public-search/public-recommendations";
 
 interface ExplorePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -28,7 +29,12 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const filters = normalizeSearchParams(await searchParams);
   const [response, recommended, featured, nearby, categories] = await Promise.all([
     searchPublicVenues(locale, filters),
-    searchPublicVenues(locale, { size: 3, sort: "availability" }),
+    searchPublicVenues(locale, {
+      ...filters,
+      page: undefined,
+      size: 3,
+      sort: "availability",
+    }),
     searchPublicVenues(locale, { size: 3, sort: "rating" }),
     searchPublicVenues(locale, {
       location: filters.location,
@@ -43,7 +49,10 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
       discoverySections={{
         featured: featured.results,
         nearby: nearby.results,
-        recommended: recommended.results,
+        recommended: buildPublicRecommendationFallback(recommended.results, {
+          activeFilters: Boolean(filters.q || filters.location || filters.category),
+          limit: 3,
+        }),
       }}
       categories={categories}
       filters={filters}

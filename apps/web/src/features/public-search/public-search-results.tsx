@@ -32,6 +32,7 @@ import {
 } from "./public-search-api";
 import { PublicSearchAutocomplete } from "./public-search-autocomplete";
 import { PublicCategoryLabel } from "./public-category-label";
+import type { PublicRecommendedVenue } from "./public-recommendations";
 
 const EXPLORE_PATH = "/explorar";
 const VENUE_PATH_PREFIX = "/locales/";
@@ -47,7 +48,7 @@ export interface PublicSearchResultsViewProps {
 export interface PublicSearchDiscoverySections {
   featured: PublicVenueSearchItem[];
   nearby: PublicVenueSearchItem[];
-  recommended: PublicVenueSearchItem[];
+  recommended: PublicRecommendedVenue[];
 }
 
 /** Pantalla pública de resultados con tarjetas y filtros soportados por el endpoint actual. */
@@ -195,7 +196,7 @@ function DiscoverySections({
     description: string;
     key: "featured" | "nearby" | "recommended";
     title: string;
-    venues: PublicVenueSearchItem[];
+    venues: Array<PublicVenueSearchItem | PublicRecommendedVenue>;
   }>;
 
   return (
@@ -241,7 +242,8 @@ function DiscoverySections({
   );
 }
 
-function CompactVenueLink({ venue }: { venue: PublicVenueSearchItem }) {
+function CompactVenueLink({ venue }: { venue: PublicVenueSearchItem | PublicRecommendedVenue }) {
+  const t = useTranslations("PublicSearch");
   const location = [venue.address, venue.postalCode, venue.city, venue.province, venue.country]
     .filter(Boolean)
     .join(", ");
@@ -263,6 +265,13 @@ function CompactVenueLink({ venue }: { venue: PublicVenueSearchItem }) {
     >
       <Typography sx={{ fontWeight: 700 }}>{venue.name}</Typography>
       <Typography sx={{ color: "text.secondary" }}>{location}</Typography>
+      {"recommendation" in venue ? (
+        <Typography sx={{ color: "primary.main", fontSize: 12, fontWeight: 600 }}>
+          {venue.recommendation.explanationCode === "GOOD_AVAILABILITY"
+            ? t("recommendationReasons.GOOD_AVAILABILITY")
+            : t("recommendationReasons.MATCHES_ACTIVE_FILTERS")}
+        </Typography>
+      ) : null}
     </Stack>
   );
 }

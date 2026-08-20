@@ -4218,3 +4218,18 @@ byte a byte. Python implementa la transición pura; Spring debe persistir poster
 única transacción con unicidad. Estado inferior al prior, drift de política o ledger lleno falla
 cerrado con error opaco. No se reciben identidades, atributos sensibles, texto libre ni datos de
 reserva.
+
+### 14.34 Presentación pública segura de recomendaciones
+
+Inicio y resultados consumen `PublicRecommendedVenue`, una proyección que añade al local público
+solo estrategia, versión de política y código de explicación. Mientras la orquestación Spring hacia
+Demand Engine no esté promovida, `public-availability-fallback-v1` es el fallback explícito: conserva
+el orden de disponibilidad devuelto por búsqueda, exige `bookingAvailable=true` y estado `available`,
+deduplica por slug y no fabrica score ni personalización. En resultados, la consulta que alimenta el
+carril hereda texto, ubicación y categoría activos antes de ordenar por disponibilidad.
+
+Las tarjetas muestran únicamente `GOOD_AVAILABILITY` o `MATCHES_ACTIVE_FILTERS` mediante catálogos
+ES/EN. No exponen contribuciones internas, muestra Thompson ni causalidad. El carril mantiene una,
+dos o cuatro tarjetas completas según viewport, pausa con interacción y desactiva intervalo y
+animación ante `prefers-reduced-motion`. El fallback no reintroduce locales no reservables y un fallo
+de carga sigue degradando a navegación/búsqueda ordinarias, independientes del motor inteligente.

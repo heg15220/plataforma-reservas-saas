@@ -9719,3 +9719,27 @@ Fuente de verdad del avance:
   - La cuota se calcula tras los guardrails y se redondea hacia abajo para ser un máximo efectivo.
   - La reproducibilidad sirve para reintentos y auditoría; no sustituye aleatorización experimental
     persistida ni la revalidación de capacidad de Spring.
+
+# Conversación 227 - Recomendaciones públicas seguras en inicio y resultados
+
+- Fecha: 2026-08-15.
+- Resumen de la conversación:
+  - Se creó una proyección pública de recomendación con política, estrategia y explicación visible,
+    sin exponer score o features internas.
+  - Inicio y resultados aplican un fallback determinista de disponibilidad que excluye locales no
+    reservables; en resultados hereda consulta, ubicación y categoría activas.
+  - El carril conserva responsive 1/2/4, pausa por interacción y desactiva rotación/animación con
+    reducción de movimiento; los textos están en ES/EN.
+- Archivos modificados:
+  - Nuevo adaptador/test `public-recommendations`, páginas de inicio/resultados, carril/tarjetas,
+    pruebas de UI, catálogos ES/EN y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-029 y RF-036; RNF-007, RNF-014, RNF-015 y RB-015.
+- Tareas impactadas: 20.16; prepara 20.19, 20.21 y 21.8.
+- Tareas completadas: 20.16.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.17.
+- Decisiones o aclaraciones relevantes:
+  - La estrategia se etiqueta `fallback`; no se afirma personalización mientras no exista
+    orquestación pública promovida y auditable.
+  - La explicación procede de la regla visible ejecutada y nunca de un texto o score inventado.
+  - Los chequeos globales de typecheck/i18n mantienen incidencias históricas fuera del alcance; las
+    nueve pruebas dirigidas de la integración quedan verdes.

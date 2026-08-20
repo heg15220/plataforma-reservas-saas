@@ -37030,3 +37030,70 @@ Riesgos/deuda: el prior y reward binario son hipótesis sin calibración; 20.20/
 conversión, diversidad y calidad. La semilla reproducible no sustituye asignación experimental durable.
 El ledger embebido está acotado y requiere almacenamiento/compactación antes de alto volumen. 23.7
 deberá alertar ante exceso de exposición y 20.16 deberá etiquetar/explicar sin revelar el sample.
+
+## Iteración 2026-08-15 - Tarea 20.16: recomendaciones en inicio y resultados
+
+### Objetivo, frontera y degradación
+
+- Identificador exacto: 20.16.
+- Objetivo técnico: presentar recomendaciones útiles en las dos superficies públicas sin permitir
+  que una decisión derivada eluda filtros o disponibilidad y sin bloquear búsqueda/reserva cuando la
+  inteligencia no esté disponible.
+- Requisitos/diseño: RF-029 y RF-036; RNF-007, RNF-014, RNF-015 y RB-015; secciones 14.1, 14.2,
+  14.9, 14.14, 14.16, 14.17 y 14.34.
+
+Se creó `public-recommendations.ts` como adaptador server-side puro. `PublicRecommendedVenue`
+extiende el DTO público de búsqueda exclusivamente con `strategy`, `policyVersion` y
+`explanationCode`; no añade score, componentes, posterior Thompson, identidad, sesión, consulta ni
+atributos ocultos. La política inicial `public-availability-fallback-v1` declara honestamente que la
+superficie todavía consume un fallback determinista, no la personalización persistente del Demand
+Engine. Esto mantiene la reserva independiente y evita presentar el orden como una inferencia
+individual o una mejora causal.
+
+`buildPublicRecommendationFallback` recibe únicamente locales ya autorizados por el endpoint público
+de Spring. Vuelve a exigir `bookingAvailable=true` y `statusCode=available`, deduplica por slug con
+orden estable y aplica un límite de superficie. La doble comprobación es una defensa de presentación,
+no sustituye la revalidación transaccional de slots, hold y confirmación. Los locales cerrados o con
+disponibilidad pendiente desaparecen del carril en lugar de conservarse con una etiqueta visual.
+
+En `/explorar`, la carga recomendada propaga `q`, `location` y `category`, elimina paginación previa,
+limita a tres y fuerza orden `availability`. Por ello no puede cruzar el filtro activo con una consulta
+global paralela. Si hay filtros, la explicación es `MATCHES_ACTIVE_FILTERS`; sin ellos es
+`GOOD_AVAILABILITY`. En inicio, los ocho resultados reales enriquecidos pasan por el mismo adaptador
+con explicación de disponibilidad. Featured y nearby permanecen secciones de descubrimiento
+distintas y no se etiquetan como recomendación.
+
+### UI, accesibilidad, responsive e i18n
+
+`HomeRecommendedCarousel` acepta la proyección recomendada y `HomeVenueCard` muestra debajo del
+estado una explicación localizada. `CompactVenueLink` hace lo mismo en resultados. Ambos textos se
+resuelven desde claves cerradas de `HomePage`/`PublicSearch` en `es.json` y `en.json`; el código no
+concatena texto libre ni traduce en runtime. La tarjeta conserva un único enlace semántico sobre la
+superficie completa, foco visible y encabezado jerárquico. La explicación es texto real legible por
+tecnología asistiva, no tooltip ni color aislado.
+
+El carril conserva cuatro posiciones completas en escritorio, dos en tablet y una en móvil. El
+contenedor oculta overflow y cambia contenidos completos, no desplaza fracciones de tarjeta. Foco o
+hover pausan el intervalo. `prefers-reduced-motion: reduce` impide crear el intervalo y anula la
+animación CSS, manteniendo el índice cero. El fallback vacío conserva el estado textual y los accesos
+a explorar, de modo que un fallo SSR o ausencia de candidatos no bloquea navegación.
+
+### Archivos, pruebas, errores y evidencia
+
+Se crearon `public-recommendations.ts` y su prueba; se modificaron `page.tsx`, `/explorar/page.tsx`,
+el carril, resultados, tres suites de UI, catálogos ES/EN y documentos `.kiro`. No hubo migración,
+Java, llamada directa del navegador a Python ni credencial nueva. El error del API sigue capturado en
+SSR de inicio; resultados conserva el contrato público existente. La promoción de un ranking real
+debe sustituir el adaptador por un endpoint Spring con el mismo DTO visible, sin cambiar las tarjetas.
+
+Las pruebas verifican exclusión de no reservables, deduplicación, política/explicación, presentación
+de la explicación, ausencia de local cerrado, rotación por tarjetas completas y bloqueo de rotación
+durante 20 segundos simulados con reducción de movimiento. El cierre dirigido ejecuta tres archivos,
+nueve casos, todos verdes, y Prettier sobre cada archivo modificado.
+
+Los comandos globales `typecheck`, `i18n:check` y `spanish:text:check` continúan detectando deuda
+preexistente en módulos admin, formularios, documentos históricos y migraciones no tocadas. Tras
+corregir los hallazgos propios iniciales, no queda error dirigido de esta integración. Riesgo/deuda:
+la política pública es un fallback de disponibilidad, no el ScoreMvp. Una promoción futura deberá
+orquestar Spring -> Demand Engine, persistir V47 antes de impresión y conservar fallback/circuit
+breaker. 20.19 registrará experimento previo a exposición y 20.21 ampliará pruebas E2E/a11y.

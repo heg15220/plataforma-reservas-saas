@@ -5,6 +5,7 @@ import { renderWithIntl } from "@/test-utils/render-with-intl";
 
 import type { PublicVenueSearchResponse } from "./public-search-api";
 import { PublicSearchResultsView } from "./public-search-results";
+import { buildPublicRecommendationFallback } from "./public-recommendations";
 
 const response: PublicVenueSearchResponse = {
   locale: "es",
@@ -81,7 +82,10 @@ describe("PublicSearchResultsView", () => {
         discoverySections={{
           featured: [response.results[1]],
           nearby: [response.results[0]],
-          recommended: [response.results[0]],
+          recommended: buildPublicRecommendationFallback([response.results[0]], {
+            activeFilters: true,
+            limit: 3,
+          }),
         }}
         filters={{ category: "restaurante", location: "Madrid", q: "cafe", sort: "availability" }}
         response={response}

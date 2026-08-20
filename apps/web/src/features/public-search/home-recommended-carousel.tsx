@@ -13,13 +13,14 @@ import { visualTokens } from "@/theme/visual-tokens";
 
 import { type PublicVenueSearchItem, resolveSearchImageUrl } from "./public-search-api";
 import { PublicCategoryLabel } from "./public-category-label";
+import type { PublicRecommendedVenue } from "./public-recommendations";
 
 const VENUE_PATH_PREFIX = "/locales/";
 const AUTO_ROTATION_INTERVAL_MS = 4_000;
 const MAX_VISIBLE_CARD_COUNT = 4;
 
 export interface HomeRecommendedCarouselProps {
-  venues: PublicVenueSearchItem[];
+  venues: Array<PublicVenueSearchItem | PublicRecommendedVenue>;
 }
 
 /**
@@ -112,7 +113,11 @@ export function HomeRecommendedCarousel({ venues }: HomeRecommendedCarouselProps
 }
 
 /** Tarjeta navegable completa; mantiene una única acción semántica hacia la ficha del local. */
-export function HomeVenueCard({ venue }: { venue: PublicVenueSearchItem }) {
+export function HomeVenueCard({
+  venue,
+}: {
+  venue: PublicVenueSearchItem | PublicRecommendedVenue;
+}) {
   const t = useTranslations("HomePage");
   const location = [venue.address, venue.postalCode, venue.city, venue.province, venue.country]
     .filter(Boolean)
@@ -194,6 +199,13 @@ export function HomeVenueCard({ venue }: { venue: PublicVenueSearchItem }) {
           </Typography>
         </Stack>
         <StatusChip label={statusLabel} tone={homeVenueStatusTone(venue.statusCode)} />
+        {"recommendation" in venue ? (
+          <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
+            {venue.recommendation.explanationCode === "GOOD_AVAILABILITY"
+              ? t("recommendationReasons.GOOD_AVAILABILITY")
+              : t("recommendationReasons.MATCHES_ACTIVE_FILTERS")}
+          </Typography>
+        ) : null}
       </Stack>
     </Box>
   );

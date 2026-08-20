@@ -155,6 +155,10 @@
       "viewAvailability": "Ver disponibilidad",
       "viewMap": "Ver en mapa"
     },
+    "recommendationReasons": {
+      "GOOD_AVAILABILITY": "Recomendado por su disponibilidad actual.",
+      "MATCHES_ACTIVE_FILTERS": "Coincide con tus filtros y tiene disponibilidad."
+    },
     "card": {
       "closed": "Cerrado",
       "imageAlt": "Imagen de {name}",
@@ -1242,6 +1246,10 @@
       "clear": "Limpiar filtros",
       "registerVenue": "Registrar este local",
       "viewVenue": "Ver local"
+    },
+    "recommendationReasons": {
+      "GOOD_AVAILABILITY": "Recomendado por su disponibilidad actual.",
+      "MATCHES_ACTIVE_FILTERS": "Coincide con los filtros activos y tiene disponibilidad."
     },
     "card": {
       "imageAlt": "Imagen principal de {name}",
