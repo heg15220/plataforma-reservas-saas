@@ -9789,3 +9789,27 @@ Fuente de verdad del avance:
     MVP sea interpretable; una política adaptativa futura necesitará nueva versión.
   - Monedas distintas nunca se suman y el precio visible no se denomina ingreso incremental.
   - Diez pruebas backend y nueve frontend dirigidas quedaron verdes; lint focalizado también pasó.
+
+# Conversación 230 - Asignación A/B estable y exposición previa
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se creó una asignación A/B persistente y reproducible por SHA-256, definición versionada y UUID
+    seudónimo, con reparto en 10.000 buckets.
+  - La unicidad por grupo, ventana y unidad impide solapamientos de políticas de ranking, mientras
+    una nueva ventana permite experimentos posteriores.
+  - La impresión experimental exige un registro durable previo vinculado a la misma recomendación,
+    variante y política; el tráfico ordinario conserva su flujo.
+- Archivos modificados:
+  - Migración V55; nuevo módulo Java `demand.experiment`; servicio/pruebas de impresión; tareas,
+    diseño, documento técnico y registro de conversación.
+- Requisitos impactados: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 20.19; prepara 20.20, 20.21, 21.7 y 21.11.
+- Tareas completadas: 20.19.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.20.
+- Decisiones o aclaraciones relevantes:
+  - A/B usa exactamente control/tratamiento; cualquier cambio de reparto, sal o política requiere
+    una definición versionada nueva.
+  - La exposición es idempotente e inmutable una vez vinculada; una discrepancia falla cerrado.
+  - Las suites focalizadas quedaron verdes; Checkstyle global conserva 45 incidencias preexistentes
+    ajenas a los archivos de esta tarea.

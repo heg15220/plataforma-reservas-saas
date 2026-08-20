@@ -8,6 +8,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.reserly.platform.demand.experiment.persistence.ExperimentAssignmentDao;
+import com.reserly.platform.demand.experiment.persistence.ExperimentAssignmentEntity;
+import com.reserly.platform.demand.experiment.persistence.ExperimentDefinitionEntity;
 import com.reserly.platform.demand.ingestion.DemandEventIngestionService;
 import com.reserly.platform.demand.ingestion.EventIngestionRequest;
 import com.reserly.platform.demand.recommendation.persistence.RecommendationCandidateDao;
@@ -36,6 +39,7 @@ class RecommendationImpressionServiceTests {
   private RecommendationCandidateDao candidateDao;
   private RecommendationRankingDao rankingDao;
   private DemandEventIngestionService ingestionService;
+  private ExperimentAssignmentDao experimentAssignmentDao;
   private RecommendationImpressionService service;
   private UUID publicRequestId;
   private UUID internalRequestId;
@@ -46,15 +50,48 @@ class RecommendationImpressionServiceTests {
     candidateDao = mock(RecommendationCandidateDao.class);
     rankingDao = mock(RecommendationRankingDao.class);
     ingestionService = mock(DemandEventIngestionService.class);
+    experimentAssignmentDao = mock(ExperimentAssignmentDao.class);
     service =
         new RecommendationImpressionServiceImpl(
             requestDao,
             candidateDao,
             rankingDao,
+            experimentAssignmentDao,
             ingestionService,
             Clock.fixed(NOW, ZoneOffset.UTC));
     publicRequestId = UUID.randomUUID();
     internalRequestId = UUID.randomUUID();
+  }
+
+  @Test
+  void requiresARegisteredAssignmentBeforeAnExperimentalImpression() {
+    RecommendationRequestEntity request = request();
+    request.setExperimentKey("rankingPilot");
+    request.setVariantKey("treatment");
+    request.setPolicyVersion("hybrid.v1");
+    RecommendationCandidateEntity candidate = candidate("eligible", true);
+    stubAggregate(request, List.of(candidate), List.of(ranking(candidate, 1)));
+
+    RecommendationImpressionCommand command =
+        new RecommendationImpressionCommand(
+            UUID.randomUUID(), publicRequestId, List.of(candidate.getId()), NOW.minusSeconds(1));
+    assertThatThrownBy(() -> service.record(command))
+        .isInstanceOf(RecommendationImpressionException.class);
+
+    ExperimentDefinitionEntity definition = new ExperimentDefinitionEntity();
+    definition.setExperimentKey("rankingPilot");
+    ExperimentAssignmentEntity assignment = new ExperimentAssignmentEntity();
+    assignment.setExperimentDefinition(definition);
+    assignment.setVariantKey("treatment");
+    assignment.setPolicyVersion("hybrid.v1");
+    assignment.setExposureRecordedAt(NOW.minusSeconds(2));
+    when(experimentAssignmentDao.findByRecommendationRequestId(internalRequestId))
+        .thenReturn(Optional.of(assignment));
+
+    service.record(command);
+
+    assertThat(candidate.isWasVisible()).isTrue();
+    verify(ingestionService).ingestTrusted(any());
   }
 
   @Test

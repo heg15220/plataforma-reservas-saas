@@ -37272,3 +37272,72 @@ snapshots históricos. La supresión evita interpretación con muestra pequeña,
 revisarse con privacidad/producto. La cobertura puede caer por fallo asíncrono 20.17 y requiere alerta
 y reparación antes de SLA. La atribución permanece correlacional; 20.19/20.20 deben medir experimento
 e incrementalidad antes de cualquier afirmación de valor causal.
+
+## Iteración 2026-08-20 - Tarea 20.19: asignación A/B y exposición previa
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 20.19.
+- Objetivo técnico: crear una asignación A/B reproducible y durable para políticas de ranking,
+  impedir solapamientos incompatibles y exigir que asignación/exposición existan antes de aceptar una
+  impresión.
+- Requisitos/diseño: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.10, 14.12, 14.15, 14.17 y 14.37.
+
+Se añadió el módulo Spring `demand.experiment`, separado del motor Python porque la aleatorización y
+su denominador deben persistirse transaccionalmente junto al sistema autoritativo. El puerto
+`ExperimentAssignmentService` expone `assign` y `registerExposure`. El primero selecciona únicamente
+la última versión `running` cuya ventana UTC contiene `assignedAt`; el segundo enlaza una asignación
+ya creada con el identificador público de una recomendación persistida. Los contratos aceptan solo
+códigos gobernados, UUID seudónimo e instantes UTC. Los errores son códigos opacos y no registran la
+unidad de asignación.
+
+El bucket se obtiene de los primeros cuatro bytes sin signo de SHA-256 sobre
+`experimentKey:version:assignmentSaltVersion:assignmentUnitId`, módulo 10.000. Los buckets inferiores
+a `treatmentAllocationBps` reciben tratamiento y el resto control. La versión y la sal hacen el
+resultado reproducible entre JVM, despliegues y reintentos sin usar estado aleatorio de proceso. Un
+reintento devuelve la fila existente. Ante una carrera, las constraints deciden, el intento perdedor
+falla con código opaco y su siguiente reintento recupera la asignación ganadora; si el conflicto
+pertenece a otro experimento del grupo, falla cerrado.
+
+### Modelo de datos, restricciones y flujo
+
+La migración V55 crea `ExperimentDefinitions` con clave/versión única, grupo y ventana de exclusión,
+dos variantes, dos versiones de política, reparto en puntos básicos, sal, estado y vigencia. Checks
+limitan códigos, estados, reparto 1..9999, políticas/variantes distintas y coherencia temporal.
+`ExperimentAssignments` contiene definición, UUID de unidad, snapshot de exclusión, variante,
+política, bucket, asignación, vínculo opcional a `RecommendationRequests` y exposición. Tiene FK
+restrictivas, unicidad definición/unidad, unicidad grupo/ventana/unidad y unicidad por recomendación.
+Un check obliga a que request y exposición sean ambos nulos o ambos presentes y a que la exposición
+no preceda la asignación. Índices sirven resolución activa, análisis por variante y cohortes expuestas.
+
+El flujo es: (1) Spring recibe la unidad consentida; (2) resuelve definición activa; (3) devuelve la
+asignación previa o comprueba exclusión; (4) calcula/persiste bucket, variante y política; (5) el
+ranking persiste `RecommendationRequest` con esos mismos códigos; (6) `registerExposure` valida y
+vincula ambos agregados; (7) solo entonces la superficie puede llamar a
+`RecommendationImpressionService`. Este último ahora consulta la asignación por request y rechaza si
+falta, si cambió experimento/variante/política o si `exposureRecordedAt` es posterior a la impresión.
+Las recomendaciones no experimentales no sufren una consulta ni cambian de comportamiento.
+
+### Archivos, seguridad, pruebas y evidencia
+
+Se creó V55; entidades/DAO de definición y asignación; comandos, resultado, excepción, puerto y
+servicio de experimento; y `ExperimentAssignmentServiceTests`. Se modificaron el servicio y las
+pruebas de impresión. Todo contrato y la lógica criptográfica, de concurrencia y exposición quedaron
+documentados. No se persisten email, IP, consulta, coordenadas ni atributos sensibles. El UUID de
+unidad es seudónimo, el servicio no lo incluye en respuestas y la FK a recomendación permite
+auditoría sin copiar contexto. La política exacta queda congelada en la asignación.
+
+Cinco pruebas nuevas de servicio cubren bucket/variante deterministas, replay sin resorteo, exclusión
+mutua, exposición idempotente y rechazo por tiempo/política. La prueba de impresión añade el caso que
+rechaza antes del registro y acepta después con coincidencia completa. Evidencia ejecutada:
+`mvn -q spotless:apply` correcto; Maven focalizado con `-Dcheckstyle.skip=true` ejecutó ambas suites
+sin fallos ni errores; `git diff --check` correcto. La ejecución ordinaria quedó bloqueada antes de
+tests por 45 violaciones globales preexistentes de Checkstyle en archivos no tocados (llaves,
+longitudes e imports), por lo que se documenta la exclusión sin atribuirla a esta tarea.
+
+Riesgos/deuda: la configuración inicial admite exactamente A/B; multivariante requerirá una tabla de
+brazos o contrato versionado nuevo. La creación/promoción administrativa de definiciones sigue
+pendiente de gobernanza; nunca debe editarse una versión `running`. V55 se verificará en integración
+cuando el contexto Testcontainers global resuelva las deudas previas de tipo `countryCode` y orden de
+filtro. 20.20 debe fijar gates y 20.21 ampliar la matriz transversal antes de ejecutar un piloto real.

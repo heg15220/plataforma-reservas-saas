@@ -1,5 +1,7 @@
 package com.reserly.platform.demand.recommendation;
 
+import com.reserly.platform.demand.experiment.persistence.ExperimentAssignmentDao;
+import com.reserly.platform.demand.experiment.persistence.ExperimentAssignmentEntity;
 import com.reserly.platform.demand.ingestion.DemandEventIngestionService;
 import com.reserly.platform.demand.ingestion.EventIngestionRequest;
 import com.reserly.platform.demand.recommendation.persistence.RecommendationCandidateDao;
@@ -34,6 +36,7 @@ public class RecommendationImpressionServiceImpl implements RecommendationImpres
   private final RecommendationRequestDao requestDao;
   private final RecommendationCandidateDao candidateDao;
   private final RecommendationRankingDao rankingDao;
+  private final ExperimentAssignmentDao experimentAssignmentDao;
   private final DemandEventIngestionService ingestionService;
   private final Clock clock;
 
@@ -41,11 +44,13 @@ public class RecommendationImpressionServiceImpl implements RecommendationImpres
       RecommendationRequestDao requestDao,
       RecommendationCandidateDao candidateDao,
       RecommendationRankingDao rankingDao,
+      ExperimentAssignmentDao experimentAssignmentDao,
       DemandEventIngestionService ingestionService,
       Clock clock) {
     this.requestDao = requestDao;
     this.candidateDao = candidateDao;
     this.rankingDao = rankingDao;
+    this.experimentAssignmentDao = experimentAssignmentDao;
     this.ingestionService = ingestionService;
     this.clock = clock;
   }
@@ -58,6 +63,7 @@ public class RecommendationImpressionServiceImpl implements RecommendationImpres
         requestDao
             .findByRequestId(command.recommendationRequestId())
             .orElseThrow(RecommendationImpressionException::new);
+    requireRegisteredExperimentExposure(request, command.occurredAt());
     Map<UUID, RecommendationCandidateEntity> candidates = candidatesById(request.getId());
     Map<UUID, RecommendationRankingEntity> rankings = rankingsByCandidateId(request.getId());
 
@@ -76,6 +82,31 @@ public class RecommendationImpressionServiceImpl implements RecommendationImpres
         command.impressionId(),
         command.recommendationRequestId(),
         List.copyOf(command.candidateIds()));
+  }
+
+  /**
+   * Impide que una superficie experimental sea observable sin asignación y exposición durables. Las
+   * decisiones fuera de experimento conservan el flujo normal.
+   */
+  private void requireRegisteredExperimentExposure(
+      RecommendationRequestEntity request, java.time.Instant impressionAt) {
+    if (request.getExperimentKey() == null) {
+      return;
+    }
+    ExperimentAssignmentEntity assignment =
+        experimentAssignmentDao
+            .findByRecommendationRequestId(request.getId())
+            .orElseThrow(RecommendationImpressionException::new);
+    if (assignment.getExposureRecordedAt() == null
+        || assignment.getExposureRecordedAt().isAfter(impressionAt)
+        || !assignment
+            .getExperimentDefinition()
+            .getExperimentKey()
+            .equals(request.getExperimentKey())
+        || !assignment.getVariantKey().equals(request.getVariantKey())
+        || !assignment.getPolicyVersion().equals(request.getPolicyVersion())) {
+      throw new RecommendationImpressionException();
+    }
   }
 
   private void validateEnvelope(RecommendationImpressionCommand command) {

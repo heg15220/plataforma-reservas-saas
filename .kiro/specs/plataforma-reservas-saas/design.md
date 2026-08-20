@@ -4268,3 +4268,22 @@ Ingreso atribuido suma exclusivamente precios visibles asociados y solo cuando e
 sin precio o con monedas mixtas se muestra estado, no una suma falsa. La UI ES/EN presenta cuatro
 tarjetas, desglose, cobertura, versiones, zona y cinco definiciones; recuerda de forma permanente que
 la medición es observacional y no incremental.
+
+### 14.37 Asignación A/B durable antes de exposición
+
+`ExperimentDefinitions` versiona un experimento A/B de políticas con ventana UTC, control,
+tratamiento, asignación en puntos básicos, versión de sal y un par grupo/ventana de exclusión. Solo
+una definición `running` activa puede asignar. Cambiar pesos, políticas, sal o ventana exige una
+versión nueva; una ejecución en curso no se reconfigura mediante datos no versionados.
+
+`ExperimentAssignments` conserva el UUID seudónimo de unidad, bucket `[0,9999]`, variante y política
+resueltas. El bucket deriva de SHA-256 sobre experimento, versión, versión de sal y unidad, por lo que
+es estable entre procesos y reintentos. Unicidad por definición/unidad impide resorteo y unicidad por
+grupo/ventana/unidad impide participar simultáneamente en políticas de ranking incompatibles. Una
+ventana distinta permite experimentos sucesivos sin mantener una exclusión perpetua.
+
+La asignación ocurre antes de producir la decisión. `registerExposure` la vincula una sola vez a un
+`RecommendationRequest` cuyos experimento, variante y política coinciden, y exige un instante no
+anterior a la asignación. El flujo de impresión rechaza toda recomendación experimental sin ese
+registro durable o si la impresión precede al registro. Así, el denominador experimental existe antes
+de observar el resultado y un fallo no puede convertir tráfico ya expuesto en control implícito.
