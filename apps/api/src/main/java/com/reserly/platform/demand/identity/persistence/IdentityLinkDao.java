@@ -13,6 +13,23 @@ import org.springframework.data.repository.query.Param;
 /** Acceso a vínculos seudónimos limitado por finalidad, consentimiento, revocación y retención. */
 public interface IdentityLinkDao extends JpaRepository<IdentityLinkEntity, UUID> {
 
+  /** Resuelve el replay de una sesión/finalidad sin volver a derivar ni crear otro vínculo. */
+  @Query(
+      """
+      select link
+      from IdentityLinkEntity link
+      join fetch link.customerIdentity
+      join fetch link.anonymousIdentity
+      where link.sessionId = :sessionId
+        and link.purpose = :purpose
+        and link.revokedAt is null
+        and link.retentionExpiresAt > :now
+      """)
+  Optional<IdentityLinkEntity> findActiveBySessionAndPurpose(
+      @Param("sessionId") UUID sessionId,
+      @Param("purpose") String purpose,
+      @Param("now") Instant now);
+
   /**
    * Resuelve un vínculo utilizable y carga la identidad de cliente en la misma consulta. El
    * llamante todavía debe validar que ambas identidades conservan su consentimiento propio.

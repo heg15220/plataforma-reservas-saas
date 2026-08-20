@@ -37493,3 +37493,64 @@ completando correctamente. La integración PostgreSQL completa sigue limitada po
 de `BehaviorEvents.countryCode` y orden de `SessionAuthenticationFilter`; por eso el test transversal
 no afirma haber medido base/red. Próximos pasos: 21.1 debe operacionalizar el pipeline con observación
 real, y 21.5/21.11 deben producir datasets e informes temporales gobernados.
+
+## Iteración 2026-08-20 - Tarea 21.1: vinculación progresiva y rotación HMAC
+
+### Objetivo, requisitos y contrato criptográfico
+
+- Identificador exacto: 21.1.
+- Objetivo técnico: vincular sesión, identidad anónima consentida e identidad de cliente sin copiar
+  email al dominio analítico, con HMAC-SHA-256 versionado, replay idempotente y rotación de clave.
+- Requisitos/diseño: RF-033, RF-034 y RF-040; RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.5,
+  14.17 y 14.40.
+
+`DemandIdentityHmacProperties` recibe versión/secreto activos, una pareja anterior opcional y
+retenciones de cliente/vínculo. Valida códigos, secreto mínimo de 32 caracteres, pareja anterior
+completa, versiones distintas y duraciones positivas. `application.yaml` aporta un valor solo local;
+staging/production sobrescriben activo y secreto con variables obligatorias. Los tres ejemplos de
+entorno documentan rotación y plazos sin introducir un secreto real.
+
+`VersionedEmailHmacDeriver` normaliza exclusivamente en memoria mediante NFKC, recorte y lower-case
+`Locale.ROOT`, valida estructura básica y aplica `Mac(HmacSHA256)` con UTF-8. Devuelve internamente
+versión/digest hexadecimal de 64 caracteres. Email, clave y digest no forman parte de DTO público,
+errores, métricas o logs. Un vector conocido demuestra interoperabilidad y que trim/case producen el
+mismo identificador.
+
+### Persistencia, transacción y rotación
+
+V56 añade `sessionId` a `IdentityLinks`. Se mantiene nullable para migrar sin inventar sesiones en
+filas V45; el servicio nuevo siempre lo informa. Un índice único parcial impide dos vínculos activos
+para la misma sesión/finalidad y un índice temporal permite auditoría. No se añaden cookies, IP,
+user-agent, fingerprint ni texto personal.
+
+`ProgressiveIdentityService.link` valida finalidad, motivo, consentimiento, instante y UUID. Primero
+resuelve un replay sesión/finalidad y vuelve a consultar ambos DAOs personalizables, por lo que un
+vínculo existente no elude revocación, expiración o retención. Además deriva el HMAC aportado y exige
+que coincida con la identidad enlazada; el mismo sessionId con otro email/dispositivo falla con código
+opaco.
+
+Sin replay, el servicio exige `AnonymousIdentities` vigente y consentida antes de persistir cliente.
+Busca el digest activo. Si no existe y hay clave anterior, deriva una sola vez con ella: una coincidencia
+actualiza `emailHmac`/`keyVersion` sobre la misma `CustomerIdentityEntity`, refresca consentimiento y
+retención, y marca razón `controlled_key_rotation`. Así eventos, recomendaciones y futuros perfiles
+conservan el UUID canónico. Si no existe ninguna versión, crea una identidad mínima. Después persiste
+el vínculo con sesión, finalidad, documento/fecha de consentimiento y retención. Constraints traducen
+carreras a `DEMAND_IDENTITY_LINK_CONFLICT`; el siguiente replay recupera la fila ganadora.
+
+### Archivos, pruebas, seguridad y evidencia
+
+Se crearon V56, propiedades, derivador/valor interno, comando/resultado, excepción, puerto, servicio y
+dos suites. Se modificaron entidad/DAO de vínculos, cinco configuraciones/ejemplos y los documentos de
+especificación. Todas las APIs nuevas documentan entradas, salida, restricciones y efectos.
+
+Siete pruebas cubren vector HMAC conocido, normalización, separación activa/anterior, configuración
+inválida, alta minimizada, rotación manteniendo UUID, replay exacto/conflicto de email y rechazo sin
+consentimiento antes de escribir. Evidencia: Spotless correcto; Maven focalizado con
+`-Dcheckstyle.skip=true` compiló y ejecutó siete casos sin fallos; `git diff --check` correcto. La
+omisión de Checkstyle conserva la deuda global previa y no omite compilación o tests.
+
+Riesgos/deuda: la ventana admite una sola clave anterior para forzar rotaciones acotadas; migraciones
+de más de una generación requieren pasos secuenciales auditados. La corrección manual existente debe
+usar el mismo normalizador/derivador al exponerse como caso de uso, nunca aceptar emailHmac del cliente.
+V56 no impone NOT NULL por compatibilidad histórica; una futura migración podrá cerrarlo tras backfill
+o expiración V45. La creación del UUID anónimo permanece en la frontera de consentimiento existente.

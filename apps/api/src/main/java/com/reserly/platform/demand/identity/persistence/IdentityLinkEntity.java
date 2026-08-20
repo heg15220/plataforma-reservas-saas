@@ -23,6 +23,7 @@ import java.util.UUID;
 public class IdentityLinkEntity {
 
   private UUID id;
+  private UUID sessionId;
   private AnonymousIdentityEntity anonymousIdentity;
   private CustomerIdentityEntity customerIdentity;
   private String linkReason;
@@ -44,6 +45,18 @@ public class IdentityLinkEntity {
 
   public void setId(UUID id) {
     this.id = id;
+  }
+
+  /**
+   * Sesión efímera que originó el vínculo; null únicamente para filas históricas anteriores a V56.
+   */
+  @Column(name = "\"sessionId\"")
+  public UUID getSessionId() {
+    return sessionId;
+  }
+
+  public void setSessionId(UUID sessionId) {
+    this.sessionId = sessionId;
   }
 
   /** Identidad aleatoria de navegación vinculada. */

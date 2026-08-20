@@ -115,6 +115,14 @@ reserly:
       requests: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_REQUESTS:600}
       window: ${RESERLY_RATE_LIMIT_DEMAND_EVENT_WINDOW:1m}
   demand:
+    identity:
+      hmac:
+        activeVersion: ${RESERLY_DEMAND_IDENTITY_HMAC_ACTIVE_VERSION:hmac-local-v1}
+        activeSecret: ${RESERLY_DEMAND_IDENTITY_HMAC_ACTIVE_SECRET:local-demand-identity-secret-change-me}
+        previousVersion: ${RESERLY_DEMAND_IDENTITY_HMAC_PREVIOUS_VERSION:}
+        previousSecret: ${RESERLY_DEMAND_IDENTITY_HMAC_PREVIOUS_SECRET:}
+        customerRetention: ${RESERLY_DEMAND_IDENTITY_CUSTOMER_RETENTION:365d}
+        linkRetention: ${RESERLY_DEMAND_IDENTITY_LINK_RETENTION:90d}
     candidates:
       vectorEnabled: ${RESERLY_DEMAND_VECTOR_ENABLED:false}
       modelVersion: ${RESERLY_DEMAND_EMBEDDING_MODEL_VERSION:multilingual-e5-small-v1}

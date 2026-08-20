@@ -424,7 +424,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 23. Fase 21 - Aprendizaje con primeros datos reales
 
-- [ ] 21.1. Implementar vinculación progresiva de sesión e identidad de cliente mediante HMAC-SHA-256 versionado y rotación de clave.
+- [x] 21.1. Implementar vinculación progresiva de sesión e identidad de cliente mediante HMAC-SHA-256 versionado y rotación de clave.
 - [ ] 21.2. Construir perfiles implícitos por atributo con jerarquía de señales, decaimiento temporal, confianza y posibilidad de corrección.
 - [ ] 21.3. Implementar pipeline NLP ES/EN de normalización, entidades, negación, clasificación multilabel y mapeo de sinónimos.
 - [ ] 21.4. Implementar ABSA sobre reseñas verificadas con scores separados por aspecto, confianza, vigencia y evaluación humana.

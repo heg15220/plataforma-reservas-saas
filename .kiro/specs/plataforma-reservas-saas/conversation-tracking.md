@@ -9858,3 +9858,24 @@ Fuente de verdad del avance:
   - El test p95 en memoria detecta regresión local, pero no sustituye siete días de shadow end-to-end.
   - La sección existente conserva el landmark; el carril interno usa `aria-live=off` y evita duplicarlo.
   - La puerta final pasó 11 tests Python, 5 web y 11 Java; el motor completo pasó 67 tests.
+
+# Conversación 233 - Identidad progresiva con rotación HMAC
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se vinculó sesión, UUID anónimo consentido y UUID canónico de cliente mediante evidencia durable
+    por finalidad, sin devolver ni registrar email o digest.
+  - El email se normaliza en memoria y se deriva con HMAC-SHA-256 y secreto versionado externo.
+  - Una clave anterior opcional permite rotar digest sobre la misma identidad canónica; replay y
+    consentimiento se revalidan y cualquier discrepancia falla cerrado.
+- Archivos modificados:
+  - V56, entidad/DAO de vínculo, nuevo módulo de identidad progresiva, configuración/ejemplos de
+    entorno, pruebas y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-033, RF-034 y RF-040; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.1; prepara 21.2, 21.5 y 23.9.
+- Tareas completadas: 21.1.
+- Siguiente tarea pendiente recomendada: 17.1; para primeros datos, 21.2.
+- Decisiones o aclaraciones relevantes:
+  - V56 mantiene `sessionId` nullable solo para compatibilidad; el servicio nuevo siempre lo exige.
+  - La rotación conserva `CustomerIdentities.id` y actualiza digest/version; no crea perfiles partidos.
+  - Siete pruebas focalizadas quedaron verdes y el digest no cruza el resultado minimizado.

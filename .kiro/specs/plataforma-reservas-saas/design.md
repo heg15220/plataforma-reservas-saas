@@ -4328,3 +4328,22 @@ La matriz `demand-mvp-verification-matrix.md` enlaza cada dimensión con prueba 
 omite únicamente Checkstyle global al invocar Maven por deuda histórica; conserva Spotless,
 compilación y tests. Ningún fallo se transforma en warning y la tarea solo puede cerrarse con los tres
 bloques verdes.
+
+### 14.40 Identidad progresiva y rotación HMAC
+
+V56 añade `sessionId` nullable a `IdentityLinks` para compatibilidad con filas V45 y exige unicidad
+activa por sesión/finalidad en los vínculos nuevos. La cadena durable es sesión efímera → UUID anónimo
+de primera parte → UUID canónico de cliente. Cada resolución revalida consentimiento, revocación,
+vigencia y retención de ambas identidades; reutilizar una sesión con otro email o dispositivo falla
+cerrado.
+
+Spring normaliza el email en memoria con NFKC, trim y minúsculas invariantes y deriva HMAC-SHA-256 con
+una clave de al menos 32 caracteres inyectada por entorno. Solo persiste hexadecimal y versión. Durante
+una rotación se configuran clave activa y una única anterior: si el digest anterior existe, la misma
+fila `CustomerIdentities` cambia a versión/digest activos, conservando su UUID y todas sus FKs. Tras la
+migración se retira la clave anterior; nunca se prueban diccionarios ni se expone el digest.
+
+El resultado contiene IDs opacos, versión, finalidad, instante y bandera de rotación. Un replay exacto
+devuelve el vínculo existente; discrepancias, consentimiento ausente o carreras de unicidad producen
+códigos opacos. Producción y staging exigen secretos externos sin valor por defecto, mientras local
+usa un secreto marcado explícitamente para desarrollo.

@@ -1,5 +1,12 @@
 reserly:
   environment: staging
+  demand:
+    identity:
+      hmac:
+        activeVersion: ${RESERLY_DEMAND_IDENTITY_HMAC_ACTIVE_VERSION}
+        activeSecret: ${RESERLY_DEMAND_IDENTITY_HMAC_ACTIVE_SECRET}
+        previousVersion: ${RESERLY_DEMAND_IDENTITY_HMAC_PREVIOUS_VERSION:}
+        previousSecret: ${RESERLY_DEMAND_IDENTITY_HMAC_PREVIOUS_SECRET:}
   security:
     secureCookies: ${RESERLY_SECURE_COOKIES:true}
   features:
