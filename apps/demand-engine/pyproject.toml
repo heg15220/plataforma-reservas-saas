@@ -14,6 +14,9 @@ dependencies = [
 ml = [
   "sentence-transformers==5.7.0",
   "catboost==1.2.10",
+  "umap-learn==0.5.12",
+  "hdbscan==0.8.44",
+  "bertopic==0.17.4",
 ]
 
 [build-system]

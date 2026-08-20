@@ -10041,3 +10041,21 @@ Fuente de verdad del avance:
   - Solo los días 14, 21, 28 y 42 permiten análisis; cualquier lectura no prerregistrada se rechaza.
   - Guardrails tienen prioridad sobre significación y producen parada de seguridad.
   - Siete ejecuciones sintéticas verificaron el analizador, sin afirmar resultado productivo.
+
+# Conversación 242 - Descubrimiento de atributos candidatos
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó el pipeline batch real embeddings → UMAP → HDBSCAN → BERTopic → c-TF-IDF.
+  - Los clusters bilingües producen únicamente candidatos minimizados pendientes de revisión admin;
+    nunca publican ni cambian automáticamente la ontología.
+  - Se fijaron versiones, hiperparámetros, fuentes permitidas, PII/sensibilidad, muestra y trazabilidad.
+- Archivos modificados: dependencias ML, política, pipeline/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-035, RF-036, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.10; prepara 21.11, 21.12 y el workflow humano ya creado en 19.13.
+- Tareas completadas: 21.10.
+- Siguiente tarea pendiente recomendada: 17.1; para esta fase del motor, 21.11.
+- Decisiones o aclaraciones relevantes:
+  - TensorFlow no es necesario: ParametricUMAP queda fuera y se usa UMAP clásico fijado.
+  - La caché compilada de Numba vive en temporal y el pipeline no se importa en el camino online.
+  - Tres pruebas ejecutaron las bibliotecas reales y quedaron verdes en 58,326 s.

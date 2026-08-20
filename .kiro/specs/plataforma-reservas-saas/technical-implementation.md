@@ -38065,3 +38065,79 @@ versión puede usar intervalos score exactos. No hay datos productivos en el rep
 no se afirma uplift real. Deben monitorizarse sample-ratio mismatch, maduración tardía, contaminación
 entre dispositivos y attrition diferencial con evidencia real. 21.11 conectará optimización a
 resultados gobernados y 21.12 registrará protocolo/artefacto/drift/rollback de forma integral.
+
+## Iteración 2026-08-20 - Tarea 21.10: descubrimiento de atributos candidatos
+
+### Objetivo, requisitos y supply chain
+
+- Identificador exacto: 21.10.
+- Objetivo técnico: descubrir temas bilingües como candidatos de ontología mediante embeddings, UMAP,
+  HDBSCAN, BERTopic y c-TF-IDF reales, sin publicación automática ni texto persistido.
+- Requisitos/diseño: RF-035, RF-036, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.6, 14.7, 14.13, 14.17 y 14.49.
+
+Se fijaron `umap-learn==0.5.12`, `hdbscan==0.8.44` y `bertopic==0.17.4` en el extra `ml`, junto al
+Sentence Transformers 5.7.0 existente. Las wheels UMAP/BERTopic puras y HDBSCAN CPython 3.13 Windows
+se instalaron y cargaron realmente. `_load_ml_stack` compara metadata instalada con la política antes
+de importar. La importación de UMAP intenta cachear funciones Numba junto al paquete, ruta no
+escribible bajo sandbox; se dirige explícitamente a `reserly-numba-cache` dentro del temporal del SO.
+Solo contiene código compilado, no documentos o embeddings. TensorFlow ausente deshabilita únicamente
+ParametricUMAP, componente fuera del diseño.
+
+### Dataset, privacidad y embeddings
+
+`AttributeDiscoveryDataset` declara ontología/modelo, finalidad `ontologyDiscovery`, evidencia
+productiva, ausencia de datos personales, escaneo PII, retirada de sensibilidad y revocaciones
+aplicadas. `DiscoveryDocument` admite UUID técnico, locale ES/EN, fuente allowlist y texto efímero de
+8–1.000 caracteres. Las fuentes son `verifiedReview`, `venueDescription` y `searchAggregate`; la última
+debe ser una frase ya agregada, nunca una consulta individual.
+
+Antes de embebido se rechazan email, teléfono y términos gobernados de salud, diagnóstico,
+discapacidad, embarazo, raza, religión, política o sexualidad en ambos idiomas. La declaración del
+dataset no sustituye esta comprobación defensiva. UUID duplicado, más de 5.000 documentos, versión de
+ontología/modelo distinta o embedder que no publique 384 dimensiones falla cerrado. Los vectores deben
+tener forma exacta, `float32` finito y un vector por documento. Producción utiliza el adaptador E5
+versionado; las pruebas inyectan un embedding sintético de igual contrato para no descargar red.
+
+### UMAP, HDBSCAN, BERTopic y c-TF-IDF
+
+UMAP usa coseno, cinco vecinos, dos componentes, distancia mínima cero, semilla 17 y un hilo. HDBSCAN
+opera en el espacio reducido con euclídea, cluster mínimo seis, `min_samples=2`, selección EOM,
+`prediction_data=true` y un hilo. BERTopic recibe los embeddings ya calculados y ambos modelos, por lo
+que no carga un segundo encoder. `CountVectorizer` normaliza caja/diacríticos, usa stop words ES/EN y
+unigramas/bigramas. `min_df=1` es deliberado: BERTopic concatena cada cluster como un documento y un
+término discriminante aparece en una sola clase. `ClassTfidfTransformer(reduce_frequent_words=true)`
+calcula c-TF-IDF real.
+
+El ruido HDBSCAN `-1` se cuenta y no se convierte en candidato. Un cluster necesita al menos dos
+documentos ES y dos EN. Sus seis términos/scores proceden de `get_topic`; la confianza es la media de
+`probabilities_` HDBSCAN. La clave candidata deriva de SHA-256 sobre política y términos ordenados,
+permitiendo replay idempotente sin hash de texto. Los nombres publicados de la ontología se comparan
+por tokens solo para ofrecer `possibleExistingAttributeCodes`; es una pista de merge, no decisión.
+
+### Revisión, persistencia y operación
+
+`AttributeCandidate` conserva conteo/locale, fuentes, términos agregados, c-TF-IDF, pertenencia, pista
+de atributo y hasta veinte UUID de evidencia. No contiene texto, embedding, identidad o local. Estado
+es siempre `pendingHumanReview`, rol `ROLE_ADMIN`, acciones `name/merge/reject/publish` y publicación
+automática falsa. Spring podrá insertar esta proyección en la cola `AttributeCandidates` creada por
+V48; el workflow existente sigue exigiendo nombre/definición ES/EN, actor, motivo y auditoría. Python
+no escribe DB, modifica ontología, ranking ni API. El job batch puede fallar sin afectar búsqueda o
+reserva.
+
+### Tests, evidencia, riesgos y deuda
+
+Se crearon política, módulo y tres pruebas; se modificaron dependencias y los cuatro documentos
+`.kiro`. El fixture aporta 36 documentos bilingües en tres grupos y embeddings de 384 dimensiones con
+separación controlada. La primera prueba ejecuta las cinco etapas reales y exige clusters bilingües
+pendientes; la segunda prueba salida sin texto con c-TF-IDF; la tercera rechaza PII, sensibilidad y
+drift. Evidencia: con `NUMBA_CACHE_DIR` temporal y ambos roots Python,
+`python -m unittest apps/demand-engine/tests/test_attribute_discovery.py -v` ejecutó tres casos en
+58,326 s, todos correctos. `git diff --check` se ejecuta antes del commit.
+
+Riesgos/deuda: el fixture prueba integración/determinismo contractual, no coherencia temática real.
+UMAP/HDBSCAN son sensibles a densidad e hiperparámetros; un dataset productivo debe evaluar estabilidad
+entre semillas/muestras y tasa de ruido. c-TF-IDF puede incluir términos raros no sensibles fuera de la
+denylist, por lo que revisión humana sigue siendo obligatoria. Los UUID de evidencia deben resolverse
+solo con permisos. 21.12 añadirá gates transversales de reproducibilidad, lenguaje, revocación y
+promoción; ninguna salida de 21.10 autoriza automatización.

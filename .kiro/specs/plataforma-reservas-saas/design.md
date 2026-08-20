@@ -4483,3 +4483,20 @@ positivo, significación del look, todos los guardrails y evidencia productiva. 
 potencia sin efecto termina por futilidad; falta de potencia continúa hasta máximo; cualquier violación
 de ratio de muestra, restricciones, privacidad, cross-over, exposición, asistencia, cancelación, valle o diversidad
 detiene por seguridad. Una simulación jamás permite afirmación causal.
+
+### 14.49 Descubrimiento batch de atributos bajo revisión humana
+
+`attribute-discovery-v1` fija `multilingual-e5-small-v1` de 384 dimensiones, UMAP 0.5.12,
+HDBSCAN 0.8.44 y BERTopic 0.17.4 con c-TF-IDF. El job recibe hasta 5.000 textos desidentificados de
+reseña verificada, descripción del local o agregado de búsquedas, aplica embeddings documentales,
+reduce a dos dimensiones con semilla 17, forma clusters de al menos seis evidencias y extrae seis
+términos representativos. ES y EN requieren dos documentos por cluster; idioma se usa para auditar
+cobertura, no para inventar una categoría sensible.
+
+El resultado omite textos y conserva versión, conteos, fuentes, términos/scores c-TF-IDF, confianza de
+pertenencia, hasta veinte UUID técnicos y posibles atributos existentes como pista de fusión. Todo
+cluster nace `pendingHumanReview`, exige `ROLE_ADMIN` y solo admite nombrar, fusionar, rechazar o
+publicar mediante el workflow V48; `automaticPublicationAllowed=false` es literal en política,
+candidato y resultado. PII, términos sensibles, drift de ontología/modelo/dependencia o dimensión no
+finita fallan cerrado. El stack se carga solo en batch y usa caché Numba temporal, sin afectar API,
+búsqueda o reserva.
