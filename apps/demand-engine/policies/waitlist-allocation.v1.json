@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "waitlist-allocation-v1",
+  "maximumOffers": 50,
+  "maximumWaves": 10,
+  "offerTtlSeconds": 600,
+  "staggerSeconds": 600,
+  "maximumContactsInWindow": 3,
+  "automaticExecutionAllowed": false
+}

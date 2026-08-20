@@ -446,7 +446,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 22.5. Diseñar y validar estimación causal mediante A/B antes de usar S/T/X-learner, Causal Forest o Doubly Robust.
 - [x] 22.6. Implementar estimación de uplift con intervalos, overlap, sensibilidad y separación explícita de atribución observacional.
 - [x] 22.7. Crear optimizador OR-Tools de oportunidades sujeto a capacidad, presupuesto, distancia, margen, frecuencia, consentimiento y equidad.
-- [ ] 22.8. Implementar listas de espera y `POST /waitlist/allocate` con ofertas escalonadas, expiración e idempotencia.
+- [x] 22.8. Implementar listas de espera y `POST /waitlist/allocate` con ofertas escalonadas, expiración e idempotencia.
 - [ ] 22.9. Integrar aceptación de ofertas con holds y confirmación transaccional para impedir sobreventa.
 - [ ] 22.10. Implementar promociones inteligentes solo con uplift y margen fiables, aprobación del local y límites de contacto.
 - [ ] 22.11. Evaluar señales visuales con CLIP como evidencia auxiliar y prohibir inferencias no verificables o sensibles.

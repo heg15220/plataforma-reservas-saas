@@ -10248,3 +10248,28 @@ Fuente de verdad del avance:
   - Equidad se define como exposición mínima de locales nuevos, no mediante atributo protegido.
   - CP-SAT trabaja en céntimos/basis points enteros y un thread con semilla 17.
   - Cinco pruebas focalizadas quedaron verdes en 0,015 s.
+
+# Conversación 252 - Listas de espera escalonadas e idempotentes
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó el endpoint interno de asignación con prioridad probabilística fiable y fallback
+    FIFO determinista, sin PII ni efectos laterales en Python.
+  - Se distribuyen propuestas en oleadas de capacidad acotada, con ventanas de activación/caducidad e
+    IDs UUIDv5 reproducibles ante replay.
+  - Flyway V59, entidades y DAOs materializan entradas/ofertas con consentimiento, estados, tokens
+    solo hasheados, bloqueos pesimistas y unicidad de idempotencia.
+- Archivos modificados: política/asignador/router/pruebas Python; migración V59, entidades, DAOs y
+  prueba PostgreSQL; tareas, diseño, seguimiento y documento técnico.
+- Requisitos impactados: RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-012, RNF-014 y
+  RNF-015.
+- Tareas impactadas: 22.8; prepara la aceptación transaccional de 22.9.
+- Tareas completadas: 22.8.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase del motor, 22.9.
+- Decisiones o aclaraciones relevantes:
+  - Spring conserva el destino operativo consentido; Python solo recibe UUID seudónimo.
+  - Una oleada nunca reserva capacidad: la fotografía limita propuestas y 22.9 revalidará el estado
+    transaccional al aceptar.
+  - Cinco pruebas del asignador, trece de contrato HTTP y dos de migración PostgreSQL quedaron verdes.
+  - El Checkstyle global continúa fallando por 46 infracciones preexistentes fuera de 22.8; Spotless y
+    compilación de los 991 fuentes sí quedaron verdes al ejecutar la prueba dirigida.

@@ -38707,6 +38707,88 @@ insatisfecha. Antes de promoción se requieren benchmark p95, CVE, shadow/canary
 El modelo no es causal ni justifica abrir capacidad; 22.5 define la puerta experimental previa a
 cualquier estimador causal.
 
+## Iteración 2026-08-20 - Tarea 22.8: listas de espera y ofertas escalonadas
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 22.8.
+- Objetivo técnico: producir asignaciones auditables de listas de espera con consentimiento,
+  frecuencia, prioridad/FIFO, expiración e idempotencia, y crear su persistencia autoritativa.
+- Requisitos/diseño: RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-012, RNF-014 y
+  RNF-015; secciones 14.11, 14.14, 14.16, 14.17, 14.58 y 14.59.
+
+La frontera conserva la separación arquitectónica: FastAPI calcula propuestas puras y Spring es el
+único dueño de datos personales, tokens, estados y futuras reservas. Se añadió
+`POST /internal/demand/v1/waitlist/allocate` al router autenticado por identidad de servicio. La
+factoría carga `waitlist-allocation.v1.json`; no hay singleton oculto ni valores productivos en el
+código. Error de versión se traduce a `WAITLIST_ALLOCATION_REJECTED` 409 y validaciones estructurales
+mantienen `CONTRACT_INVALID` 422.
+
+`WaitlistAllocationRequest` reutiliza el envelope correlacionado y exige entre una y 500 entradas,
+UUID únicos y capacidad consistente para una misma franja. Cada entrada contiene solo IDs técnicos,
+fecha, consentimiento, frecuencia, probabilidades/valor permitidos y `HardConstraintSnapshot`.
+Nombre, email, teléfono, texto libre, atributos sensibles y token quedan fuera. Timestamps requieren
+timezone; Pydantic `extra=forbid` impide ampliar silenciosamente el contrato.
+
+### Priorización, oleadas, expiración e idempotencia
+
+El filtro previo rechaza falta de consentimiento, tres contactos ya realizados en la ventana,
+restricciones duras o duplicación del mismo sujeto. Con fiabilidad completa se ordena de mayor a menor
+por `round(Paccept·Pattend·allowedBookingValueCents)`, seguido de fecha/UUID. Si la petición o un
+candidato apto declara estimación no fiable, todo el lote degrada a FIFO por fecha/UUID para evitar
+mezclar dos semánticas de prioridad. Exclusiones se agregan por código sin exponer sujetos.
+
+El algoritmo busca para cada candidato la primera de diez oleadas donde la suma de `requestedCapacity`
+no supera `availableCapacity` de su franja. Cada oleada comienza diez minutos después de la anterior y
+su oferta caduca diez minutos después. Se admiten como máximo cincuenta ofertas. Distintas franjas
+consumen contadores separados; un sujeto aparece como máximo una vez.
+
+El `offerId` es UUIDv5 sobre un namespace fijo y `requestId:entryId:wave`. Por tanto, reintentar el
+mismo cálculo produce IDs, posiciones y ventanas idénticos sin estado en memoria. Esto no concede
+reserva: `automaticExecutionAllowed=false` es literal y Spring debe revalidar capacidad cuando el
+cliente acepte. La respuesta publica status, fallback, conteos, oleadas y exclusiones para auditoría.
+
+### Modelo PostgreSQL, entidades y seguridad
+
+Flyway `V59__create_waitlist_tables.sql` crea `WaitlistEntries` y `WaitlistOffers`. La entrada conserva
+local/franja, identidad analítica opcional, email operativo y normalizado, locale, tamaño de grupo,
+consentimiento versionado/revocable, estado e idempotency key. El email es necesario para la finalidad
+solicitada y permanece exclusivamente en Spring; el contrato Python usa `contactSubjectId`.
+Referencias a local/franja son restrictivas y la identidad analítica se desacopla con `ON DELETE SET
+NULL`. Checks físicos limitan locale, party size, estados, versión y cronología.
+
+La oferta usa el UUID determinista, request de asignación, entrada, oleada/posición, prioridad,
+ventanas, estado, hash de token y reserva aceptada opcional. `uqWaitlistOffersRequestEntry` vuelve
+idempotente la materialización y `uqWaitlistOffersTokenHash` evita reutilizar secretos. El token en
+claro no existe en el esquema: `offerTokenHash` exige exactamente SHA-256 hexadecimal. Un check obliga
+a que solo `accepted` tenga `acceptedReservationId`; expiración debe ser posterior a activación.
+
+Índices cubren cola por franja/fecha, frecuencia por email normalizado, activación/caducidad y ledger
+por entrada. Las entidades documentan la frontera de PII/secreto. `WaitlistEntryDao` permite replay
+por idempotency key y bloqueo de entrada; `WaitlistOfferDao` permite replay de propuesta y lectura por
+hash con `PESSIMISTIC_WRITE`, precondición utilizada en 22.9.
+
+### Pruebas, evidencia, observabilidad y deuda
+
+Se crearon cinco pruebas unitarias del asignador: prioridad y dos oleadas, FIFO no fiable, exclusión
+por consentimiento/frecuencia/restricción, replay byte-equivalente y deduplicación de sujeto. Las
+trece pruebas HTTP existentes verifican además que la ruta aparece bajo namespace interno y requiere
+autenticación. `py_compile` validó asignador, router y factoría.
+
+`WaitlistPersistenceIntegrationTests` levantó PostgreSQL 17 real, aplicó las 59 migraciones Flyway y
+comprobó tablas, índices/uniqueness y ausencia de columna de token en claro. Evidencia: la ejecución
+Python conjunta terminó 18/18 `OK`; Maven dirigido con `-Dcheckstyle.skip=true` compiló 991 fuentes y
+232 tests y terminó 2/2, `BUILD SUCCESS`, en 1:27. Spotless quedó verde. La ejecución Maven ordinaria
+se detuvo antes del test por 46 infracciones Checkstyle preexistentes en módulos/plantillas no
+modificados; ninguna corresponde a los seis fuentes Java de esta tarea.
+
+Riesgos/deuda: la capacidad fotografiada puede cambiar entre propuesta y aceptación y nunca debe
+considerarse hold. Aún falta materializar propuestas con generación segura de token, activar/expirar
+oleadas y enviar notificación a través del outbox existente; 22.9 implementa la aceptación usando el
+servicio ordinario de holds y bloqueo transaccional. La revocación debe cancelar ofertas programadas.
+Antes de producción hacen falta retención/borrado del email, métrica de expiración/aceptación por
+oleada y job idempotente con reintentos. La prioridad no es causal ni autoriza incentivo.
+
 ## Iteración 2026-08-20 - Tarea 22.5: puerta A/B para estimación causal
 
 ### Objetivo, requisitos y relación con el protocolo existente

@@ -4668,3 +4668,26 @@ y UUID aplica las mismas fronteras de capacidad, presupuesto, sujeto y equidad. 
 también degrada a esta política. La respuesta agrega exclusiones y uso de recursos, pero es solo una
 propuesta: `automaticExecutionAllowed=false`; Spring revalida y crea ofertas/reservas en tareas
 posteriores.
+
+### 14.59 Listas de espera y asignación escalonada
+
+`POST /internal/demand/v1/waitlist/allocate` recibe como máximo 500 entradas seudónimas, una
+fotografía consistente de capacidad y `requestId` idempotente. El contrato no admite nombre, email o
+teléfono. Antes de ordenar excluye consentimiento ausente, frecuencia de tres contactos agotada,
+restricción dura o segundo registro del mismo sujeto. Con estimaciones fiables prioriza
+`P(aceptación)·P(asistencia)·valor permitido`; si cualquier estimación apta no es fiable usa FIFO por
+`createdAt` y UUID.
+
+Cada oleada consume como máximo la capacidad fotografiada por franja. La política admite diez
+oleadas: una nueva cada diez minutos y ofertas que caducan a los diez minutos. El UUID de oferta se
+deriva de `requestId`, entrada y oleada mediante UUIDv5; un replay produce exactamente los mismos
+identificadores y ventanas. La respuesta es solo un plan con exclusiones:
+`automaticExecutionAllowed=false`.
+
+Flyway V59 crea `WaitlistEntries` como fuente operativa consentida en Spring y `WaitlistOffers` como
+ledger de propuestas emitibles. Unicidad por local/idempotency key y allocation/entry impide
+duplicados. Estados, ventanas, consentimiento y aceptación tienen checks físicos. Solo Spring
+conserva el email operativo; nunca lo envía al motor. El secreto de oferta tampoco se almacena:
+PostgreSQL recibe únicamente SHA-256 hexadecimal, único e indexado. El índice de activación soporta
+jobs de oleadas/caducidad y el de cola mantiene desempate temporal auditable. La aceptación y creación
+del hold quedan reservadas a 22.9.

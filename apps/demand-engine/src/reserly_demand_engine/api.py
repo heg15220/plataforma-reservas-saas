@@ -46,6 +46,7 @@ from .session_context import SessionContextRequest, SessionContextResponse
 from .implicit_profiles import ImplicitProfileRequest, ImplicitProfileResponse
 from .nlp import NlpAnalyzeRequest, NlpAnalyzeResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
+from .waitlist_allocation import WaitlistAllocationRequest, WaitlistAllocationResponse
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -203,6 +204,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.thompson_sampler.update(body)
         except ThompsonPolicyError as error:
             raise DemandEngineError("THOMPSON_UPDATE_REJECTED", 409) from error
+
+    @router.post("/waitlist/allocate", response_model=WaitlistAllocationResponse)
+    async def allocate_waitlist(
+        body: WaitlistAllocationRequest, request: Request
+    ) -> WaitlistAllocationResponse:
+        """Propone ofertas escalonadas; Spring conserva persistencia, emisión y aceptación."""
+        try:
+            return request.app.state.waitlist_allocator.allocate(body)
+        except ValueError as error:
+            raise DemandEngineError("WAITLIST_ALLOCATION_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(
