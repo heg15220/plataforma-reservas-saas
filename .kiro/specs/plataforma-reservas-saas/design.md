@@ -4387,3 +4387,21 @@ La clasificación multilabel es interpretable: `serviceIntent`, `availabilityInt
 `accessibilityNeed` y `ambiencePreference` se activan exclusivamente por conceptos positivos allowlist
 y enumeran esos conceptos como evidencia. Cambiar diccionario, ventana, normalización o asignación de
 etiquetas requiere una política/version nueva y evaluación ES/EN antes de promoción.
+
+### 14.43 ABSA verificable sobre reseñas acreditadas
+
+`review-absa-v1` limita el análisis a cuatro atributos publicados que admiten evidencia agregada de
+clientes: puntualidad, atención percibida, consistencia y ambiente tranquilo. Spring acredita que la
+reseña pertenece a una reserva; Python recibe UUID de reseña/local, rating, idioma y comentario
+efímero, pero el rating global no rellena un aspecto ausente. Normalización, términos de aspecto,
+sentimiento y negación son bilingües, versionados y deterministas.
+
+Cada mención busca polaridades solo en una ventana local. El resultado separado conserva score
+`[-1,1]`, confianza, volumen, observación, caducidad y estado. Evidencia contradictoria o confianza
+inferior a 0,70 entra en revisión humana. `ReviewAspectScores` persiste el derivado y referencia la
+reseña sin copiar comentario, email o reserva; una corrección humana conserva predicción y score humano
+por separado. Solo estados aceptados y vigentes pueden alimentar agregados de local.
+
+Una segunda frontera compara predicciones con etiquetas humanas minimizadas y publica número de
+reseñas/aspectos, exactitud de polaridad, MAE macro y puerta de promoción. El baseline exige al menos
+veinte reseñas, exactitud 0,80 y MAE máximo 0,25; no se promueve por tests sintéticos ni por estrellas.

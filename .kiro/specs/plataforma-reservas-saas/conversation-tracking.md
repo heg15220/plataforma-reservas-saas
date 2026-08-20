@@ -9921,3 +9921,24 @@ Fuente de verdad del avance:
   - No se usa un LLM ni se infieren categorías sensibles; el baseline es allowlist y versionado.
   - La negación conserva la entidad como negativa, pero la excluye de etiquetas positivas.
   - Las 78 pruebas del motor quedaron verdes, incluidas cinco unitarias NLP y el perímetro HTTP.
+
+# Conversación 236 - ABSA sobre reseñas verificadas
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó análisis bilingüe separado para puntualidad, atención, consistencia y ambiente sobre
+    reseñas acreditadas por reserva.
+  - Cada aspecto conserva score, confianza, evidencia, vigencia y cola de revisión humana; el rating
+    global no fabrica aspectos no mencionados.
+  - Se añadió evaluación humana agregada con muestra, exactitud de polaridad, MAE y gate de promoción.
+- Archivos modificados:
+  - Política/módulo/pruebas ABSA, router/fábrica Python, V58, entidad/DAO/retención Java, contrato HTTP y
+    cuatro documentos `.kiro`.
+- Requisitos impactados: RF-035, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.4; prepara 21.5, 21.7, 21.10 y 21.12.
+- Tareas completadas: 21.4.
+- Siguiente tarea pendiente recomendada: 17.1; para primeros datos, 21.5.
+- Decisiones o aclaraciones relevantes:
+  - Solo se usan atributos publicados y fuentes `customerAggregate`; no se puntúa a trabajadores.
+  - Contradicción o confianza menor de 0,70 exige revisión humana.
+  - Seis pruebas ABSA quedaron verdes y Java compiló 986 fuentes.

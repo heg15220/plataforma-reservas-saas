@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .api import internal_api_router
+from .absa import ReviewAbsaAnalyzer, ReviewAbsaPolicy
 from .affinity import ContentAffinityCalculator
 from .config import DemandEngineSettings
 from .errors import DemandEngineError
@@ -55,6 +56,9 @@ def create_app(
     )
     app.state.nlp_pipeline = PersonalCareNlpPipeline(
         PersonalCareNlpPolicy.load(policy_root / "nlp-personal-care.v1.json")
+    )
+    app.state.review_absa = ReviewAbsaAnalyzer(
+        ReviewAbsaPolicy.load(policy_root / "review-absa.v1.json")
     )
     app.state.score_mvp = ScoreMvp(
         ScorePolicy.load(policy_root / "score-mvp.v1.json"),

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "review-absa-v1",
+  "extractorVersion": "lexical-absa-v1",
+  "sentimentWindowTokens": 4,
+  "negationWindowTokens": 2,
+  "minimumAutoAcceptConfidence": 0.7,
+  "humanEvaluation": {
+    "minimumReviewedReviews": 20,
+    "minimumPolarityAccuracy": 0.8,
+    "maximumMacroMae": 0.25
+  },
+  "negators": {
+    "es": ["no", "nunca", "nada", "sin"],
+    "en": ["no", "not", "never", "without"]
+  },
+  "positiveTerms": {
+    "es": [
+      "amable",
+      "atento",
+      "bien",
+      "bueno",
+      "excelente",
+      "puntual",
+      "rapido",
+      "regular",
+      "tranquilo"
+    ],
+    "en": [
+      "attentive",
+      "calm",
+      "consistent",
+      "excellent",
+      "fast",
+      "friendly",
+      "good",
+      "on time",
+      "punctual"
+    ]
+  },
+  "negativeTerms": {
+    "es": ["brusco", "inconsistente", "lento", "mal", "malo", "retraso", "ruidoso", "tarde"],
+    "en": ["bad", "inconsistent", "late", "noisy", "rude", "slow"]
+  },
+  "aspects": [
+    {
+      "aspectCode": "appointmentPunctuality",
+      "validityDays": 30,
+      "terms": {
+        "es": ["hora", "puntual", "puntualidad", "retraso", "tiempo de espera"],
+        "en": ["appointment time", "delay", "punctual", "punctuality", "waiting time"]
+      }
+    },
+    {
+      "aspectCode": "staffAttentiveness",
+      "validityDays": 90,
+      "terms": {
+        "es": ["atencion", "trato", "personal"],
+        "en": ["attention", "staff", "treatment"]
+      }
+    },
+    {
+      "aspectCode": "serviceConsistency",
+      "validityDays": 180,
+      "terms": {
+        "es": ["consistencia", "resultado", "servicio"],
+        "en": ["consistency", "result", "service"]
+      }
+    },
+    {
+      "aspectCode": "calmAtmosphere",
+      "validityDays": 90,
+      "terms": {
+        "es": ["ambiente", "ruido", "salon"],
+        "en": ["atmosphere", "noise", "salon"]
+      }
+    }
+  ]
+}

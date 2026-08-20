@@ -37697,3 +37697,60 @@ deberá entrenar y calibrar clasificadores supervisados con split temporal y sin
 contra esta política; 21.10 podrá proponer sinónimos/atributos, siempre bajo revisión humana y nueva
 versión. Los términos sensibles son una barrera defensiva inicial, no un detector exhaustivo, por lo
 que Spring debe mantener minimización, consentimiento y finalidad antes de cualquier uso persistente.
+
+## Iteración 2026-08-20 - Tarea 21.4: ABSA sobre reseñas verificadas
+
+### Objetivo, requisitos y política
+
+- Identificador exacto: 21.4.
+- Objetivo técnico: derivar sentimiento separado y revisable por aspecto desde reseñas acreditadas,
+  con confianza, caducidad y evaluación humana, sin duplicar el comentario ni puntuar personas.
+- Requisitos/diseño: RF-035, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.6, 14.7, 14.17 y 14.43.
+
+`review-absa.v1.json` gobierna extractor léxico, ventanas de sentimiento/negación, umbral automático,
+aspectos y gate humano. Solo incluye `appointmentPunctuality`, `staffAttentiveness`,
+`serviceConsistency` y `calmAtmosphere`, existentes en la ontología y compatibles con
+`customerAggregate`. Cada aspecto hereda su TTL ontológico de 30, 90, 180 y 90 días. El diccionario
+ES/EN separa menciones, polaridades y negadores; modificarlo exige nueva versión.
+
+### Flujo de análisis y revisión
+
+`VerifiedReviewRequest` exige `verifiedReservation=true`, rating 1–5 y sobre interno. Spring debe
+comprobar FK de reseña/reserva antes de invocarlo. Python normaliza NFKC/NFKD, caja, diacríticos y
+tokens en memoria. Para cada mención busca expresiones positivas/negativas en cuatro tokens y voltea la
+polaridad cuando encuentra negación en los dos anteriores. Promedia solo evidencia local del aspecto;
+la estrella global jamás rellena un aspecto no mencionado.
+
+`AspectSentiment` devuelve score `[-1,1]`, confianza, recuento, observación, expiración y estado. La
+confianza parte de 0,50 y suma 0,10 por evidencia hasta 0,90. Contradicción positiva/negativa o valor
+inferior a 0,70 produce `pendingHuman`; el resto queda `machineAccepted`. La respuesta no contiene
+texto, fragmentos, offsets, email, reserva o rating.
+
+`AbsaEvaluationRequest` recibe predicciones y etiquetas humanas por UUID técnico, sin texto. Compara
+solo intersecciones aspecto/reseña, rechaza duplicados o casos sin correspondencia y calcula exactitud
+de polaridad y MAE. `promotable` exige simultáneamente veinte reseñas, exactitud >=0,80 y MAE <=0,25.
+Los endpoints `/reviews/absa/analyze` y `/reviews/absa/evaluate` heredan autenticación, límite de body,
+timeout y errores opacos.
+
+### Persistencia, privacidad y retención
+
+V58 crea `ReviewAspectScores` con unicidad reseña/atributo, FKs a reseña/local/atributo, predicción,
+confianza, evidencia, versiones, estado, score/fecha humana opcionales y vigencia. Checks protegen
+rangos, parejas humanas, versiones y cronología. La cola parcial indexa solo `pendingHuman`; otro índice
+cubre agregado vigente local/atributo. La entidad documenta que no duplica contenido y el DAO expone
+solo aceptados vigentes o cola explícita. Retención elimina derivados caducados por lotes.
+
+### Tests, comandos, riesgos y evidencia
+
+Se añadieron seis pruebas para scores separados, TTL, negación, contradicción, ES/EN, ausencia de
+aspectos inventados por rating, salida sin texto, evaluación humana, drift y acreditación obligatoria.
+Evidencia: `python -m unittest apps/demand-engine/tests/test_absa.py -v` terminó seis casos sin fallos;
+Prettier formateó la política; Spotless limpió 1.217 fuentes; Maven con Checkstyle global omitido por
+deuda previa compiló 986 fuentes y terminó `BUILD SUCCESS`.
+
+Riesgos/deuda: el baseline léxico no entiende ironía, correferencia o sentimiento distante. La
+evaluación sintética demuestra contrato, no calidad productiva; la promoción permanece bloqueada hasta
+una cohorte humana real. La agregación a `VenueAttributeEvidences` debe respetar mínimo ontológico y no
+publicar scores individuales. No se evalúa desempeño de trabajadores ni se infieren higiene, seguridad,
+salud o rasgos protegidos.

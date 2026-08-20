@@ -8,6 +8,12 @@ from fastapi import APIRouter, Depends, Request
 
 from .auth import service_auth_dependency
 from .affinity import AffinityRequest, AffinityResponse
+from .absa import (
+    AbsaEvaluationRequest,
+    AbsaEvaluationResponse,
+    ReviewAbsaResponse,
+    VerifiedReviewRequest,
+)
 from .config import DemandEngineSettings
 from .contracts import (
     ConversionPredictRequest,
@@ -135,6 +141,26 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.nlp_pipeline.analyze(body)
         except ValueError as error:
             raise DemandEngineError("NLP_REQUEST_REJECTED", 409) from error
+
+    @router.post("/reviews/absa/analyze", response_model=ReviewAbsaResponse)
+    async def analyze_verified_review(
+        body: VerifiedReviewRequest, request: Request
+    ) -> ReviewAbsaResponse:
+        """Analiza una reseña acreditada; Spring persiste solo sus derivados por aspecto."""
+        try:
+            return request.app.state.review_absa.analyze(body)
+        except ValueError as error:
+            raise DemandEngineError("ABSA_REQUEST_REJECTED", 409) from error
+
+    @router.post("/reviews/absa/evaluate", response_model=AbsaEvaluationResponse)
+    async def evaluate_review_absa(
+        body: AbsaEvaluationRequest, request: Request
+    ) -> AbsaEvaluationResponse:
+        """Calcula métricas agregadas contra una cohorte etiquetada por revisión humana."""
+        try:
+            return request.app.state.review_absa.evaluate(body)
+        except ValueError as error:
+            raise DemandEngineError("ABSA_EVALUATION_REJECTED", 409) from error
 
     @router.post("/affinity/evaluate", response_model=AffinityResponse)
     async def evaluate_affinity(body: AffinityRequest, request: Request) -> AffinityResponse:

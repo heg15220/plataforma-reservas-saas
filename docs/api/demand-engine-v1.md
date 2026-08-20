@@ -17,6 +17,8 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | `POST /session/context` | Agregar contexto efímero condicionado por consentimiento | Sin consentimiento solo usa filtro actual |
 | `POST /profiles/implicit/evaluate` | Recalcular preferencias consentidas por atributo | Spring revalida consentimiento y persiste la agregación |
 | `POST /nlp/analyze` | Normalizar y extraer conceptos ES/EN de cuidado personal | Procesa en memoria; rechaza PII/salud y no devuelve texto |
+| `POST /reviews/absa/analyze` | Extraer sentimiento separado de una reseña acreditada | Spring acredita/persiste; Python no conserva el comentario |
+| `POST /reviews/absa/evaluate` | Comparar ABSA con una cohorte humana versionada | Solo devuelve métricas agregadas y puerta de promoción |
 | `POST /affinity/evaluate` | Calcular atributos/coseno con contribuciones | Coseno cerrado hasta promoción |
 | `POST /occupancy/baseline` | Calcular EMA por día-hora local | Publica incertidumbre; Spring aporta agregados y persiste |
 | `POST /demand/aggregate` | Calcular capacidad necesaria y gap agregado | Suprime conteos bajo umbral; nunca devuelve sujetos |

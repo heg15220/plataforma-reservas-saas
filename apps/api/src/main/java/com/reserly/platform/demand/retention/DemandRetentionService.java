@@ -36,7 +36,8 @@ public class DemandRetentionService {
     int recommendations = deleteExpired("RecommendationRequests", "retentionExpiresAt", now, batch);
     int profiles =
         deleteExpired("VenueAttributeProfiles", "expiresAt", now, batch)
-            + deleteExpired("CustomerAttributeProfiles", "expiresAt", now, batch);
+            + deleteExpired("CustomerAttributeProfiles", "expiresAt", now, batch)
+            + deleteExpired("ReviewAspectScores", "expiresAt", now, batch);
     int evidences = deleteExpired("VenueAttributeEvidences", "expiresAt", now, batch);
     int links = deleteExpired("IdentityLinks", "retentionExpiresAt", now, batch);
     int anonymous = deleteUnreferencedIdentity("AnonymousIdentities", now, batch);
