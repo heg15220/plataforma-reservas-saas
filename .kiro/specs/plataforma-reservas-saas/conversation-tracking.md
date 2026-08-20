@@ -10099,3 +10099,23 @@ Fuente de verdad del avance:
   - La matriz complementa y referencia pruebas reales; no declara cobertura sin ejecución.
   - Cada riesgo tiene al menos dos evidencias y una respuesta segura explícita.
   - `npm run test:demand` ejecutó 125 tests en 68,611 s, todos verdes.
+
+# Conversación 245 - Evaluación de Factorization Machine dispersa
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó una FM binaria real de segundo orden para aprender interacciones dispersas entre
+    códigos permitidos y compararla sobre una ventana futura con el baseline content-based congelado.
+  - Se añadieron gates incrementales de ROC AUC, log-loss y estabilidad entre dos entrenamientos con
+    semilla fija, además de validación temporal, muestra por clase y denylist de leakage/sensibilidad.
+  - El artefacto portable y su model card mantienen el baseline activo: sintético bloquea promoción y
+    el despliegue automático está prohibido incluso con evidencia productiva.
+- Archivos modificados: política y model card FM, evaluador/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 22.1; prepara 22.2 y su futura comparación con LTR.
+- Tareas completadas: 22.1.
+- Siguiente tarea pendiente recomendada: 17.1 según el orden global; para esta fase del motor, 22.2.
+- Decisiones o aclaraciones relevantes:
+  - La FM recibe solo códigos cerrados pre-outcome y no crea rasgos latentes de personas.
+  - La mejora mínima es +0,03 ROC AUC sin regresión de log-loss y con delta determinista <=1e-8.
+  - Cuatro pruebas focalizadas quedaron verdes en 62,475 s.

@@ -4529,3 +4529,23 @@ cinco datasets y model cards candidatas con aprobación humana/rollback. La matr
 pruebas enlazadas: `unittest discover` ejecuta ambas y las implementaciones reales, incluido el stack
 de clustering. La aceptación acumulada exige 125 tests verdes; cualquier fallo rechaza input, bloquea
 promoción, activa fallback, suprime salida, exige revisión o detiene experimento según el riesgo.
+
+### 14.52 Factorization Machine como challenger disperso
+
+`factorization-machine-evaluation-v1` evalúa una FM binaria de segundo orden, entrenada por SGD con
+semilla fija, para interacciones entre códigos categóricos permitidos de usuario contextual, local,
+servicio y franja. El vocabulario es cerrado y versionado; email, teléfono, IDs de cliente/reserva,
+outcomes y atributos sensibles están prohibidos. Cada fila contiene una exposición, instante,
+maduración del outcome, features activas y la probabilidad congelada del baseline content-based.
+
+Train y evaluación futura son ventanas disjuntas y exigen presencia mínima de ambas clases. La misma
+FM se ajusta dos veces para verificar estabilidad y se compara sobre exactamente las mismas filas con
+el baseline mediante ROC AUC y log-loss. Solo supera calidad si gana al menos 0,03 AUC, no empeora
+log-loss y reproduce probabilidades dentro de `1e-8`. El artefacto JSON publica bias, pesos y factores
+por código, versiones, métricas y model card, sin pickle ni filas de entrenamiento.
+
+La mejora técnica nunca equivale a despliegue. `automaticDeploymentAllowed=false` es literal;
+evidencia sintética bloquea incluso revisión de promoción y evidencia productiva gobernada solo la
+habilita para aprobación humana. Elegibilidad, capacidad y restricciones duras permanecen fuera de
+la FM. Ante rechazo, drift, feature desconocida o rollback se conserva el baseline content-based y
+el fallback determinista.

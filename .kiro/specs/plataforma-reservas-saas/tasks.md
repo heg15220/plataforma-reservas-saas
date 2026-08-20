@@ -439,7 +439,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 24. Fase 22 - Marketplace con volumen y optimización
 
-- [ ] 22.1. Evaluar Factorization Machines para interacciones dispersas y desplegarlas solo si mejoran el baseline content-based.
+- [x] 22.1. Evaluar Factorization Machines para interacciones dispersas y desplegarlas solo si mejoran el baseline content-based.
 - [ ] 22.2. Implementar Learning to Rank con LambdaMART/LightGBM Ranker y evaluación NDCG, conversión, diversidad y exposición.
 - [ ] 22.3. Evolucionar la exploración a LinUCB o Thompson Sampling contextual con política offline y límites de riesgo.
 - [ ] 22.4. Implementar previsión avanzada de demanda con variables temporales y modelos jerárquicos o boosting, comparada siempre con baseline.

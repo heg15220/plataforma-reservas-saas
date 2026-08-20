@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "factorizationMachineCandidate",
+  "modelVersion": "factorization-machine-candidate-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Model sparse permitted interactions only when they improve the governed content-based baseline on future data.",
+  "intendedUse": ["offlineChallengerEvaluation", "shadowAfterApproval"],
+  "prohibitedUse": [
+    "automaticDeployment",
+    "changeEligibility",
+    "replaceCapacityChecks",
+    "inferSensitiveTraits",
+    "penalizeCustomer",
+    "changePrice"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "factorization-machine-evaluation-v1",
+  "featureSetVersion": "sparse-interactions-v1",
+  "limitations": [
+    "Latent factors are associations and not human traits or causal effects.",
+    "Unseen sparse features cannot contribute until a new governed training version.",
+    "Synthetic improvement does not authorize production or shadow traffic.",
+    "The content-based baseline remains active unless every promotion gate passes."
+  ],
+  "rollback": "Disable the FM signal and restore the governed content-based affinity score plus deterministic ranking fallback.",
+  "humanApprovalRequired": true
+}

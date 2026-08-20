@@ -38282,3 +38282,68 @@ shadow/canary ni potencia A/B. La denylist meta no es un detector semántico exh
 con incidentes/revisión. Drift temporal, fairness en nuevas cohortes permitidas y estabilidad de
 clustering productivo necesitarán datos reales y nuevas versiones. Esta tarea cierra la Fase 21 sin
 promover ningún modelo ni afirmar causalidad productiva.
+
+## Iteración 2026-08-20 - Tarea 22.1: Factorization Machine para interacciones dispersas
+
+### Objetivo, requisitos y decisiones
+
+- Identificador exacto: 22.1.
+- Objetivo técnico: evaluar una Factorization Machine binaria real frente al baseline content-based
+  sobre interacciones categóricas dispersas, sin permitir despliegue por una mejora aislada.
+- Requisitos/diseño: RF-036, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.16,
+  14.17, 14.36 y 14.52.
+
+Se creó `factorization-machine-evaluation-v1`, que fija algoritmo `binary-fm-sgd-v1`, vocabulario
+`sparse-interactions-v1`, dos cortes temporales, muestra/clases mínimas, cuatro dimensiones latentes,
+1.200 épocas, learning rate 0,03, L2 0,001 y semilla 17. Las puertas exigen ganancia ROC AUC >=0,03,
+regresión de log-loss <=0 y delta máximo entre repeticiones <=1e-8. El despliegue automático está
+tipado como `Literal[False]`, no como una opción de configuración mutable.
+
+### Contratos, entrenamiento y artefacto
+
+`SparseInteractionDataset` declara finalidad exclusiva, ausencia de datos personales y revocaciones
+aplicadas. Su vocabulario es único/cerrado y cada `SparseInteractionRow` aporta UUID técnico,
+instantes aware, outcome maduro, entre 2 y 64 códigos únicos, probabilidad content-based congelada y
+label binaria. Pydantic usa `extra=forbid`; features fuera de vocabulario, filas duplicadas, tiempos
+inválidos o outcomes posteriores al extracto fallan cerrado.
+
+El evaluador rechaza por fragmento email, teléfono, IDs de cliente/reserva, género, edad, salud,
+postcode, pago, raza, religión, discapacidad y outcomes. Divide por `occurredAt`; todo label de train
+debe estar maduro antes del corte de train y todo label de evaluación antes del corte final. Cada
+split requiere cuarenta filas, diez positivas y diez negativas. No hay split aleatorio ni mezcla de
+futuro.
+
+La implementación NumPy optimiza entropía binaria por SGD. Para un conjunto activo calcula
+`w0 + sum(w_i) + 1/2 sum_f((sum_i v_if)^2 - sum_i v_if^2)`, por lo que aprende interacciones sin
+materializar pares. El orden se estabiliza por instante/UUID y la inicialización usa `default_rng(17)`.
+Se entrena dos veces y se comparan sus probabilidades. El baseline y el challenger reciben las mismas
+filas futuras; `_metrics` reutiliza la definición gobernada de ROC AUC, Brier, log-loss y ECE.
+
+`FactorizationMachineArtifact` serializa únicamente versiones, fecha, vocabulario, bias, pesos,
+factores, métricas y decisiones; no usa pickle ni contiene filas. `predict` exige features únicas y
+conocidas. La model card candidata documenta propietario, usos, limitaciones, aprobación humana y
+rollback al content-based más fallback determinista. `promotionReviewAllowed` requiere gates y
+`productionEvidence=true`; aun entonces `automaticDeploymentAllowed=false`. La FM no altera
+elegibilidad, capacidad, precio ni penalizaciones.
+
+### Archivos, pruebas, evidencia, observabilidad y deuda
+
+Se crearon `policies/factorization-machine-evaluation.v1.json`,
+`models/factorization-machine-candidate.v1.model-card.json`, `factorization_machine.py` y
+`test_factorization_machine.py`; se actualizaron tareas, diseño, seguimiento y este documento. No se
+añadieron endpoints, migraciones, jobs online ni persistencia. Un runner futuro podrá conservar el
+artefacto y las métricas como evidencia auditable, pero no activar tráfico sin el workflow humano.
+
+Las cuatro pruebas construyen un problema XOR-like de afinidad usuario-local que el baseline 0,5 no
+representa. Verifican mejora real y bloqueo sintético, revisión únicamente con evidencia productiva,
+predicción portable, rechazo de sensibilidad/feature desconocida, maduración temporal y muestra
+mínima. Evidencia: `python -m unittest apps/demand-engine/tests/test_factorization_machine.py -v`
+con ambos roots Python ejecutó cuatro casos en 62,475 s y terminó `OK`. Prettier y `git diff --check`
+se ejecutan antes del commit.
+
+Riesgos/deuda: SGD batch es adecuado para evaluación, no para inferencia de alta escala; una futura
+promoción necesita benchmark p95, shadow/canary, drift y rollback probado. Los factores son
+asociaciones matemáticas, no rasgos humanos interpretables ni efectos causales. Features raras pueden
+memorizar ruido aun con L2; hacen falta datos productivos, estabilidad entre ventanas y auditoría de
+exposición. Features nuevas requieren nueva versión: el predictor falla cerrado en vez de imputarlas.
+La tarea 22.2 comparará ranking por consulta, donde AUC binaria no sustituye NDCG ni diversidad.
