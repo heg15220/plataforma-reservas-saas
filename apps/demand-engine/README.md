@@ -62,3 +62,15 @@ reserly-demand-train-conversion --dataset path\dataset.json `
 
 La CLI valida revocaciones, finalidad, allowlist, madurez de etiquetas y los tres splits temporales.
 El artefacto es JSON no ejecutable y candidato; escribirlo no lo registra ni promueve.
+
+El modelo de elección condicional usa conjuntos completos y la opción de no elegir:
+
+```powershell
+reserly-demand-train-choice --dataset path\choice-dataset.json `
+  --policy policies\discrete-choice-training.v1.json `
+  --model-card models\discrete-choice-baseline.v1.model-card.json `
+  --output path\choice-artifact.json
+```
+
+La CLI rechaza conjuntos truncados y features posteriores a la elección. Sus coeficientes y odds ratios
+son asociaciones condicionales al conjunto; no autorizan cambiar precio, elegibilidad o capacidad.

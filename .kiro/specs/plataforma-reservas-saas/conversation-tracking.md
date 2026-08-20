@@ -9962,3 +9962,23 @@ Fuente de verdad del avance:
   - El escalado solo ve train y el calibrador solo ve la ventana siguiente.
   - El formato portable es JSON de parámetros, nunca pickle o código ejecutable.
   - Cinco pruebas dirigidas quedaron verdes; el fixture sintético verifica contrato, no producción.
+
+# Conversación 238 - Modelo de elección discreta
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó logit multinomial condicional sobre conjuntos completos y opción exterior.
+  - El artefacto interpreta distancia, precio, atributos, disponibilidad y contexto mediante
+    coeficientes en unidad original, odds ratios y signos esperados.
+  - La evaluación futura compara top-1, log-loss y pseudo-R² contra el null uniforme.
+- Archivos modificados:
+  - Política/model card, módulo/CLI/pruebas Python, pyproject/README y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 21.6; prepara 21.7, 21.9, 21.11 y 21.12.
+- Tareas completadas: 21.6.
+- Siguiente tarea pendiente recomendada: 17.1; para primeros datos, 21.7.
+- Decisiones o aclaraciones relevantes:
+  - La opción exterior evita forzar una elección cuando ninguna alternativa resulta útil.
+  - Los coeficientes son asociaciones, no efectos causales; IIA permanece gate antes de promoción.
+  - Cinco pruebas dirigidas quedaron verdes sobre sets sintéticos completos.
+  - La suite completa acumulada terminó con 94 pruebas verdes.

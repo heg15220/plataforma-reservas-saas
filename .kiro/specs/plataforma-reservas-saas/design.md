@@ -4420,3 +4420,19 @@ usos prohibidos, limitaciones, aprobación humana y rollback a probabilidad nula
 exigen AUC >=0,70, Brier <=0,22 y ECE <=0,15. Superarlos con datos sintéticos deja `gatesPassed=true`
 pero `promotionAllowed=false`: solo evidencia productiva gobernada puede habilitar revisión de
 promoción, nunca despliegue automático.
+
+### 14.45 Elección discreta sobre conjuntos completos
+
+`discrete-choice-training-v1` estima un logit multinomial condicional entre alternativas elegibles y
+una opción exterior de no elegir. Cada choice set declara cardinalidad completa, dos a cien UUID
+alternativos, capacidad/elegibilidad verdaderas y exactamente una elección u opción exterior. La
+allowlist pre-choice contiene distancia en km, precio por diez EUR, match de atributos, disponibilidad
+y match contextual; posición mostrada, clic, reserva, asistencia, identidad y popularidad posterior
+están prohibidos.
+
+El entrenamiento estandariza únicamente con conjuntos anteriores al corte y maximiza verosimilitud
+condicional con L2. Los coeficientes se transforman de vuelta a unidades originales, publicando signo,
+odds ratio y coincidencia con la dirección esperada. Evaluación futura informa top-1, log-loss y
+pseudo-R² de McFadden contra elección uniforme con opción exterior. Gates y evidencia productiva son
+necesarios para revisión de promoción; la model card advierte que son asociaciones condicionadas al
+conjunto y que la hipótesis IIA debe probarse.

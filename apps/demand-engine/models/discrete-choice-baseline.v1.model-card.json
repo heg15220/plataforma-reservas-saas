@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "discreteChoiceBaseline",
+  "modelVersion": "discrete-choice-baseline-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Interpret relative choice among a complete set of eligible personal-care alternatives and the outside option.",
+  "status": "candidate",
+  "trainingPolicyVersion": "discrete-choice-training-v1",
+  "featureSetVersion": "choice-features-v1",
+  "limitations": [
+    "Coefficients describe associations conditional on the captured choice set, not causal effects.",
+    "Incomplete alternative sets invalidate estimation and prediction.",
+    "Price interpretation is limited to EUR and ten-euro units in this version.",
+    "Independence of irrelevant alternatives must be tested before promotion."
+  ],
+  "prohibitedUse": [
+    "addIneligibleAlternative",
+    "denyBooking",
+    "setPriceAutomatically",
+    "claimCausality"
+  ],
+  "rollback": "Remove the choice-model signal and restore the approved deterministic ranking policy.",
+  "humanApprovalRequired": true
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "discrete-choice-training-v1",
+  "algorithmVersion": "conditional-multinomial-logit-v1",
+  "featureSetVersion": "choice-features-v1",
+  "featureCodes": ["distanceKm", "priceTenEur", "attributeMatch", "availability", "contextMatch"],
+  "expectedDirections": {
+    "distanceKm": "negative",
+    "priceTenEur": "negative",
+    "attributeMatch": "positive",
+    "availability": "positive",
+    "contextMatch": "positive"
+  },
+  "prohibitedFeatureCodes": [
+    "displayedPosition",
+    "clicked",
+    "bookingCompleted",
+    "attendanceConfirmed",
+    "customerId",
+    "venuePopularityAfterChoice"
+  ],
+  "trainingEndsBefore": "2026-05-01T00:00:00Z",
+  "evaluationEndsBefore": "2026-07-01T00:00:00Z",
+  "minimumChoiceSetsPerSplit": 20,
+  "minimumAlternativesPerSet": 2,
+  "gradientEpochs": 1800,
+  "learningRate": 0.06,
+  "l2Penalty": 0.02,
+  "evaluationGates": {
+    "minimumTopOneAccuracy": 0.45,
+    "minimumMcFaddenPseudoR2": 0.1,
+    "maximumLogLoss": 1.2,
+    "requireExpectedDirections": true
+  }
+}

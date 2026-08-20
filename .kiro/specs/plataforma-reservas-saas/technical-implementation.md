@@ -37815,3 +37815,64 @@ nueva versión alineada con su disponibilidad; no deben desplazarse silenciosame
 intervalos de coeficientes y estabilidad por segmento permitido. 21.6 comparará interpretación de
 elección dentro del conjunto; 21.7 solo podrá sustituir este baseline si mejora calidad/calibración sin
 degradar latencia/equidad; 21.12 ampliará reproducibilidad, drift y leakage adversarial.
+
+## Iteración 2026-08-20 - Tarea 21.6: elección discreta condicional
+
+### Objetivo, requisitos y contrato de datos
+
+- Identificador exacto: 21.6.
+- Objetivo técnico: estimar e interpretar elección relativa de distancia, precio, atributos,
+  disponibilidad y contexto dentro del conjunto realmente disponible, incluyendo no elegir.
+- Requisitos/diseño: RF-036, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.4, 14.8, 14.17 y 14.45.
+
+`ChoiceSet` exige timestamp con zona, `fullChoiceSetCaptured=true`, cardinalidad exacta, dos a cien
+alternativas UUID sin duplicados y exactamente `chosenAlternativeId` u `outsideOptionChosen`. La elegida
+debe pertenecer al conjunto. Cada alternativa declara elegibilidad y capacidad verdaderas: el modelo
+no puede aprender ni reintroducir excluidos. `ChoiceDataset` fija EUR, corte, finalidad analítica,
+ausencia de PII, revocaciones aplicadas y evidencia productiva.
+
+La política `discrete-choice-training-v1` admite distancia km, precio por diez EUR, match de atributos,
+disponibilidad y match contextual. Prohíbe posición, clic, conversión, asistencia, identidad y
+popularidad posterior. El schema de features debe coincidir exactamente y todos los valores son
+finitos/no negativos. El split entrena antes de mayo y evalúa de mayo a junio, con veinte conjuntos
+mínimos por partición. Filas fuera de ventana fallan cerrado.
+
+### Estimación, opción exterior e interpretación
+
+`ConditionalLogitTrainer` calcula medias/escalas solo sobre alternativas de train. Maximiza por
+gradiente batch la log-verosimilitud del softmax de cada conjunto, incluyendo utilidad cero para la
+opción exterior, y aplica L2. El softmax usa desplazamiento por máximo y límites exponenciales para
+estabilidad. La elección observada aporta su vector; elegir fuera aporta vector cero e informa el
+intercepto relativo.
+
+Los pesos estandarizados se transforman a coeficientes por unidad original y el intercepto se corrige
+por las medias. `CoefficientInterpretation` publica coeficiente, `exp(beta)` acotada, dirección esperada
+y coincidencia. Distancia/precio deben ser negativos; atributos/disponibilidad/contexto positivos.
+Estas asociaciones son condicionales a alternativas observadas, no elasticidades causales ni permiso
+para modificar precios.
+
+`DiscreteChoiceArtifact.probabilities` devuelve exactamente las alternativas recibidas más UUID nulo
+para no elegir, sumando uno y revalidando features. No agrega candidatos. Evaluación futura calcula
+top-1, log-loss, null uniforme y pseudo-R² de McFadden. Gates: top-1 >=0,45, pseudo-R² >=0,10, log-loss
+<=1,20 y todos los signos esperados. La promoción requiere además evidencia productiva.
+
+### Model card, CLI, pruebas y riesgos
+
+La model card candidata prohíbe agregar inelegibles, denegar reservas, fijar precios o afirmar
+causalidad; documenta EUR, conjuntos incompletos e IIA como limitaciones y rollback al ranking
+determinista. `reserly-demand-train-choice` valida tres JSON y escribe parámetros portables, sin DB,
+pickle, registro o despliegue.
+
+Cinco pruebas construyen 25 choice sets train y 25 futuros con variación controlada por feature.
+Validan determinismo, signos, gates, bloqueo sintético, conservación de alternativas, suma de
+probabilidades/opción exterior, conjuntos truncados/duplicados/elección ausente, leakage de posición y
+outcome y muestra temporal insuficiente. Evidencia focalizada: cinco casos terminaron sin fallos.
+La verificación acumulada `npm run test:demand` ejecutó 94 pruebas en 5,061 s, sin fallos ni errores;
+Prettier formateó política y model card y `git diff --check` quedó limpio.
+
+Riesgos/deuda: el fixture separa features para verificar identificación, pero no prueba IIA,
+multicolinealidad, intervalos, endogeneidad de precio ni sesgo de exposición. Un dataset productivo
+debe capturar todas las alternativas y política que las generó. 21.7 comparará calidad sin sacrificar
+interpretabilidad; 21.9 medirá impacto experimental; 21.12 añadirá Hausman-McFadden/estabilidad y
+auditoría de conjuntos incompletos antes de cualquier promoción.
