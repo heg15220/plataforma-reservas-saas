@@ -9942,3 +9942,23 @@ Fuente de verdad del avance:
   - Solo se usan atributos publicados y fuentes `customerAggregate`; no se puntúa a trabajadores.
   - Contradicción o confianza menor de 0,70 exige revisión humana.
   - Seis pruebas ABSA quedaron verdes y Java compiló 986 fuentes.
+
+# Conversación 237 - Regresión logística calibrada de conversión
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó entrenamiento batch determinista de regresión logística estandarizada, calibración
+    Platt y evaluación futura independiente.
+  - La política bloquea features de resultado/identidad, exige madurez de etiquetas y muestras con
+    ambas clases en train, calibración y evaluación.
+  - El artefacto JSON incorpora métricas y model card, pero datos sintéticos nunca autorizan promoción.
+- Archivos modificados:
+  - Política, model card, módulo/CLI/pruebas Python, pyproject/README y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 21.5; prepara 21.6, 21.7, 21.9, 21.11 y 21.12.
+- Tareas completadas: 21.5.
+- Siguiente tarea pendiente recomendada: 17.1; para primeros datos, 21.6.
+- Decisiones o aclaraciones relevantes:
+  - El escalado solo ve train y el calibrador solo ve la ventana siguiente.
+  - El formato portable es JSON de parámetros, nunca pickle o código ejecutable.
+  - Cinco pruebas dirigidas quedaron verdes; el fixture sintético verifica contrato, no producción.

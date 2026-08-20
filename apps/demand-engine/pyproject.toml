@@ -26,3 +26,4 @@ where = ["src"]
 reserly-demand-engine = "reserly_demand_engine.cli:run"
 reserly-demand-evaluate-embeddings = "reserly_demand_engine.embedding_evaluation:run"
 reserly-demand-evaluate-promotion = "reserly_demand_engine.promotion:run"
+reserly-demand-train-conversion = "reserly_demand_engine.conversion_training:run"

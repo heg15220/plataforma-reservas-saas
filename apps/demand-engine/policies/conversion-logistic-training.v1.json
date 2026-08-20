@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "conversion-logistic-training-v1",
+  "algorithmVersion": "standardized-logistic-platt-v1",
+  "featureSetVersion": "conversion-features-v1",
+  "featureCodes": [
+    "affinity",
+    "proximity",
+    "availability",
+    "normalizedPrice",
+    "timeUrgency",
+    "newVenue",
+    "eveningSlot",
+    "weekendSlot"
+  ],
+  "prohibitedFeatureCodes": [
+    "bookingCompleted",
+    "bookingCancelled",
+    "attendanceConfirmed",
+    "noShow",
+    "reviewRating",
+    "postBookingOutcome",
+    "customerEmail",
+    "reservationId"
+  ],
+  "trainingEndsBefore": "2026-05-01T00:00:00Z",
+  "calibrationEndsBefore": "2026-06-01T00:00:00Z",
+  "evaluationEndsBefore": "2026-07-01T00:00:00Z",
+  "minimumRowsPerSplit": 20,
+  "minimumPositivePerSplit": 5,
+  "minimumNegativePerSplit": 5,
+  "gradientEpochs": 1200,
+  "learningRate": 0.08,
+  "l2Penalty": 0.01,
+  "calibrationEpochs": 800,
+  "evaluationGates": {
+    "minimumRocAuc": 0.7,
+    "maximumBrier": 0.22,
+    "maximumExpectedCalibrationError": 0.15
+  }
+}

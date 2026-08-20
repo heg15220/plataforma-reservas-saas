@@ -50,3 +50,15 @@ python -m reserly_demand_engine.promotion path\to\promotion-snapshot.json
 
 La CLI exige coincidencia exacta de política, dataset y baseline. Distingue `shadowToPilot` de
 `pilotToRollout`, falla ante métricas ausentes o desconocidas y nunca acepta filas individuales.
+
+El baseline logístico de conversión se entrena offline con un dataset JSON gobernado:
+
+```powershell
+reserly-demand-train-conversion --dataset path\dataset.json `
+  --policy policies\conversion-logistic-training.v1.json `
+  --model-card models\conversion-logistic-baseline.v1.model-card.json `
+  --output path\artifact.json
+```
+
+La CLI valida revocaciones, finalidad, allowlist, madurez de etiquetas y los tres splits temporales.
+El artefacto es JSON no ejecutable y candidato; escribirlo no lo registra ni promueve.

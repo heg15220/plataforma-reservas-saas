@@ -4405,3 +4405,18 @@ por separado. Solo estados aceptados y vigentes pueden alimentar agregados de lo
 Una segunda frontera compara predicciones con etiquetas humanas minimizadas y publica número de
 reseñas/aspectos, exactitud de polaridad, MAE macro y puerta de promoción. El baseline exige al menos
 veinte reseñas, exactitud 0,80 y MAE máximo 0,25; no se promueve por tests sintéticos ni por estrellas.
+
+### 14.44 Baseline logístico calibrado de conversión
+
+`conversion-logistic-training-v1` congela ocho features disponibles antes del resultado y prohíbe
+conversión, cancelación, asistencia, no-show, reseña, identidad y reserva como entradas. Tres ventanas
+contiguas y no solapadas separan train, calibración y evaluación. El escalador y la regresión se ajustan
+solo en train; Platt aprende pendiente/intercepto solo en calibración; AUC, Brier, log-loss y ECE finales
+se calculan en evaluación futura. Una etiqueta observada después del cierre de su split falla cerrado.
+
+El artefacto JSON contiene parámetros numéricos, medias/escalas de train, calibrador, versiones,
+métricas y model card; no usa pickle ni incorpora filas. La model card fija propietario, finalidad,
+usos prohibidos, limitaciones, aprobación humana y rollback a probabilidad nula/fallback. Los gates
+exigen AUC >=0,70, Brier <=0,22 y ECE <=0,15. Superarlos con datos sintéticos deja `gatesPassed=true`
+pero `promotionAllowed=false`: solo evidencia productiva gobernada puede habilitar revisión de
+promoción, nunca despliegue automático.

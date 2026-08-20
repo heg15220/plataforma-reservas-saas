@@ -37754,3 +37754,64 @@ evaluación sintética demuestra contrato, no calidad productiva; la promoción 
 una cohorte humana real. La agregación a `VenueAttributeEvidences` debe respetar mínimo ontológico y no
 publicar scores individuales. No se evalúa desempeño de trabajadores ni se infieren higiene, seguridad,
 salud o rasgos protegidos.
+
+## Iteración 2026-08-20 - Tarea 21.5: regresión logística calibrada
+
+### Objetivo, requisitos y gobernanza
+
+- Identificador exacto: 21.5.
+- Objetivo técnico: entrenar un baseline interpretable de conversión con split temporal estricto,
+  prevención de leakage, calibración separada, métricas futuras y model card portable.
+- Requisitos/diseño: RF-036, RF-040 y RF-041; RNF-002, RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.8, 14.16, 14.17 y 14.44.
+
+`conversion-logistic-training.v1.json` fija algoritmo, feature set, ventanas, muestras, optimización y
+gates. La allowlist contiene afinidad, proximidad, disponibilidad, precio normalizado, urgencia,
+novedad, tarde y fin de semana, todas observables antes del outcome. La denylist explicita conversión,
+cancelación, asistencia, no-show, reseña, outcome posterior, email y reserva. El trainer exige igualdad
+exacta con la allowlist y valores finitos `[0,1]`; un campo añadido no se ignora.
+
+`ConversionDataset` declara versión/corte, evidencia productiva, ausencia de PII, revocaciones aplicadas
+y finalidad analítica. UUID duplicados, outcomes anteriores a observación o posteriores a extracción se
+rechazan. Las fronteras son train antes de 1 mayo, calibración durante mayo y evaluación durante junio
+de 2026. Toda fila debe pertenecer a una ventana y su outcome debe madurar antes de cerrarla. Cada split
+exige veinte filas, cinco positivas y cinco negativas, evitando métricas degeneradas.
+
+### Entrenamiento, calibración y evaluación
+
+`ConversionLogisticTrainer` calcula media/desviación exclusivamente con train, con suelo `1e-9` para
+features constantes. Ajusta regresión logística por gradiente batch determinista y penalización L2;
+orden, épocas y tasa están versionados. Los logits congelados de calibración alimentan una segunda
+regresión univariante Platt. Ningún parámetro se reajusta con evaluación.
+
+La ventana futura produce ROC AUC por pares, Brier, log-loss y ECE en diez bins. Los gates requieren
+AUC >=0,70, Brier <=0,22 y ECE <=0,15. `TrainedConversionArtifact.predict` revalida feature schema,
+aplica medias/escalas de train, coeficientes y calibrador. No controla elegibilidad, capacidad o reserva.
+El resultado incluye parámetros redondeados, métricas de calibración/evaluación y reloj determinista
+igual al corte del dataset.
+
+### Model card, CLI, seguridad y operación
+
+`conversion-logistic-baseline.v1.model-card.json` declara propietario `demand-intelligence`, finalidad
+de propensión entre alternativas elegibles, usos shadow/ranking condicionado, prohibición de denegar,
+penalizar, inferir rasgos o sustituir capacidad, limitaciones y rollback. Permanece `candidate` y exige
+aprobación humana. `promotionAllowed` combina gates con `productionEvidence`; un fixture sintético puede
+validar implementación pero nunca habilitar promoción.
+
+La CLI `reserly-demand-train-conversion` recibe dataset, política, model card y ruta de salida. Escribe
+JSON no ejecutable (sin pickle), no accede a PostgreSQL, no registra en MLflow y no despliega. Cualquier
+promoción posterior debe pasar las puertas 20.20 y shadow/canary. Logs no incluyen filas ni features.
+
+### Tests, evidencia, riesgos y deuda
+
+Cinco pruebas generan tres ventanas sintéticas de veinte observaciones y validan determinismo,
+calibración/evaluación separadas, AUC alto, bloqueo de promoción sintética, inferencia con scaler
+congelado, schema exacto, leakage de resultado/identidad, label inmadura y muestra insuficiente.
+Evidencia: `python -m unittest apps/demand-engine/tests/test_conversion_training.py -v` terminó cinco
+casos sin fallos. Prettier y la suite completa se ejecutan antes del commit.
+
+Riesgos/deuda: las fechas v1 son una política de referencia y un dataset productivo real debe usar una
+nueva versión alineada con su disponibilidad; no deben desplazarse silenciosamente. Falta estimar
+intervalos de coeficientes y estabilidad por segmento permitido. 21.6 comparará interpretación de
+elección dentro del conjunto; 21.7 solo podrá sustituir este baseline si mejora calidad/calibración sin
+degradar latencia/equidad; 21.12 ampliará reproducibilidad, drift y leakage adversarial.

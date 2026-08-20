@@ -428,7 +428,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 21.2. Construir perfiles implícitos por atributo con jerarquía de señales, decaimiento temporal, confianza y posibilidad de corrección.
 - [x] 21.3. Implementar pipeline NLP ES/EN de normalización, entidades, negación, clasificación multilabel y mapeo de sinónimos.
 - [x] 21.4. Implementar ABSA sobre reseñas verificadas con scores separados por aspecto, confianza, vigencia y evaluación humana.
-- [ ] 21.5. Entrenar y calibrar regresión logística de conversión con separación temporal, prevención de leakage y model card.
+- [x] 21.5. Entrenar y calibrar regresión logística de conversión con separación temporal, prevención de leakage y model card.
 - [ ] 21.6. Implementar modelo de elección discreta sobre conjuntos de alternativas para interpretar distancia, precio, atributos y contexto.
 - [ ] 21.7. Evaluar LightGBM o CatBoost para conversión y ranking solo si supera baseline, calibración, latencia, estabilidad y equidad.
 - [ ] 21.8. Implementar predicción calibrada de no-show como señal de riesgo, sin automatizar penalizaciones ni denegaciones.

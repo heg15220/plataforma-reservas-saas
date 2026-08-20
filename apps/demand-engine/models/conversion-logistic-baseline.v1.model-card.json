@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "conversionLogisticBaseline",
+  "modelVersion": "conversion-logistic-baseline-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Estimate booking conversion propensity for eligible alternatives; never decide eligibility or capacity.",
+  "intendedUse": ["shadowEvaluation", "rankingSignalAfterPromotion"],
+  "prohibitedUse": [
+    "denyBooking",
+    "penalizeCustomer",
+    "inferSensitiveTraits",
+    "replaceCapacityChecks"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "conversion-logistic-training-v1",
+  "featureSetVersion": "conversion-features-v1",
+  "limitations": [
+    "Requires temporally mature conversion labels and complete instrumentation.",
+    "Correlation is not causality and coefficients can change with inventory and pricing.",
+    "Synthetic tests do not authorize production promotion.",
+    "Spring must revalidate eligibility, capacity and consent independently."
+  ],
+  "rollback": "Disable conversion model use and restore conversion probability null plus deterministic ranking fallback.",
+  "humanApprovalRequired": true
+}
