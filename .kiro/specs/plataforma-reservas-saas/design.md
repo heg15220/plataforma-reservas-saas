@@ -4650,3 +4650,21 @@ La diferencia atribuida observacional se transporta con su propia versión y cam
 uplift >=0,02 y sensibilidad estable solo habilitan revisión humana agregada; nunca targeting,
 contacto, pricing o acción automática. Sintético se etiqueta exclusivamente como validación del
 estimador y el rollback vuelve a atribución observacional sin lenguaje incremental.
+
+### 14.58 Optimizador CP-SAT de oportunidades
+
+`opportunity-optimization-v1` usa OR-Tools 9.15.6755 CP-SAT con coeficientes enteros y búsqueda
+determinista de un thread. Cada variable binaria representa una propuesta; el objetivo maximiza
+`P(aceptación)·P(asistencia)·valor permitido - coste de contacto - incentivo`. Capacidad se limita por
+franja, presupuesto globalmente y cada sujeto seudónimo puede recibir como máximo una selección.
+
+Antes del solver se excluyen falta de consentimiento, frecuencia agotada, distancia fuera del menor
+límite, margen inferior a 100 céntimos, incentivo sin uplift fiable o cualquier restricción dura. El
+modelo limita diez propuestas y, cuando existen candidatos nuevos, exige al menos 20 % de exposición
+para ese grupo operativo no sensible. Empates/orden de salida usan UUID y contribución enteros.
+
+Si la petición o algún candidato apto declara estimaciones no fiables, no se optimiza: FIFO por fecha
+y UUID aplica las mismas fronteras de capacidad, presupuesto, sujeto y equidad. Solver sin solución
+también degrada a esta política. La respuesta agrega exclusiones y uso de recursos, pero es solo una
+propuesta: `automaticExecutionAllowed=false`; Spring revalida y crea ofertas/reservas en tareas
+posteriores.

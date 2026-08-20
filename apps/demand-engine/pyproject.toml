@@ -18,6 +18,7 @@ ml = [
   "hdbscan==0.8.44",
   "bertopic==0.17.4",
   "xgboost==3.3.0",
+  "ortools==9.15.6755",
 ]
 
 [build-system]

@@ -10227,3 +10227,24 @@ Fuente de verdad del avance:
   - Solo se publican segmentos operativos permitidos con al menos treinta unidades por brazo.
   - Seis pruebas focalizadas quedaron verdes en 0,206 s; una incluye replay idéntico del informe.
   - `npm run test:demand` ejecutó 158 pruebas acumuladas en 110,839 s, todas verdes.
+
+# Conversación 251 - Optimizador OR-Tools de oportunidades
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se incorporó OR-Tools 9.15.6755 y un modelo CP-SAT que maximiza valor esperado neto con variables
+    binarias y restricciones explícitas de capacidad, presupuesto, sujeto y equidad.
+  - Consentimiento, frecuencia, distancia, margen, restricciones duras y uplift para incentivos se
+    filtran antes de crear variables.
+  - Estimaciones no fiables o solver no resoluble degradan a FIFO determinista; la salida nunca
+    ejecuta ofertas ni reservas.
+- Archivos modificados: dependencia/política OR-Tools, optimizador/pruebas Python y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-039 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.7; prepara la asignación persistente de 22.8.
+- Tareas completadas: 22.7.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase del motor, 22.8.
+- Decisiones o aclaraciones relevantes:
+  - Equidad se define como exposición mínima de locales nuevos, no mediante atributo protegido.
+  - CP-SAT trabaja en céntimos/basis points enteros y un thread con semilla 17.
+  - Cinco pruebas focalizadas quedaron verdes en 0,015 s.

@@ -23701,6 +23701,68 @@ ni selección del experimento. El análisis de sensibilidad ±0,02 debe ampliars
 justificación de dominio productiva. Attrition, non-compliance e interference siguen fuera. 22.7 no
 podrá optimizar oportunidades salvo que reciba únicamente uplift fiable y mantenga todos estos gates.
 
+## Iteración 2026-08-20 - Tarea 22.7: optimizador OR-Tools de oportunidades
+
+### Objetivo, requisitos y adopción de herramienta
+
+- Identificador exacto: 22.7.
+- Objetivo técnico: seleccionar propuestas de oportunidad maximizando valor esperado permitido sin
+  violar capacidad, presupuesto, distancia, margen, frecuencia, consentimiento o equidad.
+- Requisitos/diseño: RF-039 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015; secciones
+  14.11, 14.15, 14.16, 14.17 y 14.58.
+
+Se fijó `ortools==9.15.6755` en el extra ML. PyPI publica wheel CPython 3.13/Windows y licencia
+Apache-2.0; el paquete fue instalado sin compilar ni modificar el SO. Se eligió CP-SAT porque el
+problema es una asignación binaria con límites enteros. La política fija diez selecciones, distancia
+50 km, margen mínimo 100 céntimos, share de nuevos locales 2.000 bps, timeout 2 s, semilla 17 y
+`automaticExecutionAllowed=false`.
+
+### Contrato, filtrado y formulación CP-SAT
+
+`OpportunityCandidate` contiene IDs técnicos de oportunidad/sujeto/local/franja, antigüedad FIFO,
+grupo operativo de exposición, probabilidades fiables, valor/costes/margen en céntimos, distancia,
+frecuencia, consentimiento, fiabilidad de uplift y `HardConstraintSnapshot`. No contiene contacto,
+email, identidad real, texto ni atributo protegido. El request limita 500 candidatos, presupuesto y
+UUID únicos; snapshots de la misma franja deben declarar idéntica capacidad.
+
+El filtrado anterior al modelo acumula motivos: `consentRequired`, `frequencyLimit`, `distanceLimit`,
+`marginFloor`, `upliftRequired` y `hardConstraint`. Un incentivo positivo requiere uplift fiable de
+22.6. Los ocho fallos duros existentes, incluida caducidad/capacidad, excluyen sin permitir que score
+reintroduzca al candidato.
+
+Para cada apto se crea `x_i∈{0,1}`. El modelo impone:
+
+- `sum(x)<=10` y `sum((contactCost+incentiveCost)x)<=budget`;
+- por franja, `sum(requestedCapacity·x)<=availableCapacity`;
+- por sujeto seudónimo, `sum(x)<=1`;
+- si existe grupo `newVenue`, `10000·sum(x_new)>=2000·sum(x_total)`.
+
+El objetivo entero es `round(Paccept·Pattend·allowedValue)-contactCost-incentiveCost`. Céntimos y bps
+evitan floats en CP-SAT. Candidatos se crean por UUID; solver usa un worker, seed 17 y dos segundos.
+La respuesta ordena por contribución/UUID, informa coste, valor esperado, objetivo, share, estado y
+exclusiones. No persiste ni reserva.
+
+### Fallback, seguridad, tests y deuda
+
+Si request o cualquier candidato apto carece de estimación fiable, se evita mezclar scores y se usa
+FIFO por `createdAt, opportunityId`. El greedy conserva máximo, presupuesto, una selección por sujeto
+y capacidad; después elimina los últimos establecidos hasta cumplir share si hay nuevos disponibles.
+Un estado CP-SAT distinto de optimal/feasible toma el mismo camino. Resultado vacío/fallback se
+declara, no se disfraza como óptimo.
+
+Se modificó `pyproject.toml` y se crearon política, `opportunity_optimization.py` y cinco pruebas;
+además se actualizaron tareas, diseño, seguimiento y este documento. Las pruebas ejecutan OR-Tools
+real para valor/capacidad/presupuesto/equidad, todos los filtros, sujeto/franja, FIFO reproducible y
+uplift/margen. Evidencia: `python -m unittest apps/demand-engine/tests/test_opportunity_optimization.py
+-v`, con ambos roots, ejecutó cinco casos en 0,015 s y terminó `OK`. Compilación, Prettier y diff se
+verifican antes del commit; suite completa al cerrar 22.9.
+
+Riesgos/deuda: la equidad binaria nuevos/establecidos es inicial y necesita auditoría productiva; no
+representa fairness individual. Probabilidades/margen deben estar calibrados y su moneda/ventana
+versionadas antes de producción. Timeout puede devolver factible no óptimo. FIFO elimina establecidos
+para cumplir share, por lo que debe explicarse. Esta tarea produce propuestas: 22.8 persiste entradas
+y ofertas escalonadas y 22.9 revalida capacidad mediante el hold transaccional ordinario.
+
 ### Modelo de datos y contratos
 
 No se añade persistencia: el módulo consume `GET/PUT /api/venue/me/booking-rules` y

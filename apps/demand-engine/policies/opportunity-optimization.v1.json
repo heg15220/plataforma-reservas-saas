@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "opportunity-optimization-v1",
+  "solverVersion": "ortools-cp-sat-9.15.6755",
+  "maximumSelected": 10,
+  "maximumDistanceMeters": 50000,
+  "minimumProjectedMarginCents": 100,
+  "minimumNewVenueShareBasisPoints": 2000,
+  "maximumSolveSeconds": 2.0,
+  "randomSeed": 17,
+  "automaticExecutionAllowed": false
+}
