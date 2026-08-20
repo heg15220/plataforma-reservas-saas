@@ -89,9 +89,7 @@ public class DemandPrivacyService {
     result.put(
         "recommendationRequests",
         count("RecommendationRequests", identityColumn(request), request.subjectId()));
-    // No existe perfil personal materializado en la fase 19; se explicita el contrato para que
-    // futuros perfiles vinculados entren en derechos antes de habilitarse en producción.
-    result.put("profiles", 0);
+    result.put("profiles", profileCount(request));
     result.put("links", count("IdentityLinks", linkColumn(request), request.subjectId()));
     return result;
   }
@@ -163,12 +161,16 @@ public class DemandPrivacyService {
     int events = delete("BehaviorEvents", identityColumn(request), request.subjectId());
     int recommendations =
         delete("RecommendationRequests", identityColumn(request), request.subjectId());
+    int profiles =
+        "customer".equals(request.subjectType())
+            ? delete("CustomerAttributeProfiles", "customerIdentityId", request.subjectId())
+            : 0;
     delete("IdentityLinks", linkColumn(request), request.subjectId());
     int identity = delete(identityTable(request), "id", request.subjectId());
     Map<String, Object> result = base();
     result.put("eventsDeleted", events);
     result.put("recommendationRequestsDeleted", recommendations);
-    result.put("profilesDeleted", 0);
+    result.put("profilesDeleted", profiles);
     result.put("identityDeleted", identity == 1);
     return result;
   }
@@ -200,6 +202,24 @@ public class DemandPrivacyService {
             "SELECT count(*) FROM \"" + table + "\" WHERE \"" + column + "\" = ?",
             Integer.class,
             id);
+    return value == null ? 0 : value;
+  }
+
+  private int profileCount(DemandPrivacyRequest request) {
+    if ("customer".equals(request.subjectType())) {
+      return count("CustomerAttributeProfiles", "customerIdentityId", request.subjectId());
+    }
+    Integer value =
+        jdbc.queryForObject(
+            """
+            SELECT COUNT(DISTINCT profile."id")
+            FROM "CustomerAttributeProfiles" profile
+            JOIN "IdentityLinks" link
+              ON link."customerIdentityId" = profile."customerIdentityId"
+            WHERE link."anonymousIdentityId" = ?
+            """,
+            Integer.class,
+            request.subjectId());
     return value == null ? 0 : value;
   }
 

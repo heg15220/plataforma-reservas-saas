@@ -37554,3 +37554,77 @@ de más de una generación requieren pasos secuenciales auditados. La correcció
 usar el mismo normalizador/derivador al exponerse como caso de uso, nunca aceptar emailHmac del cliente.
 V56 no impone NOT NULL por compatibilidad histórica; una futura migración podrá cerrarlo tras backfill
 o expiración V45. La creación del UUID anónimo permanece en la frontera de consentimiento existente.
+
+## Iteración 2026-08-20 - Tarea 21.2: perfil implícito por atributo
+
+### Objetivo, requisitos y política de cálculo
+
+- Identificador exacto: 21.2.
+- Objetivo técnico: materializar preferencias implícitas corregibles por atributo gobernado sin
+  conservar texto o identificadores operativos, aplicando jerarquía, decaimiento y confianza.
+- Requisitos/diseño: RF-034, RF-035 y RF-040; RNF-005, RNF-006, RNF-014 y RNF-015; secciones 14.5,
+  14.6 y 14.41.
+
+`implicit-profile.v1.json` es el contrato ejecutable: semivida de treinta días, edad máxima de 365,
+vigencia de treinta, saturación de diez observaciones y tope de 500 evidencias. Define pesos de fuente
+desde `click=0.40` y `filter=0.55` hasta `booking=0.90` y `attendance=1.00`; `review=0.80` representa
+declaración posterior sin equipararla automáticamente a asistencia. La confianza combina diversidad
+(0.20), volumen saturado (0.25), acuerdo ponderado (0.30) y recencia (0.25). Cualquier campo, fuente o
+versión desconocida falla cerrado mediante Pydantic estricto.
+
+`ImplicitProfileRequest` exige consentimiento literal verdadero, documento/version de consentimiento,
+UUID de cliente y sobre temporal. Cada `AttributeEvidence` contiene solo UUID técnico, atributo
+gobernado, fuente, polaridad, intensidad, confianza e instante timezone-aware; no puede incorporar
+email, texto, local, reserva o sesión. IDs repetidos, correcciones duplicadas, evidencia futura y
+snapshots vacíos se rechazan antes del cálculo.
+
+### Algoritmo, corrección y contrato HTTP
+
+`ImplicitProfileBuilder` elimina evidencia anterior al corte y agrupa por atributo. Para cada señal
+calcula `pesoFuente × confianza × fuerza × 0.5^(edad/semivida)`; el valor es la media positiva/negativa
+ponderada. La contradicción se conserva como varianza y reduce el factor de acuerdo. Diversidad usa el
+número de fuentes distintas, volumen una curva exponencial saturada y recencia el máximo decaimiento.
+La salida se redondea a ocho decimales, usa el `occurredAt` contractual como reloj y expira treinta
+días después, por lo que un replay idéntico produce exactamente la misma respuesta.
+
+Una `AttributeCorrection` versionada por UUID sustituye valor y confianza (`1.0`) sin eliminar
+`sourceCodes` ni `evidenceCount`; también puede crear un perfil sin evidencia inferida. Conserva fecha
+e ID para retirada o sustitución autoritativa posterior. `POST /internal/demand/v1/profiles/implicit/evaluate`
+ejecuta este cálculo detrás de la autenticación servicio-a-servicio existente y traduce drift de
+política/límites a conflicto opaco. La respuesta no devuelve email, digest HMAC, texto ni IDs
+operativos.
+
+### Persistencia, privacidad, retención y modelo de datos
+
+V57 crea `CustomerAttributeProfiles` con UUID, FKs restrictivas a `CustomerIdentities` y
+`DemandAttributes`, unicidad cliente/atributo, valor/confianza decimal, fuentes JSON cerradas, volumen,
+última observación, tríada opcional de corrección, versión de cálculo, cálculo y expiración. Checks
+exigen rangos `[0,1]`, como máximo siete fuentes permitidas, hasta 500 evidencias, coherencia temporal y
+que toda corrección tenga los tres campos y fuerce valor corregido/confianza uno. Los índices cubren
+búsqueda cliente-expiración y atributo-valor-confianza-expiración; no usan predicados volátiles.
+
+`CustomerAttributeProfileEntity` y DAO ofrecen lectura vigente individual y por cliente. La entidad
+solo persiste agregados, nunca filas de evidencia. `DemandPrivacyService` incluye el conteo en acceso y
+borra perfiles antes de identidad cliente; para un sujeto anónimo los localiza a través de
+`IdentityLinks`. `DemandRetentionService` incorpora su expiración al lote de perfiles junto a perfiles
+de local. La eliminación de una identidad cliente queda ordenada después de perfiles y vínculos para
+respetar FKs y el procesamiento continúa siendo idempotente.
+
+### Archivos, pruebas, evidencia, riesgos y deuda
+
+Se crearon política, `implicit_profiles.py`, cinco pruebas, V57, entidad y DAO. Se modificaron fábrica
+FastAPI, router, privacidad, retención, tareas, diseño, documento técnico y seguimiento. Módulos,
+contratos y métodos de negocio documentan responsabilidad, entradas, salida y restricciones.
+
+La suite prueba que asistencia reciente vence a clic negativo antiguo, contradicción reduce confianza,
+corrección domina sin borrar evidencia, señales fuera de ventana se ignoran, replay es determinista y
+consentimiento/campos directos se rechazan. Evidencia: `npm run test:demand` completó toda la suite sin
+fallos; Spotless limpió 1.215 archivos y `mvn --% -f apps/api/pom.xml -Dcheckstyle.skip=true
+-DskipTests compile` terminó `BUILD SUCCESS` sobre 984 fuentes. La primera resolución Maven necesitó
+acceso autorizado a Central por el parent Spring Boot 4.1.0 fijado en el repositorio.
+
+Riesgos/deuda: Spring aún debe orquestar el snapshot desde eventos gobernados y persistir el resultado
+en una transacción que revalide consentimiento; este endpoint no escribe en PostgreSQL deliberadamente.
+La política actual modela una preferencia binaria continua y 21.4 deberá introducir aprendizaje
+supervisado sin reinterpretar este valor. 23.9 deberá exponer retirada/corrección al usuario con
+auditoría; 21.5 deberá construir datasets temporales sin leakage desde estas señales.

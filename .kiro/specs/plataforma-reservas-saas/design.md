@@ -4347,3 +4347,24 @@ El resultado contiene IDs opacos, versión, finalidad, instante y bandera de rot
 devuelve el vínculo existente; discrepancias, consentimiento ausente o carreras de unicidad producen
 códigos opacos. Producción y staging exigen secretos externos sin valor por defecto, mientras local
 usa un secreto marcado explícitamente para desarrollo.
+
+### 14.41 Perfil implícito consentido por atributo
+
+`implicit-profile-v1` define la precedencia de señales `filter < click < comparison < availability <
+booking < attendance`, con `review` como evidencia declarativa ponderada, semivida de treinta días y
+corte máximo de 365 días. Python agrupa únicamente por código del atributo gobernado y calcula el valor
+como media ponderada por tipo, intensidad, fiabilidad y decaimiento exponencial. La confianza combina
+diversidad de fuentes, saturación de volumen, acuerdo y recencia; por ello nunca convierte un único clic
+en certeza ni oculta evidencia contradictoria.
+
+El snapshot exige consentimiento de personalización y versión. Solo admite UUID seudónimo, tipo de
+señal, polaridad, fuerza, confianza y fecha: quedan fuera email, consulta libre, reserva, local e IDs
+operativos. Una corrección explícita gana sobre la inferencia con confianza uno, pero conserva conteo y
+tipos de evidencia para trazabilidad. La respuesta es determinista respecto al reloj contractual y
+expira a treinta días.
+
+`CustomerAttributeProfiles` persiste una sola agregación vigente por identidad/atributo, sus fuentes
+cerradas, volumen, cálculo y corrección, sin duplicar evidencia individual. Constraints protegen rangos,
+estructura JSON, coherencia temporal y semántica de corrección. Los derechos de acceso y supresión
+localizan estos perfiles tanto por cliente como por el vínculo anónimo; retención elimina agregados
+caducados por lotes antes de cualquier reutilización.

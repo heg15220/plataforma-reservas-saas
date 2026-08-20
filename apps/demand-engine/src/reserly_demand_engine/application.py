@@ -24,6 +24,7 @@ from .demand_aggregation import DemandAggregationPolicy, DemandCapacityCalculato
 from .exploration import BasicThompsonSampler, ThompsonPolicy
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
+from .implicit_profiles import ImplicitProfileBuilder, ImplicitProfilePolicy
 from .scoring import ScoreMvp, ScorePolicy
 
 
@@ -48,6 +49,9 @@ def create_app(
     app.state.session_context_builder = SessionContextBuilder()
     app.state.affinity_calculator = ContentAffinityCalculator(settings.embedding_model_promoted)
     policy_root = Path(__file__).resolve().parents[2] / "policies"
+    app.state.implicit_profile_builder = ImplicitProfileBuilder(
+        ImplicitProfilePolicy.load(policy_root / "implicit-profile.v1.json")
+    )
     app.state.score_mvp = ScoreMvp(
         ScorePolicy.load(policy_root / "score-mvp.v1.json"),
         DeterministicFallback(FallbackPolicy.load(policy_root / "fallback-mvp.v1.json")),

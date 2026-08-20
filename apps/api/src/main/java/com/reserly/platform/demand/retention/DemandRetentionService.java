@@ -34,7 +34,9 @@ public class DemandRetentionService {
     int batch = properties.batchSize();
     int events = deleteExpired("BehaviorEvents", "retentionExpiresAt", now, batch);
     int recommendations = deleteExpired("RecommendationRequests", "retentionExpiresAt", now, batch);
-    int profiles = deleteExpired("VenueAttributeProfiles", "expiresAt", now, batch);
+    int profiles =
+        deleteExpired("VenueAttributeProfiles", "expiresAt", now, batch)
+            + deleteExpired("CustomerAttributeProfiles", "expiresAt", now, batch);
     int evidences = deleteExpired("VenueAttributeEvidences", "expiresAt", now, batch);
     int links = deleteExpired("IdentityLinks", "retentionExpiresAt", now, batch);
     int anonymous = deleteUnreferencedIdentity("AnonymousIdentities", now, batch);

@@ -9879,3 +9879,24 @@ Fuente de verdad del avance:
   - V56 mantiene `sessionId` nullable solo para compatibilidad; el servicio nuevo siempre lo exige.
   - La rotación conserva `CustomerIdentities.id` y actualiza digest/version; no crea perfiles partidos.
   - Siete pruebas focalizadas quedaron verdes y el digest no cruza el resultado minimizado.
+
+# Conversación 234 - Perfil implícito por atributo
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó el cálculo consentido de preferencias por atributo con jerarquía de fuentes,
+    decaimiento exponencial, contradicción observable y confianza interpretable.
+  - Las correcciones explícitas dominan el valor inferido sin borrar el volumen ni los tipos de
+    evidencia que justifican el historial.
+  - Se creó persistencia agregada con caducidad y se integró en acceso, supresión y retención.
+- Archivos modificados:
+  - Política `implicit-profile-v1`, módulo/endpoint/pruebas Python, V57, entidad/DAO Java, privacidad,
+    retención y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-034, RF-035 y RF-040; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.2; prepara 21.3, 21.4, 21.5 y 23.9.
+- Tareas completadas: 21.2.
+- Siguiente tarea pendiente recomendada: 17.1; para primeros datos, 21.3.
+- Decisiones o aclaraciones relevantes:
+  - La política conserva una semivida de treinta días y descarta evidencia superior a 365 días.
+  - La corrección no elimina evidencia; deja valor/confianza corregidos y trazabilidad agregada.
+  - La suite completa del motor quedó verde y Java pasó formato y compilación.

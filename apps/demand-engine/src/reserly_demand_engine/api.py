@@ -37,6 +37,7 @@ from .exploration import (
     ThompsonUpdateResponse,
 )
 from .session_context import SessionContextRequest, SessionContextResponse
+from .implicit_profiles import ImplicitProfileRequest, ImplicitProfileResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 
 
@@ -113,6 +114,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     ) -> SessionContextResponse:
         """Construye un perfil efímero y limita señales cuando falta consentimiento."""
         return request.app.state.session_context_builder.build(body)
+
+    @router.post("/profiles/implicit/evaluate", response_model=ImplicitProfileResponse)
+    async def evaluate_implicit_profile(
+        body: ImplicitProfileRequest, request: Request
+    ) -> ImplicitProfileResponse:
+        """Calcula preferencias consentidas; Spring conserva la proyección y derechos asociados."""
+        try:
+            return request.app.state.implicit_profile_builder.build(body)
+        except ValueError as error:
+            raise DemandEngineError("IMPLICIT_PROFILE_POLICY_INVALID", 409) from error
 
     @router.post("/affinity/evaluate", response_model=AffinityResponse)
     async def evaluate_affinity(body: AffinityRequest, request: Request) -> AffinityResponse:

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "implicit-profile-v1",
+  "calculationVersion": "decayed-attribute-evidence-v1",
+  "halfLifeDays": 30,
+  "maximumEvidenceAgeDays": 365,
+  "profileValidityDays": 30,
+  "volumeSaturation": 10,
+  "maximumEvidencePerRequest": 500,
+  "sourceWeights": {
+    "filter": 0.55,
+    "click": 0.4,
+    "comparison": 0.65,
+    "availability": 0.75,
+    "booking": 0.9,
+    "attendance": 1.0,
+    "review": 0.8
+  },
+  "confidenceFactors": {
+    "diversity": 0.2,
+    "volume": 0.25,
+    "agreement": 0.3,
+    "recency": 0.25
+  }
+}
