@@ -10273,3 +10273,28 @@ Fuente de verdad del avance:
   - Cinco pruebas del asignador, trece de contrato HTTP y dos de migración PostgreSQL quedaron verdes.
   - El Checkstyle global continúa fallando por 46 infracciones preexistentes fuera de 22.8; Spotless y
     compilación de los 991 fuentes sí quedaron verdes al ejecutar la prueba dirigida.
+
+# Conversación 253 - Aceptación transaccional de ofertas sin sobreventa
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se añadió el endpoint público opaco que consume una oferta y devuelve el hold ordinario, sin
+    permitir que el cliente sustituya local, franja, servicio o tamaño.
+  - Oferta y entrada se bloquean pesimistamente; el servicio de holds vuelve a bloquear la franja y
+    recalcular ocupación dentro de la misma transacción.
+  - La aceptación solo se persiste después del hold; caducidad, revocación, replay o falta de capacidad
+    dejan la oferta sin consumir y devuelven un código no enumerable.
+- Archivos modificados: migración V60, entidad de entrada, DTO, servicio/controlador/handler, rate
+  limit y fallback público, pruebas unitarias/de locks/PostgreSQL y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-014, RF-039 y RF-041; RNF-003, RNF-004, RNF-005, RNF-006, RNF-009,
+  RNF-012 y RNF-015.
+- Tareas impactadas: 22.9; conserva el flujo de confirmación ordinario como autoridad final.
+- Tareas completadas: 22.9.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase del motor, 22.10.
+- Decisiones o aclaraciones relevantes:
+  - `availableAt` es inclusivo y `expiresAt` exclusivo, igual que la semántica de expiración de holds.
+  - Se devuelve `ReservationHoldResponse`; la confirmación posterior no tiene camino especial.
+  - Once pruebas dirigidas quedaron verdes, incluidas las 60 migraciones en PostgreSQL 17 real.
+  - La regresión conjunta hold/aceptación ejecutó 15/15 pruebas y `npm run test:demand` cerró las tres
+    tareas con 168/168 pruebas Python en 114,116 s.
+  - El endpoint reutiliza la cuota `RESERVATION` y oculta todas las causas bajo 409 estable.

@@ -31,6 +31,8 @@ public class SensitiveEndpointRateLimitInterceptor implements HandlerInterceptor
       Pattern.compile("^/api/public/venues/[a-z0-9]+(?:-[a-z0-9]+)*/reviews(?:/eligibility)?$");
   private static final Pattern PUBLIC_MANAGEMENT_LINK =
       Pattern.compile("^/api/public/reservations/manage/[A-Za-z0-9_-]{43}(?:/cancel)?$");
+  private static final Pattern WAITLIST_OFFER_ACCEPT =
+      Pattern.compile("^/api/public/waitlist/offers/[A-Za-z0-9_-]{43}/accept$");
 
   private final RateLimitService rateLimitService;
 
@@ -57,7 +59,8 @@ public class SensitiveEndpointRateLimitInterceptor implements HandlerInterceptor
         return exact;
       }
       if ("/api/public/reservations/holds".equals(path)
-          || RESERVATION_CONFIRM.matcher(path).matches()) {
+          || RESERVATION_CONFIRM.matcher(path).matches()
+          || WAITLIST_OFFER_ACCEPT.matcher(path).matches()) {
         return RateLimitScope.RESERVATION;
       }
       if (RESERVATION_REVIEW.matcher(path).matches() || VENUE_REVIEW.matcher(path).matches()) {

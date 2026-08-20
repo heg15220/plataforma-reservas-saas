@@ -2,6 +2,7 @@ package com.reserly.platform.infrastructure.error;
 
 import com.reserly.platform.availability.controller.PublicVenueAvailabilityControllerImpl;
 import com.reserly.platform.billing.controller.RedsysCallbackControllerImpl;
+import com.reserly.platform.demand.waitlist.controller.WaitlistOfferAcceptanceControllerImpl;
 import com.reserly.platform.forms.controller.PublicReservationFormControllerImpl;
 import com.reserly.platform.identity.controller.AuthenticationControllerImpl;
 import com.reserly.platform.identity.controller.EmailVerificationControllerImpl;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
       PublicVenueAvailabilityControllerImpl.class,
       RedsysCallbackControllerImpl.class,
       PublicReservationFormControllerImpl.class,
+      WaitlistOfferAcceptanceControllerImpl.class,
       AuthenticationControllerImpl.class,
       EmailVerificationControllerImpl.class,
       PasswordResetControllerImpl.class,

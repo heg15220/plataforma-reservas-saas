@@ -65,6 +65,7 @@ class WaitlistPersistenceIntegrationTests {
             "uqWaitlistOffersRequestEntry",
             "uqWaitlistOffersTokenHash",
             "ixWaitlistEntriesSlotQueue",
+            "ixWaitlistEntriesServiceQueue",
             "ixWaitlistOffersActivation");
   }
 

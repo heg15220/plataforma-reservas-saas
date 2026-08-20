@@ -38789,6 +38789,88 @@ servicio ordinario de holds y bloqueo transaccional. La revocación debe cancela
 Antes de producción hacen falta retención/borrado del email, métrica de expiración/aceptación por
 oleada y job idempotente con reintentos. La prioridad no es causal ni autoriza incentivo.
 
+## Iteración 2026-08-20 - Tarea 22.9: aceptación transaccional de ofertas
+
+### Objetivo, requisitos y contrato público
+
+- Identificador exacto: 22.9.
+- Objetivo técnico: impedir sobreventa y doble consumo haciendo que una oferta vigente cree el mismo
+  hold transaccional que una reserva pública ordinaria.
+- Requisitos/diseño: RF-014, RF-039 y RF-041; RNF-003, RNF-004, RNF-005, RNF-006, RNF-009,
+  RNF-012 y RNF-015; secciones 8.2, 14.11, 14.14, 14.17, 14.59 y 14.60.
+
+Se creó `POST /api/public/waitlist/offers/{offerToken}/accept`. El request acepta únicamente
+`employeeResourceId` y `assignmentPreference=any_available|specific`; local, time slot, service y
+party size se cargan de la entrada bloqueada. Esto impide convertir un enlace legítimo en una reserva
+de otro recurso. La respuesta es el `ReservationHoldResponse` existente: reservationId, secreto del
+hold, expiración y segundos restantes. El cliente continúa por el endpoint de confirmación ordinario;
+no se duplican reglas, formularios, penalizaciones ni validaciones.
+
+El token debe cumplir el formato CSPRNG Base64 URL-safe de 43 caracteres antes de calcular SHA-256 o
+consultar datos. La consulta usa solo el hash. Falta, prematuridad, expiración, estado ya consumido,
+revocación, entrada inválida o rechazo del hold se traducen a
+`WAITLIST_OFFER_UNAVAILABLE`/HTTP 409. El mensaje no distingue existencia, ventana o capacidad y el
+fallback público tampoco serializa excepciones. La ruta se incorporó a
+`SensitiveEndpointRateLimitInterceptor` bajo `RateLimitScope.RESERVATION` usando un patrón exacto de
+token; seguridad general ya permite `/api/public/**`.
+
+### Transacción, locks y flujo de ejecución
+
+`WaitlistOfferAcceptanceServiceImpl.accept` está anotado `@Transactional`. Primero ejecuta
+`WaitlistOfferDao.findByTokenHashForUpdate`, declarado `PESSIMISTIC_WRITE`; esto serializa dos replays
+del mismo token. La oferta solo es válida en estado `scheduled|active` y en intervalo
+`availableAt <= now < expiresAt`. Luego `WaitlistEntryDao.findByIdForUpdate` bloquea la intención; solo
+`queued|offered` y consentimiento no revocado continúan.
+
+Bajo esos locks se construye `ReservationHoldRequest` con valores autoritativos y se llama al bean
+`ReservationHoldService`. Su transacción se une a la actual, bloquea pesimistamente `TimeSlots`, valida
+publicación/fecha/servicio/tamaño, suma capacidad confirmada más holds vigentes, comprueba recurso y
+persiste un hold cuyo token está hasheado. Dos ofertas distintas que compitan por la última plaza
+terminan serializadas por el lock común de franja; la segunda observa el hold de la primera y falla.
+
+Solo después del hold se escriben `offer.status=accepted`, `acceptedReservationId`,
+`entry.status=accepted` y ambos `updatedAt`. Cualquier excepción runtime al crear o guardar provoca
+rollback de toda la unidad: no queda hold huérfano ni oferta consumida sin reserva. Si capacidad ya no
+existe, `ReservationHoldInvalidException` se traduce al error opaco antes de mutar entidades.
+
+### Datos, migración, errores y observabilidad
+
+V60 añade `WaitlistEntries.serviceId`, FK restrictiva a `Services` e índice por service/status/fecha.
+El valor puede ser nulo para franjas exactas sin servicio y coincide con el contrato ya admitido por
+`ReservationHoldRequest`; para franjas de servicio, el hold exige igualdad con `TimeSlot.serviceId`.
+La migración es aditiva y no invalida entradas V59 existentes. La entidad incorpora el campo sin
+exponer relación lazy ni datos adicionales.
+
+No se registra token, email ni request body. La telemetría existente del hold observa el inicio de
+reserva porque se reutiliza el mismo servicio. El código de error constante permite medir rechazos sin
+crear un oracle. Queda pendiente una métrica específica de etapa/oleada y un audit event de transición
+que no contenga contacto ni secreto.
+
+### Pruebas, evidencia y deuda
+
+Cinco pruebas unitarias verifican: creación del hold con valores de entrada, mutación posterior,
+rechazo prematuro/caducado/consumido, consentimiento revocado, fallo de capacidad sin consumo y token
+malformado sin acceso a datos. Dos pruebas de contrato comprueban locks `PESSIMISTIC_WRITE` y
+`@Transactional`. Las pruebas de rate limit protegen la nueva URL. La integración PostgreSQL aplica
+las 60 migraciones y verifica también el índice de servicio.
+
+Evidencia: `mvn -Dcheckstyle.skip=true
+-Dtest=WaitlistOfferAcceptanceServiceTests,WaitlistAcceptanceLockTests,SensitiveEndpointRateLimitInterceptorTests,WaitlistPersistenceIntegrationTests
+test` compiló 1000 fuentes y 234 tests, ejecutó 11 casos sin fallos y terminó `BUILD SUCCESS` en
+1:32. Spotless dejó los 1234 archivos Java conformes. Se omite Checkstyle solo por las 46 infracciones
+preexistentes documentadas en 22.8; los archivos nuevos pasan formato y no aparecen en su diagnóstico.
+La regresión conjunta de `ReservationHoldServiceTests`, aceptación, locks y rate limit añadió el caso
+de última plaza ordinario y terminó 15/15 en 16,050 s. `npm run test:demand` ejecutó finalmente las 168
+pruebas acumuladas del motor —incluidas 22.7 y 22.8— en 114,116 s, todas verdes.
+
+Riesgos/deuda: esta iteración consume ofertas ya persistidas, pero el job de 22.8 para materializar,
+activar, expirar y notificar propuestas todavía debe implementarse antes de producción. Reintentar una
+oferta aceptada devuelve conflicto porque el secreto de hold en claro no se persiste y no puede
+reemitirse con seguridad. La confirmación puede expirar cinco minutos después como cualquier hold. Se
+requieren pruebas de concurrencia multihilo contra PostgreSQL del flujo completo y limpieza/retención
+de entradas, aunque el lock de franja y la suma de ocupación ya están cubiertos por el caso de uso
+ordinario y sus pruebas de última plaza.
+
 ## Iteración 2026-08-20 - Tarea 22.5: puerta A/B para estimación causal
 
 ### Objetivo, requisitos y relación con el protocolo existente

@@ -26,6 +26,9 @@ class SensitiveEndpointRateLimitInterceptorTests {
     assertProtected("/api/auth/password/reset", RateLimitScope.PASSWORD_RESET_CONSUME);
     assertProtected("/api/public/reservations/holds", RateLimitScope.RESERVATION);
     assertProtected(
+        "/api/public/waitlist/offers/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/accept",
+        RateLimitScope.RESERVATION);
+    assertProtected(
         "/api/public/reservations/88e85554-0326-46dc-b10c-2e516052af35/confirm",
         RateLimitScope.RESERVATION);
     assertProtected("/api/public/venues/azahar-brasa/reviews/eligibility", RateLimitScope.REVIEW);

@@ -25,6 +25,9 @@ public class WaitlistEntryEntity {
   @Column(name = "\"timeSlotId\"", nullable = false)
   private UUID timeSlotId;
 
+  @Column(name = "\"serviceId\"")
+  private UUID serviceId;
+
   @Column(name = "\"customerIdentityId\"")
   private UUID customerIdentityId;
 
@@ -83,6 +86,14 @@ public class WaitlistEntryEntity {
 
   public void setTimeSlotId(UUID timeSlotId) {
     this.timeSlotId = timeSlotId;
+  }
+
+  public UUID getServiceId() {
+    return serviceId;
+  }
+
+  public void setServiceId(UUID serviceId) {
+    this.serviceId = serviceId;
   }
 
   public UUID getCustomerIdentityId() {

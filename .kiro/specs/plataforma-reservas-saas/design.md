@@ -4691,3 +4691,22 @@ conserva el email operativo; nunca lo envía al motor. El secreto de oferta tamp
 PostgreSQL recibe únicamente SHA-256 hexadecimal, único e indexado. El índice de activación soporta
 jobs de oleadas/caducidad y el de cola mantiene desempate temporal auditable. La aceptación y creación
 del hold quedan reservadas a 22.9.
+
+### 14.60 Aceptación de oferta mediante el hold ordinario
+
+`POST /api/public/waitlist/offers/{offerToken}/accept` no acepta local, franja, servicio ni tamaño de
+grupo desde el cliente. Esos invariantes proceden de `WaitlistEntries`; el body solo permite la
+preferencia opcional de profesional. Token malformado, inexistente, prematuro, caducado, consumido,
+revocado o sin capacidad produce el mismo `WAITLIST_OFFER_UNAVAILABLE` 409 para evitar enumeración.
+
+Una única transacción bloquea `WaitlistOffers` por SHA-256 del token y su `WaitlistEntry`. La ventana
+es `[availableAt, expiresAt)` y solo estados `scheduled|active` con entrada `queued|offered` son
+consumibles. Bajo esos locks se invoca el `ReservationHoldService` ordinario: este adquiere el lock
+pesimista de `TimeSlots`, vuelve a sumar reservas efectivas y holds vigentes, valida servicio/recurso y
+crea el hold de cinco minutos. Solo tras obtenerlo la oferta/entrada cambian a `accepted` y se vincula
+`acceptedReservationId`. Un fallo de capacidad o persistencia revierte todo.
+
+V60 liga la entrada al `serviceId` exacto para que el hold lo contraste con la franja. El cliente
+recibe el `ReservationHoldResponse` normal y completa la reserva por el endpoint de confirmación ya
+existente; no existe una vía privilegiada para listas de espera. La URL queda bajo la cuota anónima de
+reservas. Token en claro solo existe en tránsito, nunca en logs ni PostgreSQL.
