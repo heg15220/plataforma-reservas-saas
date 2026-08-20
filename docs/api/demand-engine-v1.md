@@ -15,6 +15,8 @@ Todo endpoint funcional exige `X-Reserly-Service-Id` y `X-Reserly-Service-Token`
 | `POST /venues/{id}/attributes/evaluate` | Calcular perfil inicial interpretable | Spring persiste; caché Python acotada |
 | `POST /embeddings/generate` | Calcular lotes query/venue/service | Spring persiste en pgvector |
 | `POST /session/context` | Agregar contexto efímero condicionado por consentimiento | Sin consentimiento solo usa filtro actual |
+| `POST /profiles/implicit/evaluate` | Recalcular preferencias consentidas por atributo | Spring revalida consentimiento y persiste la agregación |
+| `POST /nlp/analyze` | Normalizar y extraer conceptos ES/EN de cuidado personal | Procesa en memoria; rechaza PII/salud y no devuelve texto |
 | `POST /affinity/evaluate` | Calcular atributos/coseno con contribuciones | Coseno cerrado hasta promoción |
 | `POST /occupancy/baseline` | Calcular EMA por día-hora local | Publica incertidumbre; Spring aporta agregados y persiste |
 | `POST /demand/aggregate` | Calcular capacidad necesaria y gap agregado | Suprime conteos bajo umbral; nunca devuelve sujetos |
@@ -32,6 +34,13 @@ formulario allowlisted, descripción localizada ES/EN y agregados operativos con
 cinco minutos. Devuelve reglas, fuentes, confianza, versión y vigencia, nunca texto o IDs de servicio.
 La memoria del proceso es una caché LRU de lectura, no la base autoritativa; Spring debe persistir el
 resultado gobernado.
+
+El pipeline NLP admite hasta 2.000 caracteres y 500 tokens para la finalidad cerrada
+`personalCareSearch`. `nlp-personal-care-v1` gobierna sinónimos ES/EN, conceptos, ventana de negación y
+cuatro etiquetas multilabel. Aplica NFKC, caja invariante, eliminación de diacríticos y coincidencia de
+frase más larga. Devuelve concepto, tipo, polaridad y confianza, nunca texto, fragmentos u offsets.
+Email, teléfono y términos médicos/sensibles se rechazan con código opaco; no se infieren salud,
+demografía ni categorías subjetivas.
 
 El contrato bootstrap no simula modelos: recomendación todavía pide fallback, conversión y demanda
 devuelven `available=false`, y eventos solo confirman validación. Ranking exige los siete componentes

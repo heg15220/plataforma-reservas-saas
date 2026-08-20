@@ -65,6 +65,8 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/demand/aggregate",
             "/internal/demand/v1/exploration/select",
             "/internal/demand/v1/exploration/update",
+            "/internal/demand/v1/profiles/implicit/evaluate",
+            "/internal/demand/v1/nlp/analyze",
         }
         self.assertTrue(expected <= set(document["paths"]))
         self.assertFalse(any(path.startswith("/api/") for path in document["paths"]))
@@ -274,7 +276,35 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertFalse(response.json()["personalizationApplied"])
         self.assertEqual(1, response.json()["usedSignalCount"])
         self.assertEqual(1, response.json()["ignoredSignalCount"])
-        self.assertEqual("onlineBooking", response.json()["attributePreferences"][0]["attributeCode"])
+        self.assertEqual(
+            "onlineBooking", response.json()["attributePreferences"][0]["attributeCode"]
+        )
+
+    def test_nlp_endpoint_is_bilingual_and_rejects_pii_opaquely(self) -> None:
+        body = self._envelope()
+        body.update(
+            {
+                "policyVersion": "nlp-personal-care-v1",
+                "purpose": "personalCareSearch",
+                "text": "Quiero corte hoy y un sitio tranquilo",
+            }
+        )
+        response = self.client.post(
+            "/internal/demand/v1/nlp/analyze", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual(
+            ["haircut", "sameDayAvailability", "lowNoiseAppointments"],
+            [item["conceptCode"] for item in response.json()["entities"]],
+        )
+        self.assertNotIn("text", response.json())
+
+        body["text"] = "corte para ana@example.com"
+        rejected = self.client.post(
+            "/internal/demand/v1/nlp/analyze", json=body, headers=HEADERS
+        )
+        self.assertEqual(409, rejected.status_code)
+        self.assertEqual({"code", "requestId"}, set(rejected.json()))
 
     def test_affinity_endpoint_exposes_real_attribute_contribution(self) -> None:
         body = self._envelope()

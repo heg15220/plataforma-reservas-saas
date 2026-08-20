@@ -38,6 +38,7 @@ from .exploration import (
 )
 from .session_context import SessionContextRequest, SessionContextResponse
 from .implicit_profiles import ImplicitProfileRequest, ImplicitProfileResponse
+from .nlp import NlpAnalyzeRequest, NlpAnalyzeResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 
 
@@ -124,6 +125,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.implicit_profile_builder.build(body)
         except ValueError as error:
             raise DemandEngineError("IMPLICIT_PROFILE_POLICY_INVALID", 409) from error
+
+    @router.post("/nlp/analyze", response_model=NlpAnalyzeResponse)
+    async def analyze_personal_care_text(
+        body: NlpAnalyzeRequest, request: Request
+    ) -> NlpAnalyzeResponse:
+        """Extrae conceptos ES/EN en memoria; texto, PII y términos sensibles nunca salen del proceso."""
+        try:
+            return request.app.state.nlp_pipeline.analyze(body)
+        except ValueError as error:
+            raise DemandEngineError("NLP_REQUEST_REJECTED", 409) from error
 
     @router.post("/affinity/evaluate", response_model=AffinityResponse)
     async def evaluate_affinity(body: AffinityRequest, request: Request) -> AffinityResponse:

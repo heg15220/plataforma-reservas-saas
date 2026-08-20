@@ -37628,3 +37628,72 @@ en una transacción que revalide consentimiento; este endpoint no escribe en Pos
 La política actual modela una preferencia binaria continua y 21.4 deberá introducir aprendizaje
 supervisado sin reinterpretar este valor. 23.9 deberá exponer retirada/corrección al usuario con
 auditoría; 21.5 deberá construir datasets temporales sin leakage desde estas señales.
+
+## Iteración 2026-08-20 - Tarea 21.3: pipeline NLP ES/EN
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 21.3.
+- Objetivo técnico: convertir búsquedas efímeras ES/EN del vertical piloto en conceptos y etiquetas
+  gobernados, con normalización, sinónimos y negación, sin persistir texto ni inferir datos sensibles.
+- Requisitos/diseño: RF-035 y RF-040; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015; secciones 14.6,
+  14.7 y 14.42.
+
+Se eligió un baseline léxico determinista porque es auditable, pequeño y suficiente para crear datos
+etiquetados antes de entrenar 21.4. `nlp-personal-care.v1.json` fija de forma inmutable versiones de
+política, normalización y clasificación, ventana de tres tokens, negadores y términos prohibidos por
+idioma. Sus diez conceptos cubren cinco servicios, dos necesidades temporales y tres atributos del
+piloto; cuatro reglas multilabel los agrupan en intención de servicio, disponibilidad, accesibilidad y
+ambiente. Pydantic exige ES y EN completos, códigos únicos, frases no vacías/no duplicadas y referencias
+de etiquetas a conceptos existentes.
+
+### Normalización, entidades, sinónimos y negación
+
+`_normalize` aplica NFKC y casefold, descompone NFKD, elimina marcas diacríticas y conserva únicamente
+tokens alfanuméricos. Así `CORTARME`, `uñas` y variantes de acentuación se comparan contra el mismo
+diccionario sin alterar la semántica del locale declarado. Las frases del idioma se ordenan por longitud
+descendente, concepto y tokens; la primera coincidencia ocupa sus posiciones para evitar que una frase
+larga se duplique por un sinónimo corto solapado. La salida conserva orden textual estable, pero omite
+fragmentos y offsets.
+
+Antes de cada coincidencia se examinan hasta tres tokens previos contra la lista de negadores. El
+concepto se emite con polaridad negativa y confianza léxica 0,95 si hay negación; de este modo “no
+quiero manicura” no desaparece ni se convierte en preferencia positiva. Las frases semánticas que
+incluyen “sin”, como “acceso sin escalones”, se consideran positivas porque el negador forma parte de
+la propia frase y no la precede. Esta regla queda versionada y debe evaluarse antes de ampliarla.
+
+### Clasificación multilabel, API y límites de privacidad
+
+`PersonalCareNlpPipeline._classify` cruza únicamente entidades positivas con la allowlist de cada
+etiqueta, deduplica conceptos y calcula confianza media. Una consulta puede activar simultáneamente
+servicio, disponibilidad y ambiente; cada predicción enumera `evidenceConceptCodes`, de modo que ninguna
+etiqueta es opaca. El pipeline no realiza reserva, ranking, diagnóstico o persistencia.
+
+`NlpAnalyzeRequest` admite finalidad literal `personalCareSearch`, sobre común versionado y un texto de
+1–2.000 caracteres. Tras normalizar limita a 500 tokens. Expresiones regulares rechazan email y números
+telefónicos de al menos nueve dígitos; una allowlist negativa por locale bloquea vocabulario médico y
+sensible. El endpoint autenticado `POST /internal/demand/v1/nlp/analyze` traduce política desconocida,
+PII, sensibilidad o exceso a `NLP_REQUEST_REJECTED` sin detalle. La respuesta incluye solo requestId,
+idioma, tres versiones, conteo, entidades y etiquetas; no devuelve texto original/normalizado,
+fragmentos, offsets, checksum, email o teléfono. El middleware existente registra ruta, estado,
+duración y requestId, nunca body.
+
+### Archivos, pruebas, evidencia, riesgos y deuda
+
+Se crearon política, `nlp.py` y cinco pruebas unitarias. Se modificaron router, fábrica, contrato HTTP,
+suite API, tareas, diseño, documento técnico y seguimiento. Todas las clases y funciones de negocio
+documentan responsabilidad, entrada, salida y restricciones; el documento de API especifica autoridad
+y fallback.
+
+Las pruebas cubren normalización/sinónimos ES con tres etiquetas, frase larga EN, negación que conserva
+entidad pero no etiqueta, rechazo opaco de email/teléfono/salud, drift de versión, replay determinista y
+ausencia de texto. La prueba HTTP confirma OpenAPI interno, autenticación heredada, respuesta minimizada
+y 409 opaco para PII. Evidencia final: `npm run test:demand` ejecutó 78 pruebas en 2,070 s, sin fallos ni
+errores; `git diff --check` se ejecuta antes del commit.
+
+Riesgos/deuda: el baseline no resuelve morfología libre, ironía, negación lejana, code-switching ni
+errores ortográficos no declarados. Su confianza es de coincidencia, no probabilidad calibrada. 21.4
+deberá entrenar y calibrar clasificadores supervisados con split temporal y sin leakage, comparándolos
+contra esta política; 21.10 podrá proponer sinónimos/atributos, siempre bajo revisión humana y nueva
+versión. Los términos sensibles son una barrera defensiva inicial, no un detector exhaustivo, por lo
+que Spring debe mantener minimización, consentimiento y finalidad antes de cualquier uso persistente.

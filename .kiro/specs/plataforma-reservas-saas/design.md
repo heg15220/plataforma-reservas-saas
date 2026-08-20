@@ -4368,3 +4368,22 @@ cerradas, volumen, cálculo y corrección, sin duplicar evidencia individual. Co
 estructura JSON, coherencia temporal y semántica de corrección. Los derechos de acceso y supresión
 localizan estos perfiles tanto por cliente como por el vínculo anónimo; retención elimina agregados
 caducados por lotes antes de cualquier reutilización.
+
+### 14.42 Pipeline NLP léxico ES/EN minimizado
+
+`nlp-personal-care-v1` gobierna diez conceptos de servicio, disponibilidad, accesibilidad y ambiente,
+sus sinónimos ES/EN, negadores, términos prohibidos y cuatro etiquetas multilabel. El pipeline normaliza
+Unicode con NFKC/NFKD, caja invariante, eliminación de diacríticos y tokenización alfanumérica; después
+prioriza la frase más larga para impedir dobles coincidencias y aplica negación en las tres palabras
+anteriores. Una entidad negada se conserva como evidencia negativa, pero no activa una etiqueta.
+
+El endpoint interno recibe texto solo para `personalCareSearch`, hasta 2.000 caracteres/500 tokens, y
+lo procesa en memoria. Rechaza email, teléfono y vocabulario médico/sensible antes de producir salida.
+El resultado contiene únicamente concepto canónico, tipo, polaridad, confianza, etiquetas y versiones:
+no copia texto, fragmentos, offsets, checksum reversible ni identidad. Spring sigue siendo responsable
+de aplicar los conceptos a filtros o perfiles consentidos; Python no diagnostica, reserva ni persiste.
+
+La clasificación multilabel es interpretable: `serviceIntent`, `availabilityIntent`,
+`accessibilityNeed` y `ambiencePreference` se activan exclusivamente por conceptos positivos allowlist
+y enumeran esos conceptos como evidencia. Cambiar diccionario, ventana, normalización o asignación de
+etiquetas requiere una política/version nueva y evaluación ES/EN antes de promoción.

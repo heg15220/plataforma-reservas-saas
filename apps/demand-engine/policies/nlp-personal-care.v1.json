@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "nlp-personal-care-v1",
+  "normalizationVersion": "unicode-search-normalization-v1",
+  "classificationVersion": "personal-care-multilabel-v1",
+  "negationWindowTokens": 3,
+  "negators": {
+    "es": ["no", "nunca", "sin"],
+    "en": ["no", "not", "never", "without"]
+  },
+  "prohibitedTerms": {
+    "es": ["diagnostico", "enfermedad", "medicacion", "embarazo", "discapacidad"],
+    "en": ["diagnosis", "disease", "medication", "pregnancy", "disability"]
+  },
+  "synonyms": [
+    {
+      "conceptCode": "haircut",
+      "entityType": "service",
+      "phrases": {
+        "es": ["corte", "corte de pelo", "cortarme el pelo", "peluqueria"],
+        "en": ["haircut", "hair cut", "cut my hair", "hair salon"]
+      }
+    },
+    {
+      "conceptCode": "hairColor",
+      "entityType": "service",
+      "phrases": {
+        "es": ["coloracion", "tinte", "teñirme el pelo"],
+        "en": ["hair color", "hair colouring", "dye my hair"]
+      }
+    },
+    {
+      "conceptCode": "facialTreatment",
+      "entityType": "service",
+      "phrases": {
+        "es": ["facial", "tratamiento facial", "limpieza facial"],
+        "en": ["facial", "facial treatment", "facial cleansing"]
+      }
+    },
+    {
+      "conceptCode": "nailService",
+      "entityType": "service",
+      "phrases": {
+        "es": ["manicura", "pedicura", "uñas"],
+        "en": ["manicure", "pedicure", "nails"]
+      }
+    },
+    {
+      "conceptCode": "makeupService",
+      "entityType": "service",
+      "phrases": {
+        "es": ["maquillaje", "maquillador"],
+        "en": ["makeup", "makeup artist"]
+      }
+    },
+    {
+      "conceptCode": "sameDayAvailability",
+      "entityType": "availability",
+      "phrases": {
+        "es": ["hoy", "para hoy", "mismo dia"],
+        "en": ["today", "same day", "for today"]
+      }
+    },
+    {
+      "conceptCode": "eveningAvailability",
+      "entityType": "availability",
+      "phrases": {
+        "es": ["por la tarde", "por la noche", "ultima hora"],
+        "en": ["in the evening", "at night", "late appointment"]
+      }
+    },
+    {
+      "conceptCode": "stepFreeAccess",
+      "entityType": "attribute",
+      "phrases": {
+        "es": ["accesible", "acceso sin escalones", "sin barreras"],
+        "en": ["accessible", "step free access", "without steps"]
+      }
+    },
+    {
+      "conceptCode": "naturalLight",
+      "entityType": "attribute",
+      "phrases": {
+        "es": ["luz natural", "luminoso"],
+        "en": ["natural light", "bright salon"]
+      }
+    },
+    {
+      "conceptCode": "lowNoiseAppointments",
+      "entityType": "attribute",
+      "phrases": {
+        "es": ["tranquilo", "poco ruido", "cita silenciosa"],
+        "en": ["quiet", "low noise", "silent appointment"]
+      }
+    }
+  ],
+  "labels": [
+    {
+      "labelCode": "serviceIntent",
+      "conceptCodes": ["haircut", "hairColor", "facialTreatment", "nailService", "makeupService"]
+    },
+    {
+      "labelCode": "availabilityIntent",
+      "conceptCodes": ["sameDayAvailability", "eveningAvailability"]
+    },
+    {
+      "labelCode": "accessibilityNeed",
+      "conceptCodes": ["stepFreeAccess"]
+    },
+    {
+      "labelCode": "ambiencePreference",
+      "conceptCodes": ["naturalLight", "lowNoiseAppointments"]
+    }
+  ]
+}

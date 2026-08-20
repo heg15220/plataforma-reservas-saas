@@ -9900,3 +9900,24 @@ Fuente de verdad del avance:
   - La política conserva una semivida de treinta días y descarta evidencia superior a 365 días.
   - La corrección no elimina evidencia; deja valor/confianza corregidos y trazabilidad agregada.
   - La suite completa del motor quedó verde y Java pasó formato y compilación.
+
+# Conversación 235 - Pipeline NLP ES/EN de cuidado personal
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se creó un pipeline NLP léxico y determinista con normalización Unicode, sinónimos bilingües,
+    extracción de conceptos y negación por ventana.
+  - Cuatro etiquetas multilabel se sustentan en conceptos positivos explícitos y conservan evidencia
+    canónica interpretable.
+  - La frontera rechaza PII y términos médicos/sensibles y nunca devuelve texto o fragmentos.
+- Archivos modificados:
+  - Política `nlp-personal-care-v1`, módulo/router/fábrica/pruebas Python, contrato HTTP documentado y
+    cuatro documentos `.kiro`.
+- Requisitos impactados: RF-035 y RF-040; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 21.3; prepara 21.4, 21.5 y 21.10.
+- Tareas completadas: 21.3.
+- Siguiente tarea pendiente recomendada: 17.1; para primeros datos, 21.4.
+- Decisiones o aclaraciones relevantes:
+  - No se usa un LLM ni se infieren categorías sensibles; el baseline es allowlist y versionado.
+  - La negación conserva la entidad como negativa, pero la excluye de etiquetas positivas.
+  - Las 78 pruebas del motor quedaron verdes, incluidas cinco unitarias NLP y el perímetro HTTP.

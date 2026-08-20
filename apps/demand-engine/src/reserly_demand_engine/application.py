@@ -25,6 +25,7 @@ from .exploration import BasicThompsonSampler, ThompsonPolicy
 from .profiles import InMemoryVenueProfileRepository, VenueProfileBuilder
 from .session_context import SessionContextBuilder
 from .implicit_profiles import ImplicitProfileBuilder, ImplicitProfilePolicy
+from .nlp import PersonalCareNlpPipeline, PersonalCareNlpPolicy
 from .scoring import ScoreMvp, ScorePolicy
 
 
@@ -51,6 +52,9 @@ def create_app(
     policy_root = Path(__file__).resolve().parents[2] / "policies"
     app.state.implicit_profile_builder = ImplicitProfileBuilder(
         ImplicitProfilePolicy.load(policy_root / "implicit-profile.v1.json")
+    )
+    app.state.nlp_pipeline = PersonalCareNlpPipeline(
+        PersonalCareNlpPolicy.load(policy_root / "nlp-personal-care.v1.json")
     )
     app.state.score_mvp = ScoreMvp(
         ScorePolicy.load(policy_root / "score-mvp.v1.json"),
