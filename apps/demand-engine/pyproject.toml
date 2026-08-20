@@ -13,6 +13,7 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
   "sentence-transformers==5.7.0",
+  "catboost==1.2.10",
 ]
 
 [build-system]

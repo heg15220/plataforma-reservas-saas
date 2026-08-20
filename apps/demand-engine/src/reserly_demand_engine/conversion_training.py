@@ -89,6 +89,7 @@ class ConversionTrainingRow(StrictContract):
     observationId: UUID
     occurredAt: datetime
     outcomeObservedAt: datetime
+    evaluationSegment: Literal["es", "en"]
     features: dict[str, float]
     converted: Literal[0, 1]
 

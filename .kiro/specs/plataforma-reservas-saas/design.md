@@ -4436,3 +4436,19 @@ odds ratio y coincidencia con la dirección esperada. Evaluación futura informa
 pseudo-R² de McFadden contra elección uniforme con opción exterior. Gates y evidencia productiva son
 necesarios para revisión de promoción; la model card advierte que son asociaciones condicionadas al
 conjunto y que la hipótesis IIA debe probarse.
+
+### 14.46 Challenger CatBoost gobernado
+
+`boosting-comparison-v1` enfrenta CatBoost 1.2.10 al artefacto logístico v1 sobre exactamente los
+mismos splits temporales y features pre-outcome. El árbol se ajusta solo con train, sus scores crudos
+se calibran mediante Platt solo con calibration y todas las puertas se miden sobre evaluation. El
+baseline permanece champion salvo que el challenger gane al menos 0,02 de ROC AUC, no degrade Brier
+ni ECE, cumpla p95 de lote <=50 ms, delta determinista <=1e-6, brecha Brier ES/EN <=0,05 y artefacto
+<=2 MB.
+
+Los segmentos de idioma son exclusivamente cohortes de auditoría y no features. Cada cohorte requiere
+diez observaciones; muestra insuficiente falla cerrado. La model card fija versión/licencia/origen,
+limitaciones y rollback, y exige revisión CVE y aprobación humana. Incluso superar todas las puertas
+con XOR sintético solo demuestra el evaluador: `productionEvidence=false` bloquea promoción. La
+alternativa LightGBM 4.7.0 se descartó en este entorno porque su wheel no pudo cargar la DLL nativa;
+no se modificó el sistema operativo ni se simuló su resultado.

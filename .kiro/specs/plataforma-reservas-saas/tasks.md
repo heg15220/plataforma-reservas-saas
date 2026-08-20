@@ -430,7 +430,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 21.4. Implementar ABSA sobre reseñas verificadas con scores separados por aspecto, confianza, vigencia y evaluación humana.
 - [x] 21.5. Entrenar y calibrar regresión logística de conversión con separación temporal, prevención de leakage y model card.
 - [x] 21.6. Implementar modelo de elección discreta sobre conjuntos de alternativas para interpretar distancia, precio, atributos y contexto.
-- [ ] 21.7. Evaluar LightGBM o CatBoost para conversión y ranking solo si supera baseline, calibración, latencia, estabilidad y equidad.
+- [x] 21.7. Evaluar LightGBM o CatBoost para conversión y ranking solo si supera baseline, calibración, latencia, estabilidad y equidad.
 - [ ] 21.8. Implementar predicción calibrada de no-show como señal de riesgo, sin automatizar penalizaciones ni denegaciones.
 - [ ] 21.9. Ejecutar pruebas A/B del ranking con potencia, muestra, periodo, métricas primarias, guardrails y criterio de parada documentados.
 - [ ] 21.10. Implementar descubrimiento de atributos candidatos con embeddings, UMAP, HDBSCAN, BERTopic y c-TF-IDF bajo revisión humana.

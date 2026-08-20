@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "boosting-comparison-v1",
+  "candidateLibrary": "catboost",
+  "candidateLibraryVersion": "1.2.10",
+  "candidateLicense": "Apache-2.0",
+  "baselineModelVersion": "conversion-logistic-baseline-v1",
+  "minimumRocAucGain": 0.02,
+  "maximumBrierRegression": 0.0,
+  "maximumEceRegression": 0.0,
+  "maximumLatencyP95Ms": 50.0,
+  "maximumStabilityDelta": 0.000001,
+  "minimumRowsPerAuditSegment": 10,
+  "maximumSegmentBrierGap": 0.05,
+  "maximumArtifactBytes": 2000000,
+  "predictionRepeats": 20
+}

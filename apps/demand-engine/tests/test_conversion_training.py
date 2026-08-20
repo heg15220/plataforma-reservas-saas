@@ -45,6 +45,7 @@ class ConversionTrainingTests(unittest.TestCase):
                         "observationId": str(uuid4()),
                         "occurredAt": start + timedelta(days=index),
                         "outcomeObservedAt": start + timedelta(days=index, hours=2),
+                        "evaluationSegment": "es" if index % 2 == 0 else "en",
                         "features": {
                             "affinity": signal,
                             "proximity": signal,

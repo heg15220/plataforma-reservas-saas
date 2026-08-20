@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "catboostConversionCandidate",
+  "modelVersion": "catboost-conversion-candidate-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Challenge the calibrated logistic conversion baseline using the same pre-outcome features and temporal splits.",
+  "status": "candidate",
+  "library": "catboost",
+  "libraryVersion": "1.2.10",
+  "license": "Apache-2.0",
+  "source": "https://github.com/catboost/catboost",
+  "cveReviewRequiredBeforePromotion": true,
+  "limitations": [
+    "A synthetic comparison cannot authorize shadow or production use.",
+    "Feature importance is not a causal explanation.",
+    "Audit segments are evaluation-only and never model features.",
+    "The logistic baseline remains champion unless every comparison gate passes."
+  ],
+  "rollback": "Keep conversion-logistic-baseline-v1 or probability null and deterministic fallback active.",
+  "humanApprovalRequired": true
+}

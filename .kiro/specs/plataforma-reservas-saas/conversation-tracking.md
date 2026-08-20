@@ -9982,3 +9982,24 @@ Fuente de verdad del avance:
   - Los coeficientes son asociaciones, no efectos causales; IIA permanece gate antes de promoción.
   - Cinco pruebas dirigidas quedaron verdes sobre sets sintéticos completos.
   - La suite completa acumulada terminó con 94 pruebas verdes.
+
+# Conversación 239 - Challenger CatBoost frente al baseline logístico
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó una comparación real de CatBoost 1.2.10 contra la regresión logística calibrada
+    usando idénticos features, cohortes y fronteras temporales.
+  - El challenger se recalibra con Platt y se somete a puertas incrementales de AUC, Brier, ECE,
+    latencia p95, determinismo, tamaño y brecha Brier ES/EN.
+  - La evidencia sintética supera las puertas técnicas, pero no autoriza promoción sin evidencia
+    productiva gobernada, revisión CVE y aprobación humana.
+- Archivos modificados: dependencia ML, política/model card CatBoost, evaluador/pruebas Python,
+  dataset de conversión y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.7; prepara 21.8, 21.9, 21.11 y 21.12.
+- Tareas completadas: 21.7.
+- Siguiente tarea pendiente recomendada: 17.1; para esta fase del motor, 21.8.
+- Decisiones o aclaraciones relevantes:
+  - El idioma se usa solo para auditoría de cohortes y nunca cruza el entrenamiento.
+  - LightGBM 4.7.0 se descartó por fallo de carga de su DLL nativa en Windows; no se alteró el SO.
+  - Cuatro pruebas focalizadas ejecutaron CatBoost real y quedaron verdes.

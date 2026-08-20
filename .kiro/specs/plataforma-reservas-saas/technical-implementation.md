@@ -37876,3 +37876,67 @@ multicolinealidad, intervalos, endogeneidad de precio ni sesgo de exposición. U
 debe capturar todas las alternativas y política que las generó. 21.7 comparará calidad sin sacrificar
 interpretabilidad; 21.9 medirá impacto experimental; 21.12 añadirá Hausman-McFadden/estabilidad y
 auditoría de conjuntos incompletos antes de cualquier promoción.
+
+## Iteración 2026-08-20 - Tarea 21.7: evaluación CatBoost contra baseline
+
+### Objetivo, requisitos y selección de dependencia
+
+- Identificador exacto: 21.7.
+- Objetivo técnico: evaluar un boosting real para conversión con las mismas cohortes que el baseline,
+  sin reemplazarlo salvo evidencia conjunta de calidad, calibración, latencia, estabilidad y equidad.
+- Requisitos/diseño: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.8, 14.16, 14.17, 14.44 y 14.46.
+
+Se evaluó primero LightGBM 4.7.0, fijado desde su distribución publicada. La importación real falló en
+Windows al no cargar `lib_lightgbm.dll` o una dependencia nativa. No se instaló un runtime del sistema,
+no se relajó la prueba ni se fabricaron métricas. Se eligió la alternativa explícitamente permitida,
+CatBoost 1.2.10, cuyo wheel CPython 3.13 x86-64 cargó correctamente. `pyproject.toml` fija esa versión
+en el extra `ml`; política y model card verifican en runtime versión y licencia Apache-2.0. Una
+discrepancia entre paquete, política, candidata o champion produce
+`BOOSTING_DEPENDENCY_OR_MODEL_VERSION_MISMATCH` antes de entrenar.
+
+### Datos, entrenamiento, calibración y comparación
+
+`ConversionTrainingRow` incorpora `evaluationSegment` ES/EN. Es metadata cerrada de auditoría y no
+aparece en `featureCodes`; así permite calcular desempeño de cohortes sin crear un proxy lingüístico.
+El evaluador reutiliza las validaciones de `ConversionDataset`: finalidad analítica, sin PII,
+revocaciones aplicadas, outcome maduro y splits train/calibration/evaluation no solapados.
+
+CatBoost usa 60 iteraciones, profundidad tres, learning rate 0,05, L2 0,5, semilla 17, aleatoriedad
+cero y un hilo; además `allow_writing_files=false` evita logs/artefactos laterales. Solo train ajusta
+los árboles. Los `RawFormulaVal` de calibration alimentan el mismo calibrador Platt gobernado del
+baseline; evaluation queda intacto para ROC AUC, Brier, log-loss y ECE. El baseline se vuelve a
+entrenar mediante su trainer oficial sobre el mismo dataset, por lo que la diferencia no mezcla
+cohortes ni definiciones.
+
+### Puertas, equidad, seguridad y promoción
+
+La política exige ganancia ROC AUC >=0,02, regresión Brier/ECE <=0, p95 de inferencia del lote <=50 ms,
+delta máximo <=1e-6 tras reentrenamiento idéntico, brecha Brier ES/EN <=0,05, al menos diez filas por
+segmento y serialización nativa <=2 MB. La latencia hace warm-up y veinte repeticiones con nearest-rank
+p95. La estabilidad compara probabilidades calibradas de dos ajustes completos. El tamaño procede de
+la serialización binaria nativa en memoria, sin persistir filas.
+
+`qualityGatesPassed` queda separado de `promotionAllowed`. La promoción requiere además
+`productionEvidence=true` y revisión CVE afirmativa; la model card candidata exige aprobación humana,
+prohíbe interpretar importancia como causalidad y conserva rollback al baseline logístico o
+probabilidad nula con ranking determinista. El evaluador no registra, despliega ni modifica tráfico.
+
+### Archivos, tests, evidencia, riesgos y deuda
+
+Se crearon `boosting-comparison.v1.json`, la model card CatBoost,
+`boosting_evaluation.py` y cuatro pruebas. Se modificaron `pyproject.toml`, el contrato/fixture de
+conversión, tareas, diseño, documento técnico y seguimiento. No hubo migraciones, endpoints, jobs ni
+persistencia nuevos: es un proceso batch de evaluación desconectado de producción.
+
+Las pruebas ejercitan CatBoost real sobre XOR no representable por el baseline lineal, promoción
+bloqueada con datos sintéticos, conjunción de evidencia productiva+CVE, muestra ES/EN insuficiente y
+drift de versión. Evidencia focalizada: con `PYTHONPATH=apps/demand-engine/src;packages/demand-contracts/src`,
+`python -m unittest apps/demand-engine/tests/test_boosting_evaluation.py -v` ejecutó cuatro casos en
+1,359 s, todos correctos. La suite completa y `git diff --check` se ejecutan antes del commit.
+
+Riesgos/deuda: XOR verifica capacidad y gates, no calidad ni equidad productivas. ES/EN es una
+auditoría mínima y debe ampliarse solo a segmentos permitidos con potencia suficiente. El p95 local no
+sustituye shadow end-to-end. CatBoost añade una dependencia pesada y una API privada de serialización
+solo para medir tamaño; una actualización exige nueva política, model card y prueba de compatibilidad.
+21.9 deberá medir impacto causal y 21.12 incorporará CVE, drift y reproducibilidad al registro formal.
