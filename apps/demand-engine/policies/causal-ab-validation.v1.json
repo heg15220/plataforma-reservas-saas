@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "causal-ab-validation-v1",
+  "experimentPolicyVersion": "ranking-ab-test-v1",
+  "outcomeDefinitionVersion": "completed-booking-per-exposed-session-v1",
+  "analysisFeatureSetVersion": "causal-pre-treatment-v1",
+  "preTreatmentFeatureNames": ["baselineAffinity", "priorVenueExposure", "weekday"],
+  "minimumUnitsPerArm": 100,
+  "minimumOutcomesPerArm": 10,
+  "maximumAssignmentRatioDeviation": 0.1,
+  "maximumAbsoluteStandardizedMeanDifference": 0.1,
+  "confidenceLevel": 0.95,
+  "permittedEstimatorReviewsAfterGate": [
+    "sLearner",
+    "tLearner",
+    "xLearner",
+    "causalForest",
+    "doublyRobust"
+  ],
+  "prohibitedFeatureFragments": [
+    "email",
+    "phone",
+    "customerid",
+    "reservationid",
+    "gender",
+    "age",
+    "health",
+    "postcode",
+    "payment",
+    "race",
+    "religion",
+    "disability",
+    "position",
+    "click",
+    "converted",
+    "attendance",
+    "noshow",
+    "outcome"
+  ],
+  "automaticEstimatorUseAllowed": false
+}

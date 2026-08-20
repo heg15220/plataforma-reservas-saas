@@ -38569,3 +38569,67 @@ rodantes y segmentados. La capacidad puede censurar demanda observada y debe dis
 insatisfecha. Antes de promoción se requieren benchmark p95, CVE, shadow/canary y monitor de drift.
 El modelo no es causal ni justifica abrir capacidad; 22.5 define la puerta experimental previa a
 cualquier estimador causal.
+
+## Iteración 2026-08-20 - Tarea 22.5: puerta A/B para estimación causal
+
+### Objetivo, requisitos y relación con el protocolo existente
+
+- Identificador exacto: 22.5.
+- Objetivo técnico: impedir el uso de meta-learners, bosques causales o Doubly Robust hasta validar un
+  diseño A/B productivo, prerregistrado, balanceado y con outcome maduro.
+- Requisitos/diseño: RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.14, 14.16, 14.17, 14.48 y 14.56.
+
+La tarea 21.9 ya valida potencia, alpha spending y guardrails agregados del ranking. Esta tarea añade
+la frontera necesaria para construir un dataset causal por unidad sin rebautizar atribución
+observacional. `CausalAbDataset` acepta exclusivamente `randomizedControlledAb`, referencia
+`ranking-ab-test-v1` y `completed-booking-per-exposed-session-v1`, y exige literalmente
+prerregistro, randomización estable, exclusión mutua, logging antes de exposición, finalización y
+guardrails verdes. Un booleano falso no degrada a warning: Pydantic rechaza el contrato.
+
+Cada `ExperimentalUnit` usa UUID seudónimo único y una línea temporal aware
+`assignedAt<=exposedAt<=outcomeObservedAt`, anterior a extracción. El outcome es reserva completada
+binaria. Las únicas covariables son afinidad baseline, exposición previa al local y weekday,
+disponibles antes de tratamiento. La igualdad exacta del set impide columnas adicionales; la política
+niega email, teléfono, IDs de cliente/reserva, edad, género, salud, postcode, pago, rasgos protegidos,
+posición, clic, conversión, asistencia/no-show y cualquier outcome.
+
+### Muestra, balance y estimación primaria
+
+Cada brazo necesita cien unidades, diez reservas y diez no reservas. El reparto tratamiento/total
+debe estar a menos de 0,10 de 0,50. Para cada covariable se calcula SMD absoluto como diferencia de
+medias dividida por desviación pooled; varianza cero con medias iguales produce cero y con medias
+distintas infinito/fallo. El máximo aceptable es 0,10. Esto diagnostica balance realizado sin ajustar
+por variables posteriores.
+
+`CausalAbValidator` resume tasas y calcula ATE como `p_t-p_c`, error estándar de dos proporciones,
+intervalo normal bilateral 95 % acotado a [-1,1] y p-value bilateral. El reporte conserva todos los
+SMD y máximo, desviación de ratio, versiones y evidencia. El cálculo no declara por sí mismo éxito
+comercial: la decisión secuencial/potencia sigue en el analizador A/B prerregistrado.
+
+La policy enumera `sLearner`, `tLearner`, `xLearner`, `causalForest` y `doublyRobust`. Esta lista solo
+aparece en `permittedEstimatorReviews` cuando diseño, balance y `productionEvidence=true`; no ejecuta
+ni selecciona un estimador. Sintético e imbalance dejan `causalEstimationAllowed=false`, lista vacía
+y `observationalAttributionOnly=true`. `automaticEstimatorUseAllowed` es siempre `Literal[False]`.
+
+### Archivos, pruebas, evidencia, seguridad y deuda
+
+Se crearon `causal-ab-validation.v1.json`, `causal_ab_validation.py` y seis pruebas; se actualizaron
+tareas, diseño, seguimiento y este documento. No hubo modelo desplegado, endpoint, persistencia ni
+migración. Los contratos `extra=forbid`, los literales y errores de versión/muestra/features forman la
+respuesta segura; no se registran covariables por unidad en el reporte.
+
+Las pruebas verifican ATE sintético sin permiso causal, habilitación productiva solo para revisión,
+rechazo de observacional/randomización fallida, orden temporal/duplicados, imbalance y muestra/leakage.
+El fixture balanceado tiene 120 unidades por brazo y tasas 0,20/0,30, por lo que ATE=0,10; esto valida
+la aritmética, no un efecto de Reserly. Evidencia:
+`python -m unittest apps/demand-engine/tests/test_causal_ab_validation.py -v`, con ambos roots, ejecutó
+seis casos en 0,098 s y terminó `OK`. Compilación, Prettier y `git diff --check` se verifican antes
+del commit; la suite completa se reserva para cerrar 22.6.
+
+Riesgos/deuda: SMD no prueba ausencia de confounding no medido ni integridad del RNG; el pipeline de
+datos deberá acreditar logs de asignación. El intervalo normal es apropiado tras umbrales, pero un
+análisis productivo puede requerir errores robustos por cluster/venue. Attrition, non-compliance,
+interference y múltiples outcomes necesitan protocolos propios. La puerta no autoriza escoger el
+estimador que dé mejor resultado; 22.6 fijará uno, overlap, intervalos y sensibilidad antes de mirar
+resultados.

@@ -10185,3 +10185,22 @@ Fuente de verdad del avance:
   - El intervalo se calibra fuera de train y no usa evaluación para ajustar incertidumbre.
   - El fixture obtuvo MAE 3,50→0,104 y cobertura 1,0, sin reclamar calidad productiva.
   - Cinco pruebas focalizadas quedaron verdes en 0,296 s.
+
+# Conversación 249 - Puerta A/B para estimación causal
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó un contrato que excluye diseños observacionales y exige RCT prerregistrado,
+    asignación estable/exclusiva anterior a exposición, outcomes maduros y guardrails aprobados.
+  - Se añadieron diagnósticos de muestra, ratio, balance SMD y estimación ATE con intervalo/p-value.
+  - S/T/X-learner, Causal Forest y Doubly Robust permanecen bloqueados hasta evidencia A/B productiva
+    válida; nunca se autorizan automáticamente.
+- Archivos modificados: política causal, validador/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.5; constituye precondición directa de 22.6.
+- Tareas completadas: 22.5.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase del motor, 22.6.
+- Decisiones o aclaraciones relevantes:
+  - El gate usa solo covariables pretratamiento allowlist y SMD <=0,10.
+  - Sintético puede validar código/estadística, pero el informe conserva atribución observacional.
+  - Seis pruebas focalizadas quedaron verdes en 0,098 s.

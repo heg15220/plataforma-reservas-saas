@@ -4611,3 +4611,23 @@ filas. Sin evidencia productiva, una mejora sintética no se etiqueta fiable ni 
 con gates productivos solo habilita aprobación humana; despliegue, cambios automáticos de capacidad,
 precio o decisiones individuales son literales `false`. Cualquier fallo mantiene el baseline con su
 incertidumbre publicada.
+
+### 14.56 Puerta RCT previa a estimadores causales
+
+`causal-ab-validation-v1` solo admite diseño literal `randomizedControlledAb`, política A/B y outcome
+prerregistrados, asignación estable/exclusiva anterior a exposición, experimento finalizado, guardrails
+verdes, revocaciones y ausencia de PII. Cada unidad seudónima aparece una vez y aporta tres
+covariables pretratamiento allowlist; posición, interacción posterior, outcome, identidad y atributos
+sensibles no pueden entrar como features.
+
+Cada brazo exige cien unidades, diez outcomes y diez no outcomes. La desviación del reparto 50/50 no
+puede superar 0,10 y cada diferencia media estandarizada absoluta debe ser <=0,10. El validador
+publica conteos/tasas, balance, ATE de diferencia de proporciones, intervalo bilateral 95 % y p-value.
+Estas métricas diagnostican el RCT y no sustituyen potencia, alpha spending ni guardrails ya definidos
+en `ranking-ab-test-v1`.
+
+S/T/X-learner, Causal Forest y Doubly Robust permanecen como inventario de revisiones bloqueadas.
+Solo un dataset productivo que supere toda la puerta devuelve esos nombres y
+`causalEstimationAllowed=true`; evidencia sintética o imbalance obliga a atribución observacional. Ni
+siquiera la puerta productiva autoriza uso automático del estimador. Cambiar outcome, covariables,
+unidad o experimento requiere nueva versión y revisión humana.
