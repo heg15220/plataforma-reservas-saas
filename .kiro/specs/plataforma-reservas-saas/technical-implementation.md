@@ -37341,3 +37341,75 @@ brazos o contrato versionado nuevo. La creación/promoción administrativa de de
 pendiente de gobernanza; nunca debe editarse una versión `running`. V55 se verificará en integración
 cuando el contexto Testcontainers global resuelva las deudas previas de tipo `countryCode` y orden de
 filtro. 20.20 debe fijar gates y 20.21 ampliar la matriz transversal antes de ejecutar un piloto real.
+
+## Iteración 2026-08-20 - Tarea 20.20: evaluación, baseline y puertas de promoción
+
+### Objetivo, requisitos y separación de etapas
+
+- Identificador exacto: 20.20.
+- Objetivo técnico: transformar las métricas y criterios del vertical en artefactos estrictos,
+  reproducibles y evaluables que impidan promover con versiones, muestra o guardrails incompletos.
+- Requisitos/diseño: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.10, 14.12, 14.17 y 14.38.
+
+La política `promotion-gates-v1` separa dos decisiones que no pueden compartir evidencia. La puerta
+`shadowToPilot` pide siete días consecutivos, métricas offline, salud de instrumentación/inventario,
+latencia y guardrails, pero cero sesiones por variante o reservas porque el A/B todavía no se ha
+iniciado. La puerta `pilotToRollout` añade un mínimo de 42 días, exactamente dos variantes, 1.000
+sesiones por variante, 100 reservas completadas, `poweredSample=true` y nivel de confianza 0,95. Esto
+evita tanto iniciar un piloto sin shadow sano como exigir causalidad imposible antes del piloto.
+
+### Diccionario de métricas, umbrales y guardrails
+
+El JSON de política registra para cada una de 25 métricas: clave cerrada, fase, definición humana,
+numerador, denominador, unidad, sentido de comparación y umbral aplicable por etapa. Offline fija
+Recall@1 0,80, Recall@3 0,95, MRR 0,85, cross-locale Recall@3 0,90, determinismo y fidelidad de
+explicación 1,00. Shadow exige validez de evento 0,99, cobertura de impresión 0,98, tres candidatos en
+0,70 de sesiones, duplicados <=0,005 y rechazos <=0,01. Online limita p95 añadido a 150 ms y fallback
+no planificado a 0,01.
+
+Rollout exige uplift relativo de reserva completada >=0,05 con límite inferior del IC95 no negativo,
+uplift absoluto de ocupación valle >=0,05 y cuota asistida/generada >=0,15. Los guardrails permiten
+como máximo -0,02 de cambio en asistencia, +0,02 en cancelación, 0,40 de concentración de exploración,
+250 EUR/mes y 2 EUR por reserva atribuida atendida. Privacidad, elegibilidad/capacidad y explicaciones
+falsas tienen conteo máximo cero en ambas etapas. Las reservas canceladas/holds no se incorporan al
+efecto primario y las definiciones permanecen junto al umbral para impedir reinterpretación posterior.
+
+### Dataset, baseline y evaluador
+
+`ranking-mvp-evaluation.v1` aporta doce escenarios sintéticos de peluquería/estética, ES/EN, con
+filtros activos, candidato esperado, candidatos que deben excluirse y explicaciones permitidas. Su
+manifiesto declara ausencia de producción y datos personales, una allowlist exacta de siete campos y
+que no se usa para entrenamiento. Una futura cohorte productiva deberá separarse temporalmente de los
+datos de entrenamiento. `RankingEvaluationDataset` valida ámbito, dos locales, dos verticales,
+cardinalidad mínima, unicidad de casos, allowlist y procedencia; cualquier ampliación exige versión.
+
+`public-availability-fallback-v1.synthetic-baseline-v1` conserva seis métricas offline de la suite
+contractual, fecha, procedencia, bandera `productionEvidence=false` y limitaciones. Su finalidad es
+detectar regresión reproducible: el evaluador exige que el candidato no empeore ninguna métrica
+offline compartida. No se inventa baseline online ni se usa este artefacto como control causal.
+
+`promotion.py` define modelos Pydantic cerrados para política, muestra, dataset y baseline. El snapshot
+solo admite contadores de muestra y métricas agregadas; no contiene sesiones, candidatos ni identidad.
+`evaluate_promotion` comprueba coincidencia exacta de las tres versiones, rechaza métricas desconocidas,
+ausentes o no finitas, aplica muestra/potencia/confianza, umbrales y no-regresión, y devuelve una lista
+inmutable con valor observado/requerido. `promotable` es conjunción de todos los gates. La CLI
+`reserly-demand-evaluate-promotion` emite JSON y código distinto de cero al bloquear; no despliega,
+edita definiciones ni altera tráfico.
+
+### Archivos, pruebas, evidencia y deuda
+
+Se crearon política, dataset, baseline, módulo `promotion.py` y seis pruebas; se añadió el entrypoint
+al `pyproject.toml` y uso/semántica a README, documento de vertical, diseño, tareas y seguimiento. Los
+tests cubren carga privada/versionada del dataset, aprobación completa de shadow, bloqueo de tolerancia
+cero, fallo por métrica omitida/desconocida, requisitos de potencia/dos variantes/muestra y rechazo de
+versiones cruzadas. Evidencia: `python -m unittest tests.test_promotion -v`, con PYTHONPATH del motor y
+contratos, ejecutó seis casos sin fallos; Prettier validó/formateó los tres JSON y `git diff --check`
+quedó limpio.
+
+Riesgos/deuda: el baseline es deliberadamente sintético y debe sustituirse por un artefacto real
+aprobado sin sobrescribir versión. `poweredSample` llega del análisis estadístico: la puerta lo exige
+pero no calcula potencia ni intervalos a partir de filas individuales. Los costes necesitan una fuente
+financiera gobernada y la diversidad una agregación por local. 21.5/21.11 deberán operacionalizar
+datasets, informes y auditoría; 20.21 debe demostrar transversalmente que los productores calculan las
+métricas y guardrails sin romper aislamiento.

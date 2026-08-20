@@ -4287,3 +4287,24 @@ La asignación ocurre antes de producir la decisión. `registerExposure` la vinc
 anterior a la asignación. El flujo de impresión rechaza toda recomendación experimental sin ese
 registro durable o si la impresión precede al registro. Así, el denominador experimental existe antes
 de observar el resultado y un fallo no puede convertir tráfico ya expuesto en control implícito.
+
+### 14.38 Evaluación y promoción en dos etapas
+
+`promotion-gates-v1` es el diccionario ejecutable de 25 métricas offline, shadow, online,
+experimentales y de guardrail. Cada entrada fija definición, numerador, denominador, unidad, dirección
+y umbral por etapa. `shadowToPilot` exige siete días consecutivos, calidad/no-regresión offline,
+cobertura, inventario, latencia y cero violaciones. `pilotToRollout` exige 42 días, al menos 1.000
+sesiones por cada una de exactamente dos variantes, 100 reservas, potencia suficiente, confianza del
+95 %, uplift primario, ocupación valle, atribución y límites de asistencia, cancelación, diversidad y
+coste. Una violación de privacidad, restricción dura o explicación falsa tiene tolerancia cero.
+
+`ranking-mvp-evaluation.v1` contiene doce casos sintéticos ES/EN del vertical, expectativas de top,
+exclusiones duras y códigos explicables. Declara allowlist, ausencia de producción/PII y regla de split
+temporal para una futura evaluación real. No es dataset de entrenamiento. El baseline
+`public-availability-fallback-v1.synthetic-baseline-v1` captura únicamente referencia offline
+sintética y declara explícitamente sus limitaciones; nunca sustituye al control A/B.
+
+El evaluador rechaza campos desconocidos, métricas ausentes, NaN, versiones cruzadas y muestras
+insuficientes. Compara las métricas offline compartidas contra baseline sin regresión y luego aplica
+los umbrales de la etapa. Devuelve cada gate observado/requerido y `promotable` solo si todos pasan.
+No despliega ni muta configuración: la decisión sigue siendo humana, auditada y reversible.

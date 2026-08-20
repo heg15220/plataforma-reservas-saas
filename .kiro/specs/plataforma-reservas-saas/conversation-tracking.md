@@ -9813,3 +9813,25 @@ Fuente de verdad del avance:
   - La exposición es idempotente e inmutable una vez vinculada; una discrepancia falla cerrado.
   - Las suites focalizadas quedaron verdes; Checkstyle global conserva 45 incidencias preexistentes
     ajenas a los archivos de esta tarea.
+
+# Conversación 231 - Métricas y puertas de promoción del ranking
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se materializó un diccionario ejecutable de 25 métricas con definición, fórmula, unidad, sentido y
+    umbrales distintos para iniciar piloto y promover a rollout.
+  - Se creó un dataset canónico sintético de doce casos ES/EN y un baseline offline explícitamente no
+    productivo, ambos estrictamente versionados y sin datos personales.
+  - El evaluador falla cerrado ante versiones cruzadas, muestra/potencia insuficiente, métricas
+    ausentes/desconocidas, regresión offline o cualquier guardrail incumplido.
+- Archivos modificados:
+  - Política, dataset, baseline, evaluador/CLI y pruebas Python; README, documento del vertical y cuatro
+    documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 20.20; prepara 20.21, 21.5, 21.10 y 21.11.
+- Tareas completadas: 20.20.
+- Siguiente tarea pendiente recomendada: 17.1; para motor de demanda, 20.21.
+- Decisiones o aclaraciones relevantes:
+  - Shadow a piloto no exige uplift; piloto a rollout sí exige potencia, muestra y efecto con IC95.
+  - El baseline sintético solo protege regresión offline y nunca se interpreta como control causal.
+  - Seis pruebas dirigidas quedaron verdes y los artefactos JSON pasaron formato/validación estricta.

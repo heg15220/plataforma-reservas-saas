@@ -1,0 +1,134 @@
+{
+  "datasetVersion": "ranking-mvp-evaluation.v1",
+  "scope": "synthetic-personal-care-contract",
+  "locales": ["es", "en"],
+  "verticals": ["peluqueria", "centro-de-estetica"],
+  "splitPolicy": {
+    "training": "none",
+    "evaluation": "all-canonical-cases",
+    "futureProductionRule": "time-based; labels newer than training cutoff only"
+  },
+  "privacy": {
+    "containsProductionData": false,
+    "containsPersonalData": false,
+    "allowedFields": [
+      "caseId",
+      "locale",
+      "categoryCode",
+      "activeFilters",
+      "expectedTopCandidateId",
+      "hardExcludedCandidateIds",
+      "expectedExplanationCodes"
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "es-hair-availability",
+      "locale": "es",
+      "categoryCode": "peluqueria",
+      "activeFilters": ["available_now"],
+      "expectedTopCandidateId": "hair-available",
+      "hardExcludedCandidateIds": ["hair-no-slot"],
+      "expectedExplanationCodes": ["GOOD_AVAILABILITY"]
+    },
+    {
+      "caseId": "en-hair-distance",
+      "locale": "en",
+      "categoryCode": "peluqueria",
+      "activeFilters": ["within_radius"],
+      "expectedTopCandidateId": "hair-near",
+      "hardExcludedCandidateIds": ["hair-outside-radius"],
+      "expectedExplanationCodes": ["NEAR_YOU"]
+    },
+    {
+      "caseId": "es-facial-service",
+      "locale": "es",
+      "categoryCode": "centro-de-estetica",
+      "activeFilters": ["facial"],
+      "expectedTopCandidateId": "facial-match",
+      "hardExcludedCandidateIds": ["body-only"],
+      "expectedExplanationCodes": ["MATCHES_PREFERENCES"]
+    },
+    {
+      "caseId": "en-nails-capacity",
+      "locale": "en",
+      "categoryCode": "centro-de-estetica",
+      "activeFilters": ["nails"],
+      "expectedTopCandidateId": "nails-capacity",
+      "hardExcludedCandidateIds": ["nails-full"],
+      "expectedExplanationCodes": ["GOOD_AVAILABILITY"]
+    },
+    {
+      "caseId": "es-unpublished",
+      "locale": "es",
+      "categoryCode": "peluqueria",
+      "activeFilters": [],
+      "expectedTopCandidateId": "published-salon",
+      "hardExcludedCandidateIds": ["draft-salon"],
+      "expectedExplanationCodes": ["POPULAR_NEARBY"]
+    },
+    {
+      "caseId": "en-inactive-service",
+      "locale": "en",
+      "categoryCode": "peluqueria",
+      "activeFilters": ["colour"],
+      "expectedTopCandidateId": "active-colour",
+      "hardExcludedCandidateIds": ["archived-colour"],
+      "expectedExplanationCodes": ["MATCHES_PREFERENCES"]
+    },
+    {
+      "caseId": "es-no-location-permission",
+      "locale": "es",
+      "categoryCode": "centro-de-estetica",
+      "activeFilters": [],
+      "expectedTopCandidateId": "facial-quality",
+      "hardExcludedCandidateIds": [],
+      "expectedExplanationCodes": ["HIGH_RATING"]
+    },
+    {
+      "caseId": "en-no-personalization",
+      "locale": "en",
+      "categoryCode": "peluqueria",
+      "activeFilters": ["available_today"],
+      "expectedTopCandidateId": "hair-today",
+      "hardExcludedCandidateIds": [],
+      "expectedExplanationCodes": ["GOOD_AVAILABILITY"]
+    },
+    {
+      "caseId": "es-frequency-cap",
+      "locale": "es",
+      "categoryCode": "peluqueria",
+      "activeFilters": [],
+      "expectedTopCandidateId": "hair-diverse",
+      "hardExcludedCandidateIds": ["hair-frequency-capped"],
+      "expectedExplanationCodes": ["POPULAR_NEARBY"]
+    },
+    {
+      "caseId": "en-new-venue-quota",
+      "locale": "en",
+      "categoryCode": "centro-de-estetica",
+      "activeFilters": [],
+      "expectedTopCandidateId": "established-beauty",
+      "hardExcludedCandidateIds": [],
+      "expectedExplanationCodes": ["HIGH_RATING"]
+    },
+    {
+      "caseId": "es-fallback-tie",
+      "locale": "es",
+      "categoryCode": "peluqueria",
+      "activeFilters": ["available_today"],
+      "expectedTopCandidateId": "00000000-0000-0000-0000-000000000001",
+      "hardExcludedCandidateIds": [],
+      "expectedExplanationCodes": ["GOOD_AVAILABILITY"]
+    },
+    {
+      "caseId": "en-empty-after-guards",
+      "locale": "en",
+      "categoryCode": "centro-de-estetica",
+      "activeFilters": ["body"],
+      "expectedTopCandidateId": null,
+      "hardExcludedCandidateIds": ["medical-body", "body-no-slot"],
+      "expectedExplanationCodes": []
+    }
+  ]
+}

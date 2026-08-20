@@ -147,3 +147,17 @@ El piloto se abandona o rediseña si ocurre cualquiera de estas condiciones:
 
 Ningún umbral de este documento activa por sí mismo una mutación automática. Toda ampliación debe
 quedar registrada en `.kiro`, versionar la política y preservar un grupo de control válido.
+
+## Artefactos ejecutables de promoción
+
+Los umbrales de este documento se materializan en `promotion-gates.v1.json`; el dataset sintético
+minimizado es `ranking-mvp-evaluation.v1.json` y la referencia reproducible es
+`public-availability-fallback.v1.synthetic-baseline-v1`. La puerta `shadowToPilot` exige siete días,
+calidad offline, salud operativa y cero violaciones, pero no uplift todavía no observable. La puerta
+`pilotToRollout` exige además seis semanas, dos variantes con al menos 1.000 sesiones cada una, 100
+reservas, potencia suficiente, intervalo al 95 %, resultados de negocio y todos los guardrails.
+
+El baseline se declara expresamente sintético y no productivo: sirve para detectar regresión offline,
+no como control causal. Un snapshot mezcla versiones, omite una métrica obligatoria o añade una clave
+desconocida y la evaluación falla cerrada. La decisión resultante es consultiva; promoción, pausa o
+rollout siguen requiriendo revisión humana y registro de gobernanza.

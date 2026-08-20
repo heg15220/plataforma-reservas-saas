@@ -1,0 +1,289 @@
+{
+  "policyVersion": "promotion-gates-v1",
+  "datasetVersion": "ranking-mvp-evaluation.v1",
+  "baselineVersion": "public-availability-fallback-v1.synthetic-baseline-v1",
+  "confidenceLevel": 0.95,
+  "sampleRequirements": {
+    "shadowToPilot": {
+      "minimumConsecutiveDays": 7,
+      "minimumSessionsPerVariant": 0,
+      "minimumCompletedBookings": 0
+    },
+    "pilotToRollout": {
+      "minimumConsecutiveDays": 42,
+      "minimumSessionsPerVariant": 1000,
+      "minimumCompletedBookings": 100
+    }
+  },
+  "metrics": [
+    {
+      "metricKey": "recallAt1",
+      "phase": "offline",
+      "definition": "Casos cuyo candidato esperado ocupa la primera posición / casos evaluables.",
+      "numerator": "Casos con candidato esperado en posición 1",
+      "denominator": "Casos evaluables del dataset versionado",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.8,
+      "pilotToRolloutThreshold": 0.8
+    },
+    {
+      "metricKey": "recallAt3",
+      "phase": "offline",
+      "definition": "Casos cuyo candidato esperado aparece en las tres primeras posiciones / casos evaluables.",
+      "numerator": "Casos con candidato esperado en top 3",
+      "denominator": "Casos evaluables del dataset versionado",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.95,
+      "pilotToRolloutThreshold": 0.95
+    },
+    {
+      "metricKey": "meanReciprocalRank",
+      "phase": "offline",
+      "definition": "Media de 1 / primera posición relevante por caso evaluable.",
+      "numerator": "Suma de rangos recíprocos",
+      "denominator": "Casos evaluables del dataset versionado",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.85,
+      "pilotToRolloutThreshold": 0.85
+    },
+    {
+      "metricKey": "crossLocaleRecallAt3",
+      "phase": "offline",
+      "definition": "Recall@3 cuando locale de consulta y candidato esperado difieren.",
+      "numerator": "Casos cross-locale acertados en top 3",
+      "denominator": "Casos cross-locale evaluables",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.9,
+      "pilotToRolloutThreshold": 0.9
+    },
+    {
+      "metricKey": "determinismRate",
+      "phase": "offline",
+      "definition": "Replays con salida byte a byte equivalente / replays ejecutados.",
+      "numerator": "Replays equivalentes",
+      "denominator": "Replays ejecutados",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 1.0,
+      "pilotToRolloutThreshold": 1.0
+    },
+    {
+      "metricKey": "explanationFidelityRate",
+      "phase": "offline",
+      "definition": "Explicaciones respaldadas por señal aplicada y permiso / explicaciones emitidas.",
+      "numerator": "Explicaciones fieles",
+      "denominator": "Explicaciones emitidas",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 1.0,
+      "pilotToRolloutThreshold": 1.0
+    },
+    {
+      "metricKey": "eventValidityRate",
+      "phase": "shadow",
+      "definition": "Eventos aceptados con requestId, versión e instante válidos / eventos recibidos.",
+      "numerator": "Eventos válidos",
+      "denominator": "Eventos recibidos",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.99,
+      "pilotToRolloutThreshold": 0.99
+    },
+    {
+      "metricKey": "impressionCoverageRate",
+      "phase": "shadow",
+      "definition": "Impresiones con conjunto completo y elegible / impresiones aceptadas.",
+      "numerator": "Impresiones completas",
+      "denominator": "Impresiones aceptadas",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.98,
+      "pilotToRolloutThreshold": 0.98
+    },
+    {
+      "metricKey": "candidateCoverageRate",
+      "phase": "shadow",
+      "definition": "Sesiones con al menos tres locales elegibles / sesiones elegibles.",
+      "numerator": "Sesiones con tres candidatos",
+      "denominator": "Sesiones elegibles",
+      "unit": "ratio",
+      "direction": "minimum",
+      "shadowToPilotThreshold": 0.7,
+      "pilotToRolloutThreshold": 0.7
+    },
+    {
+      "metricKey": "duplicateEventRate",
+      "phase": "shadow",
+      "definition": "Eventos duplicados detectados tras idempotencia / eventos recibidos.",
+      "numerator": "Eventos duplicados",
+      "denominator": "Eventos recibidos",
+      "unit": "ratio",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 0.005,
+      "pilotToRolloutThreshold": 0.005
+    },
+    {
+      "metricKey": "contractRejectionRate",
+      "phase": "shadow",
+      "definition": "Eventos rechazados por contrato / eventos recibidos.",
+      "numerator": "Eventos rechazados",
+      "denominator": "Eventos recibidos",
+      "unit": "ratio",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 0.01,
+      "pilotToRolloutThreshold": 0.01
+    },
+    {
+      "metricKey": "addedLatencyP95Ms",
+      "phase": "online",
+      "definition": "Percentil 95 de latencia servidor con motor menos baseline sin motor.",
+      "numerator": "Percentil de diferencias de latencia",
+      "denominator": "Solicitudes válidas medidas en ambos caminos",
+      "unit": "milliseconds",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 150.0,
+      "pilotToRolloutThreshold": 150.0
+    },
+    {
+      "metricKey": "unplannedFallbackRate",
+      "phase": "online",
+      "definition": "Rankings con fallback/error no planificado / solicitudes de ranking válidas.",
+      "numerator": "Fallbacks o errores no planificados",
+      "denominator": "Solicitudes de ranking válidas",
+      "unit": "ratio",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 0.01,
+      "pilotToRolloutThreshold": 0.01
+    },
+    {
+      "metricKey": "completedBookingRelativeUplift",
+      "phase": "experiment",
+      "definition": "Tasa de reserva completada tratamiento / control - 1.",
+      "numerator": "Diferencia relativa entre tasas de tratamiento y control",
+      "denominator": "Tasa de reserva completada del control",
+      "unit": "ratio",
+      "direction": "minimum",
+      "pilotToRolloutThreshold": 0.05
+    },
+    {
+      "metricKey": "completedBookingEffectLowerBound",
+      "phase": "experiment",
+      "definition": "Límite inferior del intervalo bilateral del 95 % del uplift relativo primario.",
+      "numerator": "Límite inferior del efecto estimado",
+      "denominator": "Tasa de reserva completada del control",
+      "unit": "ratio",
+      "direction": "minimum",
+      "pilotToRolloutThreshold": 0.0
+    },
+    {
+      "metricKey": "offPeakOccupancyAbsoluteUplift",
+      "phase": "experiment",
+      "definition": "Ocupación valle de tratamiento menos control en locales con capacidad.",
+      "numerator": "Diferencia de ratios de capacidad confirmada",
+      "denominator": "Capacidad publicable en periodos valle",
+      "unit": "ratio",
+      "direction": "minimum",
+      "pilotToRolloutThreshold": 0.05
+    },
+    {
+      "metricKey": "assistedOrGeneratedShare",
+      "phase": "experiment",
+      "definition": "Reservas asistidas o generadas con evidencia / reservas del tratamiento.",
+      "numerator": "Reservas asistidas o generadas con evidencia completa",
+      "denominator": "Reservas completadas del tratamiento",
+      "unit": "ratio",
+      "direction": "minimum",
+      "pilotToRolloutThreshold": 0.15
+    },
+    {
+      "metricKey": "attendanceAbsoluteChange",
+      "phase": "guardrail",
+      "definition": "Tasa de asistencia de tratamiento menos control.",
+      "numerator": "Diferencia de tasas de asistencia",
+      "denominator": "Reservas con ventana de asistencia cerrada",
+      "unit": "ratio",
+      "direction": "minimum",
+      "pilotToRolloutThreshold": -0.02
+    },
+    {
+      "metricKey": "cancellationAbsoluteChange",
+      "phase": "guardrail",
+      "definition": "Tasa de cancelación de tratamiento menos control.",
+      "numerator": "Diferencia de tasas de cancelación",
+      "denominator": "Reservas confirmadas",
+      "unit": "ratio",
+      "direction": "maximum",
+      "pilotToRolloutThreshold": 0.02
+    },
+    {
+      "metricKey": "maximumVenueExplorationShare",
+      "phase": "guardrail",
+      "definition": "Máxima cuota de impresiones de exploración recibida por un local elegible.",
+      "numerator": "Máximo de impresiones de exploración de un local",
+      "denominator": "Impresiones de exploración",
+      "unit": "ratio",
+      "direction": "maximum",
+      "pilotToRolloutThreshold": 0.4
+    },
+    {
+      "metricKey": "monthlyIncrementalCostEur",
+      "phase": "guardrail",
+      "definition": "Coste mensual incremental directamente imputable al motor.",
+      "numerator": "Coste incremental mensual",
+      "denominator": "Un mes natural",
+      "unit": "eur",
+      "direction": "maximum",
+      "pilotToRolloutThreshold": 250.0
+    },
+    {
+      "metricKey": "costPerAttendedAttributedBookingEur",
+      "phase": "guardrail",
+      "definition": "Coste incremental / reservas asistidas o generadas que terminan asistidas.",
+      "numerator": "Coste incremental",
+      "denominator": "Reservas atribuidas que terminan asistidas",
+      "unit": "eur_per_booking",
+      "direction": "maximum",
+      "pilotToRolloutThreshold": 2.0
+    },
+    {
+      "metricKey": "privacyViolationCount",
+      "phase": "guardrail",
+      "definition": "Eventos, logs o artefactos con PII, dato sensible o uso sin consentimiento.",
+      "numerator": "Violaciones verificadas",
+      "denominator": "No aplica; conteo absoluto",
+      "unit": "count",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 0.0,
+      "pilotToRolloutThreshold": 0.0,
+      "zeroTolerance": true
+    },
+    {
+      "metricKey": "hardConstraintViolationCount",
+      "phase": "guardrail",
+      "definition": "Candidatos no publicados, inelegibles, sin capacidad o fuera de filtros expuestos.",
+      "numerator": "Violaciones verificadas",
+      "denominator": "No aplica; conteo absoluto",
+      "unit": "count",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 0.0,
+      "pilotToRolloutThreshold": 0.0,
+      "zeroTolerance": true
+    },
+    {
+      "metricKey": "falseExplanationCount",
+      "phase": "guardrail",
+      "definition": "Explicaciones sin evidencia aplicada, permiso o plantilla gobernada.",
+      "numerator": "Explicaciones falsas verificadas",
+      "denominator": "No aplica; conteo absoluto",
+      "unit": "count",
+      "direction": "maximum",
+      "shadowToPilotThreshold": 0.0,
+      "pilotToRolloutThreshold": 0.0,
+      "zeroTolerance": true
+    }
+  ]
+}

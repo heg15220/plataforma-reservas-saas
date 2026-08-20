@@ -40,3 +40,13 @@ mantiene estado durable ni puede publicar, reservar o consumir capacidad.
 $env:PYTHONPATH='src;../../packages/demand-contracts/src'
 python -m unittest discover -s tests -v
 ```
+
+La promoción de ranking se evalúa con artefactos versionados y un snapshot agregado:
+
+```powershell
+$env:PYTHONPATH='src;../../packages/demand-contracts/src'
+python -m reserly_demand_engine.promotion path\to\promotion-snapshot.json
+```
+
+La CLI exige coincidencia exacta de política, dataset y baseline. Distingue `shadowToPilot` de
+`pilotToRollout`, falla ante métricas ausentes o desconocidas y nunca acepta filas individuales.
