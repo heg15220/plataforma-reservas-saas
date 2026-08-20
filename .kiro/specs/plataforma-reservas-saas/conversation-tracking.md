@@ -10021,3 +10021,23 @@ Fuente de verdad del avance:
   - No se persiste riesgo individual ni se incluye un identificador de persona/reserva en la salida.
   - Historial de asistencia queda auditado como posible fuente de desigualdad y nunca autoriza trato.
   - Cinco pruebas focalizadas quedaron verdes.
+
+# Conversación 241 - Protocolo y ejecución A/B del ranking
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se prerregistraron hipótesis, control/tratamiento, primaria, baseline, MDE, alpha, potencia, muestra,
+    periodo y cuatro looks con alpha spending.
+  - Se implementó análisis de dos proporciones con efecto, IC, p-value, potencia y decisiones de
+    continuar, éxito, futilidad, inconcluso o parada de seguridad.
+  - Diez guardrails cubren ratio de muestra, exposición, asistencia, cancelación, valle, nuevos locales, cross-over,
+    restricciones duras y privacidad; datos sintéticos no permiten causalidad.
+- Archivos modificados: política A/B, analizador/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 21.9; prepara 21.10, 21.11 y 21.12.
+- Tareas completadas: 21.9.
+- Siguiente tarea pendiente recomendada: 17.1; para esta fase del motor, 21.10.
+- Decisiones o aclaraciones relevantes:
+  - Solo los días 14, 21, 28 y 42 permiten análisis; cualquier lectura no prerregistrada se rechaza.
+  - Guardrails tienen prioridad sobre significación y producen parada de seguridad.
+  - Siete ejecuciones sintéticas verificaron el analizador, sin afirmar resultado productivo.

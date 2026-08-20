@@ -4467,3 +4467,19 @@ capacidad, recordatorios consentidos o reglas ordinarias de reserva. AUC, Brier,
 cohorte deben superar gates; evidencia sintética mantiene bloqueada la revisión de promoción. La model
 card prohíbe además evaluar trabajadores y advierte que el historial de asistencia puede reflejar
 desigualdad de acceso.
+
+### 14.48 Protocolo A/B secuencial del ranking
+
+`ranking-ab-test-v1` prerregistra sesión seudónima consentida como unidad, reparto 50/50, control
+`public-availability-fallback-v1`, tratamiento `score-mvp-v1` y reserva completada por sesión expuesta
+como primaria. Sobre baseline 10 % fija MDE absoluto 2 pp, alpha bilateral 0,05, potencia 0,80 y
+muestra calculada de 3.841 sesiones expuestas por brazo. El periodo planificado es 28 días, máximo 42, con únicos looks
+en días 14/21/28/42 y alpha acumulado 0,01/0,025/0,05/0,05; cualquier peek diferente falla cerrado.
+
+El análisis recibe solo conteos agregados de control/tratamiento y verifica versión, política,
+exposición, exclusión y ausencia de PII. Informa tasas, efecto absoluto/relativo, IC del look, p-value,
+potencia alcanzada y muestra requerida. Éxito exige muestra/potencia, efecto >=MDE, límite inferior
+positivo, significación del look, todos los guardrails y evidencia productiva. El look final con
+potencia sin efecto termina por futilidad; falta de potencia continúa hasta máximo; cualquier violación
+de ratio de muestra, restricciones, privacidad, cross-over, exposición, asistencia, cancelación, valle o diversidad
+detiene por seguridad. Una simulación jamás permite afirmación causal.

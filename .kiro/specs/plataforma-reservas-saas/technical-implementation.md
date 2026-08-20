@@ -37998,3 +37998,70 @@ real. El histórico de asistencia debe probarse mediante ablación y segmentos p
 promoción. ECE con diez bins es inestable en muestras pequeñas. No se implementa sobrebooking ni
 acción automática deliberadamente. 21.9 medirá resultados causales del ranking y 21.12 deberá añadir
 drift, intervalos, model registry y revisión de leakage/adverse impact.
+
+## Iteración 2026-08-20 - Tarea 21.9: protocolo y analizador A/B de ranking
+
+### Objetivo, requisitos y prerregistro
+
+- Identificador exacto: 21.9.
+- Objetivo técnico: hacer ejecutable un A/B válido del ranking con muestra/potencia, periodo, primaria,
+  guardrails y criterios de parada fijados antes de observar resultados.
+- Requisitos/diseño: RF-036, RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.12, 14.17, 14.37, 14.38 y 14.48.
+
+`ranking-ab-test-v1` enlaza `personal-care-ranking-v1` versión 1 a las definiciones durables de V55:
+control `public-availability-fallback-v1`, tratamiento `score-mvp-v1`, variantes control/treatment,
+sesión seudónima consentida y asignación 5.000 bps. La métrica primaria es reservas completadas por
+sesión expuesta, con baseline 0,10 y MDE absoluto 0,02. Alpha bilateral es 0,05 y potencia objetivo
+0,80. `required_sample_per_arm` aplica la aproximación normal estándar de dos proporciones con
+varianza pooled bajo nula y varianzas separadas bajo alternativa; redondea siempre hacia arriba.
+Con los parámetros v1, la muestra resultante es 3.841 sesiones expuestas por brazo.
+
+Periodo planificado es 28 días y máximo 42. Los únicos análisis permitidos son secuencias 1/2/3/4 en
+días 14/21/28/42, con alpha bilateral acumulado 0,01/0,025/0,05/0,05. Política valida secuencias consecutivas,
+días/alpha monótonos y final coincidente. Snapshot con otro día produce `RANKING_AB_UNPLANNED_PEEK`;
+versión, definición, variante o política cruzada también fallan antes de calcular.
+
+### Agregados, estadística y potencia
+
+`ExperimentArmAggregate` contiene solo conteos de asignación/exposición, reservas, outcomes maduros e
+impresiones agregadas. Checks impiden numeradores mayores que denominadores. `RankingAbSnapshot`
+declara revocaciones aplicadas, ausencia de PII, evidencia productiva y contadores zero-tolerance; no
+acepta UUID, consulta, posición individual, identidad o evento.
+
+El analizador calcula tasas por expuestos, diferencia absoluta y relativa, estadístico z pooled y
+p-value bilateral. El IC usa error estándar de tasas separadas y el crítico correspondiente al alpha
+del look. Potencia alcanzada se calcula contra el MDE prerregistrado; `powered` exige ambos brazos por
+encima de la muestra y potencia >=0,80. No se cambia MDE, denominador ni ventana después de observar.
+
+### Guardrails y criterios de parada
+
+Los guardrails verifican desviación del reparto tratamiento 50 % <=3 pp, cobertura de exposición >=95 % en cada brazo; cambio de asistencia >=-2 pp;
+cancelación <=+2 pp; share valle >=-2 pp; ratio de exposición a locales nuevos >=0,80; y cero
+cross-over, violación dura o privacidad. Sin denominador de nuevos locales en control el ratio queda
+neutral 1,0 y se documenta la limitación; una versión posterior deberá exigir volumen específico.
+
+Una sola barrera fallida produce `safetyStop` antes de considerar uplift. Con evidencia productiva,
+`success` exige potencia, p <= alpha del look, IC inferior >0 y efecto >=MDE. El look final powered sin
+éxito termina `futility`; antes continúa, y al máximo sin resolución queda `inconclusive`. Con
+`productionEvidence=false` devuelve `simulationOnly`, no satisface parada ni permite causalidad.
+`causalClaimAllowed` solo puede ser verdadero para éxito productivo.
+
+### Archivos, pruebas, evidencia, observabilidad y deuda
+
+Se crearon política, `ab_testing.py` y seis pruebas, y se actualizaron los cuatro documentos `.kiro`.
+No se creó migración: V55 ya conserva definición/asignación/exposición; el analizador opera sobre
+exportaciones agregadas y no duplica datos. El resultado es el registro auditable de versiones,
+muestra, potencia, IC, p-value, diez guardrails, decisión y motivos; no contiene datos personales.
+
+Las pruebas ejecutan éxito powered, simulación bloqueada, interim underpowered, futilidad al periodo planificado, máximo inconcluso,
+violación dura prioritaria y rechazo de peek/política. Evidencia focalizada:
+`python -m unittest apps/demand-engine/tests/test_ab_testing.py -v`, con roots Python del proyecto,
+ejecutó siete casos; `npm run test:demand` completó 110 pruebas acumuladas sin fallos. `git diff
+--check` se verificó antes del commit.
+
+Riesgos/deuda: aproximación normal e IC Wald son adecuados al volumen prerregistrado, pero una futura
+versión puede usar intervalos score exactos. No hay datos productivos en el repositorio y, por tanto,
+no se afirma uplift real. Deben monitorizarse sample-ratio mismatch, maduración tardía, contaminación
+entre dispositivos y attrition diferencial con evidencia real. 21.11 conectará optimización a
+resultados gobernados y 21.12 registrará protocolo/artefacto/drift/rollback de forma integral.

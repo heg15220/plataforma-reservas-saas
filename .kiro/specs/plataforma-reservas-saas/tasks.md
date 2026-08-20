@@ -432,7 +432,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 21.6. Implementar modelo de elección discreta sobre conjuntos de alternativas para interpretar distancia, precio, atributos y contexto.
 - [x] 21.7. Evaluar LightGBM o CatBoost para conversión y ranking solo si supera baseline, calibración, latencia, estabilidad y equidad.
 - [x] 21.8. Implementar predicción calibrada de no-show como señal de riesgo, sin automatizar penalizaciones ni denegaciones.
-- [ ] 21.9. Ejecutar pruebas A/B del ranking con potencia, muestra, periodo, métricas primarias, guardrails y criterio de parada documentados.
+- [x] 21.9. Ejecutar pruebas A/B del ranking con potencia, muestra, periodo, métricas primarias, guardrails y criterio de parada documentados.
 - [ ] 21.10. Implementar descubrimiento de atributos candidatos con embeddings, UMAP, HDBSCAN, BERTopic y c-TF-IDF bajo revisión humana.
 - [ ] 21.11. Añadir analítica de conversión por servicio, franja, zona, segmento permitido y atributo con intervalos y muestra mínima.
 - [ ] 21.12. Crear tests de reproducibilidad, leakage, calibración, sesgo, robustez lingüística, revocación y promoción de modelos.
