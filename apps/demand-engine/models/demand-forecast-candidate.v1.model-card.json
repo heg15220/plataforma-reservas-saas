@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "demandForecastCandidate",
+  "modelVersion": "xgboost-poisson-demand-candidate-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Forecast aggregated venue demand only when future error and uncertainty improve the governed day-hour baseline.",
+  "intendedUse": ["offlineDemandForecastEvaluation", "aggregateCapacityPlanningAfterApproval"],
+  "prohibitedUse": [
+    "automaticDeployment",
+    "individualDemandPrediction",
+    "automaticCapacityMutation",
+    "automaticPricing",
+    "inferSensitiveTraits"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "demand-forecast-evaluation-v1",
+  "featureSetVersion": "demand-temporal-features-v1",
+  "limitations": [
+    "Forecasts are aggregate associations and do not identify individual intent.",
+    "Conformal coverage is empirical and can degrade after temporal or marketplace drift.",
+    "Synthetic improvement never authorizes production promotion.",
+    "The auditable day-hour baseline remains active whenever any gate fails."
+  ],
+  "rollback": "Disable the boosting forecast and restore the hourly occupancy and demand baseline with its published uncertainty.",
+  "humanApprovalRequired": true
+}

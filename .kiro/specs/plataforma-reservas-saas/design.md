@@ -4591,3 +4591,23 @@ peso máximo, tamaño efectivo, cuota objetivo y tasas ponderadas de violación 
 Promoción requiere ESS >=30, peso <=20, ganancia SNIPS >=0,02, exploración <=10 % y cero violaciones.
 Incluso con evidencia productiva solo habilita revisión humana: no afirma causalidad ni despliega. El
 rollback restaura Thompson básico o ranking determinista con exploración cero.
+
+### 14.55 Forecast avanzado de demanda con boosting Poisson
+
+`demand-forecast-evaluation-v1` compara XGBoost 3.3.0 `count:poisson` con el baseline auditable
+día-hora sobre tres ventanas contiguas: train, calibración conformal y evaluación futura. Las nueve
+features cerradas describen ciclos hora/día, fin de semana, festivo, lag de siete días, media de 28
+días y capacidad disponible. Cada bucket es agregado por local/categoría, valida zona/calidad de
+origen y no contiene identidad, consulta ni comportamiento individual.
+
+El booster se entrena dos veces con semilla y ejecución CPU fijadas. El residual absoluto conformal
+se aprende exclusivamente en calibración y forma intervalos no negativos en evaluación. Champion y
+challenger se comparan sobre las mismas filas mediante MAE, RMSE, WAPE, cobertura y ancho medio. Los
+gates exigen mejorar MAE al menos 5 %, no empeorar WAPE, cobertura >=80 %, intervalo no más ancho que
+el baseline y delta reproducible <=1e-8.
+
+El reporte conserva hash del booster, versiones, métricas, residual, evidencia y model card, pero no
+filas. Sin evidencia productiva, una mejora sintética no se etiqueta fiable ni permite revisión. Aun
+con gates productivos solo habilita aprobación humana; despliegue, cambios automáticos de capacidad,
+precio o decisiones individuales son literales `false`. Cualquier fallo mantiene el baseline con su
+incertidumbre publicada.

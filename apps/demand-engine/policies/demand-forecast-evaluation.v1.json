@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "demand-forecast-evaluation-v1",
+  "algorithmVersion": "xgboost-poisson-3.3.0",
+  "featureSetVersion": "demand-temporal-features-v1",
+  "featureNames": [
+    "hourSin",
+    "hourCos",
+    "weekdaySin",
+    "weekdayCos",
+    "weekend",
+    "holiday",
+    "lagSameSlot7d",
+    "rollingMean28d",
+    "availableCapacity"
+  ],
+  "trainingEndsBefore": "2026-05-01T00:00:00Z",
+  "calibrationEndsBefore": "2026-06-01T00:00:00Z",
+  "evaluationEndsBefore": "2026-07-01T00:00:00Z",
+  "minimumRowsPerSplit": 40,
+  "nEstimators": 80,
+  "maximumDepth": 3,
+  "learningRate": 0.06,
+  "l2Penalty": 1.0,
+  "randomSeed": 17,
+  "intervalConfidence": 0.9,
+  "minimumMaeImprovement": 0.05,
+  "maximumWapeRegression": 0.0,
+  "minimumIntervalCoverage": 0.8,
+  "maximumIntervalWidthRatioToBaseline": 1.0,
+  "maximumStabilityDelta": 0.00000001,
+  "automaticDeploymentAllowed": false
+}

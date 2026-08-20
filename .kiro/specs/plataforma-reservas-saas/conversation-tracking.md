@@ -10164,3 +10164,24 @@ Fuente de verdad del avance:
   - IPS/SNIPS es evaluación de política bajo supuestos de soporte; no autoriza una afirmación causal.
   - Siete pruebas focalizadas quedaron verdes en 0,045 s.
   - `npm run test:demand` ejecutó 141 pruebas acumuladas en 111,042 s, todas verdes.
+
+# Conversación 248 - Forecast avanzado de demanda
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó XGBoost Poisson con variables temporales, lags, media móvil y capacidad sobre tres
+    ventanas separadas de train, calibración conformal y evaluación futura.
+  - El candidato se compara siempre con el baseline día-hora mediante MAE, RMSE, WAPE, cobertura y
+    ancho de intervalo, además de reproducibilidad entre dos entrenamientos.
+  - Evidencia sintética bloquea fiabilidad/promoción y toda acción automática; el baseline permanece
+    activo ante cualquier gate fallido.
+- Archivos modificados: política/model card de forecast, evaluador/pruebas Python y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-037, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 22.4; prepara 22.5 y futuros optimizadores de capacidad.
+- Tareas completadas: 22.4.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase del motor, 22.5.
+- Decisiones o aclaraciones relevantes:
+  - El intervalo se calibra fuera de train y no usa evaluación para ajustar incertidumbre.
+  - El fixture obtuvo MAE 3,50→0,104 y cobertura 1,0, sin reclamar calidad productiva.
+  - Cinco pruebas focalizadas quedaron verdes en 0,296 s.

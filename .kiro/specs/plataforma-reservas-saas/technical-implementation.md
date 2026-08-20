@@ -38501,3 +38501,71 @@ reward en efecto causal. Faltan retención/persistencia CAS, monitor de drift, l
 permitidas, shadow/canary y A/B con potencia. El contexto puede sufrir escala desigual: antes de
 producción necesita normalización versionada. La 22.4 es la siguiente tarea del motor y abordará
 previsión avanzada de demanda comparada con baseline.
+
+## Iteración 2026-08-20 - Tarea 22.4: previsión avanzada de demanda
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 22.4.
+- Objetivo técnico: entrenar un forecast agregado con variables temporales y boosting de conteos,
+  calibrar incertidumbre fuera de train y compararlo siempre con el baseline día-hora.
+- Requisitos/diseño: RF-037, RF-040 y RF-041; RNF-005, RNF-006, RNF-014 y RNF-015; secciones
+  14.13, 14.16, 14.17, 14.36 y 14.55.
+
+`demand-forecast-evaluation-v1` fija XGBoost 3.3.0, objetivo `count:poisson`, 80 árboles, profundidad
+3, learning rate 0,06, L2 1, `hist`, subsample/columnas 1, semilla 17 y un único thread. La
+distribución Poisson impone predicciones no negativas y representa mejor conteos agregados que una
+regresión binaria. Se reutiliza la dependencia ML ya fijada en 22.2; no se añade runtime online.
+
+Las nueve features exactas son seno/coseno de hora y weekday, weekend, holiday, lag del mismo slot a
+siete días, media histórica de 28 días y capacidad disponible. Los ciclos evitan discontinuidades
+23→0 y 6→0. Lag/media deben ser materializados por Spring con datos disponibles antes del bucket; el
+contrato no acepta nombres alternativos ni anchura distinta. No entran demanda futura, reserva, email,
+query, identidad, ubicación exacta ni atributos sensibles.
+
+### Datos, fronteras temporales e incertidumbre
+
+`DemandForecastDataset` exige finalidad agregada, `containsPersonalData=false`, revocaciones,
+timezone y calidad de fuente validadas. Cada `DemandForecastRow` contiene UUID técnico de bucket/local,
+categoría, inicio/outcome aware, features finitas, forecast/intervalo baseline coherentes y conteo
+observado. IDs únicos, extracción posterior a outcomes y `extra=forbid` evitan duplicación, futuro o
+ampliación silenciosa.
+
+Train termina el 1 de mayo, calibración el 1 de junio y evaluación el 1 de julio de 2026. Cada split
+requiere cuarenta buckets y todos sus outcomes deben madurar estrictamente antes de su frontera. El
+modelo solo ve train. Sobre calibración se obtienen residuos absolutos y el cuantil conformal finito
+corregido `ceil((n+1)·0,90)/n`; evaluación recibe intervalos `max(0,pred-q)..pred+q`. Ni árboles ni
+residual usan labels de evaluación.
+
+### Comparación, promoción y comportamiento seguro
+
+`_forecast_metrics` calcula MAE, RMSE, WAPE, cobertura y ancho medio para el baseline congelado y el
+challenger sobre idénticas filas. Se requieren mejora relativa MAE >=5 %, regresión WAPE <=0,
+cobertura candidata >=80 %, ratio de ancho contra baseline <=1 y delta entre dos fits <=1e-8. El
+artefacto reporta SHA-256 del booster JSON, residual conformal, versiones, deltas y model card sin
+copiar buckets.
+
+El fixture obtuvo baseline MAE 3,50/RMSE 3,764/WAPE 0,538 e intervalo ancho 15 frente a candidato
+MAE 0,104/RMSE 0,132/WAPE 0,016, cobertura 1 y ancho 0,561. La mejora extrema es solo validación
+sintética. Por contrato `reliableForecast` y `promotionReviewAllowed` requieren además evidencia
+productiva; acción/despliegue automáticos son siempre `false`. Una revisión humana posterior no puede
+mutar capacidad, precio o contacto sin las tareas y controles específicos. Rollback restaura baseline.
+
+### Archivos, pruebas, evidencia, observabilidad y deuda
+
+Se crearon política, model card, `demand_forecasting.py` y cinco pruebas; se actualizaron tareas,
+diseño, seguimiento y este documento. No hubo endpoint, migración ni persistencia. Errores estables
+cubren versiones, features, splits, maduración y muestra; el hash/metrics permiten auditar el candidato.
+
+Las pruebas ejecutan XGBoost real y verifican mejora/cobertura, bloqueo sintético, revisión productiva
+sin acción, estabilidad/hash, contrato de features/calidad y fronteras temporales/muestra. Evidencia:
+`python -m unittest apps/demand-engine/tests/test_demand_forecasting.py -v`, con ambos roots Python,
+ejecutó cinco casos en 0,296 s y terminó `OK`. Compilación, Prettier y `git diff --check` se verifican
+antes del commit; la suite completa se ejecutará al cerrar las tres tareas.
+
+Riesgos/deuda: el fixture usa lags muy informativos y no representa drift, festivos raros ni locales
+nuevos. Cobertura conformal marginal no garantiza cobertura por local/categoría; hacen falta backtests
+rodantes y segmentados. La capacidad puede censurar demanda observada y debe distinguirse de demanda
+insatisfecha. Antes de promoción se requieren benchmark p95, CVE, shadow/canary y monitor de drift.
+El modelo no es causal ni justifica abrir capacidad; 22.5 define la puerta experimental previa a
+cualquier estimador causal.
