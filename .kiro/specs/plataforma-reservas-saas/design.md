@@ -4570,3 +4570,24 @@ captura de conversión, diversidad de categoría y exposición de locales nuevos
 del booster identifica el modelo evaluado. Evidencia sintética solo prueba el evaluador; producción
 habilita revisión humana, nunca despliegue automático. El rollback restaura score baseline y desempate
 por UUID, conservando intactas restricciones duras.
+
+### 14.54 LinUCB contextual con replay offline y presupuesto de riesgo
+
+`linucb-contextual-v1` define un challenger disjunto con cuatro señales operativas allowlist,
+regularización identidad, `alpha=0,35` y estado por brazo compuesto solo por matriz A, vector b,
+versión y ledger acotado de UUID de outcome. No persiste contextos ni rewards históricos. Calidad,
+permiso de exploración y snapshot vigente de todas las restricciones duras se evalúan antes de
+calcular `theta·x + alpha·sqrt(xᵀA⁻¹x)`.
+
+La cuota combina aptitud del pool y presupuesto real de una ventana de tráfico. Tras la selección, la
+fracción acumulada de slots exploratorios nunca puede superar 10 %; si no queda presupuesto devuelve
+lista vacía. Contextos con dimensión incorrecta, norma superior a dos, valores no finitos o matrices
+no simétricas/definidas positivas fallan cerrado. El update acepta reward `[0,1]`, aplica
+`A←A+xxᵀ`, `b←b+rx` una sola vez por outcome y conserva replay sin mutación.
+
+Antes de tráfico, `OfflineLinUCBEvaluator` exige propensión de logging >=0,05, overlap, outcomes
+maduros, cuarenta eventos y revocaciones aplicadas. Publica reward observado, IPS, SNIPS, ganancia,
+peso máximo, tamaño efectivo, cuota objetivo y tasas ponderadas de violación de calidad/restricciones.
+Promoción requiere ESS >=30, peso <=20, ganancia SNIPS >=0,02, exploración <=10 % y cero violaciones.
+Incluso con evidencia productiva solo habilita revisión humana: no afirma causalidad ni despliega. El
+rollback restaura Thompson básico o ranking determinista con exploración cero.

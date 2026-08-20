@@ -10141,3 +10141,26 @@ Fuente de verdad del avance:
     LightGBM continúa sin cargar su DLL nativa.
   - El ranker no genera candidatos ni puede reintroducir alternativas excluidas por capacidad.
   - Cinco pruebas focalizadas quedaron verdes en 0,129 s.
+
+# Conversación 247 - LinUCB contextual y evaluación offline
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó LinUCB disjunto con score medio/incertidumbre, estado A/b portable y updates de
+    reward idempotentes por UUID de outcome.
+  - La selección aplica calidad y restricciones duras antes del UCB y combina cuota del pool con un
+    presupuesto acumulado que impide superar 10 % de slots exploratorios.
+  - El replay offline calcula IPS/SNIPS, ESS, pesos, exposición exploratoria y violaciones; falta de
+    soporte o outcome inmaduro falla cerrado y cualquier riesgo bloquea promoción.
+- Archivos modificados: política/model card LinUCB, selector/evaluador/pruebas Python y cuatro
+  documentos `.kiro`.
+- Requisitos impactados: RF-036, RF-038, RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: 22.3; prepara 22.4 y una futura evaluación online con control válido.
+- Tareas completadas: 22.3.
+- Siguiente tarea pendiente recomendada: 17.1 según el orden global; para esta fase del motor, 22.4.
+- Decisiones o aclaraciones relevantes:
+  - Se eligió LinUCB para conservar estadísticos suficientes interpretables y un score reproducible.
+  - IPS/SNIPS es evaluación de política bajo supuestos de soporte; no autoriza una afirmación causal.
+  - Siete pruebas focalizadas quedaron verdes en 0,045 s.
+  - `npm run test:demand` ejecutó 141 pruebas acumuladas en 111,042 s, todas verdes.

@@ -38409,7 +38409,8 @@ Se añadieron XGBoost al `pyproject.toml`, política/model card, `learning_to_ra
 se actualizaron tareas, diseño, seguimiento y este documento. Evidencia focalizada:
 `python -m unittest apps/demand-engine/tests/test_learning_to_rank.py -v`, con ambos roots Python,
 ejecutó cinco casos en 0,129 s y terminó `OK`. También se inspeccionó el reporte completo. Prettier,
-compilación Python, suite acumulada y `git diff --check` se ejecutan antes del commit final.
+compilación Python y `git diff --check` quedaron correctos; la suite acumulada se ejecutó tras cerrar
+la 22.3 para incluir los tres challengers de esta iteración.
 
 Riesgos/deuda: relevancia offline puede codificar sesgo del ranking histórico y conversión es una
 asociación expuesta, no uplift. NDCG del fixture extremo no generaliza. Producción requiere propensity
@@ -38417,3 +38418,86 @@ logging, evaluación por cohortes permitidas, latencia p95, revisión CVE/licenc
 y experimento con potencia. El hash hace identificable el booster pero este reporte no lo despliega;
 un registro de modelos futuro deberá almacenar bytes, firma y provenance protegidos. La tarea 22.3
 añadirá evaluación offline de una política contextual con soporte y presupuesto explícito de riesgo.
+
+## Iteración 2026-08-20 - Tarea 22.3: LinUCB contextual y política offline
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 22.3.
+- Objetivo técnico: evolucionar la exploración no contextual a un challenger LinUCB interpretable,
+  evaluable offline y subordinado a calidad, restricciones y presupuesto de tráfico.
+- Requisitos/diseño: RF-036, RF-038, RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009,
+  RNF-014 y RNF-015; secciones 14.16, 14.17, 14.36 y 14.54.
+
+Se eligió LinUCB disjunto frente a ampliar el Beta-Bernoulli existente: permite condicionar por
+`contentAffinity`, `distanceFit`, `availabilityFit` y `contextMatch` manteniendo estadísticos
+suficientes inspeccionables. La política fija `alpha=0,35`, ridge 1, norma máxima 2, calidad 0,60 y
+cuota máxima 10 %. Los nombres y el orden del contexto son una allowlist versionada; no incluye
+identidad, texto, atributos sensibles ni outcomes.
+
+`LinUCBArmState` conserva únicamente UUID técnico de local/servicio, matriz de covarianza A, vector b,
+versión y hasta mil UUID de outcomes aplicados. `prior` construye A=lambda·I y b=0. El selector exige
+forma 4×4, simetría y autovalores positivos; contexto con dimensión incorrecta, norma excesiva o no
+finito falla cerrado. No se invierte una matriz singular ni se imputa una feature.
+
+### Selección, restricciones, cuota y actualización
+
+`LinUCBCandidate` correlaciona estado/brazo y añade calidad, permiso explícito, contexto y
+`HardConstraintSnapshot`. Antes del score se exigen calidad >=0,60, exploración permitida y ausencia
+de cualquiera de los ocho motivos de rechazo, incluida capacidad y caducidad. Solo entonces se
+calcula `theta=A⁻¹b`, explotación `xᵀtheta`, incertidumbre `alpha·sqrt(xᵀA⁻¹x)` y UCB. Empates se
+resuelven por UUID de local/servicio; el mismo estado produce el mismo orden.
+
+`LinUCBSelectionRequest` incluye contadores anteriores de slots elegibles/exploratorios en la ventana.
+El máximo permitido tras esta página es `floor(0,10·(elegiblesPrevios+slotsSolicitados))`; se resta lo
+ya explorado y se combina con `floor(0,10·candidatosAptos)`. Así una lista grande no consume tráfico
+si el presupuesto real está agotado y una lista de menos de diez aptos no crea un slot. La respuesta
+declara conteos, presupuesto restante, cuota efectiva y share proyectado <=0,10; no reserva capacidad.
+
+El update acepta reward continuo `[0,1]` y aplica `A←A+xxᵀ`, `b←b+reward·x`, incrementa versión y
+añade outcome. Un UUID repetido devuelve el estado exacto con `applied=false`; ledger lleno bloquea.
+Spring deberá persistir con compare-and-swap/versión para evitar carreras: Python calcula la transición
+pero no posee transacción ni identidad de cliente.
+
+### Replay IPS/SNIPS y puertas de riesgo
+
+`OfflineBanditDataset` declara finalidad, ausencia de PII, revocaciones, política y eventos únicos.
+Cada evento aporta instante/outcome maduro, contexto, propensión de logging, probabilidad bajo la
+política objetivo, reward, calidad, condición exploratoria y violación dura. Todos caen en junio de
+2026 y maduran antes del cierre; se exigen cuarenta. Si la política objetivo asigna masa y la propensión
+registrada es inferior a 0,05, se rechaza por falta de soporte.
+
+Con pesos `w=pi_target/pi_logging`, el evaluador calcula media logged, IPS `mean(wr)`, SNIPS
+`sum(wr)/sum(w)`, ganancia SNIPS, peso máximo y ESS `(sum w)^2/sum(w^2)`. Cuota exploratoria y tasas
+de violación se ponderan con la misma masa objetivo. Los gates exigen peso <=20, ESS >=30, ganancia
+>=0,02, exploración <=0,10 y tasas de calidad/restricción exactamente cero. Esto limita varianza y
+riesgo, pero no convierte replay observacional en experimento: `causalClaimAllowed=false`.
+
+`productionEvidence=false` bloquea revisión aunque pase todo. Con evidencia productiva gobernada solo
+se habilita `promotionReviewAllowed`; model card y contrato conservan aprobación humana y
+`automaticDeploymentAllowed=false`. El rollback documentado vuelve a Thompson básico desplegado o a
+ranking determinista con exploración cero. No se conectó el endpoint existente al challenger porque
+esta tarea exige primero política offline; cambiar tráfico antes del gate contradiría RF-041.
+
+### Archivos, pruebas, evidencia, observabilidad y deuda
+
+Se crearon política/model card, `contextual_exploration.py` y siete pruebas; se actualizaron tareas,
+diseño, seguimiento y este documento. No hubo migraciones, endpoints nuevos ni persistencia. Errores
+estables cubren versión, dimensión/norma, estado no positivo, ledger, ventana, maduración, muestra y
+soporte. El reporte permite registrar estimaciones y violaciones sin copiar eventos.
+
+Las pruebas verifican selección repetible/cuota acumulada, filtros de calidad/capacidad, presupuesto
+agotado, actualización/replay, IPS/SNIPS con ESS, bloqueo sintético, revisión productiva únicamente
+humana, falta de soporte y violación dura. El fixture obtiene reward logged 0,50, IPS/SNIPS 0,90,
+share 0,10 y gates verdes, deliberadamente sintético. Evidencia focalizada:
+`python -m unittest apps/demand-engine/tests/test_contextual_exploration.py -v`, con ambos roots,
+ejecutó siete casos en 0,045 s y terminó `OK`. Compilación, Prettier, suite acumulada y
+`git diff --check` quedaron correctos. `npm run test:demand` ejecutó 141 pruebas en 111,042 s y
+terminó `OK`, incluyendo FM, XGBoost LambdaMART, LinUCB y la matriz transversal de gobernanza.
+
+Riesgos/deuda: las probabilidades objetivo deben reconstruirse y auditarse desde la política/log de
+candidatos completo; errores de logging invalidan IPS/SNIPS. ESS no elimina confounding ni convierte
+reward en efecto causal. Faltan retención/persistencia CAS, monitor de drift, latencia p95, cohortes
+permitidas, shadow/canary y A/B con potencia. El contexto puede sufrir escala desigual: antes de
+producción necesita normalización versionada. La 22.4 es la siguiente tarea del motor y abordará
+previsión avanzada de demanda comparada con baseline.

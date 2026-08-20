@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "contextualExplorationCandidate",
+  "modelVersion": "disjoint-linucb-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Evaluate bounded contextual exploration among already eligible quality-qualified marketplace candidates.",
+  "intendedUse": ["offlinePolicyEvaluation", "shadowAfterApproval"],
+  "prohibitedUse": [
+    "automaticDeployment",
+    "bypassHardConstraints",
+    "exceedExplorationBudget",
+    "inferSensitiveTraits",
+    "penalizeCustomer",
+    "changePrice"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "linucb-contextual-v1",
+  "featureSetVersion": "linucb-context-v1",
+  "limitations": [
+    "Offline inverse-propensity estimates require overlap and trustworthy logging propensities.",
+    "Contexts are allowlisted operational affinities and cannot encode identity or sensitive proxies.",
+    "Synthetic replay does not authorize production or shadow traffic.",
+    "The rolling traffic budget and hard constraints always take precedence over UCB score."
+  ],
+  "rollback": "Disable contextual exploration and restore the deployed beta-Bernoulli policy or deterministic ranking with zero exploration.",
+  "humanApprovalRequired": true
+}

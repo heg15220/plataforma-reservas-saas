@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "linucb-contextual-v1",
+  "modelVersion": "disjoint-linucb-v1",
+  "contextFeatureNames": ["contentAffinity", "distanceFit", "availabilityFit", "contextMatch"],
+  "alpha": 0.35,
+  "ridgePenalty": 1.0,
+  "maximumContextNorm": 2.0,
+  "maximumExplorationShare": 0.1,
+  "minimumQuality": 0.6,
+  "maximumOutcomeLedgerSize": 1000,
+  "offlineEvaluationStartsAt": "2026-06-01T00:00:00Z",
+  "offlineEvaluationEndsBefore": "2026-07-01T00:00:00Z",
+  "minimumLoggedEvents": 40,
+  "minimumLoggingPropensity": 0.05,
+  "maximumImportanceWeight": 20.0,
+  "minimumEffectiveSampleSize": 30.0,
+  "minimumSnipsRewardGain": 0.02,
+  "maximumQualityViolationRate": 0.0,
+  "maximumConstraintViolationRate": 0.0,
+  "automaticDeploymentAllowed": false
+}
