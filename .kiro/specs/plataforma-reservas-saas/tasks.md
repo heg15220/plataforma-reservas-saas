@@ -434,7 +434,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 21.8. Implementar predicción calibrada de no-show como señal de riesgo, sin automatizar penalizaciones ni denegaciones.
 - [x] 21.9. Ejecutar pruebas A/B del ranking con potencia, muestra, periodo, métricas primarias, guardrails y criterio de parada documentados.
 - [x] 21.10. Implementar descubrimiento de atributos candidatos con embeddings, UMAP, HDBSCAN, BERTopic y c-TF-IDF bajo revisión humana.
-- [ ] 21.11. Añadir analítica de conversión por servicio, franja, zona, segmento permitido y atributo con intervalos y muestra mínima.
+- [x] 21.11. Añadir analítica de conversión por servicio, franja, zona, segmento permitido y atributo con intervalos y muestra mínima.
 - [ ] 21.12. Crear tests de reproducibilidad, leakage, calibración, sesgo, robustez lingüística, revocación y promoción de modelos.
 
 ## 24. Fase 22 - Marketplace con volumen y optimización

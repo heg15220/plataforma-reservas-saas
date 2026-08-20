@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "conversion-analytics-v1",
+  "definitionVersion": "completed-booking-per-eligible-exposure-v1",
+  "ontologyVersion": "personal-care.v1",
+  "dimensions": ["service", "timeBand", "approximateZone", "permittedSegment", "attribute"],
+  "permittedSegments": ["anonymous", "newCustomer", "returningCustomer"],
+  "minimumSample": 30,
+  "minimumConverted": 5,
+  "minimumNotConverted": 5,
+  "confidenceLevel": 0.95,
+  "maximumGroups": 5000,
+  "maximumAttributesPerObservation": 44
+}

@@ -38141,3 +38141,72 @@ entre semillas/muestras y tasa de ruido. c-TF-IDF puede incluir términos raros 
 denylist, por lo que revisión humana sigue siendo obligatoria. Los UUID de evidencia deben resolverse
 solo con permisos. 21.12 añadirá gates transversales de reproducibilidad, lenguaje, revocación y
 promoción; ninguna salida de 21.10 autoriza automatización.
+
+## Iteración 2026-08-20 - Tarea 21.11: analítica de conversión por dimensión
+
+### Objetivo, requisitos y definición
+
+- Identificador exacto: 21.11.
+- Objetivo técnico: calcular conversión por cinco dimensiones permitidas con intervalo estadístico,
+  mínimo de muestra, aislamiento por local y supresión anti-reidentificación.
+- Requisitos/diseño: RF-036 y RF-040; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015;
+  secciones 14.11, 14.16, 14.17, 14.36 y 14.50.
+
+`conversion-analytics-v1` fija definición `completed-booking-per-eligible-exposure-v1`: numerador de
+reservas completadas y denominador de exposiciones elegibles. Esto evita mezclar impresión, clic,
+inicio de checkout o reserva confirmada bajo una misma tasa. La política versiona ontología, cinco
+dimensiones exactas, segmentos, umbrales, confianza, límite de grupos y cardinalidad de atributos.
+
+`ConversionAnalyticsDataset` pertenece a un único `venueId`, zona IANA, periodo semiabierto UTC y
+corte posterior. Declara finalidad privada, ausencia de datos personales, revocaciones y granularidad
+`approximateNamedZone`. Cada `ConversionObservation` incluye UUID idempotente, exposición literal
+elegible, instante/outcome maduro, servicio, franja, zona nombrada, segmento permitido, atributos y
+label. No existen campos de identidad, email, coordenadas, query, precio o texto. Los modelos
+`extra=forbid` rechazan cualquier ampliación silenciosa.
+
+### Dimensiones, ontología y aislamiento
+
+Una observación aporta exactamente un grupo de servicio, franja, zona y segmento y uno por cada
+atributo único. Las franjas son `morning/afternoon/evening` ya resueltas por Spring en la zona local;
+no se recalculan desde UTC con reglas distintas. Segmentos son solo `anonymous`, `newCustomer` y
+`returningCustomer`, derivados de reglas operativas y no de rasgos sensibles. `approximateZoneCode` es
+un código nombrado, nunca latitud/dirección. Todo atributo debe existir en `personal-care.v1`; máximo
+44 por observación y 5.000 buckets totales.
+
+`calculate(... authorized_venue_id=...)` compara autorización con dataset antes de agrupar y lanza
+`CONVERSION_ANALYTICS_VENUE_FORBIDDEN` ante discrepancia. No existe combinación multi-local. Este
+control complementa, no sustituye, la autorización Spring del endpoint privado. La salida vuelve a
+declarar `singleAuthorizedVenue`, local, periodo y zona para impedir que el consumidor pierda alcance.
+
+### Muestra mínima, Wilson y privacidad
+
+Un bucket se publica solo con `n>=30`, conversiones >=5 y no conversiones >=5. De otro modo
+`insufficientSample` fuerza a null `sampleCount`, `convertedCount`, `conversionRate` e `interval`; no
+se filtra un conteo pequeño junto a una bandera. Para grupos suficientes se calcula Wilson bilateral
+95 % con `NormalDist().inv_cdf`, corrección del centro y margen acotado a `[0,1]`. Se conserva tanto
+tasa como intervalo y confianza para no presentar un punto sin incertidumbre.
+
+`eligibleExposureCount` informa cobertura global ya autorizada; conteos de grupos suprimidos/disponibles
+permiten observabilidad sin revelar sus tamaños. `interpretation=observationalAssociationNotCausal`
+impide llamar “atributo que causa conversión” a una correlación. No hay decisión, ranking, promoción,
+persistencia ni contacto automático derivados del informe.
+
+### CLI, archivos, tests, evidencia y deuda
+
+Se crearon política, `conversion_analytics.py` y cinco pruebas; se modificaron `pyproject.toml`, README
+y los cuatro documentos `.kiro`. La CLI recibe dataset/política/ontología/local autorizado y escribe
+JSON agregado. No consulta PostgreSQL ni registra filas. Spring deberá construir el extracto con su
+control de permisos y podrá almacenar/publicar únicamente el resultado.
+
+Las pruebas verifican las cinco dimensiones disponibles con Wilson, supresión total de grupos
+pequeños, rechazo de otro local, atributo desconocido/PII y outcome inmaduro. Evidencia:
+`python -m unittest apps/demand-engine/tests/test_conversion_analytics.py -v`, con ambos roots Python,
+ejecutó cinco casos en 0,018 s, todos correctos. Prettier, suite acumulada y diff se ejecutan antes del
+commit final.
+
+Riesgos/deuda: Wilson no corrige comparaciones múltiples entre muchos grupos; el panel debe evitar
+rankings oportunistas. Servicios raros permanecerán suprimidos hasta acumular muestra. La zona y
+segmento dependen de una derivación Spring coherente/versionada. No se calcula uplift ni ingreso
+incremental sin control A/B. Una futura integración podrá persistir snapshots agregados con retención,
+pero nunca observaciones o buckets pequeños. 21.12 probará de forma transversal leakage, sesgo,
+revocación, lenguaje, reproducibilidad y promoción.

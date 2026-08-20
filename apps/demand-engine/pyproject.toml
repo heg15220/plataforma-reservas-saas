@@ -32,3 +32,4 @@ reserly-demand-evaluate-embeddings = "reserly_demand_engine.embedding_evaluation
 reserly-demand-evaluate-promotion = "reserly_demand_engine.promotion:run"
 reserly-demand-train-conversion = "reserly_demand_engine.conversion_training:run"
 reserly-demand-train-choice = "reserly_demand_engine.discrete_choice:run"
+reserly-demand-conversion-analytics = "reserly_demand_engine.conversion_analytics:run"

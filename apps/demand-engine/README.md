@@ -74,3 +74,17 @@ reserly-demand-train-choice --dataset path\choice-dataset.json `
 
 La CLI rechaza conjuntos truncados y features posteriores a la elección. Sus coeficientes y odds ratios
 son asociaciones condicionales al conjunto; no autorizan cambiar precio, elegibilidad o capacidad.
+
+La analítica de conversión por local se calcula offline desde exposiciones minimizadas:
+
+```powershell
+reserly-demand-conversion-analytics --dataset path\conversion-analytics.json `
+  --policy policies\conversion-analytics.v1.json `
+  --ontology ..\..\packages\demand-contracts\ontology\personal-care.v1.json `
+  --authorized-venue-id 00000000-0000-0000-0000-000000000000 `
+  --output path\conversion-report.json
+```
+
+La CLI falla si el local autorizado no coincide. Los grupos con menos de treinta exposiciones o cinco
+resultados de cada clase ocultan conteos, tasa e intervalo; las asociaciones nunca se presentan como
+efectos causales.

@@ -10059,3 +10059,23 @@ Fuente de verdad del avance:
   - TensorFlow no es necesario: ParametricUMAP queda fuera y se usa UMAP clásico fijado.
   - La caché compilada de Numba vive en temporal y el pipeline no se importa en el camino online.
   - Tres pruebas ejecutaron las bibliotecas reales y quedaron verdes en 58,326 s.
+
+# Conversación 243 - Analítica gobernada de conversión por dimensión
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó conversión observacional por servicio, franja, zona aproximada, segmento permitido
+    y atributo publicado con definición/ontología versionadas.
+  - Los grupos suficientes incluyen intervalo Wilson 95 %; grupos pequeños o con clase rara ocultan
+    todos los conteos, tasa e intervalo.
+  - El cálculo exige autorización del único local del dataset y rechaza PII, atributos desconocidos y
+    outcomes inmaduros.
+- Archivos modificados: política, módulo/CLI/pruebas Python, README y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036 y RF-040; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: 21.11; prepara 21.12 y futuras superficies privadas de analítica.
+- Tareas completadas: 21.11.
+- Siguiente tarea pendiente recomendada: 17.1; para esta fase del motor, 21.12.
+- Decisiones o aclaraciones relevantes:
+  - Mínimo: 30 exposiciones, 5 conversiones y 5 no conversiones por grupo.
+  - Supresión no revela ni siquiera el tamaño del bucket insuficiente.
+  - Cinco pruebas focalizadas quedaron verdes en 0,018 s.

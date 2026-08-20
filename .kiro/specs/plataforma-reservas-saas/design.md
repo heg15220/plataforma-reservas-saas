@@ -4500,3 +4500,17 @@ publicar mediante el workflow V48; `automaticPublicationAllowed=false` es litera
 candidato y resultado. PII, términos sensibles, drift de ontología/modelo/dependencia o dimensión no
 finita fallan cerrado. El stack se carga solo en batch y usa caché Numba temporal, sin afectar API,
 búsqueda o reserva.
+
+### 14.50 Analítica local de conversión con supresión e intervalos
+
+`conversion-analytics-v1` define conversión como reserva completada por exposición elegible y agrupa
+solo dentro de un local autorizado por servicio, franja local, zona aproximada nombrada, segmento
+`anonymous/newCustomer/returningCustomer` y atributo publicado. Una observación tiene outcome maduro,
+UUID técnico y dimensiones cerradas; no admite email, cliente, consulta, coordenada o texto.
+
+Cada bucket requiere treinta exposiciones, cinco conversiones y cinco no conversiones. Si falla
+cualquiera, oculta muestra, numerador, tasa e intervalo y publica únicamente
+`insufficientSample`. Los demás muestran intervalo Wilson bilateral 95 %. La salida conserva periodo,
+zona horaria, versiones, cobertura y alcance `singleAuthorizedVenue`, y etiqueta toda relación como
+asociación observacional no causal. Otro local, atributo fuera de ontología, periodo incoherente,
+outcome inmaduro o más de 5.000 grupos falla cerrado. El cálculo es batch/CLI y no afecta reservas.
