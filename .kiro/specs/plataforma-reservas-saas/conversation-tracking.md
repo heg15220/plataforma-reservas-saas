@@ -10204,3 +10204,26 @@ Fuente de verdad del avance:
   - El gate usa solo covariables pretratamiento allowlist y SMD <=0,10.
   - Sintético puede validar código/estadística, pero el informe conserva atribución observacional.
   - Seis pruebas focalizadas quedaron verdes en 0,098 s.
+
+# Conversación 250 - Uplift Doubly Robust gobernado
+
+- Fecha: 2026-08-20.
+- Resumen de la conversación:
+  - Se implementó AIPW/Doubly Robust con cross-fitting de dos folds y regresiones ridge separadas por
+    brazo, produciendo intervalos globales y por cliente nuevo/recurrente.
+  - Se añadieron gates de overlap, pesos inversos, muestra por brazo/segmento y sensibilidad a un
+    sesgo absoluto de outcome de ±0,02.
+  - La atribución observacional conserva campo/versión propios y nunca se usa como uplift; sintético,
+    overlap deficiente o IC no positivo bloquean interpretación/acción.
+- Archivos modificados: política/model card de uplift, estimador/pruebas Python y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-038, RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y
+  RNF-015.
+- Tareas impactadas: 22.6; prepara 22.7 y 22.10 sin autorizarlas automáticamente.
+- Tareas completadas: 22.6.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase del motor, 22.7.
+- Decisiones o aclaraciones relevantes:
+  - AIPW usa propensity registrada y modelos de outcome entrenados fuera del fold evaluado.
+  - Solo se publican segmentos operativos permitidos con al menos treinta unidades por brazo.
+  - Seis pruebas focalizadas quedaron verdes en 0,206 s; una incluye replay idéntico del informe.
+  - `npm run test:demand` ejecutó 158 pruebas acumuladas en 110,839 s, todas verdes.

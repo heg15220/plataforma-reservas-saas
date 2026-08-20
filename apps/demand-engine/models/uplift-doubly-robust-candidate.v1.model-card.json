@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "upliftDoublyRobustCandidate",
+  "modelVersion": "cross-fitted-aipw-ridge-candidate-v1",
+  "owner": "demand-intelligence",
+  "purpose": "Estimate aggregate and permitted-segment treatment uplift after a validated randomized experiment with explicit overlap and sensitivity diagnostics.",
+  "intendedUse": ["offlineUpliftEvaluation", "humanDecisionSupportAfterApproval"],
+  "prohibitedUse": [
+    "automaticAction",
+    "observationalCausalClaim",
+    "individualTargeting",
+    "sensitiveSegmentation",
+    "automaticPricing",
+    "automaticContact"
+  ],
+  "status": "candidate",
+  "trainingPolicyVersion": "uplift-doubly-robust-v1",
+  "featureSetVersion": "uplift-pre-treatment-v1",
+  "limitations": [
+    "AIPW depends on randomized-design integrity, overlap and correctly logged treatment propensity.",
+    "The bounded bias analysis is a scenario diagnostic, not proof against all unmeasured confounding.",
+    "Segment estimates require prespecification and sufficient samples in both arms.",
+    "Synthetic estimates cannot support causal interpretation or marketplace action."
+  ],
+  "rollback": "Discard the uplift report and display only versioned observational attribution with no incremental or causal wording.",
+  "humanApprovalRequired": true
+}

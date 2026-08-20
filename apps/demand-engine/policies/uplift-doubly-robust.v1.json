@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "uplift-doubly-robust-v1",
+  "algorithmVersion": "cross-fitted-aipw-ridge-v1",
+  "causalGatePolicyVersion": "causal-ab-validation-v1",
+  "featureSetVersion": "uplift-pre-treatment-v1",
+  "featureNames": ["baselineAffinity", "priorVenueExposure", "weekday"],
+  "allowedSegments": ["newCustomer", "returningCustomer"],
+  "crossFitFolds": 2,
+  "ridgePenalty": 1.0,
+  "minimumUnitsPerArm": 100,
+  "minimumUnitsPerSegmentArm": 30,
+  "overlapLowerBound": 0.1,
+  "overlapUpperBound": 0.9,
+  "minimumOverlapCoverage": 0.95,
+  "maximumInversePropensityWeight": 10.0,
+  "confidenceLevel": 0.95,
+  "sensitivityAbsoluteOutcomeBias": 0.02,
+  "minimumActionableUplift": 0.02,
+  "automaticActionAllowed": false
+}

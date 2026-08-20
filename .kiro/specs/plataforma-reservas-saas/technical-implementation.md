@@ -23626,6 +23626,81 @@ mapeo común de errores HTTP. La consulta construye exclusivamente `reservationI
 representa tipo, instante y estado con claves traducidas y contempla carga, vacío, error y
 resultados.
 
+## Iteración 2026-08-20 - Tarea 22.6: uplift Doubly Robust gobernado
+
+### Objetivo, requisitos y precondición causal
+
+- Identificador exacto: 22.6.
+- Objetivo técnico: estimar uplift agregado/segmentado con intervalos, diagnosticar overlap y
+  sensibilidad, y mantener atribución observacional físicamente separada del efecto estimado.
+- Requisitos/diseño: RF-038, RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y
+  RNF-015; secciones 14.14, 14.16, 14.17, 14.56 y 14.57.
+
+Se seleccionó AIPW/Doubly Robust `cross-fitted-aipw-ridge-v1` de los estimadores cuya revisión puede
+abrir 22.5. `UpliftDataset` exige RCT, prerregistro y `causalGateValidated=true` bajo
+`causal-ab-validation-v1`; una fuente observacional no puede validar el tipo. También exige ausencia
+de PII, revocaciones, features/version exactas, unidades únicas y outcomes anteriores a extracción.
+Esto permite probar el código con un RCT sintético, pero `productionEvidence=false` sigue negando
+interpretación causal.
+
+Cada `UpliftUnit` contiene UUID seudónimo, brazo, propensity de asignación en `(0,1)`, asignación y
+outcome aware, tres valores pretratamiento, segmento permitido y reserva binaria. El set fijo es
+afinidad baseline, exposición previa y weekday. No hay texto, contacto, posición, reserva ID, ingreso
+ni variable postratamiento. Los únicos segmentos son `newCustomer` y `returningCustomer`; no se
+admiten clases sensibles o segmentos arbitrarios descubiertos tras observar efecto.
+
+### Cross-fitting y ecuación Doubly Robust
+
+El fold se obtiene de SHA-256 del UUID y es estable. Para cada uno, el complemento ajusta dos
+regresiones ridge lineales de outcome —control y tratamiento— con intercepto sin penalizar; las
+predicciones se acotan a `[0,001,0,999]`. Ninguna unidad se usa simultáneamente para ajustar su
+nuisance y calcular su pseudo-outcome.
+
+Para cada unidad se calcula
+`psi=m1-m0 + T·(Y-m1)/e - (1-T)·(Y-m0)/(1-e)`. El uplift es la media de `psi`; el error estándar usa
+su desviación muestral dividida por raíz de n y el IC normal bilateral 95 % se acota a `[-1,1]`.
+La misma influencia cross-fitted se agrega globalmente y por los dos segmentos prerregistrados. Cada
+brazo global exige cien unidades, cada brazo/segmento treinta y ambas clases deben existir.
+
+### Overlap, sensibilidad y separación semántica
+
+La cobertura overlap es la fracción con propensity entre 0,10 y 0,90; debe ser >=0,95. Se calcula el
+peso observado `1/e` en tratamiento o `1/(1-e)` en control, con máximo 10. No se recortan pesos para
+hacer pasar el gate: cobertura o peso deficiente se publican y bloquean interpretación causal.
+
+La sensibilidad resta/suma 0,02 al uplift como escenario de sesgo absoluto del outcome y exige signo
+estable. Es un bound operativo transparente, no una prueba de ausencia de confounding. El informe
+conserva `observationalAttributionVersion` y `observationalAttributedRateDifference`, pero el
+estimador jamás los lee y devuelve `observationalAttributionUsedForUplift=false`. Así 35 pp atribuidos
+no se presentan como los ~20 pp AIPW del fixture.
+
+`causalInterpretationAllowed` requiere overlap y evidencia productiva. `upliftActionReviewAllowed`
+añade uplift >=2 pp, límite inferior del IC >0 y sensibilidad estable. Incluso entonces model card y
+contrato solo permiten soporte agregado a revisión humana: `automaticActionAllowed=false`; targeting,
+contacto, descuentos y pricing están prohibidos. Rollback descarta uplift y vuelve al informe
+observacional con términos no causales.
+
+### Archivos, pruebas, evidencia, observabilidad y deuda
+
+Se crearon política/model card, `uplift_estimation.py` y seis pruebas; se actualizaron tareas, diseño,
+seguimiento y este documento. No se añadieron endpoints, migraciones, persistencia ni acciones. Los
+errores estables cubren versiones, puerta, forma/tiempo, folds, nuisance y muestra. Métricas de overlap,
+pesos, IC y sensibilidad permiten auditar por qué un informe quedó bloqueado.
+
+El fixture tiene 160 unidades por brazo, propensity 0,5 y segmentos balanceados. Produce uplift
+aproximado 0,201, IC95 % [0,090; 0,311], overlap 1, peso máximo 2 y sensibilidad [0,181; 0,221]. Las
+pruebas verifican intervalos/segmentos, separación observacional y replay, revisión productiva sin
+automatismo, bloqueo por overlap, gate/features y muestra/maduración. Evidencia focalizada:
+`python -m unittest apps/demand-engine/tests/test_uplift_estimation.py -v`, con ambos roots, ejecutó
+seis casos en 0,206 s y terminó `OK`. `npm run test:demand` ejecutó 158 pruebas acumuladas en
+110,839 s y terminó `OK`, incluyendo boosting Poisson, puerta RCT, AIPW y gobernanza previa.
+
+Riesgos/deuda: ridge lineal puede estar mal especificado; la propiedad DR reduce, no elimina, sesgo si
+propensity u outcome fallan. El IC de influencia no ajusta clustering por local, múltiples segmentos
+ni selección del experimento. El análisis de sensibilidad ±0,02 debe ampliarse con escenarios y
+justificación de dominio productiva. Attrition, non-compliance e interference siguen fuera. 22.7 no
+podrá optimizar oportunidades salvo que reciba únicamente uplift fiable y mantenga todos estos gates.
+
 ### Modelo de datos y contratos
 
 No se añade persistencia: el módulo consume `GET/PUT /api/venue/me/booking-rules` y

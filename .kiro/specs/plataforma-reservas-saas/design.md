@@ -4631,3 +4631,22 @@ Solo un dataset productivo que supere toda la puerta devuelve esos nombres y
 `causalEstimationAllowed=true`; evidencia sintética o imbalance obliga a atribución observacional. Ni
 siquiera la puerta productiva autoriza uso automático del estimador. Cambiar outcome, covariables,
 unidad o experimento requiere nueva versión y revisión humana.
+
+### 14.57 Uplift Doubly Robust con separación observacional
+
+`uplift-doubly-robust-v1` exige la puerta `causal-ab-validation-v1`, RCT prerregistrado y tres
+features pretratamiento exactas. Un AIPW de dos folds ajusta regresiones ridge de outcome por brazo
+fuera del fold evaluado y combina diferencia de predicciones con correcciones por propensity. Publica
+uplift medio y por los únicos segmentos permitidos —cliente nuevo/recurrente— con tamaño por brazo,
+error estándar e intervalo bilateral 95 %.
+
+Overlap requiere al menos 95 % de propensiones en `[0,10, 0,90]` y peso inverso máximo <=10. Cada
+brazo global necesita cien unidades y cada brazo/segmento treinta, con ambas clases presentes. Una
+sensibilidad determinista desplaza el outcome ±0,02 y declara si el signo permanece estable. Fallo de
+overlap, muestra, maduración, versión o puerta elimina interpretación causal y revisión de acción.
+
+La diferencia atribuida observacional se transporta con su propia versión y campo, pero
+`observationalAttributionUsedForUplift=false` es literal. Producción, overlap, IC inferior positivo,
+uplift >=0,02 y sensibilidad estable solo habilitan revisión humana agregada; nunca targeting,
+contacto, pricing o acción automática. Sintético se etiqueta exclusivamente como validación del
+estimador y el rollback vuelve a atribución observacional sin lenguaje incremental.
