@@ -39142,3 +39142,74 @@ deben describirse como causalidad. El booleano `isNewVenue` deberá proceder de 
 auditable. El catálogo crecerá y exigirá proceso de revisión/versionado, métricas de cobertura,
 diversidad y daño por intención/locale. Esta tarea no implementa UI, generación de candidatos,
 persistencia de impresiones ni aprendizaje incremental; 22.13 añadirá drift y actualización gobernada.
+
+## Iteración 2026-08-21 - Tarea 22.13: aprendizaje incremental y detección de drift
+
+### Objetivo, requisitos y artefactos gobernados
+
+- Identificador exacto: 22.13.
+- Objetivo técnico: evaluar actualización incremental reproducible sin contaminar el campeón y
+  detenerla ante drift de rendimiento o distribución.
+- Requisitos/diseño: RF-036 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015; secciones 14.15,
+  14.16, 14.17, 14.18 y 14.64.
+
+Se añadió `river==0.25.0` al extra ML. La versión 0.26.0 apareció el día de la implementación y no se
+adoptó sin ventana de maduración. La política `incremental-learning-v1` fija River, modelo, feature
+set, learning rate 0,01, tamaños mínimos, parámetros ADWIN/Page-Hinkley, límite absoluto de feature,
+guardrail MAE y fallback. La model card `incremental-logistic-shadow.v1.json` registra propietario,
+finalidad, usos prohibidos, limitaciones, estado shadow, aprobación humana y rollback. La factoría
+contrasta las tres versiones con la librería importada y falla al arrancar si divergen.
+
+### Contrato, estado y flujo prequential
+
+`incremental_learning.py` define contratos estrictos y `IncrementalLearningMonitor`. El endpoint
+interno autenticado recibe referencia agregada, checkpoint previo y hasta 10.000 observaciones maduras
+sin identidad. Cada observación contiene UUID técnico para deduplicación externa, secuencia, tiempos,
+tres features allowlist y outcome binario. No admite sesión, usuario, local, email, texto, vector,
+segmento demográfico ni feature adicional. `containsPersonalData=false` y
+`consentRevocationsApplied=true` son literales.
+
+El pipeline `StandardScaler | LogisticRegression(SGD)` realiza `predict_proba_one` antes de
+`learn_one`; por tanto el MAE del lote es realmente prequential. El estado reconstruible contiene
+contador, última secuencia, counts/means/variances por feature, pesos, intercepto e iteraciones del
+optimizador. SHA-256 sobre JSON canónico detecta corrupción. La restauración copia el `VectorDict` de
+River para no mutar el checkpoint inmutable. Secuencias deben ser exactamente contiguas; Spring queda
+responsable de compare-and-set y persistencia atómica, no implementados en este servicio sin estado.
+
+No se usa pickle, joblib ni otro formato ejecutable. Una misma petición sobre el mismo checkpoint
+produce estado/señales idénticos. Lotes menores de 32 se evalúan pero no crean checkpoint. Evidencia
+sintética puede generar un artefacto de validación si alcanza muestra, pero nunca abre revisión humana.
+
+### Drift, rollback, seguridad y observabilidad
+
+ADWIN se inicializa con al menos 64 errores absolutos de referencia y procesa después los errores
+prequentiales. Page-Hinkley se inicializa independientemente por cada feature con al menos 64 valores y
+modo bilateral. Un tercer guardrail compara MAE medio y marca degradación >0,10 incluso si ADWIN aún no
+tiene potencia. La salida agrega detector, métrica, media de referencia y observada; nunca incluye
+observaciones.
+
+Cualquier señal descarta el checkpoint candidato, bloquea revisión, marca `rollbackRequired=true` y
+señala `fallback-mvp-v1`. No se modifica campeón, ranking, reserva ni fuente transaccional. Aun sin
+drift, producción+muestra solo habilitan revisión: `automaticPromotionAllowed=false` y
+`onlineDeploymentAllowed=false`. Features no finitas, superiores a 100 en magnitud, desconocidas,
+outcomes inmaduros, IDs duplicados, checksum/versiones incorrectos o secuencias con huecos fallan
+cerrado con 409 opaco en HTTP. Request ID, duración, status y error acotado reutilizan middleware; no se
+registran payloads, features ni checkpoints.
+
+### Archivos, tests, evidencia y deuda
+
+Archivos creados: política, model card, módulo y seis pruebas. Archivos modificados: `pyproject.toml`,
+router, factoría, test OpenAPI y cuatro documentos `.kiro`. No hay migración, tabla, índice ni fichero
+eliminado. Las pruebas cubren update productivo estable, drift de error, shift Page-Hinkley, muestra y
+evidencia sintética, replay determinista, secuencia y checksum corruptos. Las trece pruebas HTTP
+protegen autenticación/namespace.
+
+Evidencia: `$env:PYTHONPATH='src;../../packages/demand-contracts/src'; python -m unittest
+tests/test_incremental_learning.py tests/test_api_contracts.py -q` ejecutó 19/19 casos `OK` en 2,221 s.
+También se ejecutaron `compileall`, validación JSON y `git diff --check` antes del commit.
+
+Riesgos/deuda: se accede a `_weights` interno de River para reconstruir un estado no ejecutable; queda
+encapsulado y fijado a 0.25.0, pero toda actualización requiere test de compatibilidad. Referencias y
+umbrales son iniciales, no evidencia productiva. Faltan almacenamiento CAS, locks multiinstancia,
+Prometheus/Grafana/Evidently, calibración móvil, ventanas por segmento no sensible y runbook operativo;
+son responsabilidad de Fase 23. Una alarma detecta cambio, no explica causa ni autoriza reentrenamiento.

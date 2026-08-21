@@ -32,6 +32,9 @@ from .waitlist_allocation import WaitlistAllocationPolicy, WaitlistAllocator
 from .smart_promotions import SmartPromotionPlanner, SmartPromotionPolicy
 from .clip_visual_evaluation import ClipVisualEvaluator, ClipVisualManifest, ClipVisualPolicy
 from .cross_category_recommendations import CrossCategoryPolicy, CrossCategoryRecommender
+from .incremental_learning import (
+    IncrementalLearningMonitor, IncrementalLearningPolicy, IncrementalModelCard,
+)
 
 
 def create_app(
@@ -92,6 +95,12 @@ def create_app(
     )
     app.state.cross_category_recommender = CrossCategoryRecommender(
         CrossCategoryPolicy.load(policy_root / "cross-category-recommendation.v1.json")
+    )
+    app.state.incremental_learning_monitor = IncrementalLearningMonitor(
+        IncrementalLearningPolicy.load(policy_root / "incremental-learning.v1.json"),
+        IncrementalModelCard.load(
+            Path(__file__).resolve().parents[2] / "models/incremental-logistic-shadow.v1.json"
+        ),
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

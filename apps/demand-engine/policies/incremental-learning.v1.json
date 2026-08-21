@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "incremental-learning-v1",
+  "modelVersion": "incremental-logistic-shadow-v1",
+  "featureSetVersion": "incremental-ranking-features-v1",
+  "riverVersion": "river-0.25.0",
+  "featureNames": ["availability", "contentAffinity", "quality"],
+  "learningRate": 0.01,
+  "maximumAbsoluteFeatureValue": 100.0,
+  "minimumReferenceSize": 64,
+  "minimumUpdateBatchSize": 32,
+  "adwinDelta": 0.002,
+  "adwinClock": 8,
+  "adwinGracePeriod": 16,
+  "pageHinkleyMinimumInstances": 20,
+  "pageHinkleyDelta": 0.005,
+  "pageHinkleyThreshold": 8.0,
+  "pageHinkleyAlpha": 0.999,
+  "maximumMeanAbsoluteErrorIncrease": 0.1,
+  "fallbackPolicyVersion": "fallback-mvp-v1",
+  "automaticPromotionAllowed": false,
+  "onlineDeploymentAllowed": false
+}

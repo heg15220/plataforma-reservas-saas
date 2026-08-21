@@ -4768,3 +4768,21 @@ las estimaciones no son fiables, no fabrica score: aplica round-robin determinis
 compatibilidad, calidad y UUID, conservando filtros y cuota. Los literales
 `persistentPersonalizationUsed=false`, `sensitiveFeaturesUsed=false` e `intentInferred=false`
 protegen la frontera contractual; el endpoint no persiste, contacta ni reserva.
+
+### 14.64 Aprendizaje incremental prequential y drift fail-closed
+
+`POST /internal/demand/v1/learning/incremental/evaluate` ejecuta un challenger logístico River 0.25.0
+exclusivamente en sombra. Cada outcome maduro se predice antes de aprender para evitar evaluación
+optimista. El checkpoint JSON conserva contador/secuencia, estadísticos de `StandardScaler`, pesos,
+intercepto e iteraciones SGD con SHA-256 canónico; no usa pickle ni incorpora código ejecutable.
+
+La feature allowlist fija `availability`, `contentAffinity` y `quality`, sin identidad ni rasgos
+sensibles. Secuencias contiguas y compare-and-set externo permiten microbatches reanudables. ADWIN
+vigila error absoluto contra una referencia mínima de 64 observaciones; Page-Hinkley vigila cambios de
+media por feature y un guardrail independiente bloquea aumentos de MAE superiores a 0,10.
+
+Drift descarta el checkpoint contaminado, devuelve `rollbackRequired=true` y ordena
+`fallback-mvp-v1`. Un lote inferior a 32 no produce checkpoint. Solo evidencia productiva estable y
+suficiente habilita revisión humana; `automaticPromotionAllowed=false` y
+`onlineDeploymentAllowed=false` son invariantes. La model card shadow fija finalidad, limitaciones,
+River, feature set y rollback; una discrepancia de versión impide arrancar.

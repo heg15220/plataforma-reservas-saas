@@ -21,6 +21,7 @@ ml = [
   "bertopic==0.17.4",
   "xgboost==3.3.0",
   "ortools==9.15.6755",
+  "river==0.25.0",
 ]
 
 [build-system]

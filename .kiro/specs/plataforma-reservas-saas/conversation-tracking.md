@@ -10362,3 +10362,23 @@ Fuente de verdad del avance:
   - Local nuevo es un grupo operativo de exposición, no una característica sensible.
   - Seis pruebas focalizadas y trece de contrato HTTP quedaron verdes en 2,023 s; la regresión
     acumulada ejecutó 186/186 pruebas en 135,768 s.
+
+# Conversación 257 - Aprendizaje incremental y drift seguro
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se implementó un challenger logístico River prequential con checkpoints JSON verificables y
+    actualización exclusivamente en sombra.
+  - ADWIN monitoriza error, Page-Hinkley distribución de features y un guardrail de MAE complementa
+    ambas alarmas; cualquier drift descarta el update y exige fallback/rollback.
+  - Se cerraron promoción/despliegue automáticos y se añadió model card con versiones y límites.
+- Archivos modificados: dependencia ML, política/model card, monitor/router/factoría/pruebas Python y
+  cuatro documentos `.kiro`.
+- Requisitos impactados: RF-036 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.13; prepara gates de drift y rollback para 22.15 y Fase 23.
+- Tareas completadas: 22.13.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 22.14.
+- Decisiones o aclaraciones relevantes:
+  - Se fijó River 0.25.0 en vez de adoptar una versión publicada el mismo día.
+  - Checkpoints no usan pickle y Spring deberá persistirlos mediante compare-and-set por secuencia.
+  - Seis pruebas focalizadas y trece HTTP quedaron verdes en 2,221 s.

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "incremental-logistic-shadow",
+  "modelVersion": "incremental-logistic-shadow-v1",
+  "owner": "demand-platform",
+  "purpose": "Evaluar aprendizaje incremental prequential de conversión exclusivamente en sombra.",
+  "status": "shadow",
+  "libraryVersion": "river-0.25.0",
+  "featureSetVersion": "incremental-ranking-features-v1",
+  "intendedUse": ["shadowEvaluation", "driftMonitoring"],
+  "prohibitedUse": ["onlineDeployment", "automaticPromotion", "pricing", "sensitiveTargeting"],
+  "limitations": [
+    "El checkpoint no está calibrado ni aprobado para inferencia online.",
+    "ADWIN y Page-Hinkley son alarmas y requieren diagnóstico humano.",
+    "La restauración depende del contrato interno fijado de River 0.25.0."
+  ],
+  "rollback": "Descartar el checkpoint candidato y restaurar fallback-mvp-v1 sin exploración incremental.",
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false
+}

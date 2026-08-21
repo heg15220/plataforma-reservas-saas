@@ -50,6 +50,7 @@ from .waitlist_allocation import WaitlistAllocationRequest, WaitlistAllocationRe
 from .smart_promotions import SmartPromotionRequest, SmartPromotionResponse
 from .clip_visual_evaluation import ClipVisualEvaluationRequest, ClipVisualEvaluationResponse
 from .cross_category_recommendations import CrossCategoryRequest, CrossCategoryResponse
+from .incremental_learning import IncrementalLearningRequest, IncrementalLearningResponse
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -247,6 +248,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.cross_category_recommender.recommend(body)
         except ValueError as error:
             raise DemandEngineError("CROSS_CATEGORY_RECOMMENDATION_REJECTED", 409) from error
+
+    @router.post("/learning/incremental/evaluate", response_model=IncrementalLearningResponse)
+    async def evaluate_incremental_learning(
+        body: IncrementalLearningRequest, request: Request
+    ) -> IncrementalLearningResponse:
+        """Evalúa un challenger River en sombra; nunca promueve ni despliega el checkpoint."""
+        try:
+            return request.app.state.incremental_learning_monitor.evaluate(body)
+        except ValueError as error:
+            raise DemandEngineError("INCREMENTAL_LEARNING_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(
