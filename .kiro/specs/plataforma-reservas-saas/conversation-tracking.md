@@ -10340,3 +10340,25 @@ Fuente de verdad del avance:
   - Sintético puede superar métricas, pero únicamente evidencia productiva habilita revisión humana.
   - Seis pruebas visuales y trece HTTP quedaron verdes; un smoke real produjo vectores CLIP 512-D con
     norma 1,0 desde una imagen fixture y dos prompts.
+
+# Conversación 256 - Recomendaciones cruzadas diversas y gobernadas
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se implementó un recomendador CP-SAT entre categorías con matriz explícita de compatibilidad para
+    cuatro intenciones y los slugs canónicos del catálogo.
+  - Categoría de origen, incompatibilidades y restricciones duras se eliminan antes del ranking; el
+    modelo limita concentración por categoría/local y garantiza diversidad cuando hay oferta.
+  - Estimaciones no fiables degradan a round-robin determinista sin score; intención, persistencia y
+    rasgos sensibles quedan cerrados por contrato.
+- Archivos modificados: política, recomendador, router/factoría/pruebas Python y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-036 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.12; no persiste recomendaciones ni ejecuta reservas/contactos.
+- Tareas completadas: 22.12.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 22.13.
+- Decisiones o aclaraciones relevantes:
+  - La compatibilidad es editorial y versionada; una intención desconocida se rechaza.
+  - Local nuevo es un grupo operativo de exposición, no una característica sensible.
+  - Seis pruebas focalizadas y trece de contrato HTTP quedaron verdes en 2,023 s; la regresión
+    acumulada ejecutó 186/186 pruebas en 135,768 s.

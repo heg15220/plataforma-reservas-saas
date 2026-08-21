@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "cross-category-recommendation-v1",
+  "solverVersion": "ortools-cp-sat-9.15.6755",
+  "maximumPerCategory": 2,
+  "minimumDistinctCategories": 2,
+  "minimumNewVenueWhenAvailable": 1,
+  "maximumSolveSeconds": 2.0,
+  "randomSeed": 17,
+  "scoreWeights": {
+    "intentCompatibility": 0.4,
+    "contentAffinity": 0.25,
+    "conversionProbability": 0.15,
+    "quality": 0.15,
+    "newVenueExposure": 0.05
+  },
+  "intentRules": {
+    "active-day": {
+      "campo-de-futbol": 1.0,
+      "pista-de-padel": 1.0,
+      "centro-deportivo": 0.9,
+      "instalacion-municipal": 0.75,
+      "restaurante": 0.45
+    },
+    "personal-care-continuation": {
+      "peluqueria": 1.0,
+      "centro-de-estetica": 1.0
+    },
+    "social-outing": {
+      "restaurante": 1.0,
+      "pista-de-padel": 0.65,
+      "campo-de-futbol": 0.55,
+      "centro-deportivo": 0.45
+    },
+    "wellbeing": {
+      "centro-deportivo": 0.9,
+      "centro-de-estetica": 0.85,
+      "peluqueria": 0.7,
+      "pista-de-padel": 0.55
+    }
+  }
+}

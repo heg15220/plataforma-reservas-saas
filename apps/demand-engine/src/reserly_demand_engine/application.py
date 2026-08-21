@@ -31,6 +31,7 @@ from .scoring import ScoreMvp, ScorePolicy
 from .waitlist_allocation import WaitlistAllocationPolicy, WaitlistAllocator
 from .smart_promotions import SmartPromotionPlanner, SmartPromotionPolicy
 from .clip_visual_evaluation import ClipVisualEvaluator, ClipVisualManifest, ClipVisualPolicy
+from .cross_category_recommendations import CrossCategoryPolicy, CrossCategoryRecommender
 
 
 def create_app(
@@ -88,6 +89,9 @@ def create_app(
         ClipVisualManifest.load(
             Path(__file__).resolve().parents[2] / "models" / "clip-vit-b32-visual-evidence.v1.json"
         ),
+    )
+    app.state.cross_category_recommender = CrossCategoryRecommender(
+        CrossCategoryPolicy.load(policy_root / "cross-category-recommendation.v1.json")
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

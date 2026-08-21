@@ -4745,3 +4745,26 @@ Cada atributo compara prompt positivo/negativo y exige confianza >=0,75. La eval
 menos veinte imágenes etiquetadas por humanos y macro precision/recall >=0,80. Datos sintéticos pueden
 validar cálculo pero no abren revisión. Evidencia productiva que supera gates solo genera candidatos
 `imageAuxiliary` con `humanReviewRequired=true`; `automaticProfileMutationAllowed=false` siempre.
+
+### 14.63 Recomendación cruzada por intención explícita y diversidad
+
+`POST /internal/demand/v1/recommendations/cross-category` recibe un conjunto cerrado y minimizado de
+servicios autorizados por Spring. La intención solo puede proceder de un filtro explícito o del
+servicio que se consulta en ese instante; no se infiere ni se persiste un perfil. La política
+`cross-category-recommendation-v1` contiene una matriz editorial versionada para `active-day`,
+`personal-care-continuation`, `social-outing` y `wellbeing`, construida exclusivamente con los slugs
+canónicos existentes. Una intención desconocida se rechaza en vez de aproximarse.
+
+Antes del ranking se excluyen la categoría de origen, categorías ausentes de la regla de intención y
+cualquier fallo de publicación, bookability, elegibilidad, permisos, filtros, frecuencia, capacidad o
+vigencia. CP-SAT selecciona como máximo veinte candidatos, uno por local y dos por categoría. Cuando
+hay oferta suficiente exige dos categorías distintas y, para listas de al menos tres posiciones,
+reserva una exposición a local nuevo si existe. Este último grupo es una condición operativa de
+antigüedad, nunca un rasgo protegido.
+
+El score suma compatibilidad editorial 0,40, afinidad de contenido 0,25, conversión 0,15, calidad 0,15
+y exposición acotada a local nuevo 0,05. La respuesta publica los cinco aportes y el ID de regla. Si
+las estimaciones no son fiables, no fabrica score: aplica round-robin determinista por categoría,
+compatibilidad, calidad y UUID, conservando filtros y cuota. Los literales
+`persistentPersonalizationUsed=false`, `sensitiveFeaturesUsed=false` e `intentInferred=false`
+protegen la frontera contractual; el endpoint no persiste, contacta ni reserva.

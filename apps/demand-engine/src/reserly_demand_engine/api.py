@@ -49,6 +49,7 @@ from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismat
 from .waitlist_allocation import WaitlistAllocationRequest, WaitlistAllocationResponse
 from .smart_promotions import SmartPromotionRequest, SmartPromotionResponse
 from .clip_visual_evaluation import ClipVisualEvaluationRequest, ClipVisualEvaluationResponse
+from .cross_category_recommendations import CrossCategoryRequest, CrossCategoryResponse
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -236,6 +237,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.clip_visual_evaluator.evaluate(body)
         except ValueError as error:
             raise DemandEngineError("CLIP_VISUAL_EVALUATION_REJECTED", 409) from error
+
+    @router.post("/recommendations/cross-category", response_model=CrossCategoryResponse)
+    async def recommend_cross_category(
+        body: CrossCategoryRequest, request: Request
+    ) -> CrossCategoryResponse:
+        """Cruza categorías por intención explícita sin inferir un perfil personal persistente."""
+        try:
+            return request.app.state.cross_category_recommender.recommend(body)
+        except ValueError as error:
+            raise DemandEngineError("CROSS_CATEGORY_RECOMMENDATION_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

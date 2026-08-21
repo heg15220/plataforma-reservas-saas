@@ -68,6 +68,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/waitlist/allocate",
             "/internal/demand/v1/promotions/plan",
             "/internal/demand/v1/visual/clip/evaluate",
+            "/internal/demand/v1/recommendations/cross-category",
             "/internal/demand/v1/profiles/implicit/evaluate",
             "/internal/demand/v1/nlp/analyze",
         }

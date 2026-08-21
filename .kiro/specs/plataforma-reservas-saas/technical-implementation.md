@@ -39062,3 +39062,83 @@ transferir igual al contexto español. Antes de producción se requieren dataset
 etiquetado doble, análisis por locale/tipo de local, detección de personas robusta, licencia/origen de
 cada imagen, revisión jurídica y monitor de drift. Nunca debe usarse para moderación, biometría,
 seguridad o salud.
+
+## Iteración 2026-08-21 - Tarea 22.12: recomendaciones cruzadas con diversidad
+
+### Objetivo, requisitos y política
+
+- Identificador exacto: 22.12.
+- Objetivo técnico: descubrir servicios de otra categoría únicamente cuando una intención declarada
+  sea compatible, evitando concentración y perfiles inferidos.
+- Requisitos/diseño: RF-036 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015; secciones
+  14.10, 14.11, 14.14, 14.17 y 14.63.
+
+`cross-category-recommendation.v1.json` versiona solver, semilla, cuotas, pesos y matriz editorial.
+Las cuatro intenciones permitidas son `active-day`, `personal-care-continuation`, `social-outing` y
+`wellbeing`; sus destinos usan exclusivamente `restaurante`, `peluqueria`, `campo-de-futbol`,
+`pista-de-padel`, `instalacion-municipal`, `centro-deportivo` y `centro-de-estetica` de V10. `otros`
+no se recomienda por carecer de semántica suficiente. Modificar reglas o pesos exige nueva versión y
+revisión de producto.
+
+### Contratos, flujo y arquitectura
+
+`cross_category_recommendations.py` contiene contratos Pydantic estrictos, carga de política y el
+servicio puro `CrossCategoryRecommender`. `POST
+/internal/demand/v1/recommendations/cross-category` queda bajo autenticación de servicio común. Spring
+debe resolver candidatos y sus restricciones autoritativas; FastAPI no consulta base de datos ni
+ejecuta efectos laterales. La factoría carga/valida la política al arrancar y el router traduce versión,
+intención o solver inválidos a `CROSS_CATEGORY_RECOMMENDATION_REJECTED` 409 sin exponer detalles.
+
+La petición contiene IDs técnicos de candidato/local/servicio, categoría, tres señales acotadas,
+estado operativo de local nuevo y `HardConstraintSnapshot`. No admite usuario, email, teléfono,
+texto libre, ubicación ni atributos demográficos. `intentSource` solo acepta `explicitFilter` o
+`currentServiceContext`; los literales `persistentPersonalizationUsed=false` y
+`sensitiveFeaturesUsed=false` hacen inválido cualquier intento de ampliar esa frontera. La respuesta
+confirma además `intentInferred=false`.
+
+El flujo aplica, en este orden: versión/intención; exclusión de categoría de origen; pertenencia a la
+matriz; restricciones duras y caducidad; selección diversa; explicación. Los excluidos se agregan por
+razón sin IDs, y nunca reentran por ranking o fallback. No se añade migración, tabla, índice ni cambio
+de modelo transaccional; el endpoint es consultivo y la persistencia futura deberá conservar request,
+versión y exposición desde Spring.
+
+### Optimización, fallback y explicabilidad
+
+Con estimaciones fiables, OR-Tools 9.15.6755 crea una variable binaria por candidato y usa un solo
+worker con semilla 17. La cardinalidad domina al score para completar hasta `requestedMaximum`; luego
+maximiza compatibilidad 0,40, afinidad 0,25, conversión 0,15, calidad 0,15 y bonus de local nuevo 0,05.
+Restringe máximo dos resultados por categoría, uno por local y, si existe oferta, mínimo dos categorías
+distintas. Para listas solicitadas de tres o más posiciones exige un local nuevo disponible. El
+desempate por posición del conjunto cerrado y la ordenación final score/UUID hacen reproducible el
+resultado.
+
+Cada item ranked publica `compatibilityRuleId`, valor compatible y cinco contribuciones
+`rawValue × weight`. Si `estimatesReliable=false`, un round-robin por peso editorial/categoría y luego
+calidad/UUID conserva máximo por categoría y unicidad de local, no publica score ni contribuciones y
+declara `deterministicFallback`. Sin candidatos compatibles devuelve `empty`; una intención desconocida
+no tiene fallback porque asignarle significado sería inferencia no gobernada.
+
+### Seguridad, validación, pruebas y deuda
+
+Todos los contratos prohíben campos desconocidos, duplicación de candidate ID, valores fuera de
+`[0,1]`, timestamps sin zona y lotes superiores a 500. Se reutilizan autenticación, timeout, request ID,
+logs agregados y errores opacos del perímetro. El sistema no contacta, reserva, muta perfiles ni usa
+rasgos sensibles. La exposición a local nuevo se define por estado comercial no protegido y queda
+limitada a 0,05 del score y una cuota mínima solo cuando la lista permite tres posiciones.
+
+Archivos creados: política JSON, `cross_category_recommendations.py` y seis pruebas unitarias.
+Archivos modificados: `application.py`, `api.py`, contrato OpenAPI test y los cuatro documentos `.kiro`.
+No se eliminan archivos. Las pruebas cubren diversidad/cap por categoría, exclusión de origen,
+incompatibilidad, restricción dura, fallback reproducible sin score, exposición de local nuevo, drift
+de política/intención y rechazo de personalización persistente/sensible.
+
+Evidencia: `$env:PYTHONPATH='src;../../packages/demand-contracts/src'; python -m unittest
+tests/test_cross_category_recommendations.py tests/test_api_contracts.py -v` ejecutó 19 casos, todos
+`OK`, en 2,023 s. `npm run test:demand` ejecutó la regresión acumulada de 186 casos, todos `OK`, en
+135,768 s. También se verificaron compilación Python, formato JSON y diff whitespace antes del commit.
+
+Riesgos/deuda: las compatibilidades y pesos son hipótesis editoriales pendientes de validación A/B; no
+deben describirse como causalidad. El booleano `isNewVenue` deberá proceder de una definición temporal
+auditable. El catálogo crecerá y exigirá proceso de revisión/versionado, métricas de cobertura,
+diversidad y daño por intención/locale. Esta tarea no implementa UI, generación de candidatos,
+persistencia de impresiones ni aprendizaje incremental; 22.13 añadirá drift y actualización gobernada.
