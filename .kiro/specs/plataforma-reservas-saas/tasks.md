@@ -448,7 +448,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 22.7. Crear optimizador OR-Tools de oportunidades sujeto a capacidad, presupuesto, distancia, margen, frecuencia, consentimiento y equidad.
 - [x] 22.8. Implementar listas de espera y `POST /waitlist/allocate` con ofertas escalonadas, expiración e idempotencia.
 - [x] 22.9. Integrar aceptación de ofertas con holds y confirmación transaccional para impedir sobreventa.
-- [ ] 22.10. Implementar promociones inteligentes solo con uplift y margen fiables, aprobación del local y límites de contacto.
+- [x] 22.10. Implementar promociones inteligentes solo con uplift y margen fiables, aprobación del local y límites de contacto.
 - [ ] 22.11. Evaluar señales visuales con CLIP como evidencia auxiliar y prohibir inferencias no verificables o sensibles.
 - [ ] 22.12. Implementar recomendaciones cruzadas entre categorías con compatibilidad de intención y controles de diversidad.
 - [ ] 22.13. Implementar aprendizaje incremental y detección de drift con River, ADWIN, Page-Hinkley o CUSUM donde proceda.

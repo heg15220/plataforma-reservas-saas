@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "smart-promotion-v1",
+  "solverVersion": "ortools-cp-sat-9.15.6755",
+  "requiredUpliftPolicyVersion": "uplift-doubly-robust-v1",
+  "requiredUpliftModelVersion": "uplift-doubly-robust-v1",
+  "minimumReliableUplift": 0.02,
+  "maximumBaselineBookingProbability": 0.6,
+  "minimumProjectedNetMarginCents": 100,
+  "maximumContactsInWindow": 3,
+  "maximumSelected": 10,
+  "maximumSolveSeconds": 2.0,
+  "randomSeed": 17,
+  "automaticContactAllowed": false
+}

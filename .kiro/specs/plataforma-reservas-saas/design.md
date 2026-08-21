@@ -4710,3 +4710,21 @@ V60 liga la entrada al `serviceId` exacto para que el hold lo contraste con la f
 recibe el `ReservationHoldResponse` normal y completa la reserva por el endpoint de confirmación ya
 existente; no existe una vía privilegiada para listas de espera. La URL queda bajo la cuota anónima de
 reservas. Token en claro solo existe en tránsito, nunca en logs ni PostgreSQL.
+
+### 14.61 Promociones inteligentes con causalidad y aprobación previa
+
+`POST /internal/demand/v1/promotions/plan` recibe un conjunto cerrado de candidatos y presupuesto. La
+puerta exige exactamente el modelo/política `uplift-doubly-robust-v1`, evidencia productiva, overlap,
+sensibilidad estable, interpretación causal y revisión de acción habilitadas, uplift >=0,02 e IC
+inferior positivo. Atribución observacional nunca puede usarse como uplift.
+
+Antes de optimizar se excluyen margen neto inferior a 100 céntimos, probabilidad baseline superior a
+0,60, aprobación de local ausente/caducada o descuento fuera del máximo aprobado, falta de
+consentimiento, tres contactos en ventana o restricción dura. Bloquear baseline alto evita ofrecer
+descuento a quien probablemente reservaría sin incentivo. Si el uplift no es fiable no existe
+fallback promocional: se devuelve `blockedUnreliable` sin propuestas.
+
+CP-SAT maximiza `IC inferior uplift × P(asistencia) × margen neto - coste de contacto`, en enteros,
+con presupuesto, capacidad por franja, máximo diez selecciones y una por sujeto. La salida conserva
+approvalId, uplift, margen, coste y valor incremental calculado, pero
+`automaticContactAllowed=false`: Spring mantiene emisión, descuento y auditoría bajo aprobación.

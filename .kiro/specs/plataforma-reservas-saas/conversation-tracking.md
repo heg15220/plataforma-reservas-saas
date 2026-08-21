@@ -10298,3 +10298,23 @@ Fuente de verdad del avance:
   - La regresión conjunta hold/aceptación ejecutó 15/15 pruebas y `npm run test:demand` cerró las tres
     tareas con 168/168 pruebas Python en 114,116 s.
   - El endpoint reutiliza la cuota `RESERVATION` y oculta todas las causas bajo 409 estable.
+
+# Conversación 254 - Promociones inteligentes gobernadas
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se implementó un planificador CP-SAT de promociones que optimiza valor incremental neto usando el
+    límite inferior de uplift causal y probabilidad de asistencia.
+  - Se bloquearon uplift no productivo/no fiable, natural bookers probables, margen insuficiente,
+    aprobación ausente/caducada, descuento excesivo, consentimiento, frecuencia y restricciones duras.
+  - Se añadió endpoint interno autenticado y una política versionada que prohíbe contacto automático.
+- Archivos modificados: política, planificador, router/factoría/pruebas Python y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-038, RF-039 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.10; no materializa promociones ni modifica reservas.
+- Tareas completadas: 22.10.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 22.11.
+- Decisiones o aclaraciones relevantes:
+  - Sin uplift fiable se bloquea el lote; FIFO no es un fallback válido para conceder descuentos.
+  - La optimización usa el IC inferior, no la estimación puntual, y preserva una selección por sujeto.
+  - Seis pruebas del planificador y trece de contrato HTTP quedaron verdes.

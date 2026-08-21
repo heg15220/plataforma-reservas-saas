@@ -38934,3 +38934,63 @@ análisis productivo puede requerir errores robustos por cluster/venue. Attritio
 interference y múltiples outcomes necesitan protocolos propios. La puerta no autoriza escoger el
 estimador que dé mejor resultado; 22.6 fijará uno, overlap, intervalos y sensibilidad antes de mirar
 resultados.
+
+## Iteración 2026-08-21 - Tarea 22.10: promociones inteligentes gobernadas
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 22.10.
+- Objetivo técnico: proponer promociones únicamente cuando uplift causal, margen, aprobación,
+  consentimiento y frecuencia permiten una acción comercial revisada.
+- Requisitos/diseño: RF-038, RF-039 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.10, 14.11, 14.12, 14.17, 14.57, 14.58 y 14.61.
+
+Se creó `smart-promotion-v1` y `SmartPromotionPlanner`, expuesto solo como
+`POST /internal/demand/v1/promotions/plan` bajo autenticación servicio-a-servicio. FastAPI calcula un
+plan puro; no crea cupón, descuento, mensaje, reserva ni escritura transaccional. La factoría carga la
+política al arrancar y un drift de versión produce `SMART_PROMOTION_REJECTED` 409.
+
+Cada candidato contiene UUID técnicos, probabilidades, margen después del descuento, costes,
+consentimiento/frecuencia, aprobación versionada y `HardConstraintSnapshot`. No admite email, nombre,
+texto, rasgo sensible o atribución como feature. `PromotionUpliftSnapshot` exige intervalo coherente y
+`observationalAttributionUsedForUplift=false` literal. La policy fija las versiones exactas del
+estimador/política Doubly Robust, impidiendo conectar un reporte arbitrario que use los mismos campos.
+
+### Puertas causales, comerciales y operativas
+
+Uplift fiable requiere evidencia productiva, overlap aprobado, signo estable bajo sensibilidad,
+interpretación causal, revisión de acción, estimación >=0,02 e intervalo inferior estrictamente
+positivo. Si falla, el candidato se excluye y un lote sin aptos devuelve `blockedUnreliable`; no se
+aplica FIFO porque una cola no justifica conceder incentivo.
+
+La probabilidad de reserva baseline debe ser <=0,60. Esta puerta conservadora evita descontar a quien
+es probable que reserve sin tratamiento. Margen neto tras descuento debe ser >=100 céntimos y el valor
+incremental conservador positivo. El local debe aportar approvalId vigente y descuento <=máximo
+aprobado. Consentimiento, menos de tres contactos y todas las restricciones duras son obligatorios.
+
+### Optimización, contratos y seguridad
+
+CP-SAT usa una variable binaria por candidato, semilla 17, un thread y timeout de dos segundos.
+Maximiza `round(ICinferiorUplift × attendanceProbability × projectedNetMarginCents) - contactCost`.
+Limita presupuesto por descuento+contacto, capacidad solicitada por franja, diez selecciones y una por
+sujeto seudónimo. Orden final por contribución/UUID mantiene replay estable.
+
+La respuesta incluye approvalId, posición, capacidad, uplift/IC inferior, margen, coste y valor
+incremental. `automaticContactAllowed=false` es literal incluso con solución óptima. Spring deberá
+revalidar aprobación, presupuesto y capacidad antes de materializar una campaña, y conservar auditoría
+administrativa; este módulo no autoriza targeting persistente por sí mismo.
+
+### Pruebas, evidencia, observabilidad y deuda
+
+Se añadieron seis pruebas: objetivo bajo capacidad/presupuesto, bloqueo por uplift no fiable, exclusión
+de natural booker, gates de margen/aprobación/consentimiento/frecuencia, unicidad de sujeto y
+aprobación/restricción caducadas. Las trece pruebas HTTP verifican la ruta interna autenticada.
+Evidencia: `python -m unittest apps/demand-engine/tests/test_smart_promotions.py
+apps/demand-engine/tests/test_api_contracts.py -v` ejecutó 19 casos, todos `OK`, en 3,638 s;
+`py_compile`, Prettier y `git diff --check` se ejecutan antes del commit.
+
+Riesgos/deuda: el umbral baseline 0,60 requiere calibración por vertical; margen y coste deben proceder
+de contabilidad validada, no del cliente. La tarea no implementa ledger/expiración de approvals,
+materialización de cupón, canal de contacto ni experimento promocional. Antes de producción se requiere
+revisión legal, holdout causal, monitor de presupuesto/frecuencia y rollback. El valor incremental es
+conservador, pero no sustituye el ROI observado que medirá 22.14.

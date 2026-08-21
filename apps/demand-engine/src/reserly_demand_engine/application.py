@@ -29,6 +29,7 @@ from .implicit_profiles import ImplicitProfileBuilder, ImplicitProfilePolicy
 from .nlp import PersonalCareNlpPipeline, PersonalCareNlpPolicy
 from .scoring import ScoreMvp, ScorePolicy
 from .waitlist_allocation import WaitlistAllocationPolicy, WaitlistAllocator
+from .smart_promotions import SmartPromotionPlanner, SmartPromotionPolicy
 
 
 def create_app(
@@ -77,6 +78,9 @@ def create_app(
     )
     app.state.waitlist_allocator = WaitlistAllocator(
         WaitlistAllocationPolicy.load(policy_root / "waitlist-allocation.v1.json")
+    )
+    app.state.smart_promotion_planner = SmartPromotionPlanner(
+        SmartPromotionPolicy.load(policy_root / "smart-promotion.v1.json")
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

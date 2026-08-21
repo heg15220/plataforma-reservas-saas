@@ -47,6 +47,7 @@ from .implicit_profiles import ImplicitProfileRequest, ImplicitProfileResponse
 from .nlp import NlpAnalyzeRequest, NlpAnalyzeResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 from .waitlist_allocation import WaitlistAllocationRequest, WaitlistAllocationResponse
+from .smart_promotions import SmartPromotionRequest, SmartPromotionResponse
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -214,6 +215,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.waitlist_allocator.allocate(body)
         except ValueError as error:
             raise DemandEngineError("WAITLIST_ALLOCATION_REJECTED", 409) from error
+
+    @router.post("/promotions/plan", response_model=SmartPromotionResponse)
+    async def plan_promotions(
+        body: SmartPromotionRequest, request: Request
+    ) -> SmartPromotionResponse:
+        """Propone promociones preaprobadas sin emitir contacto, cupón ni mutación transaccional."""
+        try:
+            return request.app.state.smart_promotion_planner.plan(body)
+        except ValueError as error:
+            raise DemandEngineError("SMART_PROMOTION_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(
