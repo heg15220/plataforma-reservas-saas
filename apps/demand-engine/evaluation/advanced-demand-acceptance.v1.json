@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "matrixVersion": "advanced-demand-acceptance-v1",
+  "requiredCategories": [
+    "optimization",
+    "capacity",
+    "frequency",
+    "equity",
+    "causality",
+    "drift",
+    "rollback",
+    "safeDegradation"
+  ],
+  "checks": [
+    {
+      "category": "optimization",
+      "component": "opportunityCpSat",
+      "testFile": "test_opportunity_optimization.py",
+      "testMethod": "test_cp_sat_maximizes_value_with_capacity_budget_and_fairness",
+      "invariant": "CP-SAT maximizes permitted value under budget and explicit constraints.",
+      "failureResponse": "disableOptimization"
+    },
+    {
+      "category": "optimization",
+      "component": "smartPromotions",
+      "testFile": "test_smart_promotions.py",
+      "testMethod": "test_selects_highest_incremental_value_with_budget_and_capacity",
+      "invariant": "Promotions optimize conservative incremental value, budget and capacity.",
+      "failureResponse": "disablePromotions"
+    },
+    {
+      "category": "capacity",
+      "component": "opportunityCpSat",
+      "testFile": "test_opportunity_optimization.py",
+      "testMethod": "test_same_subject_and_slot_cannot_be_overallocated",
+      "invariant": "A subject and slot cannot consume more than the photographed capacity.",
+      "failureResponse": "rejectDecision"
+    },
+    {
+      "category": "capacity",
+      "component": "waitlistAllocation",
+      "testFile": "test_waitlist_allocation.py",
+      "testMethod": "test_reliable_priority_is_staggered_without_exceeding_capacity",
+      "invariant": "Waitlist waves never propose more offers than slot capacity.",
+      "failureResponse": "disableAllocation"
+    },
+    {
+      "category": "frequency",
+      "component": "smartPromotions",
+      "testFile": "test_smart_promotions.py",
+      "testMethod": "test_margin_approval_consent_and_frequency_are_hard_gates",
+      "invariant": "Frequency, consent, approval and margin are hard promotion gates.",
+      "failureResponse": "disablePromotions"
+    },
+    {
+      "category": "frequency",
+      "component": "waitlistAllocation",
+      "testFile": "test_waitlist_allocation.py",
+      "testMethod": "test_consent_frequency_and_hard_constraints_are_excluded",
+      "invariant": "Waitlist allocation excludes exhausted frequency before prioritization.",
+      "failureResponse": "disableAllocation"
+    },
+    {
+      "category": "equity",
+      "component": "opportunityCpSat",
+      "testFile": "test_opportunity_optimization.py",
+      "testMethod": "test_cp_sat_maximizes_value_with_capacity_budget_and_fairness",
+      "invariant": "Optimization preserves bounded exposure for the operational new-venue group.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "equity",
+      "component": "crossCategory",
+      "testFile": "test_cross_category_recommendations.py",
+      "testMethod": "test_ranked_result_excludes_source_and_enforces_category_diversity",
+      "invariant": "Cross-category results cap concentration and require distinct categories.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "causality",
+      "component": "causalGate",
+      "testFile": "test_causal_ab_validation.py",
+      "testMethod": "test_valid_synthetic_ab_estimates_effect_but_blocks_causal_permission",
+      "invariant": "Synthetic experiments cannot authorize causal interpretation or action.",
+      "failureResponse": "suppressCausalClaim"
+    },
+    {
+      "category": "causality",
+      "component": "incrementalityMeasurement",
+      "testFile": "test_incrementality_measurement.py",
+      "testMethod": "test_observational_data_never_emits_incremental_fields",
+      "invariant": "Observational cohorts emit attributed language and null incremental fields.",
+      "failureResponse": "suppressCausalClaim"
+    },
+    {
+      "category": "drift",
+      "component": "incrementalLearning",
+      "testFile": "test_incremental_learning.py",
+      "testMethod": "test_error_degradation_blocks_checkpoint_and_requires_rollback",
+      "invariant": "Error drift discards the candidate checkpoint before any review.",
+      "failureResponse": "rollbackChampion"
+    },
+    {
+      "category": "drift",
+      "component": "incrementalLearning",
+      "testFile": "test_incremental_learning.py",
+      "testMethod": "test_page_hinkley_detects_abrupt_feature_shift",
+      "invariant": "Page-Hinkley detects abrupt changes in every governed feature stream.",
+      "failureResponse": "rollbackChampion"
+    },
+    {
+      "category": "rollback",
+      "component": "incrementalLearning",
+      "testFile": "test_incremental_learning.py",
+      "testMethod": "test_sequence_feature_policy_and_checksum_drift_fail_closed",
+      "invariant": "Corrupt or incompatible checkpoints fail before reconstructing the learner.",
+      "failureResponse": "rollbackChampion"
+    },
+    {
+      "category": "rollback",
+      "component": "governanceArtifacts",
+      "testFile": "test_advanced_demand_acceptance.py",
+      "testMethod": "test_drift_policy_and_model_card_define_same_rollback_target",
+      "invariant": "Drift policy and model card agree on a versioned deterministic rollback.",
+      "failureResponse": "blockRelease"
+    },
+    {
+      "category": "safeDegradation",
+      "component": "opportunityCpSat",
+      "testFile": "test_opportunity_optimization.py",
+      "testMethod": "test_unreliable_estimates_use_fifo_deterministically",
+      "invariant": "Unreliable opportunity estimates degrade to deterministic FIFO.",
+      "failureResponse": "safeFallback"
+    },
+    {
+      "category": "safeDegradation",
+      "component": "smartPromotions",
+      "testFile": "test_smart_promotions.py",
+      "testMethod": "test_unreliable_uplift_blocks_promotions_instead_of_fallback_discount",
+      "invariant": "Unreliable uplift blocks discounts rather than inventing a promotional fallback.",
+      "failureResponse": "disablePromotions"
+    }
+  ]
+}

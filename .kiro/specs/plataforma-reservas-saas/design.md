@@ -4804,3 +4804,16 @@ existen si hay RCT productivo prerregistrado, asignación previa estable/exclusi
 muestra/maduración, balance 50/50 ±0,10 y cero crossover, violación dura o de privacidad. En otro caso
 los campos causales son `null` y la terminología es `attributedEstimated`. Denominador incremental no
 positivo oculta coste por cliente; coste cero oculta retorno. `automaticCommercialClaimAllowed=false`.
+
+### 14.66 Puerta transversal de aceptación avanzada
+
+`advanced-demand-acceptance-v1` inventaría dieciséis pruebas descubiertas por `unittest`: exactamente
+dos evidencias para optimización, capacidad, frecuencia, equidad, causalidad, drift, rollback y
+degradación segura. Cada referencia fija fichero, método, componente, invariante y respuesta
+fail-closed; AST valida que renombrar o retirar una prueba rompe la puerta.
+
+La matriz enlaza componentes reales de 22.5–22.14: CP-SAT, promociones, waitlist, cruce categórico,
+gate causal, medición incremental y River. Pruebas meta verifican cobertura exacta, existencia de
+referencias, ausencia de respuestas permisivas, desactivación de acciones automáticas y coincidencia
+de fallback entre política/model card de drift. El cierre de Fase 22 exige además la suite acumulada,
+no solo la matriz.

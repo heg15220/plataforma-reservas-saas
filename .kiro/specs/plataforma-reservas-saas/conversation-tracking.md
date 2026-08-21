@@ -10401,3 +10401,22 @@ Fuente de verdad del avance:
   - Ventana de atribución 72 h, maduración 48 h y periodo máximo 45 días quedan versionados.
   - Reserva/unidad duplicada falla cerrado; cada reserva solo tiene una clase comercial.
   - Seis pruebas focalizadas y trece HTTP quedaron verdes en 2,349 s.
+
+# Conversación 259 - Aceptación transversal y cierre de Fase 22
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se creó una matriz ejecutable con dos evidencias reales por cada categoría exigida en 22.15.
+  - AST protege las referencias a pruebas y los checks meta validan fallbacks, rollback y prohibición
+    de acciones automáticas materiales.
+  - La regresión acumulada del motor cerró 203/203 pruebas sin fallos.
+- Archivos modificados: matriz/módulo/test de aceptación y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-038, RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y
+  RNF-015.
+- Tareas impactadas: 22.15; completa las quince tareas de Fase 22.
+- Tareas completadas: 22.15.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; la siguiente fase del motor es 23.1.
+- Decisiones o aclaraciones relevantes:
+  - Cada categoría exige exactamente dos referencias y una respuesta fail-closed declarada.
+  - La matriz complementa, no sustituye, la ejecución completa de la suite.
+  - Cinco pruebas meta pasaron en 0,041 s y `npm run test:demand` ejecutó 203/203 en 131,245 s.

@@ -39284,3 +39284,56 @@ ajuste por múltiples looks. Ingreso neto y coste requieren fuente contable reco
 observacional puede contener confusión y nunca debe renombrarse incremental. Faltan persistencia de
 proyecciones, endpoint/panel del local, timezone de negocio, FX, impuestos, supresión UI, auditoría de
 recalculo y reconciliación contra reservas; corresponden a integración analítica/Fase 23.
+
+## Iteración 2026-08-21 - Tarea 22.15: aceptación avanzada transversal
+
+### Objetivo, requisitos y alcance
+
+- Identificador exacto: 22.15.
+- Objetivo técnico: convertir optimización, capacidad, frecuencia, equidad, causalidad, drift, rollback
+  y degradación segura en una puerta verificable de release.
+- Requisitos/diseño: RF-038, RF-039, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.16, 14.18 y 14.66.
+
+La tarea no crea otra implementación paralela. `advanced-demand-acceptance.v1.json` enlaza dieciséis
+pruebas funcionales existentes de los componentes reales construidos entre 22.5 y 22.14. Hay dos
+checks exactos por categoría: optimización, capacidad, frecuencia, equidad operativa, causalidad,
+drift, rollback y degradación segura. Cada check registra componente, fichero/método unittest,
+invariante y respuesta esperada: desactivar optimización/promoción/asignación, rechazar decisión,
+fallback, suprimir claim causal, rollback o bloquear release.
+
+### Matriz ejecutable y flujo de fallo
+
+`advanced_acceptance.py` define contratos Pydantic cerrados. La validación exige las ocho categorías,
+mínimo dieciséis checks, al menos dos por categoría y referencias únicas dentro de la categoría.
+`validate_test_references` resuelve únicamente archivos directos bajo `tests`, parsea AST sin importar
+ni ejecutar código arbitrario y comprueba que cada método `test_*` siga existiendo. Una eliminación o
+renombrado rompe el test de matriz en CI.
+
+Las evidencias enlazadas prueban: objetivo CP-SAT/promoción bajo restricciones; capacidad por slot y
+oleada; límites de frecuencia/consentimiento; exposición de locales nuevos y diversidad categórica;
+prohibición causal para sintético/observacional; ADWIN/Page-Hinkley; corrupción de checkpoint y
+rollback; FIFO y bloqueo de descuentos ante incertidumbre. Así, degradación nunca puede reintroducir
+candidatos filtrados ni inventar uplift/score.
+
+`test_advanced_demand_acceptance.py` añade cinco gates meta: cobertura exacta 8×2, existencia AST de
+todas las evidencias, flags automáticos cerrados en las cinco políticas de alto impacto, coincidencia
+`fallback-mvp-v1` entre política y model card incremental, y ausencia de respuestas permissivas. No
+hay endpoint, persistencia, migración ni datos de usuario.
+
+### Archivos, verificación y limitaciones
+
+Archivos creados: matriz JSON, contrato `advanced_acceptance.py` y prueba transversal. Modificados:
+`tasks.md`, `design.md`, `conversation-tracking.md` y `technical-implementation.md`. Ningún archivo se
+elimina. La matriz se valida con JSON y Prettier; Python completo se compila antes del commit.
+
+Evidencia focalizada: `$env:PYTHONPATH='src;../../packages/demand-contracts/src'; python -m unittest
+tests/test_advanced_demand_acceptance.py -v` ejecutó 5/5 en 0,041 s. Evidencia de regresión:
+`npm run test:demand` descubrió y ejecutó 203/203 pruebas en 131,245 s, todas `OK`. Esto incluye las
+dieciséis evidencias referenciadas y los contratos HTTP de 22.13/22.14.
+
+Riesgos/deuda: una matriz demuestra cobertura ejecutada, no corrección formal ni comportamiento de
+infraestructura productiva. Fase 23 debe añadir PostgreSQL/Redis reales, fallos de red, corrupción de
+artefacto, shadow/canary, rollback atómico, Prometheus/Grafana/Evidently y runbooks. Si una nueva acción
+material aparece, la matriz y categorías deberán versionarse; añadir un test sin referencia explícita
+no satisface por sí solo esta puerta.
