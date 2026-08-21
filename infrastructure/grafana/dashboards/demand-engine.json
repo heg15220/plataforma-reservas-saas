@@ -1,0 +1,112 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Latencia HTTP p95",
+      "type": "timeseries",
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(reserly_demand_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 0.25}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "Errores HTTP por clase",
+      "type": "timeseries",
+      "targets": [{"expr": "sum by (status_class) (rate(reserly_demand_http_requests_total[5m]))", "legendFormat": "{{status_class}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Drift PSI por etapa",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_drift_psi", "legendFormat": "{{stage}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 0.2}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}
+    },
+    {
+      "id": 4,
+      "title": "Error de calibración",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_calibration_error_ratio", "legendFormat": "{{stage}} / {{segment}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
+    },
+    {
+      "id": 5,
+      "title": "Cobertura",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_coverage_ratio", "legendFormat": "{{surface}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}
+    },
+    {
+      "id": 6,
+      "title": "Diversidad",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_diversity_ratio", "legendFormat": "{{surface}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}
+    },
+    {
+      "id": 7,
+      "title": "Exposición por cohorte operativa",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_exposure_ratio", "legendFormat": "{{cohort}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16}
+    },
+    {
+      "id": 8,
+      "title": "Valor comercial agregado",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_business_value_eur", "legendFormat": "{{kind}}"}],
+      "fieldConfig": {"defaults": {"unit": "currencyEUR"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16}
+    },
+    {
+      "id": 9,
+      "title": "Fallbacks por razón gobernada",
+      "type": "timeseries",
+      "targets": [{"expr": "sum by (reason) (rate(reserly_demand_fallback_total[5m]))", "legendFormat": "{{reason}}"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16}
+    },
+    {
+      "id": 10,
+      "title": "Tráfico de rollout",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_rollout_traffic_ratio", "legendFormat": "{{stage}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 24}
+    },
+    {
+      "id": 11,
+      "title": "Errores de modelo",
+      "type": "timeseries",
+      "targets": [{"expr": "sum by (stage, family) (rate(reserly_demand_model_errors_total[5m]))", "legendFormat": "{{stage}} / {{family}}"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 24}
+    },
+    {
+      "id": 12,
+      "title": "Distribución de scores",
+      "type": "heatmap",
+      "targets": [{"expr": "sum by (le) (rate(reserly_demand_score_bucket[5m]))", "format": "heatmap", "legendFormat": "{{le}}"}],
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 24}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["reserly", "demand-engine", "mlops"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "Reserly · Motor de demanda",
+  "uid": "reserly-demand-engine",
+  "version": 1
+}

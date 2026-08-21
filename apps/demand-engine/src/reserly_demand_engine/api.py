@@ -65,8 +65,10 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     )
 
     @router.post("/events", response_model=EventsResponse)
-    async def validate_events(body: EventsRequest) -> EventsResponse:
+    async def validate_events(body: EventsRequest, request: Request) -> EventsResponse:
         """Valida eventos para consumidores internos; la persistencia canónica sigue en Spring."""
+        # El contador solo recibe resultado y volumen; jamás payload, requestId o sujeto.
+        request.app.state.metrics.record_ingestion("accepted", len(body.events))
         return EventsResponse(
             requestId=body.requestId,
             policyVersion=body.policyVersion,
@@ -82,7 +84,15 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     async def rank(body: ScoreMvpRequest, request: Request) -> ScoreMvpResponse:
         """Ordena el conjunto cerrado mediante la política MVP versionada."""
         try:
-            return request.app.state.score_mvp.rank(body)
+            result = request.app.state.score_mvp.rank(body)
+            request.app.state.metrics.record_ranking(
+                result.status,
+                result.candidateCount,
+                result.eligibleCount,
+                [item.score for item in result.items if item.score is not None],
+                result.fallbackReason,
+            )
+            return result
         except ScorePolicyVersionMismatch as error:
             raise DemandEngineError("SCORE_POLICY_VERSION_MISMATCH", 409) from error
 
@@ -268,7 +278,15 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
     ) -> IncrementalityMeasurementResponse:
         """Separa valor atribuido de incrementalidad causal con ventanas y controles explícitos."""
         try:
-            return request.app.state.incrementality_measurement_service.measure(body)
+            result = request.app.state.incrementality_measurement_service.measure(body)
+            request.app.state.metrics.set_coverage("incrementality", result.coverage)
+            request.app.state.metrics.set_business_value(
+                "attributedNetRevenue", result.treatment.realizedNetRevenueCents / 100.0
+            )
+            request.app.state.metrics.set_business_value(
+                "activationCost", result.treatment.activationCostCents / 100.0
+            )
+            return result
         except ValueError as error:
             raise DemandEngineError("INCREMENTALITY_MEASUREMENT_REJECTED", 409) from error
 

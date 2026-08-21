@@ -353,6 +353,67 @@ services:
     working_dir: /opt/reserly/apps/demand-engine
     stop_grace_period: 30s
 
+  prometheus:
+    image: prom/prometheus:v3.5.3@sha256:ddc2493835a1509976d5e4e0c94199c4f843ce1f42dd6bcfc8231ba734a93ff7
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      demand-engine:
+        condition: service_healthy
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - 127.0.0.1:${RESERLY_PROMETHEUS_PORT:-9090}:9090
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1770
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:9090/-/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 20s
+
+  grafana:
+    image: grafana/grafana:13.1.0@sha256:121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${RESERLY_GRAFANA_ADMIN_USERNAME:?RESERLY_GRAFANA_ADMIN_USERNAME is required}
+      GF_SECURITY_ADMIN_PASSWORD: ${RESERLY_GRAFANA_ADMIN_PASSWORD:?RESERLY_GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - 127.0.0.1:${RESERLY_GRAFANA_PORT:-3000}:3000
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1770
+    healthcheck:
+      test: [CMD-SHELL, wget -q -O /dev/null http://127.0.0.1:3000/api/health]
+      interval: 10s
+      timeout: 3s
+      retries: 18
+      start_period: 20s
+    stop_grace_period: 20s
+
   clamav:
     image: clamav/clamav:1.4.3@sha256:75fb5fd95fcbe1d7e6d240c369c1572b686ee2c95949d1042b5148de8eddebb4
     restart: unless-stopped
@@ -376,6 +437,8 @@ volumes:
   clamav-data:
   minio-data:
   mlflow-postgres-data:
+  prometheus-data:
+  grafana-data:
   prefect-postgres-data:
   postgres-data:
   rabbitmq-data:

@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from .config import DemandEngineSettings
+from .metrics import DemandMetrics
 
 LOGGER = logging.getLogger("reserly.demand_engine.http")
 
@@ -20,9 +21,10 @@ LOGGER = logging.getLogger("reserly.demand_engine.http")
 class DemandEngineBoundaryMiddleware(BaseHTTPMiddleware):
     """Aplica guardrails antes de ejecutar lógica funcional y nunca registra el body."""
 
-    def __init__(self, app: object, settings: DemandEngineSettings) -> None:
+    def __init__(self, app: object, settings: DemandEngineSettings, metrics: DemandMetrics) -> None:
         super().__init__(app)  # type: ignore[arg-type]
         self._settings = settings
+        self._metrics = metrics
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -44,6 +46,11 @@ class DemandEngineBoundaryMiddleware(BaseHTTPMiddleware):
         except TimeoutError:
             response = _error("REQUEST_TIMEOUT", 504, request_id)
         duration_ms = (time.perf_counter() - started) * 1_000
+        route = request.scope.get("route")
+        route_path = getattr(route, "path", None)
+        self._metrics.observe_http(
+            request.method, route_path, response.status_code, duration_ms / 1_000
+        )
         response.headers["X-Reserly-Correlation-Id"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         LOGGER.info(

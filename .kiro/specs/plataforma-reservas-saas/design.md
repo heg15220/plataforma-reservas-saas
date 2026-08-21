@@ -3282,7 +3282,15 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
   muestra mínima. Su token solo es reutilizable para la etapa y dataset exactos; el snapshot de
   promoción incorpora política y digest de esta evidencia. No se conservan muestras ni valores.
 - Prometheus mide ingestión, latencia, fallback, errores, cobertura, distribución de scores,
-  calibración, diversidad, exposición, drift y valor.
+  calibración, diversidad, exposición, drift y valor. La implementación 23.7 expone
+  `/internal/demand/v1/metrics` desde un `CollectorRegistry` aislado y aplica allowlists a ruta,
+  método, estado, etapa, segmento, superficie, cohorte, razón y clase de valor: UUID, versión libre,
+  texto y sujeto nunca pueden convertirse en label. El middleware usa la plantilla FastAPI resuelta,
+  no el path concreto. Prometheus 3.5.3 LTS y Grafana 13.1.0 están fijados por digest en el perfil
+  `observability`, solo publican UI en loopback, usan filesystem de solo lectura y volúmenes
+  dedicados. Ocho familias obligatorias tienen panel y reglas separadas alertan target caído, 5xx,
+  p95, PSI, calibración, cobertura, diversidad y exposición de nuevos centros. Los jobs publican
+  salud agregada mediante la API tipada; el scrape no recibe filas ni estado de negocio.
 - La promoción es atómica; el artefacto campeón anterior permanece disponible para rollback.
 - `model-rollout-v1` publica primero el candidato como alias `shadow`, sin autoridad de respuesta;
   después lo enruta de forma determinista por `requestId` técnico en escalones canary de 1, 5, 10,

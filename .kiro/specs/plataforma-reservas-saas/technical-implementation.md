@@ -39763,3 +39763,86 @@ lock activa reglas, pero necesita alerta/ledger en 23.7/23.9. Los límites y esc
 inicial y deben recalibrarse sin sobreescribir historia. El router es lógica de dominio; su conexión
 al data plane y métricas Prometheus llega en 23.7. Ensayos de proceso caído entre writes, lease
 expirado y disaster recovery pertenecen a 23.12-23.13.
+
+## Iteración 2026-08-21 - Tarea 23.7: métricas Prometheus y paneles Grafana
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 23.7.
+- Objetivo técnico: hacer observable el motor de demanda con métricas accionables de latencia,
+  errores, drift, calibración, cobertura, diversidad, exposición y valor, sin crear una nueva fuga de
+  identidades o cardinalidad no acotada.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; secciones 14.16-14.18.
+
+`metrics.py` crea un `CollectorRegistry` por aplicación en vez de usar el registro global del
+proceso. `DemandMetrics` es la única API de escritura y define counters, gauges e histogramas con
+unidad y semántica explícitas. Las dimensiones están cerradas por tipo/allowlist: métodos GET/POST,
+rutas de contrato, clase HTTP, resultado de ingesta/ranking, razón de fallback, etapa de modelo,
+segmento operativo ES/EN/overall, superficie, cohorte new/established y clase de valor. Cualquier
+ruta desconocida colapsa a `unmatched`; método no admitido a `OTHER`; razón desconocida a `unknown`.
+Ratios rechazan NaN, infinito y valores fuera de [0,1], PSI rechaza negativos, conteos no pueden ser
+negativos y valor exige clase autorizada y número finito. Estas restricciones impiden introducir
+UUID, modelVersion libre, URL concreta, email, texto, token, feature o sujeto como label.
+
+Las familias implementadas son solicitudes y duración HTTP, eventos ingeridos, resultado de ranking,
+fallback, errores de modelo, distribución de score, PSI, error de calibración, cobertura, diversidad,
+exposición, valor EUR y cuota de rollout. El histograma HTTP usa buckets de 5 ms a 5 s y permite
+calcular p95; score usa buckets [0,1]. Los gauges de calidad se actualizan mediante métodos semánticos
+desde jobs/evaluadores sobre resultados ya agregados. No se fabrican diversidad o exposición cuando
+un endpoint solo conoce cobertura. El ranking sí publica cobertura real, scores válidos y fallback;
+la ingesta solo cuenta elementos aceptados; incrementality publica cobertura, ingresos atribuidos y
+coste de activación en EUR. No se instrumenta con payload, requestId o IDs de negocio.
+
+### Frontera HTTP, despliegue y operación
+
+`DemandEngineBoundaryMiddleware` mide con `perf_counter` toda respuesta, incluidos timeout y errores,
+y lee `request.scope.route.path` después del routing. Así `/demand/<UUID>` se registra siempre como
+`/demand/{venue_id}`. La aplicación inyecta el mismo registro en middleware, endpoints y router de
+scrape. `GET /internal/demand/v1/metrics` devuelve el formato oficial de `prometheus_client`; queda
+fuera del OpenAPI y de la autenticación funcional para que Prometheus pueda hacer scrape, pero el
+contrato de infraestructura solo lo alcanza por la red interna. El endpoint serializa exclusivamente
+collectors y nunca estado de aplicación o negocio.
+
+Compose añade el perfil opt-in `observability`. Prometheus 3.5.3 LTS y Grafana 13.1.0 están fijados
+por tag y digest OCI consultado en Docker Hub. Ambos usan raíz de solo lectura, tmpfs, volumen de
+datos dedicado, healthcheck, stop grace period y puertos limitados a 127.0.0.1. Prometheus monta
+configuración/reglas read-only, conserva 15 días y scrapea `demand-engine:8090` cada 15 s. Grafana
+monta datasource/dashboard read-only, bloquea edición/borrado, acceso anónimo, signup, Gravatar y
+telemetría; admin/password proceden del entorno. Staging/producción requieren red privada y TLS
+externo, no exposición directa de esos puertos.
+
+El dashboard versionado contiene doce paneles: p95, errores por clase, PSI, calibración, cobertura,
+diversidad, exposición por cohorte, valor comercial, fallbacks, rollout, errores de modelo y
+distribución de score. No contiene variables libres. Las reglas alertan target caído; tasa 5xx >2 %;
+p95 >250 ms; PSI >0,20; calibración >0,10; cobertura <0,70; diversidad <0,35; y exposición de nuevos
+centros <5 %, cada una con `for`, severidad y runbook. Drift/Evidently informan la investigación, pero
+no sustituyen gates ni ejecutan promoción; los runbooks ordenan congelar/reducir rollout, rollback o
+fallback gobernado. Los scripts `observability:config|up|status|logs|down` separan este plano del
+camino transaccional y nunca borran volúmenes.
+
+### Archivos, seguridad, pruebas y evidencia
+
+Se crean `metrics.py`, cuatro pruebas, configuración y alertas Prometheus, provisioning y dashboard
+Grafana. Se modifican middleware, aplicación, endpoints, dependencia `prometheus-client==0.26.0`,
+Compose, package scripts, tres plantillas, validador de entorno, dos README y cuatro documentos
+`.kiro`. No hay migración, endpoint público, eliminación ni escritura a PostgreSQL. La contraseña
+Grafana sigue el gestor de secretos en staging/production y ninguna credencial se incorpora a
+métricas, panel o logs. Segmentos son únicamente categorías operativas aprobadas, nunca categorías
+sensibles ni proxies individuales.
+
+Cuatro pruebas nuevas verifican las ocho familias obligatorias, validación fail-closed de labels y
+ratios, ruta UUID normalizada, ausencia de token/UUID en scrape, cobertura de panel/alertas y
+endurecimiento/pinning Compose. `npm run env:check`, `npm run observability:config`, parseo JSON,
+`compileall` y `git diff --check` pasan. `npm run test:demand` ejecutó 246/246 pruebas en 286,716 s y
+terminó `OK`. Los digests se resolvieron contra el Registry público. Docker Desktop devolvió HTTP 500
+al intentar consultar/descargar las imágenes mediante su Linux Engine; por ello no se afirma smoke
+runtime, aunque Compose interpoló y validó correctamente. Debe repetirse `observability:up` cuando el
+engine local recupere salud.
+
+Riesgos/deuda: una métrica ausente no equivale a valor cero; target-up y jobs deben alertar por
+freshness en 23.12 si las evaluaciones periódicas dejan de publicar. Los gauges representan la última
+ventana y requieren que el productor conserve timestamp/ventana en su artefacto auditable. Umbrales
+son política operativa inicial y deben calibrarse con datos productivos sin segmentación individual.
+Prometheus local conserva 15 días y no sustituye almacenamiento de largo plazo. 23.8 añadirá informes
+Evidently complementarios y 23.9 persistirá cambios/acciones administrativas; ninguna de ambas debe
+convertir métricas en autorización automática.

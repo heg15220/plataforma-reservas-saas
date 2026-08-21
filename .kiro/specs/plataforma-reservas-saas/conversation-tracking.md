@@ -10543,3 +10543,27 @@ Fuente de verdad del avance:
   - RequestId técnico es la única entrada de asignación y el fallback es `fallback-mvp-v1`.
   - MLflow real conserva `champion=1` y `shadow=2`; inference leyó ambos pero no pudo cambiarlos.
   - Ocho pruebas focalizadas y la regresión completa 242/242 quedaron verdes.
+
+# Conversación 266 - Observabilidad Prometheus y Grafana del motor de demanda
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se instrumentó el límite HTTP, ingesta, ranking, fallback y valor con un registro Prometheus
+    aislado y dimensiones cerradas.
+  - Se provisionaron Prometheus/Grafana, doce paneles y ocho alertas operativas bajo un perfil Compose
+    independiente y endurecido.
+  - El scrape usa rutas normalizadas y excluye UUID, tokens, payloads, texto y datos personales.
+- Archivos modificados: módulo/middleware/API/aplicación/test del motor, dependencia Python, Compose,
+  Prometheus, Grafana, scripts npm, plantillas y validador de entorno, README y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.7; prepara el informe complementario Evidently de 23.8.
+- Tareas completadas: 23.7.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.8.
+- Decisiones o aclaraciones relevantes:
+  - El endpoint de métricas carece de token funcional para scraping, pero solo puede exponerse por red
+    interna; no revela estado de negocio individual.
+  - Prometheus 3.5.3 LTS y Grafana 13.1.0 están fijados por digest y sus puertos solo usan loopback.
+  - Cuatro pruebas focalizadas, configuración/env/JSON, compileall, diff y regresión 246/246 pasaron.
+  - Docker Desktop devolvió HTTP 500 al consultar/descargar imágenes; la configuración Compose fue
+    validada, pero el arranque real del perfil queda por repetir cuando el engine local esté sano.

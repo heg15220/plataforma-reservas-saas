@@ -20,6 +20,7 @@ from .health import RuntimeState, health_router
 from .fallback import DeterministicFallback, FallbackPolicy
 from .explanations import ExplanationBuilder, ExplanationPolicy
 from .middleware import DemandEngineBoundaryMiddleware
+from .metrics import DemandMetrics, metrics_router
 from .occupancy import HourlyOccupancyBaseline, OccupancyPolicy
 from .demand_aggregation import DemandAggregationPolicy, DemandCapacityCalculator
 from .exploration import BasicThompsonSampler, ThompsonPolicy
@@ -56,6 +57,7 @@ def create_app(
     )
     app.state.settings = settings
     app.state.runtime = state or RuntimeState()
+    app.state.metrics = DemandMetrics()
     app.state.venue_profiles = InMemoryVenueProfileRepository()
     app.state.venue_profile_builder = VenueProfileBuilder()
     app.state.session_context_builder = SessionContextBuilder()
@@ -114,8 +116,11 @@ def create_app(
     app.state.embedding_batch_processor = EmbeddingBatchProcessor(
         embedding_embedder or SentenceTransformerEmbedder(manifest), manifest.modelKey
     )
-    app.add_middleware(DemandEngineBoundaryMiddleware, settings=settings)
+    app.add_middleware(
+        DemandEngineBoundaryMiddleware, settings=settings, metrics=app.state.metrics
+    )
     app.include_router(health_router(app.state.runtime))
+    app.include_router(metrics_router(app.state.metrics))
     app.include_router(internal_api_router(settings))
 
     @app.exception_handler(DemandEngineError)

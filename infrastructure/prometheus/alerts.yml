@@ -1,0 +1,83 @@
+groups:
+  - name: reserly-demand-engine-slo
+    interval: 30s
+    rules:
+      - alert: DemandEngineTargetUnavailable
+        expr: up{job="reserly-demand-engine"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: El motor de demanda no puede ser observado
+          runbook: Comprobar health, red interna y último despliegue; activar fallback determinista.
+
+      - alert: DemandEngineHighErrorRate
+        expr: >-
+          sum(rate(reserly_demand_http_requests_total{status_class="5xx"}[5m]))
+          /
+          clamp_min(sum(rate(reserly_demand_http_requests_total[5m])), 0.001)
+          > 0.02
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: La tasa de errores 5xx del motor supera el 2 por ciento
+          runbook: Detener promoción, revisar errores y aplicar rollback o fallback gobernado.
+
+      - alert: DemandEngineLatencyBudgetExceeded
+        expr: >-
+          histogram_quantile(0.95,
+            sum by (le) (rate(reserly_demand_http_request_duration_seconds_bucket[5m])))
+          > 0.25
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: La latencia HTTP p95 supera 250 ms
+          runbook: Revisar ruta y dependencias; reducir rollout si afecta al ranking.
+
+      - alert: DemandModelDriftHigh
+        expr: max(reserly_demand_drift_psi{stage=~"canary|champion"}) > 0.20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: PSI superior a 0.20 en un modelo servido
+          runbook: Contrastar calidad de datos y Evidently; congelar promoción hasta revisión.
+
+      - alert: DemandModelCalibrationDegraded
+        expr: max(reserly_demand_calibration_error_ratio{stage=~"canary|champion"}) > 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: El error de calibración supera 0.10
+          runbook: Revisar por segmento permitido y mantener el baseline si no se recupera.
+
+      - alert: DemandCoverageLow
+        expr: min(reserly_demand_coverage_ratio) < 0.70
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: La cobertura agregada cae por debajo de 0.70
+          runbook: Validar elegibilidad, datos ausentes y fallback sin inspeccionar individuos.
+
+      - alert: DemandDiversityLow
+        expr: min(reserly_demand_diversity_ratio) < 0.35
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: La diversidad agregada cae por debajo de 0.35
+          runbook: Revisar restricciones y cuota de exploración antes de cambiar pesos.
+
+      - alert: DemandNewVenueExposureLow
+        expr: reserly_demand_exposure_ratio{cohort="newVenue"} < 0.05
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: La exposición agregada de nuevos centros cae por debajo del 5 por ciento
+          runbook: Revisar guardrails de cold start y exploración con métricas agregadas.
+

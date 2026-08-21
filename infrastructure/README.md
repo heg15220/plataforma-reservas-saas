@@ -9,6 +9,7 @@
 - ClamAV para análisis fail-closed de documentación.
 - MLflow 3.15.1, bajo el perfil `mlops`, con RBAC, PostgreSQL separado y artefactos privados en MinIO.
 - Prefect 3.8.2, bajo el mismo perfil, con API/UI autenticada, PostgreSQL propio y process worker.
+- Prometheus 3.5.3 LTS y Grafana 13.1.0 bajo `observability`, con alertas y dashboard provisionados.
 
 Desde la raíz, después de crear `.env.local`:
 
@@ -28,6 +29,23 @@ npm run mlops:status
 npm run mlops:logs
 npm run mlops:down
 ```
+
+La observabilidad del motor se inicia de forma independiente:
+
+```bash
+npm run observability:config
+npm run observability:up
+npm run observability:status
+npm run observability:logs
+npm run observability:down
+```
+
+Prometheus queda en `127.0.0.1:9090` y consulta el endpoint interno normalizado del motor cada 15 s.
+Grafana queda en `127.0.0.1:3000`, exige `RESERLY_GRAFANA_ADMIN_*`, desactiva acceso anónimo,
+registro y telemetría, y carga el dashboard `Reserly · Motor de demanda` como configuración no
+editable. En despliegues no locales ambas UI requieren red administrativa privada y TLS externo.
+Las reglas alertan disponibilidad, errores 5xx, p95, PSI, calibración, cobertura, diversidad y
+exposición agregada; ninguna serie debe introducir identidad, texto o valores de features como label.
 
 La UI de MLflow queda en `127.0.0.1:5000`. El primer arranque crea el administrador indicado por
 `RESERLY_MLFLOW_ADMIN_*`; debe rotarse mediante el gestor de secretos. El permiso por defecto es

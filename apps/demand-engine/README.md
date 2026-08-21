@@ -116,3 +116,10 @@ por hash estable de `requestId`, avanza 1/5/10/25/50/100 % con comparación agre
 champion ante cualquier guardrail. Tras el último escalón aún se requiere `PromotionApproval` humana;
 el cambio de aliases conserva `previous-champion`. Kill switch, registry no disponible o rollback
 fallido activan `fallback-mvp-v1` sin inventar una versión de modelo.
+
+El endpoint de scrape `GET /internal/demand/v1/metrics` publica exclusivamente series Prometheus
+agregadas. No requiere el token funcional para permitir scraping desde la red interna, pero nunca debe
+publicarse fuera de esa red. Las rutas se normalizan contra las plantillas FastAPI y todos los demás
+labels usan allowlists cerradas; no se aceptan UUID, versiones libres, texto, payloads ni atributos
+personales. `DemandMetrics` es la frontera tipada para que ranking, ingesta y jobs MLOps actualicen
+latencia, errores, drift, calibración, cobertura, diversidad, exposición, rollout y valor.
