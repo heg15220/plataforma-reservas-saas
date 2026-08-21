@@ -10462,3 +10462,26 @@ Fuente de verdad del avance:
   - La migración exige benchmark, operación/TCO y aprobación; nunca se ejecuta automáticamente.
   - Ocho pruebas pasaron; el despliegue real quedó healthy, el endpoint protegido devolvió 401 sin
     credenciales y confirmó el pool process con autenticación.
+
+# Conversación 262 - Linaje MLOps end-to-end content-addressed
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se creó un manifiesto DAG que cubre las ocho clases de activo exigidas y enlaza cada padre por
+    identificador, versión y SHA-256.
+  - Se añadieron contratos específicos para datos, features, ontología, embedding, configuración,
+    modelo, experimento y promoción, con privacidad y aprobación fail-closed.
+  - La CLI verifica checksums `repo://` y genera digest/tags listos para MLflow sin registrar contenido
+    sensible.
+- Archivos modificados: manifiesto/artefactos de linaje, módulo/CLI/pruebas Python, README del motor y
+  cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-009 y RNF-014.
+- Tareas impactadas: 23.3; prepara validaciones automáticas de 23.4.
+- Tareas completadas: 23.3.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.4.
+- Decisiones o aclaraciones relevantes:
+  - El commit productor es la revisión de inputs que originó el manifiesto, no un SHA autorreferente
+    del commit que añade el propio manifiesto.
+  - Una promoción aprobada necesita actor y transición; deferred/rejected conserva estado.
+  - La CLI validó ocho ficheros, MLflow persistió/releyó 19 tags de linaje y la regresión cerró
+    224/224; digest `a92f7b6946c1b3cc4be0a6df658e4beab61cc3a754bbc15a67b64a6c97940c21`.

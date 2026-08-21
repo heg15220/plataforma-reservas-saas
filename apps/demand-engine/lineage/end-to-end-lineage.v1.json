@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "demand-lineage-v1",
+  "generatedAt": "2026-08-21T10:00:00Z",
+  "sourceGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+  "environment": "local",
+  "artifacts": [
+    {
+      "artifactId": "dataset-personal-care-retrieval-v1",
+      "artifactType": "dataset",
+      "version": "personal-care-retrieval.v1",
+      "uri": "repo://apps/demand-engine/evaluation/personal-care-retrieval.v1.json",
+      "sha256": "9359978e876bdc82407204eee82e2a3ae2e3ee77ea7788716d0332660ae75c15",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Evaluate bilingual personal-care retrieval with a synthetic governed fixture.",
+      "immutable": true,
+      "personalDataStatus": "synthetic",
+      "parents": [],
+      "datasetSchemaVersion": "personal-care-retrieval-schema-v1",
+      "cutoffAt": "2026-08-21T00:00:00Z",
+      "rowCount": 26,
+      "consentRevocationsApplied": true,
+      "directIdentifiersExcluded": true
+    },
+    {
+      "artifactId": "ontology-personal-care-v1",
+      "artifactType": "ontology",
+      "version": "personal-care.v1",
+      "uri": "repo://packages/demand-contracts/ontology/personal-care.v1.json",
+      "sha256": "551a17c38b539b52e4d26d495b88d9d6936d831f043d75b11bb55fd3824d170c",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Define reviewed bilingual personal-care attribute semantics for the pilot.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [],
+      "effectiveFrom": "2026-08-13",
+      "locales": ["es", "en"],
+      "humanReviewed": true
+    },
+    {
+      "artifactId": "configuration-conversion-training-v1",
+      "artifactType": "configuration",
+      "version": "conversion-logistic-training-v1",
+      "uri": "repo://apps/demand-engine/policies/conversion-logistic-training.v1.json",
+      "sha256": "58263750fde1d82c1bd1eb3d6113094a74f2a2d9bacf04dff2b13b0af2068031",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Govern conversion baseline training features, temporal splits and evaluation gates.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [
+        {
+          "artifactId": "ontology-personal-care-v1",
+          "version": "personal-care.v1",
+          "sha256": "551a17c38b539b52e4d26d495b88d9d6936d831f043d75b11bb55fd3824d170c"
+        }
+      ],
+      "configurationKind": "training",
+      "secretsIncluded": false
+    },
+    {
+      "artifactId": "feature-set-conversion-v1",
+      "artifactType": "featureSet",
+      "version": "conversion-features-v1",
+      "uri": "repo://apps/demand-engine/lineage/features/conversion-features.v1.json",
+      "sha256": "44eacfae7f7baa82b65b12d3ad006114490465d4d16aca3915dcc3e7f8b6a148",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Freeze the point-in-time conversion feature allowlist and leakage exclusions.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [
+        {
+          "artifactId": "dataset-personal-care-retrieval-v1",
+          "version": "personal-care-retrieval.v1",
+          "sha256": "9359978e876bdc82407204eee82e2a3ae2e3ee77ea7788716d0332660ae75c15"
+        },
+        {
+          "artifactId": "ontology-personal-care-v1",
+          "version": "personal-care.v1",
+          "sha256": "551a17c38b539b52e4d26d495b88d9d6936d831f043d75b11bb55fd3824d170c"
+        },
+        {
+          "artifactId": "configuration-conversion-training-v1",
+          "version": "conversion-logistic-training-v1",
+          "sha256": "58263750fde1d82c1bd1eb3d6113094a74f2a2d9bacf04dff2b13b0af2068031"
+        }
+      ],
+      "featureCodes": [
+        "affinity",
+        "proximity",
+        "availability",
+        "normalizedPrice",
+        "timeUrgency",
+        "newVenue",
+        "eveningSlot",
+        "weekendSlot"
+      ],
+      "pointInTimeCorrect": true,
+      "prohibitedFeaturesExcluded": true
+    },
+    {
+      "artifactId": "embedding-multilingual-e5-small-v1",
+      "artifactType": "embedding",
+      "version": "multilingual-e5-small-v1",
+      "uri": "repo://apps/demand-engine/models/multilingual-e5-small.v1.json",
+      "sha256": "f19e9b9075583d37f7614c722f7c5360dbdeddce577971aedd2982b09fb6505b",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Pin the bilingual embedding model, revision, dimensions and normalization contract.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [
+        {
+          "artifactId": "dataset-personal-care-retrieval-v1",
+          "version": "personal-care-retrieval.v1",
+          "sha256": "9359978e876bdc82407204eee82e2a3ae2e3ee77ea7788716d0332660ae75c15"
+        },
+        {
+          "artifactId": "ontology-personal-care-v1",
+          "version": "personal-care.v1",
+          "sha256": "551a17c38b539b52e4d26d495b88d9d6936d831f043d75b11bb55fd3824d170c"
+        },
+        {
+          "artifactId": "configuration-conversion-training-v1",
+          "version": "conversion-logistic-training-v1",
+          "sha256": "58263750fde1d82c1bd1eb3d6113094a74f2a2d9bacf04dff2b13b0af2068031"
+        }
+      ],
+      "repository": "intfloat/multilingual-e5-small",
+      "modelRevision": "d1d99a1efae6779390caba937d92c54b5bc70e51",
+      "dimensions": 384,
+      "normalized": true
+    },
+    {
+      "artifactId": "model-conversion-logistic-baseline-v1",
+      "artifactType": "model",
+      "version": "conversion-logistic-baseline-v1",
+      "uri": "repo://apps/demand-engine/models/conversion-logistic-baseline.v1.model-card.json",
+      "sha256": "d719ce9e173d8d40c49932707fff3d0c06a4716ab6a142161e4ed711ab39a767",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Register the governed conversion baseline candidate without deploying it.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [
+        {
+          "artifactId": "dataset-personal-care-retrieval-v1",
+          "version": "personal-care-retrieval.v1",
+          "sha256": "9359978e876bdc82407204eee82e2a3ae2e3ee77ea7788716d0332660ae75c15"
+        },
+        {
+          "artifactId": "feature-set-conversion-v1",
+          "version": "conversion-features-v1",
+          "sha256": "44eacfae7f7baa82b65b12d3ad006114490465d4d16aca3915dcc3e7f8b6a148"
+        },
+        {
+          "artifactId": "ontology-personal-care-v1",
+          "version": "personal-care.v1",
+          "sha256": "551a17c38b539b52e4d26d495b88d9d6936d831f043d75b11bb55fd3824d170c"
+        },
+        {
+          "artifactId": "embedding-multilingual-e5-small-v1",
+          "version": "multilingual-e5-small-v1",
+          "sha256": "f19e9b9075583d37f7614c722f7c5360dbdeddce577971aedd2982b09fb6505b"
+        },
+        {
+          "artifactId": "configuration-conversion-training-v1",
+          "version": "conversion-logistic-training-v1",
+          "sha256": "58263750fde1d82c1bd1eb3d6113094a74f2a2d9bacf04dff2b13b0af2068031"
+        }
+      ],
+      "status": "candidate",
+      "modelCardUri": "repo://apps/demand-engine/models/conversion-logistic-baseline.v1.model-card.json",
+      "humanApprovalRequired": true,
+      "automaticDeploymentAllowed": false
+    },
+    {
+      "artifactId": "experiment-personal-care-ranking-v1",
+      "artifactType": "experiment",
+      "version": "personal-care-ranking-experiment-v1",
+      "uri": "repo://apps/demand-engine/lineage/experiments/personal-care-ranking.v1.json",
+      "sha256": "0365641ab7f9d8f3889135f72b1328e701d5cc60217c284c73ae6be633b16706",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Version the planned ranking experiment and its consented assignment unit.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [
+        {
+          "artifactId": "dataset-personal-care-retrieval-v1",
+          "version": "personal-care-retrieval.v1",
+          "sha256": "9359978e876bdc82407204eee82e2a3ae2e3ee77ea7788716d0332660ae75c15"
+        },
+        {
+          "artifactId": "model-conversion-logistic-baseline-v1",
+          "version": "conversion-logistic-baseline-v1",
+          "sha256": "d719ce9e173d8d40c49932707fff3d0c06a4716ab6a142161e4ed711ab39a767"
+        },
+        {
+          "artifactId": "configuration-conversion-training-v1",
+          "version": "conversion-logistic-training-v1",
+          "sha256": "58263750fde1d82c1bd1eb3d6113094a74f2a2d9bacf04dff2b13b0af2068031"
+        }
+      ],
+      "protocolVersion": "ranking-ab-test-v1",
+      "assignmentUnit": "consentedPseudonymousSession",
+      "status": "planned",
+      "automaticActivationAllowed": false
+    },
+    {
+      "artifactId": "promotion-conversion-logistic-candidate-v1",
+      "artifactType": "promotionDecision",
+      "version": "conversion-logistic-candidate-decision-v1",
+      "uri": "repo://apps/demand-engine/lineage/promotions/conversion-logistic-baseline-candidate.v1.json",
+      "sha256": "25cef19b6dd8fd089ead25e1a77eff13ba55a5d63c2978a4af287795f6491ea4",
+      "createdAt": "2026-08-21T10:00:00Z",
+      "producerGitCommit": "0065dddab60e0d95c433e804fc80ae39758742d7",
+      "owner": "demand-intelligence",
+      "purpose": "Record why the candidate remains unpromoted and preserve its rollback baseline.",
+      "immutable": true,
+      "personalDataStatus": "none",
+      "parents": [
+        {
+          "artifactId": "model-conversion-logistic-baseline-v1",
+          "version": "conversion-logistic-baseline-v1",
+          "sha256": "d719ce9e173d8d40c49932707fff3d0c06a4716ab6a142161e4ed711ab39a767"
+        },
+        {
+          "artifactId": "experiment-personal-care-ranking-v1",
+          "version": "personal-care-ranking-experiment-v1",
+          "sha256": "0365641ab7f9d8f3889135f72b1328e701d5cc60217c284c73ae6be633b16706"
+        },
+        {
+          "artifactId": "configuration-conversion-training-v1",
+          "version": "conversion-logistic-training-v1",
+          "sha256": "58263750fde1d82c1bd1eb3d6113094a74f2a2d9bacf04dff2b13b0af2068031"
+        }
+      ],
+      "decision": "deferred",
+      "fromStatus": "candidate",
+      "toStatus": "candidate",
+      "approvedBy": null,
+      "rollbackVersion": "public-availability-fallback-v1",
+      "automaticPromotionAllowed": false
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "featureSetVersion": "conversion-features-v1",
+  "featureCodes": [
+    "affinity",
+    "proximity",
+    "availability",
+    "normalizedPrice",
+    "timeUrgency",
+    "newVenue",
+    "eveningSlot",
+    "weekendSlot"
+  ],
+  "pointInTimeCorrect": true,
+  "availableAtRequired": true,
+  "prohibitedFeatureCodes": [
+    "bookingCompleted",
+    "bookingCancelled",
+    "attendanceConfirmed",
+    "noShow",
+    "reviewRating",
+    "postBookingOutcome",
+    "customerEmail",
+    "reservationId"
+  ]
+}

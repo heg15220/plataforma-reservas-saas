@@ -459,7 +459,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 - [x] 23.1. Desplegar MLflow para tracking y registro de datasets, parámetros, métricas, artefactos y modelos con almacenamiento y acceso protegidos.
 - [x] 23.2. Seleccionar Prefect como orquestador inicial y documentar el umbral que justificaría Airflow u otra alternativa.
-- [ ] 23.3. Versionar datasets, features, ontología, embeddings, configuraciones, modelos, experimentos y decisiones de promoción de extremo a extremo.
+- [x] 23.3. Versionar datasets, features, ontología, embeddings, configuraciones, modelos, experimentos y decisiones de promoción de extremo a extremo.
 - [ ] 23.4. Implementar validación automática de esquema, calidad, distribución, PII, leakage y sesgo antes de entrenar o promover.
 - [ ] 23.5. Separar entornos y permisos de entrenamiento, registro e inferencia con secretos rotables y mínimo privilegio.
 - [ ] 23.6. Implementar despliegue shadow/canary, comparación con campeón, rollback automático y fallback a reglas.

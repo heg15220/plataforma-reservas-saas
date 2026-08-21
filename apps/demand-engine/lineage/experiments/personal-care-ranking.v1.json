@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "experimentVersion": "personal-care-ranking-experiment-v1",
+  "protocolVersion": "ranking-ab-test-v1",
+  "assignmentUnit": "consentedPseudonymousSession",
+  "controlPolicyVersion": "public-availability-fallback-v1",
+  "treatmentPolicyVersion": "score-mvp-v1",
+  "status": "planned",
+  "automaticActivationAllowed": false
+}

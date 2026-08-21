@@ -3239,6 +3239,16 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 ### 14.16 MLOps, observabilidad y rollback
 
 - Dataset, ontología, features, embedding, configuración, modelo y ranking tienen versiones enlazadas.
+- La implementación 23.3 extiende esa cadena hasta experimento y decisión de promoción mediante un
+  DAG `demand-lineage-v1`. Cada nodo declara tipo, versión, URI inmutable, SHA-256, commit productor,
+  owner, finalidad, estado de datos personales y padres con versión+digest exactos. Features requieren
+  dataset+ontología+configuración; embeddings, los mismos; modelos añaden feature set y embedding;
+  experimentos enlazan dataset+modelo+configuración; promoción enlaza modelo+experimento+configuración.
+  El manifiesto rechaza huecos, duplicados, discrepancias, ciclos, escapes `repo://`, promoción
+  aprobada sin actor y cambios de estado no aprobados. Su digest y las ocho parejas versión/SHA se
+  proyectan como tags `reserly.lineage.*` en MLflow, y el manifiesto completo se conserva como
+  artefacto para reconstrucción. Cambiar cualquier byte exige un nuevo digest y versión; nunca se
+  sobrescribe una entrada histórica.
 - MLflow registra parámetros, métricas, artefactos, model card y estado (`candidate`, `shadow`,
   `canary`, `champion`, `retired`).
 - La implementación 23.1 fija MLflow 3.15.1 por versión y digest en el perfil Compose `mlops`.

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "promotionDecisionVersion": "conversion-logistic-candidate-decision-v1",
+  "modelVersion": "conversion-logistic-baseline-v1",
+  "experimentVersion": "personal-care-ranking-experiment-v1",
+  "fromStatus": "candidate",
+  "toStatus": "candidate",
+  "decision": "deferred",
+  "reason": "Synthetic contract evidence does not authorize shadow or production promotion.",
+  "approvedBy": null,
+  "automaticPromotionAllowed": false,
+  "rollbackVersion": "public-availability-fallback-v1"
+}

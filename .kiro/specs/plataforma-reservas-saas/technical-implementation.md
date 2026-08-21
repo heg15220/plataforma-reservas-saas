@@ -39478,3 +39478,83 @@ deben recalibrarse con telemetría sin reescribir historia: cualquier cambio exi
 Prefect Basic Auth es una credencial compartida y requiere TLS/secret manager; RBAC fino o equipos
 múltiples pueden activar el requisito duro. Redis/mensajería, HA, backups, despliegues concretos y
 pruebas de retry/checkpoint/lock pertenecen a tareas posteriores de industrialización.
+
+## Iteración 2026-08-21 - Tarea 23.3: linaje end-to-end content-addressed
+
+### Objetivo, alcance y requisitos
+
+- Identificador exacto: 23.3.
+- Objetivo técnico: hacer reproducible y auditable la cadena completa desde datos/configuración hasta
+  experimento y decisión de promoción, sin depender de nombres mutables.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009 y RNF-014; secciones 14.13, 14.15-14.17.
+
+`lineage.py` define un manifiesto Pydantic estricto e inmutable con ocho subtipos discriminados:
+`dataset`, `featureSet`, `ontology`, `embedding`, `configuration`, `model`, `experiment` y
+`promotionDecision`. Cada activo contiene `artifactId`, tipo, versión, URI, SHA-256, timestamp con
+zona, commit productor de cuarenta hex, owner, finalidad, indicador literal de inmutabilidad, estado
+minimizado de datos personales y padres. Cada padre repite id, versión y SHA-256: no se resuelve
+"latest", alias mutable ni nombre solo.
+
+El ejemplo `demand-lineage-v1` cubre un dataset sintético bilingüe, ontología personal-care,
+configuración de entrenamiento logístico, allowlist point-in-time de ocho features, revisión exacta de
+`multilingual-e5-small`, model card candidata, experimento planificado y decisión deferred que conserva
+fallback. `sourceGitCommit=0065dddab60e0d95c433e804fc80ae39758742d7` identifica la revisión de
+inputs usada para construir el manifiesto; no intenta incluir el SHA autorreferente del commit que
+añade el manifiesto. Cambiar un input produce otro SHA y exige nueva versión/registro, nunca overwrite.
+
+### Grafo, invariantes y flujo de ejecución
+
+El `model_validator` crea índice único por artifactId y por `(type, version)`, exige cobertura exacta de
+los ocho tipos y resuelve cada referencia contra versión/digest real. Rechaza padre ausente,
+discrepancia, autorreferencia, duplicado y ciclos mediante DFS de tres estados. Después aplica la
+matriz de dependencias mínimas:
+
+- feature set y embedding dependen de dataset, ontología y configuración;
+- modelo depende además de feature set y embedding;
+- experimento depende de dataset, modelo y configuración;
+- decisión depende de modelo, experimento y configuración.
+
+El dataset exige corte temporal, esquema, row count, revocaciones aplicadas y ausencia de
+identificadores directos. Features son únicas, point-in-time y declaran excluidos los códigos
+prohibidos. Ontología exige ES/EN y revisión humana. Embedding fija repositorio, revisión, dimensión y
+normalización sin almacenar vectores. Configuración prohíbe secretos. Modelo requiere model card,
+aprobación humana y bloquea deployment automático. Experimento bloquea activación automática.
+Promoción approved exige actor y transición; rejected/deferred no puede cambiar estado y ninguna
+decisión habilita promoción automática.
+
+`verify_repository_artifacts` resuelve solo `repo://` debajo del root seleccionado, impide traversal,
+lee bytes y compara SHA-256. URI S3/MLflow quedan verificables por sus adaptadores futuros sin
+credenciales en el manifiesto. `digest()` serializa JSON canónico ordenado UTF-8. `mlflow_tags()`
+proyecta manifestVersion, digest, source commit y versión/digest de los ocho tipos bajo
+`reserly.lineage.*`; el job debe adjuntar también el manifiesto completo a MLflow. La CLI
+`reserly-demand-validate-lineage` valida grafo+ficheros y solo imprime versión/digest; no registra,
+promueve, despliega ni escribe datos.
+
+### Archivos, privacidad, seguridad y evidencia
+
+Archivos creados: módulo/CLI, ocho pruebas, manifiesto, feature-set, definición experimental y
+decisión deferred. Modificados: script entrypoint en `pyproject.toml`, README del motor y cuatro
+documentos `.kiro`. No hay migración, endpoint, persistencia transaccional ni eliminación. Los
+artefactos preexistentes referenciados son dataset sintético, ontología, policy, embedding manifest y
+model card; sus bytes no se duplican dentro del manifiesto.
+
+No se admiten secretos ni contenido arbitrario. Estado personal es enum; el dataset usado es
+sintético, mientras futuras fuentes pseudonimizadas deberán acreditar revocaciones y exclusión de
+identificadores. Los tags contienen hashes/versiones, no filas, vectores, texto, IDs de cliente ni
+features observadas. Actor de aprobación es un identificador operativo versionado, no nombre/email.
+
+Ocho pruebas verifican cobertura, checksums reales, 19 tags MLflow, digest de padre alterado, padre
+obligatorio ausente, ciclo válido en forma pero inválido en topología, aprobación sin actor y traversal
+de repositorio. `compileall`, Prettier y diff whitespace quedaron verdes. La ejecución real
+`python -m reserly_demand_engine.lineage ... --repository-root .` validó los ocho archivos y produjo
+`a92f7b6946c1b3cc4be0a6df658e4beab61cc3a754bbc15a67b64a6c97940c21`.
+El smoke autenticado registró los 19 tags en el run MLflow
+`24155dfe264344fdae169d5d27e7ff43` mediante `runs/log-batch` y los releyó completos. Finalmente,
+`npm run test:demand` descubrió y ejecutó 224/224 pruebas en 231,656 s, todas `OK`.
+
+Riesgos/deuda: el manifiesto ejemplo demuestra contrato con activos repositorio, no catálogo durable
+multi-run. 23.4 añadirá schema/calidad/PII/leakage/bias como gates; 23.5 permisos; 23.6 aliases y
+promoción/rollback atómicos. Adaptadores S3/MLflow deberán verificar digest remoto, firma/attestation y
+retención. No hay firma criptográfica del manifiesto ni transparencia append-only todavía. Un único
+activo por tipo en tags basta para este ejemplo; pipelines con varios datasets/modelos requerirán tags
+por artifactId o un índice adjunto para evitar colisión.

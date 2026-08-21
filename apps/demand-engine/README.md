@@ -88,3 +88,14 @@ reserly-demand-conversion-analytics --dataset path\conversion-analytics.json `
 La CLI falla si el local autorizado no coincide. Los grupos con menos de treinta exposiciones o cinco
 resultados de cada clase ocultan conteos, tasa e intervalo; las asociaciones nunca se presentan como
 efectos causales.
+
+El linaje MLOps se valida offline antes de registrar o promover:
+
+```powershell
+reserly-demand-validate-lineage lineage\end-to-end-lineage.v1.json `
+  --repository-root ..\..
+```
+
+El manifiesto enlaza por SHA-256 dataset, features, ontología, embedding, configuración, modelo,
+experimento y decisión de promoción. La CLI verifica el DAG y los ficheros `repo://`, imprime solo la
+versión/digest canónicos y no registra ni promueve automáticamente.
