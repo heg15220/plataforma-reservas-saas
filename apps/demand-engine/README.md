@@ -140,3 +140,10 @@ publicarse fuera de esa red. Las rutas se normalizan contra las plantillas FastA
 labels usan allowlists cerradas; no se aceptan UUID, versiones libres, texto, payloads ni atributos
 personales. `DemandMetrics` es la frontera tipada para que ranking, ingesta y jobs MLOps actualicen
 latencia, errores, drift, calibración, cobertura, diversidad, exposición, rollout y valor.
+
+La documentación gobernada se verifica offline con
+`reserly-demand-validate-governance-docs --root apps/demand-engine`. La puerta exige model cards con
+owner, finalidad, limitaciones, rollback y aprobación humana; tres data sheets bilingües; evaluación
+de impacto técnico pendiente de revisión formal; y matriz versionada de atributos prohibidos. Solo
+emite conteos y SHA-256. `promotionAuthorized=false` es invariable: completar documentación no
+autoriza tratamiento, despliegue ni activación comercial.

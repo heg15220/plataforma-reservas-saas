@@ -3334,6 +3334,12 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
   experimentos y promociones no admiten `automated=true`; rollback u otra ejecución automática se
   registra como `automatic_action` y no equivale a aprobación.
 - Evaluación de impacto y revisión jurídica antes de personalización persistente o promociones.
+- La implementación 23.10 añade `demand-documentation-v1`: una puerta offline estricta que inventaría
+  todas las model cards `*.model-card.json`, tres data sheets bilingües, la evaluación de impacto
+  técnico `demand-pia-v1` y `prohibited-attributes-v1`. La matriz niega por defecto identificadores,
+  tracking e inferencias sensibles y no admite excepciones ni relajación automática. Los artefactos
+  se enlazan por SHA-256; cobertura documental solo produce evidencia para revisión y mantiene
+  `promotionAuthorized=false`. La PIA permanece `requires-legal-approval` hasta 23.14.
 
 La implementación 19.16-19.18 materializa estas fronteras mediante consentimiento local versionado,
 endpoint interno autenticado `POST /api/internal/demand/v1/privacy/requests`, auditoría minimizada

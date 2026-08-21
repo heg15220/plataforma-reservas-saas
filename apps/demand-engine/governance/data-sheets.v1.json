@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "demand-data-sheets-v1",
+  "generatedAt": "2026-08-21T00:00:00Z",
+  "dataSheets": [
+    {
+      "datasetKey": "behavior-events",
+      "datasetVersion": "behavior-events-schema-v1",
+      "purpose": {"es": "Medir recorridos de descubrimiento agregados.", "en": "Measure aggregated discovery journeys."},
+      "owner": "demand-data-platform",
+      "sources": ["authenticated-demand-ingestion"],
+      "fields": ["eventType", "occurredAt", "sessionHmac", "venueId", "serviceId", "consentPurpose"],
+      "population": "Eventos válidos con finalidad vigente; no representa a usuarios sin consentimiento.",
+      "timeCoverage": "Ventanas UTC cerradas y versionadas por cutoff.",
+      "quality": ["schema", "completeness", "duplicates", "freshness", "consentRevocations"],
+      "privacy": "HMAC versionado; sin email, texto libre, IP, user-agent ni rasgos sensibles.",
+      "retention": "90d operativo; derivados reconstruibles se eliminan tras revocación.",
+      "knownLimitations": ["Sesgo de selección por consentimiento", "Eventos tardíos antes del cutoff"],
+      "prohibitedUses": ["fingerprinting", "sensitiveInference", "bookingDenial"]
+    },
+    {
+      "datasetKey": "recommendation-alternatives",
+      "datasetVersion": "recommendation-alternatives-v1",
+      "purpose": {"es": "Evaluar ranking sobre conjuntos elegibles completos.", "en": "Evaluate ranking over complete eligible choice sets."},
+      "owner": "demand-ranking",
+      "sources": ["spring-eligibility-boundary", "availability-snapshot"],
+      "fields": ["requestId", "candidateId", "policyVersion", "scoreComponents", "availability", "occurredAt"],
+      "population": "Alternativas que superaron elegibilidad y capacidad en el instante observado.",
+      "timeCoverage": "Snapshots UTC point-in-time con maduración de outcome separada.",
+      "quality": ["completeChoiceSet", "pointInTime", "outcomeMaturity", "distribution"],
+      "privacy": "UUID técnicos no usados como feature; componentes agregados y allowlisted.",
+      "retention": "180d para evaluación; exportaciones por versión y digest.",
+      "knownLimitations": ["Inventario no observado fuera del conjunto", "Posición solo para evaluación"],
+      "prohibitedUses": ["eligibilityOverride", "capacityOverride", "individualPricing"]
+    },
+    {
+      "datasetKey": "governed-model-features",
+      "datasetVersion": "governed-model-features-v1",
+      "purpose": {"es": "Entrenar y evaluar señales permitidas point-in-time.", "en": "Train and evaluate allowed point-in-time signals."},
+      "owner": "demand-intelligence",
+      "sources": ["versioned-feature-manifests", "mature-outcomes"],
+      "fields": ["featureSetVersion", "datasetVersion", "cutoffAt", "allowedFeatureCodes", "matureOutcome"],
+      "population": "Filas con revocaciones aplicadas y separación temporal válida.",
+      "timeCoverage": "Train, calibración y evaluación futuras no solapadas.",
+      "quality": ["leakage", "drift", "bias", "calibration", "reproducibility"],
+      "privacy": "Sin identificadores directos; pseudónimo solo para split y nunca como feature.",
+      "retention": "Según finalidad y versión; reconstrucción obligatoria tras revocación.",
+      "knownLimitations": ["No demuestra causalidad", "Cobertura limitada a señales instrumentadas"],
+      "prohibitedUses": ["sensitiveInference", "automaticPenalty", "automaticPromotion"]
+    }
+  ]
+}

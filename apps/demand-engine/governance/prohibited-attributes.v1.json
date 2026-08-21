@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "matrixVersion": "prohibited-attributes-v1",
+  "effectiveFrom": "2026-08-21",
+  "defaultDecision": "deny",
+  "prohibited": [
+    {"code": "email", "category": "directIdentifier", "uses": ["feature", "segment", "label", "explanation"]},
+    {"code": "phone", "category": "directIdentifier", "uses": ["feature", "segment", "label", "explanation"]},
+    {"code": "name", "category": "directIdentifier", "uses": ["feature", "segment", "label", "explanation"]},
+    {"code": "preciseLocationHistory", "category": "tracking", "uses": ["feature", "segment", "label"]},
+    {"code": "fingerprint", "category": "tracking", "uses": ["feature", "segment", "identityLink"]},
+    {"code": "gender", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "age", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "health", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "religion", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "sexualOrientation", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "politicalIdeology", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "economicSituation", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "emotionalState", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]},
+    {"code": "personality", "category": "sensitiveInference", "uses": ["feature", "segment", "label", "targeting"]}
+  ],
+  "exceptionsAllowed": false,
+  "changeRequires": ["newVersion", "privacyReview", "legalReview", "securityReview", "humanApproval"],
+  "automaticRelaxationAllowed": false
+}

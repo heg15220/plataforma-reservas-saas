@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "assessmentVersion": "demand-pia-v1",
+  "status": "requires-legal-approval",
+  "owner": "privacy-and-demand-governance",
+  "scope": ["analytics", "personalization", "experimentation", "commercial-activation"],
+  "purposesSeparated": true,
+  "lawfulBasisReviewRequired": true,
+  "dataSubjects": ["customers", "anonymous-visitors", "venue-operators"],
+  "dataCategories": ["pseudonymous-behavior", "booking-outcomes", "venue-catalog", "aggregated-metrics"],
+  "excludedCategories": ["direct-contact", "precise-location-history", "free-text", "sensitive-traits"],
+  "necessity": "Signals are limited to discovery quality, demand measurement and governed assistance; booking remains available without personalization.",
+  "risks": [
+    {"code": "reidentification", "severity": "high", "controls": ["versionedHmac", "keySeparation", "minimumAggregation", "retention"]},
+    {"code": "sensitive-proxy", "severity": "high", "controls": ["prohibitedMatrix", "schemaGate", "humanReview", "appeal"]},
+    {"code": "commercial-exclusion", "severity": "high", "controls": ["eligibilityBoundary", "explanation", "humanReview", "correction"]},
+    {"code": "feedback-loop", "severity": "medium", "controls": ["explorationCap", "diversity", "newVenueExposure", "monitoring"]},
+    {"code": "data-staleness", "severity": "medium", "controls": ["freshnessSlo", "driftGate", "fallback"]}
+  ],
+  "rights": ["access", "correction", "objection", "revocation", "unlink", "erasure", "appeal"],
+  "internationalTransfers": "No external ML SaaS receives row-level production data in this phase.",
+  "residualRisk": "medium-pending-legal-and-security-review",
+  "approval": {"privacy": null, "legal": null, "security": null, "equity": null},
+  "automaticActivationAllowed": false
+}

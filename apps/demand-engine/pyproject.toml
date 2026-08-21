@@ -47,3 +47,4 @@ reserly-demand-conversion-analytics = "reserly_demand_engine.conversion_analytic
 reserly-demand-validate-lineage = "reserly_demand_engine.lineage:run"
 reserly-demand-validate-data = "reserly_demand_engine.data_validation:run"
 reserly-demand-report-evidently = "reserly_demand_engine.evidently_reporting:run"
+reserly-demand-validate-governance-docs = "reserly_demand_engine.governance_documentation:run"

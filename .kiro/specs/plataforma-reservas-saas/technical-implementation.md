@@ -40015,3 +40015,51 @@ hash chain firmado; administradores de base conservan capacidad de desactivar tr
 reciente carece de paginación/filtros específicos. Integrar cada productor mediante outbox durable,
 firma/exportación de largo plazo, consulta paginada y prueba de disaster recovery corresponde a
 23.12-23.13; 23.10 añadirá artefactos documentales enlazados por digest.
+
+## Iteración 2026-08-21 - Tarea 23.10: documentación gobernada y privacidad por versión
+
+### Objetivo, requisitos y decisiones
+
+- Identificador exacto: 23.10.
+- Objetivo: hacer verificables las model cards, data sheets, evaluación de impacto de privacidad y
+  prohibiciones que condicionan cualquier promoción del Demand Engine.
+- Trazabilidad: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; diseño 14.16-14.18.
+
+Se crea `demand-documentation-v1`, contrato estricto que exige ES/EN, campos mínimos de model card,
+secciones mínimas de data sheet, PIA, matriz prohibida, aprobación humana y prohibición literal de
+promoción automática. `governance_documentation.py` usa Pydantic con `extra=forbid`, valida todos los
+artefactos locales y devuelve exclusivamente conteos y SHA-256. No lee filas, no conecta MLflow, no
+llama APIs y no modifica estados. Una documentación completa es evidencia, no autorización.
+
+El registro `demand-data-sheets-v1` documenta tres datasets lógicos reales: eventos de comportamiento,
+alternativas de recomendación y features gobernadas. Cada ficha conserva finalidad bilingüe, owner,
+fuentes, campos, población, cobertura temporal, controles de calidad, privacidad, retención,
+limitaciones y usos prohibidos. Los campos describen contrato; no contienen ejemplos, valores, HMAC,
+UUID reales ni texto de usuario. La puerta exige claves/versiones únicas y timestamp con zona.
+
+`demand-pia-v1` separa analítica, personalización, experimentación y activación; inventaría sujetos y
+categorías minimizadas, necesidad, derechos y riesgos de reidentificación, proxy sensible, exclusión
+comercial, feedback loop y obsolescencia. Cada riesgo tiene controles técnicos. Su estado inicial es
+`requires-legal-approval`, riesgo residual medio y aprobaciones nulas. El validador rechaza tanto una
+aprobación declarada sin las cuatro referencias como referencias prematuras. La revisión formal queda
+deliberadamente reservada a 23.14 y `automaticActivationAllowed=false`.
+
+`prohibited-attributes-v1` cubre identificadores directos, tracking/fingerprinting e inferencias de
+género, edad, salud, religión, orientación, ideología, economía, emoción y personalidad. La decisión
+por defecto es deny, no hay excepciones y una modificación requiere nueva versión y revisión de
+privacidad, legal, seguridad y humana. La puerta contrasta códigos prohibidos contra `featureCodes`
+de políticas y model cards. No intenta aprobar sinónimos automáticamente: schema/PII gate 23.4 sigue
+siendo la defensa contextual y cualquier ampliación exige nueva versión.
+
+### Archivos, seguridad, pruebas y evidencia
+
+Se crean cuatro JSON bajo `apps/demand-engine/governance`, el módulo y cuatro tests; se modifican
+`pyproject.toml`, README, tasks, design, tracking y este documento. La CLI
+`reserly-demand-validate-governance-docs --root ...` opera offline y su salida no incluye contenido
+documental potencialmente descriptivo. Los SHA-256 detectan alteración, aunque no son firma ni WORM.
+
+Las pruebas verifican el bundle real, cobertura de las tres familias prohibidas, fallo por model card
+incompleta y rechazo de aprobación jurídica prematura. Se ejecutaron 4/4 en 0,462 s (`OK`) y la CLI
+real devolvió nueve model cards, tres data sheets, hashes válidos, `legalApprovalRequired=true` y
+`promotionAuthorized=false`. Riesgos pendientes: traducción humana del texto técnico, firma/retención
+de artefactos, revisión jurídica real y enlazado del digest al ledger 23.9; corresponden a 23.12-23.14.

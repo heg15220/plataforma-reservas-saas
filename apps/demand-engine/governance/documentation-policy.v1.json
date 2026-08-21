@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "demand-documentation-v1",
+  "requiredLocales": ["es", "en"],
+  "requiredModelCardFields": [
+    "modelKey", "modelVersion", "owner", "purpose", "status", "limitations", "rollback",
+    "humanApprovalRequired"
+  ],
+  "requiredDataSheetSections": [
+    "purpose", "owner", "sources", "fields", "population", "timeCoverage", "quality",
+    "privacy", "retention", "knownLimitations", "prohibitedUses"
+  ],
+  "privacyImpactRequired": true,
+  "prohibitedMatrixRequired": true,
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false
+}
