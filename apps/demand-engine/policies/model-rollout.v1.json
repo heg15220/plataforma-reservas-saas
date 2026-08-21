@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "model-rollout-v1",
+  "fallbackPolicyVersion": "fallback-mvp-v1",
+  "minimumShadowRequests": 1000,
+  "minimumCanaryRequestsPerStep": 500,
+  "canaryTrafficBasisPoints": [100, 500, 1000, 2500, 5000, 10000],
+  "maximumErrorRate": 0.01,
+  "maximumErrorRateDelta": 0.005,
+  "maximumLatencyP95Ms": 250.0,
+  "maximumLatencyDeltaMs": 50.0,
+  "maximumFallbackRate": 0.02,
+  "maximumCalibrationError": 0.1,
+  "maximumBiasGap": 0.15,
+  "maximumDriftPsi": 0.2,
+  "minimumQualityDelta": -0.01,
+  "automaticPromotionAllowed": false,
+  "automaticRollbackRequired": true
+}

@@ -10523,3 +10523,23 @@ Fuente de verdad del avance:
   - Training no accede al registry; inference no accede a experimentos ni escribe modelos.
   - Principal `-vN` permite rotación blue/green; el retiro anterior siempre es humano.
   - Smoke real verificó seis capacidades positivas/negativas tras dos rotaciones sin exponer secretos.
+
+# Conversación 265 - Rollout progresivo y rollback a reglas
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se implementaron shadow sin autoridad y canary determinista en seis escalones.
+  - Cada ventana compara candidato/champion y cualquier guardrail activa rollback automático.
+  - Promoción final conserva previous champion, exige actor/CAS y compensa fallos parciales; registry
+    incierto o kill switch activan reglas.
+- Archivos modificados: policy/módulo/test de rollout, smoke MLflow, README y cuatro documentos
+  `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.6; prepara métricas y paneles de 23.7.
+- Tareas completadas: 23.6.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.7.
+- Decisiones o aclaraciones relevantes:
+  - El 100 % canary abre revisión humana; nunca promueve automáticamente.
+  - RequestId técnico es la única entrada de asignación y el fallback es `fallback-mvp-v1`.
+  - MLflow real conserva `champion=1` y `shadow=2`; inference leyó ambos pero no pudo cambiarlos.
+  - Ocho pruebas focalizadas y la regresión completa 242/242 quedaron verdes.

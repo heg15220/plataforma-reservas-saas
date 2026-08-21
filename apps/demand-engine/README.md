@@ -109,3 +109,10 @@ reserly-demand-validate-data path\to\data-validation-evidence.json
 La decisión cubre esquema, calidad, PSI, PII, leakage y sesgo. El código de salida es uno ante
 cualquier gate fallido; su digest de evidencia solo admite la etapa y `datasetVersion` evaluados.
 Los perfiles no deben incluir filas, muestras de valores, identidades ni atributos sensibles.
+
+El rollout de modelos usa `policies/model-rollout.v1.json` y el controlador `model_rollout.py`.
+Shadow siempre responde con champion y evalúa el candidato en espejo. Canary asigna exclusivamente
+por hash estable de `requestId`, avanza 1/5/10/25/50/100 % con comparación agregada y vuelve a
+champion ante cualquier guardrail. Tras el último escalón aún se requiere `PromotionApproval` humana;
+el cambio de aliases conserva `previous-champion`. Kill switch, registry no disponible o rollback
+fallido activan `fallback-mvp-v1` sin inventar una versión de modelo.

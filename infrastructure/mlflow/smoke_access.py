@@ -59,6 +59,15 @@ def main() -> None:
         lambda: inference.set_registered_model_tag(MODEL, "reserly.rbac.forbidden", "inference"),
         "inference-model-edit",
     )
+    if os.environ.get("RESERLY_MLFLOW_SMOKE_REQUIRE_ALIASES") == "true":
+        champion = inference.get_model_version_by_alias(MODEL, "champion")
+        shadow = inference.get_model_version_by_alias(MODEL, "shadow")
+        must_deny(
+            lambda: inference.set_registered_model_alias(MODEL, "champion", shadow.version),
+            "inference-alias-edit",
+        )
+        if champion.version == shadow.version:
+            raise RuntimeError("MLFLOW_RBAC_SMOKE_ALIAS_VERSIONS_EQUAL")
     print(
         '{"experiment":"read/edit separation verified",'
         '"model":"manage/read separation verified","secretsLogged":false}'

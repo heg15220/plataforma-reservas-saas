@@ -3284,6 +3284,13 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 - Prometheus mide ingestión, latencia, fallback, errores, cobertura, distribución de scores,
   calibración, diversidad, exposición, drift y valor.
 - La promoción es atómica; el artefacto campeón anterior permanece disponible para rollback.
+- `model-rollout-v1` publica primero el candidato como alias `shadow`, sin autoridad de respuesta;
+  después lo enruta de forma determinista por `requestId` técnico en escalones canary de 1, 5, 10,
+  25, 50 y 100 %. Cada escalón compara candidato/champion con muestra mínima, calidad, error,
+  latencia, fallback, calibración, bias, PSI y guardrails de privacidad/restricciones. Una brecha
+  restaura champion automáticamente bajo lock; si registry/rollback falla, activa
+  `fallback-mvp-v1`. El 100 % solo abre revisión humana. La promoción usa CAS sobre champion,
+  conserva `previous-champion` y compensa un write parcial; inference solo lee aliases.
 - Un kill switch desactiva personalización, exploración, promoción o asignación por separado.
 - Logs/trazas usan identificadores de correlación y versiones, nunca email, texto de reseña, vectores
   completos, payloads ni features personales.

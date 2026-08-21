@@ -39614,7 +39614,7 @@ Las pruebas verifican admisión ligada a etapa/dataset, cobertura de seis famili
 y muestra, PII/leakage sin eco, sesgo por muestra y gaps, versión desalineada e histogramas inválidos.
 También se actualizan las pruebas de promoción para acreditar el token pre-promoción. Comandos:
 pruebas focalizadas con `npx cross-env ... python -m unittest ...`, suite completa
-`npm run test:demand`, `python -m compileall`, `npm run format:check:web` sobre artefactos aplicables y
+`npm run test:demand`, `python -m compileall` y
 `git diff --check`. La regresión completa ejecutó 229/229 pruebas en 192,608 s y terminó `OK`.
 
 Riesgos/deuda: el detector que produce `directIdentifierMatches` vive necesariamente junto al dato y
@@ -39694,3 +39694,72 @@ del principal anterior requiere runbook/auditoría 23.9. Los wildcards aplican a
 un despliegue ambiental; si equipos no confiables comparten entorno deberán habilitar workspaces o
 instancias separadas. MLflow server conserva la credencial S3 porque sirve artefactos por proxy;
 inference nunca la recibe. Backup/restore del RBAC y prueba periódica de rotación entran en 23.12-23.13.
+
+## Iteración 2026-08-21 - Tarea 23.6: rollout shadow/canary y rollback seguro
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 23.6.
+- Objetivo técnico: desplegar candidatos de forma progresiva, compararlos con champion, revertir
+  automáticamente ante riesgo y conservar reglas como última ruta segura.
+- Requisitos/diseño: RF-041; RNF-002, RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015; secciones
+  14.13, 14.16 y 14.17.
+
+`model_rollout.py` modela estado immutable/CAS (`revision`) con fases shadow, canary, champion y
+fallback. Contiene model/policy exactos, candidato, champion, previous champion, tráfico en basis
+points, kill switch, fallback y código de decisión. `model-rollout-v1` fija 1.000 requests shadow,
+500 por escalón canary y 1/5/10/25/50/100 %; cualquier edición exige otra policyVersion. Versiones de
+registry admiten el entero textual nativo de MLflow o un identificador gobernado, nunca `latest`.
+
+`begin_shadow` requiere `ShadowApproval` humana enlazada al SHA-256 de validación de datos. Bajo el
+lock del modelo hace compare-and-swap del alias champion esperado y publica `shadow`; si otro actor lo
+cambió, aborta. `route_request` en shadow siempre devuelve champion y solo expone candidato como
+`shadowVersion` para evaluación paralela. En canary aplica SHA-256 a `requestId:policyVersion`, toma
+un bucket [0,9999] y nunca usa cliente, venue, cookie ni atributo personal: replay idéntico conserva
+ruta y el porcentaje es estable.
+
+### Comparación, transiciones, rollback y promoción
+
+Cada `RolloutObservation` alinea policy, fase, versiones, tráfico y ventana. Compara candidato contra
+champion y umbrales absolutos: muestra, cero violaciones de privacidad/restricciones, delta de calidad
+>= -0,01, error <=1 % y delta <=0,5 pp, p95 <=250 ms y delta <=50 ms, fallback <=2 %, calibración
+<=0,10, bias <=0,15 y PSI <=0,20. Un missing/mismatch falla antes de decidir. Al pasar, shadow abre el
+primer canary y cada observación solo avanza un escalón; no puede saltar directamente al 100 %.
+
+Un único fallo produce `automatic-rollback`, desactiva candidato y tráfico y enruta champion.
+`execute_automatic_rollback` toma el lock y restaura el alias champion si hubo drift externo. Si leer
+o escribir registry falla, no sigue con estado incierto: `activate_rules_fallback` pasa a fase
+fallback y `route_request` devuelve únicamente `fallback-mvp-v1`. Kill switch o ausencia de champion
+usan la misma degradación. Esta automatización reduce riesgo; no autoriza promoción.
+
+Tras superar 100 %, el estado queda `promotion-review-required`. `promote_champion` exige
+`PromotionApproval` no automática con actor, revisión CAS, decisión y evidencia de datos por SHA-256.
+Bajo lock verifica champion, escribe `previous-champion`, cambia champion a candidato y actualiza
+estado. Si el segundo write falla, compensa restaurando champion; el anterior queda referenciado para
+rollback. `MlflowAliasClient` usa APIs nativas `get_model_version_by_alias` y
+`set_registered_model_alias`; recibe fuera del código la identidad registration de 23.5. El lock es
+un contrato obligatorio compartido por todos los registradores; el doble in-memory solo se usa en
+tests y producción debe respaldarlo con lease distribuido del plano de control.
+
+### Archivos, seguridad, pruebas y evidencia
+
+Se crean policy, módulo y ocho pruebas; se modifica el smoke MLflow, README y cuatro documentos
+`.kiro`. No hay endpoint, migración ni escritura transaccional. Observaciones solo contienen métricas
+agregadas; approvals usan identificadores operativos y hashes, nunca PII. Errores son códigos opacos.
+Spring sigue aplicando elegibilidad/capacidad antes de scoring y el fallback existente no reintroduce
+candidatos excluidos.
+
+Ocho pruebas cubren shadow sin autoridad, distribución/replay canary sobre 10.000 UUID, avance paso a
+paso, nueve familias de rollback, restauración efectiva, review humana, swap/previous champion,
+stale CAS, compensación de fallo parcial y fallback por kill switch/registry/champion ausente.
+En MLflow real, registration creó versiones 1/2 desde el run gobernado de 23.1 y publicó aliases
+`champion=1`, `shadow=2`; inference leyó ambos y recibió denegación al intentar modificar aliases.
+Las verificaciones finales incluyen pruebas focalizadas, suite completa `npm run test:demand`,
+`compileall` y `git diff --check`; la regresión ejecutó 242/242 pruebas en 216,712 s y terminó `OK`.
+
+Riesgos/deuda: MLflow no ofrece CAS multi-alias nativo; la atomicidad depende de que todos los
+registradores respeten el lock distribuido y de la compensación. La caída simultánea de registry y
+lock activa reglas, pero necesita alerta/ledger en 23.7/23.9. Los límites y escalones son policy
+inicial y deben recalibrarse sin sobreescribir historia. El router es lógica de dominio; su conexión
+al data plane y métricas Prometheus llega en 23.7. Ensayos de proceso caído entre writes, lease
+expirado y disaster recovery pertenecen a 23.12-23.13.

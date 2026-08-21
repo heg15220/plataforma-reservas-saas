@@ -462,7 +462,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 23.3. Versionar datasets, features, ontología, embeddings, configuraciones, modelos, experimentos y decisiones de promoción de extremo a extremo.
 - [x] 23.4. Implementar validación automática de esquema, calidad, distribución, PII, leakage y sesgo antes de entrenar o promover.
 - [x] 23.5. Separar entornos y permisos de entrenamiento, registro e inferencia con secretos rotables y mínimo privilegio.
-- [ ] 23.6. Implementar despliegue shadow/canary, comparación con campeón, rollback automático y fallback a reglas.
+- [x] 23.6. Implementar despliegue shadow/canary, comparación con campeón, rollback automático y fallback a reglas.
 - [ ] 23.7. Exponer métricas Prometheus y paneles Grafana para latencia, errores, drift, calibración, cobertura, diversidad, exposición y valor.
 - [ ] 23.8. Integrar Evidently para informes de calidad y drift sin convertirlo en fuente única de decisión.
 - [ ] 23.9. Crear auditoría administrativa de ontología, pesos, modelos, experimentos, promociones, listas de espera y acciones automáticas.
