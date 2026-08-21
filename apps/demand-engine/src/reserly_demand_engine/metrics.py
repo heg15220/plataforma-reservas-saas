@@ -45,6 +45,9 @@ class DemandMetrics:
     _cohorts = {"newVenue", "establishedVenue", "overall"}
     _value_kinds = {"attributedNetRevenue", "incrementalNetRevenue", "activationCost"}
     _model_families = {"ranking", "conversion", "forecast", "uplift", "embedding"}
+    _pipelines = {"ingestion", "training", "quality", "evidently"}
+    _cost_types = {"inference", "training", "artifacts", "observability"}
+    _capacity_resources = {"inference-concurrency", "batch-workers", "registry-connections"}
 
     def __init__(self, registry: CollectorRegistry | None = None) -> None:
         self.registry = registry or CollectorRegistry(auto_describe=True)
@@ -107,6 +110,24 @@ class DemandMetrics:
             "reserly_demand_rollout_traffic_ratio", "Cuota vigente de tráfico por etapa.",
             ("stage",), registry=self.registry,
         )
+        self.pipeline_last_success = Gauge(
+            "reserly_demand_pipeline_last_success_timestamp_seconds",
+            "Timestamp UTC del último éxito completo por pipeline cerrado.",
+            ("pipeline",), registry=self.registry,
+        )
+        self.cost_eur = Counter(
+            "reserly_demand_cost_eur_total", "Coste acumulado observado en EUR por clase cerrada.",
+            ("cost_type",), registry=self.registry,
+        )
+        self.monthly_cost_ratio = Gauge(
+            "reserly_demand_monthly_cost_budget_ratio",
+            "Fracción consumida del presupuesto mensual aprobado.", registry=self.registry,
+        )
+        self.capacity_saturation = Gauge(
+            "reserly_demand_capacity_saturation_ratio",
+            "Fracción de capacidad usada por recurso operativo cerrado.",
+            ("resource",), registry=self.registry,
+        )
         self._initialize_series()
 
     def _initialize_series(self) -> None:
@@ -118,6 +139,10 @@ class DemandMetrics:
         for stage in ("candidate", "shadow", "canary", "champion"):
             self.drift_psi.labels(stage).set(0)
             self.rollout_traffic.labels(stage).set(0)
+        for pipeline in self._pipelines:
+            self.pipeline_last_success.labels(pipeline).set(0)
+        for resource in self._capacity_resources:
+            self.capacity_saturation.labels(resource).set(0)
 
     def observe_http(self, method: str, route: str | None, status: int, seconds: float) -> None:
         """Observa una respuesta usando únicamente método, plantilla y clase acotados."""
@@ -194,6 +219,30 @@ class DemandMetrics:
         if family not in self._model_families:
             raise ValueError("METRICS_MODEL_FAMILY_INVALID")
         self.model_errors.labels(stage, family).inc()
+
+    def record_pipeline_success(self, pipeline: str, completed_at_epoch_seconds: float) -> None:
+        """Publica freshness sin runId, dataset, versión o fecha como label."""
+        if pipeline not in self._pipelines or not math.isfinite(completed_at_epoch_seconds) or completed_at_epoch_seconds <= 0:
+            raise ValueError("METRICS_PIPELINE_SUCCESS_INVALID")
+        self.pipeline_last_success.labels(pipeline).set(completed_at_epoch_seconds)
+
+    def record_cost(self, cost_type: str, value_eur: float) -> None:
+        """Acumula coste no negativo por clase; nunca por local, modelo o sujeto."""
+        if cost_type not in self._cost_types or not math.isfinite(value_eur) or value_eur < 0:
+            raise ValueError("METRICS_COST_INVALID")
+        self.cost_eur.labels(cost_type).inc(value_eur)
+
+    def set_monthly_cost_budget(self, consumed_eur: float, budget_eur: float) -> None:
+        """Expone solo el ratio agregado para alertar sin convertir presupuesto en configuración."""
+        if not all(math.isfinite(value) for value in (consumed_eur, budget_eur)) or consumed_eur < 0 or budget_eur <= 0:
+            raise ValueError("METRICS_COST_BUDGET_INVALID")
+        self.monthly_cost_ratio.set(consumed_eur / budget_eur)
+
+    def set_capacity_saturation(self, resource: str, used: float, planned: float) -> None:
+        """Publica saturación contra capacidad planificada, admitiendo exceso para alertar."""
+        if resource not in self._capacity_resources or not all(math.isfinite(value) for value in (used, planned)) or used < 0 or planned <= 0:
+            raise ValueError("METRICS_CAPACITY_INVALID")
+        self.capacity_saturation.labels(resource).set(used / planned)
 
     @staticmethod
     def _ratio(value: float) -> None:

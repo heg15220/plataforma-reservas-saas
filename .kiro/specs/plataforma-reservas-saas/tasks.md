@@ -468,7 +468,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 23.9. Crear auditoría administrativa de ontología, pesos, modelos, experimentos, promociones, listas de espera y acciones automáticas.
 - [x] 23.10. Crear model cards, data sheets, evaluación de impacto de privacidad y matriz de atributos prohibidos por versión.
 - [x] 23.11. Implementar revisión humana, corrección e impugnación para atributos y decisiones comerciales materiales.
-- [ ] 23.12. Definir SLO, presupuesto de latencia/coste, capacidad, alertas y runbooks del `Demand Engine` y pipelines.
+- [x] 23.12. Definir SLO, presupuesto de latencia/coste, capacidad, alertas y runbooks del `Demand Engine` y pipelines.
 - [ ] 23.13. Ejecutar pruebas de recuperación, pérdida de dependencia, corrupción de artefacto, rotación de secretos y eliminación de datos.
 - [ ] 23.14. Realizar revisión jurídica, privacidad, seguridad y equidad antes de activar personalización persistente, promociones u optimización.
 

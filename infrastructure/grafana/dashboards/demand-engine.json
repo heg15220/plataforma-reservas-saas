@@ -98,6 +98,30 @@
       "targets": [{"expr": "sum by (le) (rate(reserly_demand_score_bucket[5m]))", "format": "heatmap", "legendFormat": "{{le}}"}],
       "fieldConfig": {"defaults": {}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 24}
+    },
+    {
+      "id": 13,
+      "title": "Freshness de pipelines",
+      "type": "timeseries",
+      "targets": [{"expr": "time() - reserly_demand_pipeline_last_success_timestamp_seconds", "legendFormat": "{{pipeline}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 32}
+    },
+    {
+      "id": 14,
+      "title": "Consumo del presupuesto mensual",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_monthly_cost_budget_ratio", "legendFormat": "ratio"}],
+      "fieldConfig": {"defaults": {"min": 0, "unit": "percentunit", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 0.8}, {"color": "red", "value": 1.0}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 32}
+    },
+    {
+      "id": 15,
+      "title": "Saturación de capacidad",
+      "type": "timeseries",
+      "targets": [{"expr": "reserly_demand_capacity_saturation_ratio", "legendFormat": "{{resource}}"}],
+      "fieldConfig": {"defaults": {"min": 0, "unit": "percentunit", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 0.8}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 32}
     }
   ],
   "refresh": "30s",

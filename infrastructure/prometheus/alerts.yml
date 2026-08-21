@@ -81,3 +81,55 @@ groups:
           summary: La exposición agregada de nuevos centros cae por debajo del 5 por ciento
           runbook: Revisar guardrails de cold start y exploración con métricas agregadas.
 
+      - alert: DemandPipelineFreshnessExceeded
+        expr: >-
+          (time() - reserly_demand_pipeline_last_success_timestamp_seconds{pipeline="ingestion"} > 900)
+          or (time() - reserly_demand_pipeline_last_success_timestamp_seconds{pipeline="quality"} > 21600)
+          or (time() - reserly_demand_pipeline_last_success_timestamp_seconds{pipeline="training"} > 86400)
+          or (time() - reserly_demand_pipeline_last_success_timestamp_seconds{pipeline="evidently"} > 21600)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Un pipeline del motor ha superado su freshness o nunca completó
+          runbook_url: repo://apps/demand-engine/operations/runbooks/pipeline-stale.md
+
+      - alert: DemandMonthlyCostBudgetWarning
+        expr: reserly_demand_monthly_cost_budget_ratio > 0.80
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: El consumo mensual supera el 80 por ciento del presupuesto
+          runbook_url: repo://apps/demand-engine/operations/runbooks/cost-capacity.md
+
+      - alert: DemandMonthlyCostBudgetExceeded
+        expr: reserly_demand_monthly_cost_budget_ratio > 1.0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: El presupuesto mensual aprobado está agotado
+          runbook_url: repo://apps/demand-engine/operations/runbooks/cost-capacity.md
+
+      - alert: DemandCapacitySaturationHigh
+        expr: max(reserly_demand_capacity_saturation_ratio) > 0.80
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Un recurso supera el 80 por ciento de su capacidad planificada
+          runbook_url: repo://apps/demand-engine/operations/runbooks/cost-capacity.md
+
+      - alert: DemandErrorBudgetFastBurn
+        expr: >-
+          sum(rate(reserly_demand_http_requests_total{status_class="5xx"}[5m]))
+          /
+          clamp_min(sum(rate(reserly_demand_http_requests_total[5m])), 0.001)
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: El error budget del servicio se consume a ritmo rápido
+          runbook_url: repo://apps/demand-engine/operations/runbooks/latency-error-budget.md

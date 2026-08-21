@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "demand-slo-v1",
+  "windowDays": 30,
+  "services": [
+    {"service": "inference", "availabilityTarget": 0.999, "p95LatencyMs": 250, "p99LatencyMs": 500, "maximumErrorRatio": 0.01, "freshnessSeconds": 300},
+    {"service": "ingestion", "availabilityTarget": 0.995, "p95LatencyMs": 500, "p99LatencyMs": 1000, "maximumErrorRatio": 0.02, "freshnessSeconds": 900},
+    {"service": "training-pipeline", "availabilityTarget": 0.99, "p95LatencyMs": 3600000, "p99LatencyMs": 7200000, "maximumErrorRatio": 0.05, "freshnessSeconds": 86400},
+    {"service": "quality-pipeline", "availabilityTarget": 0.99, "p95LatencyMs": 1800000, "p99LatencyMs": 3600000, "maximumErrorRatio": 0.05, "freshnessSeconds": 21600}
+  ],
+  "errorBudgetPolicy": {
+    "warningBurnRatio": 0.5,
+    "exhaustedBurnRatio": 1.0,
+    "warningAction": "freeze-rollout",
+    "exhaustedAction": "fallback-and-change-freeze",
+    "automaticPromotionAllowed": false
+  },
+  "requiredAlerts": [
+    "DemandEngineTargetUnavailable", "DemandEngineHighErrorRate", "DemandEngineLatencyBudgetExceeded",
+    "DemandPipelineFreshnessExceeded", "DemandMonthlyCostBudgetWarning", "DemandMonthlyCostBudgetExceeded",
+    "DemandCapacitySaturationHigh", "DemandErrorBudgetFastBurn"
+  ],
+  "requiredRunbooks": [
+    "demand-engine-unavailable.md", "latency-error-budget.md", "pipeline-stale.md",
+    "cost-capacity.md", "model-quality.md"
+  ]
+}

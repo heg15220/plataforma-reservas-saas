@@ -3310,6 +3310,14 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 - Un kill switch desactiva personalización, exploración, promoción o asignación por separado.
 - Logs/trazas usan identificadores de correlación y versiones, nunca email, texto de reseña, vectores
   completos, payloads ni features personales.
+- La implementación 23.12 fija `demand-slo-v1` a 30 días: inference 99,9 %, ingesta 99,5 % y
+  pipelines 99 %, con p95/p99, error y freshness propios. El error budget congela rollout al 50 % y
+  activa fallback/change-freeze al agotarse. `demand-cost-budget-v1` limita 750 EUR/mes y unidades
+  de inference/training/artefactos/observabilidad sin permitir sacrificar seguridad; el plan de
+  capacidad parte de 50 RPS sostenidos, 150 RPS pico, 50 % de headroom y gate de carga. Prometheus
+  añade freshness, coste y saturación con labels cerrados; cinco alertas nuevas y tres paneles se
+  enlazan a cinco runbooks. La puerta offline valida cobertura/hashes pero siempre emite
+  `productionSloMet=false` hasta disponer de una ventana real.
 
 ### 14.17 Seguridad, privacidad, equidad y gobernanza
 

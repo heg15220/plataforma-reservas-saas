@@ -45,7 +45,11 @@ Grafana queda en `127.0.0.1:3000`, exige `RESERLY_GRAFANA_ADMIN_*`, desactiva ac
 registro y telemetría, y carga el dashboard `Reserly · Motor de demanda` como configuración no
 editable. En despliegues no locales ambas UI requieren red administrativa privada y TLS externo.
 Las reglas alertan disponibilidad, errores 5xx, p95, PSI, calibración, cobertura, diversidad y
-exposición agregada; ninguna serie debe introducir identidad, texto o valores de features como label.
+exposición agregada, freshness, coste, capacidad y consumo rápido del error budget; ninguna serie
+debe introducir identidad, texto o valores de features como label. La configuración operativa se
+valida con `npm run demand:readiness:check`: enlaza `demand-slo-v1`, presupuesto EUR, plan de
+capacidad, alertas y cinco runbooks versionados. La puerta demuestra cobertura de configuración, no
+cumplimiento productivo; esto último requiere métricas de una ventana real y revisión operativa.
 
 La UI de MLflow queda en `127.0.0.1:5000`. El primer arranque crea el administrador indicado por
 `RESERLY_MLFLOW_ADMIN_*`; debe rotarse mediante el gestor de secretos. El permiso por defecto es

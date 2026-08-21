@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "budgetVersion": "demand-cost-budget-v1",
+  "currency": "EUR",
+  "period": "monthly",
+  "maximumTotalEur": 750.0,
+  "warningRatio": 0.8,
+  "unitBudgets": [
+    {"costType": "inference", "unit": "requests-1000", "maximumEur": 0.5},
+    {"costType": "training", "unit": "run", "maximumEur": 25.0},
+    {"costType": "artifacts", "unit": "gb-month", "maximumEur": 0.5},
+    {"costType": "observability", "unit": "month", "maximumEur": 150.0}
+  ],
+  "overBudgetAction": "freeze-nonessential-training-and-rollout",
+  "qualityOrSafetyMayBeDisabledToSaveCost": false,
+  "automaticBudgetIncreaseAllowed": false
+}

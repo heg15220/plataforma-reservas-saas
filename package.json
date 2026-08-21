@@ -41,6 +41,7 @@
     "observability:logs": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml --profile observability logs -f prometheus grafana demand-engine",
     "observability:status": "dotenv -e .env.local -- docker compose -f infrastructure/compose.yaml --profile observability ps prometheus grafana demand-engine",
     "observability:config": "dotenv -e .env.local.example -- docker compose -f infrastructure/compose.yaml --profile observability config --quiet",
+    "demand:readiness:check": "cross-env PYTHONPATH=apps/demand-engine/src;packages/demand-contracts/src python -m reserly_demand_engine.operational_readiness --repository-root .",
     "ci:check": "node scripts/validate-ci-workflow.mjs",
     "backend:conventions:check": "node scripts/validate-backend-conventions.mjs",
     "env:check": "node scripts/validate-environment-examples.mjs",

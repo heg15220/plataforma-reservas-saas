@@ -147,3 +147,10 @@ owner, finalidad, limitaciones, rollback y aprobación humana; tres data sheets 
 de impacto técnico pendiente de revisión formal; y matriz versionada de atributos prohibidos. Solo
 emite conteos y SHA-256. `promotionAuthorized=false` es invariable: completar documentación no
 autoriza tratamiento, despliegue ni activación comercial.
+
+La preparación operativa se valida con
+`reserly-demand-validate-operational-readiness --repository-root <repo>`. `demand-slo-v1` define
+disponibilidad, error, p95/p99 y freshness para inference, ingesta, training y calidad; se enlaza a
+presupuesto EUR, capacidad, ocho alertas obligatorias, dashboard y cinco runbooks. La salida conserva
+hashes y `productionSloMet=false`: el cumplimiento solo se calcula sobre telemetría productiva de la
+ventana, nunca desde configuración o pruebas locales.

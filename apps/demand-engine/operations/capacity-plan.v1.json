@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "planVersion": "demand-capacity-v1",
+  "assumptions": {"steadyRequestsPerSecond": 50, "peakRequestsPerSecond": 150, "peakDurationMinutes": 30, "growthHeadroomRatio": 0.5},
+  "resources": [
+    {"resource": "inference-concurrency", "planned": 64, "maximum": 128, "warningRatio": 0.8},
+    {"resource": "batch-workers", "planned": 4, "maximum": 16, "warningRatio": 0.8},
+    {"resource": "registry-connections", "planned": 20, "maximum": 40, "warningRatio": 0.8}
+  ],
+  "loadTestGate": {"minimumDurationMinutes": 30, "minimumPeakRequestsPerSecond": 150, "maximumP95LatencyMs": 250, "maximumErrorRatio": 0.01, "zeroPrivacyViolations": true},
+  "scaleOutRequiresHumanApproval": true,
+  "fallback": "fallback-mvp-v1"
+}

@@ -40122,3 +40122,70 @@ terminaron sin fallos: bloqueo/idempotencia, minimización, autorización exclus
 impugnación accesible/única, migración y advisory lock. Limitaciones: no hay UI ni notificación,
 SLA de cola, paginación profunda o outbox hacia ejecutores. 23.12 cubre alertado/SLO y una fase UI
 posterior deberá localizar explicaciones ES/EN; 23.13 ensayará concurrencia PostgreSQL y recuperación.
+
+## Iteración 2026-08-21 - Tarea 23.12: SLO, coste, capacidad, alertas y runbooks
+
+### Objetivo y contratos operativos
+
+- Identificador exacto: 23.12.
+- Objetivo: convertir observabilidad en objetivos medibles, límites económicos/capacidad y respuestas
+  operativas verificables para servicio online y pipelines.
+- Trazabilidad: RF-041; RNF-004, RNF-005, RNF-006, RNF-008, RNF-014 y RNF-015; diseño 14.16-14.18.
+
+`demand-slo-v1` usa ventana móvil de 30 días y cuatro clases. Inference exige 99,9 %, error <=1 %,
+p95 250 ms, p99 500 ms y señal cada 5 min; ingesta 99,5 %, error <=2 %, p95 500 ms, p99 1 s y
+freshness 15 min. Training/calidad son batch al 99 %, con latencias de una/dos horas y freshness de
+24/6 h. Son objetivos iniciales aprobables, no mediciones observadas. El error budget congela rollout
+al 50 % consumido y, al 100 %, activa fallback determinista y change freeze; nunca promueve.
+
+`demand-cost-budget-v1` fija EUR, 750/mes, warning al 80 % y techos unitarios: 0,50 EUR/1.000
+inferencias, 25 EUR/run de training, 0,50 EUR/GB-mes de artefactos y 150 EUR/mes de observabilidad.
+Superarlo congela training no esencial y rollout, pero el literal
+`qualityOrSafetyMayBeDisabledToSaveCost=false` impide degradar seguridad, privacidad, eliminación,
+calidad o elegibilidad. Elevar presupuesto no es automático.
+
+`demand-capacity-v1` documenta 50 RPS sostenidos, pico 150 RPS durante 30 min y 50 % de headroom.
+Planifica 64 concurrencias inference, 4 workers batch y 20 conexiones registry, con máximos 128/16/40
+y warning al 80 %. Escalar exige aprobación humana. El load-test gate requiere 30 min a 150 RPS,
+p95 <=250 ms, error <=1 % y cero violaciones de privacidad; no se afirma ejecutado en esta tarea.
+
+### Telemetría, alertas, panel y runbooks
+
+`DemandMetrics` añade cuatro pipelines allowlisted, cuatro clases de coste y tres recursos. Freshness
+publica timestamp UTC de último éxito sin run/dataset/version como label. Coste es counter EUR por
+clase y el presupuesto un ratio agregado. Saturación divide usado entre planificado y admite >1 para
+alertar. Métodos rechazan dimensión desconocida, NaN/infinito, negativos o denominador cero. Las
+series conocidas nacen a cero; pipeline cero alerta como nunca completado, no como saludable.
+
+Prometheus incorpora `DemandPipelineFreshnessExceeded`, warnings/crítico de coste, saturación >80 %
+y fast burn por error >5 %. Se conservan las alertas previas de target, 5xx, p95, drift, calibración,
+cobertura, diversidad y exposición. Grafana añade freshness en segundos, consumo mensual y saturación
+a los doce paneles existentes. Ninguna query introduce local, usuario, requestId, versión o feature.
+
+Cinco runbooks versionados cubren caída, latencia/error budget, pipeline stale, coste/capacidad y
+calidad de modelo. Todos fijan owner, diagnóstico agregado, mitigación, fallback/rollback,
+verificación y escalado/evidencia. Las respuestas congelan cambios antes de investigar, no relajan
+restricciones y requieren ledger. Las referencias `repo://` evitan URLs externas mutables; el sistema
+de despliegue deberá convertirlas al catálogo interno de runbooks en producción.
+
+### Puerta, archivos, pruebas y limitaciones
+
+`operational_readiness.py` valida Pydantic estricto para orden p95/p99, disponibilidad/error,
+unicidad, presupuesto, capacidad planned<=maximum y acciones literales. Comprueba que ocho alertas
+estén físicamente en Prometheus, que tres nuevas series estén en Grafana y que los cinco runbooks
+existan/conserven contenido mínimo. Emite hashes de SLO/coste/capacidad/alertas/dashboard, conteos,
+`configurationComplete=true` y deliberadamente `productionSloMet=false`. La CLI es offline y no lee
+series, secretos o negocio.
+
+Se crean tres JSON, cinco Markdown, módulo y cuatro pruebas; se modifican métricas, pyproject,
+Prometheus, Grafana, package scripts, dos README y cuatro `.kiro`. Ocho pruebas focalizadas cubren
+bundle, hashes, métricas/labels, valores inválidos, alerta ausente y observabilidad anterior; pasan en
+0,431 s. La CLI real devuelve 4 servicios/8 alertas/5 runbooks; `observability:config`, parseo JSON,
+compileall y diff pasan. La regresión completa ejecutó 259/259 pruebas en 146,988 s y terminó `OK`.
+
+Limitaciones: no se ejecutó load test ni se calculó SLI productivo; los costes requieren un colector
+FinOps que alimente el registro y reset mensual gobernado. Prometheus local retiene 15 días, menor que
+la ventana SLO, así que producción necesita almacenamiento remoto/recording rules de 30 días. Los
+`repo://` deben resolverse a URLs privadas. Valores iniciales necesitan calibración con tráfico real
+sin reescribir historia. 23.13 debe ensayar caída, corrupción, rotación, recuperación y borrado; 23.14
+debe aprobar formalmente privacidad, seguridad, legalidad y equidad antes de automatización avanzada.

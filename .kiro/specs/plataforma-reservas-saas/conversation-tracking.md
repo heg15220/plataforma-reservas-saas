@@ -10647,3 +10647,20 @@ Fuente de verdad del avance:
   - El local solo impugna decisiones ligadas a un `venueId` accesible y una única vez.
   - Motivo/explicación son códigos; evidencia y datos de decisión no se reflejan en respuestas.
   - Maven compiló 1.016 fuentes main/239 test; Spotless/Checkstyle y 12/12 pruebas pasaron.
+
+# Conversación 271 - SLO, coste, capacidad y respuesta operativa
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación: se definieron SLO medibles, error budget, presupuesto EUR, capacidad,
+  métricas, alertas, paneles y runbooks, unidos por una puerta de preparación operativa.
+- Archivos modificados: tres políticas operativas, cinco runbooks, módulo/CLI/pruebas Python,
+  métricas, Prometheus, Grafana, scripts/README y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041; RNF-004, RNF-005, RNF-006, RNF-008, RNF-014 y RNF-015.
+- Tareas impactadas: 23.12; prepara los ensayos de recuperación 23.13.
+- Tareas completadas: 23.12.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.13.
+- Decisiones o aclaraciones relevantes:
+  - Configuración completa no equivale a cumplimiento productivo: la evidencia lo mantiene falso.
+  - El coste nunca permite desactivar privacidad, calidad, borrado, elegibilidad o capacidad.
+  - Saturación, coste y freshness usan dimensiones cerradas sin tenant/modelo/UUID como label.
+  - 8/8 pruebas focalizadas, Compose, CLI/JSON y 259/259 pruebas completas quedaron verdes.
