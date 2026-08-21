@@ -3260,6 +3260,12 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
   seguro y `X-Frame-Options`. El contenedor usa raíz de solo lectura e INI de autenticación efímero
   con modo `0600`. La base MLOps no comparte autoridad ni disponibilidad con PostgreSQL
   transaccional.
+- Cada entorno ejecuta su propio despliegue MLOps y usa principales MLflow versionados por finalidad.
+  `training` tiene `experiment:* EDIT`; `registration`, `experiment:* READ` y
+  `registered_model:* MANAGE`; `inference`, solo `registered_model:* READ`. Un bootstrap efímero
+  idempotente crea/rota cuentas, aplica roles exactos y bloquea drift; nunca concede admin, workspace
+  MANAGE ni acceso transaccional. La rotación usa nuevos principales `-vN`, solape máximo de siete
+  días y retiro humano del anterior, de forma que ninguna credencial cruza entorno o finalidad.
 - Prefect ejecuta lotes idempotentes con fecha de corte, reintentos, checkpoints y locks.
 - La implementación 23.2 fija Prefect 3.8.2 por digest, API/UI Basic Auth en loopback, PostgreSQL
   dedicado sin puerto y un process worker en `reserly-demand-batch`. La revisión ocurre cada 90 días.

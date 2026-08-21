@@ -10505,3 +10505,21 @@ Fuente de verdad del avance:
   - El token de admisión no puede reutilizarse entre entrenamiento/promoción ni entre datasets.
   - PSI, correlación y gaps son controles complementarios; ninguno se interpreta aisladamente.
   - Cinco pruebas nuevas y la regresión completa 229/229 quedaron verdes.
+
+# Conversación 264 - Separación ambiental y RBAC MLOps
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se definieron despliegues independientes por entorno y tres identidades versionadas de servicio.
+  - RBAC efectivo separa edición de experimentos, administración de registro y lectura de inferencia.
+  - El bootstrap idempotente rota secretos, bloquea drift y no retira automáticamente principales.
+- Archivos modificados: policy/bootstrap/smoke MLflow, Compose, scripts y plantillas, pruebas,
+  validadores, README y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-009 y RNF-014.
+- Tareas impactadas: 23.5; establece las identidades que usará el rollout 23.6.
+- Tareas completadas: 23.5.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.6.
+- Decisiones o aclaraciones relevantes:
+  - Training no accede al registry; inference no accede a experimentos ni escribe modelos.
+  - Principal `-vN` permite rotación blue/green; el retiro anterior siempre es humano.
+  - Smoke real verificó seis capacidades positivas/negativas tras dos rotaciones sin exponer secretos.

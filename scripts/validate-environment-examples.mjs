@@ -41,6 +41,15 @@ const requiredKeys = [
   "RESERLY_MLFLOW_DATABASE_PASSWORD",
   "RESERLY_MLFLOW_ADMIN_USERNAME",
   "RESERLY_MLFLOW_ADMIN_PASSWORD",
+  "RESERLY_MLFLOW_TRAINING_USERNAME",
+  "RESERLY_MLFLOW_TRAINING_PASSWORD",
+  "RESERLY_MLFLOW_TRAINING_SECRET_VERSION",
+  "RESERLY_MLFLOW_REGISTRATION_USERNAME",
+  "RESERLY_MLFLOW_REGISTRATION_PASSWORD",
+  "RESERLY_MLFLOW_REGISTRATION_SECRET_VERSION",
+  "RESERLY_MLFLOW_INFERENCE_USERNAME",
+  "RESERLY_MLFLOW_INFERENCE_PASSWORD",
+  "RESERLY_MLFLOW_INFERENCE_SECRET_VERSION",
   "RESERLY_MLFLOW_FLASK_SECRET_KEY",
   "RESERLY_MLFLOW_ALLOWED_HOSTS",
   "RESERLY_MLFLOW_S3_BUCKET",
@@ -109,6 +118,13 @@ for (const template of templates) {
   const environment = values.get("RESERLY_ENVIRONMENT");
   if (environment !== values.get("NEXT_PUBLIC_APP_ENV")) {
     throw new Error(`${template} declara entornos distintos para API y web`);
+  }
+
+  for (const purpose of ["TRAINING", "REGISTRATION", "INFERENCE"]) {
+    const expected = `reserly-${environment}-${purpose.toLowerCase()}-v1`;
+    if (values.get(`RESERLY_MLFLOW_${purpose}_USERNAME`) !== expected) {
+      throw new Error(`${template} no separa/versiona el principal MLflow ${purpose}`);
+    }
   }
 
   if (environment !== "local") {

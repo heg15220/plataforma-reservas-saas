@@ -35,6 +35,13 @@ La UI de MLflow queda en `127.0.0.1:5000`. El primer arranque crea el administra
 proxy autenticado de MLflow. En staging/producción, TLS termina en el proxy privado y ninguna
 credencial debe materializarse en archivos del repositorio.
 
+Después del health de MLflow, `mlflow-access-bootstrap` aplica `access-policy.v1.json`. Crea
+principales versionados distintos para `training`, `registration` e `inference`: entrenamiento solo
+edita experimentos; registro lee experimentos y administra modelos registrados; inferencia solo lee
+modelos. Ninguno recibe acceso a la base transaccional. Una rotación mantiene el propósito pero usa
+un nuevo username `-vN` durante hasta siete días; el retiro del anterior es una acción humana. El
+bootstrap no elimina usuarios, falla ante drift de permisos y nunca imprime contraseñas.
+
 Prefect queda en `127.0.0.1:4200` y exige el par `RESERLY_PREFECT_AUTH_*`. El worker crea el pool
 `reserly-demand-batch` de tipo `process`; los despliegues deben conservar fecha de corte, idempotencia,
 reintentos y locks en su lógica de negocio. La política versionada

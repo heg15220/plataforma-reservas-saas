@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "mlflow-access-v1",
+  "workspace": "default",
+  "supportedEnvironments": ["local", "staging", "production"],
+  "independentDeploymentPerEnvironment": true,
+  "crossEnvironmentAccessAllowed": false,
+  "roles": {
+    "training": {
+      "permissions": [
+        {"resourceType": "experiment", "resourcePattern": "*", "permission": "EDIT"}
+      ],
+      "transactionalDatabaseAccess": false
+    },
+    "registration": {
+      "permissions": [
+        {"resourceType": "experiment", "resourcePattern": "*", "permission": "READ"},
+        {"resourceType": "registered_model", "resourcePattern": "*", "permission": "MANAGE"}
+      ],
+      "transactionalDatabaseAccess": false
+    },
+    "inference": {
+      "permissions": [
+        {"resourceType": "registered_model", "resourcePattern": "*", "permission": "READ"}
+      ],
+      "transactionalDatabaseAccess": false
+    }
+  },
+  "secretRotation": {
+    "maximumAgeDays": 90,
+    "overlapDays": 7,
+    "versionedPrincipalRequired": true,
+    "automaticRetirementAllowed": false
+  }
+}

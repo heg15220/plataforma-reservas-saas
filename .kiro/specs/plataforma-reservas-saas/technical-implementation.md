@@ -39624,3 +39624,73 @@ Correlación no detecta todo leakage no lineal; debe combinarse con revisión de
 tests propios de cada trainer. Los límites de sesgo iniciales son conservadores y requieren revisión
 con evidencia productiva. 23.8 podrá añadir Evidently como informe complementario, nunca como única
 fuente de decisión; 23.9 añadirá ledger administrativo durable.
+
+## Iteración 2026-08-21 - Tarea 23.5: entornos, RBAC y rotación de secretos MLOps
+
+### Objetivo, requisitos y fronteras
+
+- Identificador exacto: 23.5.
+- Objetivo técnico: separar entrenamiento, registro e inferencia por entorno, identidad y capacidad,
+  con secretos rotables y privilegio mínimo efectivo sobre MLflow.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009 y RNF-014; secciones 14.16-14.17.
+
+`access-policy.v1.json` es la allowlist operativa: entornos `local|staging|production`, workspace
+reservado `default`, despliegue independiente por entorno y prohibición explícita de acceso cruzado.
+No se intenta convertir un único servidor en frontera de compliance: cada plantilla apunta a su
+propio tracking URI, base y bucket. Dentro del despliegue se aplican tres roles:
+
+- `training`: `experiment:* EDIT`, puede leer/usar/escribir runs pero no modelos registrados;
+- `registration`: `experiment:* READ` y `registered_model:* MANAGE`, puede revisar evidencia y
+  registrar/promover, pero no alterar experimentos;
+- `inference`: `registered_model:* READ`, consume el modelo/alias y no escribe registro ni tracking.
+
+Los tres roles declaran `transactionalDatabaseAccess=false`. Ninguno recibe `workspace MANAGE`,
+administrador, secretos MinIO ni credenciales PostgreSQL. El servidor conserva
+`default_permission=NO_PERMISSIONS` y `grant_default_workspace_access=false`; por tanto ausencia de
+grant es denegación, no lectura implícita. Las primitivas usadas son el RBAC nativo de MLflow 3.15.1:
+roles, wildcard de tipo de recurso y niveles READ/EDIT/MANAGE.
+
+### Bootstrap, rotación y flujo
+
+`bootstrap_access.py` usa temporalmente el admin inyectado solo tras health de MLflow. Valida secreto
+de 32+ caracteres, ausencia de CR/LF, passwords únicos y usernames exactos
+`reserly-<environment>-<purpose>-vN`; rechaza reutilizar admin o principal de otro entorno. Crea el
+usuario si falta o actualiza su password si existe, crea el rol ambiental, compara permisos actuales
+con la policy y añade solo la allowlist inicial. Si un rol existente difiere, falla con
+`MLFLOW_ROLE_PERMISSION_DRIFT` en vez de borrar o ampliar silenciosamente. Asigna exactamente el rol
+del propósito y no imprime passwords ni hashes.
+
+La rotación tiene dos caminos coordinados. Para rotación simple, el mismo principal actualiza password
+idempotentemente. Para blue/green se inyecta otro username `-vN`, se ejecuta bootstrap, los clientes
+cambian la referencia del secret manager durante un solape máximo de siete días y un operador retira
+el principal anterior después de comprobar tráfico. `automaticRetirementAllowed=false`: el bootstrap
+no borra usuarios y evita una revocación anticipada. `secretVersion` hace auditable la referencia sin
+materializar el secreto. Edad máxima de policy: 90 días.
+
+Compose añade `mlflow-access-bootstrap`, one-shot, read-only, tmpfs y dependencia de MLflow healthy.
+Monta únicamente `infrastructure/mlflow`; no recibe password transaccional, MinIO ni Prefect. Los
+scripts `mlops:up|status|logs` incorporan el bootstrap. Las tres plantillas declaran nueve variables
+de identidad/secret-version; staging/production mantienen placeholders de secret manager. El
+validador exige paridad y prefijo ambiental versionado.
+
+### Archivos, pruebas, seguridad y evidencia
+
+Se crean policy, bootstrap, smoke real y cinco pruebas; se modifican Compose, scripts npm, las tres
+plantillas, validador de entorno, README y cuatro documentos `.kiro`. No hay migración Flyway ni
+endpoint. MLflow persiste usuarios/roles en su PostgreSQL MLOps mediante su esquema auth separado; no
+se toca la fuente transaccional. Errores y salida solo incluyen entorno, policy y nombres técnicos.
+
+Diez pruebas focalizadas (incluidas cinco previas de MLflow) verifican roles exactos, aislamiento
+Compose, principal/versionado, secrets únicos/cortos, entorno cruzado, idempotencia, rotación y drift
+de privilegios. `npm run mlops:config`, `npm run env:check`, `compileall` y `git diff --check` pasan.
+En el servidor MLflow 3.15.1 real se ejecutó bootstrap dos veces con secretos aleatorios distintos:
+la segunda rotó las tres cuentas. El smoke acreditó que training edita experimento pero no lee modelo;
+registration administra modelo y lee, pero no edita experimento; inference lee modelo pero no lo
+modifica. Todas las denegaciones fueron efectivas y ningún secreto apareció en salida.
+
+Riesgos/deuda: Basic Auth necesita TLS/proxy privado y el ciclo de vida del secret manager queda en
+la plataforma de despliegue; estos archivos definen sus referencias, no almacenan secretos. El retiro
+del principal anterior requiere runbook/auditoría 23.9. Los wildcards aplican a todo recurso dentro de
+un despliegue ambiental; si equipos no confiables comparten entorno deberán habilitar workspaces o
+instancias separadas. MLflow server conserva la credencial S3 porque sirve artefactos por proxy;
+inference nunca la recibe. Backup/restore del RBAC y prueba periódica de rotación entran en 23.12-23.13.
