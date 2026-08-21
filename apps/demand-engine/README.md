@@ -110,6 +110,23 @@ La decisión cubre esquema, calidad, PSI, PII, leakage y sesgo. El código de sa
 cualquier gate fallido; su digest de evidencia solo admite la etapa y `datasetVersion` evaluados.
 Los perfiles no deben incluir filas, muestras de valores, identidades ni atributos sensibles.
 
+Evidently aporta un segundo diagnóstico de calidad y drift sobre una proyección Parquet minimizada:
+
+```powershell
+reserly-demand-report-evidently `
+  --current path\current.parquet `
+  --reference path\reference.parquet `
+  --validation-evidence path\data-validation-evidence.json `
+  --output-directory path\reports `
+  --evaluated-at 2026-08-21T12:00:00+00:00
+```
+
+Ambos Parquet deben contener exactamente las mismas columnas allowlisted por
+`evidently-report-v1`; identificadores, texto, vectores, categorías libres, NaN/infinito y columnas
+desconocidas fallan cerrado. El comando vuelve a ejecutar `data-validation-v1`, guarda JSON/HTML
+agregados y un manifiesto con hashes. `reviewRequired` es asesor y
+`promotionAuthorized` siempre es `false`: el informe nunca sustituye el gate ni la aprobación humana.
+
 El rollout de modelos usa `policies/model-rollout.v1.json` y el controlador `model_rollout.py`.
 Shadow siempre responde con champion y evalúa el candidato en espejo. Canary asigna exclusivamente
 por hash estable de `requestId`, avanza 1/5/10/25/50/100 % con comparación agregada y vuelve a

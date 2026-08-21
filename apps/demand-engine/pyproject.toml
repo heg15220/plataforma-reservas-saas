@@ -13,6 +13,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mlops = [
+  "evidently==0.7.21",
   "mlflow[auth]==3.15.1",
   "prefect==3.8.2",
 ]
@@ -45,3 +46,4 @@ reserly-demand-train-choice = "reserly_demand_engine.discrete_choice:run"
 reserly-demand-conversion-analytics = "reserly_demand_engine.conversion_analytics:run"
 reserly-demand-validate-lineage = "reserly_demand_engine.lineage:run"
 reserly-demand-validate-data = "reserly_demand_engine.data_validation:run"
+reserly-demand-report-evidently = "reserly_demand_engine.evidently_reporting:run"

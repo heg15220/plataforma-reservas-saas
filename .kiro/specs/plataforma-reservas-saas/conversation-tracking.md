@@ -10567,3 +10567,25 @@ Fuente de verdad del avance:
   - Cuatro pruebas focalizadas, configuración/env/JSON, compileall, diff y regresión 246/246 pasaron.
   - Docker Desktop devolvió HTTP 500 al consultar/descargar imágenes; la configuración Compose fue
     validada, pero el arranque real del perfil queda por repetir cuando el engine local esté sano.
+
+# Conversación 267 - Informes Evidently subordinados al gate de datos
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se integró Evidently 0.7.21 con informes reales Data Drift y Data Summary sobre proyecciones
+    Parquet minimizadas.
+  - JSON/HTML quedan enlazados por SHA-256 a un manifiesto con datasets, política y evidencia del gate.
+  - La herramienta solo abre revisión: recompone la decisión 23.4 y nunca autoriza promoción.
+- Archivos modificados: módulo/policy/CLI/pruebas/dependencia Evidently, README del motor y cuatro
+  documentos `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.8; prepara el ledger administrativo durable de 23.9.
+- Tareas completadas: 23.8.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.9.
+- Decisiones o aclaraciones relevantes:
+  - Solo se admiten columnas/tipos/categorías cerrados; ID, texto, vectores y categorías libres se
+    rechazan antes de invocar la librería.
+  - Un informe estable no puede revertir un gate denegado; un informe degradado no despliega ni
+    promueve, solo marca `reviewRequired`.
+  - Diez pruebas focalizadas reales, compileall y diff quedaron verdes; la regresión completa ejecutó
+    251/251 pruebas en 204,015 s y terminó `OK`.

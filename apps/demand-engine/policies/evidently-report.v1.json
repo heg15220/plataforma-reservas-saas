@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "evidently-report-v1",
+  "dataValidationPolicyVersion": "data-validation-v1",
+  "driftMethod": "psi",
+  "maximumDriftedColumnShare": 0.3,
+  "minimumRows": 100,
+  "maximumRows": 1000000,
+  "minimumColumns": 2,
+  "maximumColumns": 16,
+  "maximumNullRate": 0.05,
+  "allowedColumns": {
+    "affinity": {"kind": "numerical", "allowedValues": []},
+    "conversion": {"kind": "numerical", "allowedValues": []},
+    "proximity": {"kind": "numerical", "allowedValues": []},
+    "availability": {"kind": "numerical", "allowedValues": []},
+    "capacityNeed": {"kind": "numerical", "allowedValues": []},
+    "quality": {"kind": "numerical", "allowedValues": []},
+    "exploration": {"kind": "numerical", "allowedValues": []},
+    "prediction": {"kind": "numerical", "allowedValues": []},
+    "label": {"kind": "categorical", "allowedValues": ["false", "true", "0", "1"]},
+    "locale": {"kind": "categorical", "allowedValues": ["es", "en"]},
+    "cohort": {"kind": "categorical", "allowedValues": ["newVenue", "establishedVenue"]},
+    "modelStage": {"kind": "categorical", "allowedValues": ["candidate", "shadow", "canary", "champion"]}
+  },
+  "prohibitedColumnTokens": [
+    "id", "email", "phone", "address", "name", "token", "password", "gender", "ethnicity",
+    "religion", "health", "review", "text", "vector"
+  ],
+  "storeRawRows": false,
+  "automaticPromotionAllowed": false
+}

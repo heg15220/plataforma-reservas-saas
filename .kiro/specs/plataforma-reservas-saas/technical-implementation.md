@@ -39846,3 +39846,78 @@ son política operativa inicial y deben calibrarse con datos productivos sin seg
 Prometheus local conserva 15 días y no sustituye almacenamiento de largo plazo. 23.8 añadirá informes
 Evidently complementarios y 23.9 persistirá cambios/acciones administrativas; ninguna de ambas debe
 convertir métricas en autorización automática.
+
+## Iteración 2026-08-21 - Tarea 23.8: informes Evidently complementarios
+
+### Objetivo, requisitos y decisión de autoridad
+
+- Identificador exacto: 23.8.
+- Objetivo técnico: producir informes reproducibles de calidad y drift con Evidently sin desplazar la
+  puerta MLOps autoritativa ni ampliar el perímetro de datos.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; secciones 14.16-14.18.
+
+Se fija `evidently==0.7.21` en el extra `mlops`, versión compatible con Python 3.13. La política
+`evidently-report-v1` enlaza literalmente `data-validation-v1`, fija PSI, 30 % máximo de columnas con
+drift, 100-1.000.000 filas, 2-16 columnas y 5 % máximo de nulos. Su allowlist contiene únicamente
+features numéricas ya gobernadas y tres cohortes operativas categóricas con valores cerrados. Los
+tokens de columna bloquean identificadores, contacto, nombre, credencial, categoría sensible, reseña,
+texto y vector. `storeRawRows=false` y `automaticPromotionAllowed=false` son invariantes literales del
+contrato, no defaults configurables.
+
+La autoridad se mantiene en `evaluate_data_validation`. `generate_evidently_report` verifica que la
+policy auxiliar referencia la versión exacta, vuelve a calcular las seis familias sobre la evidencia
+agregada original y enlaza su SHA-256. El resultado publica `authoritativeDataGateAllowed` únicamente
+desde esa decisión. Evidently calcula un advisory independiente con columnas afectadas, share, tests
+totales/fallidos y `reviewRequired`; `promotionAuthorized` siempre es falso. Por diseño pueden darse
+cuatro combinaciones: ambos sanos, Evidently degradado con gate permitido, Evidently estable con gate
+denegado y ambos degradados. Solo la segunda abre investigación manteniendo admisión previa; ninguna
+autoriza promoción y la tercera continúa bloqueada. Aprobación humana y rollout 23.6 siguen siendo
+obligatorios.
+
+### Perímetro de datos, ejecución y artefactos
+
+El adapter recibe dos `pandas.DataFrame` ya proyectados dentro del perímetro de entrenamiento. Antes
+de entregarlos a la librería exige esquema idéntico y ordenado, recuento actual igual a la evidencia,
+límites de filas/columnas, nombre allowlisted, tipo numérico real no booleano, valor finito, null rate
+y categoría cerrada. Copia el frame para normalizar categorías sin mutar al llamador. No acepta
+auto-inferencia de roles, columnas adicionales que luego se ignoren, CSV, PII pseudonimizada, texto,
+IDs, vectores ni categorías desconocidas. `DataDefinition` declara explícitamente numéricas y
+categóricas para current/reference.
+
+El informe combina `DataDriftPreset(method="psi", drift_share=0.3)` y `DataSummaryPreset` con tests
+incluidos. El snapshot oficial se exporta en JSON y HTML; contiene perfiles, tests y visualizaciones
+agregados sobre columnas no personales, nunca el dataframe fuente. Un manifiesto separado conserva
+Evidently/policy, etapa, dataset/baseline, digest de evidencia, timestamp UTC, esquema, row counts,
+advisory, autoridad y SHA-256 de ambos ficheros. Los nombres derivan de `datasetVersion`, ya validado
+contra path injection por el tipo `Version`. El manifiesto se reemplaza atómicamente después de cerrar
+y hashear JSON/HTML, por lo que su presencia indica un conjunto completo verificable.
+
+La CLI `reserly-demand-report-evidently` admite únicamente dos Parquet, evidencia JSON, directorio de
+salida y timestamp con zona. Carga las dos políticas desde el repositorio, vuelve a validar la
+evidencia Pydantic y solo imprime el path del manifiesto, no métricas, categorías ni filas. Está
+pensada como job Prefect offline; no llama Evidently Cloud, no necesita API key, no escribe MLflow ni
+PostgreSQL, no invoca endpoints y no puede promocionar/desplegar. El manifiesto y los dos informes se
+adjuntarán al run gobernado por 23.3/23.5 mediante un adaptador posterior con permisos de training.
+
+### Archivos, seguridad, errores, pruebas y evidencia
+
+Se crean policy, módulo y cinco pruebas; se modifican dependencia/entrypoint, README y cuatro
+documentos `.kiro`. No hay migración, endpoint, job remoto, llamada externa en runtime ni eliminación.
+Los errores son códigos estables por dataset/familia y no interpolan columna o valor rechazado. El
+timestamp exige timezone y se normaliza a UTC. Los artefactos no contienen secretos y el manifest no
+duplica resultados detallados; sus hashes permiten detectar alteración, aunque aún no son firma
+criptográfica. La retención deberá seguir la del dataset/experimento y cualquier supresión que afecte
+la fuente obliga a reconstruir o retirar el informe.
+
+Cinco pruebas con Evidently real verifican informe estable, drift PSI visible, subordinación positiva
+y negativa al gate, promoción siempre falsa, rechazo de ID/texto/categoría desconocida y escritura de
+JSON/HTML/manifiesto con SHA-256. Las cinco pruebas 23.4 se ejecutan junto a ellas para proteger el
+acoplamiento; 10/10 pasan. `compileall` y `git diff --check` quedan verdes. `npm run test:demand`
+ejecutó 251/251 pruebas en 204,015 s y terminó `OK`.
+
+Riesgos/deuda: Data Summary 0.7.21 emite un `Pandas4Warning` con pandas 3.0.2 sin afectar resultados;
+debe reevaluarse al actualizar Evidently. PSI depende de tamaño/binning y no diagnostica causa. Un
+HTML puede crecer con muchas columnas, de ahí el máximo 16; el millón de filas sigue requiriendo
+benchmark/memoria en 23.12. Los outputs son hashes, no firmas ni almacenamiento WORM. 23.9 añadirá
+auditoría administrativa; 23.10 documentará data sheets/model cards y 23.12 definirá retención,
+freshness y alertado periódico.

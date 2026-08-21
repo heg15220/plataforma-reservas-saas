@@ -3291,6 +3291,14 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
   dedicados. Ocho familias obligatorias tienen panel y reglas separadas alertan target caído, 5xx,
   p95, PSI, calibración, cobertura, diversidad y exposición de nuevos centros. Los jobs publican
   salud agregada mediante la API tipada; el scrape no recibe filas ni estado de negocio.
+- Evidently 0.7.21 se ejecuta offline sobre dos proyecciones Parquet minimizadas con idéntica
+  `DataDefinition`, columnas/tipos/categorías allowlisted y límites de fila, nulos y cardinalidad. La
+  implementación 23.8 combina `DataDriftPreset(method="psi")` y `DataSummaryPreset`, conserva JSON y
+  HTML por SHA-256 y genera un manifiesto agregado enlazado a dataset, baseline, policy y digest de
+  evidencia. Antes de informar vuelve a ejecutar `data-validation-v1`; su resultado se expone como
+  `authoritativeDataGateAllowed`, mientras Evidently solo produce `reviewRequired` y siempre declara
+  `promotionAuthorized=false`. Un informe estable jamás revierte una denegación de esquema, calidad,
+  distribución, PII, leakage o sesgo, y uno degradado solo abre revisión.
 - La promoción es atómica; el artefacto campeón anterior permanece disponible para rollback.
 - `model-rollout-v1` publica primero el candidato como alias `shadow`, sin autoridad de respuesta;
   después lo enruta de forma determinista por `requestId` técnico en escalones canary de 1, 5, 10,
