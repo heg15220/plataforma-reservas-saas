@@ -10664,3 +10664,19 @@ Fuente de verdad del avance:
   - El coste nunca permite desactivar privacidad, calidad, borrado, elegibilidad o capacidad.
   - Saturación, coste y freshness usan dimensiones cerradas sin tenant/modelo/UUID como label.
   - 8/8 pruebas focalizadas, Compose, CLI/JSON y 259/259 pruebas completas quedaron verdes.
+
+# Conversación 272 - Guía de evaluación del recomendador en desarrollo
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación: se documentó cómo verificar funcionamiento técnico, calidad offline y
+  valor online del recomendador, incluyendo el diagnóstico real vigente del encoder semántico.
+- Archivos modificados: nueva guía `docs/demand-engine/evaluacion-recomendaciones-desarrollo.md` y
+  este registro de conversación.
+- Requisitos impactados: RF-036 y RF-041; RNF-004, RNF-008, RNF-014 y RNF-015.
+- Tareas impactadas: ninguna tarea cambia de estado; la guía apoya validación y operación 23.12-23.14.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.13.
+- Decisiones o aclaraciones relevantes:
+  - La suite técnica no se presenta como evidencia de utilidad productiva.
+  - Para ranking se priorizan Recall@K, MRR y NDCG@K; F1 queda ligado a clasificación con umbral.
+  - La evidencia guardada falla calidad semántica, pasa latencia y mantiene fallback determinista.
