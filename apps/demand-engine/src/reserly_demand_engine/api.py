@@ -48,6 +48,7 @@ from .nlp import NlpAnalyzeRequest, NlpAnalyzeResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
 from .waitlist_allocation import WaitlistAllocationRequest, WaitlistAllocationResponse
 from .smart_promotions import SmartPromotionRequest, SmartPromotionResponse
+from .clip_visual_evaluation import ClipVisualEvaluationRequest, ClipVisualEvaluationResponse
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -225,6 +226,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.smart_promotion_planner.plan(body)
         except ValueError as error:
             raise DemandEngineError("SMART_PROMOTION_REJECTED", 409) from error
+
+    @router.post("/visual/clip/evaluate", response_model=ClipVisualEvaluationResponse)
+    async def evaluate_clip_visuals(
+        body: ClipVisualEvaluationRequest, request: Request
+    ) -> ClipVisualEvaluationResponse:
+        """Evalúa embeddings visuales autorizados sin recibir píxeles, EXIF ni personas."""
+        try:
+            return request.app.state.clip_visual_evaluator.evaluate(body)
+        except ValueError as error:
+            raise DemandEngineError("CLIP_VISUAL_EVALUATION_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

@@ -38994,3 +38994,71 @@ de contabilidad validada, no del cliente. La tarea no implementa ledger/expiraci
 materialización de cupón, canal de contacto ni experimento promocional. Antes de producción se requiere
 revisión legal, holdout causal, monitor de presupuesto/frecuencia y rollback. El valor incremental es
 conservador, pero no sustituye el ROI observado que medirá 22.14.
+
+## Iteración 2026-08-21 - Tarea 22.11: evaluación visual auxiliar con CLIP
+
+### Objetivo, requisitos y modelo fijado
+
+- Identificador exacto: 22.11.
+- Objetivo técnico: evaluar señales visuales físicamente observables con CLIP sin convertirlas en
+  hechos, inferencias sensibles ni mutaciones automáticas del perfil.
+- Requisitos/diseño: RF-035, RF-036 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.4, 14.10, 14.17, 14.62 y ontología `personal-care.v1`.
+
+El manifest `clip-vit-b32-visual-evidence.v1.json` fija repositorio
+`openai/clip-vit-base-patch32`, revisión `fbf5e647b25f3514e526849b05cc0196b206d822`, licencia MIT,
+arquitectura ViT-B/32, 512 dimensiones, Transformers 4.56.2 y Pillow 11.3.0. `trustRemoteCode=false`,
+normalización obligatoria y revisión inmutable evitan descargar código o mezclar artefactos. Las dos
+dependencias se declaran directamente en el extra ML aunque ya fueran transitivas.
+
+`HuggingFaceClipEmbedder` carga modelo/procesador de forma lazy, por defecto exclusivamente desde
+cache local. Solo un job offline puede habilitar descarga. Abre rutas controladas con Pillow, convierte
+a RGB, cierra handles, ejecuta `torch.inference_mode()`, normaliza L2 y devuelve el contrato común. Los
+píxeles no entran en FastAPI ni se conservan en la respuesta. Los prompts también se codifican offline
+y el job es responsable de su revisión; el evaluador recibe únicamente sus vectores positivo/negativo.
+
+### Allowlist, privacidad y afirmaciones prohibidas
+
+La allowlist procede de atributos publicados cuya fuente admite `imageAuxiliary`: `modernStyle`,
+`classicStyle`, `naturalLight` y `dedicatedWaitingArea`. Cualquier código adicional provoca
+`CLIP_ATTRIBUTE_NOT_ALLOWED`. El manifest enumera como prohibidos identidad, edad, género, raza,
+etnia, orientación sexual, discapacidad, salud, emoción/estado psicológico, seguridad, limpieza,
+tranquilidad y carácter familiar. El response obliga `prohibitedClaimsEmitted=0`.
+
+Cada imagen se representa por UUID técnico, SHA-256, local, instante, autorización, metadata retirada,
+flag de personas, embedding y etiquetas humanas del dataset. `venueAuthorized=true`,
+`metadataStripped=true` y `containsPersonalData=false` son literales. Una imagen con personas se
+suprime antes de score/métrica y no ayuda a alcanzar muestra. Hashes, IDs y labels deben ser únicos,
+temporales y allowlist; no se reciben URL, rostro, EXIF, caption ni ubicación.
+
+### Evaluación, gates y salida auxiliar
+
+Para cada atributo se calcula coseno contra prompt positivo y negativo. La diferencia se escala por
+10, se acota y pasa por sigmoid; >=0,75 es positivo. Etiquetas humanas producen TP/FP/FN, precision y
+recall por atributo y macro. La política exige veinte imágenes utilizables y ambas macro métricas
+>=0,80. Ausencia de positivos produce métrica cero, evitando gates vacíos.
+
+`productionEvidence=false` puede validar aritmética pero nunca habilita evidencia. Solo producción con
+gates genera hasta dos candidatos por imagen, ordenados por confianza/código, con hash, source
+`imageAuxiliary` y `humanReviewRequired=true`. `automaticProfileMutationAllowed=false` es literal: el
+workflow administrativo de ontología debe revisar y combinar esta señal con fuentes independientes.
+
+### API, pruebas, evidencia y deuda
+
+`POST /internal/demand/v1/visual/clip/evaluate` está bajo autenticación interna y traduce versión,
+allowlist o labels inválidos a `CLIP_VISUAL_EVALUATION_REJECTED` 409. La factoría valida manifest y
+policy al arrancar. No se añade endpoint público ni persistencia.
+
+Seis pruebas verifican gates sintéticos sin promoción, evidencia productiva solo auxiliar, supresión de
+personas/muestra, rechazo sensible, drift de revisión y allowlist/prohibiciones del manifest. Trece
+pruebas HTTP protegen namespace/auth. Evidencia: 6/6 en 0,048 s y 13/13 HTTP en 1,881 s, más
+`py_compile` y Prettier. El smoke con el artefacto real codificó
+`brisa-studio-main.jpg` y dos prompts: un vector de imagen, dos de texto, 512 dimensiones y norma
+cuadrática 1,0 en ambos canales. No se interpretó su score como etiqueta de producto.
+
+Riesgos/deuda: no existe dataset productivo etiquetado, por lo que calidad/revisión real siguen
+bloqueadas. CLIP tiene limitaciones de distribución, sesgo y zero-shot; prompts en inglés pueden no
+transferir igual al contexto español. Antes de producción se requieren dataset representativo,
+etiquetado doble, análisis por locale/tipo de local, detección de personas robusta, licencia/origen de
+cada imagen, revisión jurídica y monitor de drift. Nunca debe usarse para moderación, biometría,
+seguridad o salud.

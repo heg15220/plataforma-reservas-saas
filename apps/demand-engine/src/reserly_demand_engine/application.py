@@ -30,6 +30,7 @@ from .nlp import PersonalCareNlpPipeline, PersonalCareNlpPolicy
 from .scoring import ScoreMvp, ScorePolicy
 from .waitlist_allocation import WaitlistAllocationPolicy, WaitlistAllocator
 from .smart_promotions import SmartPromotionPlanner, SmartPromotionPolicy
+from .clip_visual_evaluation import ClipVisualEvaluator, ClipVisualManifest, ClipVisualPolicy
 
 
 def create_app(
@@ -81,6 +82,12 @@ def create_app(
     )
     app.state.smart_promotion_planner = SmartPromotionPlanner(
         SmartPromotionPolicy.load(policy_root / "smart-promotion.v1.json")
+    )
+    app.state.clip_visual_evaluator = ClipVisualEvaluator(
+        ClipVisualPolicy.load(policy_root / "clip-visual-evaluation.v1.json"),
+        ClipVisualManifest.load(
+            Path(__file__).resolve().parents[2] / "models" / "clip-vit-b32-visual-evidence.v1.json"
+        ),
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"

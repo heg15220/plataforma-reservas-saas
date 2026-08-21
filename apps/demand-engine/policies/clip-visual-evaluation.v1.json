@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "clip-visual-evaluation-v1",
+  "modelKey": "clip-vit-b32-visual-evidence-v1",
+  "minimumImages": 20,
+  "similarityLogitScale": 10.0,
+  "predictionThreshold": 0.75,
+  "minimumMacroPrecision": 0.8,
+  "minimumMacroRecall": 0.8,
+  "maximumEvidencePerImage": 2,
+  "automaticProfileMutationAllowed": false
+}

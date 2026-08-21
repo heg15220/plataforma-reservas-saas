@@ -13,6 +13,8 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
   "sentence-transformers==5.7.0",
+  "transformers==4.56.2",
+  "pillow==11.3.0",
   "catboost==1.2.10",
   "umap-learn==0.5.12",
   "hdbscan==0.8.44",

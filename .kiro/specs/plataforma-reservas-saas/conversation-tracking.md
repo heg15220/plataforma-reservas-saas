@@ -10318,3 +10318,25 @@ Fuente de verdad del avance:
   - Sin uplift fiable se bloquea el lote; FIFO no es un fallback válido para conceder descuentos.
   - La optimización usa el IC inferior, no la estimación puntual, y preserva una selección por sujeto.
   - Seis pruebas del planificador y trece de contrato HTTP quedaron verdes.
+
+# Conversación 255 - Evaluación visual auxiliar con CLIP
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se fijó CLIP ViT-B/32 por repositorio/revisión y se creó un codificador offline para imágenes y
+    prompts, separado del endpoint interno que solo recibe embeddings normalizados.
+  - Se implementó evaluación por etiquetas humanas con precision/recall, muestra mínima y gates que
+    solo permiten candidatos auxiliares bajo revisión humana.
+  - La allowlist se redujo a cuatro rasgos visuales gobernados; personas y afirmaciones sensibles o no
+    verificables se suprimen/prohíben explícitamente.
+- Archivos modificados: dependencias ML, manifest/política CLIP, evaluador/codificador/router/factoría,
+  pruebas y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.11; no muta perfiles ni publica atributos.
+- Tareas completadas: 22.11.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 22.12.
+- Decisiones o aclaraciones relevantes:
+  - El endpoint no acepta imágenes; el job offline debe acreditar autorización y retirada de EXIF.
+  - Sintético puede superar métricas, pero únicamente evidencia productiva habilita revisión humana.
+  - Seis pruebas visuales y trece HTTP quedaron verdes; un smoke real produjo vectores CLIP 512-D con
+    norma 1,0 desde una imagen fixture y dos prompts.

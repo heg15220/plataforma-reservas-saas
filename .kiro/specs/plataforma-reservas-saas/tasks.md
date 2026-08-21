@@ -449,7 +449,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 22.8. Implementar listas de espera y `POST /waitlist/allocate` con ofertas escalonadas, expiración e idempotencia.
 - [x] 22.9. Integrar aceptación de ofertas con holds y confirmación transaccional para impedir sobreventa.
 - [x] 22.10. Implementar promociones inteligentes solo con uplift y margen fiables, aprobación del local y límites de contacto.
-- [ ] 22.11. Evaluar señales visuales con CLIP como evidencia auxiliar y prohibir inferencias no verificables o sensibles.
+- [x] 22.11. Evaluar señales visuales con CLIP como evidencia auxiliar y prohibir inferencias no verificables o sensibles.
 - [ ] 22.12. Implementar recomendaciones cruzadas entre categorías con compatibilidad de intención y controles de diversidad.
 - [ ] 22.13. Implementar aprendizaje incremental y detección de drift con River, ADWIN, Page-Hinkley o CUSUM donde proceda.
 - [ ] 22.14. Medir incrementalidad robusta, reservas recuperadas, coste por cliente y retorno con controles y ventanas documentadas.

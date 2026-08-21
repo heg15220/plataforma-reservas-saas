@@ -4728,3 +4728,20 @@ CP-SAT maximiza `IC inferior uplift × P(asistencia) × margen neto - coste de c
 con presupuesto, capacidad por franja, máximo diez selecciones y una por sujeto. La salida conserva
 approvalId, uplift, margen, coste y valor incremental calculado, pero
 `automaticContactAllowed=false`: Spring mantiene emisión, descuento y auditoría bajo aprobación.
+
+### 14.62 CLIP como evidencia visual estrictamente auxiliar
+
+El artefacto `openai/clip-vit-base-patch32` queda fijado a revisión Git de 40 caracteres, ViT-B/32,
+512 dimensiones, Transformers 4.56.2 y Pillow 11.3.0. Un job offline autorizado codifica imágenes
+locales y prompts revisados; el endpoint `POST /internal/demand/v1/visual/clip/evaluate` recibe solo
+hashes y embeddings L2, nunca píxeles, EXIF o texto libre.
+
+La allowlist visual se limita a `modernStyle`, `classicStyle`, `naturalLight` y
+`dedicatedWaitingArea`, ya publicados con fuente `imageAuxiliary`. Imágenes con personas se suprimen.
+Identidad, salud, género, edad, etnia, discapacidad, emoción, seguridad, limpieza, tranquilidad o
+carácter familiar permanecen prohibidos; no se crean etiquetas nuevas por similitud.
+
+Cada atributo compara prompt positivo/negativo y exige confianza >=0,75. La evaluación requiere al
+menos veinte imágenes etiquetadas por humanos y macro precision/recall >=0,80. Datos sintéticos pueden
+validar cálculo pero no abren revisión. Evidencia productiva que supera gates solo genera candidatos
+`imageAuxiliary` con `humanReviewRequired=true`; `automaticProfileMutationAllowed=false` siempre.
