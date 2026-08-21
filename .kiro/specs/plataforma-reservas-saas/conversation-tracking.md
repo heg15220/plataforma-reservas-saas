@@ -10630,3 +10630,20 @@ Fuente de verdad del avance:
   - La matriz niega identificadores, tracking e inferencias sensibles sin excepciones automáticas.
   - La PIA técnica permanece pendiente de aprobación legal, privacidad, seguridad y equidad.
   - Cuatro pruebas y la ejecución real de la CLI quedaron verdes; completar documentos no promueve.
+
+# Conversación 270 - Revisión humana, corrección e impugnación de demanda
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación: se implementó una cola persistente y bloqueante para atributos y
+  decisiones comerciales materiales, con decisión admin, corrección versionada e impugnación del local.
+- Archivos modificados: migración V62, entidad/DAO/servicio, tres controllers, cuatro DTO, dos clases
+  de prueba, package-info y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-035, RF-041; RNF-001, RNF-002, RNF-006, RNF-009 y RNF-015.
+- Tareas impactadas: 23.11; utiliza la auditoría 23.9 y prepara operación 23.12.
+- Tareas completadas: 23.11.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.12.
+- Decisiones o aclaraciones relevantes:
+  - Solo `approved` autoriza ejecución; appeal y correction la bloquean inmediatamente.
+  - El local solo impugna decisiones ligadas a un `venueId` accesible y una única vez.
+  - Motivo/explicación son códigos; evidencia y datos de decisión no se reflejan en respuestas.
+  - Maven compiló 1.016 fuentes main/239 test; Spotless/Checkstyle y 12/12 pruebas pasaron.

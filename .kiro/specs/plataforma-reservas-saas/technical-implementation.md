@@ -40063,3 +40063,62 @@ incompleta y rechazo de aprobación jurídica prematura. Se ejecutaron 4/4 en 0,
 real devolvió nueve model cards, tres data sheets, hashes válidos, `legalApprovalRequired=true` y
 `promotionAuthorized=false`. Riesgos pendientes: traducción humana del texto técnico, firma/retención
 de artefactos, revisión jurídica real y enlazado del digest al ledger 23.9; corresponden a 23.12-23.14.
+
+## Iteración 2026-08-21 - Tarea 23.11: revisión humana, corrección e impugnación
+
+### Objetivo, arquitectura y modelo de datos
+
+- Identificador exacto: 23.11.
+- Objetivo: impedir que atributos o decisiones comerciales materiales produzcan efectos sin una
+  decisión humana explicable y ofrecer corrección e impugnación auditables.
+- Trazabilidad: RF-035 y RF-041; RNF-001, RNF-002, RNF-006, RNF-009 y RNF-015; diseño 14.17.
+
+V62 crea `DemandGovernanceReviews`. La PK `id` es también idempotency key; reviewType distingue
+`attribute` y `commercial_decision`; subjectType/key/version y policy identifican el contrato;
+evidenceSha256 enlaza evidencia sin copiarla; venueId solo existe para impacto comercial. Estado,
+servicio solicitante, revisor, motivo, versión corregida, apelación y timestamps forman la máquina de
+estados. FKs restringen local y conservan la revisión si se elimina un actor; índices sirven la cola
+por status/updatedAt y el historial por venue. Checks SQL cierran tipos, estados, tokens, scope y
+cronología. `@Version` detecta escrituras optimistas además de locks pesimistas de transición.
+
+`DemandHumanReviewService.submit` valida cinco subject types cerrados, relación type/venue y existencia
+del local. Un advisory lock transaccional por reviewId serializa dos primeras solicitudes; un replay
+idéntico devuelve la fila y uno divergente responde 409. La creación queda `submitted` y siempre
+`executionAuthorized=false`. La solicitud conserva digest pero el snapshot de auditoría lo omite para
+minimizar exposición; tampoco acepta payload, texto libre, identidad de cliente, score o feature.
+
+La máquina permite `submitted|appealed -> approved|rejected|correction_requested`,
+`correction_requested -> corrected` y `corrected -> approved|rejected|correction_requested`. Solo
+`corrected` exige `correctionVersion`; corregir no aprueba. Solo `approved` proyecta autorización. El
+servicio no ejecuta ranking, promoción, waitlist ni acción: el productor debe consultar/transportar
+la aprobación exacta y continuar aplicando sus gates. Una transición ilegal falla 409 bajo
+`PESSIMISTIC_WRITE`.
+
+La impugnación se expone bajo `/api/venue/me/.../{reviewId}/appeal`, namespace ROLE_VENUE_OWNER. Antes
+de revelar existencia, `VenueDao.findAccessibleById` verifica titular o delegado y local no archivado.
+Solo decisiones previamente decididas admiten una única impugnación. Se pasa a `appealed`, se registra
+actor/fecha/código y la autorización se hace falsa inmediatamente. La nueva decisión corresponde a
+ROLE_ADMIN. Atributos globales sin venue se corrigen en la cola admin y conservan además el workflow
+editorial de ontología ya existente.
+
+### APIs, auditoría, errores y verificación
+
+`POST /api/internal/demand/v1/governance/reviews` requiere ROLE_DEMAND_INGESTOR y solo abre cola;
+`GET /api/admin/demand-governance/reviews` devuelve cien recientes; `POST .../{id}/decision` decide
+como admin; el endpoint venue impugna. Las respuestas omiten digest, IDs de actores, IP/user-agent y
+evidencia; muestran contrato, estado, códigos y autorización. Bean Validation y el servicio validan
+entradas. Errores usan 400/404/409 sin reflejar body; el endpoint venue usa 404 para no revelar una
+revisión ajena.
+
+Cada submit, decisión, corrección o appeal añade `demand_human_review` al ledger append-only 23.9 con
+actor system/admin/venue_owner y snapshots mínimos. Admin/venue conservan contexto de seguridad;
+servicio no aporta IP/user-agent. La auditoría comparte la transacción: si falla, tampoco cambia el
+estado. La tabla de estado sí es mutable de forma controlada; la historia inmutable vive en AuditLogs.
+
+Se crean V62, entidad, DAO, servicio, tres controllers, cuatro requests/responses y dos tests; se
+actualizan package-info y cuatro documentos `.kiro`. Spotless y Checkstyle pasan. Maven compiló 1.016
+fuentes main y 239 test. Doce pruebas (cinco del ledger previo, cinco de workflow y dos físicas)
+terminaron sin fallos: bloqueo/idempotencia, minimización, autorización exclusiva, corrección,
+impugnación accesible/única, migración y advisory lock. Limitaciones: no hay UI ni notificación,
+SLA de cola, paginación profunda o outbox hacia ejecutores. 23.12 cubre alertado/SLO y una fase UI
+posterior deberá localizar explicaciones ES/EN; 23.13 ensayará concurrencia PostgreSQL y recuperación.

@@ -3321,6 +3321,13 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 - Umbrales de agregación para paneles y demanda insatisfecha.
 - Cuotas de exploración, diversidad y exposición para evitar bucles de popularidad.
 - Revisión humana de atributos, modelos y acciones comerciales materiales.
+  La implementación 23.11 materializa una cola única `DemandGovernanceReviews` para atributos y
+  decisiones comerciales. El servicio interno solo crea solicitudes idempotentes con explicación y
+  evidencia por digest; `executionAuthorized` permanece falso salvo en `approved`. Administración
+  decide, solicita corrección o valida una versión corregida bajo lock y auditoría. Un local afectado
+  puede impugnar una sola vez si realmente tiene acceso al `venueId`; la impugnación reabre la cola y
+  revoca inmediatamente la autorización. Códigos cerrados sustituyen texto libre y ningún endpoint
+  modifica el atributo, ranking, promoción, lista de espera o acción comercial auditada.
 - Auditoría de cambios de ontología, políticas, modelos, experimentos y optimización. La
   implementación 23.9 reutiliza `AuditLogs` como ledger administrativo único y añade las familias
   cerradas `demand_ontology`, `demand_ranking_weights`, `demand_model`, `demand_experiment`,
