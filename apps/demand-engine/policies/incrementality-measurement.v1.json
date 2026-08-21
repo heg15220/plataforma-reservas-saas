@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "incrementality-measurement-v1",
+  "requiredExperimentPolicyVersion": "ranking-ab-test-v1",
+  "requiredCausalGatePolicyVersion": "causal-ab-validation-v1",
+  "attributionWindowHours": 72,
+  "outcomeMaturityHours": 48,
+  "maximumPeriodDays": 45,
+  "minimumUnitsPerArm": 100,
+  "minimumMaturedBookingsPerArm": 10,
+  "maximumAssignmentRatioDeviation": 0.1,
+  "confidenceLevel": 0.95,
+  "currency": "EUR",
+  "automaticCommercialClaimAllowed": false
+}

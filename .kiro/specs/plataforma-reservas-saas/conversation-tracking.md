@@ -10382,3 +10382,22 @@ Fuente de verdad del avance:
   - Se fijó River 0.25.0 en vez de adoptar una versión publicada el mismo día.
   - Checkpoints no usan pickle y Spring deberá persistirlos mediante compare-and-set por secuencia.
   - Seis pruebas focalizadas y trece HTTP quedaron verdes en 2,221 s.
+
+# Conversación 258 - Incrementalidad comercial con controles
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se implementó medición aislada por local de atribución, recuperación, nuevos clientes, outcomes,
+    ingreso neto y costes dentro de ventanas versionadas.
+  - Solo RCT productivo íntegro y con muestra abre efectos/intervalos e indicadores incrementales;
+    observacional o insuficiente devuelve exclusivamente lenguaje atribuido/estimado.
+  - Coste por cliente y retorno se omiten cuando sus denominadores no son válidos.
+- Archivos modificados: política, servicio/router/factoría/pruebas Python y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 22.14; sus gates entrarán en aceptación transversal 22.15.
+- Tareas completadas: 22.14.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 22.15.
+- Decisiones o aclaraciones relevantes:
+  - Ventana de atribución 72 h, maduración 48 h y periodo máximo 45 días quedan versionados.
+  - Reserva/unidad duplicada falla cerrado; cada reserva solo tiene una clase comercial.
+  - Seis pruebas focalizadas y trece HTTP quedaron verdes en 2,349 s.

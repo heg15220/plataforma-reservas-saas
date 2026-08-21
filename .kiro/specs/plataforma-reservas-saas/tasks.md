@@ -452,7 +452,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 22.11. Evaluar señales visuales con CLIP como evidencia auxiliar y prohibir inferencias no verificables o sensibles.
 - [x] 22.12. Implementar recomendaciones cruzadas entre categorías con compatibilidad de intención y controles de diversidad.
 - [x] 22.13. Implementar aprendizaje incremental y detección de drift con River, ADWIN, Page-Hinkley o CUSUM donde proceda.
-- [ ] 22.14. Medir incrementalidad robusta, reservas recuperadas, coste por cliente y retorno con controles y ventanas documentadas.
+- [x] 22.14. Medir incrementalidad robusta, reservas recuperadas, coste por cliente y retorno con controles y ventanas documentadas.
 - [ ] 22.15. Crear pruebas de optimización, capacidad, frecuencia, equidad, causalidad, drift, rollback y degradación segura.
 
 ## 25. Fase 23 - Industrialización, MLOps y gobernanza

@@ -39213,3 +39213,74 @@ encapsulado y fijado a 0.25.0, pero toda actualización requiere test de compati
 umbrales son iniciales, no evidencia productiva. Faltan almacenamiento CAS, locks multiinstancia,
 Prometheus/Grafana/Evidently, calibración móvil, ventanas por segmento no sensible y runbook operativo;
 son responsabilidad de Fase 23. Una alarma detecta cambio, no explica causa ni autoriza reentrenamiento.
+
+## Iteración 2026-08-21 - Tarea 22.14: medición robusta de incrementalidad y retorno
+
+### Objetivo, requisitos y definiciones versionadas
+
+- Identificador exacto: 22.14.
+- Objetivo técnico: medir valor atribuido y, solo con control experimental válido, reservas, clientes e
+  ingreso incrementales, recuperación, coste por cliente y retorno.
+- Requisitos/diseño: RF-038, RF-040 y RF-041; RNF-005, RNF-006, RNF-009, RNF-014 y RNF-015;
+  secciones 14.12, 14.14, 14.17, 14.18 y 14.65.
+
+`incrementality-measurement-v1` fija protocolo `ranking-ab-test-v1`, gate
+`causal-ab-validation-v1`, atribución 72 h, maduración 48 h, periodo máximo 45 días, cien unidades y
+diez bookings maduros por brazo, balance máximo ±0,10, confianza 95 % y EUR. Cualquier cambio de
+definición exige otra versión para que paneles históricos no mezclen métricas.
+
+### Contratos, ventanas y clasificación sin doble conteo
+
+`incrementality_measurement.py` implementa `IncrementalityMeasurementService` y contratos estrictos.
+El endpoint autenticado recibe una cohorte ya aislada por `venueId`; no acepta varios locales. Cada
+unidad tiene UUID experimental, brazo, asignación/exposición y opcionalmente una reserva con UUID,
+timestamp, una clase `direct|assisted|generated|recovered`, estado nuevo/recurrente, outcome maduro,
+ingreso neto realizado, coste de activación y valle. No contiene email, sujeto real, texto ni rasgos
+sensibles; revocaciones aplicadas y ausencia de datos personales son literales.
+
+Unidad y booking deben ser globalmente únicos dentro del informe; duplicados fallan antes de agregar.
+Asignación precede exposición, exposición pertenece a `[periodStart, periodEnd)`, evaluación ocurre
+tras el periodo y outcomes no pueden venir del futuro. Una reserva más de 72 h después de exposición
+se transforma en no atribuida: no suma booking, clase, customer, outcome ni ingreso, pero conserva el
+coste real de haber expuesto la intervención. Solo outcomes observados al menos 48 h después de booking
+suman asistencia/cancelación/no-show e ingreso, evitando anticipar valor no maduro.
+
+Por brazo se publican unidades, bookings totales/maduros, asistencia, cancelación, no-show, cuatro
+clases comerciales, nuevo/recurrente, valle, ingreso neto y coste. `realizedNetRevenueCents` debe venir
+de contabilidad después de descuentos, reembolsos/cancelaciones y no se deriva de precio bruto. El
+servicio interno no sustituye la supresión del panel público ni su control de permisos.
+
+### Estimación, controles y semántica comercial
+
+El gate causal exige evidencia productiva, RCT, versiones exactas, prerregistro, asignación persistida
+antes de exposición, estabilidad/exclusividad, gate causal previo, cero crossover/violación dura/de
+privacidad, muestra/maduración por brazo y ratio 50/50 dentro de ±0,10. Fallar cualquier condición deja
+todos los efectos e indicadores incrementales en `null`, `causalInterpretationAllowed=false` y
+terminología `attributedEstimated`; los conteos observados siguen disponibles como atribución.
+
+Con gate verde se calculan diferencias tratamiento-control por unidad e intervalos bilaterales normales
+95 % usando varianza muestral independiente para booking, asistencia, recuperación, cliente nuevo e
+ingreso neto. El efecto se escala por unidades tratadas para estimar cantidades incrementales sin
+suponer brazos del mismo tamaño. Coste por cliente es coste tratado / nuevos clientes incrementales y
+solo existe con denominador positivo. Retorno es `(ingreso incremental - coste tratado) / coste
+tratado` y solo existe si el coste es positivo. Ningún resultado activa claim:
+`automaticCommercialClaimAllowed=false`.
+
+### Archivos, seguridad, pruebas y deuda
+
+Archivos creados: política, módulo y seis pruebas. Modificados: router, factoría, test OpenAPI y cuatro
+documentos `.kiro`. No hay esquema, migración, endpoint público ni persistencia. Pydantic limita lote a
+200.000, periodo, moneda, rangos monetarios, timezone, campos desconocidos e integridad temporal.
+Middleware conserva autenticación, timeout, request ID y error 409 opaco sin log de cohortes.
+
+Pruebas: RCT válido con efecto/recuperación/coste/ROI exactos; observacional sin campos causales; muestra
+insuficiente; exclusión por ventana; duplicidad booking/unidad; y denominador incremental no positivo.
+Evidencia: `$env:PYTHONPATH='src;../../packages/demand-contracts/src'; python -m unittest
+tests/test_incrementality_measurement.py tests/test_api_contracts.py -q` ejecutó 19/19 en 2,349 s,
+seguido de `compileall`, validación JSON, Prettier y diff whitespace.
+
+Riesgos/deuda: intervalos normales no sustituyen análisis secuencial/potencia del protocolo A/B ni
+ajuste por múltiples looks. Ingreso neto y coste requieren fuente contable reconciliada. La clase
+observacional puede contener confusión y nunca debe renombrarse incremental. Faltan persistencia de
+proyecciones, endpoint/panel del local, timezone de negocio, FX, impuestos, supresión UI, auditoría de
+recalculo y reconciliación contra reservas; corresponden a integración analítica/Fase 23.

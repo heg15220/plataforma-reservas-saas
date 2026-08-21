@@ -4786,3 +4786,21 @@ Drift descarta el checkpoint contaminado, devuelve `rollbackRequired=true` y ord
 suficiente habilita revisión humana; `automaticPromotionAllowed=false` y
 `onlineDeploymentAllowed=false` son invariantes. La model card shadow fija finalidad, limitaciones,
 River, feature set y rollback; una discrepancia de versión impide arrancar.
+
+### 14.65 Medición de incrementalidad, recuperación, coste y retorno
+
+`POST /internal/demand/v1/analytics/incrementality/evaluate` procesa una única cohorte local y un
+periodo máximo de 45 días. La política fija ventana de atribución de 72 horas, maduración de outcome
+de 48 horas, EUR y cien unidades/diez reservas maduras por brazo. UUID de unidad y reserva son únicos;
+cada reserva tiene exactamente una clase `direct|assisted|generated|recovered`, evitando doble conteo.
+
+Siempre se calculan conteos observados por brazo: reservas/clase, nuevos/recurrentes, valle,
+asistencia, cancelación, no-show, ingreso neto realizado y coste. Reservas posteriores a la ventana se
+retiran de atribución e ingreso, conservando el coste de exposición. Ingreso solo entra tras outcome
+maduro e incorpora el neto realizado después de cancelación/reembolso provisto por contabilidad.
+
+Efectos, intervalos 95 %, reservas/clientes/ingreso incrementales, coste por cliente y retorno solo
+existen si hay RCT productivo prerregistrado, asignación previa estable/exclusiva, causal gate válido,
+muestra/maduración, balance 50/50 ±0,10 y cero crossover, violación dura o de privacidad. En otro caso
+los campos causales son `null` y la terminología es `attributedEstimated`. Denominador incremental no
+positivo oculta coste por cliente; coste cero oculta retorno. `automaticCommercialClaimAllowed=false`.

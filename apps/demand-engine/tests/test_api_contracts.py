@@ -70,6 +70,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/visual/clip/evaluate",
             "/internal/demand/v1/recommendations/cross-category",
             "/internal/demand/v1/learning/incremental/evaluate",
+            "/internal/demand/v1/analytics/incrementality/evaluate",
             "/internal/demand/v1/profiles/implicit/evaluate",
             "/internal/demand/v1/nlp/analyze",
         }

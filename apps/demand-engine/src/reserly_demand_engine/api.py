@@ -51,6 +51,9 @@ from .smart_promotions import SmartPromotionRequest, SmartPromotionResponse
 from .clip_visual_evaluation import ClipVisualEvaluationRequest, ClipVisualEvaluationResponse
 from .cross_category_recommendations import CrossCategoryRequest, CrossCategoryResponse
 from .incremental_learning import IncrementalLearningRequest, IncrementalLearningResponse
+from .incrementality_measurement import (
+    IncrementalityMeasurementRequest, IncrementalityMeasurementResponse,
+)
 
 
 def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
@@ -258,6 +261,16 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return request.app.state.incremental_learning_monitor.evaluate(body)
         except ValueError as error:
             raise DemandEngineError("INCREMENTAL_LEARNING_REJECTED", 409) from error
+
+    @router.post("/analytics/incrementality/evaluate", response_model=IncrementalityMeasurementResponse)
+    async def evaluate_incrementality(
+        body: IncrementalityMeasurementRequest, request: Request
+    ) -> IncrementalityMeasurementResponse:
+        """Separa valor atribuido de incrementalidad causal con ventanas y controles explícitos."""
+        try:
+            return request.app.state.incrementality_measurement_service.measure(body)
+        except ValueError as error:
+            raise DemandEngineError("INCREMENTALITY_MEASUREMENT_REJECTED", 409) from error
 
     @router.get("/demand/{venue_id}", response_model=DemandResponse)
     async def venue_demand(

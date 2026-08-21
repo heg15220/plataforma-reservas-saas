@@ -35,6 +35,9 @@ from .cross_category_recommendations import CrossCategoryPolicy, CrossCategoryRe
 from .incremental_learning import (
     IncrementalLearningMonitor, IncrementalLearningPolicy, IncrementalModelCard,
 )
+from .incrementality_measurement import (
+    IncrementalityMeasurementPolicy, IncrementalityMeasurementService,
+)
 
 
 def create_app(
@@ -101,6 +104,9 @@ def create_app(
         IncrementalModelCard.load(
             Path(__file__).resolve().parents[2] / "models/incremental-logistic-shadow.v1.json"
         ),
+    )
+    app.state.incrementality_measurement_service = IncrementalityMeasurementService(
+        IncrementalityMeasurementPolicy.load(policy_root / "incrementality-measurement.v1.json")
     )
     manifest = EmbeddingModelManifest.load(
         Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
