@@ -3241,6 +3241,15 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 - Dataset, ontología, features, embedding, configuración, modelo y ranking tienen versiones enlazadas.
 - MLflow registra parámetros, métricas, artefactos, model card y estado (`candidate`, `shadow`,
   `canary`, `champion`, `retired`).
+- La implementación 23.1 fija MLflow 3.15.1 por versión y digest en el perfil Compose `mlops`.
+  Metadatos, registro y RBAC viven en un PostgreSQL exclusivo sin puerto publicado; los artefactos
+  residen bajo `s3://<bucket-mlflow>/artifacts` en MinIO privado y solo se sirven por el proxy
+  autenticado. La UI se publica en loopback durante desarrollo y exige TLS/proxy privado fuera de
+  local. HTTP Basic Auth/RBAC parte de `NO_PERMISSIONS`, bloquea acceso implícito al workspace y usa
+  secretos inyectados de 32 caracteres o más; el middleware conserva allowlist de `Host`, CORS
+  seguro y `X-Frame-Options`. El contenedor usa raíz de solo lectura e INI de autenticación efímero
+  con modo `0600`. La base MLOps no comparte autoridad ni disponibilidad con PostgreSQL
+  transaccional.
 - Prefect ejecuta lotes idempotentes con fecha de corte, reintentos, checkpoints y locks.
 - Prometheus mide ingestión, latencia, fallback, errores, cobertura, distribución de scores,
   calibración, diversidad, exposición, drift y valor.

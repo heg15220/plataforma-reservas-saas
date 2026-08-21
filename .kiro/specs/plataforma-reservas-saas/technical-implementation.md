@@ -39337,3 +39337,78 @@ infraestructura productiva. Fase 23 debe añadir PostgreSQL/Redis reales, fallos
 artefacto, shadow/canary, rollback atómico, Prometheus/Grafana/Evidently y runbooks. Si una nueva acción
 material aparece, la matriz y categorías deberán versionarse; añadir un test sin referencia explícita
 no satisface por sí solo esta puerta.
+
+## Iteración 2026-08-21 - Tarea 23.1: MLflow protegido para tracking y registro
+
+### Objetivo, requisitos y decisiones de arquitectura
+
+- Identificador exacto: 23.1.
+- Objetivo técnico: desplegar un plano MLflow reproducible que registre datasets, parámetros,
+  métricas, artefactos y modelos sin acoplarse al camino de búsqueda/reserva.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009 y RNF-014; secciones 14.15, 14.16 y 14.17.
+
+Se selecciona MLflow 3.15.1, estable a fecha de la iteración, mediante la imagen oficial `full`
+fijada tanto por tag como por índice OCI SHA-256. El perfil Compose `mlops` evita arrancar este plano
+durante el desarrollo transaccional ordinario. `mlflow-postgres` es una instancia independiente, con
+volumen propio, SCRAM-SHA-256, reloj UTC y sin publicación de puerto. Por tanto una migración, caída o
+carga de tracking no comparte base, conexiones ni autoridad de escritura con PostgreSQL de reservas.
+
+El bucket configurado por `RESERLY_MLFLOW_S3_BUCKET` se crea idempotentemente mediante MinIO Client,
+también fijado por digest, y se fuerza a política anónima `none`. MLflow usa
+`--artifacts-destination s3://<bucket>/artifacts`: el URI entregado a runs es
+`mlflow-artifacts:/...`, de modo que uploads/downloads atraviesan el servidor autenticado y los
+clientes no necesitan credenciales S3. MinIO sigue siendo privado; local solo publica su interfaz en
+loopback por el contrato de infraestructura previo. Staging/producción deben inyectar bucket,
+credenciales y TLS mediante despliegue/gestor de secretos.
+
+### Autenticación, arranque y fronteras de seguridad
+
+`infrastructure/mlflow/entrypoint.py` es el único arranque del servicio. Valida que credencial de
+base, contraseña administradora y secreto CSRF tengan al menos 32 caracteres; rechaza vacíos y saltos
+de línea; escapa usuario/contraseña/nombre al formar la URI. Después escribe `/tmp/mlflow-auth.ini`
+con permisos `0600`, `default_permission=NO_PERMISSIONS` y
+`grant_default_workspace_access=false`, y reemplaza su proceso por `mlflow server --app-name
+basic-auth`. El INI solo vive en un `tmpfs`; la raíz del contenedor es `read_only`.
+
+El middleware de MLflow conserva protección DNS rebinding mediante una allowlist exacta que incluye
+puertos (`localhost:*`, `127.0.0.1:*`, nombre interno `mlflow:5000` o dominio de entorno). No se usa
+`--disable-security-middleware`, CORS permisivo ni publicación de PostgreSQL. La UI local se liga a
+`127.0.0.1:5000`; fuera de local el tracking URI es HTTPS y debe terminar en proxy/VPN privado. El
+administrador inicial procede de secreto y sustituye las credenciales inseguras predeterminadas.
+RBAC permite posteriormente roles `READ/USE/EDIT/MANAGE`, pero ningún usuario nuevo recibe acceso por
+defecto. Logs no incluyen datasets, features, secretos ni artefactos.
+
+### Archivos, contratos operativos y datos
+
+Archivos creados: entrypoint documentado y `test_mlflow_infrastructure.py`. Modificados:
+`infrastructure/compose.yaml`, README de infraestructura, tres plantillas `.env`, validador de
+plantillas, `package.json`, extra opcional `mlops` en `pyproject.toml` y cuatro documentos `.kiro`.
+No se elimina ningún archivo, no hay migración Flyway ni endpoint de producto. MLflow crea su esquema
+de tracking/registry y tablas RBAC mediante sus migraciones internas en el PostgreSQL MLOps.
+
+Los nuevos comandos `mlops:config|up|status|logs|down` siempre activan el perfil explícito. `up`
+espera dependencias: PostgreSQL healthy, MinIO healthy, bootstrap de bucket terminado y finalmente
+health de MLflow. `down` conserva volúmenes, como el resto del proyecto. Las plantillas declaran URI,
+base, usuario, contraseñas, secreto Flask, allowlist, puerto y bucket; valores no locales son solo
+contratos `inject-from-secret-manager`.
+
+### Pruebas, evidencia y limitaciones
+
+Cinco pruebas unitarias verifican deny-by-default, ausencia de contraseña estándar, URL encoding,
+rechazo de secretos cortos/multilínea, flags de basic auth/PostgreSQL/S3 proxy, loopback, perfil,
+read-only, volumen y ausencia de puerto de base. `npm run mlops:config` resolvió Compose con la
+plantilla local; `npm run env:check` validó las tres plantillas; `compileall` no encontró errores.
+
+Se ejecutó un despliegue real con Docker Compose. MinIO, `mlflow-postgres` y MLflow alcanzaron
+`healthy`; el bootstrap terminó con código cero. Una llamada sin credenciales a la API devolvió 401.
+Con el administrador inyectado, el smoke creó el experimento `reserly-smoke-task-23-1`, registró un
+dataset Pandas con digest/esquema, parámetro `policyVersion`, métrica `accuracy`, artefacto JSON en
+MinIO por `mlflow-artifacts:/...` y el registered model `reserly-smoke-model-task-23-1`. Run de
+evidencia: `24155dfe264344fdae169d5d27e7ff43`.
+
+Riesgos/deuda: Basic Auth requiere TLS delante en cualquier entorno compartido; 23.5 debe separar
+cuentas humanas/de servicio y probar rotación/minimo privilegio. El smoke no crea aún una versión de
+modelo ni estados candidate/shadow/canary/champion; 23.3 y 23.6 añadirán linaje/promoción. Backup,
+restauración, expiración de artefactos, HA, CVE scanning y recuperación de corrupción corresponden a
+23.12/23.13. El MinIO local reutiliza la credencial privada de infraestructura; producción deberá usar
+identidad de workload o una credencial limitada al bucket MLflow.

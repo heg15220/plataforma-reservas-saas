@@ -7,6 +7,7 @@
 - RabbitMQ 4.3 con el plugin de gestión para trabajos asíncronos.
 - MinIO S3-compatible para objetos privados cifrados.
 - ClamAV para análisis fail-closed de documentación.
+- MLflow 3.15.1, bajo el perfil `mlops`, con RBAC, PostgreSQL separado y artefactos privados en MinIO.
 
 Desde la raíz, después de crear `.env.local`:
 
@@ -16,6 +17,22 @@ npm run infra:status
 npm run infra:logs
 npm run infra:down
 ```
+
+El plano MLOps se inicia de forma explícita y no forma parte del camino transaccional:
+
+```bash
+npm run mlops:config
+npm run mlops:up
+npm run mlops:status
+npm run mlops:logs
+npm run mlops:down
+```
+
+La UI de MLflow queda en `127.0.0.1:5000`. El primer arranque crea el administrador indicado por
+`RESERLY_MLFLOW_ADMIN_*`; debe rotarse mediante el gestor de secretos. El permiso por defecto es
+`NO_PERMISSIONS`, la base MLOps no publica puerto y los clientes solo acceden a artefactos mediante el
+proxy autenticado de MLflow. En staging/producción, TLS termina en el proxy privado y ninguna
+credencial debe materializarse en archivos del repositorio.
 
 Para trabajar solo con una parte:
 

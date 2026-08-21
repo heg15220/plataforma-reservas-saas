@@ -457,7 +457,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 
 ## 25. Fase 23 - Industrialización, MLOps y gobernanza
 
-- [ ] 23.1. Desplegar MLflow para tracking y registro de datasets, parámetros, métricas, artefactos y modelos con almacenamiento y acceso protegidos.
+- [x] 23.1. Desplegar MLflow para tracking y registro de datasets, parámetros, métricas, artefactos y modelos con almacenamiento y acceso protegidos.
 - [ ] 23.2. Seleccionar Prefect como orquestador inicial y documentar el umbral que justificaría Airflow u otra alternativa.
 - [ ] 23.3. Versionar datasets, features, ontología, embeddings, configuraciones, modelos, experimentos y decisiones de promoción de extremo a extremo.
 - [ ] 23.4. Implementar validación automática de esquema, calidad, distribución, PII, leakage y sesgo antes de entrenar o promover.

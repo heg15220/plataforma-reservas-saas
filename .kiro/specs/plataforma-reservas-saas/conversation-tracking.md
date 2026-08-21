@@ -10420,3 +10420,25 @@ Fuente de verdad del avance:
   - Cada categoría exige exactamente dos referencias y una respuesta fail-closed declarada.
   - La matriz complementa, no sustituye, la ejecución completa de la suite.
   - Cinco pruebas meta pasaron en 0,041 s y `npm run test:demand` ejecutó 203/203 en 131,245 s.
+
+# Conversación 260 - MLflow protegido para tracking y registro
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se desplegó MLflow 3.15.1 en un perfil MLOps explícito con imagen fijada por digest.
+  - Tracking/registro/RBAC usan PostgreSQL dedicado y los artefactos un bucket MinIO privado servido
+    exclusivamente por el proxy autenticado de MLflow.
+  - La configuración niega permisos implícitos, exige secretos robustos, restringe hosts y mantiene
+    el contenedor de aplicación con raíz de solo lectura.
+- Archivos modificados: Compose, bootstrap/entrypoint MLflow, plantillas de entorno, scripts npm,
+  dependencia opcional, README de infraestructura, cinco pruebas y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041 y RNF-014; no cambia el camino transaccional ni expone datos de
+  clientes.
+- Tareas impactadas: 23.1.
+- Tareas completadas: 23.1.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.2.
+- Decisiones o aclaraciones relevantes:
+  - El PostgreSQL MLOps está separado del transaccional y no publica puerto.
+  - Clientes MLflow no reciben credenciales MinIO; los artefactos cruzan el proxy autenticado.
+  - El smoke real devolvió 401 sin autenticación y registró dataset, parámetro, métrica, artefacto y
+    modelo con run `24155dfe264344fdae169d5d27e7ff43`; los tres servicios quedaron healthy.
