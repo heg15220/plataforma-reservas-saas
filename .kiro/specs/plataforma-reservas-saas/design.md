@@ -3321,7 +3321,18 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
 - Umbrales de agregación para paneles y demanda insatisfecha.
 - Cuotas de exploración, diversidad y exposición para evitar bucles de popularidad.
 - Revisión humana de atributos, modelos y acciones comerciales materiales.
-- Auditoría de cambios de ontología, políticas, modelos, experimentos y optimización.
+- Auditoría de cambios de ontología, políticas, modelos, experimentos y optimización. La
+  implementación 23.9 reutiliza `AuditLogs` como ledger administrativo único y añade las familias
+  cerradas `demand_ontology`, `demand_ranking_weights`, `demand_model`, `demand_experiment`,
+  `demand_promotion`, `demand_waitlist` y `demand_automatic_action`. Cada evento conserva eventId,
+  servicio actor, acción permitida, recurso técnico, antes/después versionados, motivo codificado,
+  policy, digest cuando aplica, vigencia, correlación, automatización y referencia de aprobación. Un
+  advisory lock transaccional más índice único hace el reintento idempotente; un trigger PostgreSQL
+  impide `UPDATE` y `DELETE` del ledger completo. `POST /api/internal/demand/v1/governance/audit`
+  exige credencial `ROLE_DEMAND_INGESTOR`, no muta el recurso y devuelve una identidad opaca; la
+  lectura sigue en `GET /api/admin/audit-logs` bajo `ROLE_ADMIN`. Ontología, pesos, modelos,
+  experimentos y promociones no admiten `automated=true`; rollback u otra ejecución automática se
+  registra como `automatic_action` y no equivale a aprobación.
 - Evaluación de impacto y revisión jurídica antes de personalización persistente o promociones.
 
 La implementación 19.16-19.18 materializa estas fronteras mediante consentimiento local versionado,

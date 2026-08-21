@@ -10589,3 +10589,27 @@ Fuente de verdad del avance:
     promueve, solo marca `reviewRequired`.
   - Diez pruebas focalizadas reales, compileall y diff quedaron verdes; la regresión completa ejecutó
     251/251 pruebas en 204,015 s y terminó `OK`.
+
+# Conversación 268 - Ledger administrativo de gobierno del motor de demanda
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se amplió el ledger administrativo existente con un contrato cerrado para las siete familias de
+    gobierno de demanda y un endpoint interno autenticado.
+  - EventId, lock asesor e índice único hacen los reintentos idempotentes; replay divergente falla con
+    conflicto opaco.
+  - Una migración PostgreSQL prohíbe físicamente actualizar o borrar cualquier fila de `AuditLogs`.
+- Archivos modificados: DAO de auditoría, migración V61, paquete/controller/handler/DTO/servicio de
+  gobierno, tres clases de prueba y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.9; prepara model cards, data sheets y evaluación de privacidad de 23.10.
+- Tareas completadas: 23.9.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.10.
+- Decisiones o aclaraciones relevantes:
+  - La vista administrativa existente muestra las nuevas filas sin exponer IP/user-agent; la escritura
+    interna solo devuelve IDs, familia, acción y timestamp.
+  - Ontología, pesos, modelos, experimentos y promociones siempre necesitan approvalReference; una
+    acción automática se registra en su familia propia y nunca concede aprobación.
+  - Diecisiete pruebas focalizadas pasaron, Spotless quedó verde y se compilaron todas las clases.
+  - Checkstyle completo conserva 46 incumplimientos preexistentes ajenos; las nuevas clases no
+    aparecen entre ellos. Docker Desktop seguía impidiendo un smoke PostgreSQL/Testcontainers real.

@@ -465,7 +465,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 23.6. Implementar despliegue shadow/canary, comparación con campeón, rollback automático y fallback a reglas.
 - [x] 23.7. Exponer métricas Prometheus y paneles Grafana para latencia, errores, drift, calibración, cobertura, diversidad, exposición y valor.
 - [x] 23.8. Integrar Evidently para informes de calidad y drift sin convertirlo en fuente única de decisión.
-- [ ] 23.9. Crear auditoría administrativa de ontología, pesos, modelos, experimentos, promociones, listas de espera y acciones automáticas.
+- [x] 23.9. Crear auditoría administrativa de ontología, pesos, modelos, experimentos, promociones, listas de espera y acciones automáticas.
 - [ ] 23.10. Crear model cards, data sheets, evaluación de impacto de privacidad y matriz de atributos prohibidos por versión.
 - [ ] 23.11. Implementar revisión humana, corrección e impugnación para atributos y decisiones comerciales materiales.
 - [ ] 23.12. Definir SLO, presupuesto de latencia/coste, capacidad, alertas y runbooks del `Demand Engine` y pipelines.

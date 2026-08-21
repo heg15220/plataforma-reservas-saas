@@ -39921,3 +39921,97 @@ HTML puede crecer con muchas columnas, de ahí el máximo 16; el millón de fila
 benchmark/memoria en 23.12. Los outputs son hashes, no firmas ni almacenamiento WORM. 23.9 añadirá
 auditoría administrativa; 23.10 documentará data sheets/model cards y 23.12 definirá retención,
 freshness y alertado periódico.
+
+## Iteración 2026-08-21 - Tarea 23.9: auditoría administrativa de gobierno de demanda
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 23.9.
+- Objetivo técnico: conservar evidencia administrativa inmutable, idempotente, consultable y
+  minimizada de ontología, pesos, modelos, experimentos, promociones, listas de espera y acciones
+  automáticas.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; secciones 14.16-14.18.
+
+La implementación reutiliza el agregado transversal `AuditLogs` y su API administrativa en vez de
+crear un silo MLOps con reglas de acceso distintas. Las siete familias se materializan como
+`entityType` cerrados: `demand_ontology`, `demand_ranking_weights`, `demand_model`,
+`demand_experiment`, `demand_promotion`, `demand_waitlist` y `demand_automatic_action`. `entityId` es
+el `eventId` UUID del workflow y no identifica cliente, centro, reserva o dataset. La acción se
+persiste como `governance.<action>` y cada familia tiene una allowlist distinta de transiciones. No
+existe acción genérica libre ni delete.
+
+`DemandGovernanceAuditRequest` contiene eventId, tipo/clave de recurso técnica, acción, reasonCode,
+beforeVersion, afterVersion, policyVersion, artifactSha256, vigencia, correlationId, flag automated y
+approvalReference. Bean Validation limita longitudes y patrones; el servicio repite controles para
+llamadas internas directas. Se exige al menos una versión, periodo ordenado, digest hexadecimal para
+ontología/pesos/modelo/experimento/promoción y motivo codificado sin texto libre. Las cinco familias
+materiales rechazan `automated=true` y exigen approvalReference. Waitlist puede ser automática; una
+ejecución/rollback automático debe usar `automatic_action`, donde se exige `automated=true` y se
+prohíbe fabricar una aprobación. Auditar no muta, promueve, despliega, asigna ni revierte el recurso.
+
+### Persistencia, idempotencia e inmutabilidad
+
+`DemandGovernanceAuditService.recordSystem` recibe como actor el principal de servicio establecido
+por `DemandServiceAuthenticationFilter`; el token nunca llega al servicio ni al snapshot. Antes del
+lookup toma `pg_advisory_xact_lock(hashtextextended(eventId,0))`, válido hasta el fin de la transacción.
+Esto serializa dos primeras escrituras aun cuando todavía no hay fila bloqueable. Después busca por
+entityType/eventId: si acción y snapshots coinciden devuelve la identidad previa; si divergen emite
+`DEMAND_GOVERNANCE_EVENT_ID_CONFLICT`. El índice parcial único V61 actúa como segunda defensa para
+las siete familias. El lock y la inserción mediante `AuditLogService` comparten transacción.
+
+El snapshot before contiene exclusivamente resourceKey, versión previa y policy. After contiene
+resourceKey/versión nueva, policy, reasonCode, effectiveFrom/until, digest opcional,
+approvalReference opcional, automated, correlationId y sourceServiceId. No admite maps del llamador:
+por tanto no puede colarse payload, métrica, email, customerId, texto, vector, IP o user-agent. El
+actor persistido es `system` sin user UUID, mientras sourceServiceId identifica el principal técnico.
+La vista administrativa existente omite IP/user-agent y muestra ambos snapshots bajo `ROLE_ADMIN`.
+
+V61 crea `prevent_audit_log_mutation()` y un trigger `BEFORE UPDATE OR DELETE` sobre todo
+`AuditLogs`, no solo las filas MLOps. Corregir una entrada significa anexar otro evento; ni JPA, SQL
+manual, cascade ni un job de retención pueden sobreescribir/borrar evidencia. `TRUNCATE` queda fuera
+del trigger y se reserva al aislamiento de bases de test/recuperación controlada; producción no
+expone esa capacidad a runtime. La tabla conserva FK restrictiva para actores humanos de entradas
+previas, checks JSON object e índices históricos por entidad/actor/acción. No se elimina o migra dato
+existente.
+
+### Endpoint, permisos, errores y observabilidad
+
+`POST /api/internal/demand/v1/governance/audit` está dentro del namespace que SecurityConfiguration
+protege con `ROLE_DEMAND_INGESTOR` y secreto de servicio comparado en tiempo constante. El controller
+usa `Principal.getName()` inyectado por el filtro; no confía en un actor declarado por JSON. Responde
+201 con auditLogId, eventId, resourceType, action y createdAt, nunca snapshots o regla fallida. Un
+handler específico convierte validación/dominio a `GOVERNANCE_AUDIT_INVALID` 400 y replay divergente
+a `GOVERNANCE_AUDIT_CONFLICT` 409 sin reflejar campo, valor, digest o body. La lectura permanece en
+`GET /api/admin/audit-logs`, ya autenticada con `ROLE_ADMIN` y limitada a cien filas recientes.
+
+El endpoint no genera logs de payload ni métricas de alta cardinalidad. eventId/correlationId son
+UUID técnicos; sourceServiceId y tipos/acciones tienen cardinalidad controlada y no se proyectan aquí
+como labels. Reintentos de Prefect/MLflow reutilizan eventId. Un timeout tras commit es seguro: el
+siguiente intento devuelve la misma fila. Los procesos deben registrar primero la mutación
+transaccional autoritativa y anexar la evidencia con outbox/retry; este endpoint no puede afirmar que
+una acción externa ocurrió si el caller nunca lo invoca.
+
+### Archivos, pruebas, evidencia y limitaciones
+
+Se crean migración V61, package-info, request/response, controller, handler, servicio y tres clases de
+prueba; se modifica `AuditLogDao` y cuatro documentos `.kiro`. No se crea tabla paralela, UI, secreto,
+job ni eliminación. Se preservan convenciones UpperCamel/lowerCamel, timestamps UTC, UUID,
+transacción Spring y Flyway secuencial. Todo el código público tiene contrato, errores, permisos y
+restricciones documentados.
+
+Diecisiete pruebas focalizadas cubren las siete familias y acciones, snapshots minimizados, actor
+system, digest/approval/periodo/automatización, prohibición de promoción automática, replay idéntico,
+conflicto divergente, advisory lock, índice/trigger SQL, validación y errores HTTP opacos, servicio de
+auditoría previo, proyección administrativa y autenticación constante del namespace. Spotless pasa y
+Maven compila 1.006 clases main y 237 test. El primer Maven sin skip confirmó que ninguna clase nueva
+aparece entre los errores Checkstyle; el check global falla por 46 incumplimientos preexistentes en
+otros archivos. Con `-Dcheckstyle.skip=true`, las 17/17 pruebas terminan `BUILD SUCCESS`.
+
+Docker Desktop mantenía su Linux Engine en HTTP 500 desde 23.7, por lo que no se ejecutó un smoke
+Testcontainers real del trigger. La prueba de persistencia inspecciona la migración y el lock, y la
+compilación Flyway incluye V61; el despliegue debe verificar inserción, intento UPDATE/DELETE y replay
+concurrente en PostgreSQL antes de promover. Riesgos/deuda: el ledger es append-only pero no WORM ni
+hash chain firmado; administradores de base conservan capacidad de desactivar trigger. La vista
+reciente carece de paginación/filtros específicos. Integrar cada productor mediante outbox durable,
+firma/exportación de largo plazo, consulta paginada y prueba de disaster recovery corresponde a
+23.12-23.13; 23.10 añadirá artefactos documentales enlazados por digest.
