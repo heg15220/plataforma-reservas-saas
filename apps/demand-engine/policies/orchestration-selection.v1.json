@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "orchestration-selection-v1",
+  "selectedTool": "prefect",
+  "selectedVersion": "3.8.2",
+  "selectionReasons": [
+    "Los pipelines del motor son Python y el equipo puede adoptar flows y tasks sin un DSL separado.",
+    "El volumen inicial cabe en un servidor y un process worker con reintentos, caché y concurrencia.",
+    "Work pools permiten evolucionar a Docker o Kubernetes sin cambiar los contratos de negocio."
+  ],
+  "reviewCadenceDays": 90,
+  "measurementWindowDays": 30,
+  "minimumQuantitativeBreaches": 2,
+  "quantitativeThresholds": {
+    "activeDeployments": 200,
+    "taskRunsPerDayP95": 50000,
+    "concurrentTaskRunsP95": 500,
+    "schedulerDelaySecondsP95": 60,
+    "backfillDurationHoursP95": 12
+  },
+  "hardRequirements": [
+    "activeActiveSchedulerRequired",
+    "crossTeamDagDependencyGovernanceRequired",
+    "organizationWideDatasetSchedulingRequired"
+  ],
+  "migrationDecision": "Abrir evaluación Airflow/alternativas si durante 30 días se incumplen al menos dos umbrales cuantitativos o aparece una necesidad dura. Migrar solo si un benchmark representativo, el modelo operativo y el coste total demuestran una mejora material.",
+  "automaticMigrationAllowed": false
+}

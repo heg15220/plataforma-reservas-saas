@@ -8,6 +8,7 @@
 - MinIO S3-compatible para objetos privados cifrados.
 - ClamAV para análisis fail-closed de documentación.
 - MLflow 3.15.1, bajo el perfil `mlops`, con RBAC, PostgreSQL separado y artefactos privados en MinIO.
+- Prefect 3.8.2, bajo el mismo perfil, con API/UI autenticada, PostgreSQL propio y process worker.
 
 Desde la raíz, después de crear `.env.local`:
 
@@ -33,6 +34,12 @@ La UI de MLflow queda en `127.0.0.1:5000`. El primer arranque crea el administra
 `NO_PERMISSIONS`, la base MLOps no publica puerto y los clientes solo acceden a artefactos mediante el
 proxy autenticado de MLflow. En staging/producción, TLS termina en el proxy privado y ninguna
 credencial debe materializarse en archivos del repositorio.
+
+Prefect queda en `127.0.0.1:4200` y exige el par `RESERLY_PREFECT_AUTH_*`. El worker crea el pool
+`reserly-demand-batch` de tipo `process`; los despliegues deben conservar fecha de corte, idempotencia,
+reintentos y locks en su lógica de negocio. La política versionada
+`apps/demand-engine/policies/orchestration-selection.v1.json` define cuándo abrir una evaluación de
+Airflow u otra alternativa; nunca autoriza una migración automática.
 
 Para trabajar solo con una parte:
 

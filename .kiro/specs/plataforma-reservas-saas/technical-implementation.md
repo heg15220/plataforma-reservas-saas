@@ -39412,3 +39412,69 @@ modelo ni estados candidate/shadow/canary/champion; 23.3 y 23.6 añadirán linaj
 restauración, expiración de artefactos, HA, CVE scanning y recuperación de corrupción corresponden a
 23.12/23.13. El MinIO local reutiliza la credencial privada de infraestructura; producción deberá usar
 identidad de workload o una credencial limitada al bucket MLflow.
+
+## Iteración 2026-08-21 - Tarea 23.2: Prefect y umbral de Airflow
+
+### Objetivo, requisitos y selección
+
+- Identificador exacto: 23.2.
+- Objetivo técnico: seleccionar y desplegar un orquestador Python inicial, y convertir el momento de
+  reevaluarlo en un criterio cuantitativo, sostenido y auditable.
+- Requisitos/diseño: RF-041; RNF-009 y RNF-014; secciones 14.15 y 14.16.
+
+Se fija Prefect 3.8.2 y la imagen oficial Python 3.13 por índice OCI SHA-256. Encaja con el motor
+Python, ofrece flows/tasks, retries, caché, estados observables, deployments, límites de concurrencia y
+work pools sin imponer la operación inicial de Airflow. `prefect-postgres` es otra instancia
+PostgreSQL dedicada, SCRAM/UTC, volumen propio y sin puerto: no comparte datos ni disponibilidad con
+reservas ni con MLflow. `prefect-server` publica API/UI solo en `127.0.0.1:4200`; el worker process
+`reserly-demand-batch` monta código de motor/contratos en solo lectura y puede evolucionar después a
+Docker/Kubernetes sin cambiar los contratos de negocio.
+
+### Seguridad y flujo operativo
+
+`infrastructure/prefect/entrypoint.py` atiende dos roles explícitos. En server escapa credenciales para
+la URI `postgresql+asyncpg`, configura `PREFECT_SERVER_API_AUTH_STRING` y arranca API/UI. En worker
+configura el mismo cliente Basic Auth y arranca únicamente el pool process. Ambos rechazan secretos
+menores de 32 caracteres, valores multilínea, roles desconocidos y `:` en username; no imprimen
+credenciales. La API de entorno conserva CORS limitado y analytics desactivado. Local permite HTTP
+solo en loopback; staging/producción declaran URL HTTPS y deben terminar en proxy privado/TLS.
+
+Compose espera PostgreSQL healthy, luego Prefect healthy y finalmente worker. `mlops:up` incluye
+MLflow y el worker; `mlops:status/logs` cubren las seis piezas persistentes/de bootstrap. La base no
+publica puerto y el código montado es read-only. Cada futuro flow debe aportar fecha de corte,
+idempotency key, retries acotados, checkpoint y lock de negocio: el orquestador coordina, pero no
+convierte por sí mismo una operación no idempotente en segura.
+
+### Umbral ejecutable y decisión
+
+`orchestration-selection.v1.json` y `OrchestrationSelectionPolicy` fijan revisión cada 90 días y
+ventana mínima de 30 días. Se abre una evaluación comparativa si incumple al menos dos de cinco
+límites: más de 200 deployments activos; p95 > 50.000 task-runs/día; p95 > 500 task-runs concurrentes;
+p95 de retraso de scheduler > 60 s; o p95 de backfill > 12 h. Un único pico/umbral no provoca churn.
+
+También se abre si aparece una necesidad aprobada que Prefect inicial no cubra: scheduler
+active-active, gobierno de dependencias DAG entre equipos o scheduling de datasets a escala de toda
+la organización. Requisitos no enumerados fallan cerrado; una preferencia tecnológica no cuenta.
+Incluso al abrir evaluación, `automaticMigrationAllowed=false`: Airflow u otra alternativa debe ganar
+un benchmark representativo y demostrar mejor operación/HA/gobierno y TCO; la decisión es humana.
+`OrchestrationObservation` solo acepta agregados y nunca nombres/parámetros/payloads de clientes.
+
+### Archivos, pruebas, evidencia y deuda
+
+Archivos creados: política JSON, módulo de dominio, ocho pruebas y entrypoint Prefect. Modificados:
+Compose, extra `mlops`, tres plantillas, validador de entorno, scripts npm, README y cuatro documentos
+`.kiro`. No hay endpoint, migración Flyway, tabla transaccional ni flow de negocio; los esquemas
+Prefect los migra en su propia base.
+
+Ocho pruebas verifican versión/selección, no migración, una vs. dos brechas, ventana insuficiente,
+requisito duro conocido/desconocido, URI escapada/auth y aislamiento Compose. `npm run mlops:config`,
+`npm run env:check`, `compileall`, Prettier y `git diff --check` pasaron. En Docker real,
+`prefect-postgres`, server y worker quedaron healthy. `/api/work_pools/reserly-demand-batch` devolvió
+401 sin credenciales y, autenticado, confirmó `name=reserly-demand-batch`, `type=process`.
+
+Riesgos/deuda: el process worker es apropiado al arranque, no aislamiento fuerte por job; 23.5 deberá
+separar identidad server/worker y 23.12 medir SLO/capacidad. Los thresholds son hipótesis operativas y
+deben recalibrarse con telemetría sin reescribir historia: cualquier cambio exige otra policyVersion.
+Prefect Basic Auth es una credencial compartida y requiere TLS/secret manager; RBAC fino o equipos
+múltiples pueden activar el requisito duro. Redis/mensajería, HA, backups, despliegues concretos y
+pruebas de retry/checkpoint/lock pertenecen a tareas posteriores de industrialización.

@@ -10442,3 +10442,23 @@ Fuente de verdad del avance:
   - Clientes MLflow no reciben credenciales MinIO; los artefactos cruzan el proxy autenticado.
   - El smoke real devolvió 401 sin autenticación y registró dataset, parámetro, métrica, artefacto y
     modelo con run `24155dfe264344fdae169d5d27e7ff43`; los tres servicios quedaron healthy.
+
+# Conversación 261 - Prefect inicial y umbral ejecutable de reevaluación
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se fijó Prefect 3.8.2 como orquestador inicial con servidor/worker por digest y PostgreSQL propio.
+  - Se desplegó el pool `reserly-demand-batch` tipo process bajo Basic Auth y loopback local.
+  - Se convirtió la reevaluación de Airflow en una política ejecutable con ventana, métricas,
+    requisitos duros y prohibición de migración automática.
+- Archivos modificados: Compose, entrypoint Prefect, política/módulo/pruebas, dependencias, plantillas,
+  scripts npm, README de infraestructura y cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041 y RNF-014.
+- Tareas impactadas: 23.2.
+- Tareas completadas: 23.2.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.3.
+- Decisiones o aclaraciones relevantes:
+  - Evaluación alternativa: dos de cinco umbrales incumplidos durante 30 días o un requisito duro.
+  - La migración exige benchmark, operación/TCO y aprobación; nunca se ejecuta automáticamente.
+  - Ocho pruebas pasaron; el despliegue real quedó healthy, el endpoint protegido devolvió 401 sin
+    credenciales y confirmó el pool process con autenticación.

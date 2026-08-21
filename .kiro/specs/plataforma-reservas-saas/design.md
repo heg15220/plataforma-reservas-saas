@@ -3251,6 +3251,14 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
   con modo `0600`. La base MLOps no comparte autoridad ni disponibilidad con PostgreSQL
   transaccional.
 - Prefect ejecuta lotes idempotentes con fecha de corte, reintentos, checkpoints y locks.
+- La implementación 23.2 fija Prefect 3.8.2 por digest, API/UI Basic Auth en loopback, PostgreSQL
+  dedicado sin puerto y un process worker en `reserly-demand-batch`. La revisión ocurre cada 90 días.
+  Solo se abre una evaluación Airflow/alternativas tras 30 días con al menos dos incumplimientos:
+  más de 200 deployments activos, p95 superior a 50.000 task-runs/día, 500 concurrentes, 60 s de
+  retraso de scheduler o 12 h de backfill; también la abre una necesidad aprobada de scheduler
+  active-active, gobierno de dependencias DAG entre equipos o scheduling organizativo de datasets.
+  Abrir evaluación no migra: benchmark representativo, operación y TCO deben demostrar mejora y la
+  aprobación siempre es humana.
 - Prometheus mide ingestión, latencia, fallback, errores, cobertura, distribución de scores,
   calibración, diversidad, exposición, drift y valor.
 - La promoción es atómica; el artefacto campeón anterior permanece disponible para rollback.
