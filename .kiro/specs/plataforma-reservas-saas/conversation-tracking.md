@@ -10701,3 +10701,18 @@ Fuente de verdad del avance:
   - No se rebajaron umbrales ni se marcó ninguna tarea como completada.
   - 263/263 pruebas Demand Engine, compileall, compilación Java, Spotless, JSON y diff pasaron;
     Checkstyle y el validador español conservan incidencias preexistentes ajenas al cambio.
+# Conversación 274 - Documento independiente de mejora semántica v2
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación: se creó una guía autocontenida sobre la mejora de calidad del
+  recomendador v2, sus controles de sobreajuste/subajuste, resultados, límites y próximos pasos.
+- Archivos modificados: nueva guía `docs/demand-engine/mejora-calidad-recomendador-v2.md` y este
+  registro de conversación.
+- Requisitos impactados: RF-036 y RF-041; RNF-004, RNF-006, RNF-008, RNF-014 y RNF-015.
+- Tareas impactadas: ninguna tarea cambia de estado; documentación transversal de 20.4/20.5.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.13.
+- Decisiones o aclaraciones relevantes:
+  - El documento distingue sobreajuste del benchmark de sobreajuste por entrenamiento.
+  - No se presenta v1/v2 como comparación causal porque los benchmarks no son idénticos.
+  - V2 continúa `not_promoted`, en shadow y con fallback full-text/trigram.
