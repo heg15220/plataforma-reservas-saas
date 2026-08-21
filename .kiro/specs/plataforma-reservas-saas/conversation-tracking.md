@@ -10485,3 +10485,23 @@ Fuente de verdad del avance:
   - Una promoción aprobada necesita actor y transición; deferred/rejected conserva estado.
   - La CLI validó ocho ficheros, MLflow persistió/releyó 19 tags de linaje y la regresión cerró
     224/224; digest `a92f7b6946c1b3cc4be0a6df658e4beab61cc3a754bbc15a67b64a6c97940c21`.
+
+# Conversación 263 - Puerta automática de datos previa a MLOps
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación:
+  - Se implementó una decisión fail-closed basada en perfiles agregados para las seis familias
+    exigidas: esquema, calidad, distribución, PII, leakage y sesgo.
+  - La evidencia queda ligada por digest a policy, dataset, baseline, linaje y etapa exactos.
+  - El snapshot de promoción exige evidencia pre-promoción positiva antes de evaluar sus métricas.
+- Archivos modificados: módulo/policy/CLI/test de validación, promoción/test, README del motor y
+  cuatro documentos `.kiro`.
+- Requisitos impactados: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.4; prepara permisos separados 23.5 y rollout 23.6.
+- Tareas completadas: 23.4.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.5.
+- Decisiones o aclaraciones relevantes:
+  - La puerta no recibe filas ni valores; detectores upstream entregan únicamente conteos agregados.
+  - El token de admisión no puede reutilizarse entre entrenamiento/promoción ni entre datasets.
+  - PSI, correlación y gaps son controles complementarios; ninguno se interpreta aisladamente.
+  - Cinco pruebas nuevas y la regresión completa 229/229 quedaron verdes.

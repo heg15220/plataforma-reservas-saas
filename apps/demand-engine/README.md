@@ -99,3 +99,13 @@ reserly-demand-validate-lineage lineage\end-to-end-lineage.v1.json `
 El manifiesto enlaza por SHA-256 dataset, features, ontología, embedding, configuración, modelo,
 experimento y decisión de promoción. La CLI verifica el DAG y los ficheros `repo://`, imprime solo la
 versión/digest canónicos y no registra ni promueve automáticamente.
+
+La evidencia agregada de datos se valida antes de cada entrenamiento y promoción:
+
+```powershell
+reserly-demand-validate-data path\to\data-validation-evidence.json
+```
+
+La decisión cubre esquema, calidad, PSI, PII, leakage y sesgo. El código de salida es uno ante
+cualquier gate fallido; su digest de evidencia solo admite la etapa y `datasetVersion` evaluados.
+Los perfiles no deben incluir filas, muestras de valores, identidades ni atributos sensibles.

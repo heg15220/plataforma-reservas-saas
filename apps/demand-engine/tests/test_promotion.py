@@ -80,6 +80,9 @@ class PromotionGateTests(unittest.TestCase):
             policyVersion=self.policy.policyVersion,
             datasetVersion=self.policy.datasetVersion,
             baselineVersion=self.policy.baselineVersion,
+            dataValidationPolicyVersion="data-validation-v1",
+            dataValidationEvidenceSha256="a" * 64,
+            dataValidationPassed=True,
             consecutiveDays=42,
             sessionsByVariant={"control": 1000, "treatment": 1000},
             completedBookings=100,
@@ -104,6 +107,12 @@ class PromotionGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "PROMOTION_VERSION_MISMATCH"):
             evaluate_promotion(self.policy, self.baseline, snapshot)
 
+        validation_drift = self._shadow_snapshot().model_copy(
+            update={"dataValidationPolicyVersion": "other-validation-v1"}
+        )
+        with self.assertRaisesRegex(ValueError, "PROMOTION_VERSION_MISMATCH"):
+            evaluate_promotion(self.policy, self.baseline, validation_drift)
+
     def _shadow_snapshot(self) -> PromotionSnapshot:
         return PromotionSnapshot(
             snapshotVersion=1,
@@ -111,6 +120,9 @@ class PromotionGateTests(unittest.TestCase):
             policyVersion=self.policy.policyVersion,
             datasetVersion=self.policy.datasetVersion,
             baselineVersion=self.policy.baselineVersion,
+            dataValidationPolicyVersion="data-validation-v1",
+            dataValidationEvidenceSha256="a" * 64,
+            dataValidationPassed=True,
             consecutiveDays=7,
             sessionsByVariant={},
             completedBookings=0,

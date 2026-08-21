@@ -43,3 +43,4 @@ reserly-demand-train-conversion = "reserly_demand_engine.conversion_training:run
 reserly-demand-train-choice = "reserly_demand_engine.discrete_choice:run"
 reserly-demand-conversion-analytics = "reserly_demand_engine.conversion_analytics:run"
 reserly-demand-validate-lineage = "reserly_demand_engine.lineage:run"
+reserly-demand-validate-data = "reserly_demand_engine.data_validation:run"

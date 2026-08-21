@@ -58,6 +58,7 @@ class PromotionPolicy(BaseModel):
     policyVersion: str
     datasetVersion: str
     baselineVersion: str
+    requiredDataValidationPolicyVersion: str
     confidenceLevel: float = Field(gt=0.0, lt=1.0)
     sampleRequirements: dict[Literal["shadowToPilot", "pilotToRollout"], SampleRequirement]
     metrics: list[MetricGate] = Field(min_length=1)
@@ -176,7 +177,7 @@ class RankingEvaluationDataset(BaseModel):
 
 
 class PromotionSnapshot(BaseModel):
-    """Evidencia agregada candidata; no admite campos individuales o texto libre."""
+    """Evidencia agregada; exige el token content-addressed de validación pre-promoción."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -185,6 +186,9 @@ class PromotionSnapshot(BaseModel):
     policyVersion: str
     datasetVersion: str
     baselineVersion: str
+    dataValidationPolicyVersion: str
+    dataValidationEvidenceSha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    dataValidationPassed: Literal[True]
     consecutiveDays: int = Field(ge=0)
     sessionsByVariant: dict[str, int]
     completedBookings: int = Field(ge=0)
@@ -246,6 +250,12 @@ def evaluate_promotion(
     stage = snapshot.targetStage
     requirement = policy.sampleRequirements[stage]
     gates = [
+        GateResult(
+            "prePromotionDataValidation",
+            snapshot.dataValidationPassed,
+            snapshot.dataValidationEvidenceSha256,
+            "validated-evidence-sha256",
+        ),
         GateResult(
             "minimumConsecutiveDays",
             snapshot.consecutiveDays >= requirement.minimumConsecutiveDays,
@@ -326,6 +336,7 @@ def _validate_versions(
         or snapshot.policyVersion != policy.policyVersion
         or snapshot.datasetVersion != policy.datasetVersion
         or snapshot.baselineVersion != policy.baselineVersion
+        or snapshot.dataValidationPolicyVersion != policy.requiredDataValidationPolicyVersion
     ):
         raise ValueError("PROMOTION_VERSION_MISMATCH")
 

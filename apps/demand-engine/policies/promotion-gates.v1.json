@@ -2,6 +2,7 @@
   "policyVersion": "promotion-gates-v1",
   "datasetVersion": "ranking-mvp-evaluation.v1",
   "baselineVersion": "public-availability-fallback-v1.synthetic-baseline-v1",
+  "requiredDataValidationPolicyVersion": "data-validation-v1",
   "confidenceLevel": 0.95,
   "sampleRequirements": {
     "shadowToPilot": {

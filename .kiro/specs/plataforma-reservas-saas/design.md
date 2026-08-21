@@ -3269,6 +3269,12 @@ Referencias oficiales verificadas el 2026-08-13 para la decisión inicial:
   active-active, gobierno de dependencias DAG entre equipos o scheduling organizativo de datasets.
   Abrir evaluación no migra: benchmark representativo, operación y TCO deben demostrar mejora y la
   aprobación siempre es humana.
+- Antes de iniciar entrenamiento o evaluar una promoción, `data-validation-v1` exige evidencia
+  agregada, versionada y enlazada al SHA-256 del manifiesto de linaje. La misma puerta fail-closed
+  cubre esquema/tipos, filas/nulos/duplicados, PSI contra baseline, coincidencias/nombres PII,
+  disponibilidad point-in-time/proxies del target y brechas de tasa/FNR en cohortes operativas con
+  muestra mínima. Su token solo es reutilizable para la etapa y dataset exactos; el snapshot de
+  promoción incorpora política y digest de esta evidencia. No se conservan muestras ni valores.
 - Prometheus mide ingestión, latencia, fallback, errores, cobertura, distribución de scores,
   calibración, diversidad, exposición, drift y valor.
 - La promoción es atómica; el artefacto campeón anterior permanece disponible para rollback.

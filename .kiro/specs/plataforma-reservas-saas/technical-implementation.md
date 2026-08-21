@@ -39558,3 +39558,69 @@ promoción/rollback atómicos. Adaptadores S3/MLflow deberán verificar digest r
 retención. No hay firma criptográfica del manifiesto ni transparencia append-only todavía. Un único
 activo por tipo en tags basta para este ejemplo; pipelines con varios datasets/modelos requerirán tags
 por artifactId o un índice adjunto para evitar colisión.
+
+## Iteración 2026-08-21 - Tarea 23.4: validación automática previa a MLOps
+
+### Objetivo, requisitos y arquitectura
+
+- Identificador exacto: 23.4.
+- Objetivo técnico: impedir que un dataset o candidato llegue a entrenamiento/promoción sin superar
+  esquema, calidad, distribución, PII, leakage y sesgo con evidencia reproducible.
+- Requisitos/diseño: RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; secciones 14.16-14.17.
+
+`data_validation.py` implementa una puerta única, estricta e inmutable. Se separa la generación de
+perfiles dentro del perímetro de datos de su evaluación: el contrato recibe exclusivamente
+histogramas/conteos/tasas agregados, nunca filas, valores de ejemplo, texto o identidades. La política
+`data-validation-v1` fija esquema aceptado, cinco columnas mínimas/tipos/nulos, 100 filas, PSI máximo
+0,2, cero identificadores directos, correlación absoluta máxima 0,995, 30 filas por cohorte y brechas
+máximas de 0,25 en tasa positiva y 0,15 en FNR. Los tokens de nombres bloquean identificadores y
+atributos sensibles; no se infieren cohortes protegidas.
+
+La evidencia declara etapa `preTraining|prePromotion`, policy/dataset/schema/baseline versionados,
+SHA-256 del manifiesto de linaje, row/duplicate counts, columnas y dos o más cohortes operativas. Cada
+columna aporta tipo, null/unique rate, histogramas baseline/observado, coincidencias directas,
+violaciones point-in-time y correlación opcional con target. Validadores Pydantic rechazan columnas
+duplicadas, histogramas de distinta longitud, NaN/infinito, negativos o masa cero.
+
+### Controles y flujo de ejecución
+
+`evaluate_data_validation` exige coincidencia de versión y genera checks estables por familia:
+
+- esquema: versión admitida, presencia y tipo exacto de cada columna;
+- calidad: muestra mínima, cero duplicados y nulos bajo el límite por campo;
+- distribución: PSI suavizado por columna frente al baseline exacto;
+- PII: suma cero de detectores upstream y denylist case-insensitive de nombres;
+- leakage: cero observaciones disponibles después del instante de predicción y ausencia de proxies
+  con correlación igual/superior al umbral;
+- sesgo: muestra mínima de todas las cohortes y gaps acotados de tasa positiva/FNR.
+
+No hay excepciones permisivas: un check fallido hace `allowed=false`. La decisión incorpora el hash
+canónico de toda la evidencia y `require(stage,dataset_version)` impide reutilizarla en otra fase o
+dataset. La CLI `reserly-demand-validate-data` emite solo controles agregados y sale 1 al bloquear,
+para que sea dependencia obligatoria del flow Prefect antes de invocar un trainer. Además,
+`PromotionSnapshot` exige literalmente resultado positivo, versión de policy y SHA-256 de evidencia;
+`evaluate_promotion` lo incluye como primer gate. La validación abre la siguiente fase técnica, pero
+no sustituye aprobación humana ni habilita promoción automática.
+
+### Archivos, seguridad, pruebas y evidencia
+
+Se crean módulo, política y cinco pruebas; se modifican `promotion.py`, su test, entrypoint del
+paquete, README y cuatro documentos `.kiro`. No se elimina nada, no hay migración, endpoint ni acceso
+a PostgreSQL transaccional. Los errores son códigos estables sin eco de valores. El hash permite
+auditoría/MLflow; no es una firma y debe viajar por un canal autenticado. La política solo permite
+cohortes operativas ya aprobadas: jamás autoriza derivar género, etnia, religión, salud u otros rasgos.
+
+Las pruebas verifican admisión ligada a etapa/dataset, cobertura de seis familias, drift/schema/nulos
+y muestra, PII/leakage sin eco, sesgo por muestra y gaps, versión desalineada e histogramas inválidos.
+También se actualizan las pruebas de promoción para acreditar el token pre-promoción. Comandos:
+pruebas focalizadas con `npx cross-env ... python -m unittest ...`, suite completa
+`npm run test:demand`, `python -m compileall`, `npm run format:check:web` sobre artefactos aplicables y
+`git diff --check`. La regresión completa ejecutó 229/229 pruebas en 192,608 s y terminó `OK`.
+
+Riesgos/deuda: el detector que produce `directIdentifierMatches` vive necesariamente junto al dato y
+su implementación por fuente debe validarse; esta puerta no ingiere PII para volver a escanearlo.
+PSI detecta cambio de población, no su causa, y los bins deben conservarse en la versión de baseline.
+Correlación no detecta todo leakage no lineal; debe combinarse con revisión de disponibilidad y
+tests propios de cada trainer. Los límites de sesgo iniciales son conservadores y requieren revisión
+con evidencia productiva. 23.8 podrá añadir Evidently como informe complementario, nunca como única
+fuente de decisión; 23.9 añadirá ledger administrativo durable.

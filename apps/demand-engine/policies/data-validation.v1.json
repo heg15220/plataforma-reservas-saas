@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "data-validation-v1",
+  "acceptedDatasetSchemaVersions": ["demand-training-schema-v1"],
+  "requiredColumns": {
+    "observationId": {"dataType": "string", "maximumNullRate": 0.0},
+    "occurredAt": {"dataType": "datetime", "maximumNullRate": 0.0},
+    "outcomeObservedAt": {"dataType": "datetime", "maximumNullRate": 0.0},
+    "locale": {"dataType": "string", "maximumNullRate": 0.01},
+    "label": {"dataType": "boolean", "maximumNullRate": 0.0}
+  },
+  "minimumRows": 100,
+  "maximumPopulationStabilityIndex": 0.2,
+  "maximumDirectIdentifierMatches": 0,
+  "maximumLeakageCorrelation": 0.995,
+  "minimumBiasSliceRows": 30,
+  "maximumPositiveRateGap": 0.25,
+  "maximumFalseNegativeRateGap": 0.15,
+  "prohibitedColumnTokens": ["email", "phone", "address", "name", "token", "password", "gender", "ethnicity", "religion", "health"]
+}
