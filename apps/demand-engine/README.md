@@ -21,6 +21,19 @@ Health checks internos:
 Los endpoints funcionales exigen `X-Reserly-Service-Id` y `X-Reserly-Service-Token`. Los logs nunca
 incluyen bodies, candidatos, texto libre, tokens ni datos personales.
 
+## Evaluación de recuperación semántica
+
+`reserly-demand-evaluate-embeddings` evalúa el challenger v2 con el encoder E5 fijado. Los documentos
+pueden incluir `localizedTexts.es/en` procedentes del catálogo gobernado; las consultas no admiten
+ese campo. El checksum se calcula sobre la composición realmente codificada y cambiarla produce un
+artefacto distinto.
+
+`personal-care-retrieval.v2` separa desarrollo y holdout, rechaza duplicados textuales entre ambos y
+calcula la puerta solo con holdout. También limita a 0,10 las brechas desarrollo/holdout de Recall@3
+y MRR. El benchmark es más amplio que v1 y sus cifras no son una comparación causal directa; la
+evidencia continúa `not_promoted`, pgvector permanece desactivado y full-text/trigram sigue siendo el
+fallback.
+
 El perfil inicial se calcula mediante `POST
 /internal/demand/v1/venues/{venue_id}/attributes/evaluate` y se consulta con `GET
 /internal/demand/v1/venues/{venue_id}/attributes`. Solo admite el piloto de cuidado personal con cita

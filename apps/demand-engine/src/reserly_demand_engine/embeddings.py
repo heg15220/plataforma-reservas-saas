@@ -19,6 +19,8 @@ class QualityThresholds(BaseModel):
     recallAt3: float = Field(ge=0, le=1)
     meanReciprocalRank: float = Field(ge=0, le=1)
     crossLocaleRecallAt3: float = Field(ge=0, le=1)
+    maximumRecallAt3GeneralizationGap: float = Field(default=0.1, ge=0, le=1)
+    maximumMrrGeneralizationGap: float = Field(default=0.1, ge=0, le=1)
 
 
 class LatencyThresholds(BaseModel):
@@ -49,6 +51,7 @@ class EmbeddingModelManifest(BaseModel):
     normalizeEmbeddings: Literal[True]
     similarity: Literal["cosine"]
     trustRemoteCode: Literal[False]
+    documentTextMode: Literal["raw", "localized_fields"] = "raw"
     evaluationDataset: str
     qualityThresholds: QualityThresholds
     latencyThresholdsMs: LatencyThresholds
@@ -139,6 +142,37 @@ def canonical_content_checksum(locale: str, text: str) -> str:
         sort_keys=True,
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def compose_localized_document_text(
+    locale: str, text: str, localized_texts: dict[str, str] | None = None
+) -> str:
+    """Compone una ficha ES/EN estable sin traducir ni inferir contenido en tiempo de ejecución.
+
+    Las variantes deben proceder del catálogo gobernado. El locale principal se coloca primero y
+    cada contenido repetido se elimina tras normalizar espacios. La función no aprende del dataset
+    ni modifica consultas; únicamente hace visibles al encoder campos editoriales ya publicados.
+    """
+    primary = _validate_text(text)
+    if not localized_texts:
+        return primary
+    if locale not in {"es", "en"} or set(localized_texts) - {"es", "en"}:
+        raise ValueError("EMBEDDING_LOCALIZED_TEXT_INVALID")
+    ordered_locales = [locale, *(value for value in ("es", "en") if value != locale)]
+    parts: list[str] = []
+    seen: set[str] = set()
+    for value in [primary, *(localized_texts.get(code, "") for code in ordered_locales)]:
+        if not value:
+            continue
+        clean = " ".join(_validate_text(value).split())
+        key = clean.casefold()
+        if key not in seen:
+            parts.append(clean)
+            seen.add(key)
+    composed = "\n".join(parts)
+    if len(composed) > 4_000:
+        raise ValueError("EMBEDDING_TEXT_INVALID")
+    return composed
 
 
 def _validate_text(text: str) -> str:

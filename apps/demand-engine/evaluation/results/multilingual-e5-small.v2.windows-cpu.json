@@ -1,0 +1,50 @@
+{
+  "resultVersion": 2,
+  "modelVersion": "multilingual-e5-small-v2",
+  "modelRevision": "d1d99a1efae6779390caba937d92c54b5bc70e51",
+  "datasetVersion": "personal-care-retrieval.v2",
+  "evaluatedAt": "2026-08-21T19:17:56.722758+00:00",
+  "environment": {
+    "os": "Windows",
+    "processor": "AMD64 Family 23 Model 24 Stepping 1, AuthenticAMD",
+    "logicalProcessors": 8,
+    "python": "3.13.2",
+    "sentenceTransformers": "5.7.0",
+    "transformers": "4.56.2",
+    "torch": "2.8.0",
+    "device": "cpu"
+  },
+  "queryCount": 62,
+  "developmentQueryCount": 32,
+  "holdoutQueryCount": 30,
+  "documentCount": 16,
+  "developmentMetrics": {
+    "recallAt1": 0.875,
+    "recallAt3": 0.96875,
+    "meanReciprocalRank": 0.929688,
+    "crossLocaleRecallAt3": 0.9375
+  },
+  "holdoutMetrics": {
+    "recallAt1": 0.7,
+    "recallAt3": 0.866667,
+    "meanReciprocalRank": 0.812222,
+    "crossLocaleRecallAt3": 0.933333
+  },
+  "generalization": {
+    "recallAt3Gap": 0.102083,
+    "maximumRecallAt3Gap": 0.1,
+    "mrrGap": 0.117465,
+    "maximumMrrGap": 0.1,
+    "passed": false
+  },
+  "latencyMetrics": {
+    "warmQueryP95Ms": 68.96,
+    "warmDocumentPerItemP95Ms": 109.86
+  },
+  "qualityPassed": false,
+  "latencyPassed": false,
+  "promotionStatus": "not_promoted",
+  "executionMode": "shadow_only",
+  "fallback": "full_text_trigram_only",
+  "decision": "Holdout quality, generalization and document latency gates failed; thresholds remain unchanged."
+}

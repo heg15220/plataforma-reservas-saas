@@ -1,11 +1,17 @@
-# Model card: embeddings multilingües v1
+# Model card: embeddings multilingües v1 y challenger v2
 
 ## Decisión
 
 Se selecciona `intfloat/multilingual-e5-small` en la revisión inmutable
 `d1d99a1efae6779390caba937d92c54b5bc70e51`, con licencia MIT, 384 dimensiones, contexto máximo de
-512 tokens y soporte publicado para 94 idiomas. La versión operativa de Reserly es
-`multilingual-e5-small-v1`; no se usa `main` ni descarga con `trust_remote_code`.
+512 tokens y soporte publicado para 94 idiomas. La revisión v1 se conserva como baseline histórico y
+`multilingual-e5-small-v2` es el challenger en shadow; no se usa `main` ni descarga con
+`trust_remote_code`.
+
+El challenger `multilingual-e5-small-v2` conserva exactamente repositorio, revisión, licencia,
+dimensión y prompts. La diferencia versionada es la representación de documentos: puede componer
+el nombre, la descripción y variantes ES/EN ya publicadas por el catálogo. No traduce, genera alias,
+aprende parámetros ni modifica consultas durante inferencia.
 
 Se prefiere frente a `paraphrase-multilingual-MiniLM-L12-v2` porque el problema es recuperación
 asimétrica —consulta corta frente a ficha/servicio— y E5 publica entrenamiento/benchmarks de
@@ -55,6 +61,29 @@ rebajaron umbrales después de observar resultados. 20.5 puede materializar embe
 20.6 debe usar únicamente full-text/trigram hasta que un dataset revisado y una versión de modelo
 superen la puerta. El informe machine-readable está en
 `evaluation/results/multilingual-e5-small.v1.windows-cpu.json`.
+
+### Resultado observado del challenger v2 el 21-08-2026
+
+`personal-care-retrieval.v2` aumenta el corpus a 16 documentos y separa 32 consultas de desarrollo
+de 30 consultas holdout. Incluye negativos próximos —cejas, pestañas, depilación, masaje, barba y
+bronceado— además de salud y restauración. Los campos localizados son contenido editorial gobernado,
+no texto generado a partir de las consultas. La puerta usa exclusivamente holdout y rechaza fuga
+textual exacta o una brecha de Recall@3/MRR superior a 0,10.
+
+En desarrollo obtuvo Recall@1 0,875; Recall@3 0,96875; MRR 0,929688 y cross-locale Recall@3 0,9375.
+En el holdout reservado obtuvo respectivamente 0,70; 0,866667; 0,812222 y 0,933333. Los valores son
+numéricamente superiores a v1, especialmente cross-locale, pero v2 usa más consultas, documentos y
+negativos, por lo que no se presentan como una comparación causal directa. Recall@1, Recall@3 y MRR
+siguen bajo umbral. Además, las brechas de Recall@3 0,102083 y MRR 0,117465 superan por poco el máximo
+0,10. La consulta pasa latencia con 68,96 ms p95 warm, pero la ficha bilingüe real alcanza
+109,86 ms por documento y supera el presupuesto de 50 ms.
+
+El resultado no se redondea hacia una promoción ni se corrige ajustando el holdout después de verlo:
+`qualityPassed=false`, `generalizationPassed=false`, `latencyPassed=false` y
+`promotionStatus=not_promoted`. V2 queda solo
+en shadow, con recuperación full-text/trigram. La siguiente evaluación debe usar ejemplos etiquetados
+nuevos, preferiblemente de tráfico consentido y con separación temporal. El informe reproducible es
+`evaluation/results/multilingual-e5-small.v2.windows-cpu.json`.
 
 ## Riesgos y uso permitido
 

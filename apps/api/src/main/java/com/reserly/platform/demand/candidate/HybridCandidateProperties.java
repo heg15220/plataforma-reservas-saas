@@ -6,6 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "reserly.demand.candidates")
 public record HybridCandidateProperties(boolean vectorEnabled, String modelVersion) {
   public HybridCandidateProperties {
-    modelVersion = modelVersion == null ? "multilingual-e5-small-v1" : modelVersion;
+    modelVersion = modelVersion == null ? "multilingual-e5-small-v2" : modelVersion;
   }
 }

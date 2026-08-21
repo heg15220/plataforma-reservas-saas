@@ -2757,6 +2757,22 @@ MiniLM tampoco supera todas las puertas. El modelo queda versionado para shadow,
 infraestructura, pero no promovido online; full-text/trigram sigue siendo el fallback hasta que una
 nueva versión supere umbrales predeclarados. Los umbrales no se ajustan después de medir.
 
+El challenger `multilingual-e5-small-v2` mantiene pesos, revisión, dimensión y prompts, y versiona
+una representación documental que concatena contenido editorial ES/EN gobernado. Las consultas
+siguen siendo texto único y no pueden aportar traducciones. El checksum cubre exactamente el texto
+compuesto para impedir reutilizar silenciosamente un vector obsoleto. El benchmark v2 separa 32
+consultas de desarrollo y 30 holdout, añade seis negativos semánticamente próximos y rechaza fuga
+textual exacta. Promoción usa solo holdout y exige además que las brechas desarrollo/holdout de
+Recall@3 y MRR no superen 0,10.
+
+La primera medición v2 arroja valores numéricamente superiores a v1, pero usa un benchmark más amplio
+y no constituye una comparación causal directa ni promociona: en holdout obtiene Recall@1 0,70,
+Recall@3 0,866667, MRR 0,812222 y cross-locale Recall@3 0,933333; las brechas son 0,102083 y
+0,117465. Solo cross-locale y latencia de consulta superan sus puertas; la ficha bilingüe llega a
+109,86 ms por documento frente al máximo de 50 ms. El resultado queda congelado como
+evidencia `not_promoted`; después de observar el holdout no se permite editar alias y volver a usarlo
+como prueba independiente. La siguiente iteración necesita etiquetas nuevas o un split temporal real.
+
 Esta sección convierte el documento técnico externo
 `Reserly_motor_generacion_demanda_documento_tecnico.pdf`, versión 1.0 de agosto de 2026, en una
 arquitectura compatible con el estado real del proyecto. El documento es una fuente de propuesta;

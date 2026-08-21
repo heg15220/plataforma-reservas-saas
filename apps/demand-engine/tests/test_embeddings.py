@@ -43,6 +43,13 @@ class EmbeddingContractTests(unittest.TestCase):
         self.assertEqual("passage: ", manifest.documentPrefix)
         self.assertFalse(manifest.trustRemoteCode)
 
+        improved = EmbeddingModelManifest.load(
+            ROOT / "models/multilingual-e5-small.v2.json"
+        )
+        self.assertEqual("multilingual-e5-small-v2", improved.modelKey)
+        self.assertEqual("localized_fields", improved.documentTextMode)
+        self.assertEqual("personal-care-retrieval.v2", improved.evaluationDataset)
+
     def test_manifest_rejects_mutable_revision_and_unsupported_locale(self) -> None:
         raw = json.loads((ROOT / "models/multilingual-e5-small.v1.json").read_text("utf-8"))
         raw["revision"] = "main"
@@ -78,6 +85,92 @@ class EmbeddingContractTests(unittest.TestCase):
         self.assertEqual(1.0, result.meanReciprocalRank)
         self.assertEqual(1.0, result.crossLocaleRecallAt3)
         self.assertTrue(result.qualityPassed)
+        self.assertTrue(result.generalizationPassed)
+
+    def test_evaluator_uses_holdout_for_quality_and_detects_generalization_gap(self) -> None:
+        manifest = EmbeddingModelManifest.load(
+            ROOT / "models/multilingual-e5-small.v2.json"
+        )
+        dataset = {
+            "datasetVersion": "split-unit-v1",
+            "documents": [
+                {"id": "cut", "locale": "en", "text": "corte"},
+                {"id": "nails", "locale": "es", "text": "uñas"},
+                {"id": "other", "locale": "es", "text": "otro"},
+                {"id": "last", "locale": "en", "text": "último"},
+            ],
+            "queries": [
+                {
+                    "id": "d1", "split": "development", "locale": "es",
+                    "text": "corte", "relevantDocumentIds": ["cut"],
+                },
+                {
+                    "id": "d2", "split": "development", "locale": "en",
+                    "text": "uñas", "relevantDocumentIds": ["nails"],
+                },
+                {
+                    "id": "h1", "split": "holdout", "locale": "es",
+                    "text": "desconocido", "relevantDocumentIds": ["cut"],
+                },
+                {
+                    "id": "h2", "split": "holdout", "locale": "en",
+                    "text": "también desconocido", "relevantDocumentIds": ["nails"],
+                },
+            ],
+        }
+        result = evaluate(manifest, dataset, _ExactFakeEmbedder(), latency_repetitions=1)
+        self.assertEqual(2, result.developmentQueryCount)
+        self.assertEqual(2, result.holdoutQueryCount)
+        self.assertGreater(result.recallAt3GeneralizationGap, 0.1)
+        self.assertFalse(result.generalizationPassed)
+        self.assertFalse(result.qualityPassed)
+
+    def test_evaluator_rejects_exact_query_leakage_between_splits(self) -> None:
+        manifest = EmbeddingModelManifest.load(
+            ROOT / "models/multilingual-e5-small.v2.json"
+        )
+        dataset = {
+            "datasetVersion": "leaked-unit-v1",
+            "documents": [
+                {"id": "cut", "locale": "en", "text": "corte"},
+                {"id": "nails", "locale": "es", "text": "uñas"},
+            ],
+            "queries": [
+                {
+                    "id": "d1", "split": "development", "locale": "es",
+                    "text": "  CORTE ", "relevantDocumentIds": ["cut"],
+                },
+                {
+                    "id": "h1", "split": "holdout", "locale": "en",
+                    "text": "corte", "relevantDocumentIds": ["cut"],
+                },
+            ],
+        }
+        with self.assertRaisesRegex(ValueError, "EVALUATION_SPLIT_LEAKAGE"):
+            evaluate(manifest, dataset, _ExactFakeEmbedder(), latency_repetitions=1)
+
+    def test_evaluator_rejects_empty_candidate_corpus(self) -> None:
+        manifest = EmbeddingModelManifest.load(
+            ROOT / "models/multilingual-e5-small.v2.json"
+        )
+        with self.assertRaisesRegex(ValueError, "EVALUATION_DATASET_INVALID"):
+            evaluate(
+                manifest,
+                {
+                    "datasetVersion": "empty-unit-v1",
+                    "documents": [],
+                    "queries": [
+                        {
+                            "id": "q1",
+                            "locale": "es",
+                            "text": "corte",
+                            "relevantDocumentIds": ["missing"],
+                        }
+                    ],
+                },
+                _ExactFakeEmbedder(),
+                latency_repetitions=1,
+            )
 
 
 if __name__ == "__main__":

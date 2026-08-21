@@ -17,7 +17,35 @@ sesgo, estabilidad, latencia, shadow/canary y revisión humana.
 
 ## 2. Estado actual conocido
 
-La última evaluación real versionada del encoder semántico se encuentra en:
+La evaluación vigente es el challenger v2:
+
+`apps/demand-engine/evaluation/results/multilingual-e5-small.v2.windows-cpu.json`
+
+| Métrica holdout | Resultado | Umbral | Estado |
+| --- | ---: | ---: | --- |
+| Recall@1 | 0,70 | >= 0,80 | No pasa |
+| Recall@3 | 0,866667 | >= 0,95 | No pasa |
+| Mean Reciprocal Rank | 0,812222 | >= 0,85 | No pasa |
+| Recall@3 cross-locale ES/EN | 0,933333 | >= 0,90 | Pasa |
+| Brecha desarrollo/holdout Recall@3 | 0,102083 | <= 0,10 | No pasa |
+| Brecha desarrollo/holdout MRR | 0,117465 | <= 0,10 | No pasa |
+| Latencia warm de consulta p95 | 68,96 ms | <= 100 ms | Pasa |
+| Latencia warm por documento p95 | 109,86 ms | <= 50 ms | No pasa |
+
+V2 usa 32 consultas de desarrollo y 30 consultas holdout sobre 16 documentos. La puerta toma solo
+el holdout; el desarrollo sirve para elegir representación. Sus valores son numéricamente superiores
+a v1, pero el corpus v2 es más amplio y difícil, así que no constituyen una comparación causal
+directa ni una promoción: `qualityPassed=false`, `generalizationPassed=false`, `latencyPassed=false`,
+`promotionStatus=not_promoted` y fallback `full_text_trigram_only`.
+
+La representación v2 combina exclusivamente nombres, descripciones y variantes ES/EN publicadas en
+el catálogo. No reentrena el encoder, no genera traducciones online y no modifica consultas. El
+holdout detectó que la diferencia con desarrollo aún es excesiva, por lo que no se deben añadir alias
+después de mirar los fallos y volver a declarar el mismo conjunto como independiente.
+
+### 2.1 Evidencia histórica v1
+
+La evaluación histórica v1 se conserva en:
 
 `apps/demand-engine/evaluation/results/multilingual-e5-small.v1.windows-cpu.json`
 
@@ -210,8 +238,8 @@ reserly-demand-evaluate-embeddings
 
 El evaluador carga:
 
-- Modelo: `apps/demand-engine/models/multilingual-e5-small.v1.json`.
-- Dataset: `apps/demand-engine/evaluation/personal-care-retrieval.v1.json`.
+- Modelo vigente en shadow: `apps/demand-engine/models/multilingual-e5-small.v2.json`.
+- Dataset dividido: `apps/demand-engine/evaluation/personal-care-retrieval.v2.json`.
 - Implementación: `apps/demand-engine/src/reserly_demand_engine/embedding_evaluation.py`.
 
 La salida contiene únicamente métricas agregadas. No guarda embeddings ni reproduce textos en un
@@ -491,12 +519,13 @@ Antes de afirmar que una versión “funciona”:
 ## 14. Conclusión aplicada al estado actual
 
 El motor está implementado y protegido para degradar de forma segura. La suite técnica demuestra que
-el pipeline, los contratos y los fallbacks funcionan conforme a diseño. Sin embargo, la última
-evidencia versionada del encoder semántico no alcanza Recall@1, Recall@3, MRR ni recall cross-locale.
-Por ello, actualmente no debe afirmarse que el modelo semántico esté listo para promoción.
+el pipeline, los contratos y los fallbacks funcionan conforme a diseño. El challenger v2 ya supera
+recall cross-locale en su holdout más amplio, pero todavía falla Recall@1, Recall@3, MRR, las dos
+brechas de generalización y latencia documental. Por ello, actualmente no debe afirmarse que el modelo
+semántico esté listo para promoción.
 
-El paso recomendado es ampliar el dataset etiquetado ES/EN con consultas y catálogos más
-representativos, ejecutar de nuevo el encoder real y producir un informe comparativo único entre:
+El paso recomendado es recopilar un dataset etiquetado ES/EN nuevo, temporal y representativo, sin
+reutilizar el holdout v2 para ajustar alias, y producir un informe comparativo único entre:
 
 - Fallback full-text/trigram.
 - Recuperación semántica por embeddings.

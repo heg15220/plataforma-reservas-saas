@@ -12,6 +12,7 @@ from reserly_demand_engine.embedding_batch import (
     EmbeddingBatchProcessor,
     EmbeddingBatchRequest,
 )
+from reserly_demand_engine.embeddings import canonical_content_checksum
 
 
 class _FakeEmbedder:
@@ -56,6 +57,82 @@ class EmbeddingBatchTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             EmbeddingBatchRequest.model_validate(
                 {"requestId": str(uuid4()), "subjects": [{"subjectId": str(uuid4()), "subjectType": "query", "locale": "es", "text": "corte", "validFrom": datetime.now(UTC), "rawEmail": "forbidden"}]}
+            )
+
+    def test_document_composes_governed_localizations_and_checksum_tracks_them(self) -> None:
+        now = datetime.now(UTC)
+        subject_id = uuid4()
+        request = EmbeddingBatchRequest.model_validate(
+            {
+                "requestId": str(uuid4()),
+                "subjects": [
+                    {
+                        "subjectId": str(subject_id),
+                        "subjectType": "service",
+                        "locale": "es",
+                        "text": "Corte de cabello",
+                        "localizedTexts": {
+                            "es": "Corte de cabello y recorte de puntas",
+                            "en": "Haircut and split-end trim",
+                        },
+                        "validFrom": now,
+                    }
+                ],
+            }
+        )
+        embedder = _FakeEmbedder()
+        result = EmbeddingBatchProcessor(
+            embedder, "multilingual-e5-small-v2", "localized_fields"
+        ).generate(request)
+        self.assertEqual(
+            ["Corte de cabello\nCorte de cabello y recorte de puntas\nHaircut and split-end trim"],
+            embedder.documents,
+        )
+        self.assertNotEqual(
+            result.embeddings[0].contentChecksum,
+            canonical_content_checksum("es", "Corte de cabello"),
+        )
+
+    def test_query_rejects_localized_document_fields(self) -> None:
+        now = datetime.now(UTC)
+        with self.assertRaisesRegex(ValidationError, "cannot contain localized"):
+            EmbeddingBatchRequest.model_validate(
+                {
+                    "requestId": str(uuid4()),
+                    "subjects": [
+                        {
+                            "subjectId": str(uuid4()),
+                            "subjectType": "query",
+                            "locale": "es",
+                            "text": "corte",
+                            "localizedTexts": {"es": "corte", "en": "haircut"},
+                            "validFrom": now,
+                            "expiresAt": now + timedelta(minutes=5),
+                        }
+                    ],
+                }
+            )
+
+    def test_v1_raw_mode_rejects_localized_document_fields(self) -> None:
+        now = datetime.now(UTC)
+        request = EmbeddingBatchRequest.model_validate(
+            {
+                "requestId": str(uuid4()),
+                "subjects": [
+                    {
+                        "subjectId": str(uuid4()),
+                        "subjectType": "service",
+                        "locale": "es",
+                        "text": "corte",
+                        "localizedTexts": {"es": "corte", "en": "haircut"},
+                        "validFrom": now,
+                    }
+                ],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "LOCALIZED_TEXT_MODE_DISABLED"):
+            EmbeddingBatchProcessor(_FakeEmbedder(), "multilingual-e5-small-v1").generate(
+                request
             )
 
 

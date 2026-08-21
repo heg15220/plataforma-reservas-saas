@@ -10680,3 +10680,24 @@ Fuente de verdad del avance:
   - La suite técnica no se presenta como evidencia de utilidad productiva.
   - Para ranking se priorizan Recall@K, MRR y NDCG@K; F1 queda ligado a clasificación con umbral.
   - La evidencia guardada falla calidad semántica, pasa latencia y mantiene fallback determinista.
+# Conversación 273 - Mejora semántica con holdout y control de generalización
+
+- Fecha: 2026-08-21.
+- Resumen de la conversación: se mejoró la representación multilingüe de documentos, se separó
+  desarrollo/holdout y se añadieron puertas explícitas contra brecha de generalización.
+- Archivos modificados: encoder/batch/evaluador y tests Python; manifiesto, dataset y resultado v2;
+  configuración Spring; README, model card, guía de evaluación y documentación `.kiro`.
+- Requisitos impactados: RF-036 y RF-041; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015.
+- Tareas impactadas: mejora transversal de 20.4/20.5; ninguna tarea cambia de estado.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para esta fase, 23.13.
+- Decisiones o aclaraciones relevantes:
+  - E5 se conserva porque MiniLM generalizó peor en la validación separada.
+  - V2 supera cross-locale, pero falla calidad global, generalización y latencia documental;
+    permanece `not_promoted` con fallback full-text/trigram.
+  - Sus valores son numéricamente superiores a v1, pero el benchmark más amplio impide tratarlos
+    como una comparación causal directa.
+  - El holdout v2 queda consumido: no puede usarse para retocar alias y volver a proclamarse test.
+  - No se rebajaron umbrales ni se marcó ninguna tarea como completada.
+  - 263/263 pruebas Demand Engine, compileall, compilación Java, Spotless, JSON y diff pasaron;
+    Checkstyle y el validador español conservan incidencias preexistentes ajenas al cambio.

@@ -1,0 +1,165 @@
+{
+  "datasetVersion": "personal-care-retrieval.v2",
+  "scope": "synthetic-development-and-frozen-holdout",
+  "protocol": {
+    "developmentUse": "representation-and-model-selection",
+    "holdoutUse": "promotion-gate-only",
+    "promotionMetricsSource": "holdout",
+    "exactTextLeakageAllowed": false
+  },
+  "documents": [
+    {
+      "id": "hair-cut", "locale": "es", "text": "Corte de cabello y cambio de estilo.",
+      "localizedTexts": {
+        "es": "Corte de cabello, corte de pelo, recorte de puntas y cambio de estilo. Peluquería para acortar o sanear el cabello.",
+        "en": "Haircut, hair trim, split-end trim and style change. Hair salon appointment to shorten hair."
+      }
+    },
+    {
+      "id": "hair-color", "locale": "en", "text": "Hair colour, highlights and balayage services.",
+      "localizedTexts": {
+        "es": "Coloración capilar, tinte, mechas, balayage, cobertura de canas y retoque de raíces.",
+        "en": "Hair colour, hair dye, highlights, balayage, grey coverage and root touch-up service."
+      }
+    },
+    {
+      "id": "hair-style", "locale": "es", "text": "Peinado profesional para eventos.",
+      "localizedTexts": {
+        "es": "Peinado, recogido, secado y acabado profesional para celebraciones o bodas, sin corte.",
+        "en": "Hair styling, updo, blow-dry and professional finish for events or weddings, without a haircut."
+      }
+    },
+    {
+      "id": "hair-treatment", "locale": "en", "text": "Hair repair and nourishing treatment appointment.",
+      "localizedTexts": {
+        "es": "Tratamiento y cuidado capilar de reparación, nutrición, hidratación, mascarilla, brillo y suavidad.",
+        "en": "Hair care, repair, deep conditioning, nourishing mask, moisture, shine and softness treatment."
+      }
+    },
+    {
+      "id": "facial", "locale": "es", "text": "Tratamiento facial y cuidado de la piel.",
+      "localizedTexts": {
+        "es": "Cuidado facial, limpieza de cutis y tratamiento estético no médico de la piel del rostro.",
+        "en": "Facial, face cleansing and non-medical skin care treatment for the face."
+      }
+    },
+    {
+      "id": "body", "locale": "en", "text": "Non-medical body beauty treatment appointment.",
+      "localizedTexts": {
+        "es": "Tratamiento corporal estético no médico y cuidado cosmético de la piel del cuerpo.",
+        "en": "Non-medical body beauty treatment and cosmetic skin care focused on the body."
+      }
+    },
+    {
+      "id": "nails", "locale": "es", "text": "Manicura, pedicura y servicio profesional de uñas.",
+      "localizedTexts": {
+        "es": "Manicura, pedicura, esmalte y cuidado profesional de uñas, manos y pies.",
+        "en": "Manicure, pedicure, nail polish and professional care for fingernails, hands and feet."
+      }
+    },
+    {
+      "id": "makeup", "locale": "en", "text": "Professional makeup appointment for celebrations.",
+      "localizedTexts": {
+        "es": "Maquillaje profesional y aplicación de cosméticos para fiesta, evento o ceremonia.",
+        "en": "Professional makeup and cosmetics application for a party, event or ceremony."
+      }
+    },
+    {
+      "id": "eyebrows", "locale": "es", "text": "Diseño y depilación de cejas.",
+      "localizedTexts": {"es": "Diseño, perfilado y depilación de cejas.", "en": "Eyebrow shaping, threading and waxing."}
+    },
+    {
+      "id": "eyelashes", "locale": "en", "text": "Eyelash lifting and extension service.",
+      "localizedTexts": {"es": "Lifting y extensiones de pestañas.", "en": "Eyelash lift and extension service."}
+    },
+    {
+      "id": "waxing", "locale": "es", "text": "Depilación estética corporal.",
+      "localizedTexts": {"es": "Depilación estética con cera para distintas zonas corporales.", "en": "Cosmetic body hair removal and waxing service."}
+    },
+    {
+      "id": "massage", "locale": "en", "text": "Relaxation massage appointment.",
+      "localizedTexts": {"es": "Masaje de relajación no sanitario.", "en": "Non-medical relaxation massage appointment."}
+    },
+    {
+      "id": "beard", "locale": "es", "text": "Arreglo profesional de barba.",
+      "localizedTexts": {"es": "Recorte, perfilado y arreglo de barba en barbería.", "en": "Professional beard trim, shaping and barber service."}
+    },
+    {
+      "id": "tanning", "locale": "en", "text": "Cosmetic spray tanning appointment.",
+      "localizedTexts": {"es": "Bronceado cosmético mediante pulverización.", "en": "Cosmetic spray tanning appointment."}
+    },
+    {
+      "id": "medical", "locale": "es", "text": "Clínica médica con diagnóstico sanitario.",
+      "localizedTexts": {"es": "Consulta clínica, diagnóstico e inyecciones médicas.", "en": "Medical clinic, diagnosis and injection appointment."}
+    },
+    {
+      "id": "restaurant", "locale": "en", "text": "Restaurant serving dinner with table reservations.",
+      "localizedTexts": {"es": "Restaurante con reserva de mesa para cenar.", "en": "Restaurant serving dinner with table reservations."}
+    }
+  ],
+  "queries": [
+    {"id":"d01","split":"development","locale":"es","text":"quiero cortarme el pelo","relevantDocumentIds":["hair-cut"]},
+    {"id":"d02","split":"development","locale":"en","text":"I need a haircut","relevantDocumentIds":["hair-cut"]},
+    {"id":"d03","split":"development","locale":"es","text":"mechas y cambio de color","relevantDocumentIds":["hair-color"]},
+    {"id":"d04","split":"development","locale":"en","text":"hair colouring and highlights","relevantDocumentIds":["hair-color"]},
+    {"id":"d05","split":"development","locale":"es","text":"peinado para una celebración","relevantDocumentIds":["hair-style"]},
+    {"id":"d06","split":"development","locale":"en","text":"hairstyle for an event","relevantDocumentIds":["hair-style"]},
+    {"id":"d07","split":"development","locale":"es","text":"tratamiento reparador para el cabello","relevantDocumentIds":["hair-treatment"]},
+    {"id":"d08","split":"development","locale":"en","text":"nourishing hair treatment","relevantDocumentIds":["hair-treatment"]},
+    {"id":"d09","split":"development","locale":"es","text":"cuidado facial de la piel","relevantDocumentIds":["facial"]},
+    {"id":"d10","split":"development","locale":"en","text":"facial skin care appointment","relevantDocumentIds":["facial"]},
+    {"id":"d11","split":"development","locale":"es","text":"tratamiento corporal estético","relevantDocumentIds":["body"]},
+    {"id":"d12","split":"development","locale":"en","text":"non medical body beauty treatment","relevantDocumentIds":["body"]},
+    {"id":"d13","split":"development","locale":"es","text":"quiero hacerme la manicura","relevantDocumentIds":["nails"]},
+    {"id":"d14","split":"development","locale":"en","text":"professional nail and pedicure service","relevantDocumentIds":["nails"]},
+    {"id":"d15","split":"development","locale":"es","text":"maquillaje profesional para una fiesta","relevantDocumentIds":["makeup"]},
+    {"id":"d16","split":"development","locale":"en","text":"makeup appointment for a celebration","relevantDocumentIds":["makeup"]},
+    {"id":"d17","split":"development","locale":"es","text":"necesito sanear las puntas","relevantDocumentIds":["hair-cut"]},
+    {"id":"d18","split":"development","locale":"en","text":"trim my split ends","relevantDocumentIds":["hair-cut"]},
+    {"id":"d19","split":"development","locale":"es","text":"quiero cubrir las canas","relevantDocumentIds":["hair-color"]},
+    {"id":"d20","split":"development","locale":"en","text":"touch up my roots","relevantDocumentIds":["hair-color"]},
+    {"id":"d21","split":"development","locale":"es","text":"un recogido para una boda","relevantDocumentIds":["hair-style"]},
+    {"id":"d22","split":"development","locale":"en","text":"an updo before a wedding","relevantDocumentIds":["hair-style"]},
+    {"id":"d23","split":"development","locale":"es","text":"mascarilla nutritiva para pelo seco","relevantDocumentIds":["hair-treatment"]},
+    {"id":"d24","split":"development","locale":"en","text":"deep conditioning for damaged hair","relevantDocumentIds":["hair-treatment"]},
+    {"id":"d25","split":"development","locale":"es","text":"limpieza de cutis","relevantDocumentIds":["facial"]},
+    {"id":"d26","split":"development","locale":"en","text":"a face cleansing session","relevantDocumentIds":["facial"]},
+    {"id":"d27","split":"development","locale":"es","text":"sesión estética para el cuerpo","relevantDocumentIds":["body"]},
+    {"id":"d28","split":"development","locale":"en","text":"cosmetic body care appointment","relevantDocumentIds":["body"]},
+    {"id":"d29","split":"development","locale":"es","text":"arreglar manos y pies","relevantDocumentIds":["nails"]},
+    {"id":"d30","split":"development","locale":"en","text":"get my fingernails done","relevantDocumentIds":["nails"]},
+    {"id":"d31","split":"development","locale":"es","text":"que me maquillen para una ceremonia","relevantDocumentIds":["makeup"]},
+    {"id":"d32","split":"development","locale":"en","text":"evening glam for a party","relevantDocumentIds":["makeup"]},
+
+    {"id":"h01","split":"holdout","locale":"es","text":"solo quiero rebajar un poco el largo","relevantDocumentIds":["hair-cut"]},
+    {"id":"h02","split":"holdout","locale":"en","text":"shorten my hair a little","relevantDocumentIds":["hair-cut"]},
+    {"id":"h03","split":"holdout","locale":"es","text":"corte de puntas","relevantDocumentIds":["hair-cut"]},
+    {"id":"h04","split":"holdout","locale":"en","text":"book a quick hair trim","relevantDocumentIds":["hair-cut"]},
+    {"id":"h05","split":"holdout","locale":"es","text":"dar otro tono a mi cabello","relevantDocumentIds":["hair-color"]},
+    {"id":"h06","split":"holdout","locale":"en","text":"change my hair shade","relevantDocumentIds":["hair-color"]},
+    {"id":"h07","split":"holdout","locale":"es","text":"pedir cita para tinte rubio","relevantDocumentIds":["hair-color"]},
+    {"id":"h08","split":"holdout","locale":"en","text":"hair dye appointment","relevantDocumentIds":["hair-color"]},
+    {"id":"h09","split":"holdout","locale":"es","text":"arreglarme el pelo sin cortarlo","relevantDocumentIds":["hair-style"]},
+    {"id":"h10","split":"holdout","locale":"en","text":"style my hair without cutting it","relevantDocumentIds":["hair-style"]},
+    {"id":"h11","split":"holdout","locale":"es","text":"reservar un recogido","relevantDocumentIds":["hair-style"]},
+    {"id":"h12","split":"holdout","locale":"en","text":"professional blow dry","relevantDocumentIds":["hair-style"]},
+    {"id":"h13","split":"holdout","locale":"es","text":"recuperar brillo y suavidad del cabello","relevantDocumentIds":["hair-treatment"]},
+    {"id":"h14","split":"holdout","locale":"en","text":"restore moisture to brittle hair","relevantDocumentIds":["hair-treatment"]},
+    {"id":"h15","split":"holdout","locale":"es","text":"hidratación capilar","relevantDocumentIds":["hair-treatment"]},
+    {"id":"h16","split":"holdout","locale":"en","text":"hair repair mask","relevantDocumentIds":["hair-treatment"]},
+    {"id":"h17","split":"holdout","locale":"es","text":"sesión estética para la cara","relevantDocumentIds":["facial"]},
+    {"id":"h18","split":"holdout","locale":"en","text":"refresh the skin on my face","relevantDocumentIds":["facial"]},
+    {"id":"h19","split":"holdout","locale":"es","text":"tratamiento de cutis no médico","relevantDocumentIds":["facial"]},
+    {"id":"h20","split":"holdout","locale":"en","text":"skin facial booking","relevantDocumentIds":["facial"]},
+    {"id":"h21","split":"holdout","locale":"es","text":"cuidado cosmético para la piel corporal","relevantDocumentIds":["body"]},
+    {"id":"h22","split":"holdout","locale":"en","text":"beauty session focused on the body","relevantDocumentIds":["body"]},
+    {"id":"h23","split":"holdout","locale":"es","text":"puesta a punto de uñas antes de un evento","relevantDocumentIds":["nails"]},
+    {"id":"h24","split":"holdout","locale":"en","text":"care for my hands and toenails","relevantDocumentIds":["nails"]},
+    {"id":"h25","split":"holdout","locale":"es","text":"reservar pedicura con esmalte","relevantDocumentIds":["nails"]},
+    {"id":"h26","split":"holdout","locale":"en","text":"nail polish appointment","relevantDocumentIds":["nails"]},
+    {"id":"h27","split":"holdout","locale":"es","text":"preparar mi rostro con cosméticos para una fiesta","relevantDocumentIds":["makeup"]},
+    {"id":"h28","split":"holdout","locale":"en","text":"have cosmetics applied before a ceremony","relevantDocumentIds":["makeup"]},
+    {"id":"h29","split":"holdout","locale":"es","text":"necesito una maquilladora","relevantDocumentIds":["makeup"]},
+    {"id":"h30","split":"holdout","locale":"en","text":"party makeup booking","relevantDocumentIds":["makeup"]}
+  ]
+}

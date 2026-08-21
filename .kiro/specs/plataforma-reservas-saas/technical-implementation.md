@@ -40189,3 +40189,79 @@ la ventana SLO, así que producción necesita almacenamiento remoto/recording ru
 `repo://` deben resolverse a URLs privadas. Valores iniciales necesitan calibración con tráfico real
 sin reescribir historia. 23.13 debe ensayar caída, corrupción, rotación, recuperación y borrado; 23.14
 debe aprobar formalmente privacidad, seguridad, legalidad y equidad antes de automatización avanzada.
+# Iteración 2026-08-21 - Mejora de recuperación semántica con control de generalización
+
+## Objetivo y alcance
+
+- Identificador: mejora técnica transversal de 20.4/20.5 solicitada por el usuario; no cierra una
+  tarea nueva de `tasks.md`.
+- Objetivo: elevar la recuperación ES/EN sin rebajar puertas ni ajustar el modelo contra el conjunto
+  reservado, y hacer observable el riesgo de sobreajuste de selección.
+- Requisitos y diseño: RF-036 y RF-041; RNF-002, RNF-005, RNF-006, RNF-014 y RNF-015; secciones
+  14.22 y 14.23.
+
+## Diagnóstico y decisión
+
+Se reprodujo v1 con el encoder real fijado: 0,6875 Recall@1, 0,8125 Recall@3, 0,775521 MRR y 0,625
+cross-locale Recall@3. El análisis por consulta mostró cinco fallos dominados por fichas disponibles
+en un idioma distinto al de la consulta. Se probó MiniLM como challenger ya documentado y generalizó
+peor sobre paráfrasis separadas. Se conservó E5 y no se hizo fine-tuning con 16 ejemplos sintéticos.
+
+V2 compone documentos con nombre, descripción y variantes ES/EN procedentes del catálogo. No genera
+traducciones, no expande consultas y no aprende del usuario. `EmbeddingSubject.localizedTexts` solo
+se admite para `venue|service`, requiere el locale principal y limita cada campo y la composición a
+4.000 caracteres. Las consultas que intentan enviarlo fallan cerrado. El orden es estable —texto
+principal, locale principal y segundo locale—, elimina duplicados normalizados y el SHA-256 se
+calcula sobre la cadena efectivamente codificada. Por tanto, editar una localización invalida el
+artefacto anterior sin almacenar texto en la respuesta o PostgreSQL.
+
+## Evaluación, datos y puertas
+
+`personal-care-retrieval.v2` contiene 16 fichas sintéticas y 62 consultas: 32 de desarrollo y 30
+holdout. Incorpora negativos cercanos de cejas, pestañas, depilación, masaje, barba y bronceado,
+además de salud y restauración. El evaluador valida unicidad, existencia de relevantes, splits
+completos, cobertura cross-locale y ausencia de texto normalizado idéntico entre desarrollo/holdout.
+Sin split explícito conserva compatibilidad con pruebas anteriores.
+
+Las métricas públicas Recall@1, Recall@3, MRR y cross-locale proceden exclusivamente de holdout. Se
+publican también métricas de desarrollo y dos brechas unidireccionales `max(0, development-holdout)`.
+La promoción exige los umbrales existentes y brechas Recall@3/MRR <=0,10. Un holdout mejor que
+desarrollo no se penaliza; una mejora aparente en desarrollo que no generaliza sí bloquea calidad.
+
+La ejecución real sobre Windows CPU produjo desarrollo 0,875/0,96875/0,929688/0,9375 y holdout
+0,70/0,866667/0,812222/0,933333. Las brechas Recall@3 0,102083 y MRR 0,117465 no pasan. La consulta
+cumple latencia con 68,96 ms p95 warm, pero el documento bilingüe real alcanza 109,86 ms/item y falla
+el límite de 50 ms. El informe v2 declara `qualityPassed=false`, `generalizationPassed=false`,
+`latencyPassed=false`, shadow y
+`full_text_trigram_only`. No se retocó el holdout tras observarlo ni se relajaron umbrales.
+
+## Archivos, integración y seguridad
+
+Se añadieron manifiesto, dataset e informe v2; se modificaron `embeddings.py`,
+`embedding_batch.py`, `embedding_evaluation.py`, `application.py`, configuración Spring y pruebas.
+La configuración alinea el identificador v2 entre generación y futura lectura, pero el feature gate
+vectorial permanece cerrado. No hay migración: la dimensión continúa en 384 y el esquema ya admite
+versiones. Full-text/trigram conserva autoridad; filtros de publicación, permiso, capacidad,
+disponibilidad y radio siguen precediendo cualquier score.
+
+Se actualizaron model card, README, guía de desarrollo y documentos `.kiro`. No se introducen PII,
+identidad, outcomes, atributos sensibles, logs de texto ni persistencia adicional. La revisión del
+modelo y `trust_remote_code=false` permanecen invariantes.
+
+## Verificación, riesgos y siguientes pasos
+
+Las doce pruebas focalizadas verifican manifiestos v1/v2, composición, checksum, prohibición en
+queries, cálculo por holdout, brecha y detección de leakage. La relevancia se midió una sola vez sobre
+el holdout final; la segunda ejecución corrigió la medición de latencia para cronometrar la composición
+bilingüe efectiva. Ambas devolvieron exit 1 esperado por las puertas fallidas. La regresión completa
+del Demand Engine terminó con 263/263 pruebas verdes en 145,234 s; `compileall` y las diez pruebas
+focalizadas pasaron. Maven compiló 1.016 fuentes Java y Spotless confirmó 1.255 archivos limpios.
+Checkstyle global conserva 51 incidencias preexistentes en archivos ajenos y ninguna pertenece a
+`HybridCandidateProperties`; el validador español conserva incidencias preexistentes y no señaló los
+archivos nuevos. `git diff --check` y los tres JSON v2 quedaron válidos.
+
+El dataset sigue siendo sintético y no temporal; un resultado perfecto aquí tampoco probaría valor
+productivo. El holdout v2 ya está consumido y no debe reutilizarse para seleccionar más alias o
+hiperparámetros. El siguiente avance válido requiere tráfico etiquetado consentido con corte temporal,
+o train/validación nuevos para un fine-tuning contrastivo pequeño y un test final nunca observado.
+Hasta entonces V2 permanece en shadow y no se activa recuperación vectorial.

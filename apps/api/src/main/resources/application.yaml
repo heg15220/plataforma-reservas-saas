@@ -125,7 +125,7 @@ reserly:
         linkRetention: ${RESERLY_DEMAND_IDENTITY_LINK_RETENTION:90d}
     candidates:
       vectorEnabled: ${RESERLY_DEMAND_VECTOR_ENABLED:false}
-      modelVersion: ${RESERLY_DEMAND_EMBEDDING_MODEL_VERSION:multilingual-e5-small-v1}
+      modelVersion: ${RESERLY_DEMAND_EMBEDDING_MODEL_VERSION:multilingual-e5-small-v2}
     quality:
       cron: "${DEMAND_QUALITY_CRON:0 15 * * * *}"
     retention:

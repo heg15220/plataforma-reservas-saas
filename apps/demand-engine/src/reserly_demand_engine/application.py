@@ -111,10 +111,12 @@ def create_app(
         IncrementalityMeasurementPolicy.load(policy_root / "incrementality-measurement.v1.json")
     )
     manifest = EmbeddingModelManifest.load(
-        Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v1.json"
+        Path(__file__).resolve().parents[2] / "models" / "multilingual-e5-small.v2.json"
     )
     app.state.embedding_batch_processor = EmbeddingBatchProcessor(
-        embedding_embedder or SentenceTransformerEmbedder(manifest), manifest.modelKey
+        embedding_embedder or SentenceTransformerEmbedder(manifest),
+        manifest.modelKey,
+        manifest.documentTextMode,
     )
     app.add_middleware(
         DemandEngineBoundaryMiddleware, settings=settings, metrics=app.state.metrics
