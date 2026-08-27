@@ -40381,3 +40381,87 @@ modelos de contenido y deben complementarse con catálogo consentido y holdout h
 siguiente tarea pendiente de la fase por orden: ensayos de recuperación, dependencias, corrupción,
 secretos y borrado. 23.14 conserva la revisión formal previa a personalización persistente. Ninguna
 de estas tareas puede sustituirse por resultados del dataset sintético.
+
+# Iteración 2026-08-27 - Subtareas 23.16.a/23.16.b: imágenes multiclase y QA visual
+
+## Objetivo, alcance y estado
+
+- Identificadores exactos: 23.16.a y 23.16.b completadas; 23.16/23.16.c pendientes.
+- Objetivo: materializar una imagen por local para las ocho categorías canónicas y obtener evidencia
+  reproducible de integridad, diversidad y reconocibilidad visual antes de permitir entrenamiento.
+- Requisitos/diseño: RF-029, RF-033, RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y
+  RNF-015; diseño 14.62 y 14.67.
+
+El catálogo deriva directamente de V10: restaurante, peluquería, campo de fútbol, pista de pádel,
+instalación municipal, centro deportivo, centro de estética y otros. `CATEGORY_DEFINITIONS` añade
+nombre ES/EN, cuatro servicios y sujeto visual por categoría. Los primeros 17 PNG ya generados se
+conservan como peluquerías; desde el 018 el catálogo rota. La distribución final es 11/28/11/10/10/
+10/10/10 respectivamente. Cada categoría aparece al menos una vez en warm, validation-cold y
+test-cold, verificado por test y manifiesto. Perfiles e interacciones se regeneraron con 32 servicios.
+
+## Materialización, almacenamiento y procedencia
+
+Se hicieron cien llamadas independientes al generador integrado, una por prompt. Cada resultado se
+copió a `evaluation/synthetic-marketplace-v1/images/venue-NNN.png`; todos miden 1448×1086, PNG RGB y
+4:3. `.gitignore` excluye `images/` y hojas JPG: Git conserva contratos, hashes y resultados, no los
+píxeles. `image-assets.jsonl` enlaza orden, promptId, venueId, categoría, cohorte, objectKey
+`local-dev://`, SHA-256, formato, dimensiones y procedencia `openai-built-in-imagegen`. El proveedor
+no expone revisión de modelo, registrado honestamente como `notExposedByProvider`.
+
+Cada activo mantiene `syntheticEvaluationAllowed=true`, pero `developmentTrainingAllowed=false`,
+`productionTrainingAllowed=false` y `humanReviewStatus=pending`. El manifiesto reporta 100 imágenes,
+estado `materializedPendingHumanReview`, hashes del inventario/informe y
+`automatedQualityPassed=false`. No hay endpoint, migración, dato personal, secreto, EXIF, usuario,
+local real o mutación de perfil.
+
+## QA estructural y perceptual
+
+`synthetic_visual_qa.py` y la CLI `reserly-demand-evaluate-synthetic-visuals` verifican cantidad y
+correspondencia 1:1 con locales/prompts, decodificación Pillow, PNG, modo RGB/RGBA, resolución mínima
+1024×768, relación 4:3 exacta y ausencia de metadatos. SHA-256 detecta duplicados exactos; dHash de
+64 bits compara todas las parejas y rechaza distancia <=4. También exige las ocho categorías en las
+tres cohortes. El resultado real pasa 100/100, cero violaciones, cero duplicados exactos/perceptuales
+y distancia mínima 15.
+
+Dos pruebas unitarias cubren fixture multiclase/cohorte válido y ausencia de archivo fail-closed. El
+fixture se corrigió después de que rectángulos uniformes activasen correctamente dHash; no se relajó
+el gate. Las cuatro hojas de contacto 001–025, 026–050, 051–075 y 076–100 se inspeccionaron: el agente
+no observó personas, marcas o texto legible. `agent-visual-inspection.json` declara explícitamente
+`inspectorKind=aiAgent` y `humanReviewEquivalent=false`.
+
+## Diagnóstico CLIP y resultados
+
+El job usó exclusivamente el artefacto local `clip-vit-b32-visual-evidence-v1`, revisión
+`fbf5e647b25f3514e526849b05cc0196b206d822`, Transformers 4.56.2, CPU y embeddings L2; no descargó
+otro modelo. Clasificó top-1 contra ocho prompts en inglés y calculó matriz, accuracy, precision,
+recall y F1 sin ponderar categorías. Global: accuracy 0,74; precision macro 0,81968624; recall macro
+0,77256494; F1 macro 0,74699504. Falla recall >=0,80 y por tanto
+`categoryQualityPassed=false`.
+
+Por cohorte: warm 70 imágenes obtiene 0,70 accuracy/0,806537 precision/0,752232 recall/0,697821 F1;
+validation-cold 15 obtiene 0,866667/0,791667/0,875/0,825; test-cold 15 obtiene
+0,80/0,854167/0,8125/0,783333. El cold-start no colapsa ni revela sobreajuste a warm; sin embargo,
+las muestras por clase son pequeñas. Restaurante, fútbol y pádel son fuertes. Peluquería tiene recall
+0,571429 por once confusiones con estética; instalación municipal recall 0,30 por interiores genéricos;
+estética alcanza recall 1 pero precision 0,40 al absorber esas clases.
+
+El par de prompts auxiliar para personas marcó 100/100 pese a que las hojas no muestran personas.
+Se registra `peopleScreeningUsable=false` y `inconclusive`: no es detector certificado y no puede
+aprobar/suprimir imágenes. Esta discrepancia es una prueba fallida documentada, no una inferencia de
+que existan personas.
+
+## Riesgos, errores, verificación y siguiente paso
+
+El informe conserva predicciones por SHA-256, nunca píxeles o embeddings. Falta OCR/detector de
+personas dedicado y revisión humana independiente. Ajustar prompts o reemplazar municipales después
+de mirar estas métricas consumiría el test; 23.16.c debe usar warm como desarrollo, validation-cold
+para selección y un test visual nuevo no observado. Hasta superar recall macro 0,80 y revisión humana,
+`overallPassed=false`, no hay entrenamiento, promoción, evidencia productiva ni mutación automática.
+
+Comandos ejecutados: cuatro pruebas del dataset, tres pruebas de QA, generación CLI, QA estructural y
+QA CLIP real. Las pruebas focalizadas pasaron; la regresión final terminó con 272/272 pruebas verdes
+en 257,440 s. `compileall`, `git diff --check`, los hashes de todos los
+artefactos versionados y los 100 SHA-256 contra sus PNG locales pasaron. Permanecen los avisos
+preexistentes de UMAP/TensorFlow opcional y Evidently/pandas 4, sin fallo. Las imágenes son
+recuperables en la carpeta local ignorada; eliminarlas requiere regeneración individual o
+restauración desde el almacén local del generador.

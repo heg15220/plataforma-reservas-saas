@@ -31,6 +31,15 @@ class SyntheticMarketplaceTests(unittest.TestCase):
             self.assertEqual(result.session_count, 2400)
             self.assertEqual(result.candidate_count, 19_200)
             self.assertEqual(manifest["counts"]["imagePrompts"], 100)
+            expected_categories = {
+                "restaurante", "peluqueria", "campo-de-futbol", "pista-de-padel",
+                "instalacion-municipal", "centro-deportivo", "centro-de-estetica", "otros",
+            }
+            self.assertEqual(set(manifest["categoryCoverage"]), expected_categories)
+            for coverage in manifest["categoryCoverage"].values():
+                self.assertGreater(coverage["warm"], 0)
+                self.assertGreater(coverage["validationCold"], 0)
+                self.assertGreater(coverage["testCold"], 0)
             labels = [candidate["labels"] for session in sessions for candidate in session["candidates"]]
             conversion_rate = sum(label["bookingCompleted"] for label in labels) / len(sessions)
             click_rate = sum(label["clicked"] for label in labels) / len(sessions)

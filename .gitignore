@@ -36,3 +36,7 @@ volumes/
 # Bytecode Python local de contratos y servicios.
 __pycache__/
 *.py[cod]
+
+# Binarios sintéticos locales: Git conserva manifiestos, hashes e informes, no píxeles.
+apps/demand-engine/evaluation/synthetic-marketplace-v1/images/
+apps/demand-engine/evaluation/synthetic-marketplace-v1/qa/*.jpg

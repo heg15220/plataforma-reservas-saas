@@ -4936,6 +4936,13 @@ UUIDv5 y serialización JSON canónica hacen que los cuatro artefactos sean repr
 el manifiesto fija recuentos y SHA-256. Los nombres, coordenadas aproximadas y descripciones son
 sintéticos, no una réplica de negocios existentes.
 
+Los locales ya no se reducen al vertical de cuidado personal: usan los ocho slugs canónicos de V10
+(`restaurante`, `peluqueria`, `campo-de-futbol`, `pista-de-padel`, `instalacion-municipal`,
+`centro-deportivo`, `centro-de-estetica`, `otros`). Cada categoría tiene servicios propios y aparece
+en warm, validation-cold y test-cold. El manifiesto publica cardinalidad por categoría/cohorte para
+que las métricas macro no oculten la sobrerrepresentación de peluquería derivada de los 17 primeros
+activos ya materializados.
+
 El corte es temporal: train enero-abril, validación mayo y test junio de 2026. Setenta locales y 28
 perfiles son `warm`; 15/6 aparecen por primera vez en validación y 15/6 exclusivamente en test. El
 selector de candidatos nunca introduce una entidad futura. Cada candidato separa `features`
@@ -4953,3 +4960,12 @@ Las 100 imágenes se representan inicialmente como especificaciones únicas. Cad
 será un job independiente fuera de Git, con SHA-256, versión de generador, licencia/procedencia y
 revisión humana antes de CLIP. Esta frontera evita que artefactos visuales generativos eleven de forma
 artificial la métrica o muten automáticamente perfiles comerciales.
+
+La materialización local posterior conserva un PNG 1448×1086 por local fuera de Git y versiona solo
+`image-assets.jsonl`, hashes y `visual-qa-report.json`. La QA estructural exige 100/100, PNG legible,
+4:3, RGB/RGBA, resolución mínima, metadatos vacíos, SHA-256 único y dHash con distancia >4. CLIP
+ViT-B/32 ejecuta un diagnóstico top-1 sobre las ocho categorías con umbral macro precision/recall
+0,80 y desglose por cohorte. El informe observado obtiene 0,74 accuracy, 0,819686 precision macro,
+0,772565 recall macro y 0,746995 F1 macro: no pasa. `trainingAllowed=false` y revisión humana sigue
+pendiente. Un prompt binario de personas que marcó 100/100 queda explícitamente inconcluso y no se
+usa como detector.

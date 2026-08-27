@@ -473,6 +473,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [ ] 23.14. Realizar revisión jurídica, privacidad, seguridad y equidad antes de activar personalización persistente, promociones u optimización.
 - [x] 23.15. Generar un dataset sintético reproducible con 100 locales, 40 perfiles, interacciones temporales y cohortes cold-start para desarrollo y evaluación offline sin habilitar promoción.
 - [ ] 23.16. Materializar, almacenar fuera de Git y revisar humanamente las 100 imágenes especificadas antes de utilizarlas como evidencia visual o input de entrenamiento.
+  - [x] 23.16.a. Materializar 100 PNG 4:3 fuera de Git, registrar SHA-256, dimensiones y procedencia, y cubrir las ocho categorías en warm/validation-cold/test-cold.
+  - [x] 23.16.b. Ejecutar QA estructural, duplicados perceptuales, hojas de contacto y diagnóstico CLIP de categoría con métricas globales y por cohorte.
+  - [ ] 23.16.c. Completar revisión humana independiente, sustituir activos ambiguos y superar recall macro >=0,80 sin reutilizar el test para ajuste.
 
 ## 26. Criterios de salida del MVP
 

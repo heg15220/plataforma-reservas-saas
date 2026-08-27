@@ -858,6 +858,9 @@ acciones automáticas.
 - WHEN se use un dataset sintético para desarrollar el recomendador, THEN debe ser reproducible,
   versionado, libre de datos personales, separar train/validación/test por tiempo e incluir cohortes
   cold-start sin presentarse como evidencia productiva ni habilitar promoción.
+- WHEN dicho dataset represente el marketplace general, THEN locales e imágenes deben cubrir todas
+  las categorías activas del catálogo en warm, validación cold-start y test cold-start, y cualquier
+  desequilibrio de cardinalidad debe permanecer visible en el manifiesto y las métricas macro.
 - WHEN se preparen imágenes sintéticas de locales, THEN cada activo conserva prompt, procedencia,
   hash y revisión humana; una especificación sin imagen materializada o sin revisar permanece
   excluida del entrenamiento y de cualquier puerta visual de producción.

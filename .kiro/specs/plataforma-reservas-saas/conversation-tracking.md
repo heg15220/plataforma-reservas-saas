@@ -10739,3 +10739,26 @@ Fuente de verdad del avance:
   - Los perfiles omiten PII y atributos sensibles; IDs solo agrupan y no son features.
   - Cuatro pruebas focalizadas verificaron cardinalidad, tasas no perfectas, reproducibilidad,
     privacidad, bloqueo visual y ausencia de leakage.
+
+# Conversación 276 - Materialización visual multiclase y evaluación real
+
+- Fecha: 2026-08-27.
+- Resumen de la conversación: se materializaron 100 imágenes 4:3 mediante llamadas independientes al
+  generador integrado, se amplió el dataset a las ocho categorías canónicas y se ejecutó QA
+  estructural, perceptual, visual y CLIP con métricas globales y cold-start.
+- Archivos modificados: generador y pruebas del dataset; módulo/CLI y pruebas de QA visual; manifiesto,
+  locales, perfiles, sesiones, prompts, inventario de activos, informe QA, inspección por agente,
+  README, `.gitignore`, pyproject y documentación `.kiro`. Los PNG/hojas viven localmente e ignorados.
+- Requisitos impactados: RF-029, RF-033, RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y
+  RNF-015.
+- Tareas impactadas: 23.16.a y 23.16.b completadas; 23.16 y 23.16.c siguen pendientes.
+- Tareas completadas: subtareas 23.16.a y 23.16.b; no se cierra 23.16.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para visuales, 23.16.c exige
+  revisión humana y un test nuevo no usado durante la corrección.
+- Decisiones o aclaraciones relevantes:
+  - Cada categoría aparece en warm, validation-cold y test-cold; el manifiesto publica el desequilibrio.
+  - QA estructural pasa 100/100, sin duplicados; dHash mínimo 15.
+  - CLIP logra 0,74 accuracy, 0,819686 precision macro, 0,772565 recall macro y 0,746995 F1 macro;
+    falla recall >=0,80, principalmente por municipal y confusión peluquería/estética.
+  - El screening de personas por prompt fue no discriminativo y se descarta como detector.
+  - No se marca revisión humana ni se habilita entrenamiento/promoción.

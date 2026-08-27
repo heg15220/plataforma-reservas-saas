@@ -50,3 +50,4 @@ reserly-demand-report-evidently = "reserly_demand_engine.evidently_reporting:run
 reserly-demand-validate-governance-docs = "reserly_demand_engine.governance_documentation:run"
 reserly-demand-validate-operational-readiness = "reserly_demand_engine.operational_readiness:run"
 reserly-demand-generate-synthetic-marketplace = "reserly_demand_engine.synthetic_marketplace:run"
+reserly-demand-evaluate-synthetic-visuals = "reserly_demand_engine.synthetic_visual_qa:run"

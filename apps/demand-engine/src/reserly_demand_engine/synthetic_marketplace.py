@@ -25,16 +25,65 @@ DATASET_VERSION = "synthetic-marketplace-v1"
 DEFAULT_SEED = 1729
 GENERATED_AT = "2026-07-01T00:00:00Z"
 
-SERVICES = (
-    "hairCutService",
-    "hairColorService",
-    "hairStylingService",
-    "hairTreatmentService",
-    "skinCareServices",
-    "bodyTreatmentService",
-    "nailService",
-    "makeupService",
+CATEGORY_DEFINITIONS = (
+    {
+        "code": "restaurante",
+        "nameEs": "restaurante",
+        "nameEn": "restaurant",
+        "services": ("tableReservation", "tastingMenu", "groupDining", "brunchService"),
+        "visualSubject": "sala de restaurante con mesas preparadas y cocina no visible",
+    },
+    {
+        "code": "peluqueria",
+        "nameEs": "peluquería",
+        "nameEn": "hair salon",
+        "services": ("hairCutService", "hairColorService", "hairStylingService", "hairTreatmentService"),
+        "visualSubject": "salón de peluquería profesional",
+    },
+    {
+        "code": "campo-de-futbol",
+        "nameEs": "campo de fútbol",
+        "nameEn": "football pitch",
+        "services": ("footballMatch", "footballTraining", "youthTraining", "pitchRental"),
+        "visualSubject": "campo de fútbol reservable con césped, porterías y gradas pequeñas",
+    },
+    {
+        "code": "pista-de-padel",
+        "nameEs": "pista de pádel",
+        "nameEn": "padel court",
+        "services": ("padelCourtRental", "padelLesson", "equipmentRental", "padelTournament"),
+        "visualSubject": "pista de pádel profesional con cerramiento de cristal",
+    },
+    {
+        "code": "instalacion-municipal",
+        "nameEs": "instalación municipal",
+        "nameEn": "municipal facility",
+        "services": ("communityRoom", "auditoriumRental", "workshopRoom", "multipurposeCourt"),
+        "visualSubject": "instalación municipal polivalente y accesible con espacios reservables",
+    },
+    {
+        "code": "centro-deportivo",
+        "nameEs": "centro deportivo",
+        "nameEn": "sports center",
+        "services": ("fitnessClass", "indoorPool", "sportsHall", "personalTraining"),
+        "visualSubject": "centro deportivo contemporáneo con zona de entrenamiento reservable",
+    },
+    {
+        "code": "centro-de-estetica",
+        "nameEs": "centro de estética",
+        "nameEn": "beauty center",
+        "services": ("skinCareService", "bodyTreatmentService", "nailService", "makeupService"),
+        "visualSubject": "centro de estética profesional con cabinas de tratamiento",
+    },
+    {
+        "code": "otros",
+        "nameEs": "otro espacio reservable",
+        "nameEn": "other bookable venue",
+        "services": ("coworkingDesk", "photographyStudio", "rehearsalRoom", "meetingRoom"),
+        "visualSubject": "estudio creativo polivalente con zonas reservables de trabajo y reunión",
+    },
 )
+SERVICES = tuple(service for category in CATEGORY_DEFINITIONS for service in category["services"])
 ATTRIBUTES = (
     "naturalLight",
     "privateCabin",
@@ -112,8 +161,11 @@ def _build_venues(rng: random.Random) -> list[dict[str, Any]]:
     venues: list[dict[str, Any]] = []
     for index in range(100):
         city_code, city_name, base_lat, base_lon = CITIES[index % len(CITIES)]
-        category = "hairSalon" if index < 50 else "beautyCenter"
-        pool = SERVICES[:4] if category == "hairSalon" else SERVICES[4:]
+        # Los 17 primeros activos ya materializados son peluquerías. Desde el
+        # índice 17 se rota el catálogo canónico completo, incluyendo nuevas
+        # apariciones de peluquería en las cohortes cold-start.
+        category = CATEGORY_DEFINITIONS[1] if index < 17 else CATEGORY_DEFINITIONS[(index - 17) % 8]
+        pool = category["services"]
         services = sorted(rng.sample(pool, k=rng.randint(2, 4)))
         attributes = sorted(rng.sample(ATTRIBUTES, k=3))
         name = f"{NAME_PREFIXES[index % 10]} {NAME_SUFFIXES[index // 10]} {index + 1:03d}"
@@ -125,11 +177,11 @@ def _build_venues(rng: random.Random) -> list[dict[str, Any]]:
                 "venueId": venue_id,
                 "synthetic": True,
                 "entityCohort": _venue_cohort(index),
-                "categoryCode": category,
+                "categoryCode": category["code"],
                 "name": name,
                 "descriptions": {
-                    "es": f"Local ficticio de {city_name} especializado en {', '.join(services)}; ambiente {style} y atención con {', '.join(attributes)}.",
-                    "en": f"Fictional {city_name} venue focused on {', '.join(services)}, with a {style} atmosphere and {', '.join(attributes)}.",
+                    "es": f"{category['nameEs'].capitalize()} ficticio de {city_name} especializado en {', '.join(services)}; ambiente {style} y atención con {', '.join(attributes)}.",
+                    "en": f"Fictional {category['nameEn']} in {city_name} focused on {', '.join(services)}, with a {style} atmosphere and {', '.join(attributes)}.",
                 },
                 "location": {
                     "countryCode": "ES",
@@ -327,14 +379,14 @@ def _build_image_prompts(venues: list[dict[str, Any]]) -> list[dict[str, Any]]:
     prompts: list[dict[str, Any]] = []
     for index, venue in enumerate(venues):
         city = venue["location"]["cityName"]
-        category = "salón de peluquería" if venue["categoryCode"] == "hairSalon" else "centro de estética"
+        category = next(item for item in CATEGORY_DEFINITIONS if item["code"] == venue["categoryCode"])
         prompts.append(
             {
                 "imagePromptId": venue["imagePromptId"],
                 "venueId": venue["venueId"],
                 "promptVersion": "venue-interior-v1",
                 "prompt": (
-                    f"Fotografía editorial horizontal 4:3 del interior de un {category} totalmente ficticio en {city}, "
+                    f"Fotografía editorial horizontal 4:3 de un {category['visualSubject']} totalmente ficticio en {city}, "
                     f"diseño {venue['visualStyle']}, paleta {venue['visualPalette']}, distribución espacial única número {index + 1:03d}, "
                     "luz natural realista, mobiliario profesional, sin personas, sin texto, sin logotipos, sin marcas de agua."
                 ),
@@ -391,6 +443,25 @@ def generate_dataset(output_dir: Path, seed: int = DEFAULT_SEED) -> GenerationRe
             "candidates": candidate_count,
             "imagePrompts": len(prompts),
             "materializedImages": 0,
+        },
+        "categoryCoverage": {
+            category["code"]: {
+                "venues": sum(venue["categoryCode"] == category["code"] for venue in venues),
+                "warm": sum(
+                    venue["categoryCode"] == category["code"] and venue["entityCohort"] == "warm"
+                    for venue in venues
+                ),
+                "validationCold": sum(
+                    venue["categoryCode"] == category["code"]
+                    and venue["entityCohort"] == "validationCold"
+                    for venue in venues
+                ),
+                "testCold": sum(
+                    venue["categoryCode"] == category["code"] and venue["entityCohort"] == "testCold"
+                    for venue in venues
+                ),
+            }
+            for category in CATEGORY_DEFINITIONS
         },
         "splits": {
             "train": {"sessions": 1400, "dateRange": ["2026-01-01", "2026-04-30"]},

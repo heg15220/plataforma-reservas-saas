@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "inspectionVersion": "synthetic-marketplace-agent-visual-inspection-v1",
+  "datasetVersion": "synthetic-marketplace-v1",
+  "inspectedAt": "2026-08-27T00:00:00Z",
+  "inspectorKind": "aiAgent",
+  "contactSheetsInspected": [
+    "qa/qa-contact-sheet-001-025.jpg",
+    "qa/qa-contact-sheet-026-050.jpg",
+    "qa/qa-contact-sheet-051-075.jpg",
+    "qa/qa-contact-sheet-076-100.jpg"
+  ],
+  "imageCount": 100,
+  "obviousPeopleVisible": 0,
+  "obviousReadableBrandOrWatermarkVisible": 0,
+  "categoryFamiliesVisuallyRepresented": 8,
+  "observations": [
+    "Football pitches and padel courts are visually distinct from indoor categories.",
+    "Restaurants and sports centers generally expose category-specific furniture or equipment.",
+    "Some hair salons resemble beauty centers, matching the CLIP confusion result.",
+    "Some municipal facilities are generic multipurpose interiors, matching their low CLIP recall."
+  ],
+  "humanReviewEquivalent": false,
+  "humanReviewStillRequired": true,
+  "productionTrainingAllowed": false
+}

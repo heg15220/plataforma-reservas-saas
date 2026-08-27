@@ -2,12 +2,15 @@
 
 Este dataset sirve para desarrollar y comprobar pipelines de recomendación sin usar datos personales
 ni presentar resultados sintéticos como evidencia productiva. Contiene exactamente 100 locales
-ficticios, 40 perfiles pseudónimos, 2.400 sesiones temporales y 19.200 candidatos.
+ficticios, 40 perfiles pseudónimos, 2.400 sesiones temporales y 19.200 candidatos. Cubre las ocho
+categorías activas del catálogo: restaurante, peluquería, campo de fútbol, pista de pádel, instalación
+municipal, centro deportivo, centro de estética y otros.
 
 ## Artefactos
 
-- `venues.jsonl`: locales ficticios, descripciones ES/EN, servicios, atributos y ubicación aproximada
-  sintética en diez zonas gallegas. No contiene direcciones ni negocios reales.
+- `venues.jsonl`: locales ficticios de las ocho categorías canónicas, descripciones ES/EN, servicios,
+  atributos y ubicación aproximada sintética en diez zonas gallegas. No contiene direcciones ni
+  negocios reales. Cada categoría aparece en warm, validation-cold y test-cold.
 - `profiles.jsonl`: preferencias permitidas y consentimiento simulado. No contiene email, teléfono,
   edad, género, salud, pagos u otros atributos sensibles.
 - `ranking-sessions.jsonl`: conjuntos completos de ocho candidatos, features anteriores al resultado
@@ -42,12 +45,25 @@ python -m unittest apps/demand-engine/tests/test_synthetic_marketplace.py
 Con semilla `1729`, los JSON/JSONL son reproducibles byte a byte. Cambiar semilla o generador exige
 nueva versión de dataset; no debe sobrescribirse una versión utilizada por un experimento registrado.
 
-## Imágenes: estado bloqueado
+## Imágenes: materializadas, pero todavía bloqueadas
 
-Los 100 prompts permiten materializar posteriormente una imagen independiente por local mediante un
-job autorizado. Git solo conserva la especificación. Cada imagen real deberá almacenarse fuera del
-repositorio y registrar `objectKey`, SHA-256, modelo/revisión del generador, licencia/procedencia y
-resultado de revisión humana. Hasta entonces `materialized=false` y `trainingAllowed=false`.
+Los 100 prompts se materializaron como una imagen PNG independiente de 1448×1086 por local mediante
+el generador integrado. Los binarios viven en `images/`, ignorado por Git; el repositorio conserva
+`image-assets.jsonl` con `objectKey` local, SHA-256, dimensiones, procedencia y estado de revisión.
+El manifiesto declara `materializedImages=100`, pero mantiene `trainingAllowed=false` porque falta
+revisión humana y la puerta de categoría visual no supera recall macro.
+
+`visual-qa-report.json` contiene la ejecución real con CLIP fijado. La QA estructural pasa: 100/100
+PNG válidos, RGB, 4:3, sin metadatos, sin duplicados exactos ni perceptuales y distancia dHash mínima
+15. El diagnóstico de categoría obtiene accuracy 0,74, precision macro 0,819686, recall macro
+0,772565 y F1 macro 0,746995; falla el umbral de recall 0,80. Validación-cold alcanza accuracy
+0,866667 y test-cold 0,80, mientras warm queda en 0,70 por confusiones históricas entre peluquería y
+estética y por interiores municipales genéricos.
+
+Las cuatro hojas de contacto locales fueron inspeccionadas por el agente: no se observaron personas,
+marcas o texto legible. Esto no equivale a revisión humana. El screening de personas por similitud de
+prompts resultó no discriminativo —marcó 100/100— y se conserva como `inconclusive`, nunca como prueba
+de presencia de personas ni como gate aprobado.
 
 No se recomienda entrenar CLIP con imágenes generadas como única verdad: el modelo podría aprender
 artefactos del generador y producir métricas artificialmente altas. Incluso tras materialización,

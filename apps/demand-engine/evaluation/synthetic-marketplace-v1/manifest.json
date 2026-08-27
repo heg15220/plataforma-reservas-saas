@@ -1,20 +1,78 @@
 {
   "artifacts": {
+    "image-assets.jsonl": {
+      "rows": 100,
+      "sha256": "f6ae36ba4616bd5f9481777c0e96743662e9ca7f9d5c192add329786c66918da"
+    },
     "image-prompts.jsonl": {
       "rows": 100,
-      "sha256": "b883a26245b7bfedafa6188a023727ac06a1b49ccfb3a246d5fb17a77e60cb53"
+      "sha256": "dfbf7691b95f68638b33d3670774e1e08f2c9e97ea0a06d3606ded18ee865ce3"
     },
     "profiles.jsonl": {
       "rows": 40,
-      "sha256": "3eef5b0a424e1ffa8f2045b56286e694fbda282b7b5644e26c23dd36eb5828ab"
+      "sha256": "c66b981cb13ae73acdc1ebc4b1c2629e818f54b0b4ddbb45919c7636a91450b6"
     },
     "ranking-sessions.jsonl": {
       "rows": 2400,
-      "sha256": "3f99b1992e9ac9371a651dd0c6ff22e454ef5c554b58efee5ecc651b8cdfe11f"
+      "sha256": "cd163df2a861ddcc5cf4e258cf1c17c9cf07b6047f1001ed8a251156a55d1360"
     },
     "venues.jsonl": {
       "rows": 100,
-      "sha256": "e606e58d3738920d6db227b52697db022c4f9fc2b09dccad8ba410c69ca88b62"
+      "sha256": "15f1d0532ad108927737e45bb5bc41f016cc752c4c4d649f7fe907891623d96d"
+    },
+    "visual-qa-report.json": {
+      "rows": 1,
+      "sha256": "c32b3387c77e8cb61ff4b1a5827854050416a9bdbfac2a315392d27d7d9603ad"
+    }
+  },
+  "categoryCoverage": {
+    "campo-de-futbol": {
+      "testCold": 2,
+      "validationCold": 2,
+      "venues": 11,
+      "warm": 7
+    },
+    "centro-de-estetica": {
+      "testCold": 2,
+      "validationCold": 2,
+      "venues": 10,
+      "warm": 6
+    },
+    "centro-deportivo": {
+      "testCold": 2,
+      "validationCold": 2,
+      "venues": 10,
+      "warm": 6
+    },
+    "instalacion-municipal": {
+      "testCold": 2,
+      "validationCold": 1,
+      "venues": 10,
+      "warm": 7
+    },
+    "otros": {
+      "testCold": 2,
+      "validationCold": 2,
+      "venues": 10,
+      "warm": 6
+    },
+    "peluqueria": {
+      "testCold": 2,
+      "validationCold": 2,
+      "venues": 28,
+      "warm": 24
+    },
+    "pista-de-padel": {
+      "testCold": 1,
+      "validationCold": 2,
+      "venues": 10,
+      "warm": 7
+    },
+    "restaurante": {
+      "testCold": 2,
+      "validationCold": 2,
+      "venues": 11,
+      "warm": 7
     }
   },
   "coldStartPolicy": {
@@ -26,7 +84,7 @@
   "counts": {
     "candidates": 19200,
     "imagePrompts": 100,
-    "materializedImages": 0,
+    "materializedImages": 100,
     "profiles": 40,
     "rankingSessions": 2400,
     "venues": 100
@@ -74,7 +132,11 @@
       "humanReviewForDuplicatedArtifactsAndBrandText",
       "passClipVisualEvaluationGate"
     ],
-    "status": "promptOnly",
+    "assetManifest": "image-assets.jsonl",
+    "automatedQualityPassed": false,
+    "humanReviewCompleted": false,
+    "qaReport": "visual-qa-report.json",
+    "status": "materializedPendingHumanReview",
     "trainingAllowed": false
   }
 }
