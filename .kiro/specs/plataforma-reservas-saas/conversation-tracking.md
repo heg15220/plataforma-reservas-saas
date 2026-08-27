@@ -10716,3 +10716,26 @@ Fuente de verdad del avance:
   - El documento distingue sobreajuste del benchmark de sobreajuste por entrenamiento.
   - No se presenta v1/v2 como comparación causal porque los benchmarks no son idénticos.
   - V2 continúa `not_promoted`, en shadow y con fallback full-text/trigram.
+
+# Conversación 275 - Dataset sintético temporal del marketplace
+
+- Fecha: 2026-08-27.
+- Resumen de la conversación: se creó un dataset reproducible para mejorar y evaluar el recomendador
+  con 100 locales ficticios, 40 perfiles pseudónimos, 2.400 sesiones temporales, 19.200 candidatos y
+  100 especificaciones visuales, incorporando ruido y cohortes cold-start.
+- Archivos modificados: generador/CLI y pruebas Python, pyproject, cinco artefactos del dataset y su
+  README; requisitos, diseño, tareas, documento técnico y este registro.
+- Requisitos impactados: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: se añaden 23.15 y 23.16; 23.15 se completa y 23.16 queda pendiente.
+- Tareas completadas: 23.15.
+- Siguiente tarea pendiente recomendada: 17.1 según orden global; para la fase actual, 23.13. La
+  materialización visual 23.16 debe ejecutarse antes de entrenar o evaluar CLIP con estos activos.
+- Decisiones o aclaraciones relevantes:
+  - Los splits son temporales y las cohortes futuras no aparecen antes de su periodo.
+  - Los outcomes contienen ruido por diseño; datos sintéticos nunca habilitan promoción.
+  - Los prompts no se presentan como imágenes: los 100 activos visuales siguen bloqueados para
+    entrenamiento hasta almacenamiento externo, procedencia, hash y revisión humana.
+  - Los perfiles omiten PII y atributos sensibles; IDs solo agrupan y no son features.
+  - Cuatro pruebas focalizadas verificaron cardinalidad, tasas no perfectas, reproducibilidad,
+    privacidad, bloqueo visual y ausencia de leakage.

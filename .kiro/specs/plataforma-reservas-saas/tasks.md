@@ -471,6 +471,8 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [x] 23.12. Definir SLO, presupuesto de latencia/coste, capacidad, alertas y runbooks del `Demand Engine` y pipelines.
 - [ ] 23.13. Ejecutar pruebas de recuperación, pérdida de dependencia, corrupción de artefacto, rotación de secretos y eliminación de datos.
 - [ ] 23.14. Realizar revisión jurídica, privacidad, seguridad y equidad antes de activar personalización persistente, promociones u optimización.
+- [x] 23.15. Generar un dataset sintético reproducible con 100 locales, 40 perfiles, interacciones temporales y cohortes cold-start para desarrollo y evaluación offline sin habilitar promoción.
+- [ ] 23.16. Materializar, almacenar fuera de Git y revisar humanamente las 100 imágenes especificadas antes de utilizarlas como evidencia visual o input de entrenamiento.
 
 ## 26. Criterios de salida del MVP
 

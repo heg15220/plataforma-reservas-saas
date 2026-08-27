@@ -40265,3 +40265,119 @@ productivo. El holdout v2 ya está consumido y no debe reutilizarse para selecci
 hiperparámetros. El siguiente avance válido requiere tráfico etiquetado consentido con corte temporal,
 o train/validación nuevos para un fine-tuning contrastivo pequeño y un test final nunca observado.
 Hasta entonces V2 permanece en shadow y no se activa recuperación vectorial.
+
+# Iteración 2026-08-27 - Tarea 23.15: dataset sintético temporal del marketplace
+
+## Objetivo, alcance y trazabilidad
+
+- Identificador exacto: 23.15.
+- Objetivo técnico: disponer de una base reproducible, suficientemente variada y explícitamente no
+  productiva para desarrollar adaptadores de Factorization Machine/LambdaMART, medir regresiones,
+  ensayar cold-start y preparar la posterior evaluación visual.
+- Requisitos: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y
+  RNF-015.
+- Diseño: nueva sección 14.67, compatible con 14.52, 14.53 y la restricción visual 14.62.
+
+La implementación no entrena ni promueve un modelo. Crea evidencia sintética para desarrollo con
+`productionEvidence=false` y `promotionReviewAllowed=false`. Esta separación es necesaria porque una
+mejora sobre comportamiento simulado demuestra que el pipeline aprende la función generadora, no que
+generaliza a elecciones humanas reales.
+
+## Archivos, módulo y contrato de generación
+
+Se crea `reserly_demand_engine.synthetic_marketplace`, con API pública
+`generate_dataset(output_dir, seed)` y CLI `reserly-demand-generate-synthetic-marketplace`. La función
+solo crea la carpeta si falta y sobrescribe sus cinco artefactos conocidos; no borra archivos ajenos.
+La semilla por defecto es 1729. IDs de local, perfil, sesión y prompt son UUIDv5 sobre namespace y
+versión estables, y JSONL usa claves ordenadas, separadores canónicos y UTF-8. `generatedAt` es parte
+de la versión lógica, no el reloj de ejecución, por lo que dos ejecuciones iguales son byte a byte
+idénticas.
+
+Los artefactos versionados son:
+
+- `venues.jsonl`: 100 locales ficticios, 50 `hairSalon` y 50 `beautyCenter`, servicios y atributos
+  cerrados, descripciones ES/EN y diez zonas gallegas con coordenadas perturbadas y precisión
+  `syntheticApproximate`. No hay dirección ni referencia a negocio real.
+- `profiles.jsonl`: 40 perfiles pseudónimos con locale, cohorte, consentimiento simulado y únicamente
+  preferencias de servicio/atributo permitidas. Siete perfiles por patrón carecen de consentimiento
+  persistente y exportan preferencias vacías.
+- `ranking-sessions.jsonl`: 2.400 consultas con ocho alternativas completas cada una; 19.200 filas
+  candidatas anidadas. Identificadores y labels están fuera de `features`.
+- `image-prompts.jsonl`: 100 prompts visuales únicos, asociados uno a uno a locales.
+- `manifest.json`: semilla, versión, hashes de los cuatro JSONL, recuentos, splits, política
+  cold-start, limitaciones y estado visual bloqueado.
+
+`README.md` documenta regeneración, finalidad, splits, limitaciones y activación visual. `pyproject`
+registra la CLI. No hay migraciones, tablas, índices, endpoints, jobs online o cambios en el contrato
+público; el dataset permanece bajo `evaluation/` y no participa en inferencia.
+
+## Modelo temporal, candidatos y labels ruidosos
+
+Train contiene 1.400 sesiones entre enero y abril de 2026, validación 400 durante mayo y test 600
+durante junio. Los 70 locales/28 perfiles `warm` pueden aparecer siempre; 15 locales/6 perfiles
+`validationCold` aparecen desde validación y otros 15/6 `testCold` solo en test. La selección de
+entidades se filtra por cohorte antes de generar candidatos, evitando fuga retroactiva.
+
+Cada sesión determina una intención permitida y muestrea ocho locales elegibles sin reemplazo. Las
+features observables son afinidad de contenido, disponibilidad, calidad, distancia sintética y tier
+de precio, más categoría/novedad y los invariantes `eligible=true` y `capacityAvailable=true`. La
+utilidad latente combina estas señales con ruido gaussiano. La elección usa softmax y clic/reserva se
+muestrean mediante sigmoides; asistencia añade otra probabilidad. Solo el candidato elegido puede
+recibir relevancia 1/2/3. Este proceso evita labels perfectamente separables y mantiene features y
+outcomes estructuralmente separados para reducir leakage.
+
+La ejecución versionada produjo tasa de clic por sesión 0,751667, reserva 0,442917 y asistencia
+0,384167. Son comprobaciones de mezcla y ruido, no benchmarks ni objetivos comerciales. Un consumidor
+debe medir train/validación/test y warm/cold-start por separado y nunca usar `profileId`, `venueId`,
+cohorte, split u outcomes como features.
+
+## Privacidad, seguridad, visuales e internacionalización
+
+Los perfiles declaran `containsDirectIdentifiers=false`, `containsSensitiveAttributes=false`,
+`revocationApplied=true` y finalidad cerrada. Se excluyen email, teléfono, dirección, código postal,
+edad, género, salud y pago. Los identificadores son sintéticos y no enlazables con clientes. Las
+descripciones se generan en español e inglés; el locale de sesión es `es-ES` o `en-GB`.
+
+No se generan binarios gráficos dentro del repositorio. Cada prompt exige un interior ficticio sin
+personas, texto, logos o marcas y declara `materialized=false`, `trainingAllowed=false`, `objectKey`
+y `provenance` nulos. Materializar una imagen pertenece a 23.16: almacenamiento fuera de Git, SHA-256,
+modelo/revisión de generador, licencia/procedencia y revisión humana individual. Aun entonces, CLIP
+mantiene la allowlist de 14.62, no puede inferir atributos sensibles ni mutar automáticamente un
+perfil. La decisión evita sobreajuste a artefactos compartidos del generador visual.
+
+## Validación, errores, observabilidad y evidencia
+
+La CLI falla con excepción y exit no cero ante errores de escritura; no oculta fallos ni genera una
+versión parcial válida. El manifiesto permite verificar integridad offline mediante SHA-256. Al ser
+un generador local sin red, datos reales, secretos, servicio o background job, no incorpora logs o
+métricas operativas; stdout expone únicamente ruta y recuentos no sensibles.
+
+`test_synthetic_marketplace.py` añade cuatro pruebas:
+
+1. cardinalidades exactas y tasas de clic/reserva no perfectas;
+2. igualdad SHA-256 de los cinco archivos en dos generaciones con la misma semilla;
+3. rangos temporales, recuentos por split y exclusión de cohortes futuras;
+4. ausencia de campos personales prohibidos, 100 prompts únicos y bloqueo visual fail-closed.
+
+Comando focalizado ejecutado:
+
+`$env:PYTHONPATH='apps/demand-engine/src;packages/demand-contracts/src'; python -m unittest apps/demand-engine/tests/test_synthetic_marketplace.py`
+
+Resultado: 4/4 pruebas verdes en 7,986 s. La CLI generó 100 locales, 40 perfiles, 2.400 sesiones y
+19.200 candidatos. La regresión completa terminó con 269/269 pruebas verdes en 366,655 s. Evidently
+emitió avisos de compatibilidad futura con pandas 4 y UMAP avisó de TensorFlow opcional ausente; no
+hubo fallos ni afectan esta capacidad. `compileall`, verificación de los cuatro hashes del manifiesto
+y `git diff --check` terminaron correctamente.
+
+## Riesgos, limitaciones y trabajo derivado
+
+Los nombres, coordenadas, comportamiento y outcomes son sintéticos; no demuestran Recall@K, NDCG,
+calibración, equidad, causalidad ni conversión reales. Los perfiles son pocos para modelar diversidad
+humana y no incluyen segmentos sensibles, deliberadamente. El generador aproxima disponibilidad y
+distancia, pero no consulta reglas transaccionales. Las descripciones templadas podrían favorecer
+modelos de contenido y deben complementarse con catálogo consentido y holdout humano.
+
+23.16 debe materializar y revisar los activos visuales antes de cualquier uso. 23.13 sigue siendo la
+siguiente tarea pendiente de la fase por orden: ensayos de recuperación, dependencias, corrupción,
+secretos y borrado. 23.14 conserva la revisión formal previa a personalización persistente. Ninguna
+de estas tareas puede sustituirse por resultados del dataset sintético.

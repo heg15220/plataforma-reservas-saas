@@ -1,0 +1,80 @@
+{
+  "artifacts": {
+    "image-prompts.jsonl": {
+      "rows": 100,
+      "sha256": "b883a26245b7bfedafa6188a023727ac06a1b49ccfb3a246d5fb17a77e60cb53"
+    },
+    "profiles.jsonl": {
+      "rows": 40,
+      "sha256": "3eef5b0a424e1ffa8f2045b56286e694fbda282b7b5644e26c23dd36eb5828ab"
+    },
+    "ranking-sessions.jsonl": {
+      "rows": 2400,
+      "sha256": "3f99b1992e9ac9371a651dd0c6ff22e454ef5c554b58efee5ecc651b8cdfe11f"
+    },
+    "venues.jsonl": {
+      "rows": 100,
+      "sha256": "e606e58d3738920d6db227b52697db022c4f9fc2b09dccad8ba410c69ca88b62"
+    }
+  },
+  "coldStartPolicy": {
+    "testColdEntitiesAbsentFromTrainAndValidation": true,
+    "validationColdEntitiesAbsentFromTrain": true
+  },
+  "consentRevocationsApplied": true,
+  "containsPersonalData": false,
+  "counts": {
+    "candidates": 19200,
+    "imagePrompts": 100,
+    "materializedImages": 0,
+    "profiles": 40,
+    "rankingSessions": 2400,
+    "venues": 100
+  },
+  "datasetVersion": "synthetic-marketplace-v1",
+  "generatedAt": "2026-07-01T00:00:00Z",
+  "limitations": [
+    "Synthetic behavior cannot demonstrate production accuracy or causality.",
+    "Metrics must be reported separately for warm and cold-start cohorts.",
+    "Visual prompts are specifications, not image evidence or training assets.",
+    "Generated outcomes include noise by design and must not be used as target thresholds."
+  ],
+  "productionEvidence": false,
+  "promotionReviewAllowed": false,
+  "schemaVersion": 1,
+  "seed": 1729,
+  "splits": {
+    "test": {
+      "dateRange": [
+        "2026-06-01",
+        "2026-06-30"
+      ],
+      "sessions": 600
+    },
+    "train": {
+      "dateRange": [
+        "2026-01-01",
+        "2026-04-30"
+      ],
+      "sessions": 1400
+    },
+    "validation": {
+      "dateRange": [
+        "2026-05-01",
+        "2026-05-31"
+      ],
+      "sessions": 400
+    }
+  },
+  "synthetic": true,
+  "visualAssets": {
+    "activationRequirements": [
+      "materializeEachAssetOutsideGit",
+      "recordObjectKeySha256AndGeneratorProvenance",
+      "humanReviewForDuplicatedArtifactsAndBrandText",
+      "passClipVisualEvaluationGate"
+    ],
+    "status": "promptOnly",
+    "trainingAllowed": false
+  }
+}

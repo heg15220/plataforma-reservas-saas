@@ -4927,3 +4927,29 @@ gate causal, medición incremental y River. Pruebas meta verifican cobertura exa
 referencias, ausencia de respuestas permisivas, desactivación de acciones automáticas y coincidencia
 de fallback entre política/model card de drift. El cierre de Fase 22 exige además la suite acumulada,
 no solo la matriz.
+
+### 14.67 Dataset sintético temporal para desarrollo del recomendador
+
+`synthetic-marketplace-v1` desacopla el ensayo de contratos de cualquier dato real: 100 locales
+ficticios, 40 perfiles pseudónimos y 2.400 sesiones con ocho candidatos completos. La semilla 1729,
+UUIDv5 y serialización JSON canónica hacen que los cuatro artefactos sean reproducibles byte a byte;
+el manifiesto fija recuentos y SHA-256. Los nombres, coordenadas aproximadas y descripciones son
+sintéticos, no una réplica de negocios existentes.
+
+El corte es temporal: train enero-abril, validación mayo y test junio de 2026. Setenta locales y 28
+perfiles son `warm`; 15/6 aparecen por primera vez en validación y 15/6 exclusivamente en test. El
+selector de candidatos nunca introduce una entidad futura. Cada candidato separa `features`
+anteriores al resultado de `labels`; clic, reserva y asistencia se muestrean con ruido. Esto reduce
+el riesgo de métricas perfectas por construcción, aunque no convierte la simulación en prueba de
+generalización productiva.
+
+Los perfiles omiten identificadores directos y atributos sensibles. Un consentimiento sintético
+desactivado produce preferencias vacías y fuerza contexto no personal. IDs solo agrupan observaciones
+y quedan prohibidos como features. El manifiesto fija `productionEvidence=false`,
+`promotionReviewAllowed=false` y exige métricas separadas warm/cold-start.
+
+Las 100 imágenes se representan inicialmente como especificaciones únicas. Cada fila declara
+`materialized=false`, `trainingAllowed=false`, sin `objectKey` ni procedencia ficticia. Materializarlas
+será un job independiente fuera de Git, con SHA-256, versión de generador, licencia/procedencia y
+revisión humana antes de CLIP. Esta frontera evita que artefactos visuales generativos eleven de forma
+artificial la métrica o muten automáticamente perfiles comerciales.

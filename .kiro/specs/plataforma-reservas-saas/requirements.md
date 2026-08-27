@@ -855,6 +855,12 @@ acciones automáticas.
   detener la automatización y volver a una política determinista aprobada.
 - WHEN una decisión tenga impacto comercial material, THEN existe explicación, supervisión humana y
   mecanismo de impugnación o corrección cuando corresponda.
+- WHEN se use un dataset sintético para desarrollar el recomendador, THEN debe ser reproducible,
+  versionado, libre de datos personales, separar train/validación/test por tiempo e incluir cohortes
+  cold-start sin presentarse como evidencia productiva ni habilitar promoción.
+- WHEN se preparen imágenes sintéticas de locales, THEN cada activo conserva prompt, procedencia,
+  hash y revisión humana; una especificación sin imagen materializada o sin revisar permanece
+  excluida del entrenamiento y de cualquier puerta visual de producción.
 
 ### RF-030 Administración de plataforma
 
