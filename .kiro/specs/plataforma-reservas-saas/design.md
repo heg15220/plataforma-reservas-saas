@@ -4984,3 +4984,15 @@ claridad sintética, ese valor solo aprueba el diagnóstico automático concreto
 generalización. El informe fuerza `trainingAllowed=false`, `humanReviewCompleted=false` y
 `overallPassed=false`. La promoción requiere todavía revisión humana y un stress test posterior con
 casos reales o ambiguos, sin retocar la selección contra este holdout ya consumido.
+
+La confirmación exploratoria de 24 imágenes no constituye todavía la puerta de generalización. La
+siguiente versión debe congelar antes de inferencia un stress test con al menos diez imágenes por
+categoría, incluyendo hard negatives y espacios mixtos. La puerta exige accuracy >=0,83, error
+top-1 <=0,17, precision/recall/F1 macro >=0,80 y brecha absoluta desarrollo-test <=0,10. Una
+accuracy sintética >=0,98 activa `benchmarkDifficultyReviewRequired`: señala posible test demasiado
+fácil y bloquea promoción aunque las métricas de clasificación pasen.
+
+No existe un límite superior de accuracy de entrenamiento. Reducirla deliberadamente a 0,80
+destruiría señal y no controla varianza. Cuando exista entrenamiento real, la política usará curvas
+de aprendizaje, early stopping sobre validación, regularización y la brecha train/validation/test;
+en el CLIP actual, `warm` es desarrollo para selección de activos, no un split de entrenamiento.

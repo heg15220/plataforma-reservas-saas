@@ -476,8 +476,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
   - [x] 23.16.a. Materializar 100 PNG 4:3 fuera de Git, registrar SHA-256, dimensiones y procedencia, y cubrir las ocho categorías en warm/validation-cold/test-cold.
   - [x] 23.16.b. Ejecutar QA estructural, duplicados perceptuales, hojas de contacto y diagnóstico CLIP de categoría con métricas globales y por cohorte.
   - [ ] 23.16.c. Completar revisión humana independiente, sustituir activos ambiguos y superar recall macro >=0,80 sin reutilizar el test para ajuste.
-    - [x] 23.16.c.1. Sustituir de forma versionada los 17 activos ambiguos de desarrollo y superar la puerta automática en un holdout nuevo, equilibrado y no utilizado para el ajuste.
+    - [x] 23.16.c.1. Sustituir de forma versionada los 17 activos ambiguos de desarrollo y ejecutar una primera confirmación exploratoria en un holdout nuevo, equilibrado y no utilizado para el ajuste.
     - [ ] 23.16.c.2. Completar la revisión humana independiente de originales, sustituciones y holdout antes de habilitar cualquier uso de entrenamiento.
+    - [ ] 23.16.c.3. Crear un stress test visual representativo con suficientes casos por categoría, hard negatives y ambigüedad realista; exigir accuracy de test >=0,83, error <=0,17, métricas macro >=0,80 y brecha desarrollo-test <=0,10 sin forzar artificialmente una accuracy de entrenamiento.
 
 ## 26. Criterios de salida del MVP
 

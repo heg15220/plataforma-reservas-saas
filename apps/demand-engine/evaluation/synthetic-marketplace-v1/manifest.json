@@ -163,9 +163,11 @@
       "developmentReport": "visual-qa-report.v2-development.json",
       "freshHoldoutReport": "visual-holdout-v2/visual-qa-report.json",
       "automatedQualityPassed": true,
+      "benchmarkAdequacyPassed": false,
+      "benchmarkDifficultyReviewRequired": true,
       "humanReviewCompleted": false,
       "trainingAllowed": false,
-      "status": "automaticGatePassedPendingHumanReview"
+      "status": "exploratoryCategoryGatePassedBenchmarkInadequate"
     },
     "humanReviewCompleted": false,
     "qaReport": "visual-qa-report.json",

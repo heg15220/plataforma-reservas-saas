@@ -69,7 +69,7 @@ el clasificador congelado pasa de accuracy 0,70/recall macro 0,752232 a
 0,942857/0,916667. Peluquería e instalación municipal alcanzan recall 1,00; persiste una debilidad
 visible en centro deportivo (recall 0,50), por lo que el resultado no se presenta como perfección.
 
-La aceptación automática se abrió una sola vez sobre `visual-holdout-v2`: 24 imágenes nuevas,
+La confirmación exploratoria se abrió una sola vez sobre `visual-holdout-v2`: 24 imágenes nuevas,
 equilibradas 3×8, generadas independientemente y congeladas antes de ejecutar CLIP. La QA estructural
 pasa 24/24, sin duplicados exactos/perceptuales y con dHash mínimo 18. El diagnóstico obtiene
 accuracy, precision macro, recall macro y F1 macro 1,00. Esta cifra perfecta se interpreta como un
@@ -78,6 +78,11 @@ La validación-cold previa no modificada (recall 0,875) y el desarrollo v2 (0,91
 contraste menos optimista. `trainingAllowed=false`, `humanReviewCompleted=false` y
 `overallPassed=false` permanecen invariables hasta revisión humana independiente y futuras pruebas
 con imágenes reales o ambiguas.
+
+Tras acordar el criterio de generalización, este holdout conserva
+`automatedQualityPassed=true` solo para el diagnóstico de categoría histórico, pero el manifiesto
+declara `benchmarkAdequacyPassed=false` y `benchmarkDifficultyReviewRequired=true`: 3 muestras por
+categoría y un 1,00 sintético no satisfacen la puerta representativa.
 
 Las cuatro hojas de contacto locales fueron inspeccionadas por el agente: no se observaron personas,
 marcas o texto legible. Esto no equivale a revisión humana. El screening de personas por similitud de

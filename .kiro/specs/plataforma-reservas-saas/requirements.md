@@ -870,6 +870,15 @@ acciones automáticas.
 - WHEN un holdout sintético obtenga métricas perfectas, THEN el resultado no demuestra
   generalización ni habilita entrenamiento: se publican tamaño, dificultad, cohortes de contraste y
   la revisión humana continúa siendo obligatoria.
+- WHEN se evalúe la generalización visual, THEN el test representativo exige accuracy >=0,83,
+  error <=0,17, precision/recall/F1 macro >=0,80 y una brecha absoluta entre desarrollo y test
+  <=0,10, con tamaño mínimo y hard negatives definidos antes de inferencia.
+- WHEN la accuracy de desarrollo o entrenamiento sea alta, THEN no se reduce ni manipula para
+  aproximarla artificialmente al 80%; el sobreajuste se determina por brecha de generalización,
+  estabilidad por categoría, calibración y rendimiento sobre datos no observados.
+- WHEN un test sintético pequeño alcance accuracy >=0,98, THEN se marca como posiblemente demasiado
+  fácil y requiere auditoría de dificultad y un stress test nuevo; el modelo no se penaliza por
+  acertar, pero el benchmark tampoco puede autorizar promoción.
 
 ### RF-030 Administración de plataforma
 

@@ -10789,3 +10789,22 @@ Fuente de verdad del avance:
     contrasta con validation-cold 0,875 y warm v2 0,916667.
   - El holdout queda consumido tras una sola apertura; no puede reutilizarse para otra corrección.
   - `trainingAllowed=false`, `humanReviewCompleted=false` y `overallPassed=false` se mantienen.
+
+# Conversación 278 - Criterio de error, accuracy y generalización visual
+
+- Fecha: 2026-08-28.
+- Resumen de la conversación: se aclaró que warm es desarrollo y no entrenamiento de CLIP, y se
+  endureció el criterio para impedir que un holdout sintético pequeño/perfecto autorice promoción.
+- Archivos modificados: requisitos, diseño, tareas, guía de mejora visual y este registro.
+- Requisitos impactados: RF-029 y RF-041; RNF-014 y RNF-015.
+- Tareas impactadas: se precisa el alcance ya completado de 23.16.c.1 y se añade 23.16.c.3 pendiente.
+- Tareas completadas: ninguna nueva.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para visuales, 23.16.c.2 y
+  23.16.c.3 permanecen pendientes.
+- Decisiones o aclaraciones relevantes:
+  - Test objetivo: accuracy >=0,83, error <=0,17 y métricas macro >=0,80.
+  - Brecha absoluta desarrollo-test máxima: 0,10.
+  - El stress test tendrá al menos diez imágenes por categoría y hard negatives predefinidos.
+  - Accuracy sintética >=0,98 activa revisión de dificultad y no habilita promoción.
+  - No se fuerza accuracy de entrenamiento a 0,80; se controla varianza mediante generalización,
+    regularización, curvas de aprendizaje y early stopping cuando exista entrenamiento real.

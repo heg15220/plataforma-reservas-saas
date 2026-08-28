@@ -40555,3 +40555,13 @@ muestras por clase producen intervalos amplios y hacen probable un 1,00 condicio
 Falta revisión humana de los 141 activos relevantes (100 originales, 17 sustituciones y 24 holdout),
 OCR/detector de personas certificado y evaluación real consentida. Ningún activo puede entrenar ni
 promocionarse hasta cerrar 23.16.c.2.
+
+## Decisión posterior sobre adecuación del benchmark
+
+La conversación 278 sustituye la interpretación de `automatedQualityPassed=true` como puerta
+suficiente. El valor se conserva en el informe consumido como resultado histórico del diagnóstico de
+categoría, pero el manifiesto añade `benchmarkAdequacyPassed=false` y
+`benchmarkDifficultyReviewRequired=true`. La muestra 3×8 y el resultado sintético 1,00 son
+insuficientes para generalización. La nueva 23.16.c.3 exige al menos diez casos por categoría, hard
+negatives, accuracy >=0,83, error <=0,17, métricas macro >=0,80 y brecha desarrollo-test <=0,10.
+No se impone techo de accuracy de entrenamiento: la varianza se controla fuera de muestra.

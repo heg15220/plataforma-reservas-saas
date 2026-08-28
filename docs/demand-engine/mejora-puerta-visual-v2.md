@@ -3,8 +3,9 @@
 ## Resultado
 
 La confusión principal entre peluquería/estética e instalación municipal/interior genérico queda
-corregida en la selección candidata v2 sin modificar CLIP ni rebajar los umbrales. La puerta
-automática pasa en un holdout sintético nuevo, pero la puerta completa continúa bloqueada:
+corregida en la selección candidata v2 sin modificar CLIP ni rebajar los umbrales. El diagnóstico
+automático de categoría pasa en un holdout sintético nuevo, pero la puerta de generalización y la
+puerta completa continúan bloqueadas:
 
 | Evidencia | Imágenes | Accuracy | Precision macro | Recall macro | F1 macro | Uso |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
@@ -69,3 +70,12 @@ La subtarea 23.16.c.1 queda completada, pero 23.16.c.2 y 23.16 siguen pendientes
 independiente debe revisar originales, sustituciones y holdout para detectar categorías incorrectas,
 texto/marcas, personas, artefactos y duplicados semánticos. Después se necesita un stress test con
 imágenes reales consentidas o casos ambiguos, congelado sin ajustar contra el holdout v2.
+
+### Criterio de generalización acordado
+
+El siguiente stress test deberá alcanzar accuracy >=0,83 (error <=0,17), precision/recall/F1 macro
+>=0,80 y una brecha absoluta desarrollo-test <=0,10. Tendrá al menos diez imágenes por categoría y
+hard negatives definidos antes de inferencia. Un resultado sintético >=0,98 no falla al modelo, pero
+sí obliga a revisar la dificultad del benchmark y bloquea promoción hasta disponer de evidencia más
+representativa. No se fuerza que desarrollo/entrenamiento quede en 0,80: el sobreajuste se mide por la
+brecha y la estabilidad fuera de muestra, no rebajando aciertos deliberadamente.
