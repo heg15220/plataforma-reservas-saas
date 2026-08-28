@@ -1,0 +1,411 @@
+{
+  "automatedQualityPassed": true,
+  "clipCategoryDiagnostic": {
+    "accuracy": 1.0,
+    "categoryQualityPassed": true,
+    "cohortMetrics": {
+      "finalHoldout": {
+        "accuracy": 1.0,
+        "confusionMatrix": {
+          "campo-de-futbol": {
+            "campo-de-futbol": 3
+          },
+          "centro-de-estetica": {
+            "centro-de-estetica": 3
+          },
+          "centro-deportivo": {
+            "centro-deportivo": 3
+          },
+          "instalacion-municipal": {
+            "instalacion-municipal": 3
+          },
+          "otros": {
+            "otros": 3
+          },
+          "peluqueria": {
+            "peluqueria": 3
+          },
+          "pista-de-padel": {
+            "pista-de-padel": 3
+          },
+          "restaurante": {
+            "restaurante": 3
+          }
+        },
+        "imageCount": 24,
+        "macroF1": 1.0,
+        "macroPrecision": 1.0,
+        "macroRecall": 1.0,
+        "metrics": [
+          {
+            "categoryCode": "restaurante",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "peluqueria",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "campo-de-futbol",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "pista-de-padel",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "instalacion-municipal",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "centro-deportivo",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "centro-de-estetica",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          {
+            "categoryCode": "otros",
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          }
+        ]
+      }
+    },
+    "confusionMatrix": {
+      "campo-de-futbol": {
+        "campo-de-futbol": 3
+      },
+      "centro-de-estetica": {
+        "centro-de-estetica": 3
+      },
+      "centro-deportivo": {
+        "centro-deportivo": 3
+      },
+      "instalacion-municipal": {
+        "instalacion-municipal": 3
+      },
+      "otros": {
+        "otros": 3
+      },
+      "peluqueria": {
+        "peluqueria": 3
+      },
+      "pista-de-padel": {
+        "pista-de-padel": 3
+      },
+      "restaurante": {
+        "restaurante": 3
+      }
+    },
+    "evaluationKind": "syntheticCategoryDiagnostic",
+    "libraryVersion": "4.56.2",
+    "macroF1": 1.0,
+    "macroPrecision": 1.0,
+    "macroRecall": 1.0,
+    "metrics": [
+      {
+        "categoryCode": "restaurante",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "peluqueria",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "campo-de-futbol",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "pista-de-padel",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "instalacion-municipal",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "centro-deportivo",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "centro-de-estetica",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      {
+        "categoryCode": "otros",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    ],
+    "minimumMacroPrecision": 0.8,
+    "minimumMacroRecall": 0.8,
+    "modelKey": "clip-vit-b32-visual-evidence-v1",
+    "modelRevision": "fbf5e647b25f3514e526849b05cc0196b206d822",
+    "peopleRiskFlaggedCount": 22,
+    "peopleRiskThreshold": 0.5,
+    "peopleScreeningIsDiagnosticOnly": true,
+    "peopleScreeningResult": "diagnosticOnly",
+    "peopleScreeningUsable": true,
+    "predictions": [
+      {
+        "actual": "restaurante",
+        "confidence": 0.98499045,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.96378993,
+        "predicted": "restaurante",
+        "sha256": "4cabe5992561e0ded34e3eec68db4221bab3bf961e70ed0935f426daf961187f"
+      },
+      {
+        "actual": "restaurante",
+        "confidence": 0.97592419,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.85452365,
+        "predicted": "restaurante",
+        "sha256": "89dcb2215c5d9fe6a783a401deecd1a74cb44b75b2763175b9ca179f851cead2"
+      },
+      {
+        "actual": "restaurante",
+        "confidence": 0.93027939,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.96694527,
+        "predicted": "restaurante",
+        "sha256": "61395869f8bc3cdee8727968c7a462b8ba03a094e0f497b575a08f20b8639e25"
+      },
+      {
+        "actual": "peluqueria",
+        "confidence": 0.87249415,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.98121328,
+        "predicted": "peluqueria",
+        "sha256": "7ba0be2e94db7137f8eedc6ccc93e632aa4fb4e4ee361bf82ea11c439bed4746"
+      },
+      {
+        "actual": "peluqueria",
+        "confidence": 0.96891361,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.96400737,
+        "predicted": "peluqueria",
+        "sha256": "820ab0c0e2eceedf62a2fb374e39db829dc12c8774984d98878a0955f7d79f1c"
+      },
+      {
+        "actual": "peluqueria",
+        "confidence": 0.87674308,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.97107938,
+        "predicted": "peluqueria",
+        "sha256": "e55711ea7f0d3ff9a58221927402604d003c106753c16bc1881c9e189a7c6bb2"
+      },
+      {
+        "actual": "campo-de-futbol",
+        "confidence": 0.99721378,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.90208651,
+        "predicted": "campo-de-futbol",
+        "sha256": "21bdfe7cf6c90f44562ab5402df8567cad8501bc24a7b17dedade0645395560a"
+      },
+      {
+        "actual": "campo-de-futbol",
+        "confidence": 0.99927389,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.82989612,
+        "predicted": "campo-de-futbol",
+        "sha256": "fe8fb8c263bc9a0d9c063c955977c4614f26b183cb45b17eff8c472be90d60e4"
+      },
+      {
+        "actual": "campo-de-futbol",
+        "confidence": 0.90283085,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.82125661,
+        "predicted": "campo-de-futbol",
+        "sha256": "0c96ee67619f03770108e2de9bd61e7ace22b71b9ba1727e90d1ad16ea40deb6"
+      },
+      {
+        "actual": "pista-de-padel",
+        "confidence": 0.99872217,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.68604121,
+        "predicted": "pista-de-padel",
+        "sha256": "94696d6b12792288c55bbbc60eec318213f94a1bf68896fcee995e6448ba6d9d"
+      },
+      {
+        "actual": "pista-de-padel",
+        "confidence": 0.99600125,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.84708622,
+        "predicted": "pista-de-padel",
+        "sha256": "638c86b5714f2b9fed8f7415bda1aeb8835406fe82c706c64a7f21e23333257a"
+      },
+      {
+        "actual": "pista-de-padel",
+        "confidence": 0.99746004,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.87760814,
+        "predicted": "pista-de-padel",
+        "sha256": "230cee86f85462a636e5126526293a4be7280fe3ef99d3061b49ef9b0951fbce"
+      },
+      {
+        "actual": "instalacion-municipal",
+        "confidence": 0.96991859,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.88942905,
+        "predicted": "instalacion-municipal",
+        "sha256": "0c66d47461653401c8ef8e5dca775725fe9416a5e0c89bda30c4dd962ff4c0c1"
+      },
+      {
+        "actual": "instalacion-municipal",
+        "confidence": 0.87002698,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.91465426,
+        "predicted": "instalacion-municipal",
+        "sha256": "9cf0ec85a1de09f4d8ee0157b153c86e83f7eb1b2db17908f7646ca9e52c73f8"
+      },
+      {
+        "actual": "instalacion-municipal",
+        "confidence": 0.99317616,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.79748599,
+        "predicted": "instalacion-municipal",
+        "sha256": "472e5374ba7c812c8f8c56fc898fcd2304cf1305f1c82f7c6644f7e2f502c755"
+      },
+      {
+        "actual": "centro-deportivo",
+        "confidence": 0.98442854,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.38733263,
+        "predicted": "centro-deportivo",
+        "sha256": "0a635c1f8816ed993f6d901bfb8a5577448262ba508f026311ccfa3cb5b5a888"
+      },
+      {
+        "actual": "centro-deportivo",
+        "confidence": 0.9614424,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.52659349,
+        "predicted": "centro-deportivo",
+        "sha256": "6d9bdab271d33efbb0c63a2ce5d3308ed3470a897a7ec56e1bd221c8378fe2a7"
+      },
+      {
+        "actual": "centro-deportivo",
+        "confidence": 0.9919529,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.62939077,
+        "predicted": "centro-deportivo",
+        "sha256": "7e81ef2ac71f97ae422b677416557ed526b910df2f8cc2578f3659e87f22eac3"
+      },
+      {
+        "actual": "centro-de-estetica",
+        "confidence": 0.99770907,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.98150464,
+        "predicted": "centro-de-estetica",
+        "sha256": "dbbf4fdc345e3d935c65787a3d56d206bf9f2e9cc9801db21b4615c3613b88af"
+      },
+      {
+        "actual": "centro-de-estetica",
+        "confidence": 0.99183274,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.97500463,
+        "predicted": "centro-de-estetica",
+        "sha256": "5d353b442dc893ef5056ed717f1e942b9a5538ef530d8cc8b33e342054eb2545"
+      },
+      {
+        "actual": "centro-de-estetica",
+        "confidence": 0.9819789,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.98637878,
+        "predicted": "centro-de-estetica",
+        "sha256": "5beaba59711dffd4ed61be2290ff34b262ea2f37527381687c7abaf41ba42843"
+      },
+      {
+        "actual": "otros",
+        "confidence": 0.98571812,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.92083243,
+        "predicted": "otros",
+        "sha256": "3556f746c06b88f19e94cc16fcd6e970c2b1360aea8ba111b8a7e577e6b5bb18"
+      },
+      {
+        "actual": "otros",
+        "confidence": 0.99034381,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.2962903,
+        "predicted": "otros",
+        "sha256": "d4a2e8d301f00ee7f390bf55e60a7efa74c5c1d421a0f482c7d86be47509be9c"
+      },
+      {
+        "actual": "otros",
+        "confidence": 0.50880647,
+        "entityCohort": "finalHoldout",
+        "peopleRiskProbability": 0.9370228,
+        "predicted": "otros",
+        "sha256": "6b63710207ff4a3ebf9f46df3127be709ad2775776db676f167ad0b8ad35b400"
+      }
+    ]
+  },
+  "datasetVersion": "synthetic-marketplace-v1",
+  "definitionSha256": "8d5b8345d2df95126c5f9d9c4542c4f21b5a9dbfcd54e5b6a236596f7d941d36",
+  "evaluatedAt": "2026-08-28T12:18:11.956617+00:00",
+  "holdoutVersion": "visual-holdout-v2",
+  "humanReviewCompleted": false,
+  "limitations": [
+    "The balanced synthetic holdout is small and does not represent production traffic.",
+    "CLIP labels are an automated diagnostic and do not replace human visual review.",
+    "Passing this gate never enables development or production training automatically."
+  ],
+  "overallPassed": false,
+  "productionEvidence": false,
+  "reportVersion": "synthetic-marketplace-visual-holdout-v2",
+  "schemaVersion": 1,
+  "structural": {
+    "categoryCounts": {
+      "campo-de-futbol": 3,
+      "centro-de-estetica": 3,
+      "centro-deportivo": 3,
+      "instalacion-municipal": 3,
+      "otros": 3,
+      "peluqueria": 3,
+      "pista-de-padel": 3,
+      "restaurante": 3
+    },
+    "exactDuplicateGroups": [],
+    "expectedImageCount": 24,
+    "materializedImageCount": 24,
+    "minimumPerceptualHammingDistance": 18,
+    "nearDuplicatePairs": [],
+    "passed": true,
+    "violations": []
+  },
+  "synthetic": true,
+  "trainingAllowed": false
+}

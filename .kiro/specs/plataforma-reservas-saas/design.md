@@ -4969,3 +4969,18 @@ ViT-B/32 ejecuta un diagnóstico top-1 sobre las ocho categorías con umbral mac
 0,772565 recall macro y 0,746995 F1 macro: no pasa. `trainingAllowed=false` y revisión humana sigue
 pendiente. Un prompt binario de personas que marcó 100/100 queda explícitamente inconcluso y no se
 usa como detector.
+
+La iteración visual v2 trata warm como desarrollo consumido y no sobrescribe activos: una selección
+versionada redirige 17 nombres lógicos a PNG nuevos, preservando original, SHA-256 y procedencia. El
+CLI admite selección, sufijo de informe y cohorte aislada sin mutar `manifest.json` salvo promoción
+explícita. Tras corregir las evidencias de peluquería y municipal, warm alcanza recall macro
+0,916667 con CLIP v1 congelado.
+
+La puerta de confirmación usa `visual-holdout-v2`, congelado antes de inferencia, con 24 activos
+independientes y exactamente tres por cada categoría. Su definición declara las relaciones 4:3/3:2
+permitidas; el inspector exige cobertura, balance, PNG legible, resolución, SHA único y distancia
+dHash >4. La única apertura obtiene 1,00 en accuracy/precision/recall/F1 macro. Por su tamaño y
+claridad sintética, ese valor solo aprueba el diagnóstico automático concreto; no acredita
+generalización. El informe fuerza `trainingAllowed=false`, `humanReviewCompleted=false` y
+`overallPassed=false`. La promoción requiere todavía revisión humana y un stress test posterior con
+casos reales o ambiguos, sin retocar la selección contra este holdout ya consumido.

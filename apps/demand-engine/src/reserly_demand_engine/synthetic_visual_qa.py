@@ -40,6 +40,19 @@ def _rows(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
+def _resolve_asset_path(dataset_dir: Path, relative_path: str | Path) -> Path:
+    """Resuelve un activo local y rechaza rutas absolutas o escapes del dataset."""
+
+    relative = Path(relative_path)
+    if relative.is_absolute():
+        raise ValueError("VISUAL_ASSET_PATH_INVALID")
+    dataset_root = dataset_dir.resolve()
+    candidate = (dataset_root / relative).resolve()
+    if not candidate.is_relative_to(dataset_root):
+        raise ValueError("VISUAL_ASSET_PATH_INVALID")
+    return candidate
+
+
 def _dhash(path: Path) -> int:
     """Calcula dHash de 64 bits para detectar clones o transformaciones mínimas."""
 
@@ -94,7 +107,23 @@ def _classification_summary(predictions: list[dict[str, Any]], codes: list[str])
     }
 
 
-def inspect_assets(dataset_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _cohort_classification_summaries(
+    predictions: list[dict[str, Any]], codes: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Resume únicamente las cohortes presentes para admitir evaluaciones aisladas."""
+
+    return {
+        cohort: _classification_summary(
+            [item for item in predictions if item["entityCohort"] == cohort], codes
+        )
+        for cohort in sorted({item["entityCohort"] for item in predictions})
+    }
+
+
+def inspect_assets(
+    dataset_dir: Path,
+    replacements: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Inspecciona los PNG y devuelve manifiesto por activo y resumen estructural."""
 
     from PIL import Image
@@ -109,7 +138,8 @@ def inspect_assets(dataset_dir: Path) -> tuple[list[dict[str, Any]], dict[str, A
     violations: list[dict[str, str]] = []
     for index, (venue, prompt) in enumerate(zip(venues, prompts, strict=True), start=1):
         filename = f"venue-{index:03d}.png"
-        path = dataset_dir / "images" / filename
+        relative_path = (replacements or {}).get(filename, f"images/{filename}")
+        path = _resolve_asset_path(dataset_dir, relative_path)
         if not path.is_file():
             violations.append({"image": filename, "code": "IMAGE_MISSING"})
             continue
@@ -144,7 +174,10 @@ def inspect_assets(dataset_dir: Path) -> tuple[list[dict[str, Any]], dict[str, A
                 "venueId": venue["venueId"],
                 "categoryCode": venue["categoryCode"],
                 "entityCohort": venue["entityCohort"],
-                "objectKey": f"local-dev://synthetic-marketplace-v1/images/{filename}",
+                "objectKey": (
+                    "local-dev://synthetic-marketplace-v1/"
+                    f"{Path(relative_path).as_posix()}"
+                ),
                 "sha256": sha256,
                 "format": image_format,
                 "width": width,
@@ -154,7 +187,11 @@ def inspect_assets(dataset_dir: Path) -> tuple[list[dict[str, Any]], dict[str, A
                     "provider": "openai-built-in-imagegen",
                     "modelKey": "managed-built-in",
                     "modelRevision": "notExposedByProvider",
-                    "promptVersion": prompt["promptVersion"],
+                    "promptVersion": (
+                        "venue-category-disambiguation-v2"
+                        if filename in (replacements or {})
+                        else prompt["promptVersion"]
+                    ),
                     "generatedAt": "2026-08-27",
                 },
                 "syntheticEvaluationAllowed": True,
@@ -202,6 +239,114 @@ def inspect_assets(dataset_dir: Path) -> tuple[list[dict[str, Any]], dict[str, A
     }
 
 
+def inspect_holdout_assets(
+    dataset_dir: Path, definition: dict[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Valida un holdout congelado y construye activos sin abrir aún el clasificador."""
+
+    from PIL import Image
+
+    images_directory = Path(definition["imagesDirectory"])
+    allowed_aspect_ratios = [
+        tuple(int(part) for part in ratio.split(":"))
+        for ratio in definition.get("allowedAspectRatios", ["4:3"])
+    ]
+    assets: list[dict[str, Any]] = []
+    violations: list[dict[str, str]] = []
+    hashes: dict[str, list[str]] = defaultdict(list)
+    perceptual: list[tuple[str, int]] = []
+    categories = definition["categories"]
+    if set(categories) != set(CATEGORY_PROMPTS):
+        violations.append({"image": "holdout", "code": "HOLDOUT_CATEGORY_COVERAGE_INVALID"})
+    if any(len(items) != 3 for items in categories.values()):
+        violations.append({"image": "holdout", "code": "HOLDOUT_CATEGORY_BALANCE_INVALID"})
+    for category_code, items in categories.items():
+        for ordinal, item in enumerate(items, start=1):
+            filename = item["file"]
+            relative_path = images_directory / filename
+            path = _resolve_asset_path(dataset_dir, relative_path)
+            if not path.is_file():
+                violations.append({"image": filename, "code": "IMAGE_MISSING"})
+                continue
+            raw = path.read_bytes()
+            sha256 = hashlib.sha256(raw).hexdigest()
+            try:
+                with Image.open(path) as source:
+                    source.verify()
+                with Image.open(path) as source:
+                    width, height = source.size
+                    image_format = source.format
+                    mode = source.mode
+            except Exception:
+                violations.append({"image": filename, "code": "IMAGE_CORRUPTED"})
+                continue
+            if image_format != "PNG":
+                violations.append({"image": filename, "code": "IMAGE_FORMAT_INVALID"})
+            if not any(
+                width * ratio_height == height * ratio_width
+                for ratio_width, ratio_height in allowed_aspect_ratios
+            ):
+                violations.append({"image": filename, "code": "IMAGE_ASPECT_RATIO_INVALID"})
+            if width < 1024 or height < 768:
+                violations.append({"image": filename, "code": "IMAGE_RESOLUTION_INSUFFICIENT"})
+            if mode not in {"RGB", "RGBA"}:
+                violations.append({"image": filename, "code": "IMAGE_MODE_INVALID"})
+            hashes[sha256].append(filename)
+            perceptual.append((filename, _dhash(path)))
+            assets.append(
+                {
+                    "imagePromptId": f"{definition['holdoutVersion']}:{category_code}:{ordinal}",
+                    "venueId": f"holdout:{category_code}:{ordinal}",
+                    "categoryCode": category_code,
+                    "entityCohort": "finalHoldout",
+                    "variant": item["variant"],
+                    "objectKey": (
+                        "local-dev://synthetic-marketplace-v1/"
+                        f"{relative_path.as_posix()}"
+                    ),
+                    "sha256": sha256,
+                    "format": image_format,
+                    "width": width,
+                    "height": height,
+                    "generatorProvenance": {
+                        **definition["generation"],
+                        "generatedAt": "2026-08-28",
+                    },
+                    "syntheticEvaluationAllowed": True,
+                    "developmentTrainingAllowed": False,
+                    "productionTrainingAllowed": False,
+                    "humanReviewStatus": "pending",
+                }
+            )
+    exact_duplicates = [names for names in hashes.values() if len(names) > 1]
+    near_duplicates: list[dict[str, Any]] = []
+    minimum_distance = 64
+    for left_index, (left_name, left_hash) in enumerate(perceptual):
+        for right_name, right_hash in perceptual[left_index + 1 :]:
+            distance = (left_hash ^ right_hash).bit_count()
+            minimum_distance = min(minimum_distance, distance)
+            if distance <= 4:
+                near_duplicates.append(
+                    {"left": left_name, "right": right_name, "hammingDistance": distance}
+                )
+    if exact_duplicates:
+        violations.append({"image": "holdout", "code": "IMAGE_EXACT_DUPLICATE"})
+    if near_duplicates:
+        violations.append({"image": "holdout", "code": "IMAGE_PERCEPTUAL_DUPLICATE"})
+    category_counts = Counter(asset["categoryCode"] for asset in assets)
+    expected_count = sum(len(items) for items in categories.values())
+    return assets, {
+        "expectedImageCount": expected_count,
+        "materializedImageCount": len(assets),
+        "categoryCounts": dict(sorted(category_counts.items())),
+        "exactDuplicateGroups": exact_duplicates,
+        "nearDuplicatePairs": near_duplicates,
+        "minimumPerceptualHammingDistance": minimum_distance,
+        "violations": violations,
+        "passed": not violations and len(assets) == expected_count,
+    }
+
+
 def evaluate_categories(
     dataset_dir: Path,
     assets: list[dict[str, Any]],
@@ -218,7 +363,13 @@ def evaluate_categories(
     predictions: list[dict[str, Any]] = []
     for start in range(0, len(assets), batch_size):
         batch = assets[start : start + batch_size]
-        paths = [dataset_dir / "images" / Path(asset["objectKey"]).name for asset in batch]
+        object_key_prefix = "local-dev://synthetic-marketplace-v1/"
+        if any(not asset["objectKey"].startswith(object_key_prefix) for asset in batch):
+            raise ValueError("VISUAL_ASSET_OBJECT_KEY_INVALID")
+        paths = [
+            _resolve_asset_path(dataset_dir, asset["objectKey"].removeprefix(object_key_prefix))
+            for asset in batch
+        ]
         image_vectors = embedder.encode_images(paths)
         for asset, vector in zip(batch, image_vectors, strict=True):
             category_scores = [
@@ -243,12 +394,7 @@ def evaluate_categories(
                 }
             )
     summary = _classification_summary(predictions, codes)
-    cohort_metrics = {
-        cohort: _classification_summary(
-            [item for item in predictions if item["entityCohort"] == cohort], codes
-        )
-        for cohort in ("warm", "validationCold", "testCold")
-    }
+    cohort_metrics = _cohort_classification_summaries(predictions, codes)
     people_flagged = sum(item["peopleRiskProbability"] >= 0.5 for item in predictions)
     return {
         "modelKey": manifest.modelKey,
@@ -269,7 +415,11 @@ def evaluate_categories(
         "peopleRiskFlaggedCount": people_flagged,
         "peopleScreeningIsDiagnosticOnly": True,
         "peopleScreeningUsable": people_flagged not in {0, len(predictions)},
-        "peopleScreeningResult": "inconclusive" if people_flagged in {0, len(predictions)} else "diagnosticOnly",
+        "peopleScreeningResult": (
+            "inconclusive"
+            if people_flagged in {0, len(predictions)}
+            else "diagnosticOnly"
+        ),
         "predictions": predictions,
     }
 
@@ -278,13 +428,105 @@ def run() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--clip-manifest", type=Path)
+    parser.add_argument("--selection", type=Path)
+    parser.add_argument("--holdout-definition", type=Path)
+    parser.add_argument("--report-suffix", default="")
+    parser.add_argument(
+        "--evaluation-cohort",
+        choices=("warm", "validationCold", "testCold"),
+    )
+    parser.add_argument("--promote-active", action="store_true")
     args = parser.parse_args()
-    assets, structural = inspect_assets(args.dataset)
-    clip = evaluate_categories(args.dataset, assets, args.clip_manifest) if args.clip_manifest else None
+    if args.holdout_definition:
+        if args.selection or args.evaluation_cohort or args.promote_active or args.report_suffix:
+            raise ValueError("VISUAL_HOLDOUT_ARGUMENTS_INCOMPATIBLE")
+        definition = json.loads(args.holdout_definition.read_text(encoding="utf-8"))
+        assets, structural = inspect_holdout_assets(args.dataset, definition)
+        clip = (
+            evaluate_categories(args.dataset, assets, args.clip_manifest)
+            if args.clip_manifest and structural["passed"]
+            else None
+        )
+        automated_passed = bool(
+            structural["passed"] and clip and clip["categoryQualityPassed"]
+        )
+        report = {
+            "schemaVersion": 1,
+            "reportVersion": "synthetic-marketplace-visual-holdout-v2",
+            "datasetVersion": "synthetic-marketplace-v1",
+            "holdoutVersion": definition["holdoutVersion"],
+            "definitionSha256": hashlib.sha256(
+                args.holdout_definition.read_bytes()
+            ).hexdigest(),
+            "evaluatedAt": datetime.now(UTC).isoformat(),
+            "synthetic": True,
+            "productionEvidence": False,
+            "structural": structural,
+            "clipCategoryDiagnostic": clip,
+            "automatedQualityPassed": automated_passed,
+            "humanReviewCompleted": False,
+            "trainingAllowed": False,
+            "overallPassed": False,
+            "limitations": [
+                (
+                    "The balanced synthetic holdout is small and does not represent "
+                    "production traffic."
+                ),
+                "CLIP labels are an automated diagnostic and do not replace human visual review.",
+                "Passing this gate never enables development or production training automatically.",
+            ],
+        }
+        output_directory = args.holdout_definition.parent
+        assets_path = output_directory / "image-assets.jsonl"
+        report_path = output_directory / "visual-qa-report.json"
+        assets_path.write_text(
+            "".join(
+                json.dumps(asset, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                + "\n"
+                for asset in assets
+            ),
+            encoding="utf-8",
+        )
+        report_path.write_text(
+            json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(
+            json.dumps(
+                {
+                    "structural": structural["passed"],
+                    "images": len(assets),
+                    "automatedQualityPassed": automated_passed,
+                    "accuracy": clip["accuracy"] if clip else None,
+                    "macroPrecision": clip["macroPrecision"] if clip else None,
+                    "macroRecall": clip["macroRecall"] if clip else None,
+                    "macroF1": clip["macroF1"] if clip else None,
+                },
+                ensure_ascii=False,
+            )
+        )
+        return
+    selection = (
+        json.loads(args.selection.read_text(encoding="utf-8")) if args.selection else None
+    )
+    replacements = selection["replacements"] if selection else None
+    assets, structural = inspect_assets(args.dataset, replacements)
+    evaluation_assets = (
+        [asset for asset in assets if asset["entityCohort"] == args.evaluation_cohort]
+        if args.evaluation_cohort
+        else assets
+    )
+    clip = (
+        evaluate_categories(args.dataset, evaluation_assets, args.clip_manifest)
+        if args.clip_manifest
+        else None
+    )
     report = {
         "schemaVersion": 1,
         "reportVersion": "synthetic-marketplace-visual-qa-v1",
         "datasetVersion": "synthetic-marketplace-v1",
+        "selectionVersion": selection["selectionVersion"] if selection else "visual-selection-v1",
+        "evaluationCohort": args.evaluation_cohort or "all",
         "evaluatedAt": datetime.now(UTC).isoformat(),
         "synthetic": True,
         "productionEvidence": False,
@@ -292,7 +534,9 @@ def run() -> None:
         "clipCategoryDiagnostic": clip,
         "humanReviewCompleted": False,
         "productionTrainingAllowed": False,
-        "automatedQualityPassed": bool(structural["passed"] and clip and clip["categoryQualityPassed"]),
+        "automatedQualityPassed": bool(
+            structural["passed"] and clip and clip["categoryQualityPassed"]
+        ),
         "overallPassed": False,
         "limitations": [
             "CLIP category labels are synthetic diagnostics, not human ground truth.",
@@ -300,38 +544,51 @@ def run() -> None:
             "Human review remains mandatory before any training or production evidence use.",
         ],
     }
-    assets_path = args.dataset / "image-assets.jsonl"
-    report_path = args.dataset / "visual-qa-report.json"
+    suffix = args.report_suffix
+    if suffix and not suffix.startswith("."):
+        raise ValueError("VISUAL_QA_REPORT_SUFFIX_INVALID")
+    assets_path = args.dataset / f"image-assets{suffix}.jsonl"
+    report_path = args.dataset / f"visual-qa-report{suffix}.json"
     assets_path.write_text(
-        "".join(json.dumps(asset, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n" for asset in assets),
+        "".join(
+            json.dumps(asset, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            + "\n"
+            for asset in assets
+        ),
         encoding="utf-8",
     )
     report_path.write_text(
         json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
-    manifest_path = args.dataset / "manifest.json"
-    dataset_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    dataset_manifest["counts"]["materializedImages"] = len(assets)
-    dataset_manifest["visualAssets"].update(
-        {
-            "status": "materializedPendingHumanReview",
-            "trainingAllowed": False,
-            "assetManifest": "image-assets.jsonl",
-            "qaReport": "visual-qa-report.json",
-            "automatedQualityPassed": report["automatedQualityPassed"],
-            "humanReviewCompleted": False,
-        }
+    if args.promote_active:
+        manifest_path = args.dataset / "manifest.json"
+        dataset_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        dataset_manifest["counts"]["materializedImages"] = len(assets)
+        dataset_manifest["visualAssets"].update(
+            {
+                "status": "materializedPendingHumanReview",
+                "trainingAllowed": False,
+                "assetManifest": assets_path.name,
+                "qaReport": report_path.name,
+                "automatedQualityPassed": report["automatedQualityPassed"],
+                "humanReviewCompleted": False,
+            }
+        )
+        for path, rows in ((assets_path, len(assets)), (report_path, 1)):
+            dataset_manifest["artifacts"][path.name] = {
+                "rows": rows,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        manifest_path.write_text(
+            json.dumps(dataset_manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    print(
+        json.dumps(
+            {"structural": structural["passed"], "images": len(assets), "clip": clip},
+            ensure_ascii=False,
+        )
     )
-    for path, rows in ((assets_path, len(assets)), (report_path, 1)):
-        dataset_manifest["artifacts"][path.name] = {
-            "rows": rows,
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-        }
-    manifest_path.write_text(
-        json.dumps(dataset_manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(json.dumps({"structural": structural["passed"], "images": len(assets), "clip": clip}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -40465,3 +40465,93 @@ artefactos versionados y los 100 SHA-256 contra sus PNG locales pasaron. Permane
 preexistentes de UMAP/TensorFlow opcional y Evidently/pandas 4, sin fallo. Las imágenes son
 recuperables en la carpeta local ignorada; eliminarlas requiere regeneración individual o
 restauración desde el almacén local del generador.
+
+# Iteración 2026-08-28 - Tarea 23.16.c.1: mejora visual v2 y holdout no contaminado
+
+## Objetivo, requisitos y estado
+
+- Identificador exacto completado: 23.16.c.1.
+- Objetivo técnico: elevar recall macro visual por encima de 0,80 corrigiendo evidencia ambigua sin
+  ajustar el modelo, rebajar umbrales ni reutilizar el test observado.
+- Requisitos/diseño: RF-029, RF-033, RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y
+  RNF-015; diseño 14.62/14.67 y contrato nuevo de holdout congelado.
+- Estado superior: 23.16.c.2, 23.16.c y 23.16 siguen pendientes por revisión humana independiente.
+
+No hubo entrenamiento, endpoint, migración, cambio de esquema productivo, dato personal ni
+integración externa persistente. CLIP ViT-B/32 v1 permaneció congelado en revisión
+`fbf5e647b25f3514e526849b05cc0196b206d822`, Transformers 4.56.2 y CPU. Los umbrales de precision y
+recall macro permanecen en 0,80.
+
+## Activos y selección versionada
+
+El análisis de errores se limitó a warm, declarado desarrollo consumido. Se generaron 17 PNG nuevos:
+once peluquerías y seis instalaciones municipales. Los prompts positivos exigen evidencia funcional
+visible y excluyen explícitamente clases vecinas. Peluquería incorpora sillas hidráulicas orientadas
+a espejos, lavacabezas, carros y secadores; municipal incorpora escenario/atril/filas de sillas y
+arquitectura cívica. `visual-selection-v2.json` mapea el nombre original a `images-v2/*-v2.png` sin
+sobrescribir `images/`. Los binarios se ignoran; el inventario versionado conserva SHA-256,
+dimensiones, categoría, cohorte y promptVersion.
+
+`inspect_assets(dataset, replacements)` resuelve object keys relativos de forma segura. La CLI añade
+`--selection`, `--evaluation-cohort`, `--report-suffix` y `--promote-active`. Por defecto una
+evaluación experimental no muta `manifest.json`; la mutación exige promoción explícita. El resumen
+de cohortes se calcula solo para cohortes presentes, corrigiendo el `ZeroDivisionError` encontrado al
+ejecutar warm aislado. Una prueba de regresión fija ese comportamiento.
+
+## Holdout, validaciones y flujo de ejecución
+
+Antes de ejecutar inferencia se creó `visual-holdout-v2/definition.json` con 24 activos independientes,
+tres por categoría. Se usaron variantes diferentes para restaurante, peluquería, fútbol, pádel,
+municipal, deportivo, estética y otros. Una imagen de fútbol sala salió 1647×955 durante la inspección
+previa y se regeneró antes de abrir el clasificador; no se amplió la tolerancia. El contrato final
+acepta 4:3/3:2 declarados y la imagen corregida mide 1536×1024.
+
+`inspect_holdout_assets` aplica fail-closed sobre cobertura exacta de categorías, balance tres por
+clase, presencia, decodificación PNG, modo RGB/RGBA, resolución mínima, relación permitida, SHA-256,
+duplicados exactos y dHash <=4. Construye object keys locales y fuerza en cada fila
+`developmentTrainingAllowed=false`, `productionTrainingAllowed=false` y revisión pending. La CLI
+rechaza combinar holdout con selección, promoción, cohorte o sufijo; solo evalúa CLIP si estructura
+pasa. El informe siempre fuerza `trainingAllowed=false`, `humanReviewCompleted=false` y
+`overallPassed=false`, incluso cuando `automatedQualityPassed=true`.
+
+## Resultados e interpretación contra sobreajuste/subajuste
+
+Warm v1: accuracy 0,70, precision 0,806537, recall 0,752232 y F1 0,697821. Warm v2: accuracy
+0,942857, precision 0,937500, recall 0,916667 y F1 0,912446. Peluquería y municipal pasan a recall
+1,00; centro deportivo queda en 0,50 y mantiene visible una limitación real. Validation-cold v1 no
+modificado conserva recall 0,875.
+
+El holdout se abrió una sola vez: 24/24, cero violaciones, balance 3×8, cero duplicados y dHash mínimo
+18. Obtiene 1,00 en accuracy, precision, recall y F1 macro. Como CLIP no fue entrenado, la cifra no
+prueba por sí sola sobreajuste del modelo; sí indica que el holdout sintético es pequeño y contiene
+señales explícitas. No se usa como prueba productiva, no se reabre para ajuste y se acompaña de las
+métricas menos perfectas de warm/validation. Se deriva un futuro stress test con espacios mixtos y
+fotos reales consentidas, independiente del holdout ya consumido.
+
+## Archivos, seguridad y observabilidad
+
+Se modificaron `.gitignore`, QA visual y tests, manifiesto/README del dataset, requisitos, diseño,
+tareas y documentación. Se crearon selección/inventario/informe v2, definición/inventario/informe de
+holdout y `docs/demand-engine/mejora-puerta-visual-v2.md`. Los PNG y hojas de contacto permanecen
+fuera de Git; los activos versionados registran sus hashes. No hay secretos, PII, red en inferencia,
+logs de usuarios ni cardinalidad de observabilidad nueva. Los errores estructurales usan códigos
+estables y bloquean inferencia; los informes conservan matriz, métricas, predicción y SHA, no píxeles
+ni embeddings.
+
+## Verificación, riesgos y deuda
+
+Las siete pruebas focalizadas de QA pasaron, incluida la prohibición de escape de rutas. Se ejecutaron QA estructural warm/holdout, inferencia CLIP
+warm y una única inferencia final del holdout. La inspección visual de la hoja 24× confirmó categorías
+coherentes y ausencia aparente de personas/texto/marcas, pero se documenta como revisión por agente,
+nunca humana. La regresión completa terminó con 275/275 pruebas verdes en 170,863 s antes de añadir
+la prueba de path traversal; después, las 7/7 focalizadas volvieron a pasar. `compileall`,
+parseo de todos los JSON/JSONL nuevos, verificación de los seis hashes declarados y
+`git diff --check` pasaron. Ruff y Black no están instalados en el entorno, por lo que no se usaron;
+la compilación y la suite completa cubrieron sintaxis e integración. Persisten únicamente los avisos
+preexistentes de TensorFlow opcional ausente y compatibilidad futura de Evidently con pandas 4.
+
+Las imágenes sintéticas pueden compartir estilo del generador y simplificar la clasificación. Tres
+muestras por clase producen intervalos amplios y hacen probable un 1,00 condicionado a un test fácil.
+Falta revisión humana de los 141 activos relevantes (100 originales, 17 sustituciones y 24 holdout),
+OCR/detector de personas certificado y evaluación real consentida. Ningún activo puede entrenar ni
+promocionarse hasta cerrar 23.16.c.2.

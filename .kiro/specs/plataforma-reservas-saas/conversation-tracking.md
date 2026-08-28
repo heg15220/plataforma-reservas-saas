@@ -10762,3 +10762,30 @@ Fuente de verdad del avance:
     falla recall >=0,80, principalmente por municipal y confusión peluquería/estética.
   - El screening de personas por prompt fue no discriminativo y se descarta como detector.
   - No se marca revisión humana ni se habilita entrenamiento/promoción.
+
+# Conversación 277 - Mejora visual v2 y holdout equilibrado no contaminado
+
+- Fecha: 2026-08-28.
+- Resumen de la conversación: se corrigieron de forma versionada las imágenes warm responsables de
+  las confusiones peluquería/estética y municipal/genérico; se amplió la CLI para evaluar selecciones
+  sin mutar el manifiesto activo y se creó/abrió una sola vez un holdout sintético independiente de
+  24 imágenes equilibradas.
+- Archivos modificados: módulo y tests de QA visual; selección/inventario/informe de desarrollo v2;
+  definición, inventario e informe del holdout; manifiesto/README del dataset, guía Demand Engine,
+  `.gitignore`, requisitos, diseño, tareas, documento técnico y este registro. Los 17 reemplazos y
+  los 24 PNG del holdout quedan locales e ignorados por Git; sus hashes sí están versionados.
+- Requisitos impactados: RF-029, RF-033, RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y
+  RNF-015.
+- Tareas impactadas: se descompone 23.16.c en 23.16.c.1/23.16.c.2; 23.16.c.1 queda completada y
+  23.16.c.2, 23.16.c y 23.16 permanecen pendientes.
+- Tareas completadas: 23.16.c.1.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. En visuales, 23.16.c.2 exige
+  revisión humana independiente antes de cualquier entrenamiento.
+- Decisiones o aclaraciones relevantes:
+  - No se cambió CLIP ni el umbral 0,80; warm se considera desarrollo consumido.
+  - Warm mejora de recall 0,752232 a 0,916667; peluquería y municipal alcanzan 1,00.
+  - El holdout 24×8 pasa estructura y obtiene 1,00 en accuracy/precision/recall/F1 macro.
+  - El valor perfecto se atribuye a un test sintético pequeño y claro, no a generalización; se
+    contrasta con validation-cold 0,875 y warm v2 0,916667.
+  - El holdout queda consumido tras una sola apertura; no puede reutilizarse para otra corrección.
+  - `trainingAllowed=false`, `humanReviewCompleted=false` y `overallPassed=false` se mantienen.

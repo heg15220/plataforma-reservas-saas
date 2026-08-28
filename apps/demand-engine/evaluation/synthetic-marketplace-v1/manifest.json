@@ -23,6 +23,30 @@
     "visual-qa-report.json": {
       "rows": 1,
       "sha256": "c32b3387c77e8cb61ff4b1a5827854050416a9bdbfac2a315392d27d7d9603ad"
+    },
+    "visual-selection-v2.json": {
+      "rows": 1,
+      "sha256": "d9c30d344e238113c0b46e7f297117ef735906b2c7dc21ecbb07c06e85dccf67"
+    },
+    "image-assets.v2-development.jsonl": {
+      "rows": 100,
+      "sha256": "f35009ad47b309a581593a52b98a0d0a2d7e27b18710fa3384b61cf5e791c6dc"
+    },
+    "visual-qa-report.v2-development.json": {
+      "rows": 1,
+      "sha256": "87b4c5194ef5f25fe61ce01534a9ad4d1c7b738060f3519fc7d39dcbb3c649d4"
+    },
+    "visual-holdout-v2/definition.json": {
+      "rows": 1,
+      "sha256": "8d5b8345d2df95126c5f9d9c4542c4f21b5a9dbfcd54e5b6a236596f7d941d36"
+    },
+    "visual-holdout-v2/image-assets.jsonl": {
+      "rows": 24,
+      "sha256": "280d8038848fd28a001ee88a48dadf63f5192bc5a38fdd06073455c50796391c"
+    },
+    "visual-holdout-v2/visual-qa-report.json": {
+      "rows": 1,
+      "sha256": "ff96eea35b87391fa0a55ba9ade1dd289f30e823fdff10f3bf26af63ad9da92f"
     }
   },
   "categoryCoverage": {
@@ -134,6 +158,15 @@
     ],
     "assetManifest": "image-assets.jsonl",
     "automatedQualityPassed": false,
+    "candidateEvaluation": {
+      "selection": "visual-selection-v2.json",
+      "developmentReport": "visual-qa-report.v2-development.json",
+      "freshHoldoutReport": "visual-holdout-v2/visual-qa-report.json",
+      "automatedQualityPassed": true,
+      "humanReviewCompleted": false,
+      "trainingAllowed": false,
+      "status": "automaticGatePassedPendingHumanReview"
+    },
     "humanReviewCompleted": false,
     "qaReport": "visual-qa-report.json",
     "status": "materializedPendingHumanReview",

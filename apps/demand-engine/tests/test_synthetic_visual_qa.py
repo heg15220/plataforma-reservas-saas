@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import tempfile
@@ -10,7 +11,12 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from reserly_demand_engine.synthetic_visual_qa import CATEGORY_PROMPTS, inspect_assets
+from reserly_demand_engine.synthetic_visual_qa import (
+    CATEGORY_PROMPTS,
+    _cohort_classification_summaries,
+    inspect_assets,
+    inspect_holdout_assets,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,6 +59,61 @@ class SyntheticVisualQaTests(unittest.TestCase):
             _, report = inspect_assets(root)
             self.assertFalse(report["passed"])
             self.assertIn("IMAGE_MISSING", {item["code"] for item in report["violations"]})
+
+    def test_versioned_replacement_is_selected_without_overwriting_original(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self._fixture(root)
+            (root / "images-v2").mkdir()
+            replacement = root / "images-v2" / "venue-001-v2.png"
+            Image.new("RGB", (1024, 768), "navy").save(replacement)
+            original_sha = hashlib.sha256(
+                (root / "images" / "venue-001.png").read_bytes()
+            ).hexdigest()
+            assets, report = inspect_assets(root, {"venue-001.png": "images-v2/venue-001-v2.png"})
+            self.assertTrue(report["passed"], report)
+            self.assertIn("images-v2/venue-001-v2.png", assets[0]["objectKey"])
+            self.assertNotEqual(original_sha, assets[0]["sha256"])
+            self.assertTrue((root / "images" / "venue-001.png").is_file())
+
+    def test_versioned_replacement_cannot_escape_dataset(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self._fixture(root)
+            with self.assertRaisesRegex(ValueError, "VISUAL_ASSET_PATH_INVALID"):
+                inspect_assets(root, {"venue-001.png": "../outside.png"})
+
+    def test_cohort_summary_omits_cohorts_not_evaluated(self) -> None:
+        predictions = [
+            {
+                "actual": "hair_salon",
+                "predicted": "hair_salon",
+                "entityCohort": "warm",
+            }
+        ]
+        summaries = _cohort_classification_summaries(predictions, ["hair_salon"])
+        self.assertEqual(["warm"], list(summaries))
+        self.assertEqual(1.0, summaries["warm"]["macroRecall"])
+
+    def test_holdout_definition_rejects_incomplete_category_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            definition = {
+                "holdoutVersion": "fixture-v1",
+                "imagesDirectory": "images",
+                "generation": {"promptVersion": "fixture-v1"},
+                "categories": {"peluqueria": []},
+            }
+            assets, report = inspect_holdout_assets(Path(temporary), definition)
+            self.assertEqual([], assets)
+            self.assertFalse(report["passed"])
+            self.assertIn(
+                "HOLDOUT_CATEGORY_COVERAGE_INVALID",
+                {item["code"] for item in report["violations"]},
+            )
+            self.assertIn(
+                "HOLDOUT_CATEGORY_BALANCE_INVALID",
+                {item["code"] for item in report["violations"]},
+            )
 
     def test_versioned_real_report_remains_blocked_after_failed_quality_gate(self) -> None:
         dataset = ROOT / "evaluation" / "synthetic-marketplace-v1"

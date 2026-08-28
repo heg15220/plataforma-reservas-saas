@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "selectionVersion": "visual-selection-v2",
+  "baseSelection": "image-assets.jsonl",
+  "promptVersion": "venue-category-disambiguation-v2",
+  "developmentCohort": "warm",
+  "validationCohort": "validationCold",
+  "consumedTestCohort": "testCold",
+  "replacementReason": "Frozen CLIP v1 development errors: disambiguate hair salons from beauty centers and municipal facilities from generic interiors.",
+  "replacements": {
+    "venue-001.png": "images-v2/venue-001-v2.png",
+    "venue-002.png": "images-v2/venue-002-v2.png",
+    "venue-004.png": "images-v2/venue-004-v2.png",
+    "venue-006.png": "images-v2/venue-006-v2.png",
+    "venue-007.png": "images-v2/venue-007-v2.png",
+    "venue-008.png": "images-v2/venue-008-v2.png",
+    "venue-009.png": "images-v2/venue-009-v2.png",
+    "venue-017.png": "images-v2/venue-017-v2.png",
+    "venue-022.png": "images-v2/venue-022-v2.png",
+    "venue-027.png": "images-v2/venue-027-v2.png",
+    "venue-030.png": "images-v2/venue-030-v2.png",
+    "venue-035.png": "images-v2/venue-035-v2.png",
+    "venue-038.png": "images-v2/venue-038-v2.png",
+    "venue-046.png": "images-v2/venue-046-v2.png",
+    "venue-051.png": "images-v2/venue-051-v2.png",
+    "venue-062.png": "images-v2/venue-062-v2.png",
+    "venue-070.png": "images-v2/venue-070-v2.png"
+  },
+  "originalAssetsPreserved": true,
+  "automaticTrainingAllowed": false
+}

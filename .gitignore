@@ -39,4 +39,7 @@ __pycache__/
 
 # Binarios sintéticos locales: Git conserva manifiestos, hashes e informes, no píxeles.
 apps/demand-engine/evaluation/synthetic-marketplace-v1/images/
+apps/demand-engine/evaluation/synthetic-marketplace-v1/images-v2/
 apps/demand-engine/evaluation/synthetic-marketplace-v1/qa/*.jpg
+apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-holdout-v2/images/
+apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-holdout-v2/*.jpg

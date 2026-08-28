@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "holdoutVersion": "visual-holdout-v2",
+  "frozenAt": "2026-08-28T00:00:00Z",
+  "evaluationOpenedAtFreeze": false,
+  "sourceIndependentFromDevelopmentSelection": true,
+  "imagesDirectory": "visual-holdout-v2/images",
+  "allowedAspectRatios": ["4:3", "3:2"],
+  "generation": {
+    "provider": "openai-built-in-imagegen",
+    "modelKey": "managed-built-in",
+    "promptVersion": "balanced-category-holdout-v1",
+    "commonContract": "Photorealistic empty Spanish venue, landscape commercial-property view, no readable text/logos/watermarks, positive category evidence and explicit exclusion of neighboring categories."
+  },
+  "gate": {
+    "minimumMacroPrecision": 0.8,
+    "minimumMacroRecall": 0.8
+  },
+  "categories": {
+    "restaurante": [
+      {"file": "holdout-001.png", "variant": "mediterranean-dining-room"},
+      {"file": "holdout-002.png", "variant": "tapas-bar-and-dining"},
+      {"file": "holdout-003.png", "variant": "family-restaurant-terrace"}
+    ],
+    "peluqueria": [
+      {"file": "holdout-004.png", "variant": "modern-hairdresser"},
+      {"file": "holdout-005.png", "variant": "neighborhood-barber"},
+      {"file": "holdout-006.png", "variant": "bright-unisex-salon"}
+    ],
+    "campo-de-futbol": [
+      {"file": "holdout-007.png", "variant": "outdoor-full-size"},
+      {"file": "holdout-008.png", "variant": "town-stadium"},
+      {"file": "holdout-009.png", "variant": "indoor-five-a-side"}
+    ],
+    "pista-de-padel": [
+      {"file": "holdout-010.png", "variant": "outdoor-blue-court"},
+      {"file": "holdout-011.png", "variant": "indoor-club"},
+      {"file": "holdout-012.png", "variant": "rooftop-evening"}
+    ],
+    "instalacion-municipal": [
+      {"file": "holdout-013.png", "variant": "civic-auditorium"},
+      {"file": "holdout-014.png", "variant": "community-meeting-hall"},
+      {"file": "holdout-015.png", "variant": "library-cultural-room"}
+    ],
+    "centro-deportivo": [
+      {"file": "holdout-016.png", "variant": "fitness-floor"},
+      {"file": "holdout-017.png", "variant": "municipal-indoor-sports"},
+      {"file": "holdout-018.png", "variant": "functional-training-gym"}
+    ],
+    "centro-de-estetica": [
+      {"file": "holdout-019.png", "variant": "skincare-clinic"},
+      {"file": "holdout-020.png", "variant": "day-spa"},
+      {"file": "holdout-021.png", "variant": "nail-and-facial-care"}
+    ],
+    "otros": [
+      {"file": "holdout-022.png", "variant": "coworking-photo-studio"},
+      {"file": "holdout-023.png", "variant": "music-podcast-studio"},
+      {"file": "holdout-024.png", "variant": "ceramics-workshop"}
+    ]
+  }
+}

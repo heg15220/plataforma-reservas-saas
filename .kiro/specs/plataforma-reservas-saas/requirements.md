@@ -864,6 +864,12 @@ acciones automáticas.
 - WHEN se preparen imágenes sintéticas de locales, THEN cada activo conserva prompt, procedencia,
   hash y revisión humana; una especificación sin imagen materializada o sin revisar permanece
   excluida del entrenamiento y de cualquier puerta visual de producción.
+- WHEN una métrica visual se use para corregir activos, THEN esa cohorte queda consumida como
+  desarrollo y la aceptación automática se mide una sola vez sobre un holdout nuevo, equilibrado
+  por categoría, congelado antes de inferencia y conservado íntegramente aunque el resultado falle.
+- WHEN un holdout sintético obtenga métricas perfectas, THEN el resultado no demuestra
+  generalización ni habilita entrenamiento: se publican tamaño, dificultad, cohortes de contraste y
+  la revisión humana continúa siendo obligatoria.
 
 ### RF-030 Administración de plataforma
 
