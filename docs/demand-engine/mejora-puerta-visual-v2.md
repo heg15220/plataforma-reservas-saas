@@ -73,8 +73,8 @@ imágenes reales consentidas o casos ambiguos, congelado sin ajustar contra el h
 
 ### Criterio de generalización acordado
 
-El siguiente stress test deberá alcanzar accuracy >=0,83 (error <=0,17), precision/recall/F1 macro
->=0,80 y una brecha absoluta desarrollo-test <=0,10. Tendrá al menos diez imágenes por categoría y
+El siguiente stress test deberá alcanzar accuracy >=0,90 (error <=0,10), precision/recall/F1 macro
+>=0,80, recall por categoría >=0,70 y una brecha absoluta train-test <=0,10. Tendrá al menos diez imágenes por categoría y
 hard negatives definidos antes de inferencia. Un resultado sintético >=0,98 no falla al modelo, pero
 sí obliga a revisar la dificultad del benchmark y bloquea promoción hasta disponer de evidencia más
 representativa. No se fuerza que desarrollo/entrenamiento quede en 0,80: el sobreajuste se mide por la

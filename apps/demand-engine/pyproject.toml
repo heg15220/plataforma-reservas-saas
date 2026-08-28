@@ -18,6 +18,7 @@ mlops = [
   "prefect==3.8.2",
 ]
 ml = [
+  "torch==2.8.0",
   "sentence-transformers==5.7.0",
   "transformers==4.56.2",
   "pillow==11.3.0",
@@ -51,3 +52,4 @@ reserly-demand-validate-governance-docs = "reserly_demand_engine.governance_docu
 reserly-demand-validate-operational-readiness = "reserly_demand_engine.operational_readiness:run"
 reserly-demand-generate-synthetic-marketplace = "reserly_demand_engine.synthetic_marketplace:run"
 reserly-demand-evaluate-synthetic-visuals = "reserly_demand_engine.synthetic_visual_qa:run"
+reserly-demand-train-visual-category = "reserly_demand_engine.visual_training:run"

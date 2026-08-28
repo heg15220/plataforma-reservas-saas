@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "clip-linear-category-training-v1",
+  "algorithmVersion": "softmax-linear-head-sgd-v1",
+  "baseModelKey": "clip-vit-b32-visual-evidence-v1",
+  "baseModelRevision": "fbf5e647b25f3514e526849b05cc0196b206d822",
+  "categories": [
+    "restaurante",
+    "peluqueria",
+    "campo-de-futbol",
+    "pista-de-padel",
+    "instalacion-municipal",
+    "centro-deportivo",
+    "centro-de-estetica",
+    "otros"
+  ],
+  "embeddingDimensions": 512,
+  "minimumTrainPerCategory": 10,
+  "minimumValidationPerCategory": 5,
+  "minimumTestPerCategory": 10,
+  "learningRate": 0.1,
+  "maximumEpochs": 2000,
+  "earlyStoppingPatience": 100,
+  "l2Candidates": [0.0001, 0.001, 0.01, 0.1],
+  "seed": 1729,
+  "gates": {
+    "minimumTestAccuracy": 0.9,
+    "maximumTestError": 0.1,
+    "minimumMacroPrecision": 0.8,
+    "minimumMacroRecall": 0.8,
+    "minimumMacroF1": 0.8,
+    "minimumPerCategoryRecall": 0.7,
+    "maximumTrainTestAccuracyGap": 0.1,
+    "syntheticPerfectAccuracyReviewThreshold": 0.98
+  },
+  "humanReviewRequired": true,
+  "automaticPromotionAllowed": false
+}

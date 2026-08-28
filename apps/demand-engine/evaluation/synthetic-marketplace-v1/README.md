@@ -84,6 +84,13 @@ Tras acordar el criterio de generalización, este holdout conserva
 declara `benchmarkAdequacyPassed=false` y `benchmarkDifficultyReviewRequired=true`: 3 muestras por
 categoría y un 1,00 sintético no satisfacen la puerta representativa.
 
+El entrenamiento supervisado futuro usa `clip-linear-category-training-v1`: CLIP congelado y una
+cabeza softmax con L2/early stopping elegidos solo en validación. Requiere 200 imágenes aprobadas y
+disjuntas: 80 train, 40 validación y 80 test. La puerta real sube a accuracy test 0,90, error 0,10,
+métricas macro 0,80, recall mínimo por categoría 0,70 y brecha train-test 0,10. Actualmente hay cero
+activos autorizados, por lo que `visual-training-readiness.v1.json` declara
+`actualTrainingExecuted=false`; el 0,916667 registrado corresponde solo al fixture contractual.
+
 Las cuatro hojas de contacto locales fueron inspeccionadas por el agente: no se observaron personas,
 marcas o texto legible. Esto no equivale a revisión humana. El screening de personas por similitud de
 prompts resultó no discriminativo —marcó 100/100— y se conserva como `inconclusive`, nunca como prueba

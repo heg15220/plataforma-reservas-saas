@@ -478,7 +478,9 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
   - [ ] 23.16.c. Completar revisión humana independiente, sustituir activos ambiguos y superar recall macro >=0,80 sin reutilizar el test para ajuste.
     - [x] 23.16.c.1. Sustituir de forma versionada los 17 activos ambiguos de desarrollo y ejecutar una primera confirmación exploratoria en un holdout nuevo, equilibrado y no utilizado para el ajuste.
     - [ ] 23.16.c.2. Completar la revisión humana independiente de originales, sustituciones y holdout antes de habilitar cualquier uso de entrenamiento.
-    - [ ] 23.16.c.3. Crear un stress test visual representativo con suficientes casos por categoría, hard negatives y ambigüedad realista; exigir accuracy de test >=0,83, error <=0,17, métricas macro >=0,80 y brecha desarrollo-test <=0,10 sin forzar artificialmente una accuracy de entrenamiento.
+    - [ ] 23.16.c.3. Crear un stress test visual representativo con suficientes casos por categoría, hard negatives y ambigüedad realista; exigir accuracy de test >=0,90, error <=0,10, métricas macro >=0,80 y brecha train-test <=0,10 sin forzar artificialmente una accuracy de entrenamiento.
+      - [x] 23.16.c.3.a. Implementar la cabeza lineal sobre CLIP congelado, selección por validación, early stopping, puertas >=0,90 y pruebas fail-closed de autorización, leakage, test único, baja calidad y benchmark perfecto.
+      - [ ] 23.16.c.3.b. Revisar y autorizar humanamente al menos 200 imágenes disjuntas (80 train, 40 validación, 80 test), entrenar el candidato real y conservar el único resultado de test aunque no alcance 0,90.
 
 ## 26. Criterios de salida del MVP
 

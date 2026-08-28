@@ -40565,3 +40565,75 @@ categoría, pero el manifiesto añade `benchmarkAdequacyPassed=false` y
 insuficientes para generalización. La nueva 23.16.c.3 exige al menos diez casos por categoría, hard
 negatives, accuracy >=0,83, error <=0,17, métricas macro >=0,80 y brecha desarrollo-test <=0,10.
 No se impone techo de accuracy de entrenamiento: la varianza se controla fuera de muestra.
+
+# Iteración 2026-08-28 - Tarea 23.16.c.3.a: entrenador visual gobernado
+
+## Objetivo, requisitos y estado
+
+- Identificador exacto completado: 23.16.c.3.a.
+- Objetivo técnico: disponer de un entrenamiento supervisado reproducible que pueda alcanzar y
+  demostrar accuracy test >=0,90 sin leakage, ajuste contra test ni uso de imágenes no aprobadas.
+- Requisitos/diseño: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Estado: 23.16.c.2/23.16.c.3.b siguen pendientes; el modelo real no se entrenó.
+
+## Arquitectura y contratos
+
+`visual_training.py` implementa `ClipLinearCategoryTrainer`. CLIP ViT-B/32 permanece congelado; el
+único componente ajustable es una cabeza softmax de ocho categorías con matriz 8×512 y ocho sesgos.
+Esta elección limita capacidad/varianza con pocos datos y permite un artefacto JSON portable, sin
+pickle ni ejecución arbitraria. PyTorch CPU 2.8.0 queda fijado en el extra `ml`. El CLI
+`reserly-demand-train-visual-category` recibe política,
+dataset aprobado y ruta de salida.
+
+`VisualTrainingDataset` solo acepta UUID de imagen/local, SHA-256, categoría, split, embedding y
+estado de autorización. No persiste píxeles, texto, EXIF, PII ni embeddings de usuarios. Cada fila
+exige literalmente `humanReviewStatus=approved` y `developmentTrainingAllowed=true`; Pydantic rechaza
+cualquier otro valor antes de entrenar. Los hashes/imageId son únicos y un venueId no puede cruzar
+splits. La revisión/base model y dimensionalidad deben coincidir con la política; cada embedding debe
+ser finito y L2 normalizado.
+
+La política `clip-linear-category-training-v1` exige 10/5/10 imágenes por categoría para
+train/validación/test: 80/40/80, 200 totales. No permite promoción automática. La model card limita
+uso a evaluación sintética/asistencia de revisión y prohíbe mutación automática, atributos sensibles,
+promoción sintética y entrenamiento no revisado.
+
+## Optimización y ausencia de contaminación
+
+Para cada L2 predefinido (0,0001/0,001/0,01/0,1), SGD entrena desde inicialización determinista con
+semilla 1729. Early stopping conserva el menor cross-entropy de validación. La selección ordena por
+F1 macro de validación, accuracy y regularización; test no participa. Solo tras fijar L2/pesos/sesgos
+se calculan una vez métricas de train, validación y test. El artefacto declara
+`testOpenedExactlyOnce=true` y conserva matrices, métricas por categoría, pesos, sesgos y brecha.
+
+La puerta exige accuracy test >=0,90, error <=0,10, precision/recall/F1 macro >=0,80, recall mínimo
+por categoría >=0,70 y brecha absoluta train-test <=0,10. Accuracy sintética >=0,98 activa
+`benchmarkDifficultyReviewRequired` y bloquea `benchmarkAdequacyPassed`. Aun pasando todo,
+`promotionAllowed=false` y se requiere aprobación humana separada.
+
+## Tests y evidencia
+
+El fixture usa ocho dimensiones/categorías, 32 filas train, 16 validación y 24 test. Dos hard
+negatives intercambiados producen test accuracy/precision/recall/F1 macro 0,916667, error 0,083333 y
+brecha 0,083333; la puerta contractual pasa sin resultado perfecto. Este valor no es una evaluación
+del modelo real.
+
+Siete pruebas cubren determinismo y >=0,90; rechazo de activo pending/no autorizado; leakage de venue;
+accuracy baja fail-closed; 1,00 sintético bloqueado; escala/umbrales de política real; y auditoría del
+orden de llamadas, que observa todas las validaciones de candidatos antes de la secuencia final
+train/validation/test. La primera regresión completa detectó correctamente una model card sin los
+campos comunes/status candidate; se corrigió sin relajar el validador. Después pasaron las 18 pruebas
+focalizadas de entrenamiento+gobernanza y la regresión completa 283/283 en 160,523 s. `compileall`,
+JSON/hash del readiness y `git diff --check` pasaron; permanecen solo avisos preexistentes de
+TensorFlow opcional y compatibilidad futura Evidently/pandas 4.
+
+`visual-training-readiness.v1.json` registra 0 activos humanamente aprobados/autorizados frente a 200
+requeridos, `actualTrainingExecuted=false` y métricas reales nulas. Los bloqueos estables son revisión
+humana, autorización, cardinalidad y stress test no materializado. No se falsea un 0,90 real usando
+el fixture ni se reutiliza el holdout consumido.
+
+## Riesgos y siguiente paso
+
+La cabeza lineal puede no capturar variaciones visuales complejas; ajustar el backbone con 200
+imágenes tendría mucho mayor riesgo de sobreajuste y queda fuera de alcance. El objetivo 0,90 no se
+garantiza: se mide una vez y se conserva el fallo si ocurre. El siguiente paso requiere revisión
+humana independiente y 200 imágenes con hard negatives, procedencia/licencia y venues disjuntos.

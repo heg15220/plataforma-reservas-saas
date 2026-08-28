@@ -4987,8 +4987,9 @@ casos reales o ambiguos, sin retocar la selección contra este holdout ya consum
 
 La confirmación exploratoria de 24 imágenes no constituye todavía la puerta de generalización. La
 siguiente versión debe congelar antes de inferencia un stress test con al menos diez imágenes por
-categoría, incluyendo hard negatives y espacios mixtos. La puerta exige accuracy >=0,83, error
-top-1 <=0,17, precision/recall/F1 macro >=0,80 y brecha absoluta desarrollo-test <=0,10. Una
+categoría, incluyendo hard negatives y espacios mixtos. La puerta exige accuracy >=0,90, error
+top-1 <=0,10, precision/recall/F1 macro >=0,80, recall por categoría >=0,70 y brecha absoluta
+train-test <=0,10. Una
 accuracy sintética >=0,98 activa `benchmarkDifficultyReviewRequired`: señala posible test demasiado
 fácil y bloquea promoción aunque las métricas de clasificación pasen.
 
@@ -4996,3 +4997,11 @@ No existe un límite superior de accuracy de entrenamiento. Reducirla deliberada
 destruiría señal y no controla varianza. Cuando exista entrenamiento real, la política usará curvas
 de aprendizaje, early stopping sobre validación, regularización y la brecha train/validation/test;
 en el CLIP actual, `warm` es desarrollo para selección de activos, no un split de entrenamiento.
+
+La cabeza `clip-linear-category-head-v1` es una capa softmax entrenable sobre embeddings CLIP L2
+congelados; nunca actualiza el backbone. El dataset gobernado contiene solo UUID, SHA-256, categoría,
+split y vector, sin píxeles ni texto. Exige 10/5/10 imágenes por categoría en train/validación/test
+(80/40/80; 200 totales), revisión humana approved, autorización de desarrollo, hashes únicos y
+venueId disjunto entre splits. La política prueba varios L2 con validación, aplica early stopping y
+calcula test exactamente después de seleccionar el candidato. El artefacto JSON conserva pesos,
+sesgos, matriz, métricas por clase, brecha y gates; sintético nunca permite promoción automática.

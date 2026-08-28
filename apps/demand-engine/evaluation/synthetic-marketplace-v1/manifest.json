@@ -47,6 +47,10 @@
     "visual-holdout-v2/visual-qa-report.json": {
       "rows": 1,
       "sha256": "ff96eea35b87391fa0a55ba9ade1dd289f30e823fdff10f3bf26af63ad9da92f"
+    },
+    "visual-training-readiness.v1.json": {
+      "rows": 1,
+      "sha256": "b503b65a6e72c713e94844dab263fc759ea43bbc6c4f62a09c10199061bc5e88"
     }
   },
   "categoryCoverage": {
@@ -173,5 +177,16 @@
     "qaReport": "visual-qa-report.json",
     "status": "materializedPendingHumanReview",
     "trainingAllowed": false
+  },
+  "visualTraining": {
+    "policyVersion": "clip-linear-category-training-v1",
+    "readinessReport": "visual-training-readiness.v1.json",
+    "requiredImages": 200,
+    "humanApprovedImages": 0,
+    "actualTrainingExecuted": false,
+    "actualTestAccuracy": null,
+    "minimumTestAccuracy": 0.9,
+    "trainingReady": false,
+    "promotionAllowed": false
   }
 }

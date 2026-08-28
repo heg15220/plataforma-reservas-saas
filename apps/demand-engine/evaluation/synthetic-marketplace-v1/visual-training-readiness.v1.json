@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "reportVersion": "visual-training-readiness-v1",
+  "evaluatedAt": "2026-08-28T00:00:00Z",
+  "trainingPolicyVersion": "clip-linear-category-training-v1",
+  "baseModelKey": "clip-vit-b32-visual-evidence-v1",
+  "requiredDataset": {
+    "categories": 8,
+    "trainPerCategory": 10,
+    "validationPerCategory": 5,
+    "testPerCategory": 10,
+    "totalTrain": 80,
+    "totalValidation": 40,
+    "totalTest": 80,
+    "totalImages": 200,
+    "humanReviewRequired": true,
+    "disjointVenuesAcrossSplits": true
+  },
+  "currentAssets": {
+    "originalImages": 100,
+    "versionedReplacements": 17,
+    "consumedExploratoryHoldout": 24,
+    "humanApprovedForTraining": 0,
+    "developmentTrainingAllowed": 0
+  },
+  "contractTestFixture": {
+    "purpose": "pipelineVerificationOnly",
+    "productionEvidence": false,
+    "trainRows": 32,
+    "validationRows": 16,
+    "testRows": 24,
+    "trainAccuracy": 1.0,
+    "validationAccuracy": 1.0,
+    "testAccuracy": 0.91666667,
+    "testError": 0.08333333,
+    "testMacroPrecision": 0.91666667,
+    "testMacroRecall": 0.91666667,
+    "testMacroF1": 0.91666667,
+    "trainTestAccuracyGap": 0.08333333,
+    "gatesPassed": true
+  },
+  "actualTrainingExecuted": false,
+  "actualModelTestMetrics": null,
+  "trainingReady": false,
+  "blockers": [
+    "VISUAL_HUMAN_REVIEW_PENDING",
+    "VISUAL_TRAINING_ASSETS_NOT_AUTHORIZED",
+    "VISUAL_TRAINING_DATASET_INSUFFICIENT",
+    "VISUAL_STRESS_TEST_NOT_MATERIALIZED"
+  ],
+  "promotionAllowed": false
+}

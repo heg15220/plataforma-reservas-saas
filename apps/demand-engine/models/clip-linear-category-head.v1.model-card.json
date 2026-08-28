@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "clip-linear-category-head-v1",
+  "modelVersion": "clip-linear-category-head-v1",
+  "status": "candidate",
+  "owner": "demand-engine",
+  "purpose": "Clasificar de forma auxiliar la categoría visible de un local mediante una cabeza lineal sobre embeddings CLIP congelados.",
+  "baseModelKey": "clip-vit-b32-visual-evidence-v1",
+  "trainingLibrary": "torch",
+  "trainingLibraryVersion": "2.8.0",
+  "trainingPolicyVersion": "clip-linear-category-training-v1",
+  "intendedUse": [
+    "syntheticVisualEvaluation",
+    "humanCategoryReviewAssistance"
+  ],
+  "prohibitedUse": [
+    "automaticVenueCategoryMutation",
+    "sensitiveAttributeInference",
+    "productionPromotionFromSyntheticEvidence",
+    "trainingOnUnreviewedImages"
+  ],
+  "qualityTarget": {
+    "minimumTestAccuracy": 0.9,
+    "maximumTestError": 0.1,
+    "minimumMacroMetrics": 0.8,
+    "minimumPerCategoryRecall": 0.7,
+    "maximumTrainTestAccuracyGap": 0.1
+  },
+  "limitations": [
+    "No existe todavía un dataset de al menos 200 imágenes humanamente aprobado para train, validación y test.",
+    "Los activos sintéticos actuales no tienen autorización de entrenamiento.",
+    "Un resultado sintético perfecto exige revisar la dificultad del benchmark.",
+    "La salida nunca sustituye la categoría autoritativa ni la revisión humana."
+  ],
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "rollback": "Mantener CLIP zero-shot y el ranking determinista actual; no cargar la cabeza lineal candidata."
+}

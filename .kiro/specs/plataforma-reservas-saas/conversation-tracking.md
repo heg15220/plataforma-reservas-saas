@@ -10808,3 +10808,29 @@ Fuente de verdad del avance:
   - Accuracy sintética >=0,98 activa revisión de dificultad y no habilita promoción.
   - No se fuerza accuracy de entrenamiento a 0,80; se controla varianza mediante generalización,
     regularización, curvas de aprendizaje y early stopping cuando exista entrenamiento real.
+
+# Conversación 279 - Pipeline de entrenamiento visual y puerta test >=0,90
+
+- Fecha: 2026-08-28.
+- Resumen de la conversación: se implementó una cabeza softmax reproducible sobre CLIP congelado,
+  con autorización humana fail-closed, splits disjuntos, selección L2/early stopping mediante
+  validación y test abierto únicamente después de congelar el candidato.
+- Archivos modificados: módulo/CLI y pruebas de entrenamiento visual; política y model card; informe
+  de readiness, dependencia PyTorch fijada en pyproject, README y guías Demand Engine; requisitos, diseño, tareas, documento
+  técnico y este registro.
+- Requisitos impactados: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.16.c.3 sube el objetivo a accuracy 0,90; se añade/completa 23.16.c.3.a y
+  23.16.c.3.b queda pendiente.
+- Tareas completadas: 23.16.c.3.a.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para este entrenamiento,
+  23.16.c.2 debe aprobar activos y 23.16.c.3.b materializar 200 imágenes disjuntas.
+- Decisiones o aclaraciones relevantes:
+  - Política real: 80 train, 40 validación y 80 test; 10/5/10 por cada categoría.
+  - Puerta: accuracy test >=0,90, error <=0,10, métricas macro >=0,80, recall por clase >=0,70 y
+    brecha train-test <=0,10.
+  - Fixture contractual: test accuracy/F1 macro 0,916667, error 0,083333 y brecha 0,083333.
+  - El fixture valida código, no acredita la calidad del modelo real ni permite promoción.
+  - Entrenamiento real no ejecutado: cero activos están aprobados/autorizados y faltan 200 imágenes.
+  - Test nunca selecciona L2/epochs; un 1,00 sintético activa revisión de dificultad.
+  - 18 pruebas focalizadas y la regresión completa 283/283 pasan tras adaptar la model card al
+    contrato común de gobernanza.

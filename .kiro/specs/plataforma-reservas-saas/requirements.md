@@ -870,9 +870,14 @@ acciones automáticas.
 - WHEN un holdout sintético obtenga métricas perfectas, THEN el resultado no demuestra
   generalización ni habilita entrenamiento: se publican tamaño, dificultad, cohortes de contraste y
   la revisión humana continúa siendo obligatoria.
-- WHEN se evalúe la generalización visual, THEN el test representativo exige accuracy >=0,83,
-  error <=0,17, precision/recall/F1 macro >=0,80 y una brecha absoluta entre desarrollo y test
+- WHEN se evalúe la generalización visual, THEN el test representativo exige accuracy >=0,90,
+  error <=0,10, precision/recall/F1 macro >=0,80, recall por categoría >=0,70 y una brecha absoluta entre train y test
   <=0,10, con tamaño mínimo y hard negatives definidos antes de inferencia.
+- WHEN se entrene la cabeza visual supervisada, THEN CLIP permanece congelado, los locales no se
+  comparten entre splits, L2/early stopping se seleccionan solo con validación y test se abre una vez
+  después de congelar el candidato.
+- WHEN una imagen no tenga revisión humana `approved` o `developmentTrainingAllowed=true`, THEN se
+  rechaza antes de extraerla como fila de entrenamiento, incluso si su QA automática pasó.
 - WHEN la accuracy de desarrollo o entrenamiento sea alta, THEN no se reduce ni manipula para
   aproximarla artificialmente al 80%; el sobreajuste se determina por brecha de generalización,
   estabilidad por categoría, calibración y rendimiento sobre datos no observados.
