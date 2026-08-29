@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "reportVersion": "visual-training-diagnosis-v1",
+  "datasetVersion": "visual-category-dataset-v2-definitive-200",
+  "resultAlreadyConsumed": true,
+  "alternativeTestPredictionsComputed": false,
+  "testUsedForCandidateSelection": false,
+  "observedMetrics": {
+    "trainAccuracy": 0.975,
+    "validationAccuracy": 0.95,
+    "testAccuracy": 0.875,
+    "trainValidationGap": 0.025,
+    "trainTestGap": 0.1
+  },
+  "capacity": {
+    "trainRows": 80,
+    "embeddingDimensions": 512,
+    "classes": 8,
+    "rawLinearParameters": 4104,
+    "parametersPerTrainRow": 51.3,
+    "selectedL2": 0.0001,
+    "completedEpochs": 2000
+  },
+  "sourceBySplit": [
+    {
+      "split": "test",
+      "source": "generated-independent-test-v2",
+      "rows": 80
+    },
+    {
+      "split": "train",
+      "source": "existing-active-v2",
+      "rows": 40
+    },
+    {
+      "split": "train",
+      "source": "generated-v1",
+      "rows": 40
+    },
+    {
+      "split": "validation",
+      "source": "existing-active-v2",
+      "rows": 30
+    },
+    {
+      "split": "validation",
+      "source": "generated-v1",
+      "rows": 10
+    }
+  ],
+  "centroidShift": [
+    {
+      "categoryCode": "restaurante",
+      "trainValidationCosine": 0.97971658,
+      "developmentTestCosine": 0.97787256
+    },
+    {
+      "categoryCode": "peluqueria",
+      "trainValidationCosine": 0.98502693,
+      "developmentTestCosine": 0.97966177
+    },
+    {
+      "categoryCode": "campo-de-futbol",
+      "trainValidationCosine": 0.97308014,
+      "developmentTestCosine": 0.96137448
+    },
+    {
+      "categoryCode": "pista-de-padel",
+      "trainValidationCosine": 0.96953974,
+      "developmentTestCosine": 0.96381725
+    },
+    {
+      "categoryCode": "instalacion-municipal",
+      "trainValidationCosine": 0.96957651,
+      "developmentTestCosine": 0.98095809
+    },
+    {
+      "categoryCode": "centro-deportivo",
+      "trainValidationCosine": 0.96433474,
+      "developmentTestCosine": 0.96721097
+    },
+    {
+      "categoryCode": "centro-de-estetica",
+      "trainValidationCosine": 0.98136365,
+      "developmentTestCosine": 0.98759569
+    },
+    {
+      "categoryCode": "otros",
+      "trainValidationCosine": 0.94816086,
+      "developmentTestCosine": 0.93987348
+    }
+  ],
+  "errors": [
+    {
+      "imageId": "31813184-6948-531f-b8c2-ac63dda14ed1",
+      "actual": "otros",
+      "predicted": "instalacion-municipal",
+      "margin": 0.09625033,
+      "source": "generated-independent-test-v2",
+      "variant": "dance rehearsal rental studio with sprung floor, ballet barres, full mirrors and sound console, no gym machines",
+      "relativePath": "images/test-v2-otros-08.png"
+    },
+    {
+      "imageId": "51933d82-0342-59e2-b763-6c8acf6993a2",
+      "actual": "centro-de-estetica",
+      "predicted": "peluqueria",
+      "margin": 1.28024026,
+      "source": "generated-independent-test-v2",
+      "variant": "nail and pedicure beauty center with manicure desks, pedicure chairs and polish displays, no barber equipment",
+      "relativePath": "images/test-v2-centro-de-estetica-05.png"
+    },
+    {
+      "imageId": "585abbae-e5ec-54da-9a3c-e6da2bbbda5f",
+      "actual": "instalacion-municipal",
+      "predicted": "otros",
+      "margin": 0.44538238,
+      "source": "generated-independent-test-v2",
+      "variant": "public community teaching kitchen with group worktables, demonstration counters and civic multipurpose layout",
+      "relativePath": "images/test-v2-instalacion-municipal-09.png"
+    },
+    {
+      "imageId": "7ac8f0d5-e45d-5b7f-87ee-b007ea53e64b",
+      "actual": "otros",
+      "predicted": "instalacion-municipal",
+      "margin": 0.74505866,
+      "source": "generated-independent-test-v2",
+      "variant": "black-box theater rehearsal studio with stage lighting grid, props, marked performance floor and movable audience risers",
+      "relativePath": "images/test-v2-otros-05.png"
+    },
+    {
+      "imageId": "86df3bae-639b-5314-b98b-7fbe4ae33e88",
+      "actual": "centro-deportivo",
+      "predicted": "campo-de-futbol",
+      "margin": 0.00671128,
+      "source": "generated-independent-test-v2",
+      "variant": "community indoor sports hall configured for basketball and badminton with hoops, nets, court lines and equipment benches",
+      "relativePath": "images/test-v2-centro-deportivo-10.png"
+    },
+    {
+      "imageId": "8758aea5-3c48-5c1c-a36a-2a4893897598",
+      "actual": "centro-de-estetica",
+      "predicted": "peluqueria",
+      "margin": 0.74192351,
+      "source": "generated-independent-test-v2",
+      "variant": "makeup and skincare studio with reclining beauty chairs, illuminated mirrors and cosmetic workstations, no shampoo sinks",
+      "relativePath": "images/test-v2-centro-de-estetica-10.png"
+    },
+    {
+      "imageId": "a6bf6e20-5859-5d70-9bec-ff2de5380270",
+      "actual": "instalacion-municipal",
+      "predicted": "otros",
+      "margin": 0.56425442,
+      "source": "generated-independent-test-v2",
+      "variant": "town cultural center craft classroom with washable worktables, public storage cabinets and shared sinks",
+      "relativePath": "images/test-v2-instalacion-municipal-07.png"
+    },
+    {
+      "imageId": "abc21ef1-b865-5111-91ab-06a2542eef15",
+      "actual": "campo-de-futbol",
+      "predicted": "pista-de-padel",
+      "margin": 0.01453473,
+      "source": "generated-independent-test-v2",
+      "variant": "urban football cage adjacent to glass padel courts, football goals and rectangular pitch markings centered in frame",
+      "relativePath": "images/test-v2-campo-de-futbol-10.png"
+    },
+    {
+      "imageId": "b5c7b388-514b-5a85-b76c-4cb58cc9fd6e",
+      "actual": "otros",
+      "predicted": "restaurante",
+      "margin": 0.35757262,
+      "source": "generated-independent-test-v2",
+      "variant": "private ceramics school for bookings with pottery wheels, clay worktables, kiln and shelves of unfinished pieces, not a civic hall",
+      "relativePath": "images/test-v2-otros-01.png"
+    },
+    {
+      "imageId": "ee3d9e92-ceb5-5acf-aff5-3e56563d7a38",
+      "actual": "instalacion-municipal",
+      "predicted": "otros",
+      "margin": 0.73321456,
+      "source": "generated-independent-test-v2",
+      "variant": "municipal youth center activity hall with flexible tables, community games storage and public reception corner",
+      "relativePath": "images/test-v2-instalacion-municipal-05.png"
+    }
+  ],
+  "errorCount": 10,
+  "meanCorrectMargin": 1.43053706,
+  "meanErrorMargin": 0.49851427,
+  "conclusions": [
+    "TRAIN_VALIDATION_GAP_SMALL_NOT_EXCESSIVE_CLASSIC_OVERFIT",
+    "TEST_SOURCE_ABSENT_FROM_TRAIN_AND_VALIDATION",
+    "HIGH_DIMENSION_LOW_SAMPLE_CAPACITY_RISK",
+    "REGULARIZATION_TIE_SELECTED_WEAKEST_L2",
+    "MUNICIPAL_AND_OTHER_NOT_PURELY_VISUAL_ONTOLOGY"
+  ]
+}

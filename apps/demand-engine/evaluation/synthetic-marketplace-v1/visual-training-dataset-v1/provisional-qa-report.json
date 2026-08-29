@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "visual-category-dataset-v1-provisional-120",
+  "testPredictionsObserved": false,
+  "structuralQaPassed": true,
+  "materializedImageCount": 120,
+  "splitCounts": {
+    "test": 56,
+    "train": 40,
+    "validation": 24
+  },
+  "categoryCounts": {
+    "campo-de-futbol": 15,
+    "centro-de-estetica": 15,
+    "centro-deportivo": 15,
+    "instalacion-municipal": 15,
+    "otros": 15,
+    "peluqueria": 15,
+    "pista-de-padel": 15,
+    "restaurante": 15
+  },
+  "uniqueSha256Count": 120,
+  "minimumPerceptualHammingDistance": 13,
+  "nearDuplicatePairs": [],
+  "violations": [],
+  "humanReview": {
+    "required": true,
+    "approved": 0,
+    "rejected": 0,
+    "pending": 120,
+    "trainingAllowed": false
+  },
+  "definitiveContractSatisfied": false
+}

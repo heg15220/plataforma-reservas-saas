@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "selectionVersion": "visual-training-dataset-v2-agent-qa-r1",
+  "selectedBeforeModelInference": true,
+  "reason": "Visual QA detected flags and a coat of arms prohibited by the no-logo/no-symbol contract.",
+  "replacements": [
+    {
+      "imageId": "bfa4b789-1878-548b-892d-697558bfaf96",
+      "categoryCode": "instalacion-municipal",
+      "split": "test",
+      "originalPath": "images/test-v2-instalacion-municipal-01.png",
+      "replacementPath": "images/test-v2-instalacion-municipal-01-r1.png",
+      "promptVersion": "visual-training-independent-hard-negatives-v2-r1",
+      "prompt": "Use case: photorealistic-natural. Asset type: independent visual classification stress-test image. Create one photorealistic landscape 4:3 commercial-property photograph of a unique empty public municipal community meeting hall in Spain. Show a neutral civic dais, stackable audience chairs, accessibility ramp and public-building finishes. Use blank neutral walls. Absolutely no flags, coats of arms, seals, emblems, portraits, logos, readable text, people, watermarks, collage or split screen. The room must look municipal and multipurpose without any identifying symbol."
+    }
+  ]
+}

@@ -16,3 +16,9 @@ La ontología inicial se publica en ontology/personal-care.v1.json y se valida c
 el JSON Schema interoperable y test_ontology_v1.py. El contrato Pydantic añade invariantes cruzados
 que JSON Schema no expresa por sí solo: códigos únicos, jerarquía sin ciclos, padres de la misma
 familia, fuentes conocidas, vigencia coherente y ausencia de solapamiento con atributos prohibidos.
+
+El catálogo candidato `catalog/venue-taxonomy.v1.json` incorpora 23 familias y 254 tipos físicos del
+libro normalizado de referencia. No activa categorías públicas: todos los tipos permanecen
+`candidate`, su traducción inglesa requiere revisión humana y las ocho etiquetas históricas usan un
+puente explícito. El contrato conserva únicamente jerarquía, etiquetas y usos necesarios para el
+producto, sin incorporar columnas administrativas externas del libro fuente.

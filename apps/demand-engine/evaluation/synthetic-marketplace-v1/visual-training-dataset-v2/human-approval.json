@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "decision": "approved",
+  "scope": "all-pending-images",
+  "datasetVersion": "visual-category-dataset-v2-definitive-200",
+  "approvedImageCount": 80,
+  "reviewer": "workspace-owner",
+  "decidedAt": "2026-08-29T00:00:00+02:00",
+  "confirmedThreeSheetsReviewed": true,
+  "source": "explicit-user-message",
+  "statement": "Apruebo las 80 imágenes nuevas del test v2"
+}

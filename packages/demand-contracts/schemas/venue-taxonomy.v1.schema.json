@@ -1,0 +1,365 @@
+{
+  "$defs": {
+    "LegacyCompatibility": {
+      "additionalProperties": false,
+      "description": "Puente explícito que evita reinterpretar silenciosamente las ocho clases históricas.",
+      "properties": {
+        "legacyCategoryCode": {
+          "enum": [
+            "restaurante",
+            "peluqueria",
+            "campo-de-futbol",
+            "pista-de-padel",
+            "instalacion-municipal",
+            "centro-deportivo",
+            "centro-de-estetica",
+            "otros"
+          ],
+          "title": "Legacycategorycode",
+          "type": "string"
+        },
+        "mappingKind": {
+          "enum": [
+            "canonicalType",
+            "operatorAttribute",
+            "compositeRequiresReview"
+          ],
+          "title": "Mappingkind",
+          "type": "string"
+        },
+        "targetTypeCodes": {
+          "items": {
+            "maxLength": 128,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Targettypecodes",
+          "type": "array"
+        },
+        "operatorTypeCode": {
+          "anyOf": [
+            {
+              "const": "public-municipal",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Operatortypecode"
+        },
+        "mappingStatus": {
+          "enum": [
+            "exact",
+            "partial",
+            "requiresReclassification"
+          ],
+          "title": "Mappingstatus",
+          "type": "string"
+        },
+        "existingImagesReusableForDevelopment": {
+          "const": true,
+          "title": "Existingimagesreusablefordevelopment",
+          "type": "boolean"
+        },
+        "existingImagesEligibleAsNewTest": {
+          "const": false,
+          "title": "Existingimageseligibleasnewtest",
+          "type": "boolean"
+        },
+        "humanRelabelReviewRequired": {
+          "const": true,
+          "title": "Humanrelabelreviewrequired",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "legacyCategoryCode",
+        "mappingKind",
+        "targetTypeCodes",
+        "operatorTypeCode",
+        "mappingStatus",
+        "existingImagesReusableForDevelopment",
+        "existingImagesEligibleAsNewTest",
+        "humanRelabelReviewRequired"
+      ],
+      "title": "LegacyCompatibility",
+      "type": "object"
+    },
+    "LocalizedCandidateName": {
+      "additionalProperties": false,
+      "description": "Etiqueta española fuente y traducción inglesa pendiente o revisada.",
+      "properties": {
+        "es": {
+          "maxLength": 160,
+          "minLength": 2,
+          "title": "Es",
+          "type": "string"
+        },
+        "en": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "minLength": 2,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "En"
+        }
+      },
+      "required": [
+        "es",
+        "en"
+      ],
+      "title": "LocalizedCandidateName",
+      "type": "object"
+    },
+    "LocalizedText": {
+      "additionalProperties": false,
+      "description": "Texto bilingüe obligatorio para familias aptas para navegación.",
+      "properties": {
+        "es": {
+          "maxLength": 320,
+          "minLength": 3,
+          "title": "Es",
+          "type": "string"
+        },
+        "en": {
+          "maxLength": 320,
+          "minLength": 3,
+          "title": "En",
+          "type": "string"
+        }
+      },
+      "required": [
+        "es",
+        "en"
+      ],
+      "title": "LocalizedText",
+      "type": "object"
+    },
+    "TaxonomySource": {
+      "additionalProperties": false,
+      "description": "Proveniencia content-addressed del libro importado sin incorporarlo al repositorio.",
+      "properties": {
+        "fileSha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Filesha256",
+          "type": "string"
+        },
+        "sourceVersion": {
+          "format": "date",
+          "title": "Sourceversion",
+          "type": "string"
+        },
+        "recordCount": {
+          "const": 254,
+          "title": "Recordcount",
+          "type": "integer"
+        },
+        "scopeEs": {
+          "maxLength": 320,
+          "minLength": 20,
+          "title": "Scopees",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileSha256",
+        "sourceVersion",
+        "recordCount",
+        "scopeEs"
+      ],
+      "title": "TaxonomySource",
+      "type": "object"
+    },
+    "VenueFamily": {
+      "additionalProperties": false,
+      "description": "Familia de navegación candidata, no activada automáticamente en producto.",
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "$ref": "#/$defs/LocalizedText"
+        },
+        "definition": {
+          "$ref": "#/$defs/LocalizedText"
+        },
+        "governanceStatus": {
+          "const": "candidate",
+          "title": "Governancestatus",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "definition",
+        "governanceStatus"
+      ],
+      "title": "VenueFamily",
+      "type": "object"
+    },
+    "VenueTypeCandidate": {
+      "additionalProperties": false,
+      "description": "Tipo físico importado con etiqueta, jerarquía y uso funcional.",
+      "properties": {
+        "sourceId": {
+          "maximum": 254,
+          "minimum": 1,
+          "title": "Sourceid",
+          "type": "integer"
+        },
+        "code": {
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "familyCode": {
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Familycode",
+          "type": "string"
+        },
+        "subcategoryCode": {
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Subcategorycode",
+          "type": "string"
+        },
+        "name": {
+          "$ref": "#/$defs/LocalizedCandidateName"
+        },
+        "sourceSubcategoryEs": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Sourcesubcategoryes",
+          "type": "string"
+        },
+        "useCode": {
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Usecode",
+          "type": "string"
+        },
+        "useLabelEs": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Uselabeles",
+          "type": "string"
+        },
+        "translationStatus": {
+          "enum": [
+            "pendingHumanReview",
+            "reviewed"
+          ],
+          "title": "Translationstatus",
+          "type": "string"
+        },
+        "governanceStatus": {
+          "const": "candidate",
+          "title": "Governancestatus",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId",
+        "code",
+        "familyCode",
+        "subcategoryCode",
+        "name",
+        "sourceSubcategoryEs",
+        "useCode",
+        "useLabelEs",
+        "translationStatus",
+        "governanceStatus"
+      ],
+      "title": "VenueTypeCandidate",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Catálogo autoconsistente de 23 familias, 254 candidatos y ocho puentes legacy.",
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "title": "Schemaversion",
+      "type": "integer"
+    },
+    "taxonomyVersion": {
+      "const": "venue-taxonomy.v1",
+      "title": "Taxonomyversion",
+      "type": "string"
+    },
+    "effectiveFrom": {
+      "format": "date",
+      "title": "Effectivefrom",
+      "type": "string"
+    },
+    "locales": {
+      "const": [
+        "es",
+        "en"
+      ],
+      "title": "Locales",
+      "type": "array"
+    },
+    "activationStatus": {
+      "const": "candidateOnly",
+      "title": "Activationstatus",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/TaxonomySource"
+    },
+    "families": {
+      "items": {
+        "$ref": "#/$defs/VenueFamily"
+      },
+      "maxItems": 23,
+      "minItems": 23,
+      "title": "Families",
+      "type": "array"
+    },
+    "types": {
+      "items": {
+        "$ref": "#/$defs/VenueTypeCandidate"
+      },
+      "maxItems": 254,
+      "minItems": 254,
+      "title": "Types",
+      "type": "array"
+    },
+    "legacyCompatibility": {
+      "items": {
+        "$ref": "#/$defs/LegacyCompatibility"
+      },
+      "maxItems": 8,
+      "minItems": 8,
+      "title": "Legacycompatibility",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "taxonomyVersion",
+    "effectiveFrom",
+    "locales",
+    "activationStatus",
+    "source",
+    "families",
+    "types",
+    "legacyCompatibility"
+  ],
+  "title": "VenueTaxonomyV1",
+  "type": "object"
+}

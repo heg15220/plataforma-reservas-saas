@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "clip-ridge-category-head-v2-development",
+  "modelVersion": "clip-ridge-category-head-v2-development",
+  "status": "candidate",
+  "owner": "demand-engine",
+  "purpose": "Clasificación visual auxiliar con reducción PCA y ridge seleccionados mediante validación cruzada resistente al cambio de fuente.",
+  "baseModelKey": "clip-vit-b32-visual-evidence-v1",
+  "trainingLibrary": "numpy",
+  "trainingPolicyVersion": "clip-ridge-category-development-v2",
+  "intendedUse": ["syntheticVisualDevelopment", "humanCategoryReviewAssistance"],
+  "prohibitedUse": [
+    "claimIndependentTestQualityBeforeNewHoldout",
+    "automaticVenueCategoryMutation",
+    "sensitiveAttributeInference",
+    "productionPromotionFromSyntheticEvidence"
+  ],
+  "developmentEvidence": {
+    "datasetVersion": "visual-category-dataset-v2-definitive-200",
+    "consumedTestReclassifiedAsDevelopment": true,
+    "rows": 200,
+    "selectedPcaComponents": 16,
+    "selectedRidgePenalty": 0.01,
+    "trainingAccuracy": 0.945,
+    "stratifiedOofAccuracy": 0.93,
+    "stratifiedOofMacroF1": 0.92992978,
+    "sourceHeldOutAccuracy": 0.91,
+    "sourceHeldOutMacroF1": 0.908682,
+    "trainOofAccuracyGap": 0.02375,
+    "developmentGatesPassed": true
+  },
+  "independentTest": {
+    "status": "required",
+    "predictionsObserved": false,
+    "minimumAccuracy": 0.9,
+    "maximumError": 0.1
+  },
+  "limitations": [
+    "Las cifras 0,93 y 0,91 son validación interna sobre datos ya consumidos; no son un nuevo test.",
+    "La clase instalación municipal incluye titularidad no observable de forma fiable en píxeles.",
+    "La clase otros es heterogénea y mantiene el menor recall leave-one-source-out, 0,72.",
+    "Un holdout nuevo, disjunto y aprobado es obligatorio antes de comparar con la puerta 0,90."
+  ],
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "rollback": "Mantener el fallback determinista y el artefacto v1 histórico; no cargar este candidato hasta superar un holdout independiente."
+}

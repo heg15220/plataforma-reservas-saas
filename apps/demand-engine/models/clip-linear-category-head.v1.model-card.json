@@ -27,11 +27,26 @@
     "maximumTrainTestAccuracyGap": 0.1
   },
   "limitations": [
-    "No existe todavía un dataset de al menos 200 imágenes humanamente aprobado para train, validación y test.",
-    "Los activos sintéticos actuales no tienen autorización de entrenamiento.",
+    "El dataset definitivo contiene 200 imágenes sintéticas aprobadas, pero no constituye evidencia productiva.",
+    "El único test definitivo obtuvo accuracy 0,875 y no alcanzó la puerta 0,90; no puede reabrirse para ajustar esta versión.",
     "Un resultado sintético perfecto exige revisar la dificultad del benchmark.",
     "La salida nunca sustituye la categoría autoritativa ni la revisión humana."
   ],
+  "latestEvaluation": {
+    "datasetVersion": "visual-category-dataset-v2-definitive-200",
+    "policyVersion": "clip-linear-category-training-v1",
+    "testOpenedExactlyOnce": true,
+    "trainAccuracy": 0.975,
+    "validationAccuracy": 0.95,
+    "testAccuracy": 0.875,
+    "testError": 0.125,
+    "testMacroPrecision": 0.87866162,
+    "testMacroRecall": 0.875,
+    "testMacroF1": 0.87336903,
+    "trainTestAccuracyGap": 0.1,
+    "gatesPassed": false,
+    "promotionAllowed": false
+  },
   "humanApprovalRequired": true,
   "automaticPromotionAllowed": false,
   "rollback": "Mantener CLIP zero-shot y el ranking determinista actual; no cargar la cabeza lineal candidata."

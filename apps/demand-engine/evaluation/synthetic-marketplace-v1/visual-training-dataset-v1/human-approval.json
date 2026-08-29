@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "decision": "approved",
+  "scope": "all-provisional-images",
+  "datasetVersion": "visual-category-dataset-v1-provisional-120",
+  "approvedImageCount": 120,
+  "reviewer": "workspace-owner",
+  "decidedAt": "2026-08-29T00:00:00+02:00",
+  "confirmedThreeSheetsReviewed": true,
+  "source": "explicit-user-message",
+  "statement": "Apruebo todas las imágenes"
+}

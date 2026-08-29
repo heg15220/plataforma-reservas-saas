@@ -5005,3 +5005,92 @@ split y vector, sin píxeles ni texto. Exige 10/5/10 imágenes por categoría en
 venueId disjunto entre splits. La política prueba varios L2 con validación, aplica early stopping y
 calcula test exactamente después de seleccionar el candidato. El artefacto JSON conserva pesos,
 sesgos, matriz, métricas por clase, brecha y gates; sintético nunca permite promoción automática.
+
+La materialización de `visual-category-dataset-v1` puede interrumpirse sin degradar silenciosamente
+ese contrato. Si no existen 200 imágenes, la definición 80/40/80 permanece como objetivo inmutable y
+se crea una versión distinta, explícitamente `provisional`, solo con activos físicos disponibles. La
+iteración `visual-category-dataset-v1-provisional-120` selecciona 15 imágenes y venues únicos por
+categoría y fija 5/3/7 para train/validación/test (40/24/56). El test sigue teniendo un único
+presupuesto de apertura y no usa el holdout v2 consumido. La versión provisional puede comprobar la
+infraestructura, pero `definitiveContractSatisfied=false` impide completar 23.16.c.3.b o presentar
+sus métricas como puerta definitiva, incluso si supera 0,90. Antes de extraer embeddings necesita
+una decisión humana por activo; el QA estructural y la inspección del agente no pueden convertir
+`pending` en `approved`.
+
+Tras aprobación humana explícita de los 120 activos, la ejecución provisional selecciona L2 0,01
+solo con validación y consume test una vez. Train/validación/test obtienen respectivamente
+1,00/0,916667/0,875; test error 0,125, F1 macro 0,864541 y brecha train-test 0,125. El candidato falla
+accuracy >=0,90, error <=0,10 y brecha <=0,10. La clase `otros` alcanza recall 0,285714 y confunde
+cinco de siete ejemplos con instalación municipal. El resultado se conserva íntegro,
+`gatesPassed=false`; el test no se reabre y el diseño exige un test nuevo para cualquier variante
+posterior.
+
+La siguiente iteración no reutiliza ese test como evaluación. Los 120 activos provisionales pasan a
+desarrollo consumido y se redistribuyen, antes de entrenar, en 80 train y 40 validación (10/5 por
+categoría). `visual-category-dataset-v2-definitive-200` añade 80 venues/test completamente nuevos,
+diez por categoría, con prompts e identidades congelados antes de generación. La QA exige 200 hashes
+únicos, cero escapes/duplicados, dHash >4 y revisión humana de los 80 nuevos. Un activo municipal con
+escudo/banderas se reemplaza de forma versionada antes de inferencia. Mientras esos 80 permanezcan
+pending, `trainingReady=false`, test opening 0/1 y no se extraen sus embeddings.
+
+Tras la aprobación humana explícita de los 80 activos nuevos, la definición v2 alcanza 200/200
+decisiones approved y habilita solo entrenamiento de desarrollo. Los embeddings CLIP permanecen
+congelados y la cabeza selecciona L2 0,0001 con train/validación. La apertura única del test obtiene
+train 0,975, validación 0,95 y test 0,875 (70/80), error 0,125, F1 macro 0,873369 y brecha 0,10.
+Pasan generalización, benchmark y métricas macro, pero fallan accuracy >=0,90 y error <=0,10;
+`gatesPassed=false` y no hay promoción. El test v2 queda consumido y solo puede analizarse como
+evidencia histórica; cualquier nueva mejora exige otro test independiente antes de afirmar avance.
+
+La remediación v2 no cambia retrospectivamente ese resultado. El diagnóstico reproduce solo los
+logits ya conservados y demuestra una brecha train-validación de 0,025 frente a 0,10 train-test,
+4.104 parámetros para 80 filas y cambio total de fuente en test. La siguiente cabeza reclasifica las
+200 filas consumidas como desarrollo y aplica PCA dentro de cada fold más ridge cerrado. Selecciona
+16 componentes y penalización 0,01 con cinco folds estratificados y leave-one-source-out, reduciendo
+la capacidad efectiva a 136 parámetros. Sus métricas internas son train 0,945, OOF 0,93, source-held
+out 0,91 y brecha 0,02375. El artefacto carece deliberadamente de test metrics y exige un holdout nuevo
+antes de completar 23.16.c.3; los datos consumidos nunca recuperan condición de test.
+
+El recomendador contextual completo se evalúa aparte del clasificador visual. La política
+`recommendation-cross-validation-v1` usa cinco folds rolling-origin sobre enero-mayo y reserva junio
+como test. En cada fold recalcula desde cero exposición de locales, historial de categorías y patrones
+horarios, evitando que una reserva futura alimente sus propias features. LambdaMART combina 15 señales
+pre-outcome con un prior acotado para afinidad, servicio, ambiente visual permitido, disponibilidad,
+escasez, distancia, exposición, historial y horario. Los filtros duros y capacidad actúan antes del
+ranker y nunca son aprendibles ni anulables.
+
+Accuracy se define sobre ocho decisiones por consulta —un top-1 positivo y siete negativos— y se
+publica obligatoriamente con precision/recall/F1 para detectar inflación por desbalance. El test
+conductual obtiene accuracy 0,818780 y F1 0,275120, mientras la brecha train-test es solo 0,022500:
+falla por ruido/irreducibilidad y cold-start, no por varianza alta. Una suite contrafactual congelada
+de diez flujos pasa 10/10, pero se mantiene separada porque valida contratos y no outcomes. El modelo
+XGBoost se conserva content-addressed como candidato, con `qualityGatesPassed=false` y fallback activo.
+
+### 14.68 Catálogo candidato de tipos físicos y puente de categorías históricas
+
+`venue-taxonomy.v1` materializa el libro de referencia adjunto como un contrato JSON inmutable de 23
+familias, 254 tipos candidatos y ocho entradas de compatibilidad. El
+importador procesa únicamente celdas OpenXML de la primera hoja; no ejecuta macros, fórmulas, enlaces
+ni texto como instrucciones. Exige la cabecera exacta, 255 filas incluyendo encabezado y el conjunto
+cerrado de familias. El SHA-256 del libro `d5d5e285...c6c660f` queda en la procedencia sin versionar
+el binario fuente en Git.
+
+Las familias disponen de slug estable, nombre/definición ES/EN y estado `candidate`. Los tipos
+conservan únicamente ID fuente, familia, subcategoría, etiqueta española y uso funcional; las 254
+traducciones inglesas permanecen `pendingHumanReview` en vez de inventarse. Ningún candidato activa
+navegación, seed de base de datos o clasificación. Las columnas administrativas externas del libro
+no forman parte del catálogo, su esquema ni sus contratos de runtime.
+
+El puente legacy conserva los ocho slugs para no romper datasets y contratos. Restaurante,
+peluquería, fútbol y pádel tienen un tipo directo; centro deportivo y estética son mappings parciales
+que requieren elección humana. `instalacion-municipal` se convierte en
+`operatorTypeCode=public-municipal` sin tipo físico, porque la titularidad no se deduce de píxeles.
+`otros` es un compuesto que solo ofrece candidatos parciales y exige reclasificación. Todas las
+entradas impiden usar imágenes existentes como test nuevo.
+
+`venue_taxonomy.py` valida el catálogo y la definición visual v2 aprobada antes de producir la cola
+de 200 activos. Cada fila conserva imageId, venueId, SHA-256, etiqueta y split original, pero fija
+`pendingHumanReview`, `developmentRelabelingOnly`, `testEligible=false` y producción false. El
+manifiesto content-addressed confirma 25 imágenes por etiqueta, 80/40/80 según el split histórico,
+cero nuevas imágenes y cero candidatos de test. La escritura JSONL usa bytes LF canónicos para que
+el hash sea reproducible en Windows. Este flujo reutiliza evidencia sin reabrir tests consumidos ni
+alterar los artefactos de las tareas 23.16 y 23.17.

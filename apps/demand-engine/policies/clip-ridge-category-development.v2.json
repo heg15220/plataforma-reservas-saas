@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "clip-ridge-category-development-v2",
+  "algorithmVersion": "closed-form-ridge-source-aware-v2",
+  "baseModelKey": "clip-vit-b32-visual-evidence-v1",
+  "baseModelRevision": "fbf5e647b25f3514e526849b05cc0196b206d822",
+  "consumedDatasetVersion": "visual-category-dataset-v2-definitive-200",
+  "categories": [
+    "restaurante",
+    "peluqueria",
+    "campo-de-futbol",
+    "pista-de-padel",
+    "instalacion-municipal",
+    "centro-deportivo",
+    "centro-de-estetica",
+    "otros"
+  ],
+  "embeddingDimensions": 512,
+  "stratifiedFolds": 5,
+  "pcaComponentsCandidates": [8, 16, 32, 64],
+  "ridgeCandidates": [0.001, 0.01, 0.1, 1.0, 10.0],
+  "selectionOrder": [
+    "sourceHeldOutMacroF1",
+    "sourceHeldOutAccuracy",
+    "stratifiedOofMacroF1",
+    "minimumTrainOofGap",
+    "strongerRegularizationOnExactTie"
+  ],
+  "developmentGates": {
+    "minimumStratifiedOofAccuracy": 0.9,
+    "minimumStratifiedOofMacroF1": 0.8,
+    "minimumSourceHeldOutAccuracy": 0.9,
+    "maximumTrainOofAccuracyGap": 0.1
+  },
+  "independentTestRequired": true,
+  "automaticPromotionAllowed": false
+}

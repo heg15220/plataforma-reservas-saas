@@ -477,10 +477,16 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
   - [x] 23.16.b. Ejecutar QA estructural, duplicados perceptuales, hojas de contacto y diagnóstico CLIP de categoría con métricas globales y por cohorte.
   - [ ] 23.16.c. Completar revisión humana independiente, sustituir activos ambiguos y superar recall macro >=0,80 sin reutilizar el test para ajuste.
     - [x] 23.16.c.1. Sustituir de forma versionada los 17 activos ambiguos de desarrollo y ejecutar una primera confirmación exploratoria en un holdout nuevo, equilibrado y no utilizado para el ajuste.
-    - [ ] 23.16.c.2. Completar la revisión humana independiente de originales, sustituciones y holdout antes de habilitar cualquier uso de entrenamiento.
+    - [x] 23.16.c.2. Completar la revisión humana independiente de originales, sustituciones y holdout antes de habilitar cualquier uso de entrenamiento.
     - [ ] 23.16.c.3. Crear un stress test visual representativo con suficientes casos por categoría, hard negatives y ambigüedad realista; exigir accuracy de test >=0,90, error <=0,10, métricas macro >=0,80 y brecha train-test <=0,10 sin forzar artificialmente una accuracy de entrenamiento.
       - [x] 23.16.c.3.a. Implementar la cabeza lineal sobre CLIP congelado, selección por validación, early stopping, puertas >=0,90 y pruebas fail-closed de autorización, leakage, test único, baja calidad y benchmark perfecto.
-      - [ ] 23.16.c.3.b. Revisar y autorizar humanamente al menos 200 imágenes disjuntas (80 train, 40 validación, 80 test), entrenar el candidato real y conservar el único resultado de test aunque no alcance 0,90.
+      - [x] 23.16.c.3.b. Revisar y autorizar humanamente al menos 200 imágenes disjuntas (80 train, 40 validación, 80 test), entrenar el candidato real y conservar el único resultado de test aunque no alcance 0,90.
+      - [x] 23.16.c.3.c. Diagnosticar el fallo definitivo sin reabrir test e implementar una cabeza PCA+ridge seleccionada con validación cruzada estratificada y leave-one-source-out sobre datos consumidos como desarrollo.
+      - [ ] 23.16.c.3.d. Congelar, revisar y abrir una sola vez un nuevo holdout independiente para confirmar accuracy >=0,90 y error <=0,10 del candidato robusto sin reutilizar imágenes o venues consumidos.
+- [ ] 23.17. Entrenar y validar el recomendador contextual completo con recorridos de usuario, disponibilidad, capacidad, ubicación, horario, especialidad, atributos visuales permitidos y exposición.
+  - [x] 23.17.a. Implementar 5-fold rolling-origin, selección sin test, métricas accuracy/precision/recall/F1 y diez escenarios contrafactuales de negocio sobre el dataset sintético de 100 locales y 40 perfiles.
+  - [ ] 23.17.b. Superar en un test temporal independiente accuracy >=0,90, error <0,15 y precision/recall/F1 >=0,80 sobre relevancia observada sin leakage, desbalance trivial ni degradación artificial del train.
+- [x] 23.18. Materializar el catálogo candidato versionado de 23 familias y 254 tipos de local con metadatos funcionales mínimos, mapear las ocho categorías históricas y preparar el reetiquetado humano de las 200 imágenes existentes exclusivamente como desarrollo.
 
 ## 26. Criterios de salida del MVP
 

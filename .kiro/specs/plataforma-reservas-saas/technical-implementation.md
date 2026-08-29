@@ -40562,8 +40562,9 @@ La conversación 278 sustituye la interpretación de `automatedQualityPassed=tru
 suficiente. El valor se conserva en el informe consumido como resultado histórico del diagnóstico de
 categoría, pero el manifiesto añade `benchmarkAdequacyPassed=false` y
 `benchmarkDifficultyReviewRequired=true`. La muestra 3×8 y el resultado sintético 1,00 son
-insuficientes para generalización. La nueva 23.16.c.3 exige al menos diez casos por categoría, hard
-negatives, accuracy >=0,83, error <=0,17, métricas macro >=0,80 y brecha desarrollo-test <=0,10.
+insuficientes para generalización. La conversación 279 sustituyó esos umbrales: 23.16.c.3 exige al
+menos diez casos por categoría, hard negatives, accuracy >=0,90, error <=0,10, métricas macro
+>=0,80 y brecha train-test <=0,10.
 No se impone techo de accuracy de entrenamiento: la varianza se controla fuera de muestra.
 
 # Iteración 2026-08-28 - Tarea 23.16.c.3.a: entrenador visual gobernado
@@ -40637,3 +40638,579 @@ La cabeza lineal puede no capturar variaciones visuales complejas; ajustar el ba
 imágenes tendría mucho mayor riesgo de sobreajuste y queda fuera de alcance. El objetivo 0,90 no se
 garantiza: se mide una vez y se conserva el fallo si ocurre. El siguiente paso requiere revisión
 humana independiente y 200 imágenes con hard negatives, procedencia/licencia y venues disjuntos.
+
+# Iteración 2026-08-29 - Preparación provisional de 23.16.c.3.b sin cierre de tarea
+
+## Objetivo, estado y decisión de alcance
+
+El objetivo técnico era preparar los 200 activos gobernados de 23.16.c.3.b antes de entrenar la
+cabeza `clip-linear-category-head-v1`. Se congeló `visual-category-dataset-v1` con 80 train, 40
+validación y 80 test, balance 10/5/10 por categoría, 200 imageId/venueId únicos, un presupuesto de
+test y 113 prompts nuevos. La selección reutilizaba 87 activos v2 de desarrollo y requería 33 nuevas
+imágenes de validación más 80 de test; no incluía las 24 imágenes del holdout v2 ya consumido.
+
+La generación se detuvo por instrucción expresa del usuario después de 83 activos: 33 de validación
+y 50 de test. El proceso de generación en segundo plano se terminó explícitamente y no se crearon
+más imágenes. El contrato definitivo permanece inmutable y no se falsifica su cardinalidad. Con los
+100 activos v2 existen 183 candidatos físicos utilizables. Se deriva una versión diferente,
+`visual-category-dataset-v1-provisional-120`, con 120 activos balanceados y estado
+`awaiting_human_review`. Ninguna tarea se marca completada: faltan 80 imágenes respecto al contrato
+definitivo y la revisión humana sigue pendiente.
+
+## Definición, selección y ausencia de leakage
+
+`visual_dataset_definition.py` documenta responsabilidad, entradas, salida y restricciones. Fija las
+ocho categorías canónicas, escenas independientes, hard negatives y un contrato común sin personas,
+texto legible, logos, marcas de agua, collage o pantalla dividida. `freeze_definition` ordena la
+selección v2 de forma determinista, asigna UUIDv5 estables, genera `definition.json` y una worklist
+JSONL, y valida 200 filas con balance exacto antes de escribir. Todas las filas nacen `pending`, con
+`developmentTrainingAllowed=false` y `productionTrainingAllowed=false`.
+
+`freeze_materialized_provisional_definition` solo admite ficheros realmente presentes. Selecciona 5
+train, 3 validación y 7 test por categoría: 40/24/56, 120 totales. Para restaurante, peluquería,
+fútbol, pádel y municipal el test toma siete imágenes de los nuevos activos `test-*`; para deportivo,
+estética y otros usa cinco imágenes nuevas de validación más dos activos v2 no usados en train o
+validación. Esta reasignación se realizó antes de cualquier inferencia del modelo. Cada split conserva
+venueId distinto; imageId, venueId y SHA-256 son 120/120 únicos. El holdout v2 queda excluido.
+
+La definición provisional declara `definitiveContractSatisfied=false`, shortfall 80,
+`generationStoppedByUser=true`, `testOpenedAtFreeze=false`, presupuesto de test uno, prohibición de
+autorización automática y ausencia de datos personales. No cambia la política definitiva
+`clip-linear-category-training-v1` ni rebaja sus umbrales.
+
+## QA, revisión y seguridad
+
+`visual_review_package.py` resuelve rutas contra la raíz del dataset y rechaza escapes. Verifica
+existencia, SHA-256, decodificación, PNG, RGB/RGBA, resolución mínima, relaciones 4:3/3:2, duplicados
+exactos y dHash <=4. No importa ni ejecuta CLIP y el informe declara explícitamente
+`testPredictionsObserved=false`. El resultado real es 120/120 materializadas, 40/24/56 por split,
+15 por categoría, 120 hashes únicos, cero violaciones, cero pares perceptualmente duplicados y
+distancia dHash mínima 13.
+
+El módulo crea hojas de contacto locales separadas para train, validación y test, con ordinal y
+etiqueta esperada. El manifiesto versionado conserva 120 decisiones `pending`, reviewer/notes nulos y
+autorización false. `HUMAN_REVIEW.md` define criterios y el formato de decisión. La inspección del
+agente identifica posibles ambigüedades en train 36 (`otros` con apariencia de tratamiento), train
+34–35 (estética con recepción dominante), validation 22–24 y test 55–56 (`otros` genérico), además
+del fútbol sala test 16 como hard negative intencional. Estas observaciones no son revisión humana.
+
+Los PNG y JPG quedan ignorados por Git; prompts, hashes, procedencia, splits, QA y decisiones sí son
+auditables. No hay PII, EXIF utilizado, secretos, endpoint, migración, side effect productivo,
+promoción, inferencia de atributos sensibles ni logs de usuario. Los fallos usan códigos estables y
+bloquean entrenamiento. El test provisional permanece cerrado.
+
+## Tests, comandos y evidencia
+
+Se añadieron pruebas que fijan balance/disjunción/autorización cerrada del contrato 200, rechazo de
+path traversal y detección de hash incorrecto sin inferencia. Junto con QA y entrenador pasan 17/17:
+
+`python -m pytest test_visual_training.py test_visual_dataset_definition.py test_synthetic_visual_qa.py -q`
+
+La ejecución usa `--basetemp` dentro del workspace por la restricción del sandbox sobre Temp. La
+resolución `uv run --project` detectó un conflicto preexistente: Prefect 3.8.2 no admite Pydantic
+2.11.3, ambos fijados por el proyecto. Para no mutar versiones se creó una venv local aislada con las
+dependencias base, Pillow, OR-Tools, River, Pytest y Torch CPU 2.8.0. Este conflicto no fue introducido
+por el dataset y queda como deuda de gestión de dependencias.
+
+## Riesgos y siguiente paso
+
+Cinco imágenes train y siete test por categoría producen intervalos amplios; además, la fuente es
+sintética y puede compartir estilo del generador. Un resultado >=0,90 sería evidencia provisional,
+no cumplimiento definitivo ni rendimiento productivo. Rechazar una imagen puede romper el balance;
+debe sustituirse por otro activo físico antes de entrenar, sin mover ejemplos después de observar
+métricas. El siguiente paso requiere que una persona revise las tres hojas y enumere aprobaciones o
+rechazos. Solo entonces podrán extraerse embeddings CLIP, entrenarse la cabeza y abrirse el test una
+vez. 23.16.c.3.b seguirá pendiente hasta disponer y revisar 200 imágenes.
+
+# Iteración 2026-08-29 - Aprobación, embeddings y test único provisional
+
+## Autorización humana y contratos
+
+El usuario propietario del workspace confirmó literalmente «Apruebo todas las imágenes». La decisión
+se persiste en `human-approval.json` con dataset, alcance all, 120 activos, reviewer, zona horaria,
+confirmación de las tres hojas y origen de la declaración. `visual_dataset_authorization.py` valida
+esquema, decisión, alcance, versión, cardinalidad, reviewer, timestamp aware y equivalencia exacta
+de imageId entre definición/manifiesto. También exige que las 120 filas originales continúen
+pending: impide reaplicar o mezclar una aprobación con otra versión.
+
+El freeze original no se muta. Se crean `approved-definition.json` y
+`human-review-manifest.approved.jsonl`, donde 120/120 filas pasan a approved y
+`developmentTrainingAllowed=true`; `productionTrainingAllowed=false` permanece invariable. La
+autorización solo cubre el experimento provisional sintético y no cierra 23.16.c.2 para el conjunto
+histórico completo ni 23.16.c.3.b para 200 imágenes.
+
+## Extracción CLIP y modelo de datos
+
+`visual_embedding_dataset.py` rechaza antes de cargar CLIP cualquier definición distinta de
+`approved_for_provisional_training`, cardinalidad distinta de 120 o fila no aprobada/autorizada.
+Resuelve rutas dentro de la raíz del dataset, recalcula SHA-256 antes de cada lote y usa
+`HuggingFaceClipEmbedder` con `local_files_only=true`, `trustRemoteCode=false` y Safetensors. La
+revisión exacta es `fbf5e647b25f3514e526849b05cc0196b206d822`, Transformers 4.56.2, Torch CPU 2.8.0,
+Pillow 11.3.0 y salida 512-d L2 normalizada. CLIP permanece en eval/inference_mode; no se actualiza
+ningún peso.
+
+Se procesan train, validación y test en ese orden por lotes de ocho. La extracción de features no
+calcula scores, clases ni métricas (`testPredictionsObservedDuringEmbedding=false`). El artefacto
+`approved-clip-embeddings.json` contiene 120 filas, sin píxeles, texto o PII; normas observadas entre
+0,9999998824 y 1,0000001304. Su SHA-256 es
+`849050b5024e842f9d6fa7349b8f50f020ebbeed2d6543963b1466bc566eade5`.
+
+## Entrenamiento, selección y única apertura
+
+La política `clip-linear-category-training-provisional-v1` conserva algoritmo, categorías, learning
+rate, L2 candidatos, early stopping y gates definitivos, pero declara mínimos 5/3/7 acordes al
+dataset provisional. No sustituye `clip-linear-category-training-v1`. El trainer valida revisión,
+autorización, modelo base, dimensiones, normalización, categorías y balance antes de ajustar.
+
+Cuatro candidatos L2 se entrenaron solo sobre 40 filas train y se seleccionaron con las 24 de
+validación. El candidato fijado usa L2 0,01 y alcanzó el máximo 2.000 epochs. Solo entonces se llamó a
+las métricas de 56 filas test. `test-opening-record.json` fija opening 1/1, presupuesto restante cero,
+hashes de definición/embeddings/política/resultado, selección previa al test y prohibición de usarlo
+para elegir otra variante. El resultado SHA-256 es
+`41d1743a861eda47d800b34201cab98f38e28e76285e39779f8e01e4ec1f7579`.
+
+## Resultados e interpretación
+
+- Train: 40/40, accuracy/F1 macro 1,00.
+- Validación: 22/24, accuracy 0,916667, error 0,083333, F1 macro 0,914286.
+- Test: 49/56, accuracy 0,875, error 0,125, precision macro 0,890625, recall macro 0,875 y F1 macro
+  0,864541.
+- Brecha absoluta train-test: 0,125.
+
+Pasan las métricas macro globales, pero fallan accuracy >=0,90, error <=0,10 y brecha <=0,10;
+`metricQualityPassed=false`, `generalizationPassed=false` y `gatesPassed=false`. El train perfecto no
+se reduce artificialmente: combinado con la brecha 0,125 aporta evidencia compatible con alta
+varianza en una muestra pequeña. La principal debilidad es `otros`: precision 0,666667, recall
+0,285714 y F1 0,40; cinco de siete casos se clasifican como instalación municipal. Peluquería pierde
+un caso hacia otros y centro deportivo uno hacia fútbol. El resultado no se oculta ni se repite.
+
+## Seguridad, promoción, pruebas y deuda
+
+No se expone endpoint, no se muta categoría productiva, no se usa PII, no hay pickle ni código remoto,
+y `promotionAllowed=false`. El model card y readiness registran el fallo provisional. Las pruebas
+nuevas cubren aprobación válida sin permiso productivo, preservación del freeze y rechazo fail-closed
+del extractor antes de cargar CLIP. Junto con definición, QA y trainer pasan 19/19 en 22,23 s.
+La verificación final añade gobernanza documental y model card: 30/30 en 23,97 s.
+
+No se debe ajustar alias, L2, epochs, imágenes o splits y volver a medir este test: quedó consumido.
+Una mejora futura puede analizar errores para desarrollo, pero necesita un test nuevo e independiente
+antes de reclamar >=0,90. La instrucción de no generar más imágenes impide construirlo ahora. La
+tarea 23.16.c.3.b permanece pendiente por shortfall 80 y por gates fallidos.
+
+# Iteración 2026-08-29 - Materialización del test visual v2 previo a autorización humana
+
+## Identificador y objetivo técnico
+
+- Tareas relacionadas: 23.16.c.2 y 23.16.c.3.b, todavía no completadas.
+- Objetivo: construir el contrato definitivo de 200 imágenes sin reutilizar como evaluación el test
+  provisional ya consumido, mantener el nuevo test completamente ciego y dejar evidencia auditable
+  suficiente para que una persona pueda autorizar o rechazar sus 80 activos antes del entrenamiento.
+- Requisitos y diseño: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; cabeza lineal
+  sobre CLIP congelado, selección exclusivamente con validación y una sola apertura del holdout.
+
+## Dataset, separación e invariantes
+
+`freeze_definitive_v2` recibe la definición provisional materializada y aprobada. Valida los 120
+activos y los convierte explícitamente en desarrollo: por categoría, los cinco train anteriores y
+cinco ejemplos del test consumido forman diez filas train; los tres validation anteriores y los otros
+dos ejemplos consumidos forman cinco filas validation. Esto produce 80/40 sin usar ninguna de esas
+imágenes como test futuro. Se congelan después diez identidades y prompts nuevos por categoría para
+80 filas test. Cada fila tiene UUID determinista, `venueId` exclusivo, categoría canónica, ordinal,
+split, prompt, procedencia y estado humano; las rutas de activos heredados se recalculan con relación
+al directorio v2 para evitar referencias ambiguas.
+
+El contrato `visual-category-dataset-v2-definitive-200` exige 25 activos por cada una de las ocho
+categorías, distribución 10/5/10, venues disjuntos entre splits, SHA-256 únicos, revisión humana y
+`testPredictionsObserved=false`. El manifiesto conserva 120 decisiones `approved` de desarrollo y 80
+decisiones `pending` de test. La autorización se generalizó para aprobar únicamente los pendientes,
+pero rechaza conteos, alcance, hashes o identidades inconsistentes. El extractor acepta el contrato
+definitivo solo si sus 200 decisiones están aprobadas y la autorización permite desarrollo; falla
+antes de cargar CLIP en cualquier otro caso.
+
+## Generación, reanudación y control visual
+
+Las 80 imágenes test se generaron como llamadas independientes, sin sobrescribir activos existentes.
+Una interrupción se reanudó enumerando el worklist y generando únicamente rutas ausentes. Los prompts
+fueron congelados antes de la generación, cubren todas las categorías e introducen hard negatives
+controlados para peluquería/estética, deporte/fútbol/pádel y municipal/otros. No contienen personas,
+PII, marcas ni texto requerido para resolver la etiqueta.
+
+La hoja de contacto de 80 activos se inspeccionó completa. Cinco candidatos se abrieron a resolución
+individual. Cuatro eran válidos; `test-v2-instalacion-municipal-01.png` contenía escudo y banderas. El
+original no se modificó: se creó `test-v2-instalacion-municipal-01-r1.png` y
+`replacement-selection.json` registra imageId, ruta anterior, ruta seleccionada, motivo y prompt.
+`apply_replacement_selection` comprueba que el reemplazo pertenezca al mismo directorio de imágenes,
+conserve la identidad y no haya inferencia observada, y genera una definición final distinta.
+
+## Archivos y módulos afectados
+
+- `visual_dataset_definition.py`: escenas v2, freeze de 200 filas, worklist e invariantes.
+- `visual_review_package.py`: inspección para tamaños variables, materialización de hashes y selección
+  versionada de reemplazos.
+- `visual_dataset_authorization.py`: aprobación fail-closed de todos los activos pendientes en datasets
+  provisional o definitivo.
+- `visual_embedding_dataset.py`: aceptación exclusiva de 120 provisionales o 200 definitivos plenamente
+  aprobados.
+- `visual_training.py`: contrato explícito de que no se observaron predicciones test al crear embeddings.
+- `visual-training-dataset-v2/`: definición, worklist, definición materializada final, manifiesto,
+  selección de reemplazo, informe QA, guía de revisión y hojas de contacto locales ignoradas por Git.
+- `visual-training-readiness.v1.json`, README, diseño, tests y configuración de comandos del paquete.
+
+Las imágenes y hojas de contacto son activos locales ignorados deliberadamente; los metadatos,
+prompts, hashes y decisiones permanecen versionables. No se elimina ni sobrescribe la evidencia
+original. El dataset de embeddings tampoco usa pickle: su contrato sigue siendo JSON validado con
+vectores numéricos, dimensión y norma L2 comprobables.
+
+## QA, seguridad, privacidad y observabilidad
+
+El informe final acredita 200 PNG legibles, 200 SHA-256 únicos, cero pares perceptualmente duplicados
+con umbral dHash <=4, distancia mínima 13, reparto train 80/validation 40/test 80, 25 imágenes por
+categoría y cero violaciones. Los 80 activos test siguen `pending`; por tanto
+`trainingAllowed=false`, `definitiveContractSatisfied=false`, `trainingReady=false`, apertura 0/1 y
+presupuesto restante 1. No se ejecutó CLIP, clasificación, selección hiperparamétrica ni métrica sobre
+el nuevo test.
+
+Las imágenes son sintéticas y no contienen sujetos identificables ni datos personales. No se expone
+endpoint, no se mutan categorías productivas y `promotionAllowed=false`. Los hashes, versiones,
+conteos, motivos de reemplazo y estados humanos permiten reproducir y auditar el flujo. Los fallos de
+archivo, dimensión, duplicado, split, identidad, decisión o autorización bloquean el entrenamiento.
+
+## Verificación, límites y siguiente paso
+
+La verificación focalizada cubre freeze v2, conversión del test consumido a desarrollo, creación de un
+test nuevo, reemplazo sin alterar identidad, QA, autorización, embeddings, entrenador y gobernanza.
+La batería final ejecutó
+`python -m pytest test_visual_dataset_definition.py test_visual_training.py test_synthetic_visual_qa.py test_model_governance_acceptance.py test_governance_documentation.py -q` y obtuvo 32/32 pruebas
+aprobadas en 29,55 s. También se verificaron compilación Python, parseo de JSON/JSONL, coherencia de
+hashes materializados y ausencia de errores de whitespace mediante `git diff --check`.
+
+Limitación pendiente: el QA automático y la inspección del agente no equivalen a aprobación humana.
+Una persona debe revisar `contact-sheets/review-test.jpg` y decidir sobre las 80 imágenes nuevas. Solo
+después se puede registrar la autorización, extraer embeddings, entrenar candidatos con train y
+validación, seleccionar uno sin test y consumir la evaluación definitiva exactamente una vez. Hasta
+entonces no se marca ninguna tarea como completada.
+
+# Iteración 2026-08-29 - Cierre técnico de 23.16.c.2 y 23.16.c.3.b
+
+## Objetivo, requisitos y evidencia humana
+
+- Tareas completadas: 23.16.c.2 y 23.16.c.3.b.
+- Objetivo: convertir la revisión explícita de los 80 activos test restantes en una autorización
+  verificable, entrenar la cabeza visual definitiva sobre 200 embeddings y conservar la única
+  evaluación aunque no alcanzara el umbral.
+- Requisitos/diseño: RF-029, RF-036, RF-041; RNF-002, RNF-009, RNF-014 y RNF-015; separación
+  80/40/80, entidades disjuntas, CLIP congelado, selección sin test y promoción sintética prohibida.
+
+`human-approval.json` registra la declaración exacta «Apruebo las 80 imágenes nuevas del test v2»,
+actor `workspace-owner`, timestamp con zona, alcance `all-pending-images`, versión y cardinalidad 80.
+`apply_human_approval` validó que esos 80 IDs coincidieran entre definición y manifiesto y produjo
+`approved-definition.json` y `human-review-manifest.approved.jsonl`. Las 200 filas quedan approved,
+`developmentTrainingAllowed=true`, `productionTrainingAllowed=false` y estado
+`approved_for_definitive_training`. No existe autorización automática ni implícita.
+
+## Embeddings, entrenamiento y flujo de test
+
+`visual_embedding_dataset` resolvió cada ruta dentro del root sintético, volvió a calcular su SHA-256,
+cargó localmente `openai/clip-vit-base-patch32` en la revisión fijada `fbf5e647...` y materializó 200
+vectores L2 normalizados de 512 dimensiones. El artefacto declara explícitamente
+`testPredictionsObservedDuringEmbedding=false`; no contiene píxeles, prompts, PII ni código ejecutable.
+
+El trainer verificó categorías, cardinalidades mínimas 10/5/10, dimensión, normas, hashes únicos y
+venueId sin leakage. Entrenó cuatro candidatos L2 con semilla 1729 sobre 80 filas train. L2 0,0001
+ganó por F1/accuracy de las 40 filas validation; el candidato alcanzó 2.000 epochs. Solo tras fijar
+pesos y regularización se llamó una vez a métricas sobre las 80 filas test. El proceso no ajusta CLIP.
+
+`test-opening-record.json` establece apertura 1/1, presupuesto restante cero, selección previa al
+test, inputs de selección train/validation y hashes SHA-256 de definición, embeddings, política y
+resultado. El resultado se conserva en `clip-linear-category-head.definitive-200.v1.json` incluso al
+fallar, sin reintento ni sustitución posterior del activo evaluado.
+
+## Resultado y diagnóstico
+
+- Train: 78/80, accuracy 0,975, F1 macro 0,974206.
+- Validación: 38/40, accuracy 0,95, F1 macro 0,949495.
+- Test: 70/80, accuracy 0,875, error 0,125, precision macro 0,878662, recall macro 0,875 y F1 macro
+  0,873369.
+- Brecha absoluta train-test: 0,10; L2 seleccionado 0,0001.
+
+Las métricas macro y el recall mínimo por clase pasan sus umbrales, la brecha cumple exactamente 0,10
+y el benchmark no activa revisión por perfección. Fallan accuracy >=0,90 y error <=0,10, por lo que
+`metricQualityPassed=false`, `generalizationPassed=true`, `benchmarkAdequacyPassed=true` y
+`gatesPassed=false`. Los diez errores son: municipal -> otros (3), otros -> municipal (2), otros ->
+restaurante (1), estética -> peluquería (2), campo -> pádel (1) y centro deportivo -> campo (1).
+Municipal y otros obtienen recall 0,70; estética 0,80; las restantes categorías quedan entre 0,90 y
+1,00. El rendimiento train alto no se interpreta aisladamente como sobreajuste: la evidencia relevante
+es la brecha controlada de 0,10 y el fallo independiente de calidad test.
+
+## Seguridad, promoción, archivos y observabilidad
+
+No se expone endpoint ni se muta una categoría de local. Los activos son sintéticos y están libres de
+PII; la inferencia de atributos sensibles sigue prohibida. La cabeza tiene
+`automaticPromotionAllowed=false`, el resultado `promotionAllowed=false` y el fallback productivo no
+cambia. Model card, readiness, README, diseño y seguimiento registran tanto la aprobación como el
+fallo, evitando cherry-picking y silenciamiento de resultados negativos.
+
+Archivos nuevos principales: `human-approval.json`, `approved-definition.json`,
+`human-review-manifest.approved.jsonl`, `approved-clip-embeddings.json`,
+`test-opening-record.json` y `evaluation/results/clip-linear-category-head.definitive-200.v1.json`.
+Se actualizaron model card, readiness, README, guía humana, diseño, tareas y documentación técnica.
+
+## Verificación, riesgos y trabajo posterior
+
+La batería final ejecutó los tests de definición/autorización, entrenamiento, QA visual, aceptación de
+gobernanza y documentación: 32/32 pasan en 51,53 s. `compileall` pasa para el paquete. Una comprobación
+independiente parseó los JSON/JSONL, contó 200 aprobaciones y 200 embeddings, validó todas sus normas
+L2, recalculó los cuatro hashes del registro de apertura y confirmó apertura 1/1, presupuesto cero,
+70 aciertos y gates false. `git diff --check` no detecta errores.
+
+23.16.c.2 queda completada porque las imágenes utilizadas de originales, sustituciones y holdout están
+humanamente revisadas antes del entrenamiento. 23.16.c.3.b queda completada porque hay 200 activos
+disjuntos aprobados, entrenamiento real y resultado único conservado aunque sea inferior a 0,90.
+23.16.c.3 permanece pendiente por su puerta explícita de accuracy/error; por transitividad también
+siguen pendientes 23.16.c y 23.16. Una variante futura no puede usar el test v2 para seleccionar
+prompts, activos, L2 o arquitectura: necesita otro holdout congelado e independiente.
+
+# Iteración 2026-08-29 - Tarea 23.16.c.3.c, diagnóstico y cabeza robusta PCA+ridge
+
+## Objetivo y causa raíz
+
+La tarea completa 23.16.c.3.c sin modificar el test v2 consumido. El diagnóstico une definición,
+embeddings, resultado y registro de apertura, reconstruye únicamente los logits del modelo conservado
+y publica los diez errores, márgenes, fuentes y similitud de centroides. Declara explícitamente
+`alternativeTestPredictionsComputed=false` y `testUsedForCandidateSelection=false`.
+
+La evidencia contradice la hipótesis de sobreajuste clásico excesivo: train 0,975 y validación 0,95
+difieren 0,025. La caída a test 0,875 combina 4.104 parámetros para 80 filas (51,3 por fila), empate
+de L2 0,0001/0,001/0,01 resuelto hacia el más débil, 2.000 epochs y cambio de dominio. Train/validación
+usan `existing-active-v2` y `generated-v1`; test usa 80/80 `generated-independent-test-v2`. Los errores
+municipal/otros reflejan además una frontera parcialmente no visual: titularidad pública no se deduce
+de una sala sin señales textuales. Dos casos estética/peluquería comparten mobiliario visual.
+
+## Arquitectura corregida
+
+Después de consumirse, las 200 filas v2 se reclasifican formalmente como desarrollo. El nuevo módulo
+`visual_robust_training.py` exige apertura 1/1, presupuesto cero y hashes coincidentes de definición y
+embeddings. Rechaza datos no aprobados, dimensiones/normas inválidas, menos de tres fuentes, política
+insegura o intento de usar un test no consumido.
+
+Cada candidato combina PCA {8,16,32,64} y ridge {0,001, 0,01, 0,1, 1, 10}. PCA se ajusta
+exclusivamente con el train de cada fold; nunca sobre el fold evaluado. Cinco folds estratificados
+miden OOF y tres folds leave-one-source-out simulan cambio de generador/procedencia. La selección
+prioriza F1 y accuracy source-held-out, después F1 estratificado, menor brecha y menor rango; solo en
+empate exacto prefiere regularización más fuerte. Ridge usa solución dual cerrada, elimina dependencia
+de epochs/early stopping y mantiene reproducibilidad determinista.
+
+La combinación seleccionada usa 16 componentes y ridge 0,01. Reduce parámetros efectivos de 4.104 a
+136. Sobre las 200 filas de desarrollo obtiene 189/200 (0,945), OOF 186/200 (0,93), F1 OOF 0,929930,
+leave-one-source-out 182/200 (0,91), F1 0,908682 y brecha media train-OOF 0,02375. `otros` sigue siendo
+la clase más débil source-held-out, recall 0,72, por lo que no se oculta la limitación ontológica.
+
+## Contratos, seguridad y archivos
+
+El artefacto conserva media de 512 dimensiones, proyección 512×16, pesos ridge 8×16, bias, diagnósticos
+de todos los candidatos, matrices y métricas por clase. `testMetrics=null`,
+`independentTestStatus=required`, `independentTestPredictionsObserved=false` y
+`promotionAllowed=false`. No contiene imágenes, prompts, PII ni inferencias sensibles. La categoría
+visual sigue siendo evidencia auxiliar y nunca muta la categoría autoritativa del local.
+
+Archivos principales: `visual_training_diagnostics.py`, `visual_robust_training.py`,
+`clip-ridge-category-development.v2.json`, `clip-ridge-category-head.v2.model-card.json`,
+`clip-linear-category-head.definitive-200.diagnosis.v1.json`,
+`clip-ridge-category-head.v2.development.json` y `test_visual_robust_training.py`.
+
+## Verificación, limitaciones y siguiente paso
+
+Las pruebas cubren rechazo de test no consumido, hashes, aprobación, ausencia de test metrics,
+validación por fuente y reconstrucción exclusiva del modelo conservado. `compileall` pasa y la batería
+de definición/autorización, entrenador v1/v2, QA y gobernanza obtiene 35/35 en 31,13 s. Los dos CLIs se
+regeneraron después: el diagnóstico conserva diez errores sin alternativas y el candidato reproduce
+PCA 16, ridge 0,01, train 0,945, OOF 0,93 y source-held-out 0,91.
+
+La remediación corrige capacidad, desempate y validación de dominio, pero sus cifras son internas.
+23.16.c.3.d permanece pendiente: para afirmar test >=0,90 se necesita un holdout nuevo con venues e
+imágenes no usados, revisión humana y una apertura. Reutilizar v2, renombrar OOF como test o bajar el
+umbral sería leakage y no se implementa.
+
+# Iteración 2026-08-29 - Tarea 23.17.a, recomendador contextual 5-fold
+
+## Objetivo, elección de folds y datos
+
+Se completa 23.17.a sobre `synthetic-marketplace-v1`: 100 locales, 40 perfiles, 2.400 sesiones y
+19.200 alternativas. Se eligen cinco folds rolling-origin. Diez folds dejarían aproximadamente cuatro
+perfiles por fold y empeorarían la estabilidad; además, el esquema rolling conserva causalidad temporal.
+Los cinco entrenamientos crecen cronológicamente y validan en el bloque siguiente. Junio permanece
+fuera de selección como test.
+
+## Features y arquitectura
+
+`recommendation_cross_validation.py` construye 15 features pre-outcome: afinidad de contenido,
+servicio, atributos y ambiente visual permitido; disponibilidad, oportunidad por escasez, calidad,
+proximidad, ajuste de precio, afinidad con baja exposición, necesidad de capacidad, historial de
+categoría, horarios habituales de usuario/local y cold-start. Las señales visuales se limitan a
+`naturalLight` y `privateCabin`; no se infieren seguridad, limpieza, identidad o rasgos sensibles.
+
+En cada fold `_history` recalcula exposición, reservas de categoría y buckets horarios solo con train.
+Los candidatos deben declarar `eligible=true` y `capacityAvailable=true`; de lo contrario el dataset
+falla antes del modelo. LambdaMART prueba tres configuraciones XGBoost y selecciona por F1, recall@3 y
+accuracy medios de los folds, en ese orden. Después se ajusta una sola vez sobre enero-mayo. Un prior
+de negocio acotado preserva contribuciones monotónicas críticas —incluido historial— sin modificar el
+conjunto elegible. El artefacto XGBoost JSON queda vinculado por SHA-256 en el informe.
+
+## Métricas y resultado
+
+Solo se evalúan sesiones maduras con exactamente un candidato relevante. El top-1 es la única
+predicción positiva entre ocho alternativas. Accuracy/error se calculan sobre ocho decisiones;
+precision, recall y F1 equivalen a la tasa de acierto top-1 y evitan aprobar mediante siete negativos.
+También se calculan precision@3 y recall@3.
+
+- Train: accuracy 0,841280, error 0,158720, precision/recall/F1 0,365120, recall@3 0,700172.
+- Media 5-fold: accuracy 0,825960, F1 0,303841, recall@3 0,630761.
+- Test junio: accuracy 0,818780, error 0,181220, precision/recall/F1 0,275120, recall@3 0,557416.
+- Brecha absoluta train-test: 0,022500.
+
+El máximo train 0,90 se cumple, pero no por una reducción artificial. Fallan test accuracy >=0,90,
+error <0,15 y métricas >=0,80. La brecha pequeña descarta sobreajuste como explicación principal. El
+generador elige mediante utilidad con ruido gaussiano, softmax y dos sorteos posteriores de clic/reserva;
+por tanto, el venue observado no es una etiqueta determinista recuperable desde features permitidas.
+
+## Escenarios, seguridad y gobernanza
+
+La suite de diez escenarios contrafactuales pasa 10/10: alineación con baja exposición y pocas plazas,
+ambiente visual, hora común, proximidad, especialidad, repetición, cold-start, calidad sin dominar
+intención, capacidad y precio-distancia. Accuracy/precision/recall/F1 del contrato son 1,00 y error
+0,00. Esta evidencia valida comportamiento dirigido, no predicción de outcomes, y se publica separada.
+
+No se usan IDs como features, outcomes futuros, posición, PII o atributos sensibles. El modelo solo
+rerankea; no salta publicación, permisos, filtros, disponibilidad o holds. Evidencia sintética no
+habilita shadow ni promoción. Model card, política e informe fijan `promotionAllowed=false`, rollback
+a `ScoreMvp`/fallback y `qualityGatesPassed=false`.
+
+## Archivos, pruebas y trabajo pendiente
+
+Archivos principales: `recommendation_cross_validation.py`,
+`recommendation-cross-validation.v1.json`, `contextual-recommender-cv.v1.xgb.json`, su model card,
+`recommendation-cross-validation.v1.json`, `RECOMMENDATION_CROSS_VALIDATION.md` y
+`test_recommendation_cross_validation.py`.
+
+Las pruebas cubren cinco folds temporales sin futuro y presencia exacta de los diez flujos. La batería
+pura de dataset, escenarios y gobernanza pasa 17/17 en 15,12 s. El runtime principal con XGBoost
+regenera/carga el modelo, valida su SHA-256 contra el informe, confirma cinco folds por cada candidato,
+10/10 escenarios y gates false. `compileall`, parseo JSON y `git diff --check` pasan. 23.17.b permanece
+pendiente: no se modifica el test ni se rebajan métricas. Harán falta más señales conductuales maduras, una etiqueta de compatibilidad
+separada del outcome estocástico o un nuevo dataset/test antes de reclamar >0,90 honestamente.
+
+# Iteración 2026-08-30 - Tarea 23.18, taxonomía candidata de locales físicos
+
+## Identificador, objetivo y decisiones de producto
+
+- Tarea completada: 23.18.
+- Fecha: 2026-08-30.
+- Objetivo técnico: convertir el libro normalizado de 254 tipos físicos en un catálogo versionado,
+  validable y compatible con las ocho categorías históricas, sin activar producto ni generar nuevas
+  imágenes.
+- Decisión explícita del usuario: el catálogo no incorpora metadatos administrativos externos del
+  libro y conserva exclusivamente la información funcional necesaria para el producto.
+- Requisitos relacionados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Diseño relacionado: 14.68 y el dataset sintético/visual descrito en 14.67.
+
+El libro no se interpreta como un esquema oficial completo de categorías de producto. El importador
+solo lee celdas de la primera hoja OpenXML y no ejecuta macros, fórmulas, hipervínculos o texto como
+instrucciones. La procedencia fija nombre, versión, alcance, URLs informativas y SHA-256
+`d5d5e285262ff7b47a8406b50a44755e96975db078f3725a7fabaab51c6c660f`. El binario Excel permanece
+fuera de Git.
+
+## Archivos creados y modificados
+
+- `packages/demand-contracts/catalog/venue-taxonomy.v1.json`: 23 familias, 254 tipos y ocho mappings.
+- `packages/demand-contracts/schemas/venue-taxonomy.v1.schema.json`: JSON Schema generado desde el
+  contrato Pydantic.
+- `packages/demand-contracts/src/reserly_demand_contracts/venue_taxonomy_v1.py`: modelos estrictos e
+  invariantes cruzadas.
+- `packages/demand-contracts/tools/import_venue_taxonomy.py`: importador OpenXML reproducible.
+- `packages/demand-contracts/tests/test_venue_taxonomy_v1.py`: cobertura y corrupción del catálogo.
+- `apps/demand-engine/src/reserly_demand_engine/venue_taxonomy.py`: cargador y generador de cola de
+  reetiquetado.
+- `apps/demand-engine/tests/test_venue_taxonomy.py`: pruebas de reutilización segura y hash canónico.
+- `taxonomy-relabel-worklist.v1.jsonl` y `taxonomy-relabel-manifest.v1.json`: 200 propuestas y su
+  manifiesto content-addressed.
+- `apps/demand-engine/pyproject.toml`: CLI `reserly-demand-build-taxonomy-relabel`.
+- README del contrato y dataset, requisitos, diseño, tareas, documento técnico y seguimiento.
+
+No se elimina ningún archivo, no se modifica una imagen y no hay migración de base de datos. Los
+seeds productivos de `Category` y sus slugs históricos permanecen intactos.
+
+## Modelo de datos y contratos
+
+`VenueTaxonomyV1` usa `extra=forbid`, modelos congelados y validación estricta. La raíz exige versión
+`venue-taxonomy.v1`, estado `candidateOnly`, exactamente 23 familias, 254 tipos y ocho mappings. Las
+familias tienen código slug, nombre y definición ES/EN. Cada tipo conserva `sourceId` contiguo 1–254,
+slug único, familia conocida, subcategoría, uso, etiqueta española y estado `candidate`.
+`name.en=null` y `translationStatus=pendingHumanReview` son deliberados: no se fabrican 254
+traducciones sin una revisión lingüística. El modelo minimiza la información a estos campos
+funcionales y rechaza cualquier extensión no declarada mediante `extra=forbid`.
+
+El puente legacy reconoce cuatro mappings exactos —restaurante, peluquería, fútbol y pádel— y dos
+parciales —centro deportivo y estética—. Municipal carece de tipo objetivo y usa
+`operatorTypeCode=public-municipal`; `otros` queda como compuesto pendiente con candidatos parciales.
+Todos los mappings fijan revisión humana, reutilización solo en desarrollo y no elegibilidad como test.
+
+## Flujo de importación y reetiquetado
+
+El importador valida la cabecera exacta de doce columnas, 255 filas incluyendo encabezado y el
+conjunto esperado de 23 familias. Normaliza slugs con Unicode NFKD sin depender del locale y conserva
+las etiquetas fuente. Cualquier cambio de estructura o familia falla antes de escribir el catálogo.
+
+`build_relabel_bundle` carga el catálogo y `approved-definition.json`, exige la versión visual v2,
+estado aprobado, 200 filas, decisiones humanas `approved`, permiso de desarrollo, producción false,
+imageId únicos y las ocho categorías conocidas. Produce una propuesta por activo con SHA-256,
+venueId, split histórico y opciones canónicas. Incluso las 80 filas cuyo split original era `test`
+quedan ahora `developmentRelabelingOnly`: el resultado v2 ya fue consumido y no recupera condición de
+test al cambiar de etiqueta.
+
+El manifiesto exige 25 filas por categoría, 80 train/40 validation/80 test como dato histórico,
+200 revisiones pendientes, cero filas elegibles como test, cero permisos productivos y cero imágenes
+nuevas. Catálogo, definición y JSONL quedan enlazados por SHA-256. La escritura usa bytes UTF-8 con
+LF para impedir que la conversión CRLF de Windows invalide el digest.
+
+## Validación, seguridad, privacidad, i18n y observabilidad
+
+La taxonomía no recibe PII, comportamiento, imágenes ni texto de usuarios. Los IDs de la cola solo
+referencian activos sintéticos existentes y nunca son features. No se infieren titularidad, seguridad,
+limpieza, salud ni atributos sensibles desde píxeles. El catálogo no expone endpoint, no activa UI,
+no autoriza entrenamiento y no cambia el fallback.
+
+La internacionalización de familias está completa en ES/EN. Los tipos permanecen candidatos con
+traducción inglesa pendiente para impedir etiquetas automáticas de baja calidad. El error strategy es
+fail-closed mediante códigos `VENUE_TAXONOMY_*`; no se silencian filas desconocidas, duplicadas o no
+aprobadas. La observabilidad offline reside en cardinalidades, versiones y SHA-256 del manifiesto; no
+se registran contenidos de imagen ni datos personales.
+
+## Tests y evidencia de verificación
+
+Se ejecutó:
+
+`$env:PYTHONPATH='packages\\demand-contracts\\src;apps\\demand-engine\\src'; .\\apps\\demand-engine\\.venv\\Scripts\\python.exe -m pytest packages\\demand-contracts\\tests\\test_venue_taxonomy_v1.py apps\\demand-engine\\tests\\test_venue_taxonomy.py -q`
+
+La primera ejecución obtuvo 6 aprobadas y 1 fallo: Windows cambiaba LF por CRLF después de calcular
+el hash. Se corrigió `write_relabel_bundle` para persistir bytes canónicos. La repetición obtuvo 6/6
+pruebas aprobadas. También se regeneró la cola: 200 filas, 25 por categoría, 80/40/80 por split
+histórico, `testEligibleCount=0`, `newImagesGenerated=0` y SHA-256 del worklist
+`8876fb81a4e1e510270ea4fccccad2785c6d430b50ed14906bb4f55713242374`.
+
+La regresión acumulada añadió todos los tests de `demand-contracts`, dataset sintético, definición
+visual v2, candidato robusto y documentación de gobernanza. El primer intento amplio quedó inválido
+porque pytest no podía acceder a `%TEMP%/pytest-of-hugoe`: 23 pruebas pasaron y diez fixtures no se
+iniciaron. La repetición con `--basetemp tmp/pytest-taxonomy-286` obtuvo 32/32 en 10,48 s.
+`compileall`, regeneración byte a byte del catálogo, hashes catálogo/worklist y `git diff --check`
+también pasan. El catálogo reproducido conserva SHA-256
+`af050d4a5a110e6f65f6a3378c289d94d7a43c334d7a762d970bf90be5d4ab34`.
+
+## Riesgos, límites y trabajo posterior
+
+- El catálogo es candidato y no una taxonomía pública aprobada.
+- Las 254 traducciones inglesas y etiquetas compuestas requieren revisión editorial.
+- Los mappings parciales no deben convertirse en labels automáticos.
+- Reetiquetar las 200 imágenes requiere decisión humana por activo; la cola actual no autoriza uso.
+- Esta iteración no completa 23.16.c.3.d ni 23.17.b y no aporta un holdout nuevo.
+- Una activación futura necesitará migración/seeds explícitos, compatibilidad de API, revisión de UX y
+  un dataset independiente después de congelar la taxonomía aprobada.

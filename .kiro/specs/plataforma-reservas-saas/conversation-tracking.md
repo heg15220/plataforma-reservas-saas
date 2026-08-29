@@ -10834,3 +10834,197 @@ Fuente de verdad del avance:
   - Test nunca selecciona L2/epochs; un 1,00 sintético activa revisión de dificultad.
   - 18 pruebas focalizadas y la regresión completa 283/283 pasan tras adaptar la model card al
     contrato común de gobernanza.
+
+# Conversación 280 - Dataset visual provisional con generación detenida
+
+- Fecha: 2026-08-29.
+- Resumen de la conversación: se congeló primero el objetivo definitivo de 200 imágenes y se inició
+  su materialización independiente. A petición del usuario se detuvo la generación después de 83
+  imágenes nuevas y se construyó, sin duplicar ni reutilizar el holdout consumido, un experimento
+  provisional balanceado de 120 activos disponibles.
+- Archivos modificados: definición/generador y paquete de revisión visual; tests; definición,
+  worklist, manifiesto de revisión, QA, guía humana y readiness del dataset; README, `.gitignore`,
+  diseño, documento técnico y este registro. Los 83 PNG y tres hojas de contacto son locales e
+  ignorados por Git.
+- Requisitos impactados: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.16.c.2 y 23.16.c.3.b continúan pendientes; no se cambia ningún checkbox.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para este experimento, una
+  persona debe revisar las hojas train/validación/test y aprobar o rechazar cada activo antes de
+  extraer embeddings. La puerta definitiva sigue requiriendo 200 imágenes.
+- Decisiones o aclaraciones relevantes:
+  - El inventario físico utilizable suma 183 activos (100 activos v2 + 83 nuevos); se seleccionan 120,
+    exactamente 15 por categoría, con splits 40/24/56 y venues/hashes disjuntos.
+  - El QA provisional pasa 120/120, con 120 hashes únicos, cero pares dHash <=4, distancia mínima 13
+    y `testPredictionsObserved=false`.
+  - La inspección por agente marca para atención especial train 36, train 34–35, validation 22–24,
+    test 55–56 y el hard negative de fútbol sala test 16; no equivale a aprobación humana.
+  - Todos los activos siguen `pending` y no autorizados. No se entrenó, no se extrajeron embeddings
+    y no se abrió el test.
+  - Diecisiete pruebas focalizadas de definición, QA y entrenador pasan. La resolución normal del
+    proyecto continúa exponiendo el conflicto preexistente Prefect 3.8.2/Pydantic 2.11.3, por lo que
+    la comprobación se ejecutó en una venv aislada con versiones fijadas.
+
+# Conversación 281 - Aprobación humana y único test visual provisional
+
+- Fecha: 2026-08-29.
+- Resumen de la conversación: el usuario confirmó «Apruebo todas las imágenes». Se registró la
+  aprobación de 120 activos, se extrajeron embeddings CLIP congelados, se seleccionó una cabeza
+  lineal con train/validación y se abrió el test provisional exactamente una vez.
+- Archivos modificados: autorización y extractor de embeddings con tests; aprobación, definición y
+  manifiesto aprobados; política provisional, dataset de embeddings, resultado y registro de apertura;
+  readiness, model card, README/guía de revisión, diseño, documento técnico y este seguimiento.
+- Requisitos impactados: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.16.c.2 y 23.16.c.3.b permanecen pendientes porque el contrato definitivo
+  exige 200 imágenes y el test provisional no supera sus puertas.
+- Tareas completadas: ninguna; no se modifica ningún checkbox.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. En visual, crear en una
+  iteración futura un dataset/test nuevo e independiente si se desea evaluar otra variante.
+- Decisiones o aclaraciones relevantes:
+  - 120/120 activos están humanamente aprobados y autorizados solo para desarrollo; producción y
+    promoción siguen false.
+  - CLIP `fbf5e647...` permanece congelado; 120 vectores de 512 dimensiones tienen norma L2 válida.
+  - L2 0,01 fue seleccionado con validación; test no participó en selección.
+  - Train 1,00, validación 0,916667 y test 0,875 (49/56); error 0,125, precision macro 0,890625,
+    recall macro 0,875, F1 macro 0,864541 y brecha 0,125.
+  - Fallan accuracy, error y generalización. `otros` obtiene recall 0,285714: cinco casos se predicen
+    municipal. El resultado se conserva y el presupuesto de test queda en cero.
+  - Diecinueve pruebas focalizadas y 11 de gobernanza documental/model card pasan: 30/30; no se
+    reejecutó la evaluación real.
+
+# Conversación 282 - Dataset visual v2 definitivo preparado para revisión humana
+
+- Fecha: 2026-08-29.
+- Resumen de la conversación: tras autorizar el usuario continuar, se congeló
+  `visual-category-dataset-v2-definitive-200`, se generaron las 80 imágenes nuevas e independientes
+  del test definitivo y se completó su QA estructural y visual previa. No se ejecutó inferencia sobre
+  el nuevo test ni se consumió su única apertura.
+- Archivos modificados: definición, autorización, revisión, materialización, extractor de embeddings
+  y entrenador visual con sus tests; definición y worklist v2; manifiesto de revisión, selección de
+  reemplazo, informe QA, guía humana, readiness, README, diseño, documento técnico y este seguimiento.
+- Requisitos impactados: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.16.c.2 y 23.16.c.3.b continúan pendientes; no se modifica ningún checkbox.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. En el flujo visual, una persona
+  debe revisar y aprobar o rechazar las 80 imágenes de la hoja de test v2. Solo tras esa decisión se
+  autorizarán embeddings, entrenamiento con train/validación y la apertura única del test.
+- Decisiones o aclaraciones relevantes:
+  - Los 120 activos aprobados del experimento provisional se consideran desarrollo consumido y se
+    redistribuyen en 80 train y 40 validación; sus 56 antiguos ejemplos de test no vuelven a servir
+    como evidencia de test.
+  - El test v2 contiene 80 venues e IDs nuevos, diez por categoría, con prompts e identidades
+    congelados antes de generar y sin predicciones observadas.
+  - La QA final pasa 200/200, con reparto 80/40/80, 25 imágenes por categoría, 200 SHA-256 únicos,
+    cero pares con dHash <=4, distancia perceptual mínima 13 y cero violaciones.
+  - La inspección previa detectó escudo y banderas en municipal 01. El original se preservó y una
+    variante `-r1` neutra fue seleccionada mediante un registro versionado anterior a inferencia.
+  - Los 120 activos de desarrollo conservan `approved`; los 80 nuevos de test permanecen `pending`.
+    Por ello `trainingAllowed=false`, `definitiveContractSatisfied=false` y el presupuesto test sigue
+    íntegro en 1/1.
+
+# Conversación 283 - Aprobación y apertura única del test visual v2 definitivo
+
+- Fecha: 2026-08-29.
+- Resumen de la conversación: el usuario aprobó explícitamente las 80 imágenes nuevas del test v2.
+  Se autorizaron los 200 activos, se extrajeron embeddings CLIP congelados, se seleccionó la cabeza
+  con train/validación y se conservó el único resultado del test definitivo.
+- Archivos modificados: aprobación, definición y manifiesto aprobados; embeddings, resultado y
+  registro de apertura; readiness, model card, README, guía humana, diseño, tareas, documento técnico
+  y este seguimiento.
+- Requisitos impactados: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.16.c.2 y 23.16.c.3.b se completan. 23.16.c.3 permanece pendiente porque la
+  accuracy definitiva no alcanza 0,90; 23.16 y 23.16.c continúan abiertos.
+- Tareas completadas: 23.16.c.2 y 23.16.c.3.b.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. En visual, analizar el
+  resultado consumido solo para diseñar una futura versión con test independiente, sin reabrir v2.
+- Decisiones o aclaraciones relevantes:
+  - La autorización registra exactamente 80 pendientes y deja 200/200 activos approved para
+    desarrollo, sin permiso de producción.
+  - CLIP `fbf5e647...` genera 200 embeddings de 512 dimensiones; extraerlos no observó predicciones.
+  - L2 0,0001 se seleccionó solo con train/validación. Train alcanza 0,975 y validación 0,95.
+  - El único test obtiene 70/80: accuracy 0,875, error 0,125, precision macro 0,878662, recall macro
+    0,875 y F1 macro 0,873369. La brecha train-test 0,10 pasa el límite.
+  - Accuracy y error fallan; generalización y benchmark pasan. Municipal/otros y estética/peluquería
+    concentran los errores. `gatesPassed=false` y `promotionAllowed=false`.
+  - `test-opening-record.json` conserva hashes de definición, embeddings, política y resultado;
+    apertura 1/1 y presupuesto restante cero. No se repite el entrenamiento contra este test.
+  - La verificación focalizada pasa 32/32 pruebas; compilación, JSON/JSONL, normas de embeddings,
+    hashes cruzados y `git diff --check` también pasan.
+
+# Conversación 284 - Diagnóstico del fallo visual y remediación de capacidad
+
+- Fecha: 2026-08-29.
+- Resumen de la conversación: el usuario pidió investigar el test 0,875 y corregir el supuesto
+  sobreajuste. Se creó un diagnóstico reproducible del resultado consumido y una cabeza PCA+ridge v2
+  seleccionada exclusivamente con validación interna sobre las 200 filas reclasificadas como desarrollo.
+- Archivos modificados: diagnóstico y entrenador robusto con tests; política y model card v2;
+  artefactos de diagnóstico/desarrollo; readiness, README, diseño, tareas, documento técnico y este registro.
+- Requisitos impactados: RF-029, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: se añade y completa 23.16.c.3.c; se añade 23.16.c.3.d pendiente. 23.16.c.3,
+  23.16.c y 23.16 permanecen pendientes hasta un test nuevo e independiente.
+- Tareas completadas: 23.16.c.3.c.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. En visual, 23.16.c.3.d solo
+  puede continuar con un holdout de nuevos activos/venues aprobado y congelado antes de inferencia.
+- Decisiones o aclaraciones relevantes:
+  - Train 0,975 frente a validación 0,95 implica una brecha 0,025, no sobreajuste clásico excesivo.
+    La caída test se explica principalmente por fuente nueva, capacidad 4.104/80 y ontología ambigua.
+  - Tres L2 empatan en validación; v1 desempataba hacia 0,0001 y agotaba 2.000 epochs.
+  - El diagnóstico no calcula predicciones alternativas sobre test; solo reconstruye el artefacto retenido.
+  - PCA se ajusta dentro de cada fold para evitar leakage. El candidato elige 16 componentes y ridge
+    0,01: train 0,945, OOF 0,93, source-held-out 0,91 y brecha 0,02375.
+  - Las 200 filas ya consumidas son desarrollo; las métricas internas no sustituyen un test. El nuevo
+    artefacto mantiene test null, promoción false y exige un holdout independiente.
+  - La batería visual/gobernanza final pasa 35/35; compilación, contratos y regeneración reproducible
+    de diagnóstico/candidato también pasan.
+
+# Conversación 285 - 5-fold del recomendador contextual y flujos diversos
+
+- Fecha: 2026-08-29.
+- Resumen de la conversación: el usuario pidió entrenar el recomendador con 5/10-fold, medir
+  accuracy/precision/recall/F1 y probar afinidad, baja exposición, pocas plazas, imágenes, horario,
+  ubicación, especialidad e historial. Se eligió 5-fold rolling-origin, se entrenó LambdaMART híbrido
+  y se abrió el test temporal preexistente una vez tras seleccionar hiperparámetros.
+- Archivos modificados: evaluador y tests; política, modelo XGBoost y model card; informe JSON/Markdown;
+  requisitos, diseño, tareas, README, documento técnico y este seguimiento.
+- Requisitos impactados: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: se añade 23.17 con 23.17.a completada y 23.17.b pendiente.
+- Tareas completadas: 23.17.a.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para el recomendador,
+  23.17.b requiere evidencia con etiquetas de relevancia menos estocásticas o más observaciones maduras,
+  manteniendo junio consumido y un futuro test independiente.
+- Decisiones o aclaraciones relevantes:
+  - Se usa 5-fold porque 10-fold dejaría unos cuatro perfiles por fold y aumentaría varianza.
+  - Los folds son temporales crecientes; agregados de popularidad, historial y horario solo usan pasado.
+  - Train 0,841280, CV 0,825960 y test 0,818780; brecha 0,022500. No hay sobreajuste, pero test falla.
+  - Test precision/recall/F1 es 0,275120 y recall@3 0,557416; accuracy aislada no aprueba.
+  - Diez escenarios contrafactuales pasan 10/10, incluidos baja exposición+pocas plazas, ambiente,
+    horario, ubicación, especialidad, historial, cold-start, calidad, capacidad y precio-distancia.
+  - El escenario es contrato; no se presenta como test conductual. `qualityGatesPassed=false`,
+    promoción false y fallback determinista permanecen.
+  - Diecisiete pruebas puras/dataset/gobernanza pasan. El runtime XGBoost carga el modelo, verifica
+    SHA-256, cinco folds por candidato, 10/10 escenarios y gates false; compileall y diff-check pasan.
+
+# Conversación 286 - Taxonomía candidata de 254 tipos y reetiquetado de desarrollo
+
+- Fecha: 2026-08-30.
+- Resumen de la conversación: el usuario autorizó materializar la taxonomía analizada y pidió excluir
+  del sistema los metadatos administrativos externos del libro. Se creó un catálogo candidato de 23
+  familias y 254 tipos, compatibilidad con las ocho etiquetas históricas y una cola de revisión que
+  reutiliza las 200 imágenes existentes sin generar activos ni reabrir tests.
+- Archivos modificados: contrato, catálogo, JSON Schema e importador en `demand-contracts`; cargador,
+  CLI y tests en `demand-engine`; worklist/manifiesto de reetiquetado; pyproject, README, requisitos,
+  diseño, tareas, documento técnico y este seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: se añade y completa 23.18. 23.16.c.3.d y 23.17.b permanecen pendientes.
+- Tareas completadas: 23.18.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para la taxonomía, revisar
+  traducciones/etiquetas y las 200 propuestas antes de cualquier activación o entrenamiento nuevo.
+- Decisiones o aclaraciones relevantes:
+  - El catálogo conserva exclusivamente jerarquía, etiquetas y usos funcionales del producto.
+  - El catálogo permanece `candidateOnly`; ninguna de sus 254 filas se publica automáticamente.
+  - Municipal es atributo de operador, no tipo visual. `otros` exige reclasificación física.
+  - Las 200 imágenes tienen revisión taxonómica pendiente, solo desarrollo y `testEligible=false`.
+  - No se generaron imágenes; los splits originales se conservan únicamente como trazabilidad.
+  - La batería focalizada pasa 6/6 tras corregir la escritura LF canónica en Windows; la regresión
+    acumulada pasa 32/32 usando un basetemp del workspace por el bloqueo preexistente de `%TEMP%`.

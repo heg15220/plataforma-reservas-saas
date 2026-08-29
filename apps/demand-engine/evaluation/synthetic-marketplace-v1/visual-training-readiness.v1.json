@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reportVersion": "visual-training-readiness-v1",
-  "evaluatedAt": "2026-08-28T00:00:00Z",
+  "evaluatedAt": "2026-08-29T00:00:00Z",
   "trainingPolicyVersion": "clip-linear-category-training-v1",
   "baseModelKey": "clip-vit-b32-visual-evidence-v1",
   "requiredDataset": {
@@ -20,8 +20,52 @@
     "originalImages": 100,
     "versionedReplacements": 17,
     "consumedExploratoryHoldout": 24,
-    "humanApprovedForTraining": 0,
-    "developmentTrainingAllowed": 0
+    "activeDevelopmentImages": 100,
+    "generatedStressImagesBeforeStop": 83,
+    "availableForProvisionalSelection": 183,
+    "provisionalSelectedImages": 120,
+    "provisionalTrain": 40,
+    "provisionalValidation": 24,
+    "provisionalTest": 56,
+    "provisionalPerCategory": 15,
+    "humanApprovedForTraining": 200,
+    "developmentTrainingAllowed": 200
+  },
+  "provisionalDataset": {
+    "datasetVersion": "visual-category-dataset-v1-provisional-120",
+    "generationStoppedByUser": true,
+    "structuralQaPassed": true,
+    "uniqueSha256Count": 120,
+    "nearDuplicatePairs": 0,
+    "minimumPerceptualHammingDistance": 13,
+    "testPredictionsObserved": true,
+    "testOpeningCount": 1,
+    "testOpeningBudgetRemaining": 0,
+    "humanReviewPending": 0,
+    "humanApproved": 120,
+    "trainingReady": true,
+    "definitiveContractSatisfied": false,
+    "definitiveContractShortfall": 80
+  },
+  "definitiveDatasetV2": {
+    "datasetVersion": "visual-category-dataset-v2-definitive-200",
+    "totalImages": 200,
+    "trainImages": 80,
+    "validationImages": 40,
+    "testImages": 80,
+    "perCategory": 25,
+    "structuralQaPassed": true,
+    "uniqueSha256Count": 200,
+    "nearDuplicatePairs": 0,
+    "minimumPerceptualHammingDistance": 13,
+    "developmentHumanApproved": 120,
+    "testHumanApproved": 80,
+    "testHumanPending": 0,
+    "testPredictionsObserved": true,
+    "testOpeningCount": 1,
+    "testOpeningBudgetRemaining": 0,
+    "trainingReady": true,
+    "definitiveContractSatisfied": true
   },
   "contractTestFixture": {
     "purpose": "pipelineVerificationOnly",
@@ -39,14 +83,41 @@
     "trainTestAccuracyGap": 0.08333333,
     "gatesPassed": true
   },
-  "actualTrainingExecuted": false,
-  "actualModelTestMetrics": null,
-  "trainingReady": false,
+  "actualTrainingExecuted": true,
+  "actualModelTestMetrics": {
+    "scope": "syntheticDefinitive200",
+    "trainAccuracy": 0.975,
+    "validationAccuracy": 0.95,
+    "testAccuracy": 0.875,
+    "testError": 0.125,
+    "testMacroPrecision": 0.87866162,
+    "testMacroRecall": 0.875,
+    "testMacroF1": 0.87336903,
+    "trainTestAccuracyGap": 0.1,
+    "gatesPassed": false,
+    "result": "evaluation/results/clip-linear-category-head.definitive-200.v1.json"
+  },
+  "trainingReady": true,
   "blockers": [
-    "VISUAL_HUMAN_REVIEW_PENDING",
-    "VISUAL_TRAINING_ASSETS_NOT_AUTHORIZED",
-    "VISUAL_TRAINING_DATASET_INSUFFICIENT",
-    "VISUAL_STRESS_TEST_NOT_MATERIALIZED"
+    "VISUAL_DEFINITIVE_QUALITY_GATE_FAILED"
   ],
+  "robustDevelopmentCandidateV2": {
+    "modelVersion": "clip-ridge-category-head-v2-development",
+    "consumedTestReclassifiedAsDevelopment": true,
+    "developmentRows": 200,
+    "selectedPcaComponents": 16,
+    "effectiveLinearParameters": 136,
+    "selectedRidgePenalty": 0.01,
+    "trainingAccuracy": 0.945,
+    "stratifiedOofAccuracy": 0.93,
+    "stratifiedOofMacroF1": 0.92992978,
+    "sourceHeldOutAccuracy": 0.91,
+    "sourceHeldOutMacroF1": 0.908682,
+    "trainOofAccuracyGap": 0.02375,
+    "developmentGatesPassed": true,
+    "independentTestRequired": true,
+    "independentTestPredictionsObserved": false,
+    "promotionAllowed": false
+  },
   "promotionAllowed": false
 }

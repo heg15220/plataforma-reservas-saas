@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "contextual-recommender-cv-v1",
+  "modelVersion": "contextual-recommender-cv-v1",
+  "status": "candidate",
+  "owner": "demand-engine",
+  "purpose": "Ordenar candidatos elegibles con afinidad, disponibilidad, capacidad, distancia, horario, especialidad, ambiente visual permitido, historial y exposición.",
+  "trainingPolicyVersion": "recommendation-cross-validation-v1",
+  "featureSetVersion": "contextual-ranking-preoutcome-v1",
+  "intendedUse": ["offlineSyntheticRecommendationEvaluation", "businessScenarioRegression"],
+  "prohibitedUse": [
+    "automaticDeployment",
+    "bypassEligibilityOrCapacity",
+    "sensitiveVisualInference",
+    "claimProductionAccuracyFromSyntheticOutcomes"
+  ],
+  "evaluation": {
+    "folds": 5,
+    "foldStrategy": "rolling-origin",
+    "trainingAccuracy": 0.84128007,
+    "crossValidationAccuracy": 0.82596027,
+    "testAccuracy": 0.8187799,
+    "testError": 0.1812201,
+    "testPrecision": 0.27511962,
+    "testRecall": 0.27511962,
+    "testF1": 0.27511962,
+    "testRecallAt3": 0.55741627,
+    "businessScenariosPassed": 10,
+    "businessScenariosTotal": 10,
+    "qualityGatesPassed": false
+  },
+  "limitations": [
+    "Los outcomes sintéticos eligen una alternativa de forma estocástica y contienen ruido deliberado.",
+    "La accuracy por candidato está desbalanceada y solo es interpretable junto con precision, recall y F1.",
+    "Los diez escenarios contrafactuales validan contratos del ranking, no predicen reservas productivas.",
+    "El candidato no alcanza los umbrales de relevancia observada y no puede promoverse."
+  ],
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "rollback": "Mantener ScoreMvp y el fallback determinista; no cargar el artefacto XGBoost mientras falle la puerta temporal independiente."
+}

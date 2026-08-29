@@ -12,6 +12,7 @@ apps/api/target/
 
 # Node.js y Next.js
 node_modules/
+.codex-tmp/
 apps/web/.next/
 apps/web/out/
 apps/web/coverage/
@@ -43,3 +44,7 @@ apps/demand-engine/evaluation/synthetic-marketplace-v1/images-v2/
 apps/demand-engine/evaluation/synthetic-marketplace-v1/qa/*.jpg
 apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-holdout-v2/images/
 apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-holdout-v2/*.jpg
+apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v1/images/
+apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v1/contact-sheets/
+apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v2/images/
+apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v2/contact-sheets/

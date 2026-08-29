@@ -1,0 +1,32 @@
+{
+  "categoryCounts": {
+    "campo-de-futbol": 25,
+    "centro-de-estetica": 25,
+    "centro-deportivo": 25,
+    "instalacion-municipal": 25,
+    "otros": 25,
+    "peluqueria": 25,
+    "pista-de-padel": 25,
+    "restaurante": 25
+  },
+  "developmentRelabelingOnly": true,
+  "municipalModeledAsOperatorAttribute": true,
+  "newImagesGenerated": 0,
+  "originalSplitCounts": {
+    "test": 80,
+    "train": 80,
+    "validation": 40
+  },
+  "otherRequiresPhysicalTypeReview": true,
+  "pendingHumanReviewCount": 200,
+  "productionTrainingAllowedCount": 0,
+  "rowCount": 200,
+  "schemaVersion": 1,
+  "sourceDatasetVersion": "visual-category-dataset-v2-definitive-200",
+  "sourceDefinitionSha256": "cf1f4d23bff24ca50e5694aa365995bc553d36915c85c2cf91277f8cdfb83451",
+  "taxonomySha256": "af050d4a5a110e6f65f6a3378c289d94d7a43c334d7a762d970bf90be5d4ab34",
+  "taxonomyVersion": "venue-taxonomy.v1",
+  "testEligibleCount": 0,
+  "worklistSha256": "8876fb81a4e1e510270ea4fccccad2785c6d430b50ed14906bb4f55713242374",
+  "worklistVersion": "venue-taxonomy-relabel.v1"
+}

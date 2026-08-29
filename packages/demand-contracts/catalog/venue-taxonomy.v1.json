@@ -1,0 +1,4205 @@
+{
+  "schemaVersion": 1,
+  "taxonomyVersion": "venue-taxonomy.v1",
+  "effectiveFrom": "2026-08-30",
+  "locales": [
+    "es",
+    "en"
+  ],
+  "activationStatus": "candidateOnly",
+  "source": {
+    "fileSha256": "d5d5e285262ff7b47a8406b50a44755e96975db078f3725a7fabaab51c6c660f",
+    "sourceVersion": "2026-08-29",
+    "recordCount": 254,
+    "scopeEs": "Locales físicos de interés comercial, sanitario, profesional o de servicios; no representa todos los establecimientos posibles."
+  },
+  "families": [
+    {
+      "code": "restauracion-y-bebidas",
+      "name": {
+        "es": "Restauración y bebidas",
+        "en": "Food and drink"
+      },
+      "definition": {
+        "es": "Locales dedicados a restauración y bebidas.",
+        "en": "Venues serving food and drinks."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "comercio-alimentario",
+      "name": {
+        "es": "Comercio alimentario",
+        "en": "Food retail"
+      },
+      "definition": {
+        "es": "Comercios minoristas de alimentación y bebidas.",
+        "en": "Retail venues selling food and drinks."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "moda-y-complementos",
+      "name": {
+        "es": "Moda y complementos",
+        "en": "Fashion and accessories"
+      },
+      "definition": {
+        "es": "Comercios de moda, calzado y complementos.",
+        "en": "Fashion, footwear and accessories retailers."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "farmacia-cosmetica-y-salud-retail",
+      "name": {
+        "es": "Farmacia, cosmética y salud retail",
+        "en": "Pharmacy, cosmetics and health retail"
+      },
+      "definition": {
+        "es": "Comercio sanitario, cosmético y de bienestar minorista.",
+        "en": "Retail pharmacies, cosmetics and consumer health venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "hogar-y-bricolaje",
+      "name": {
+        "es": "Hogar y bricolaje",
+        "en": "Home and DIY"
+      },
+      "definition": {
+        "es": "Comercios de hogar, mobiliario, decoración y bricolaje.",
+        "en": "Home, furniture, decoration and DIY retailers."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "tecnologia-y-oficina",
+      "name": {
+        "es": "Tecnología y oficina",
+        "en": "Technology and office"
+      },
+      "definition": {
+        "es": "Comercios de tecnología, comunicaciones y material de oficina.",
+        "en": "Technology, communications and office-supply retailers."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "comercio-cultural-y-especializado",
+      "name": {
+        "es": "Comercio cultural y especializado",
+        "en": "Culture and specialist retail"
+      },
+      "definition": {
+        "es": "Comercio cultural y minorista especializado.",
+        "en": "Cultural and specialist retail venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "flores-jardineria-y-mascotas",
+      "name": {
+        "es": "Flores, jardinería y mascotas",
+        "en": "Flowers, gardening and pets"
+      },
+      "definition": {
+        "es": "Comercios de floristería, jardinería y productos para mascotas.",
+        "en": "Flower, gardening and pet-supply retailers."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "automocion-y-movilidad",
+      "name": {
+        "es": "Automoción y movilidad",
+        "en": "Automotive and mobility"
+      },
+      "definition": {
+        "es": "Comercio y servicios vinculados a vehículos y movilidad.",
+        "en": "Retail and services related to vehicles and mobility."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "grandes-superficies-y-comercio-general",
+      "name": {
+        "es": "Grandes superficies y comercio general",
+        "en": "Department stores and general retail"
+      },
+      "definition": {
+        "es": "Grandes superficies y comercios de surtido general.",
+        "en": "Department stores and general-assortment retailers."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "alojamiento",
+      "name": {
+        "es": "Alojamiento",
+        "en": "Accommodation"
+      },
+      "definition": {
+        "es": "Establecimientos de alojamiento temporal.",
+        "en": "Venues providing temporary accommodation."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "salud-y-clinicas",
+      "name": {
+        "es": "Salud y clínicas",
+        "en": "Health and clinics"
+      },
+      "definition": {
+        "es": "Centros y consultas de atención sanitaria.",
+        "en": "Healthcare centres and clinical practices."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "veterinaria-y-cuidado-animal",
+      "name": {
+        "es": "Veterinaria y cuidado animal",
+        "en": "Veterinary and animal care"
+      },
+      "definition": {
+        "es": "Centros veterinarios y servicios de cuidado animal.",
+        "en": "Veterinary and animal-care venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "servicios-sociales",
+      "name": {
+        "es": "Servicios sociales",
+        "en": "Social services"
+      },
+      "definition": {
+        "es": "Centros residenciales, asistenciales y de cuidado social.",
+        "en": "Residential, assistance and social-care venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "belleza-y-cuidado-personal",
+      "name": {
+        "es": "Belleza y cuidado personal",
+        "en": "Beauty and personal care"
+      },
+      "definition": {
+        "es": "Locales de belleza, bienestar y cuidado personal no clínico.",
+        "en": "Non-clinical beauty, wellness and personal-care venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "deporte-y-actividad-fisica",
+      "name": {
+        "es": "Deporte y actividad física",
+        "en": "Sport and physical activity"
+      },
+      "definition": {
+        "es": "Instalaciones y centros para deporte y actividad física.",
+        "en": "Facilities and centres for sport and physical activity."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "educacion-y-formacion",
+      "name": {
+        "es": "Educación y formación",
+        "en": "Education and training"
+      },
+      "definition": {
+        "es": "Centros educativos, academias y espacios de formación.",
+        "en": "Educational centres, academies and training venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "ocio-cultura-y-entretenimiento",
+      "name": {
+        "es": "Ocio, cultura y entretenimiento",
+        "en": "Leisure, culture and entertainment"
+      },
+      "definition": {
+        "es": "Espacios culturales, recreativos y de entretenimiento.",
+        "en": "Cultural, recreational and entertainment venues."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "fotografia-y-reparaciones",
+      "name": {
+        "es": "Fotografía y reparaciones",
+        "en": "Photography and repairs"
+      },
+      "definition": {
+        "es": "Estudios fotográficos y talleres de reparación.",
+        "en": "Photography studios and repair workshops."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "viajes-alquiler-y-movilidad",
+      "name": {
+        "es": "Viajes, alquiler y movilidad",
+        "en": "Travel, rental and mobility"
+      },
+      "definition": {
+        "es": "Agencias, alquileres y servicios de movilidad.",
+        "en": "Travel agencies, rentals and mobility services."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "servicios-profesionales-y-empresas",
+      "name": {
+        "es": "Servicios profesionales y empresas",
+        "en": "Professional and business services"
+      },
+      "definition": {
+        "es": "Despachos, oficinas y centros de servicios profesionales.",
+        "en": "Offices and venues providing professional business services."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "finanzas-seguros-e-inmobiliario",
+      "name": {
+        "es": "Finanzas, seguros e inmobiliario",
+        "en": "Finance, insurance and real estate"
+      },
+      "definition": {
+        "es": "Oficinas financieras, aseguradoras e inmobiliarias.",
+        "en": "Financial, insurance and real-estate offices."
+      },
+      "governanceStatus": "candidate"
+    },
+    {
+      "code": "otros-servicios-al-publico",
+      "name": {
+        "es": "Otros servicios al público",
+        "en": "Other public-facing services"
+      },
+      "definition": {
+        "es": "Otros establecimientos de servicio presencial al público.",
+        "en": "Other venues providing in-person public services."
+      },
+      "governanceStatus": "candidate"
+    }
+  ],
+  "types": [
+    {
+      "sourceId": 1,
+      "code": "restaurante",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "restauracion",
+      "name": {
+        "es": "Restaurante",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Restauración",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 2,
+      "code": "restaurante-de-alta-categoria",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "restauracion",
+      "name": {
+        "es": "Restaurante de alta categoría",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Restauración",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 3,
+      "code": "cafeteria",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "cafeterias",
+      "name": {
+        "es": "Cafetería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cafeterías",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 4,
+      "code": "bar",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "bares",
+      "name": {
+        "es": "Bar",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bares",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 5,
+      "code": "cafe-bar",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "bares",
+      "name": {
+        "es": "Café-bar",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bares",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 6,
+      "code": "taberna",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "bares",
+      "name": {
+        "es": "Taberna",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bares",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 7,
+      "code": "restaurante-bar-en-club-o-sociedad",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "restauracion-especial",
+      "name": {
+        "es": "Restaurante/bar en club o sociedad",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Restauración especial",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 8,
+      "code": "restauracion-en-teatro-cine-espectaculo",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "restauracion-especial",
+      "name": {
+        "es": "Restauración en teatro/cine/espectáculo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Restauración especial",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 9,
+      "code": "restauracion-en-recinto-ferial",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "restauracion-especial",
+      "name": {
+        "es": "Restauración en recinto ferial",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Restauración especial",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 10,
+      "code": "quiosco-o-puesto-de-comida-bebida",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "puestos",
+      "name": {
+        "es": "Quiosco o puesto de comida/bebida",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Puestos",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 11,
+      "code": "chocolateria",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "dulces-y-bebidas",
+      "name": {
+        "es": "Chocolatería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dulces y bebidas",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 12,
+      "code": "heladeria",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "dulces-y-bebidas",
+      "name": {
+        "es": "Heladería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dulces y bebidas",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 13,
+      "code": "horchateria",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "dulces-y-bebidas",
+      "name": {
+        "es": "Horchatería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dulces y bebidas",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 14,
+      "code": "comida-para-llevar-take-away",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "comida-preparada",
+      "name": {
+        "es": "Comida para llevar / take away",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Comida preparada",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 15,
+      "code": "empresa-local-de-catering",
+      "familyCode": "restauracion-y-bebidas",
+      "subcategoryCode": "catering",
+      "name": {
+        "es": "Empresa/local de catering",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Catering",
+      "useCode": "restauracion",
+      "useLabelEs": "Restauración",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 16,
+      "code": "fruteria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "frutas-y-verduras",
+      "name": {
+        "es": "Frutería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Frutas y verduras",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 17,
+      "code": "carniceria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "carne",
+      "name": {
+        "es": "Carnicería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Carne",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 18,
+      "code": "carniceria-charcuteria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "carne",
+      "name": {
+        "es": "Carnicería-charcutería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Carne",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 19,
+      "code": "charcuteria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "carne",
+      "name": {
+        "es": "Charcutería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Carne",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 20,
+      "code": "polleria-tienda-de-aves-y-huevos",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "aves-y-huevos",
+      "name": {
+        "es": "Pollería / tienda de aves y huevos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Aves y huevos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 21,
+      "code": "casqueria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "casqueria",
+      "name": {
+        "es": "Casquería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Casquería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 22,
+      "code": "pescaderia",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "pescado-y-marisco",
+      "name": {
+        "es": "Pescadería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pescado y marisco",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 23,
+      "code": "marisqueria-de-venta-al-por-menor",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "pescado-y-marisco",
+      "name": {
+        "es": "Marisquería de venta al por menor",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pescado y marisco",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 24,
+      "code": "panaderia-despacho-de-pan",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "pan-y-pasteleria",
+      "name": {
+        "es": "Panadería / despacho de pan",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pan y pastelería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 25,
+      "code": "pasteleria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "pan-y-pasteleria",
+      "name": {
+        "es": "Pastelería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pan y pastelería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 26,
+      "code": "confiteria",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "pan-y-pasteleria",
+      "name": {
+        "es": "Confitería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pan y pastelería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 27,
+      "code": "tienda-de-bebidas",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "bebidas",
+      "name": {
+        "es": "Tienda de bebidas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bebidas",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 28,
+      "code": "vinoteca-tienda-de-vinos",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "bebidas",
+      "name": {
+        "es": "Vinoteca / tienda de vinos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bebidas",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 29,
+      "code": "estanco-tienda-de-tabaco",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "tabaco",
+      "name": {
+        "es": "Estanco / tienda de tabaco",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Tabaco",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 30,
+      "code": "tienda-de-alimentacion-ultramarinos",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "alimentacion-general",
+      "name": {
+        "es": "Tienda de alimentación / ultramarinos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alimentación general",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 31,
+      "code": "autoservicio-pequeno-120-m2",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "autoservicio",
+      "name": {
+        "es": "Autoservicio pequeño (<120 m²)",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Autoservicio",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 32,
+      "code": "superservicio-120-399-m2",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "autoservicio",
+      "name": {
+        "es": "Superservicio (120-399 m²)",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Autoservicio",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 33,
+      "code": "supermercado-400-m2",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "supermercados",
+      "name": {
+        "es": "Supermercado (≥400 m²)",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Supermercados",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 34,
+      "code": "tienda-gourmet-alimentacion-especializada",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "alimentacion-especializada",
+      "name": {
+        "es": "Tienda gourmet / alimentación especializada",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alimentación especializada",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 35,
+      "code": "tienda-de-alimentacion-dietetica-natural",
+      "familyCode": "comercio-alimentario",
+      "subcategoryCode": "dietetica",
+      "name": {
+        "es": "Tienda de alimentación dietética/natural",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dietética",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 36,
+      "code": "tienda-de-textiles-para-el-hogar",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "textil-hogar",
+      "name": {
+        "es": "Tienda de textiles para el hogar",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Textil hogar",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 37,
+      "code": "tienda-de-ropa-moda",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "moda",
+      "name": {
+        "es": "Tienda de ropa / moda",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Moda",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 38,
+      "code": "moda-femenina",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "moda",
+      "name": {
+        "es": "Moda femenina",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Moda",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 39,
+      "code": "moda-masculina",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "moda",
+      "name": {
+        "es": "Moda masculina",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Moda",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 40,
+      "code": "moda-infantil",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "moda",
+      "name": {
+        "es": "Moda infantil",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Moda",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 41,
+      "code": "lenceria-corseteria",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "lenceria",
+      "name": {
+        "es": "Lencería / corsetería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Lencería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 42,
+      "code": "merceria",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "merceria",
+      "name": {
+        "es": "Mercería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Mercería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 43,
+      "code": "tienda-de-prendas-especiales-uniformes",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "ropa-especial",
+      "name": {
+        "es": "Tienda de prendas especiales / uniformes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Ropa especial",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 44,
+      "code": "zapateria",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "calzado",
+      "name": {
+        "es": "Zapatería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Calzado",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 45,
+      "code": "tienda-de-bolsos-maletas-y-articulos-de-piel",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "marroquineria",
+      "name": {
+        "es": "Tienda de bolsos, maletas y artículos de piel",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Marroquinería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 46,
+      "code": "peleteria",
+      "familyCode": "moda-y-complementos",
+      "subcategoryCode": "peleteria",
+      "name": {
+        "es": "Peletería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Peletería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 47,
+      "code": "farmacia",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "farmacia",
+      "name": {
+        "es": "Farmacia",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Farmacia",
+      "useCode": "comercio-sanitario",
+      "useLabelEs": "Comercio sanitario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 48,
+      "code": "parafarmacia",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "parafarmacia",
+      "name": {
+        "es": "Parafarmacia",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Parafarmacia",
+      "useCode": "comercio-sanitario",
+      "useLabelEs": "Comercio sanitario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 49,
+      "code": "drogueria",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "drogueria",
+      "name": {
+        "es": "Droguería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Droguería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 50,
+      "code": "perfumeria",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "perfumeria",
+      "name": {
+        "es": "Perfumería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Perfumería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 51,
+      "code": "tienda-de-cosmetica",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "cosmetica",
+      "name": {
+        "es": "Tienda de cosmética",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cosmética",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 52,
+      "code": "tienda-de-higiene-y-aseo-personal",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "higiene",
+      "name": {
+        "es": "Tienda de higiene y aseo personal",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Higiene",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 53,
+      "code": "herbolario-plantas-medicinales",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "herbolario",
+      "name": {
+        "es": "Herbolario / plantas medicinales",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Herbolario",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 54,
+      "code": "ortopedia-material-medico",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "ortopedia",
+      "name": {
+        "es": "Ortopedia / material médico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Ortopedia",
+      "useCode": "comercio-sanitario",
+      "useLabelEs": "Comercio sanitario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 55,
+      "code": "optica-establecimiento-de-aparatos-opticos",
+      "familyCode": "farmacia-cosmetica-y-salud-retail",
+      "subcategoryCode": "optica",
+      "name": {
+        "es": "Óptica / establecimiento de aparatos ópticos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Óptica",
+      "useCode": "comercio-sanitario",
+      "useLabelEs": "Comercio sanitario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 56,
+      "code": "tienda-de-muebles",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "muebles",
+      "name": {
+        "es": "Tienda de muebles",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Muebles",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 57,
+      "code": "colchoneria",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "descanso",
+      "name": {
+        "es": "Colchonería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Descanso",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 58,
+      "code": "tienda-de-muebles-de-cocina",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "cocina",
+      "name": {
+        "es": "Tienda de muebles de cocina",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cocina",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 59,
+      "code": "tienda-de-electrodomesticos",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "electrodomesticos",
+      "name": {
+        "es": "Tienda de electrodomésticos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Electrodomésticos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 60,
+      "code": "tienda-de-electronica-de-consumo",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "electronica",
+      "name": {
+        "es": "Tienda de electrónica de consumo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Electrónica",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 61,
+      "code": "tienda-de-menaje-y-articulos-del-hogar",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "menaje",
+      "name": {
+        "es": "Tienda de menaje y artículos del hogar",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Menaje",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 62,
+      "code": "ferreteria",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "ferreteria",
+      "name": {
+        "es": "Ferretería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Ferretería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 63,
+      "code": "tienda-de-decoracion",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "decoracion",
+      "name": {
+        "es": "Tienda de decoración",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Decoración",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 64,
+      "code": "tienda-de-materiales-de-construccion",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "construccion",
+      "name": {
+        "es": "Tienda de materiales de construcción",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Construcción",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 65,
+      "code": "tienda-de-sanitarios-equipamiento-de-bano",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "bano",
+      "name": {
+        "es": "Tienda de sanitarios / equipamiento de baño",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Baño",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 66,
+      "code": "tienda-de-puertas-ventanas-y-persianas",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "carpinteria-comercial",
+      "name": {
+        "es": "Tienda de puertas, ventanas y persianas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Carpintería comercial",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 67,
+      "code": "tienda-de-suelos-moquetas-y-revestimientos",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "suelos",
+      "name": {
+        "es": "Tienda de suelos, moquetas y revestimientos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Suelos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 68,
+      "code": "tienda-centro-de-bricolaje",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "bricolaje",
+      "name": {
+        "es": "Tienda / centro de bricolaje",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bricolaje",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 69,
+      "code": "tienda-de-iluminacion",
+      "familyCode": "hogar-y-bricolaje",
+      "subcategoryCode": "iluminacion",
+      "name": {
+        "es": "Tienda de iluminación",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Iluminación",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 70,
+      "code": "tienda-de-informatica",
+      "familyCode": "tecnologia-y-oficina",
+      "subcategoryCode": "informatica",
+      "name": {
+        "es": "Tienda de informática",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Informática",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 71,
+      "code": "tienda-de-telefonia-y-comunicaciones",
+      "familyCode": "tecnologia-y-oficina",
+      "subcategoryCode": "telefonia",
+      "name": {
+        "es": "Tienda de telefonía y comunicaciones",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Telefonía",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 72,
+      "code": "tienda-de-mobiliario-y-equipos-de-oficina",
+      "familyCode": "tecnologia-y-oficina",
+      "subcategoryCode": "oficina",
+      "name": {
+        "es": "Tienda de mobiliario y equipos de oficina",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Oficina",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 73,
+      "code": "tienda-de-material-de-dibujo-y-bellas-artes",
+      "familyCode": "tecnologia-y-oficina",
+      "subcategoryCode": "papeleria-tecnica",
+      "name": {
+        "es": "Tienda de material de dibujo y bellas artes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Papelería técnica",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 74,
+      "code": "libreria",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "libros",
+      "name": {
+        "es": "Librería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Libros",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 75,
+      "code": "quiosco-de-prensa",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "prensa",
+      "name": {
+        "es": "Quiosco de prensa",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Prensa",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 76,
+      "code": "papeleria",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "papeleria",
+      "name": {
+        "es": "Papelería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Papelería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 77,
+      "code": "tienda-de-instrumentos-musicales",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "musica",
+      "name": {
+        "es": "Tienda de instrumentos musicales",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Música",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 78,
+      "code": "tienda-de-filatelia-y-numismatica",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "coleccionismo",
+      "name": {
+        "es": "Tienda de filatelia y numismática",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Coleccionismo",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 79,
+      "code": "galeria-comercio-de-obras-de-arte",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "arte",
+      "name": {
+        "es": "Galería / comercio de obras de arte",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Arte",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 80,
+      "code": "anticuario",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "antiguedades",
+      "name": {
+        "es": "Anticuario",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Antigüedades",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 81,
+      "code": "tienda-de-minerales-fosiles-y-coleccionismo",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "minerales",
+      "name": {
+        "es": "Tienda de minerales, fósiles y coleccionismo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Minerales",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 82,
+      "code": "joyeria",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "joyeria",
+      "name": {
+        "es": "Joyería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Joyería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 83,
+      "code": "relojeria",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "relojeria",
+      "name": {
+        "es": "Relojería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Relojería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 84,
+      "code": "tienda-de-bisuteria",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "bisuteria",
+      "name": {
+        "es": "Tienda de bisutería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bisutería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 85,
+      "code": "jugueteria",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "juguetes",
+      "name": {
+        "es": "Juguetería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Juguetes",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 86,
+      "code": "tienda-de-material-deportivo",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "deporte-retail",
+      "name": {
+        "es": "Tienda de material deportivo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Deporte retail",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 87,
+      "code": "tienda-de-ropa-calzado-deportivo",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "deporte-retail",
+      "name": {
+        "es": "Tienda de ropa/calzado deportivo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Deporte retail",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 88,
+      "code": "tienda-de-segunda-mano",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "segunda-mano",
+      "name": {
+        "es": "Tienda de segunda mano",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Segunda mano",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 89,
+      "code": "tienda-para-adultos-sex-shop",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "adultos",
+      "name": {
+        "es": "Tienda para adultos / sex-shop",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Adultos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 90,
+      "code": "comercio-especializado-no-clasificado-en-otra-parte",
+      "familyCode": "comercio-cultural-y-especializado",
+      "subcategoryCode": "otros",
+      "name": {
+        "es": "Comercio especializado no clasificado en otra parte",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Otros",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 91,
+      "code": "floristeria",
+      "familyCode": "flores-jardineria-y-mascotas",
+      "subcategoryCode": "flores",
+      "name": {
+        "es": "Floristería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Flores",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 92,
+      "code": "tienda-vivero-de-plantas-ornamentales",
+      "familyCode": "flores-jardineria-y-mascotas",
+      "subcategoryCode": "jardineria",
+      "name": {
+        "es": "Tienda / vivero de plantas ornamentales",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Jardinería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 93,
+      "code": "tienda-de-semillas-y-fertilizantes",
+      "familyCode": "flores-jardineria-y-mascotas",
+      "subcategoryCode": "jardineria",
+      "name": {
+        "es": "Tienda de semillas y fertilizantes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Jardinería",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 94,
+      "code": "tienda-de-animales-de-compania",
+      "familyCode": "flores-jardineria-y-mascotas",
+      "subcategoryCode": "mascotas",
+      "name": {
+        "es": "Tienda de animales de compañía",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Mascotas",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 95,
+      "code": "tienda-de-alimentacion-y-accesorios-para-mascotas",
+      "familyCode": "flores-jardineria-y-mascotas",
+      "subcategoryCode": "mascotas",
+      "name": {
+        "es": "Tienda de alimentación y accesorios para mascotas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Mascotas",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 96,
+      "code": "concesionario-tienda-de-automoviles",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "vehiculos",
+      "name": {
+        "es": "Concesionario / tienda de automóviles",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Vehículos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 97,
+      "code": "compraventa-de-vehiculos",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "vehiculos",
+      "name": {
+        "es": "Compraventa de vehículos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Vehículos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 98,
+      "code": "tienda-concesionario-de-motocicletas",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "motocicletas",
+      "name": {
+        "es": "Tienda / concesionario de motocicletas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Motocicletas",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 99,
+      "code": "tienda-de-recambios-y-accesorios-de-automovil",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "recambios",
+      "name": {
+        "es": "Tienda de recambios y accesorios de automóvil",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Recambios",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 100,
+      "code": "tienda-de-neumaticos",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "neumaticos",
+      "name": {
+        "es": "Tienda de neumáticos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Neumáticos",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 101,
+      "code": "tienda-de-maquinaria",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "maquinaria",
+      "name": {
+        "es": "Tienda de maquinaria",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Maquinaria",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 102,
+      "code": "tienda-concesionario-de-embarcaciones",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "nautica",
+      "name": {
+        "es": "Tienda / concesionario de embarcaciones",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Náutica",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 103,
+      "code": "gasolinera-estacion-de-servicio",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "combustible",
+      "name": {
+        "es": "Gasolinera / estación de servicio",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Combustible",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 104,
+      "code": "tienda-de-combustibles-y-lubricantes",
+      "familyCode": "automocion-y-movilidad",
+      "subcategoryCode": "combustible",
+      "name": {
+        "es": "Tienda de combustibles y lubricantes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Combustible",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 105,
+      "code": "grandes-almacenes",
+      "familyCode": "grandes-superficies-y-comercio-general",
+      "subcategoryCode": "grandes-almacenes",
+      "name": {
+        "es": "Grandes almacenes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Grandes almacenes",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 106,
+      "code": "hipermercado",
+      "familyCode": "grandes-superficies-y-comercio-general",
+      "subcategoryCode": "hipermercados",
+      "name": {
+        "es": "Hipermercado",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hipermercados",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 107,
+      "code": "almacen-popular",
+      "familyCode": "grandes-superficies-y-comercio-general",
+      "subcategoryCode": "almacenes-populares",
+      "name": {
+        "es": "Almacén popular",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Almacenes populares",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 108,
+      "code": "gran-superficie-especializada-2-500-m2",
+      "familyCode": "grandes-superficies-y-comercio-general",
+      "subcategoryCode": "gran-superficie",
+      "name": {
+        "es": "Gran superficie especializada (≥2.500 m²)",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Gran superficie",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 109,
+      "code": "economato-cooperativa-de-consumo",
+      "familyCode": "grandes-superficies-y-comercio-general",
+      "subcategoryCode": "cooperativas",
+      "name": {
+        "es": "Economato / cooperativa de consumo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cooperativas",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 110,
+      "code": "bazar-comercio-mixto-o-integrado",
+      "familyCode": "grandes-superficies-y-comercio-general",
+      "subcategoryCode": "bazares",
+      "name": {
+        "es": "Bazar / comercio mixto o integrado",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bazares",
+      "useCode": "comercio",
+      "useLabelEs": "Comercio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 111,
+      "code": "hotel",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "hoteles",
+      "name": {
+        "es": "Hotel",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hoteles",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 112,
+      "code": "motel",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "hoteles",
+      "name": {
+        "es": "Motel",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hoteles",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 113,
+      "code": "hostal",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "hostales",
+      "name": {
+        "es": "Hostal",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hostales",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 114,
+      "code": "pension",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "pensiones",
+      "name": {
+        "es": "Pensión",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pensiones",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 115,
+      "code": "fonda-casa-de-huespedes",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "hospedaje",
+      "name": {
+        "es": "Fonda / casa de huéspedes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hospedaje",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 116,
+      "code": "hotel-apartamento-apartahotel",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "apartahoteles",
+      "name": {
+        "es": "Hotel-apartamento / apartahotel",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Apartahoteles",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 117,
+      "code": "apartamento-alojamiento-turistico-extrahotelero",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "turistico",
+      "name": {
+        "es": "Apartamento / alojamiento turístico extrahotelero",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Turístico",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 118,
+      "code": "camping-campamento-turistico",
+      "familyCode": "alojamiento",
+      "subcategoryCode": "camping",
+      "name": {
+        "es": "Camping / campamento turístico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Camping",
+      "useCode": "alojamiento",
+      "useLabelEs": "Alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 119,
+      "code": "hospital-general",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "hospitales",
+      "name": {
+        "es": "Hospital general",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hospitales",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 120,
+      "code": "hospital-especializado",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "hospitales",
+      "name": {
+        "es": "Hospital especializado",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Hospitales",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 121,
+      "code": "centro-medico-policlinica-sin-internamiento",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "centros-medicos",
+      "name": {
+        "es": "Centro médico / policlínica sin internamiento",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Centros médicos",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 122,
+      "code": "centro-de-urgencias-medicas",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "urgencias",
+      "name": {
+        "es": "Centro de urgencias médicas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Urgencias",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 123,
+      "code": "clinica-dental",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "dental",
+      "name": {
+        "es": "Clínica dental",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dental",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 124,
+      "code": "consulta-de-medicina-general",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "medicina-general",
+      "name": {
+        "es": "Consulta de medicina general",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Medicina general",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 125,
+      "code": "consulta-de-medico-especialista",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "especialistas",
+      "name": {
+        "es": "Consulta de médico especialista",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Especialistas",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 126,
+      "code": "consulta-de-estomatologia",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "dental",
+      "name": {
+        "es": "Consulta de estomatología",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dental",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 127,
+      "code": "consulta-de-odontologia",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "dental",
+      "name": {
+        "es": "Consulta de odontología",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Dental",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 128,
+      "code": "centro-consulta-de-fisioterapia",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "fisioterapia",
+      "name": {
+        "es": "Centro / consulta de fisioterapia",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Fisioterapia",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 129,
+      "code": "consulta-centro-de-enfermeria",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "enfermeria",
+      "name": {
+        "es": "Consulta / centro de enfermería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Enfermería",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 130,
+      "code": "clinica-consulta-de-podologia",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "podologia",
+      "name": {
+        "es": "Clínica / consulta de podología",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Podología",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 131,
+      "code": "consulta-de-optica-optometria",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "optometria",
+      "name": {
+        "es": "Consulta de óptica-optometría",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Optometría",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 132,
+      "code": "consulta-centro-de-psicologia",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "psicologia",
+      "name": {
+        "es": "Consulta / centro de psicología",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Psicología",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 133,
+      "code": "consulta-de-dietetica-nutricion",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "nutricion",
+      "name": {
+        "es": "Consulta de dietética / nutrición",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Nutrición",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 134,
+      "code": "centro-de-naturopatia",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "terapias-complementarias",
+      "name": {
+        "es": "Centro de naturopatía",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Terapias complementarias",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 135,
+      "code": "centro-de-acupuntura",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "terapias-complementarias",
+      "name": {
+        "es": "Centro de acupuntura",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Terapias complementarias",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 136,
+      "code": "balneario-medico-banos-termales-sanitarios",
+      "familyCode": "salud-y-clinicas",
+      "subcategoryCode": "balnearios",
+      "name": {
+        "es": "Balneario médico / baños termales sanitarios",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Balnearios",
+      "useCode": "salud",
+      "useLabelEs": "Salud",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 137,
+      "code": "clinica-veterinaria",
+      "familyCode": "veterinaria-y-cuidado-animal",
+      "subcategoryCode": "veterinaria",
+      "name": {
+        "es": "Clínica veterinaria",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Veterinaria",
+      "useCode": "veterinaria",
+      "useLabelEs": "Veterinaria",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 138,
+      "code": "consulta-veterinaria-profesional",
+      "familyCode": "veterinaria-y-cuidado-animal",
+      "subcategoryCode": "veterinaria",
+      "name": {
+        "es": "Consulta veterinaria profesional",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Veterinaria",
+      "useCode": "veterinaria",
+      "useLabelEs": "Veterinaria",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 139,
+      "code": "centro-de-cuidado-de-animales-domesticos",
+      "familyCode": "veterinaria-y-cuidado-animal",
+      "subcategoryCode": "cuidado-animal",
+      "name": {
+        "es": "Centro de cuidado de animales domésticos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cuidado animal",
+      "useCode": "servicios",
+      "useLabelEs": "Servicios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 140,
+      "code": "centro-de-adiestramiento-de-animales",
+      "familyCode": "veterinaria-y-cuidado-animal",
+      "subcategoryCode": "adiestramiento",
+      "name": {
+        "es": "Centro de adiestramiento de animales",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Adiestramiento",
+      "useCode": "servicios",
+      "useLabelEs": "Servicios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 141,
+      "code": "residencia-para-personas-mayores",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "residencias",
+      "name": {
+        "es": "Residencia para personas mayores",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Residencias",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 142,
+      "code": "residencia-para-personas-con-discapacidad",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "residencias",
+      "name": {
+        "es": "Residencia para personas con discapacidad",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Residencias",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 143,
+      "code": "centro-residencial-infantil-juvenil",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "residencias",
+      "name": {
+        "es": "Centro residencial infantil / juvenil",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Residencias",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 144,
+      "code": "centro-de-dia-para-mayores",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "centros-de-dia",
+      "name": {
+        "es": "Centro de día para mayores",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Centros de día",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 145,
+      "code": "centro-de-dia-para-personas-con-discapacidad",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "centros-de-dia",
+      "name": {
+        "es": "Centro de día para personas con discapacidad",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Centros de día",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 146,
+      "code": "guarderia-centro-de-cuidado-diurno-infantil",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "infancia",
+      "name": {
+        "es": "Guardería / centro de cuidado diurno infantil",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Infancia",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 147,
+      "code": "centro-social-no-residencial",
+      "familyCode": "servicios-sociales",
+      "subcategoryCode": "otros",
+      "name": {
+        "es": "Centro social no residencial",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Otros",
+      "useCode": "servicios-sociales",
+      "useLabelEs": "Servicios sociales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 148,
+      "code": "peluqueria",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "peluqueria",
+      "name": {
+        "es": "Peluquería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Peluquería",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 149,
+      "code": "barberia",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "barberia",
+      "name": {
+        "es": "Barbería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Barbería",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 150,
+      "code": "salon-centro-de-belleza",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "estetica",
+      "name": {
+        "es": "Salón / centro de belleza",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Estética",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 151,
+      "code": "centro-de-estetica-no-medica",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "estetica",
+      "name": {
+        "es": "Centro de estética no médica",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Estética",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 152,
+      "code": "centro-de-manicura-pedicura-estetica",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "unas",
+      "name": {
+        "es": "Centro de manicura / pedicura estética",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Uñas",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 153,
+      "code": "estudio-de-maquillaje-estetica",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "maquillaje",
+      "name": {
+        "es": "Estudio de maquillaje / estética",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Maquillaje",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 154,
+      "code": "spa-sauna-bano-turco-no-sanitario",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "spa",
+      "name": {
+        "es": "Spa / sauna / baño turco no sanitario",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Spa",
+      "useCode": "bienestar",
+      "useLabelEs": "Bienestar",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 155,
+      "code": "centro-de-masaje-no-sanitario",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "masajes",
+      "name": {
+        "es": "Centro de masaje no sanitario",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Masajes",
+      "useCode": "bienestar",
+      "useLabelEs": "Bienestar",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 156,
+      "code": "estudio-de-tatuaje-y-piercing",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "tatuaje",
+      "name": {
+        "es": "Estudio de tatuaje y piercing",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Tatuaje",
+      "useCode": "belleza",
+      "useLabelEs": "Belleza",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 157,
+      "code": "lavanderia",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "lavanderia",
+      "name": {
+        "es": "Lavandería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Lavandería",
+      "useCode": "servicios-personales",
+      "useLabelEs": "Servicios personales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 158,
+      "code": "tintoreria-limpieza-en-seco",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "tintoreria",
+      "name": {
+        "es": "Tintorería / limpieza en seco",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Tintorería",
+      "useCode": "servicios-personales",
+      "useLabelEs": "Servicios personales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 159,
+      "code": "taller-de-arreglos-zurcido-de-ropa",
+      "familyCode": "belleza-y-cuidado-personal",
+      "subcategoryCode": "arreglos",
+      "name": {
+        "es": "Taller de arreglos / zurcido de ropa",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Arreglos",
+      "useCode": "servicios-personales",
+      "useLabelEs": "Servicios personales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 160,
+      "code": "gimnasio-centro-deportivo",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "gimnasios",
+      "name": {
+        "es": "Gimnasio / centro deportivo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Gimnasios",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 161,
+      "code": "instalacion-deportiva",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "instalaciones",
+      "name": {
+        "es": "Instalación deportiva",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Instalaciones",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 162,
+      "code": "club-pistas-de-padel",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "padel",
+      "name": {
+        "es": "Club / pistas de pádel",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Pádel",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 163,
+      "code": "club-pistas-de-tenis",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "tenis",
+      "name": {
+        "es": "Club / pistas de tenis",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Tenis",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 164,
+      "code": "campo-instalacion-de-futbol",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "futbol",
+      "name": {
+        "es": "Campo / instalación de fútbol",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Fútbol",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 165,
+      "code": "piscina-de-explotacion-deportiva",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "piscinas",
+      "name": {
+        "es": "Piscina de explotación deportiva",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Piscinas",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 166,
+      "code": "escuela-deportiva",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "escuelas-deportivas",
+      "name": {
+        "es": "Escuela deportiva",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Escuelas deportivas",
+      "useCode": "deporte-educacion",
+      "useLabelEs": "Deporte / educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 167,
+      "code": "centro-de-perfeccionamiento-deportivo",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "entrenamiento",
+      "name": {
+        "es": "Centro de perfeccionamiento deportivo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Entrenamiento",
+      "useCode": "deporte-educacion",
+      "useLabelEs": "Deporte / educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 168,
+      "code": "alquiler-de-material-dentro-de-instalacion-deportiva",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "alquiler-deportivo",
+      "name": {
+        "es": "Alquiler de material dentro de instalación deportiva",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alquiler deportivo",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 169,
+      "code": "instalacion-para-espectaculos-deportivos",
+      "familyCode": "deporte-y-actividad-fisica",
+      "subcategoryCode": "espectaculos",
+      "name": {
+        "es": "Instalación para espectáculos deportivos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Espectáculos",
+      "useCode": "deporte",
+      "useLabelEs": "Deporte",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 170,
+      "code": "centro-de-educacion-infantil",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "infantil",
+      "name": {
+        "es": "Centro de educación infantil",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Infantil",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 171,
+      "code": "colegio-centro-de-educacion-primaria",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "primaria",
+      "name": {
+        "es": "Colegio / centro de educación primaria",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Primaria",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 172,
+      "code": "centro-de-eso-educacion-secundaria-general",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "secundaria",
+      "name": {
+        "es": "Centro de ESO / educación secundaria general",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Secundaria",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 173,
+      "code": "centro-de-formacion-profesional",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "fp",
+      "name": {
+        "es": "Centro de Formación Profesional",
+        "en": null
+      },
+      "sourceSubcategoryEs": "FP",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 174,
+      "code": "centro-universitario-educacion-superior",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "superior",
+      "name": {
+        "es": "Centro universitario / educación superior",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Superior",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 175,
+      "code": "academia-centro-de-estudios",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "academias",
+      "name": {
+        "es": "Academia / centro de estudios",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Academias",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 176,
+      "code": "academia-de-idiomas",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "idiomas",
+      "name": {
+        "es": "Academia de idiomas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Idiomas",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 177,
+      "code": "academia-de-preparacion-de-oposiciones-examenes",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "oposiciones",
+      "name": {
+        "es": "Academia de preparación de oposiciones / exámenes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Oposiciones",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 178,
+      "code": "autoescuela",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "autoescuelas",
+      "name": {
+        "es": "Autoescuela",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Autoescuelas",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 179,
+      "code": "centro-de-ensenanza-deportiva",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "deporte",
+      "name": {
+        "es": "Centro de enseñanza deportiva",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Deporte",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 180,
+      "code": "academia-de-musica-danza-o-artes",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "cultura",
+      "name": {
+        "es": "Academia de música, danza o artes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cultura",
+      "useCode": "educacion",
+      "useLabelEs": "Educación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 181,
+      "code": "residencia-de-estudiantes-colegio-mayor",
+      "familyCode": "educacion-y-formacion",
+      "subcategoryCode": "residencias-estudiantes",
+      "name": {
+        "es": "Residencia de estudiantes / colegio mayor",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Residencias estudiantes",
+      "useCode": "educacion-alojamiento",
+      "useLabelEs": "Educación / alojamiento",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 182,
+      "code": "cine-sala-de-exhibicion-cinematografica",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "cines",
+      "name": {
+        "es": "Cine / sala de exhibición cinematográfica",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Cines",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 183,
+      "code": "museo-coleccion-abierta-al-publico",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "museos",
+      "name": {
+        "es": "Museo / colección abierta al público",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Museos",
+      "useCode": "cultura",
+      "useLabelEs": "Cultura",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 184,
+      "code": "biblioteca-privada-servicio-cultural",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "bibliotecas",
+      "name": {
+        "es": "Biblioteca privada / servicio cultural",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bibliotecas",
+      "useCode": "cultura",
+      "useLabelEs": "Cultura",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 185,
+      "code": "parque-zoologico",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "zoologicos",
+      "name": {
+        "es": "Parque zoológico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Zoológicos",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 186,
+      "code": "jardin-botanico",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "botanicos",
+      "name": {
+        "es": "Jardín botánico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Botánicos",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 187,
+      "code": "discoteca-sala-de-baile",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "discotecas",
+      "name": {
+        "es": "Discoteca / sala de baile",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Discotecas",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 188,
+      "code": "casino-de-juego",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "casino",
+      "name": {
+        "es": "Casino de juego",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Casino",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 189,
+      "code": "sala-de-bingo",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "bingo",
+      "name": {
+        "es": "Sala de bingo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bingo",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 190,
+      "code": "bolera",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "bolera",
+      "name": {
+        "es": "Bolera",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bolera",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 191,
+      "code": "sala-de-billar-juegos-de-mesa-recreativos",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "billar",
+      "name": {
+        "es": "Sala de billar / juegos de mesa recreativos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Billar",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 192,
+      "code": "salon-recreativo-arcade",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "arcade",
+      "name": {
+        "es": "Salón recreativo / arcade",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Arcade",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 193,
+      "code": "parque-de-atracciones-parque-tematico",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "parques",
+      "name": {
+        "es": "Parque de atracciones / parque temático",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Parques",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 194,
+      "code": "parque-acuatico",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "parques-acuaticos",
+      "name": {
+        "es": "Parque acuático",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Parques acuáticos",
+      "useCode": "ocio",
+      "useLabelEs": "Ocio",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 195,
+      "code": "recinto-ferial-feria-de-muestras",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "ferias",
+      "name": {
+        "es": "Recinto ferial / feria de muestras",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Ferias",
+      "useCode": "eventos",
+      "useLabelEs": "Eventos",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 196,
+      "code": "centro-organizador-de-congresos",
+      "familyCode": "ocio-cultura-y-entretenimiento",
+      "subcategoryCode": "congresos",
+      "name": {
+        "es": "Centro / organizador de congresos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Congresos",
+      "useCode": "eventos",
+      "useLabelEs": "Eventos",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 197,
+      "code": "estudio-fotografico",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "fotografia",
+      "name": {
+        "es": "Estudio fotográfico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Fotografía",
+      "useCode": "servicios",
+      "useLabelEs": "Servicios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 198,
+      "code": "laboratorio-servicio-fotografico",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "fotografia",
+      "name": {
+        "es": "Laboratorio / servicio fotográfico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Fotografía",
+      "useCode": "servicios",
+      "useLabelEs": "Servicios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 199,
+      "code": "centro-de-fotocopias-reprografia",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "reprografia",
+      "name": {
+        "es": "Centro de fotocopias / reprografía",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Reprografía",
+      "useCode": "servicios",
+      "useLabelEs": "Servicios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 200,
+      "code": "taller-de-reparacion-de-ordenadores",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "informatica",
+      "name": {
+        "es": "Taller de reparación de ordenadores",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Informática",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 201,
+      "code": "taller-de-reparacion-de-electronica-de-consumo",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "electronica",
+      "name": {
+        "es": "Taller de reparación de electrónica de consumo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Electrónica",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 202,
+      "code": "servicio-tecnico-reparacion-de-electrodomesticos",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "electrodomesticos",
+      "name": {
+        "es": "Servicio técnico / reparación de electrodomésticos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Electrodomésticos",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 203,
+      "code": "zapatero-reparacion-de-calzado",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "calzado",
+      "name": {
+        "es": "Zapatero / reparación de calzado",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Calzado",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 204,
+      "code": "taller-de-reparacion-restauracion-de-muebles",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "muebles",
+      "name": {
+        "es": "Taller de reparación/restauración de muebles",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Muebles",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 205,
+      "code": "taller-de-reparacion-de-relojes-y-joyeria",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "relojeria",
+      "name": {
+        "es": "Taller de reparación de relojes y joyería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Relojería",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 206,
+      "code": "taller-de-reparacion-de-automoviles",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "automocion",
+      "name": {
+        "es": "Taller de reparación de automóviles",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Automoción",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 207,
+      "code": "taller-de-reparacion-de-motocicletas",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "motocicletas",
+      "name": {
+        "es": "Taller de reparación de motocicletas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Motocicletas",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 208,
+      "code": "taller-de-reparacion-de-bicicletas",
+      "familyCode": "fotografia-y-reparaciones",
+      "subcategoryCode": "bicicletas",
+      "name": {
+        "es": "Taller de reparación de bicicletas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Bicicletas",
+      "useCode": "reparacion",
+      "useLabelEs": "Reparación",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 209,
+      "code": "agencia-de-viajes",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "viajes",
+      "name": {
+        "es": "Agencia de viajes",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Viajes",
+      "useCode": "turismo",
+      "useLabelEs": "Turismo",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 210,
+      "code": "operador-turistico-oficina-de-touroperador",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "turismo",
+      "name": {
+        "es": "Operador turístico / oficina de touroperador",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Turismo",
+      "useCode": "turismo",
+      "useLabelEs": "Turismo",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 211,
+      "code": "oficina-de-servicios-de-reservas-turisticos",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "reservas",
+      "name": {
+        "es": "Oficina de servicios de reservas turísticos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Reservas",
+      "useCode": "turismo",
+      "useLabelEs": "Turismo",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 212,
+      "code": "alquiler-de-automoviles-rent-a-car",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "rent-a-car",
+      "name": {
+        "es": "Alquiler de automóviles / rent a car",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Rent a car",
+      "useCode": "alquiler",
+      "useLabelEs": "Alquiler",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 213,
+      "code": "alquiler-de-bicicletas-y-material-de-ocio-deportivo",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "alquiler-deportivo",
+      "name": {
+        "es": "Alquiler de bicicletas y material de ocio/deportivo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alquiler deportivo",
+      "useCode": "alquiler",
+      "useLabelEs": "Alquiler",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 214,
+      "code": "alquiler-de-prendas-y-efectos-personales",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "alquiler-personal",
+      "name": {
+        "es": "Alquiler de prendas y efectos personales",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alquiler personal",
+      "useCode": "alquiler",
+      "useLabelEs": "Alquiler",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 215,
+      "code": "alquiler-de-embarcaciones",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "alquiler-nautico",
+      "name": {
+        "es": "Alquiler de embarcaciones",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alquiler náutico",
+      "useCode": "alquiler",
+      "useLabelEs": "Alquiler",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 216,
+      "code": "alquiler-de-maquinaria-y-equipos",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "alquiler-maquinaria",
+      "name": {
+        "es": "Alquiler de maquinaria y equipos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alquiler maquinaria",
+      "useCode": "alquiler",
+      "useLabelEs": "Alquiler",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 217,
+      "code": "parking-garaje-de-explotacion-comercial",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "aparcamiento",
+      "name": {
+        "es": "Parking / garaje de explotación comercial",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Aparcamiento",
+      "useCode": "movilidad",
+      "useLabelEs": "Movilidad",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 218,
+      "code": "centro-de-lavado-engrase-de-vehiculos",
+      "familyCode": "viajes-alquiler-y-movilidad",
+      "subcategoryCode": "vehiculos",
+      "name": {
+        "es": "Centro de lavado / engrase de vehículos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Vehículos",
+      "useCode": "movilidad",
+      "useLabelEs": "Movilidad",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 219,
+      "code": "despacho-de-abogados",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "legal",
+      "name": {
+        "es": "Despacho de abogados",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Legal",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 220,
+      "code": "despacho-de-procurador",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "legal",
+      "name": {
+        "es": "Despacho de procurador",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Legal",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 221,
+      "code": "notaria",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "legal",
+      "name": {
+        "es": "Notaría",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Legal",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 222,
+      "code": "despacho-de-economista",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "economia",
+      "name": {
+        "es": "Despacho de economista",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Economía",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 223,
+      "code": "despacho-firma-de-auditoria",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "auditoria",
+      "name": {
+        "es": "Despacho / firma de auditoría",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Auditoría",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 224,
+      "code": "asesoria-contable-fiscal",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "contabilidad",
+      "name": {
+        "es": "Asesoría contable / fiscal",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Contabilidad",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 225,
+      "code": "oficina-consultoria-de-ingenieria",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "ingenieria",
+      "name": {
+        "es": "Oficina / consultoría de ingeniería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Ingeniería",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 226,
+      "code": "estudio-de-arquitectura-urbanismo",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "arquitectura",
+      "name": {
+        "es": "Estudio de arquitectura / urbanismo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Arquitectura",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 227,
+      "code": "oficina-de-topografia",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "topografia",
+      "name": {
+        "es": "Oficina de topografía",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Topografía",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 228,
+      "code": "estudio-de-diseno-grafico",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "diseno",
+      "name": {
+        "es": "Estudio de diseño gráfico",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Diseño",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 229,
+      "code": "estudio-de-interiorismo",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "interiorismo",
+      "name": {
+        "es": "Estudio de interiorismo",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Interiorismo",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 230,
+      "code": "agencia-de-publicidad",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "publicidad",
+      "name": {
+        "es": "Agencia de publicidad",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Publicidad",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 231,
+      "code": "agencia-consultoria-de-relaciones-publicas",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "relaciones-publicas",
+      "name": {
+        "es": "Agencia / consultoría de relaciones públicas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Relaciones públicas",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 232,
+      "code": "oficina-profesional-de-traduccion-e-interpretacion",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "traduccion",
+      "name": {
+        "es": "Oficina / profesional de traducción e interpretación",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Traducción",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 233,
+      "code": "agencia-de-colocacion-seleccion-de-personal",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "recursos-humanos",
+      "name": {
+        "es": "Agencia de colocación / selección de personal",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Recursos humanos",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 234,
+      "code": "empresa-de-trabajo-temporal",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "ett",
+      "name": {
+        "es": "Empresa de trabajo temporal",
+        "en": null
+      },
+      "sourceSubcategoryEs": "ETT",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 235,
+      "code": "empresa-oficina-de-seguridad-privada",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "seguridad",
+      "name": {
+        "es": "Empresa / oficina de seguridad privada",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Seguridad",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 236,
+      "code": "despacho-de-detective-privado",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "detectives",
+      "name": {
+        "es": "Despacho de detective privado",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Detectives",
+      "useCode": "servicios-profesionales",
+      "useLabelEs": "Servicios profesionales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 237,
+      "code": "coworking-oficina-flexible-centro-de-negocios",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "coworking",
+      "name": {
+        "es": "Coworking / oficina flexible / centro de negocios",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Coworking",
+      "useCode": "servicios-empresariales",
+      "useLabelEs": "Servicios empresariales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 238,
+      "code": "estacion-itv",
+      "familyCode": "servicios-profesionales-y-empresas",
+      "subcategoryCode": "itv",
+      "name": {
+        "es": "Estación ITV",
+        "en": null
+      },
+      "sourceSubcategoryEs": "ITV",
+      "useCode": "servicios-tecnicos",
+      "useLabelEs": "Servicios técnicos",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 239,
+      "code": "oficina-bancaria",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "banca",
+      "name": {
+        "es": "Oficina bancaria",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Banca",
+      "useCode": "finanzas",
+      "useLabelEs": "Finanzas",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 240,
+      "code": "establecimiento-oficina-de-credito",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "credito",
+      "name": {
+        "es": "Establecimiento / oficina de crédito",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Crédito",
+      "useCode": "finanzas",
+      "useLabelEs": "Finanzas",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 241,
+      "code": "agencia-de-seguros",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "seguros",
+      "name": {
+        "es": "Agencia de seguros",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Seguros",
+      "useCode": "seguros",
+      "useLabelEs": "Seguros",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 242,
+      "code": "correduria-de-seguros",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "seguros",
+      "name": {
+        "es": "Correduría de seguros",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Seguros",
+      "useCode": "seguros",
+      "useLabelEs": "Seguros",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 243,
+      "code": "oficina-de-peritacion-evaluacion-de-riesgos",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "seguros",
+      "name": {
+        "es": "Oficina de peritación / evaluación de riesgos",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Seguros",
+      "useCode": "seguros",
+      "useLabelEs": "Seguros",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 244,
+      "code": "agencia-inmobiliaria",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "inmobiliaria",
+      "name": {
+        "es": "Agencia inmobiliaria",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Inmobiliaria",
+      "useCode": "inmobiliario",
+      "useLabelEs": "Inmobiliario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 245,
+      "code": "administracion-de-fincas-gestion-inmobiliaria",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "inmobiliaria",
+      "name": {
+        "es": "Administración de fincas / gestión inmobiliaria",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Inmobiliaria",
+      "useCode": "inmobiliario",
+      "useLabelEs": "Inmobiliario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 246,
+      "code": "promotora-inmobiliaria-con-oficina-comercial",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "inmobiliaria",
+      "name": {
+        "es": "Promotora inmobiliaria con oficina comercial",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Inmobiliaria",
+      "useCode": "inmobiliario",
+      "useLabelEs": "Inmobiliario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 247,
+      "code": "oficina-actividad-de-alquiler-de-locales-o-viviendas-propios",
+      "familyCode": "finanzas-seguros-e-inmobiliario",
+      "subcategoryCode": "alquiler-inmobiliario",
+      "name": {
+        "es": "Oficina / actividad de alquiler de locales o viviendas propios",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Alquiler inmobiliario",
+      "useCode": "inmobiliario",
+      "useLabelEs": "Inmobiliario",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 248,
+      "code": "administracion-de-loteria",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "loterias",
+      "name": {
+        "es": "Administración de lotería",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Loterías",
+      "useCode": "juego",
+      "useLabelEs": "Juego",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 249,
+      "code": "local-de-apuestas-autorizado",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "apuestas",
+      "name": {
+        "es": "Local de apuestas autorizado",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Apuestas",
+      "useCode": "juego",
+      "useLabelEs": "Juego",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 250,
+      "code": "funeraria-servicios-de-pompas-funebres",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "funerarios",
+      "name": {
+        "es": "Funeraria / servicios de pompas fúnebres",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Funerarios",
+      "useCode": "servicios-funerarios",
+      "useLabelEs": "Servicios funerarios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 251,
+      "code": "taquilla-despacho-de-venta-de-entradas",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "entradas",
+      "name": {
+        "es": "Taquilla / despacho de venta de entradas",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Entradas",
+      "useCode": "servicios",
+      "useLabelEs": "Servicios",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 252,
+      "code": "sede-de-asociacion-empresarial-abierta-al-publico",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "asociaciones",
+      "name": {
+        "es": "Sede de asociación empresarial abierta al público",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Asociaciones",
+      "useCode": "asociaciones",
+      "useLabelEs": "Asociaciones",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 253,
+      "code": "sede-de-colegio-asociacion-profesional",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "asociaciones",
+      "name": {
+        "es": "Sede de colegio/asociación profesional",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Asociaciones",
+      "useCode": "asociaciones",
+      "useLabelEs": "Asociaciones",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    },
+    {
+      "sourceId": 254,
+      "code": "otros-servicios-personales-con-establecimiento",
+      "familyCode": "otros-servicios-al-publico",
+      "subcategoryCode": "servicios-personales",
+      "name": {
+        "es": "Otros servicios personales con establecimiento",
+        "en": null
+      },
+      "sourceSubcategoryEs": "Servicios personales",
+      "useCode": "servicios-personales",
+      "useLabelEs": "Servicios personales",
+      "translationStatus": "pendingHumanReview",
+      "governanceStatus": "candidate"
+    }
+  ],
+  "legacyCompatibility": [
+    {
+      "legacyCategoryCode": "restaurante",
+      "mappingKind": "canonicalType",
+      "targetTypeCodes": [
+        "restaurante"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "exact",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "peluqueria",
+      "mappingKind": "canonicalType",
+      "targetTypeCodes": [
+        "peluqueria"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "exact",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "campo-de-futbol",
+      "mappingKind": "canonicalType",
+      "targetTypeCodes": [
+        "campo-instalacion-de-futbol"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "exact",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "pista-de-padel",
+      "mappingKind": "canonicalType",
+      "targetTypeCodes": [
+        "club-pistas-de-padel"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "exact",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "instalacion-municipal",
+      "mappingKind": "operatorAttribute",
+      "targetTypeCodes": [],
+      "operatorTypeCode": "public-municipal",
+      "mappingStatus": "requiresReclassification",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "centro-deportivo",
+      "mappingKind": "canonicalType",
+      "targetTypeCodes": [
+        "gimnasio-centro-deportivo",
+        "instalacion-deportiva"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "partial",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "centro-de-estetica",
+      "mappingKind": "canonicalType",
+      "targetTypeCodes": [
+        "salon-centro-de-belleza",
+        "centro-de-estetica-no-medica"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "partial",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    },
+    {
+      "legacyCategoryCode": "otros",
+      "mappingKind": "compositeRequiresReview",
+      "targetTypeCodes": [
+        "estudio-fotografico",
+        "coworking-oficina-flexible-centro-de-negocios"
+      ],
+      "operatorTypeCode": null,
+      "mappingStatus": "requiresReclassification",
+      "existingImagesReusableForDevelopment": true,
+      "existingImagesEligibleAsNewTest": false,
+      "humanRelabelReviewRequired": true
+    }
+  ]
+}

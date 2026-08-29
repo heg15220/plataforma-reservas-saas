@@ -729,6 +729,14 @@ atributos absolutos, dinámicos, relativos y subjetivos agregados.
   que una revisión humana lo nombre, fusione, rechace o publique.
 - WHEN se analicen imágenes, THEN solo actúan como fuente auxiliar de atributos visuales; no pueden
   afirmar por sí solas limpieza, seguridad, carácter familiar, tranquilidad ni atributos sensibles.
+- WHEN se importe una taxonomía fiscal o estadística de locales, THEN sus familias y tipos permanecen
+  candidatos hasta revisión humana, disponen de códigos estables y no activan categorías públicas,
+  entrenamiento ni promoción por el mero hecho de existir en el catálogo.
+- WHEN se migren las ocho categorías sintéticas históricas, THEN `instalacion-municipal` se interpreta
+  como atributo de operador y `otros` exige reclasificación por tipo físico; ninguna de ambas se usa
+  como nueva verdad visual plana.
+- WHEN se reutilicen imágenes de un test ya consumido para reetiquetar la taxonomía, THEN su uso queda
+  limitado a desarrollo, requiere revisión humana y conserva `testEligible=false` y promoción false.
 
 ### RF-036 Matching semántico, ranking y explicabilidad
 
@@ -754,6 +762,15 @@ contexto, el local, el servicio, el recurso y la franja disponible.
   determinista, observable y seguro basado en reglas; la reserva nunca depende del motor de ML.
 - WHEN se evalúe el ranking, THEN se miden relevancia, conversión, asistencia, cobertura, diversidad,
   exposición de locales nuevos, latencia y valor comercial.
+- WHEN se entrene el recomendador contextual sintético, THEN se selecciona con cinco folds temporales
+  rolling-origin, se reserva un test posterior independiente y se publican accuracy, error, precision,
+  recall, F1, precision@K y recall@K junto con la definición exacta de positivo.
+- WHEN la accuracy por candidato pueda inflarse por siete negativos y un positivo por consulta, THEN
+  ninguna puerta puede aprobar solo con accuracy: precision, recall y F1 deben superar 0,80 y el test
+  debe alcanzar accuracy >=0,90 y error <0,15 sin usar outcomes, posición o IDs como features.
+- WHEN se prueben flujos de negocio, THEN existen casos de afinidad con baja exposición y pocas plazas,
+  ambiente visual permitido, horario habitual, cercanía, especialidad, historial, cold-start, calidad,
+  disponibilidad y balance precio-distancia; estos contratos no sustituyen evidencia conductual.
 
 ### RF-037 Predicción de demanda y capacidad comercial
 

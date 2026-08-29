@@ -101,6 +101,7 @@ class VisualTrainingDataset(StrictContract):
     baseModelRevision: str = Field(pattern=r"^[0-9a-f]{40}$")
     synthetic: bool
     containsPersonalData: Literal[False]
+    testPredictionsObservedDuringEmbedding: Literal[False] = False
     rows: list[VisualTrainingRow] = Field(min_length=1, max_length=1_000_000)
 
     @model_validator(mode="after")
