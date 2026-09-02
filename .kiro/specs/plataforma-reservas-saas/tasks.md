@@ -508,6 +508,7 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
   - [x] 23.25.a. Añadir al clasificador visual v5 señales clásicas no sensibles de color, distribución y textura, seleccionar 54 fusiones con cuatro folds leave-one-view-out y mejorar media y peor fold frente a v4 sin generar imágenes ni afirmar test independiente.
   - [x] 23.25.b. Materializar un marketplace sintético de 2.500 usuarios, 3.000 locales, 24.000 sesiones, 288.000 alternativas, 10 acciones y 254 tipos/23 familias, con 1.016 asociaciones visuales únicas y fallback explícito para 1.984 locales sin imagen.
   - [x] 23.25.c. Seleccionar con 5-fold rolling-origin una ablación contextual y un ranker conjunto, conservar el intento ridge v9 fallido, congelar v10 con logística pairwise y abrir una sola vez 6.000 sesiones test alcanzando accuracy/F1 0,915, error 0,085 y uplift visual 0,12 sin promoción automática.
+- [x] 23.26. Implementar el ranking productivo bootstrap anterior a 10.000 búsquedas aceptadas con precedencia lexicográfica ubicación, imagen aprobada, escasez alineada y reseñas verificadas, restricciones duras, contador autoritativo vigente y transición por identidad criptográfica a v10 sin modificarlo ni promoverlo automáticamente.
 
 ## 26. Criterios de salida del MVP
 

@@ -11844,3 +11844,26 @@ Fuente de verdad del avance:
   - Cada imagen pertenece a un solo local; 1.984 locales prueban ausencia de visión.
   - Ridge v9 queda conservado como fallo. V10 logra 0,87166667 OOF y 0,915 test con uplift 0,12.
   - El test queda consumido 1/1. Producción/promoción siguen false y el fallback es v8/determinista.
+
+# Conversación 315 - Ranking productivo bootstrap hasta 10.000 búsquedas
+
+- Fecha: 2026-09-03.
+- Resumen de la conversación: se solicitó preparar el Demand Engine para usar únicamente ubicación,
+  imágenes, pocos huecos con intención alineada y reseñas, en ese orden, mientras no existan 10.000
+  búsquedas activas aceptadas en el historial productivo, preservando intacto v10.
+- Archivos modificados: nuevo `production_bootstrap_ranking.py`, política
+  `production-bootstrap-ranking.v1.json`, endpoint `/ranking/production`, pruebas, guía y documentos
+  Kiro; `application.py` registra el nuevo servicio.
+- Requisitos impactados: RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: nueva tarea 23.26, completada. 23.24.b y 23.16.c.3.d continúan pendientes.
+- Tareas completadas: 23.26.
+- Siguiente tarea pendiente recomendada: 23.24.b, materializar y revisar un holdout visual nuevo.
+- Decisiones o aclaraciones relevantes:
+  - Se usa orden lexicográfico para que una señal inferior nunca compense una superior.
+  - El contador procede del agregado productivo autoritativo de Spring, caduca en 300 segundos y no
+    admite producción simulada, navegador ni datasets offline.
+  - En 10.000 exactas se detiene el bootstrap y se solicita traspaso a v10.
+  - Política y modelo v10 se conservan byte a byte y se validan por SHA-256 al arrancar.
+  - Alcanzar el umbral no promueve v10 automáticamente; `automaticV10PromotionAllowed=false`.
+  - 23 pruebas focales/API/compatibilidad pasan inicialmente; la verificación final queda registrada
+    en la implementación técnica.

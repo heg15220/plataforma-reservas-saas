@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "production-bootstrap-ranking-v1",
+  "modelVersion": "deterministic-lexicographic-bootstrap-v1",
+  "productionSearchThreshold": 10000,
+  "counterSource": "spring-behavior-events-production-aggregate",
+  "counterMetric": "accepted-active-search-history",
+  "maximumCounterAgeSeconds": 300,
+  "priorityOrder": [
+    "location",
+    "approvedVisualAffinity",
+    "alignedScarcity",
+    "verifiedReviewQuality"
+  ],
+  "maximumLocationDistanceMeters": 200000,
+  "reviewPriorMean": 3.5,
+  "reviewPriorWeight": 5,
+  "v10PolicyVersion": "recommendation-joint-scale-policy-v10",
+  "v10ModelVersion": "joint-context-visual-ranker-v10",
+  "v10PolicySha256": "e1ff57ebfb193169cadb058e8bb87ecd46c6a6e9fe7053f57f19cb2bf30b2b93",
+  "v10ModelSha256": "e0623e634b4fd691d49127d5565bf75f9f3d65a9da8d268ca0a0dbe1048837bf",
+  "automaticV10PromotionAllowed": false
+}

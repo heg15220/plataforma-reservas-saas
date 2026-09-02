@@ -29,6 +29,7 @@ from .session_context import SessionContextBuilder
 from .implicit_profiles import ImplicitProfileBuilder, ImplicitProfilePolicy
 from .nlp import PersonalCareNlpPipeline, PersonalCareNlpPolicy
 from .scoring import ScoreMvp, ScorePolicy
+from .production_bootstrap_ranking import ProductionBootstrapPolicy, ProductionBootstrapRanker
 from .waitlist_allocation import WaitlistAllocationPolicy, WaitlistAllocator
 from .smart_promotions import SmartPromotionPlanner, SmartPromotionPolicy
 from .clip_visual_evaluation import ClipVisualEvaluator, ClipVisualManifest, ClipVisualPolicy
@@ -76,6 +77,12 @@ def create_app(
         ScorePolicy.load(policy_root / "score-mvp.v1.json"),
         DeterministicFallback(FallbackPolicy.load(policy_root / "fallback-mvp.v1.json")),
         ExplanationBuilder(ExplanationPolicy.load(policy_root / "explanation-mvp.v1.json")),
+    )
+    app.state.production_bootstrap_ranker = ProductionBootstrapRanker(
+        ProductionBootstrapPolicy.load(policy_root / "production-bootstrap-ranking.v1.json"),
+        policy_root / "recommendation-joint-scale.v10.json",
+        Path(__file__).resolve().parents[2]
+        / "models/joint-context-visual-ranker.v10.linear.json",
     )
     app.state.occupancy_baseline = HourlyOccupancyBaseline(
         OccupancyPolicy.load(policy_root / "occupancy-baseline.v1.json")

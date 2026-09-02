@@ -772,6 +772,13 @@ contexto, el local, el servicio, el recurso y la franja disponible.
   ablación contextual, cada imagen aprobada se asocia como máximo a un local sintético, la ausencia
   de píxel activa fallback y un único ranker final aprende señales contextuales y visuales sin recibir
   IDs, posición, outcomes, etiquetas verdaderas ni atributos sensibles.
+- WHEN el historial productivo contenga menos de 10.000 búsquedas activas aceptadas, THEN el ranking
+  usa exclusivamente y con precedencia estricta ubicación, afinidad con imagen aprobada, escasez de
+  huecos alineada con intención y calidad de reseñas verificadas; ninguna señal inferior puede
+  compensar una superior ni se admite popularidad, precio, conversión o perfil persistente.
+- WHEN el contador productivo alcance 10.000, THEN la política bootstrap deja de ordenar y solicita
+  el traspaso al recomendador conjunto v10 identificado por versión y hash; este umbral no equivale
+  a promoción automática ni sustituye los controles productivos, jurídicos y de gobernanza.
 - WHEN la accuracy por candidato pueda inflarse por siete negativos y un positivo por consulta, THEN
   ninguna puerta puede aprobar solo con accuracy: precision, recall y F1 deben superar 0,80 y el test
   debe alcanzar accuracy >=0,90 y error <0,15 sin usar outcomes, posición o IDs como features.

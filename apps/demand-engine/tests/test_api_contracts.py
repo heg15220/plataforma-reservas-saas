@@ -56,6 +56,7 @@ class InternalApiContractTests(unittest.TestCase):
             "/internal/demand/v1/events",
             "/internal/demand/v1/recommendations",
             "/internal/demand/v1/ranking",
+            "/internal/demand/v1/ranking/production",
             "/internal/demand/v1/venues/{venue_id}/attributes",
             "/internal/demand/v1/conversion/predict",
             "/internal/demand/v1/demand/{venue_id}",
@@ -430,6 +431,50 @@ class InternalApiContractTests(unittest.TestCase):
         self.assertEqual(200, replay.status_code, replay.text)
         self.assertFalse(replay.json()["applied"])
         self.assertEqual(applied.json()["state"], replay.json()["state"])
+
+    def test_production_bootstrap_endpoint_switches_at_exact_threshold(self) -> None:
+        current = datetime.now(UTC)
+        body = {
+            "requestId": str(uuid4()), "schemaVersion": 1,
+            "occurredAt": current.isoformat(), "locale": "es",
+            "policyVersion": "production-bootstrap-ranking-v1",
+            "searchHistory": {
+                "environment": "production",
+                "source": "spring-behavior-events-production-aggregate",
+                "metric": "accepted-active-search-history",
+                "count": 9_999, "asOf": current.isoformat(),
+            },
+            "candidates": [{
+                "venueId": str(uuid4()),
+                "constraints": {
+                    "venuePublished": True, "serviceBookable": True,
+                    "eligibilityAllowed": True, "permissionAllowed": True,
+                    "filtersMatched": True, "frequencyAllowed": True,
+                    "availableCapacity": 1, "requestedCapacity": 1,
+                    "validUntil": (current + timedelta(minutes=5)).isoformat(),
+                },
+                "locationPermissionGranted": True, "distanceMeters": 500,
+                "approvedVisualEvidence": True, "visualAffinity": 0.8,
+                "intentAlignment": 0.9, "totalSlotCapacity": 10,
+                "verifiedReviewAverage": 4.5, "verifiedReviewCount": 30,
+            }],
+        }
+        bootstrap = self.client.post(
+            "/internal/demand/v1/ranking/production", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, bootstrap.status_code, bootstrap.text)
+        self.assertEqual("bootstrap_priority", bootstrap.json()["mode"])
+        self.assertEqual(1, bootstrap.json()["searchesRemaining"])
+        self.assertEqual(1, len(bootstrap.json()["items"]))
+
+        body["searchHistory"]["count"] = 10_000
+        handoff = self.client.post(
+            "/internal/demand/v1/ranking/production", json=body, headers=HEADERS
+        )
+        self.assertEqual(200, handoff.status_code, handoff.text)
+        self.assertEqual("joint_v10", handoff.json()["mode"])
+        self.assertEqual("v10_handoff_required", handoff.json()["status"])
+        self.assertEqual([], handoff.json()["items"])
 
 
 if __name__ == "__main__":

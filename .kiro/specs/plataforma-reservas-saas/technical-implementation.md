@@ -42911,3 +42911,65 @@ visual y entrenamiento conjunto. Las pruebas verifican dimensiones, determinismo
 acciones, slices, métricas, permisos cerrados y rechazo de reapertura. Limitaciones: datos sintéticos,
 solo 1.016 locales con píxel y v5 sin holdout independiente. Por ello la promoción automática sigue
 deshabilitada y el fallback operativo es v8 seguido del ranking determinista.
+
+### Ranking productivo bootstrap y cierre de 23.26
+
+**Fecha de iteración:** 2026-09-03. **Identificador completado:** 23.26. El objetivo es fijar el
+comportamiento productivo anterior a 10.000 búsquedas reales sin alterar los artefactos congelados de
+v10. Se crea `production_bootstrap_ranking.py`, la política
+`production-bootstrap-ranking.v1.json`, el endpoint interno `POST /ranking/production`, su registro
+en la factoría FastAPI, pruebas unitarias/de integración y la guía
+`PRODUCTION_BOOTSTRAP_RANKING_V1.md`. No hay migraciones, generación de datos, imágenes nuevas,
+entrenamiento ni modificaciones en los modelos, políticas o resultados de v10.
+
+`ProductionSearchCounterSnapshot` acepta exclusivamente entorno `production`, fuente
+`spring-behavior-events-production-aggregate`, métrica `accepted-active-search-history`, entero no
+negativo y `asOf` zonificado. Spring conserva el ownership de eventos y entrega solo el agregado; no
+se recibe sujeto, consulta, coordenadas ni payload histórico. El ranker compara `asOf` con
+`occurredAt`, rechaza futuro y antigüedad superior a 300 segundos. Así, un cliente no puede activar
+v10 enviando el contador y una interrupción de la proyección falla cerrada en vez de asumir volumen.
+
+`ProductionBootstrapCandidate` admite únicamente la fotografía de restricciones duras, permiso y
+distancia, evidencia visual aprobada y afinidad, intención, capacidad total de la franja y agregado de
+reseñas verificadas. Sus validadores impiden distancia sin permiso, afinidad sin aprobación, media
+sin reseñas, recuento sin media y capacidad disponible superior a capacidad total. El contrato no
+contiene popularidad, histórico de búsquedas del local, precio, conversión, exploración, preferencias
+persistentes, acción futura, etiqueta, posición ni coordenadas.
+
+Antes del orden se reutiliza `HardConstraintSnapshot.rejection_reasons`: snapshot caducado, local no
+publicado, servicio no reservable, inelegibilidad, permiso, filtro, frecuencia o capacidad
+insuficiente excluyen al candidato. Esto mantiene la autoridad operativa en Spring y evita que el
+fallback reincorpore alternativas imposibles. Los excluidos conservan únicamente UUID técnico y
+códigos de razón.
+
+Entre 0 y 9.999, `_priority` deriva cuatro señales. Ubicación es `1-min(distancia/200000,1)` y cero
+sin consentimiento. Imagen es la afinidad autorizada o cero. Escasez alineada es
+`(1-disponible/total)*intención`, por lo que ni urgencia incompatible ni buena intención con muchos
+huecos reciben el máximo. Reseñas usan `(5*3.5+n*media)/(5+n)/5`, exclusivamente con verificadas; el
+prior estabiliza locales nuevos. El sort compara esos cuatro números secuencialmente y después UUID.
+No hay score agregado ni pesos: por construcción una diferencia de ubicación prevalece sobre todas
+las señales inferiores, y lo mismo ocurre en cada nivel posterior.
+
+En 10.000 exactas o más se devuelve `joint_v10`, `v10_handoff_required`, cero items bootstrap y el
+conteo elegible/excluido. La política nombra v10 y fija SHA-256
+`e1ff57eb...2b93` para su política y `e0623e63...837bf` para su modelo. El constructor recalcula ambos
+hashes y aborta si faltan o difieren, protegiendo la identidad byte a byte sin cargar pesos. Se
+mantiene `automaticV10PromotionAllowed=false`: el consumidor debe ejecutar la promoción aprobada y
+shadow/canary antes de conectar la inferencia, además de conservar fallback si falla.
+
+La API captura diferencias de política y contador como errores 409 opacos mediante el manejador
+existente. La autenticación servicio a servicio, límite de payload, requestId y ausencia de payloads
+en logs siguen cubiertos por middleware. El algoritmo es O(n log n), con máximo 100 candidatos, sin
+I/O durante la petición y desempate determinista. La reserva permanece fuera del Demand Engine y se
+revalida transaccionalmente.
+
+`test_production_bootstrap_ranking.py` verifica umbral literal, orden inmutable, promoción desactivada,
+hashes v10 y fallo por hash incorrecto; demuestra que una ventaja mínima de ubicación no puede ser
+compensada por imagen/escasez/reseñas perfectas; comprueba precedencia entre las cuatro señales,
+neutralidad ante evidencia ausente, cálculo de escasez y prior; valida corte exacto 9.999/10.000,
+restricciones, contador obsoleto y versión errónea. Junto con `test_scoring.py` y
+`test_api_contracts.py`, la primera ejecución válida produjo 23/23 pruebas en 8,97 s. La suite final,
+ampliada con el flujo HTTP 9.999/10.000 y la regresión v10, produjo 28/28 pruebas en 7,41 s;
+`py_compile` y `git diff --check` también pasaron. Riesgo pendiente:
+el agregado Spring debe conectarse a su proyección persistente antes del despliegue; el endpoint ya
+fija el contrato, pero no convierte por sí solo evidencia sintética v10 en evidencia productiva.

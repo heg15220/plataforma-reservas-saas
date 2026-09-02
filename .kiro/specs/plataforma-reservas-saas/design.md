@@ -5395,3 +5395,32 @@ modelos, informe, política y hashes se abre el test una vez: 5.490/6.000, accur
 escasez alineada 1, visual challenge 0,97, ausencia visual 0,9340836, tarde 0,91562986, cambio de
 intención 0,90909091 y local frío 0,91417425. Las puertas offline pasan, pero evidencia productiva y
 promoción siguen false; el fallback es v8 y después ranking determinista.
+
+### 14.78 Ranking productivo bootstrap y umbral de transición a v10
+
+Mientras el agregado autoritativo de Spring declare entre 0 y 9.999 búsquedas activas aceptadas en
+el historial productivo, `POST /internal/demand/v1/ranking/production` aplica
+`production-bootstrap-ranking-v1`. El contador contiene únicamente entorno, fuente, métrica, total y
+`asOf`; debe corresponder a producción, no puede venir del navegador y caduca a los 300 segundos. Un
+snapshot futuro, obsoleto o de otra fuente falla cerrado. “Historial” significa el total acumulado de
+eventos de búsqueda activa aceptados y retenidos por la proyección canónica, no concurrencia en vivo,
+usuarios únicos ni filas sintéticas.
+
+El ranker filtra primero publicación, servicio reservable, elegibilidad, permisos, filtros,
+frecuencia, capacidad y vigencia. Después compara lexicográficamente cuatro valores normalizados:
+ubicación, imagen, escasez alineada y reseñas. No existe suma ponderada: una mejor ubicación siempre
+precede a cualquier combinación de las otras tres. La ubicación se deriva de distancia efímera hasta
+200 km y vale cero sin permiso; Python nunca recibe coordenadas. La afinidad visual vale cero sin
+evidencia aprobada. La escasez se recalcula como
+`(1 - availableCapacity / totalSlotCapacity) * intentAlignment`, por lo que pocos huecos sin intención
+no reciben impulso. La calidad usa solo media y volumen de reseñas verificadas con prior 3,5/5 y peso
+5. Popularidad, búsquedas previas del local, conversión, precio, exploración y perfiles persistentes no
+forman parte del contrato.
+
+Al recibir 10.000 o más, el servicio no produce ranking bootstrap: responde modo `joint_v10`, estado
+`v10_handoff_required`, cero elementos y conserva el conjunto elegible/excluido para que el backend
+orqueste el siguiente paso. La política fija los SHA-256 actuales de
+`recommendation-joint-scale.v10.json` y `joint-context-visual-ranker.v10.linear.json`; el proceso no
+arranca si cambia cualquiera. Esto protege la identidad de v10 sin editar ni cargar sus pesos para el
+bootstrap. `automaticV10PromotionAllowed=false`: alcanzar volumen habilita el traspaso técnico, pero
+no revoca la revisión productiva, jurídica, de privacidad, shadow/canary o promoción explícita.

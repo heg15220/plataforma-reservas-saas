@@ -46,6 +46,12 @@ from .session_context import SessionContextRequest, SessionContextResponse
 from .implicit_profiles import ImplicitProfileRequest, ImplicitProfileResponse
 from .nlp import NlpAnalyzeRequest, NlpAnalyzeResponse
 from .scoring import ScoreMvpRequest, ScoreMvpResponse, ScorePolicyVersionMismatch
+from .production_bootstrap_ranking import (
+    ProductionBootstrapPolicyVersionMismatch,
+    ProductionBootstrapRequest,
+    ProductionBootstrapResponse,
+    ProductionSearchCounterInvalid,
+)
 from .waitlist_allocation import WaitlistAllocationRequest, WaitlistAllocationResponse
 from .smart_promotions import SmartPromotionRequest, SmartPromotionResponse
 from .clip_visual_evaluation import ClipVisualEvaluationRequest, ClipVisualEvaluationResponse
@@ -95,6 +101,18 @@ def internal_api_router(settings: DemandEngineSettings) -> APIRouter:
             return result
         except ScorePolicyVersionMismatch as error:
             raise DemandEngineError("SCORE_POLICY_VERSION_MISMATCH", 409) from error
+
+    @router.post("/ranking/production", response_model=ProductionBootstrapResponse)
+    async def rank_production_bootstrap(
+        body: ProductionBootstrapRequest, request: Request
+    ) -> ProductionBootstrapResponse:
+        """Aplica arranque frío o exige el traspaso gobernado a v10 desde 10.000 búsquedas."""
+        try:
+            return request.app.state.production_bootstrap_ranker.rank(body)
+        except ProductionBootstrapPolicyVersionMismatch as error:
+            raise DemandEngineError("PRODUCTION_BOOTSTRAP_POLICY_VERSION_MISMATCH", 409) from error
+        except ProductionSearchCounterInvalid as error:
+            raise DemandEngineError(str(error), 409) from error
 
     @router.get("/venues/{venue_id}/attributes", response_model=VenueAttributesResponse)
     async def venue_attributes(venue_id: UUID, request: Request) -> VenueAttributesResponse:
