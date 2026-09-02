@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 6,
+  "modelKey": "contextual-recommender-action-location-scarcity-v6",
+  "modelVersion": "contextual-recommender-action-location-scarcity-v6",
+  "modelSha256": "aa52bfa2d985f6f2aacf1595b512043c3d46dd992c7ccbf94517c6bce9d95c56",
+  "status": "offline-candidate",
+  "owner": "demand-engine",
+  "purpose": "Ordenar locales elegibles según intención point-in-time derivada de acciones, ubicación actual, horario, capacidad y oportunidad de escasez alineada.",
+  "algorithm": "XGBoost LambdaMART regularizado con prior contextual acotado",
+  "intendedUse": "evaluación offline sintética y shadow consultivo tras revisión",
+  "prohibitedUses": [
+    "promoción automática a producción",
+    "usar ubicación sin autorización o conservar coordenadas precisas sin necesidad",
+    "impulsar globalmente locales con pocas plazas sin afinidad de intención y distancia",
+    "eludir elegibilidad, apertura, capacidad, holds o permisos",
+    "usar identificadores, posición mostrada o outcomes posteriores como features"
+  ],
+  "datasetVersion": "synthetic-marketplace-action-context-v6",
+  "selection": "five-fold-rolling-origin-with-fresh-sealed-temporal-test",
+  "featureFamilies": [
+    "intención reciente y secuencia de acciones",
+    "preferencias consentidas",
+    "categoría, familia, servicio y atributos",
+    "ubicación efímera, Haversine y radio",
+    "día, hora, capacidad y huecos restantes",
+    "escasez alineada, exposición, calidad y precio"
+  ],
+  "metrics": {
+    "trainingCrossValidatedAccuracy": 0.8835,
+    "testAccuracy": 0.9125,
+    "testError": 0.0875,
+    "testPrecision": 0.9125,
+    "testRecall": 0.9125,
+    "testF1": 0.9125,
+    "testRecallAt3": 1.0,
+    "trainTestAccuracyGap": 0.029,
+    "scarceAlignedAccuracy": 0.99337748,
+    "locationSensitiveAccuracy": 0.91740413,
+    "intentPivotAccuracy": 0.92,
+    "behavioralScenariosPassed": "10/10"
+  },
+  "qualityGatesPassed": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "fallback": "contextual-v4-then-deterministic-ranking",
+  "rollback": "No cargar el candidato y conservar el recomendador contextual anterior o el ranking determinista; el flujo transaccional de reserva no depende del modelo.",
+  "limitations": [
+    "Resultados sintéticos: no demuestran causalidad ni conversión productiva.",
+    "La ubicación real requiere consentimiento, precisión minimizada y TTL.",
+    "La evaluación cubre 28 tipos funcionales de seis familias; ampliar cobertura exige datos reales gobernados.",
+    "Las elecciones ambiguas se conservan y publican separadamente."
+  ]
+}

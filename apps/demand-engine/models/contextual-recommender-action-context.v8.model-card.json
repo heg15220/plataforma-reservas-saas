@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 8,
+  "modelKey": "contextual-recommender-action-location-time-scarcity-v8",
+  "modelVersion": "contextual-recommender-action-location-time-scarcity-v8",
+  "modelSha256": "61a3a43968ea1a448a2c4571d95a7634b0bd42f3d6be4f95d518779de0794fd4",
+  "status": "offline-candidate",
+  "algorithm": "XGBoost LambdaMART regularizado con prior contextual acotado",
+  "datasetVersion": "synthetic-marketplace-action-context-v8",
+  "selection": "five-fold-rolling-origin-with-fresh-sealed-temporal-test",
+  "purpose": "Ordenar locales elegibles por intención reciente, ubicación actual, día/hora, capacidad y escasez alineada.",
+  "prohibitedUses": ["promoción automática", "ubicación sin autorización", "boost global por escasez", "eludir capacidad o holds", "usar IDs, posición u outcomes como features"],
+  "metrics": {"trainingCrossValidatedAccuracy": 0.8735, "testAccuracy": 0.90625, "testError": 0.09375, "testPrecision": 0.90625, "testRecall": 0.90625, "testF1": 0.90625, "testRecallAt3": 0.99875, "trainTestAccuracyGap": 0.03275, "scarceAlignedAccuracy": 0.99386503, "locationSensitiveAccuracy": 0.92879257, "eveningAccuracy": 0.9125, "behavioralScenariosPassed": "10/10"},
+  "qualityGatesPassed": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "fallback": "contextual-v4-then-deterministic-ranking",
+  "limitations": ["Evidencia sintética sin causalidad productiva.", "Ubicación real requiere consentimiento, TTL y minimización.", "Cobertura funcional de 28 tipos y seis familias."]
+}

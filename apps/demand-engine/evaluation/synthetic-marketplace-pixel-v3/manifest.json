@@ -1,0 +1,84 @@
+{
+  "ambiguousObservedChoices": {
+    "test": 42,
+    "train": 180,
+    "validation": 60
+  },
+  "artifacts": {
+    "development-sessions.jsonl": {
+      "rows": 2000,
+      "sha256": "fd13ba8d26f5364d30367069f72ba60564429c3b7bc6acdff911eeaaf88fb3d6"
+    },
+    "test-sessions.sealed.jsonl": {
+      "rows": 700,
+      "sha256": "828e151d5055f79670428c1d0ea33c2703f0a297f27aa043bdc8e34dc3588367"
+    },
+    "visual-linkage.jsonl": {
+      "rows": 70,
+      "sha256": "d5a77fc779e091708b0a0ef75ddd653ccec44aa17e6e327a68de1af98331ae60"
+    },
+    "visual-onboarding-events.jsonl": {
+      "rows": 80,
+      "sha256": "6f22d6fd7be8466e6ab4dcdccc7daaceea829a8098054c5e86e209412ea79af3"
+    }
+  },
+  "categoryCounts": {
+    "campo-de-futbol": 8,
+    "centro-de-estetica": 10,
+    "centro-deportivo": 10,
+    "instalacion-municipal": 8,
+    "otros": 10,
+    "peluqueria": 8,
+    "pista-de-padel": 8,
+    "restaurante": 8
+  },
+  "cohortCounts": {
+    "testCold": 8,
+    "validationCold": 8,
+    "warm": 54
+  },
+  "counts": {
+    "candidates": 21600,
+    "developmentSessions": 2000,
+    "families": 6,
+    "linkedApprovedImages": 70,
+    "onboardingEvents": 80,
+    "profiles": 40,
+    "sessions": 2700,
+    "testSessions": 700,
+    "types": 23
+  },
+  "datasetVersion": "synthetic-marketplace-pixel-personalization-v3",
+  "generatedAt": "2026-08-30T18:00:00Z",
+  "limitations": [
+    "Los intereses, eventos y outcomes son sintéticos y no demuestran comportamiento productivo.",
+    "Solo 70 imágenes aprobadas enlazan de forma inequívoca con locales del marketplace.",
+    "CLIP permanece congelado; el experimento mide similitud visual, no causalidad ni atributos sensibles."
+  ],
+  "pixelEvidence": {
+    "baseModelKey": "clip-vit-b32-visual-evidence-v1",
+    "baseModelRevision": "fbf5e647b25f3514e526849b05cc0196b206d822",
+    "embeddingDimension": 512,
+    "newImagesGenerated": 0,
+    "pixelsUsedIndirectlyThroughFrozenEmbeddings": true,
+    "rawPngHashesVerified": 70,
+    "sourceEmbeddingArtifact": "../synthetic-marketplace-v1/visual-training-dataset-v2/approved-clip-embeddings.json",
+    "sourceEmbeddingSha256": "23ab819c9297e5e43206686da8426a628a5ea4c008fb8645541494ecac2f6565"
+  },
+  "productionEvidence": false,
+  "profilePolicy": {
+    "futureOutcomeUsed": false,
+    "initialSource": "two explicit pre-period visual selections per profile",
+    "updates": "only observed clicks/bookings from strictly earlier sessions"
+  },
+  "promotionAllowed": false,
+  "schemaVersion": 3,
+  "seed": 3917,
+  "splitCounts": {
+    "test": 700,
+    "train": 1500,
+    "validation": 500
+  },
+  "synthetic": true,
+  "testPolicy": "temporal-independent-open-once-after-baseline-and-multimodal-selection"
+}

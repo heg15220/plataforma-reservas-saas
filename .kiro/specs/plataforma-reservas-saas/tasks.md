@@ -483,10 +483,27 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
       - [x] 23.16.c.3.b. Revisar y autorizar humanamente al menos 200 imágenes disjuntas (80 train, 40 validación, 80 test), entrenar el candidato real y conservar el único resultado de test aunque no alcance 0,90.
       - [x] 23.16.c.3.c. Diagnosticar el fallo definitivo sin reabrir test e implementar una cabeza PCA+ridge seleccionada con validación cruzada estratificada y leave-one-source-out sobre datos consumidos como desarrollo.
       - [ ] 23.16.c.3.d. Congelar, revisar y abrir una sola vez un nuevo holdout independiente para confirmar accuracy >=0,90 y error <=0,10 del candidato robusto sin reutilizar imágenes o venues consumidos.
-- [ ] 23.17. Entrenar y validar el recomendador contextual completo con recorridos de usuario, disponibilidad, capacidad, ubicación, horario, especialidad, atributos visuales permitidos y exposición.
+- [x] 23.17. Entrenar y validar el recomendador contextual completo con recorridos de usuario, disponibilidad, capacidad, ubicación, horario, especialidad, atributos visuales permitidos y exposición.
   - [x] 23.17.a. Implementar 5-fold rolling-origin, selección sin test, métricas accuracy/precision/recall/F1 y diez escenarios contrafactuales de negocio sobre el dataset sintético de 100 locales y 40 perfiles.
-  - [ ] 23.17.b. Superar en un test temporal independiente accuracy >=0,90, error <0,15 y precision/recall/F1 >=0,80 sobre relevancia observada sin leakage, desbalance trivial ni degradación artificial del train.
+  - [x] 23.17.b. Superar en un test temporal independiente accuracy >=0,90, error <0,15 y precision/recall/F1 >=0,80 sobre relevancia observada sin leakage, desbalance trivial ni degradación artificial del train.
 - [x] 23.18. Materializar el catálogo candidato versionado de 23 familias y 254 tipos de local con metadatos funcionales mínimos, mapear las ocho categorías históricas y preparar el reetiquetado humano de las 200 imágenes existentes exclusivamente como desarrollo.
+- [x] 23.19. Entrenar y validar con 5-fold un recomendador multimodal que correlacione intereses visuales point-in-time con embeddings CLIP de imágenes aprobadas, demuestre uplift frente a una ablación sin píxeles y supere accuracy test >=0,90, error <0,15 y precision/recall/F1 >=0,80 sin promoción automática.
+- [x] 23.20. Materializar y evaluar un corpus visual sintético ampliado con 220 tipos de local de 21 familias, sellar hashes y cobertura real, extraer embeddings CLIP desde píxeles y medir QA, duplicados, accuracy/precision/recall/F1, Recall@3 y señal frente a etiquetas permutadas sin aprobar entrenamiento ni promoción.
+- [x] 23.21. Completar la taxonomía visual con vistas development/holdout independientes por tipo, seleccionar el clasificador sin observar test y abrir una sola vez el holdout sellado para perseguir top-1 >=0,90 sin contaminación.
+  - [x] 23.21.a. Materializar 254 vistas development y 254 vistas holdout de locales distintos, cubrir 23/23 familias, sellar hashes, descartar duplicados y generar hojas de revisión sin cargar CLIP ni consumir el holdout.
+  - [x] 23.21.b. Completar y registrar revisión humana de las 508 imágenes antes de extraerlas como dataset autorizado de entrenamiento/evaluación.
+  - [x] 23.21.c. Extraer embeddings CLIP congelados, seleccionar arquitectura e hiperparámetros exclusivamente con development y congelar candidato, política y pretest lock.
+  - [x] 23.21.d. Abrir el holdout una sola vez y conservar accuracy, error, precision, recall y F1 reales aunque no alcancen los umbrales.
+- [x] 23.22. Ejecutar el protocolo visual taxonómico multivista v3 con arquetipos auxiliares predichos desde píxeles y un holdout completamente nuevo para confirmar top-1 >=0,90 sin contaminación.
+  - [x] 23.22.a. Definir y verificar el contrato de tres vistas development por tipo, 38 arquetipos visuales, política segura de personas y 254 imágenes/locales holdout v3 disjuntos.
+  - [x] 23.22.b. Materializar y sellar 254 terceras vistas development y 254 vistas holdout nuevas, ejecutar QA estructural/perceptual y preparar hojas de revisión sin cargar CLIP.
+  - [x] 23.22.c. Registrar revisión humana explícita de las 508 imágenes nuevas antes de extraer embeddings o habilitar entrenamiento offline.
+  - [x] 23.22.d. Seleccionar con development multivista el clasificador y la cabeza auxiliar de arquetipos, congelando candidato, política y pretest lock sin observar v3 holdout.
+  - [x] 23.22.e. Abrir v3 holdout una sola vez, conservar las métricas reales y completar 23.16.c.3.d únicamente si supera todas sus puertas.
+- [x] 23.23. Entrenar y validar con 5-fold un recomendador contextual v8 que derive intención de acciones diversas, use ubicación point-in-time y afinidad día/hora discriminativa, y recomiende huecos escasos solo a perfiles alineados, con test temporal nuevo >=0,90 y sin promoción automática.
+- [ ] 23.24. Mejorar el clasificador visual taxonómico tras consumir v3 mediante representación multirregión robusta y confirmar el candidato exclusivamente con un holdout futuro nuevo.
+  - [x] 23.24.a. Reconvertir A/B/C/D en 1.016 imágenes de desarrollo, extraer CLIP global+centro sin generar imágenes, seleccionar por cuatro folds y congelar un candidato que mejore media y peor fold.
+  - [ ] 23.24.b. Materializar, revisar, sellar y abrir una sola vez un holdout v4 de locales/imágenes nuevos para exigir accuracy >=0,90, error <=0,10 y métricas macro >=0,80 sin reutilizar v3.
 
 ## 26. Criterios de salida del MVP
 

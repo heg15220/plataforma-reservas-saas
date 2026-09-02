@@ -1,0 +1,23 @@
+{
+  "authorizationSha256": "e34577f8780c133250a257298909c0cf50410b8a2f997577c8fef87071c178c5",
+  "budget": 1,
+  "clipModelManifestSha256": "1f5adb2e69677f4ae37f37ea3db07b1201d1f9aaef0b594513ba3824faa0fa11",
+  "consumed": 1,
+  "developmentEmbeddingsSha256": "23fd1740214606a41dc9fa0090cebc3347f0dc5a9bda288d366277f9beb0613c",
+  "developmentReportSha256": "dcccb3eeaa2a3adc354bba00ae5539d37e12ab235b16d8dd22cfb4abe325f7ff",
+  "holdoutEmbeddingsCreatedBeforeLock": false,
+  "holdoutEmbeddingsSha256": "6aea06bcdff048b62191580637a10668d839007848fdf51a03819a262348d68f",
+  "holdoutFingerprintSha256": "517bd0544ae2cf690a4a7d63540ac75c8125c16f1eec8d8624e4e8f0ad7c0000",
+  "holdoutImageCount": 254,
+  "holdoutPredictionsComputedBeforeLock": false,
+  "holdoutResultSha256": "e57b6aab651644977f5326c7895d5c60cd6f578538f6cf3bd94023f8e8aa8184",
+  "lockVersion": "full-taxonomy-visual-multiview-pretest-lock-v3",
+  "manifestSha256": "4dbcf0b60fe6910690fce459b6690ae8330929c030716290345da6505bcaff32",
+  "modelSha256": "6bb097b3e4262e7ec6737e307b20f3f7630c6ffce7f5c9e0bf6340a163bd30a9",
+  "openingRecordSha256": "c35404bc36fc6b4b4e92a9fcc6d19c5fa57ab171e27ef71da5c5c7a84c057d82",
+  "policySha256": "6febd4d300f55119df470a6f7a736f14be9bde46a0688741ce2168dbd0e7beb6",
+  "qualityGatesPassed": false,
+  "reopenAllowed": false,
+  "schemaVersion": 1,
+  "status": "consumed"
+}

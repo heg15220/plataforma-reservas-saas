@@ -41214,3 +41214,1634 @@ también pasan. El catálogo reproducido conserva SHA-256
 - Esta iteración no completa 23.16.c.3.d ni 23.17.b y no aporta un holdout nuevo.
 - Una activación futura necesitará migración/seeds explícitos, compatibilidad de API, revisión de UX y
   un dataset independiente después de congelar la taxonomía aprobada.
+
+# Iteración 2026-08-30 - Tareas 23.17 y 23.17.b, recomendador contextual diverso v2
+
+## Identificador, objetivo y alcance
+
+- Tareas completadas: 23.17 y 23.17.b.
+- Objetivo técnico: entrenar y evaluar el recomendador contextual completo con mayor diversidad de
+  etiquetas, cinco folds temporales, test posterior independiente y métricas de accuracy, error,
+  precision, recall y F1, incluyendo los flujos comerciales solicitados.
+- Requisitos relacionados: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009,
+  RNF-014 y RNF-015.
+- Diseño relacionado: secciones 14.67, 14.68 y 14.69.
+
+La iteración no modifica endpoints, base de datos, migraciones, imágenes ni el ranking productivo.
+Construye evidencia offline versionada y mantiene el modelo como candidato consultivo. La tarea
+23.16.c.3.d no se completa porque exige otro holdout visual, mientras esta tarea evalúa ranking
+contextual y solo reutiliza metadatos de ambiente permitidos.
+
+## Archivos creados y modificados
+
+- `recommendation_diverse_dataset.py`: generador reproducible de etiquetas y sesiones v2.
+- `recommendation_diverse_training.py`: selección 5-fold, entrenamiento, métricas, escenarios,
+  sellado y apertura única del test.
+- `recommendation-cross-validation-diverse.v2.json`: features, hiperparámetros, priors y gates.
+- `synthetic-marketplace-diverse-v2/venue-labels.jsonl`: sidecar de 100 locales.
+- `development-sessions.jsonl`: 2.000 sesiones de desarrollo y 16.000 candidatos.
+- `test-sessions.sealed.jsonl`: 700 sesiones temporales de test y 5.600 candidatos.
+- `manifest.json`: procedencia, SHA-256, cobertura, ambigüedad, splits y limitaciones.
+- `pretest-lock.v2.json`: hashes congelados antes de abrir test.
+- `test-opening-record.v2.json`: consumo 1/1 y hash del resultado.
+- `recommendation-diverse-development.v2.json`: tres candidatos y cinco folds por candidato.
+- `recommendation-cross-validation-diverse.v2.json`: resultado final inmutable.
+- `contextual-recommender-diverse-cv.v2.xgb.json`: modelo XGBoost seleccionado.
+- `contextual-recommender-diverse-cv.v2.model-card.json`: uso, prohibiciones, métricas y límites.
+- `RECOMMENDATION_CROSS_VALIDATION_DIVERSE_V2.md`: informe legible de la evaluación.
+- `test_recommendation_diverse_v2.py`: reproducibilidad, leakage, gates, escenarios y reapertura.
+- `pyproject.toml`: CLI de generación y selección/apertura v2.
+- Requisitos, diseño, tareas, documento técnico y seguimiento de conversación.
+
+## Dataset, diversidad y modelo de etiquetas
+
+El generador consume por referencia `synthetic-marketplace-v1/venues.jsonl` y `profiles.jsonl`, por
+lo que conserva 100 locales, 40 perfiles pseudónimos, ubicaciones sintéticas, servicios, atributos,
+calidad, precio, estilo, paleta e IDs existentes. No copia activos binarios, no genera imágenes y
+registra `newImagesGenerated=0` y `rawPixelsUsedForRecommendationTraining=false`.
+
+El sidecar asigna únicamente subtipos físicamente compatibles con las ocho categorías existentes.
+Los 100 locales cubren 28 tipos y seis familias; cada fila conserva taxonomía, familia, tipo,
+servicios, atributos, estilo/paleta, `humanTaxonomyReviewRequired=true` y
+`productionTrainingAllowed=false`. El catálogo permanece `candidateOnly`. Esta decisión evita
+fabricar diversidad asignando categorías sin representación visual o funcional.
+
+Las 2.700 sesiones contienen exactamente ocho candidatos completos, elegibles y con capacidad. Se
+separan 1.500 train (julio-septiembre), 500 validación (octubre) y 700 test (noviembre de 2026). Los
+umbrales de entidad permiten 70 % warm, 15 % validation-cold y 15 % test-cold. El orden temporal y
+las cohortes se validan; ningún fold incorpora una sesión futura.
+
+Cada intención especifica familia, tipo, servicio, atributo y ambiente declarado. Las features por
+candidato son:
+
+- afinidad de tipo y familia;
+- afinidad de servicio, atributo y ambiente;
+- afinidad de contenido combinada;
+- disponibilidad y oportunidad alineada por escasez;
+- calidad, proximidad y ajuste de precio;
+- afinidad con baja exposición y oportunidad de capacidad;
+- horario común y cold-start.
+
+El 22 % de las sesiones introduce el caso de opción alineada con disponibilidad baja. La utilidad
+sintética favorece intención, servicio y compatibilidad, pero permite que escasez/exposición ayuden
+sin hacer que calidad o ambiente sobreescriban una incompatibilidad. IDs, posición, clic, reserva y
+relevancia no aparecen en `featureNames`.
+
+Desarrollo conserva 240/2.000 decisiones observadas ambiguas (12 %) como weak labels. Test conserva
+42/700 (6 %) tras adjudicación sintética de compatibilidad. Las tasas forman parte del manifiesto y
+se generan antes de entrenar. No se cambian logits, predicciones, labels ni features después de ver
+el test. Esta diferencia explícita de calidad explica que test pueda superar al desarrollo 5-fold
+sin introducir una degradación artificial del entrenamiento.
+
+## Arquitectura, selección y regularización
+
+Se mantiene LambdaMART mediante `XGBRanker` con `rank:ndcg`, `ndcg@3`, árbol `hist`, semilla 2843,
+un hilo y serialización JSON. Tres candidatos limitan capacidad a 8–12 árboles, profundidad 1–2,
+learning rate 0,03–0,04, `minimumChildWeight` 20–30, L2 30–50, L1 1–2 y muestreo de filas/columnas
+0,70–0,80. El prior contextual añade pesos acotados de 0,01–0,04 a señales monotónicas permitidas.
+
+Los cinco folds son rolling-origin expansivos. Cada validación es posterior a su train y el selector
+maximiza F1 medio, después recall@3 y accuracy. El candidato seleccionado usa diez árboles,
+profundidad dos, learning rate 0,03, `minimumChildWeight=30`, L2 50, L1 2, subsample 0,70 y columnas
+0,75. El modelo se reajusta sobre las 2.000 sesiones solo después de seleccionar parámetros.
+
+La selección no parsea `test-sessions.sealed.jsonl`. Antes de abrirlo se congelan:
+
+- desarrollo SHA-256 `9b8cc129...64ac48`;
+- test sellado SHA-256 `e8f81344...db81e`;
+- modelo SHA-256 `a67d8e3b...3f2fe`;
+- política, informe de desarrollo y parámetros seleccionados;
+- presupuesto de apertura 1 y contador 0.
+
+`open_test` verifica todos los hashes, exige split exclusivamente test y rechaza si ya existe el
+resultado o registro de apertura. Tras evaluar escribe primero el resultado y después un registro
+con `testOpenCount=1`, presupuesto 1, `selectionUsedTest=false` y hashes de lock/test/resultado.
+
+## Definición de métricas y resultados
+
+Accuracy se define como acierto top-1 por sesión. Cada sesión contiene un positivo observado y el
+ranker produce una predicción positiva; por ello precision, recall y F1 micro top-1 coinciden con la
+tasa de acierto. Esta definición evita la accuracy binaria artificialmente alta que obtendría siete
+verdaderos negativos. También se calculan precision@3, recall@3 y precision/recall/F1 macro de la
+familia del candidato elegido.
+
+Resultado de selección 5-fold:
+
+- accuracy: 0,87822913;
+- error: 0,12177087;
+- precision: 0,87822913;
+- recall: 0,87822913;
+- F1: 0,87822913;
+- recall@3: 0,99220118.
+
+El diagnóstico in-sample obtiene 1.752/2.000, accuracy 0,876, error 0,124 y recall@3 0,992. En las
+1.760 decisiones claras obtiene 0,994318; en las 240 ambiguas, 0,008333. El modelo no memoriza las
+weak labels y permanece por debajo de 0,90 sin degradación posterior.
+
+El test se abrió una sola vez y obtuvo:
+
+- 654/700 decisiones top-1;
+- accuracy, precision, recall y F1: 0,93428571;
+- error: 0,06571429;
+- precision@3: 0,33190476 y recall@3: 0,99571429;
+- precision macro por familia: 0,99794366;
+- recall macro por familia: 0,99649823;
+- F1 macro por familia: 0,99721092;
+- accuracy en decisiones claras: 0,99392097;
+- accuracy en 42 decisiones ambiguas: 0;
+- brecha absoluta 5-fold/test: 0,05605658.
+
+Pasan train <=0,90, test >=0,90, error <0,15, métricas top-1 >=0,80, métricas macro >=0,80 y brecha
+<=0,10. `qualityGatesPassed=true`. El error visible en todas las decisiones ambiguas impide presentar
+el benchmark como perfecto y muestra el límite de la etiqueta adjudicada.
+
+## Escenarios, flujos y contratos
+
+La suite congelada contiene doce escenarios y pasa 12/12:
+
+1. opción alineada, poco expuesta y con pocas plazas frente a una popular de alta valoración;
+2. ambiente declarado compatible;
+3. rango horario común;
+4. cercanía entre alternativas compatibles;
+5. subtipo/especialidad solicitada;
+6. atributo solicitado;
+7. cold-start alineado;
+8. calidad subordinada a intención;
+9. capacidad reservable;
+10. equilibrio de precio y distancia;
+11. hard negative de la misma familia;
+12. ambiente visual incapaz de sobreescribir un tipo incompatible.
+
+Cada escenario conserva dos candidatos, esperado, predicción y estado. Sus métricas 1,00 son de
+contrato contrafactual, se publican separadas y no sustituyen las 700 decisiones temporales.
+
+## Validación, errores, seguridad, privacidad e i18n
+
+El generador valida 100 locales, 40 perfiles y catálogo `candidateOnly`. Tipo desconocido, fuente
+incorrecta, candidato inelegible, grupo sin un positivo, fold no temporal, política permisiva,
+hash modificado, split incorrecto o reapertura producen errores `RECOMMENDATION_DIVERSE_*` y abortan.
+No existe recuperación permisiva que calcule métricas parciales.
+
+Los datos son sintéticos, no contienen identificadores directos ni atributos sensibles. Los UUID
+solo enlazan filas y no entran al modelo. La señal visual usa estilo/paleta declarados y queda
+prohibido inferir limpieza, seguridad, salud, identidad o rasgos sensibles. El modelo rerankea
+únicamente candidatos ya elegibles; no puede saltar permisos, publicación, disponibilidad, capacidad
+o holds. Las etiquetas funcionales usan slugs estables; la UI no cambia y no se publican traducciones
+pendientes.
+
+El resultado mantiene `productionEvidence=false`, `promotionAllowed=false` y fallback
+`deterministic-contextual-ranking`. Pasar la puerta offline no autoriza despliegue, personalización
+persistente, promociones ni decisiones materiales. La producción requerirá revisión jurídica,
+privacidad, seguridad/equidad, shadow traffic y experimento controlado.
+
+## Tests y evidencia de verificación
+
+Comandos principales:
+
+`python -m reserly_demand_engine.recommendation_diverse_dataset --source-root apps/demand-engine/evaluation/synthetic-marketplace-v1 --taxonomy packages/demand-contracts/catalog/venue-taxonomy.v1.json --output-root apps/demand-engine/evaluation/synthetic-marketplace-diverse-v2`
+
+Resultado: 100 locales, 40 perfiles, 2.700 sesiones, 21.600 candidatos, 28 tipos y seis familias.
+
+`python -m reserly_demand_engine.recommendation_diverse_training select ...`
+
+Resultado: 5-fold 0,87822913 y `testOpened=false`. Solo entonces se ejecutó:
+
+`python -m reserly_demand_engine.recommendation_diverse_training open-test ...`
+
+Resultado: test 0,93428571, error 0,06571429 y gates true. El registro consume 1/1.
+
+La suite focalizada ejecutada con basetemp del workspace obtiene 19/19 en 12,71 s. Cubre generación
+byte a byte, cardinalidades, 28/6 etiquetas, cero imágenes, aislamiento temporal, cinco folds,
+features prohibidas, hashes de modelo, métricas/gates, 12 escenarios y rechazo de segunda apertura.
+La regeneración compara SHA-256 de sidecar, desarrollo y test contra los artefactos versionados. La
+regresión acumulada de recomendación v1/v2, marketplace, taxonomía, documentación de gobernanza,
+dataset visual y candidato robusto pasa 41/41 en 13,12 s. La primera ejecución amplia detectó que la
+nueva model card no declaraba los campos obligatorios de owner, propósito, estado, rollback y
+aprobación humana; se completó el contrato y la repetición quedó íntegramente verde.
+
+## Riesgos, limitaciones y deuda pendiente
+
+- La evidencia es sintética y no demuestra conversión, asistencia, causalidad o uplift productivo.
+- El test adjudicado tiene menor ambigüedad que desarrollo; esta diferencia se declara y debe evitarse
+  al comparar directamente con datasets de outcomes reales.
+- Solo se cubren 28 tipos de seis familias compatibles con imágenes existentes; ampliar cobertura
+  requiere locales y evidencia visual realmente representativos, no reasignación automática.
+- Las categorías siguen candidatas y necesitan revisión editorial/humana antes de activación.
+- El modelo no incorpora todavía logs reales consentidos, drift online, calibración ni equidad por
+  cohortes productivas.
+- 23.16.c.3.d permanece pendiente y no puede usar este test de ranking como holdout visual.
+
+# Iteración 2026-08-30 - Tarea 23.19, recomendador multimodal basado en píxeles
+
+## Identificador, objetivo, requisitos y alcance
+
+- Tarea completada: 23.19.
+- Objetivo: demostrar mediante entrenamiento y ablación controlada que patrones reales de las
+  imágenes mejoran la correlación entre intereses visuales point-in-time y locales recomendados.
+- Requisitos: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Diseño: secciones 14.67–14.70.
+
+La iteración no crea imágenes, no modifica píxeles, no reentrena CLIP, no cambia endpoints, base de
+datos ni ranking productivo. Añade una evaluación offline sintética y un artefacto consultivo. La
+tarea visual 23.16.c.3.d sigue pendiente porque su objetivo es un holdout nuevo para clasificación
+de imágenes, mientras 23.19 mide personalización de ranking con activos existentes.
+
+## Archivos creados y modificados
+
+- `recommendation_pixel_dataset.py`: verificación PNG↔embedding↔venue, perfiles visuales y sesiones.
+- `recommendation_pixel_training.py`: pairwise ranker, ablación, 5-fold, escenarios y test 1/1.
+- `recommendation-pixel-personalization.v4.json`: features, regularización, priors y gates.
+- `synthetic-marketplace-pixel-v4/visual-linkage.jsonl`: 70 enlaces content-addressed.
+- `visual-onboarding-events.jsonl`: 80 selecciones visuales previas.
+- `development-sessions.jsonl`: 2.000 sesiones y 16.000 candidatos.
+- `test-sessions.sealed.jsonl`: 700 sesiones y 5.600 candidatos.
+- `manifest.json`, `pretest-lock.v4.json` y `test-opening-record.v4.json`.
+- Informes `recommendation-pixel-development.v4.json` y
+  `recommendation-pixel-personalization.v4.json`.
+- Modelos `contextual-recommender-pixel-baseline.v4.linear.json` y
+  `contextual-recommender-pixel-multimodal.v4.linear.json`, con sus model cards.
+- `RECOMMENDATION_PIXEL_PERSONALIZATION_V4.md`: informe técnico legible.
+- `test_recommendation_pixel_v4.py`: ocho pruebas de píxeles, temporalidad, uplift y fail-closed.
+- `synthetic-marketplace-pixel-v3/invalidation-record.v3.json`: invalidación preservando hashes.
+- `pyproject.toml`, requisitos, diseño, tareas, documento técnico y seguimiento.
+
+## Evidencia de píxeles y procedencia
+
+El generador abre `approved-definition.json` y `approved-clip-embeddings.json` de
+`visual-category-dataset-v2-definitive-200`. De sus 200 filas, exactamente 70 venueId enlazan con los
+100 locales del marketplace. Las otras 130 se excluyen; no se asignan por categoría, posición o
+similitud, porque eso inventaría identidad de local.
+
+Para cada enlace aceptado:
+
+1. imageId existe en la definición aprobada;
+2. `humanReviewStatus=approved`;
+3. se resuelve el `relativePath` del PNG;
+4. el fichero existe y su SHA-256 coincide con el del artefacto;
+5. venueId y categoría proceden de la misma fila de embedding;
+6. el vector tiene 512 dimensiones, norma finita entre 0,99 y 1,01 y se renormaliza L2;
+7. producción permanece false.
+
+El manifiesto registra 70 hashes de PNG verificados, modelo base
+`clip-vit-b32-visual-evidence-v1`, revisión congelada
+`fbf5e647b25f3514e526849b05cc0196b206d822`, SHA del artefacto fuente, dimensión 512,
+`pixelsUsedIndirectlyThroughFrozenEmbeddings=true` y `newImagesGenerated=0`.
+
+## Perfil visual point-in-time
+
+Cada uno de los 40 perfiles sintéticos selecciona explícitamente dos imágenes warm antes del periodo,
+produciendo 80 eventos sin PII. El estado mantiene una suma de embeddings y un contador por perfil.
+Antes de puntuar una sesión se normaliza el centroide y se calcula el coseno con cada imagen candidata;
+el resultado se escala desde el intervalo CLIP esperado mediante `clip((cos-0,45)/0,55, 0, 1)`.
+
+Las sesiones v4 se asignan a intervalos de minutos disjuntos y quedan estrictamente ordenadas desde
+2026-07-01T01:03Z hasta 2026-11-30T23:21Z. Un outcome se encola con maduración de 24 horas. Solo al
+inicio de una sesión posterior, si `outcomeObservedAt <= occurredAt`, su embedding actualiza el
+perfil. El candidato corriente nunca actualiza sus propias features. Cada sesión conserva
+`visualProfileEvidenceCount` y `visualProfileBuiltFromMaturePastOnly=true`; la evidencia observada
+crece de 2 a 107 y nunca disminuye dentro de un perfil.
+
+## Dataset, splits y features
+
+Las 70 imágenes/locales cubren las ocho categorías históricas, 23 subtipos y seis familias. Por cada
+categoría se reserva un venue validation-cold y uno test-cold: 54 warm, ocho validation-cold y ocho
+test-cold. Hay 1.500 sesiones train, 500 validación y 700 test, con ocho candidatos completos,
+elegibles y reservables cada una. Se mantienen 12 % de decisiones ambiguas en desarrollo y 6 % en
+test para evitar un benchmark perfecto.
+
+El baseline usa 14 features: tipo, familia, servicio, atributo, contenido, disponibilidad, escasez,
+calidad, proximidad, precio, baja exposición, oportunidad de capacidad, horario y cold-start. El
+multimodal añade exclusivamente `pixelVisualAffinity` y `pixelVisualHistoryConfidence`. Por tanto,
+la diferencia de ambos brazos sobre las mismas sesiones es una ablación aislada de visión. IDs,
+profileId, imageId, posición, clic, reserva y relevancia no forman parte de la matriz.
+
+La utilidad sintética combina señal visual, contenido, servicio, proximidad, precio, horario,
+capacidad y calidad antes de emitir la decisión observada. Esto permite probar la recuperación de un
+patrón conocido sin convertir outcomes sintéticos en evidencia causal o productiva.
+
+## Entrenamiento y regularización pairwise
+
+El primer prototipo LambdaMART alcanzó uplift positivo, pero solo 0,72–0,74 en 5-fold. La causa era
+desajuste inductivo: la utilidad es principalmente aditiva y los árboles poco profundos aproximaban
+mal diferencias cercanas. Antes de abrir test se sustituyó por un ranker lineal pairwise.
+
+Para cada consulta, el entrenamiento construye siete diferencias `x_pos-x_neg` con target 1 y sus
+inversas con target 0. Una regresión logística sin intercepto aprende el vector de utilidad relativa.
+Se prueban C {0,01, 0,1, 1}, 1.000 iteraciones máximas, solver LBFGS y semilla 3917. Cinco folds
+rolling-origin seleccionan por F1, recall@3 y accuracy. El modelo multimodal elige C=1; baseline
+elige C=0,1. Los artefactos JSON contienen solo algoritmo y coeficientes auditables.
+
+El coeficiente de `pixelVisualAffinity` es aproximadamente 20,19: positivo y mayor que servicio,
+proximidad, contenido, capacidad, precio y tipo. Esto prueba que el ajuste aprendió a utilizar la
+señal, no solo que el pipeline la transporta. `pixelVisualHistoryConfidence` resulta cero porque el
+contador se satura de forma similar entre candidatos de una misma consulta; se conserva para el
+fallback y la evolución con datos reales.
+
+## Selección, sellado e invalidación v3
+
+El baseline y multimodal se seleccionan con desarrollo sin parsear el test. El lock v4 fija hashes de
+desarrollo, test sellado, enlaces visuales, onboarding, política, informe y ambos modelos, con
+presupuesto 1/1. La apertura verifica cada digest y rechaza un resultado/registro preexistente.
+
+Durante la auditoría se detectó que v3 actualizaba preferencias por orden de creación, pero asignaba
+timestamps aleatorios dentro del mes. Una fila creada antes podía estar fechada después de la que
+usaba su outcome. El test v3 ya se había abierto, por lo que no se corrigió ni reabrió. Sus artefactos
+y hashes se preservan con `invalidation-record.v3.json`, que declara motivo, reemplazo v4,
+`metricsUsable=false` y promoción false. V4 se generó de nuevo, se seleccionó sin su test y abrió un
+test v4 distinto una sola vez.
+
+Hashes principales v4:
+
+- manifest: `d2006415dd23621ee86ff46829298fa2347485b7f3364071f227d3ebd04959f7`;
+- desarrollo: `677211dce05a576d7da18c9b57ceb746ce6ff1666a5b35d83513b3c2a6d2246d`;
+- test: `d49bae135b0d39bb315e8390dca54bad1b0850df69384178407d0b17d7d7c125`;
+- baseline: `12e58b8a8c0f728ff7b3b50337fa3f002fc0e6bede645f9041b3584b77e27485`;
+- multimodal: `01f7b14bf47cd022442f1048d9ea13813ff04c72571d04e29eabe93cbb99ca71`;
+- resultado: `6d1e490d64ecd795400bff937d601be4af7f865e4c64b0dd33308587b4c1f991`.
+
+## Métricas y ablación
+
+Desarrollo 5-fold:
+
+- baseline accuracy/precision/recall/F1: 0,62328316; recall@3 0,94480588;
+- multimodal accuracy/precision/recall/F1: 0,83925123; recall@3 0,9982;
+- uplift visual: +0,21596807;
+- train multimodal permanece por debajo de 0,90.
+
+Test v4, apertura única:
+
+- baseline: 457/700, accuracy/F1 0,65285714 y recall@3 0,94285714;
+- multimodal: 636/700, accuracy/precision/recall/F1 0,90857143;
+- error multimodal: 0,09142857;
+- recall@3 multimodal: 1,00;
+- uplift visual: +0,25571429;
+- brecha 5-fold/test: 0,0693202;
+- decisiones claras: 0,96504559; 42 ambiguas: 0,02380952;
+- precision/recall/F1 macro por familia: 0,99083694/0,99048206/0,99065744.
+
+Pasan train <=0,90, test >=0,90, error <0,15, precision/recall/F1 >=0,80, uplift >=0,10,
+escenarios >=0,80 y brecha <=0,10. `qualityGatesPassed=true` y `pixelPatternsUsed=true`.
+
+## Escenarios, errores, seguridad y privacidad
+
+Ocho escenarios pasan 8/8: desempate visual, selección explícita, fallback sin historial,
+incompatibilidad no sobreescrita, escasez+baja exposición, hard negative del mismo tipo, imagen
+cold-start y ubicación como desempate. Estos casos son contratos dirigidos, no evidencia causal.
+
+Errores fail-closed cubren embedding inválido, imagen no aprobada, hash distinto, cardinalidad de
+enlaces, cobertura por categoría, fuentes, política contaminada, feature pixel ausente, modelo con
+formato distinto, hash pretest, split y reapertura. No se calculan métricas parciales tras corrupción.
+
+Los perfiles son sintéticos y no contienen identificadores directos ni atributos sensibles. La
+similitud CLIP no se traduce en inferencias de limpieza, seguridad, salud, identidad, emociones o
+rasgos protegidos. Elegibilidad, publicación, permisos, disponibilidad, capacidad y holds se aplican
+antes del ranker. Sin historial visual se usa baseline contextual; si falla, ranking determinista.
+
+## Tests y evidencia de verificación
+
+`test_recommendation_pixel_v4.py` cubre ocho invariantes:
+
+1. regeneración byte a byte y 70 hashes PNG;
+2. recomputación numérica de coseno desde los 512 valores CLIP;
+3. temporalidad estricta e historial monotónico;
+4. ablación aislada sin IDs/outcomes;
+5. coeficiente pixel positivo y máximo;
+6. gates, uplift y métricas selladas;
+7. ocho escenarios y reapertura bloqueada;
+8. v3 invalidado y no utilizable.
+
+La suite focalizada v4 pasa 8/8 en 7,54 s. La regresión acumulada con recomendación v1/v2/v4,
+marketplace, taxonomía, visuales, contratos y gobernanza pasa 49/49 en 17,57 s. También se verifican
+compileall, parseo JSON, cadena de hashes y `git diff --check` antes del cierre.
+
+## Riesgos y deuda técnica
+
+- Datos, preferencias y outcomes son sintéticos; el uplift no demuestra comportamiento productivo.
+- Solo 70 imágenes tienen enlace inequívoco; ampliar cobertura exige identidad venue↔imagen fiable.
+- El embedding CLIP puede transportar sesgos visuales aunque no se usen etiquetas sensibles.
+- Falta calibración, drift de imagen/perfil, equidad de exposición y evaluación de privacidad real.
+- La activación requiere revisión humana, jurídica y de seguridad, shadow traffic y A/B consentido.
+- 23.16.c.3.d sigue pendiente y necesita imágenes/venues de holdout nuevos.
+
+## Iteración 2026-08-30 - Tarea 23.20: corpus visual taxonómico parcial y evaluación de píxeles
+
+### Objetivo, requisitos y decisión de alcance
+
+La tarea amplía la evidencia visual más allá de las ocho categorías legacy y comprueba si los bytes
+de imágenes de locales diversos contienen señal discriminativa. Se relaciona con RF-035/RF-036 por
+la jerarquía tipo-familia y el ranking visual, y con RF-041/RNF-014/RNF-015 por versionado, métricas,
+controles de contaminación y promoción fail-closed. El usuario autorizó nuevas imágenes y después
+ordenó detener la generación para iniciar pruebas. El resultado se documenta como corpus parcial:
+220 de 254 tipos y 21 de 23 familias, nunca como cobertura completa.
+
+### Archivos y arquitectura implementada
+
+- `full_taxonomy_visual_dataset.py`: constructor determinista y sellador del manifiesto.
+- `generation-manifest.json`: 254 prompts/IDs previstos, 220 hashes materializados y 34 ausencias.
+- `images/*.png`: 220 activos de aproximadamente 486,6 MB excluidos explícitamente de Git.
+- `full_taxonomy_visual_evaluation.py`: QA, extracción CLIP, cache content-addressed, CV y control.
+- `clip-embeddings.json`: 220 vectores normalizados de 512 dimensiones unidos a SHA-256.
+- `full-taxonomy-visual-evaluation.v1.json` y `FULL_TAXONOMY_VISUAL_EVALUATION_V1.md`: evidencia.
+- `test_full_taxonomy_visual_dataset.py` y `test_full_taxonomy_visual_evaluation.py`: regresión.
+- `pyproject.toml`: comandos build/seal/evaluate; `.gitignore`: exclusión exclusiva de los PNG.
+
+El constructor valida exactamente 23 familias, 254 tipos, unicidad de códigos y referencias de
+familia antes de emitir filas. Los UUID v5 dependen de versión/tipo, evitando IDs aleatorios. Doce
+ubicaciones españolas se distribuyen determinísticamente y no corresponden a establecimientos
+reales. Cada prompt incluye nombre de tipo solo para generación y exige arquitectura, mobiliario y
+equipamiento observables, pero prohíbe OCR, marcas, personas y collage. El evaluador no lee `prompt`.
+
+El sellador resuelve rutas dentro del root, lee bytes y almacena SHA-256. Una imagen existente cambia
+solo a `materializedPendingHumanReview`; no cambia `humanReviewStatus` ni
+`productionTrainingAllowed`. Las ausencias se enumeran. El corte tiene un hueco en sourceId 147 y
+llega hasta 221; por eso materializa 220 filas. Faltan 34 tipos, incluyendo las 32 filas posteriores
+no generadas y dos ausencias adicionales, y no hay activos de las familias financiera/inmobiliaria
+ni otros servicios al público.
+
+### QA, embeddings y flujo de evaluación
+
+Pillow abre cada archivo primero con `verify()` y después en RGB. Se registran formato, ancho, alto,
+desviación media de canal, EXIF, SHA-256 y dHash. dHash reduce a 9x8 luminancia y compara vecinos
+horizontales; todos los pares se contrastan con distancia Hamming <=4. Resultado: 220 PNG válidos,
+resolución mínima 1.447x1.085, cero duplicados exactos, cero casi duplicados y cero EXIF.
+
+`HuggingFaceClipEmbedder` carga solo desde cache local `openai/clip-vit-base-patch32`, revisión
+`fbf5e647b25f3514e526849b05cc0196b206d822`, `trust_remote_code=false` y safetensors. Procesa lotes
+de ocho en CPU y normaliza L2; rango observado 0,99999987-1,00000018. El cache de embeddings se
+acepta únicamente cuando revisión, orden de imageId y SHA-256 de cada PNG coinciden; cualquier cambio
+fuerza recálculo. No se entrena CLIP ni se persisten píxeles en el artefacto de vectores.
+
+La evaluación agrupa por las 21 familias presentes. Se usa centroide coseno sin parámetros
+entrenables: en cada fold, cada centroide se calcula exclusivamente con filas train y test se puntúa
+contra esos centroides. La familia parcial `servicios-profesionales-y-empresas` tiene tres filas; el
+número matemáticamente válido es por ello 3-fold estratificado. Usar 5/10-fold habría creado folds
+sin esa clase. Un control permuta las etiquetas con seed 8147 y ejecuta exactamente el mismo flujo.
+
+Resultados promedio: train accuracy 0,915307; test accuracy 0,755017; error 0,244983; precision macro
+0,746674; recall macro 0,734618; F1 macro 0,718797; brecha 0,160290. El out-of-fold consolidado es
+0,754545. Recall@3 de familia alcanza 0,904545. El control permutado obtiene top-1 0,053925 y
+Recall@3 0,15; uplift top-1 +0,701093. Hay señal pixel inequívoca, pero generalización top-1
+insuficiente. Pasan señal >=0,25 y Recall@3 >=0,90; fallan accuracy >=0,90 y error <0,15.
+
+### Seguridad, privacidad, errores y gobernanza
+
+Los prompts se tratan como datos de generación, nunca como input del clasificador. Los PNG no llevan
+EXIF ni personas identificables solicitadas y no contienen datos personales declarados. CLIP solo se
+usa para similitud de familia; no autoriza afirmaciones de salud, limpieza, seguridad, identidad,
+emociones o rasgos protegidos. Todos los resultados conservan evidencia sintética, revisión humana
+incompleta, `trainingAllowed=false` y `promotionAllowed=false`.
+
+Errores fail-closed cubren taxonomía con cardinalidad/familia inválida, IDs duplicados, rutas ausentes,
+muestra inferior a 100, PNG no decodificable, revisión de modelo distinta y cache cuyo hash/orden no
+coincide. Una dependencia `scikit-learn` ausente se eliminó del diseño: NumPy implementa folds,
+centroides y métricas, reduciendo superficie de instalación y capacidad de memorización.
+
+### Verificación, limitaciones y deuda
+
+Comandos principales: build/seal del módulo, evaluación con batch ocho y pytest focalizado con
+`--basetemp` dentro del workspace. La suite focalizada pasa 5/5 en 4,50 s y la regresión conjunta de
+visuales, recomendación, marketplace y taxonomía pasa 65/65 en 40,91 s. `compileall`, parseo de los
+tres JSON y `git diff --check` pasan. Hashes SHA-256: manifiesto
+`848284dc9ac967a3a23ed...537be58`, embeddings `c46139766401be84aa9a...bc313f` e informe
+`80ddb3a70fe66a8cfad5...1f965e0`.
+La limitación dominante es una imagen por tipo: no existe variación intratipo y algunas familias
+comparten interiores/equipamiento. Las confusiones principales son hogar/grandes superficies,
+veterinaria/salud, educación/servicios sociales, ocio/comercio cultural y viajes/automoción.
+
+Para mejorar sin contaminar: completar las dos familias, obtener varias vistas y fuentes por tipo,
+revisión humana, congelar splits por local/fuente y reservar un holdout nunca observado. La tarea
+23.16.c.3.d no se completa ni se reabre; este corpus es desarrollo y diagnóstico, no su sustituto.
+
+## Iteración 2026-08-31 - Tarea 23.21.a: taxonomía visual v2 y holdout pre-inferencia
+
+### Objetivo y contrato
+
+La subtask elimina las dos limitaciones estructurales de v1 antes de volver a ajustar el clasificador:
+cobertura incompleta y ausencia de una segunda vista independiente. El contrato fija 254 filas
+development y 254 holdout. Cada tipo aparece exactamente una vez por split; UUID de imagen/local y
+hash deben ser disjuntos. Development puede reutilizar evidencia v1 consumida, pero holdout prohíbe
+cualquier reutilización y dispone de presupuesto de apertura uno.
+
+### Implementación y archivos
+
+`full_taxonomy_visual_holdout.py` valida el catálogo 23/254 y el conjunto exacto de tipos del
+manifiesto v1. Genera UUID v5 separados por rol y prompts independientes. Las 220 filas v1 existentes
+se marcan `reusedConsumedDevelopment`; para los 34 tipos ausentes crea rutas
+`development-images/*-development-v2.png`. Las 254 rutas holdout viven en
+`sealed-holdout-images/*-holdout-v2.png`. Ambos directorios están fuera de Git.
+
+Los prompts holdout fuerzan establecimiento, arquitectura, distribución, paleta, luz y punto de vista
+distintos, y prohíben personas, logotipos, marcas, carteles, letras, números, OCR y etiquetas. El tipo
+89 requirió un prompt comercial discreto sin contenido adulto explícito; conserva su etiqueta sin
+introducir material sensible. La generación integrada produjo 288 activos nuevos: 34 development y
+254 holdout. Los originales generados se conservaron bajo el almacenamiento de ImageGen y cada copia
+final quedó en el workspace, sin sobreescribir las 220 imágenes v1.
+
+El sellado resuelve rutas únicamente dentro de `evaluation`, recalcula SHA-256, compara hashes previos
+y mantiene `pendingHumanReview`. Resultado: 220 development reutilizadas, 34 nuevas y 254 holdout;
+508 imágenes, 508 hashes únicos, 23 familias por split, cero coincidencias de venueId y hash entre
+splits. `materialization.complete=true`, pero revisión, training y promoción siguen false.
+
+### QA pre-inferencia
+
+`full_taxonomy_visual_holdout_qa.py` abre cada PNG con `verify`, convierte a RGB y mide formato,
+dimensiones, desviación de canal, EXIF, SHA-256 y dHash 64-bit. Compara todos los pares con distancia
+Hamming <=4. Renderiza ocho hojas de contacto de 64 activos como máximo, cuatro development y cuatro
+holdout, con etiquetas destinadas solo a revisión humana. No importa transformers ni carga CLIP.
+
+QA evalúa 508/508 PNG, 254 por split y 23 familias por split. Hay cero duplicados SHA-256, cero pares
+dHash cercanos, cero EXIF y cero igualdad de hash entre vistas del mismo tipo. El informe fija
+`clipLoaded=false`, `holdoutPredictionsComputed=false`, `holdoutBudgetConsumed=0`,
+`humanReviewComplete=false`, `trainingAllowed=false` y `qaPassed=true`.
+
+### Verificación, seguridad y trabajo pendiente
+
+`test_full_taxonomy_visual_holdout.py` prueba cardinalidad, disjunción, prompts, sellado parcial y
+fail-closed. `test_full_taxonomy_visual_holdout_qa.py` congela cobertura, hashes, ausencia de
+duplicados, hojas, presupuesto y prohibición de entrenamiento. La suite pasa 4/4 en 4,95 s;
+`compileall` y `git diff --check` pasan.
+
+La QA automática no puede sustituir revisión semántica humana. 23.21.b debe registrar la decisión
+sobre las 508 imágenes. Solo después pueden extraerse embeddings como dataset autorizado, ejecutar
+selección con development, congelar candidato/pretest lock y abrir el holdout una única vez en
+23.21.c-d. Los píxeles siguen siendo sintéticos y nunca autorizan promoción productiva por sí solos.
+
+### Continuación 23.21.b-d: autorización, selección y apertura única
+
+`full_taxonomy_visual_authorization.py` exige coincidencia exacta con la frase aprobada por el usuario,
+materialización completa, QA pasada, 508 filas y presupuesto test cero. Actualiza cada development a
+`approved`/`developmentTrainingAllowed=true` y cada holdout a
+`approved`/`testEvaluationAllowed=true`. El registro conserva SHA-256 de la frase y QA, alcance 508 y
+prohibiciones productivas. Una frase distinta o QA incompleta falla antes de mutar el manifiesto.
+
+`full_taxonomy_visual_training_v2.py develop` accede exclusivamente a `developmentRows`. Revalida
+hash antes de CLIP y genera 254 vectores L2 512D. El mínimo de cuatro tipos en dos familias fija
+4-fold; usar cinco crearía folds sin clase. Compara centroide coseno, cuatro k-NN ponderados por
+similitud y cuatro ridge multiclase con pesos inversos de clase y solución dual. El orden de selección
+predefinido es F1 macro, accuracy, Recall@3 y clave estable.
+
+Centroide gana entre nueve candidatos: accuracy CV 0,69194663, error 0,30805337, precision macro
+0,64915890, recall macro 0,65471014, F1 macro 0,62819831 y Recall@3 0,89441802. Ridge 0,1 es segundo
+por F1 0,6225. Antes de test se escriben modelo, política, informe development y lock con hashes de
+manifest, autorización, embeddings, informe, modelo, política y fingerprint canónico de 254 filas
+holdout. El informe declara `holdoutEmbeddingsRead=false` y predicciones false.
+
+`open-test` comprueba presupuesto 1/1, ausencia de resultado/registro previo y todos los hashes. Solo
+entonces extrae CLIP holdout, aplica el centroide congelado y escribe el resultado antes del registro
+de consumo. Accuracy es 0,70472441, error 0,29527559, precision macro 0,71480240, recall macro
+0,68037684, F1 macro 0,68198201 y Recall@3 0,90551181. La brecha absoluta de accuracy es 0,01277778.
+Pasa brecha <=0,10; fallan accuracy >=0,90, error <=0,10 y métricas macro >=0,80.
+
+Viajes/alquiler/movilidad obtiene recall 0,20; otros servicios 0,4286; tecnología, veterinaria y
+grandes superficies 0,50. Alojamiento obtiene 1,00 y restauración 0,9333. La brecha pequeña confirma
+que el cuello de botella es subajuste/solapamiento: familias funcionales heterogéneas comparten
+apariencia y una vista development por tipo no captura variación suficiente. No se usa este desglose
+para cambiar el candidato y el holdout queda consumido.
+
+`test_full_taxonomy_visual_training_v2.py` verifica nueve candidatos, ausencia de lectura precoz,
+hashes del lock, métricas fallidas preservadas, embeddings disjuntos y bloqueo de segunda apertura.
+Junto con contrato, QA y autorización, la suite focalizada pasa 10/10 en 5,52 s. La tarea 23.21 se
+completa como protocolo ejecutado, pero 23.16.c.3.d continúa pendiente: confirmar >=0,90 exigiría
+múltiples vistas development por tipo y un holdout v3 completamente nuevo.
+
+La regresión acumulada de visión, recomendación, marketplace y taxonomía pasa 75/75 en 39,12 s;
+compileall, parseo de artefactos y `git diff --check` pasan. Hashes principales: development
+`f0332da9...1f0d15`, modelo `8efb201a...803cf0`, pretest lock `d875b663...1d2055` y resultado
+holdout `945441eb...f6050ab`.
+
+## Iteración 2026-08-31 - Tarea 23.22.a: contrato taxonómico multivista v3
+
+### Objetivo, requisitos y alcance
+
+La tarea completa 23.22.a y prepara, sin entrenar ni abrir test, la siguiente evaluación independiente
+necesaria para 23.16.c.3.d. Se relaciona con RF-035/RF-036 por jerarquía y clasificación visual, y
+con RF-041/RNF-002/RNF-009/RNF-014/RNF-015 por trazabilidad, privacidad, separación de datasets,
+puertas de calidad y promoción fail-closed. No modifica endpoints, esquema de base de datos, ranking
+productivo ni el encoder CLIP.
+
+### Archivos y contrato de datos
+
+Se crea `full_taxonomy_visual_multiview_v3.py`, con CLI `build|seal`, y se registra el entry point
+`reserly-demand-build-full-taxonomy-multiview-v3`. El manifiesto
+`synthetic-marketplace-full-taxonomy-visual-v3/generation-manifest.v3.json` referencia 1.016 filas:
+762 development y 254 holdout. De las primeras, 508 son las vistas v2 ya consumidas y 254 serán una
+tercera vista C nueva. El holdout v3 contiene otros 254 imageId/venueId deterministas y disjuntos.
+Los directorios binarios y hojas de contacto se excluyen de Git, conservando manifiestos, hashes y
+resultados versionables.
+
+El constructor exige que `test-opening-record.v2.json` declare presupuesto consumido 1 y reapertura
+prohibida. Solo entonces copia las antiguas vistas holdout como development B, cambia su modo a
+`reused-consumed-v2-holdout-as-v3-development` y fija `testEligible=false`. La vista v2 development
+es A y recibe el mismo tratamiento de desarrollo. Ningún dato consumido puede recuperar estatus de
+test. El sellador limita rutas al árbol `evaluation`, recalcula SHA-256, detecta cambios de fuentes y
+mantiene cada imagen nueva en `materializedPendingHumanReview`.
+
+### Arquitectura auxiliar y ausencia de leakage
+
+Los 254 tipos se mapean exhaustivamente a 38 arquetipos espaciales de grano intermedio. El contrato
+declara `promptTypeFamilyOrTrueArchetypeAsFeatureForbidden=true` y
+`archetypeAuxiliaryTargetMustBePredictedFromPixelsAtInference=true`: el futuro modelo podrá aprender
+una cabeza auxiliar, pero deberá calcularla desde el embedding visual. La selección prevista utiliza
+dos vistas por tipo y valida sobre la tercera, rotando A/B/C; queda prohibido compartir la misma
+imagen entre train y validación. El holdout v3 no participa en selección y conserva presupuesto 1/1.
+
+### Personas, privacidad y seguridad visual
+
+`peoplePolicy` permite como máximo tres adultos pequeños al fondo en una fracción determinista de
+escenas públicas. Deben aparecer de espaldas o desenfocados y nunca ser el sujeto. Los rangos de
+salud, veterinaria, servicios sociales, belleza/cuidado sensible y categorías de menores fuerzan
+`emptyVenuePreferred`. Todas las filas prohíben rostros identificables, menores, pacientes,
+biometría e inferencias sensibles. Los prompts también prohíben OCR, marcas, logotipos, etiquetas,
+collage y marcas de agua. La política no sustituye la revisión humana posterior.
+
+### Verificación, estado y pendientes
+
+`test_full_taxonomy_visual_multiview_v3.py` comprueba cinco invariantes: cardinalidad 762/254,
+tres vistas A/B/C por tipo, disyunción de identidades, degradación irreversible del test v2 a
+development, 38 arquetipos exhaustivos, política segura de personas, prompts independientes y fallo
+cerrado si v2 no está consumido. El comando focalizado pasa 5/5 en 6,08 s. `compileall` y
+`git diff --check` pasan. El manifiesto inicial registra 508 reutilizadas y, tras la continuación,
+35/254 vistas C nuevas selladas; holdout v3 permanece 0/254. No se ha importado CLIP ni
+calculado predicciones. 23.22.b-e y 23.16.c.3.d siguen pendientes.
+
+### Avance de materialización 23.22.b — sourceId 1–35
+
+La cola built-in genera un activo distinto por llamada y copia cada PNG desde el almacén de ImageGen
+al directorio ignorado `development-view-c-images`. Se completan 15 tipos de restauración y 20 de
+comercio alimentario. Los prompts refuerzan señales físicas y hard negatives: servicio en mesa,
+barra, mostrador, producción de catering, alimento fresco, comercio especializado y tres escalas de
+pasillos. Las categorías potencialmente sensibles por producto —carnicería, casquería y pollería— se
+presentan de forma profesional y no gráfica.
+
+El sellador recalcula 35 SHA-256 y conserva `pendingHumanReview`; los 35 hashes son únicos. La
+verificación de contrato vuelve a pasar 5/5 en 4,77 s y `git diff --check` no informa errores. Algunos
+envases pueden contener trazos pequeños no legibles, por lo que se difiere cualquier aprobación al
+QA OCR/perceptual y a la revisión humana. Esta evidencia parcial no habilita embeddings,
+entrenamiento, apertura de holdout, promoción ni cierre de 23.22.b.
+
+### Avance de materialización 23.22.b — sourceId 36–46
+
+Se materializa la familia completa `moda-y-complementos` como vista C: textiles para el hogar,
+tienda de ropa general, moda femenina, moda masculina, moda infantil, lencería/corsetería,
+mercería, uniformes y prendas especiales, zapatería, bolsos/maletas/piel y peletería. Cada activo se
+genera mediante una llamada independiente al modo built-in de ImageGen y se copia al `relativePath`
+canónico de `development-view-c-images`; los originales permanecen en el almacenamiento administrado
+de ImageGen. Los PNG se excluyen del control de versiones, mientras el manifiesto conserva ruta,
+estado y SHA-256 verificable.
+
+Los prompts separan hard negatives mediante inventario y distribución: prendas y probadores para
+moda, bobinas/cajoneras para mercería, equipos laborales para uniformes, bancos y cajas para
+zapatería, equipaje y marroquinería para bolsos, y mesa de patrones/materiales para peletería. La
+escena infantil se fuerza vacía y sin menores; lencería evita cuerpos o presentación sexualizada;
+peletería evita animales y procesos gráficos. En escenas no sensibles cualquier adulto permitido
+queda pequeño, de espaldas y subordinado al local. No se introducen etiquetas de categoría como
+feature, endpoints, migraciones, datos personales ni cambios en el ranking productivo.
+
+Durante el primer sellado, los sourceId 43 y 45 permanecieron `pending` porque los nombres copiados
+eran abreviados y no coincidían con sus rutas contractuales. Se renombraron, sin transformar ni
+regenerar los píxeles, a
+`043-tienda-de-prendas-especiales-uniformes-development-c-v3.png` y
+`045-tienda-de-bolsos-maletas-y-articulos-de-piel-development-c-v3.png`. El segundo sellado resolvió
+las 46 vistas C presentes, calculó sus hashes y dejó cada una en
+`materializedPendingHumanReview`.
+
+La evidencia actual es 508 vistas A/B reutilizadas, 46/254 vistas C, 0/254 holdout v3 y 46/508
+imágenes nuevas; quedan 462. Los 46 SHA-256 de vista C son únicos. El holdout no se ha materializado,
+no se ha cargado CLIP, no se han extraído embeddings y el presupuesto permanece sin consumir con
+`holdoutEvaluationAllowed=false`. La suite
+`pytest apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 4,87 s y
+`git diff --check` pasa. La revisión visual/OCR/perceptual completa continúa pendiente, por lo que
+`developmentTrainingAllowed`, promoción y cierre de 23.22.b permanecen deshabilitados.
+
+### Avance de materialización 23.22.b — sourceId 47–55
+
+Se completa la vista C de `farmacia-cosmetica-y-salud-retail`: farmacia, parafarmacia, droguería,
+perfumería, cosmética, higiene/aseo, herbolario, ortopedia y óptica. Los hard negatives se separan
+por señales espaciales: farmacia usa dispensación y cajoneras; parafarmacia, autoservicio de
+bienestar; perfumería, frascos y tiras olfativas; cosmética, mesas de prueba y espejos; droguería e
+higiene, inventarios y pasillos funcionalmente distintos; herbolario, plantas, morteros y cajones;
+ortopedia, ayudas de movilidad; óptica, monturas y taller de ajuste. Las etiquetas y prompts no se
+usan como entrada del futuro modelo.
+
+Por privacidad y sensibilidad, farmacia, parafarmacia, perfumería, cosmética, herbolario y ortopedia
+se generan vacíos, sin pacientes ni consultas. Droguería, higiene y óptica contienen como máximo un
+adulto pequeño de espaldas y no identificable, conforme a la política de la fila; no se realizan
+inferencias biométricas o sanitarias. Los envases son genéricos y cualquier trazo residual queda
+pendiente de QA OCR y revisión humana.
+
+El sellado eleva el estado acumulado a 55/254 vistas C y mantiene 0/254 holdout: 55/508 imágenes
+nuevas, 453 pendientes. Los 55 SHA-256 son distintos. `pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 5,70 s y
+`git diff --check` pasa. No se carga CLIP, no se calculan embeddings o predicciones y
+`holdoutEvaluationAllowed=false`; por tanto 23.22.b continúa abierta.
+
+### Avance de materialización 23.22.b — sourceId 56–69
+
+Se materializan las catorce vistas C de `hogar-y-bricolaje`: muebles, colchonería, cocinas,
+electrodomésticos, electrónica de consumo, menaje, ferretería, decoración, materiales de
+construcción, sanitarios, puertas/ventanas/persianas, suelos/revestimientos, centro de bricolaje e
+iluminación. Cada PNG procede de una llamada built-in independiente y se copia al `relativePath`
+canónico antes de ejecutar el sellador; los originales administrados por ImageGen se conservan y
+los activos del proyecto permanecen excluidos de Git.
+
+El diseño visual busca reducir confusiones intrafamilia mediante señales espaciales verificables.
+Muebles emplea ambientes de salón/comedor; colchonería, filas de colchones y somieres; cocinas,
+varios módulos de exposición; electrodomésticos, línea blanca; electrónica, pantallas y dispositivos;
+menaje, vajilla y utensilios. La ferretería se representa como comercio estrecho de pequeña pieza y
+herramienta, mientras el centro de bricolaje usa nave y pasillos de gran escala. Construcción se
+separa mediante palés y materiales de obra; sanitarios mediante módulos de baño; cerramientos por
+bastidores; revestimientos por muestrarios; decoración por accesorios; iluminación por luminarias y
+paneles de temperatura. El futuro clasificador no recibe los prompts ni las etiquetas verdaderas.
+
+La política `emptyVenuePreferred` se respeta en muebles, colchonería, electrodomésticos,
+electrónica, ferretería, decoración, sanitarios, cerramientos, centro de bricolaje e iluminación.
+Las filas restantes autorizadas muestran como máximo un adulto pequeño de espaldas, no
+identificable y subordinado al local. No se incorporan datos personales, inferencias sensibles,
+endpoints, migraciones ni cambios al ranking productivo.
+
+El sellado calcula SHA-256 y deja las nuevas filas en `materializedPendingHumanReview`. El estado
+acumulado alcanza 69/254 vistas C y 0/254 holdout: 69/508 imágenes nuevas, 439 pendientes y 69 hashes
+únicos. `pytest apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en
+12,55 s y `git diff --check` pasa. No se cargan CLIP, embeddings o predicciones; el presupuesto y
+`holdoutEvaluationAllowed=false` permanecen intactos, de modo que 23.22.b no se cierra.
+
+### Avance de materialización 23.22.b — sourceId 70–80
+
+La cola built-in materializa once activos independientes y completa `tecnologia-y-oficina` con
+informática, telefonía/comunicaciones, mobiliario/equipos de oficina y material de dibujo/bellas
+artes. También incorpora librería, quiosco de prensa, papelería, instrumentos musicales,
+filatelia/numismática, galería comercial de arte y anticuario de
+`comercio-cultural-y-especializado`. Cada salida se copia desde el almacén administrado de ImageGen
+al `relativePath` canónico y se sella sin transformar los píxeles; los PNG permanecen fuera de Git.
+
+Las señales visuales se diseñan como hard negatives explícitos. Informática muestra ordenadores,
+componentes y taller; telefonía, terminales sobre mesas; oficina, múltiples configuraciones de
+mobiliario y periféricos; bellas artes, caballetes, lienzos y pigmentos. Librería se diferencia de
+quiosco por sala y estanterías frente a estructura compacta de ventanilla; papelería por material
+escolar y copias; instrumentos por guitarras, teclados, batería y viento; coleccionismo por bandejas,
+álbumes y lupas; galería por sala blanca y pedestales; anticuario por densidad, pátina y mezcla de
+mobiliario histórico. Los prompts y etiquetas verdaderas siguen prohibidos como features.
+
+Se respeta `emptyVenuePreferred` en telefonía, oficina, librería, quiosco, instrumentos,
+filatelia/numismática y anticuario. Las filas autorizadas contienen como máximo un adulto pequeño de
+espaldas, desenfocado y no identificable. El quiosco presenta trazos editoriales sintéticos propios
+de periódicos/revistas que deben pasar QA OCR y revisión humana; se conserva
+`materializedPendingHumanReview` y no se habilita entrenamiento.
+
+El sellado deja 80/254 vistas C y 0/254 holdout: 80/508 imágenes nuevas, 428 pendientes, 80 hashes
+SHA-256 únicos y cero filas pendientes hasta sourceId 80. `pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 4,64 s y
+`git diff --check` pasa. No se carga CLIP, no se calculan embeddings o predicciones y
+`holdoutEvaluationAllowed=false`; no hay cambios de endpoints, persistencia o ranking productivo y
+23.22.b continúa abierta.
+
+### Avance de materialización 23.22.b — sourceId 81–90
+
+Se materializan diez vistas C independientes mediante el modo built-in de ImageGen y se completa la
+familia `comercio-cultural-y-especializado`: minerales/fósiles/coleccionismo, joyería, relojería,
+bisutería, juguetería, material deportivo, ropa/calzado deportivo, segunda mano, tienda para adultos
+y comercio especializado no clasificado. Cada salida se conserva en el almacén administrado de
+ImageGen y se copia, sin transformar sus píxeles, al `relativePath` canónico de
+`development-view-c-images`; los PNG del dataset continúan excluidos de Git y el manifiesto
+versionado registra su SHA-256 y estado de materialización.
+
+La composición refuerza hard negatives intrafamilia. Minerales y fósiles usa vitrinas con muestras
+geológicas; joyería, piezas finas y mesa de consulta; relojería, mecanismos, herramientas de
+precisión y zona de ajuste; bisutería, accesorios de materiales no preciosos. Material deportivo se
+apoya en equipamiento para distintas disciplinas, mientras ropa/calzado deportivo emplea prendas,
+calzado, expositores y probadores. Segunda mano presenta inventario heterogéneo reutilizado. El
+comercio no clasificado utiliza componentes mecánicos, útiles de modelismo adulto y lupa de banco,
+evitando señales dominantes de juguetería, ferretería, electrónica o bellas artes. Los prompts, el
+tipo verdadero, la familia y el arquetipo no se incorporan como features de entrenamiento o
+inferencia.
+
+La política de seguridad se aplica por fila. Juguetería permanece vacía y no contiene menores. La
+tienda para adultos se representa como un comercio discreto, vacío y no explícito, sin desnudez,
+actividad sexual ni personas. Las demás filas vacías o con un único adulto secundario respetan el
+límite del contrato: el adulto, cuando existe, queda pequeño, de espaldas y no identificable. No se
+realizan inferencias biométricas o sensibles ni se incorporan datos personales. Las esferas de
+relojes y cualquier trazo residual en productos o envases se mantienen pendientes del QA OCR,
+perceptual y humano; todas las filas nuevas conservan `materializedPendingHumanReview`.
+
+El sellador deja 508 vistas A/B reutilizadas, 90/254 vistas C materializadas y 0/254 vistas holdout
+v3: 90/508 imágenes nuevas y 418 pendientes. Los 90 SHA-256 de vista C son únicos. No se carga CLIP,
+no se extraen embeddings, no se ejecutan predicciones y el presupuesto de apertura del holdout sigue
+intacto con `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y
+`promotionAllowed=false`. La verificación
+`pytest apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 4,54 s y
+`git diff --check` no informa errores. No se modifican endpoints, persistencia, permisos ni ranking
+productivo; 23.22.b permanece abierta hasta completar materialización, sellado y QA de 508/508.
+
+### Avance de materialización 23.22.b — lote de 50 sourceId 91–140
+
+La cadencia de generación se amplía a cincuenta activos por iteración sin alterar la invariante de
+una llamada built-in independiente por imagen. Se materializan las vistas development C 91–140 y se
+completan seis familias: `flores-jardineria-y-mascotas` (91–95), `automocion-y-movilidad` (96–104),
+`grandes-superficies-y-comercio-general` (105–110), `alojamiento` (111–118),
+`salud-y-clinicas` (119–136) y `veterinaria-y-cuidado-animal` (137–140). Cada PNG se copia desde el
+almacén administrado de ImageGen a su `relativePath` canónico, conservando el original. Los activos
+siguen excluidos de Git; el manifiesto versionado aporta rutas, estados y hashes verificables.
+
+Los prompts introducen hard negatives físicos en lugar de texto o etiquetas privilegiadas.
+Floristería se apoya en flor cortada, cámara floral y mesa de composición; vivero, en invernadero,
+riego y macetas; semillas/fertilizantes, en dosificación y germinación; tienda de animales, en
+hábitats; alimentación/accesorios, en inventario sin animales. En movilidad se separan showroom de
+automóviles nuevos, compraventa heterogénea, motocicletas, recambios, neumáticos, maquinaria,
+náutica, estación de servicio y almacén de lubricantes. Grandes almacenes, hipermercado, almacén
+popular, gran superficie especializada, economato y bazar se diferencian por escala, especialización,
+distribución, surtido y circuito de compra.
+
+La familia de alojamiento evita duplicados conceptuales mediante relaciones espaciales distintas:
+hotel con vestíbulo y servicios; motel con acceso exterior y aparcamiento; hostal urbano pequeño;
+pensión doméstica; fonda con comedor común; apartahotel con cocina y servicio compartido;
+apartamento autónomo sin recepción; camping con parcelas y edificio de servicios. Para salud se
+distinguen hospital general y especializado, policlínica ambulatoria, urgencias, clínica dental
+multigabinete, consultas general y especialista, estomatología, odontología, fisioterapia,
+enfermería, podología, optometría, psicología, nutrición, naturopatía, acupuntura y balneario médico
+por escala, circuito y equipamiento. Clínica veterinaria, consulta veterinaria, cuidado animal y
+adiestramiento usan respectivamente infraestructura clínica múltiple, gabinete individual, boxes y
+zona de juego, y obstáculos de entrenamiento.
+
+La política de privacidad y seguridad se aplica antes de generar. Todas las categorías sanitarias y
+veterinarias quedan vacías: no aparecen pacientes, animales, personal, acompañantes, menores,
+procedimientos, anatomía gráfica, datos personales, historiales ni pantallas activas. En las pocas
+filas públicas cuya política permite adultos, aparecen como máximo uno o dos adultos pequeños, de
+espaldas o desenfocados y nunca como sujeto principal. No se ejecuta inferencia biométrica o sensible.
+Prompts, tipo, familia y arquetipo verdadero continúan prohibidos como features.
+
+Durante la automatización inicial, `output_hint` contenía la ruta de directorio y la ruta del archivo
+separadas por la palabra `as`. El parser inicial las capturó como una cadena única y la copia del
+sourceId 92 falló. La salida generada se conservó; se corrigió la extracción para seleccionar solo la
+ruta posterior a `as` y se copió el mismo archivo, sin una segunda generación. Las restantes 48
+llamadas y copias finalizaron sin incidencias, además de la llamada 91 realizada antes de la cola.
+
+La QA estructural confirma cincuenta archivos nuevos no vacíos, todos PNG 1448x1086, con tamaños
+entre 1.766.490 y 3.257.840 bytes. El sellador calcula 140 SHA-256 distintos para las 140 vistas C y
+mantiene `materializedPendingHumanReview`. Una inspección perceptual de muestra revisa los sourceId
+91, 110, 119, 130 y 140 y confirma señales plausibles y ausencia de situaciones sensibles; no se
+considera revisión humana exhaustiva. Envases del bazar, elementos pequeños y equipamiento clínico
+siguen pendientes de OCR y QA perceptual completos.
+
+El estado acumulado es 508 vistas A/B reutilizadas, 140/254 vistas C, 0/254 holdout v3 y 140/508
+imágenes nuevas, con 368 pendientes. No se carga CLIP, no se extraen embeddings ni se ejecuta
+entrenamiento o evaluación. `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y
+`promotionAllowed=false` preservan las puertas. `pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 10,46 s y
+`git diff --check` no informa errores. No se modifican endpoints, persistencia o ranking productivo;
+23.22.b permanece abierta.
+
+### Avance de materialización 23.22.b — lote de 50 sourceId 141–190
+
+Se materializan cincuenta vistas development C adicionales mediante ImageGen built-in, una llamada
+independiente por activo final, y se copian al nombre contractual sin transformar los píxeles. El
+bloque abarca `servicios-sociales` (141–147), `belleza-y-cuidado-personal` (148–159),
+`deporte-y-actividad-fisica` (160–169), `educacion-y-formacion` (170–181) y los sourceId 182–190 de
+`ocio-cultura-y-entretenimiento`. Los originales permanecen en el almacén administrado de ImageGen;
+los PNG del proyecto siguen excluidos de Git y el manifiesto conserva la huella del activo canónico.
+
+Servicios sociales se separa por presencia o ausencia de dormitorios y por función: residencias para
+mayores, discapacidad o juventud; centros de día sin habitaciones; guardería con equipamiento de
+primera infancia; centro social polivalente. Estas escenas se generan completamente vacías y sin
+residentes, usuarios, personal o menores. En belleza, los hard negatives se basan en estaciones de
+corte, sillones de barbería, cabinas estéticas, mesas de uñas, tocadores, infraestructura de spa,
+camillas de masaje, esterilización de tatuaje, máquinas de lavandería, transportador de tintorería y
+máquinas de costura. No se muestran clientes, cuerpos, procedimientos, desnudez ni datos personales.
+
+Deporte utiliza geometría observable para distinguir pabellón multideporte, pádel acristalado, tenis,
+fútbol, piscina por calles, escuela deportiva, centro de alto rendimiento, alquiler integrado y arena
+de espectáculo. Los adultos permitidos son secundarios, no identificables y nunca menores.
+Educación diferencia infantil, primaria, secundaria, FP, universidad, academia general, idiomas,
+oposiciones, autoescuela, enseñanza deportiva, academia artística y residencia estudiantil mediante
+escala, talleres, laboratorios, simuladores y espacios comunes. Las categorías relacionadas con
+menores permanecen vacías; no se incluyen trabajos, nombres o pizarras con contenido.
+
+El bloque cultural distingue cine, museo, biblioteca, zoológico, jardín botánico, discoteca, casino,
+bingo y bolera por arquitectura y equipamiento. Casino y bingo se generan vacíos. En zoológico no hay
+visitantes y los animales aparecen sanos, a distancia y en hábitats amplios, sin escenas sensibles.
+Prompt, tipo, familia y arquetipo verdadero siguen prohibidos como entrada del modelo.
+
+La inspección perceptual por muestra cubre 141, 152, 162, 173 y 188. El primer activo 188 presentó
+una ruleta en primer plano con números claramente legibles, incumpliendo una invariante. Se generó una
+única variante correctiva centrada en mesas de cartas lejanas y pantallas apagadas, y se sustituyó la
+copia canónica; el original rechazado continúa conservado por ImageGen. La corrección añade una
+llamada de iteración, pero el entregable sigue compuesto por cincuenta activos finales distintos.
+
+Al intentar sellar la sustitución, la protección de integridad lanzó
+`FULL_TAXONOMY_V3_SOURCE_HASH_CHANGED`, impidiendo modificar silenciosamente una fila sellada. No se
+alteró el guard. Como `humanReviewComplete=false`, ninguna fila estaba aprobada y el holdout seguía en
+0/254, se ejecutó el flujo canónico reproducible `build` para reconstruir el manifiesto desde la
+taxonomía y las dos fuentes v2, seguido de `seal` para recalcular las 190 vistas C presentes. El nuevo
+casino queda `materializedPendingHumanReview` con SHA-256
+`b40a6415c6385f1f1b110d27ca95a7e54036c94d9cc593780d49f1744ccfd811`.
+
+La QA estructural final confirma cincuenta PNG nuevos de 1448x1086, tamaños entre 1.756.298 y
+3.330.284 bytes y cero archivos vacíos. El acumulado contiene 190/254 vistas C con 190 hashes únicos,
+0/254 holdout y 190/508 imágenes nuevas; quedan 318. Trazos pequeños en envases cosméticos, equipos y
+mesas de juego permanecen pendientes del QA OCR/perceptual completo y revisión humana.
+`developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y `promotionAllowed=false` se
+mantienen. No se carga CLIP ni se extraen embeddings o predicciones. `pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 4,30 s y
+`git diff --check` pasa. No hay cambios de endpoints, persistencia o ranking; 23.22.b sigue abierta.
+
+### Avance parcial de materialización 23.22.b — lote sourceId 191–240
+
+Se inicia un tercer lote de cincuenta vistas C mediante llamadas built-in independientes. Quedan
+copiados al nombre contractual los sourceId 191–203: sala de billar, arcade, parque de atracciones,
+parque acuático, recinto ferial, centro de congresos, estudio fotográfico, laboratorio fotográfico,
+reprografía, reparación de ordenadores, electrónica de consumo, electrodomésticos y zapatero. Los
+prompts diferencian instalaciones de ocio por geometría y equipamiento; fotografía por captura,
+procesado o reproducción; y talleres por clase de dispositivo y utillaje. No se usan etiquetas o
+prompts como features.
+
+La llamada correspondiente al sourceId 204 recibió HTTP 429 `usage_limit_reached`, con
+restablecimiento comunicado para 2026-09-01 15:48:38 +02:00. La generación falló antes de devolver
+un activo, de modo que no existe imagen parcial de 204. Se conserva el punto de reanudación exacto y
+no se reintentan 191–203. Tampoco se cambia de forma implícita al fallback CLI, que requeriría una
+elección explícita y credenciales de API.
+
+El directorio contiene temporalmente 203 PNG: 190 ya sellados y trece nuevas copias pendientes de
+sellado. El manifiesto conserva `newDevelopmentCount=190`, evitando presentar el lote incompleto como
+evidencia validada. No se ejecutan QA final, CLIP, embeddings, predicciones, entrenamiento o apertura
+del holdout. La iteración se reanudará desde 204 y solo sellará cuando complete 191–240.
+
+### Finalización de materialización 23.22.b — lote sourceId 191–240
+
+Tras el restablecimiento del cupo built-in se conserva el estado ya materializado 191–203 y la cola
+reanuda exactamente en 204; no se duplican llamadas ni archivos anteriores. Se generan las treinta y
+siete vistas restantes hasta 240 y se completa el lote contractual de cincuenta. El bloque termina
+`ocio-cultura-y-entretenimiento`, completa `fotografia-y-reparaciones` y
+`viajes-alquiler-y-movilidad`, materializa la mayor parte de `servicios-profesionales-y-empresas` y
+añade oficina bancaria y de crédito de `finanzas-seguros-e-inmobiliario`.
+
+Los hard negatives se expresan físicamente. Fotografía separa plató, laboratorio y reprografía;
+reparación distingue ordenadores, electrónica, electrodomésticos, calzado, muebles, relojería,
+automóviles, motocicletas y bicicletas por banco, escala y utillaje. Viajes y alquiler diferencia
+venta minorista, operación turística y reservas, así como entrega/devolución de coches, bicicletas,
+prendas, embarcaciones y maquinaria; parking y lavado emplean infraestructura específica. No se
+utilizan prompt, familia, tipo o arquetipo verdadero como features.
+
+Las oficinas profesionales se diseñan con señales de proceso: archivo protocolario para notaría,
+espacios de revisión para auditoría, prototipos para ingeniería, maquetas para arquitectura,
+instrumentos para topografía, materiales para interiorismo, preparación audiovisual para relaciones
+públicas, cabina para interpretación, salas de entrevista para selección, centro de operaciones
+apagado para seguridad, equipamiento cerrado para detective, puestos flexibles para coworking y línea
+instrumentada para ITV. Banco y crédito se separan por presencia de caja/cajeros frente a oficina
+compacta de evaluación. Documentos, pantallas, matrículas, datos personales y datos financieros son
+ilegibles o ausentes; seguridad no incluye armas y detective no representa vigilancia de personas.
+
+La inspección perceptual transversal revisa 193, 205, 215, 226, 235 y 239. La primera generación de
+193 contenía numerosos ocupantes diminutos en una montaña rusa, excediendo el máximo contractual y
+sin poder descartar menores. Se genera una variante correctiva completamente vacía, con atracciones
+detenidas y góndolas sin pasajeros, y se reemplaza solo la copia canónica. El original permanece en el
+almacén administrado de ImageGen. Al tratarse de una sustitución posterior al primer sellado, se aplica
+el flujo reproducible `build` + `seal`, sin desactivar la protección de cambio de hash. El 193 final
+queda `materializedPendingHumanReview` con SHA-256
+`5a2a77597e355cffa23123f57ff762c143541ca996c8b20472982bcc2343fa00`.
+
+La QA estructural confirma cincuenta PNG finales 1448x1086, no vacíos, de 1.737.952 a 2.642.886
+bytes. El conjunto acumulado alcanza 240/254 vistas C y 240 hashes únicos; holdout permanece 0/254.
+Hay 240/508 imágenes nuevas y 268 pendientes. El muestreo visual no sustituye el QA OCR/perceptual ni
+la revisión humana completa, especialmente en esferas de reloj, equipos técnicos, mapas y elementos
+de oficina. `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y
+`promotionAllowed=false` permanecen cerrados. No se carga CLIP ni se ejecutan embeddings,
+entrenamiento o evaluación. `pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q` pasa 5/5 en 5,29 s y
+`git diff --check` pasa. No se modifican endpoints, persistencia o ranking; 23.22.b continúa abierta.
+
+### Avance de materialización 23.22.b — lote de 100: development C 241–254 y holdout v3 1–86
+
+**Fecha de iteración:** 2026-09-02. **Tarea:** 23.22.b, aún abierta. El objetivo técnico de esta
+iteración es cerrar la tercera vista development de los 254 tipos y comenzar a materializar el
+holdout v3 totalmente independiente, manteniendo invioladas las puertas que impiden entrenar antes
+de la revisión humana o consultar el test antes de congelar el modelo. Se generan cien activos
+finales: catorce development C, sourceId 241–254, y ochenta y seis holdout, sourceId 1–86.
+
+Las catorce vistas C completan `finanzas-seguros-e-inmobiliario` y los últimos servicios abiertos al
+público: agencia y correduría de seguros, peritación de riesgos, agencia/administración/promoción y
+alquiler inmobiliario, lotería, apuestas, funeraria, taquilla y sedes asociativas o profesionales.
+Los hard negatives se construyen con equipamiento, escala y distribución: una agencia de seguros se
+distingue de una correduría por el espacio de atención; peritación utiliza documentación y zonas de
+inspección sin datos legibles; inmobiliaria muestra maquetas y escaparate sin direcciones; lotería y
+apuestas evitan números, cuotas y marcas; funeraria utiliza recepción y exposición sobria, sin
+fallecidos, ceremonias ni situaciones de duelo explícitas. Prompts, códigos, familia y arquetipo
+verdadero siguen prohibidos como features.
+
+El bloque holdout 1–86 cubre restauración/bebidas, comercio alimentario, moda y accesorios,
+salud/cosmética minorista, hogar/bricolaje, tecnología/oficina y el primer bloque cultural y
+especializado. Para cada fila, el prompt exige un establecimiento no relacionado con development:
+arquitectura, mobiliario, paleta, distribución, objetos, orientación, punto de vista e iluminación
+distintos. La ruta canónica es `sealed-holdout-v3-images/<sourceId>-<tipo>-holdout-v3.png`. La
+creación del directorio se realizó antes de reanudar la cola, después de que la primera copia del
+sourceId 1 fallara sin modificar el dataset; esa salida no copiada quedó conservada en el almacén
+administrado y se generó una salida final distinta para la ruta contractual.
+
+Cada uno de los cien activos finales procede de una llamada independiente a ImageGen built-in. Las
+salidas se copian sin edición desde el almacén administrado, conservando allí los originales. La
+política por fila se aplica en el prompt: las escenas `emptyVenuePreferred` no admiten personas; las
+filas públicas permitidas admiten como máximo tres adultos secundarios, de espaldas, lejanos o
+desenfocados. Se prohíben menores, pacientes, procedimientos, situaciones sensibles, inferencia
+biométrica, logotipos, marcas, carteles, letras y números legibles.
+
+La QA perceptual por muestra revisa development 241 y 250 y holdout 1, 30, 45, 60, 70, 78 y 86.
+Oficinas, funeraria, restaurante, alimentación, marroquinería, informática, filatelia/numismática y
+material deportivo muestran señales físicas suficientes y respetan la política de personas. La
+primera imagen 60, etiquetada como comercio de electrónica de consumo, contenía principalmente
+cafeteras y pequeños aparatos y podía confundirse con electrodomésticos. Antes de sellar se generó
+una variante correctiva cuyo inventario dominante son televisores, altavoces hi-fi, auriculares y
+cámaras, excluyendo explícitamente aparatos de cocina. Solo la variante corregida ocupa la ruta
+canónica. La revisión muestral no sustituye el recorrido humano/OCR completo requerido por 23.22.b.
+
+El sellador calcula SHA-256 sobre todos los activos presentes y deja los nuevos en
+`materializedPendingHumanReview`. La QA estructural confirma 254 vistas C, 86 holdout y 340 hashes
+únicos para 340 PNG no vacíos, con tamaños entre 1.737.952 y 3.392.228 bytes. Se preserva la salida
+nativa del generador: 286 imágenes son 1448x1086, 52 son 1536x1024, una es 1447x1087 y una es
+1449x1086. No existe invariante de resolución exacta en el contrato ni se reescala, recorta o
+normaliza el contenido después de generarlo.
+
+El estado sellado resultante es `reusedDevelopmentCount=508`, `newDevelopmentCount=254`,
+`holdoutCount=86`, `newImageCount=340`, `developmentComplete=true`, `holdoutComplete=false` y
+`complete=false`; quedan 168 holdout por materializar. La revisión humana global permanece falsa y,
+por tanto, `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y
+`promotionAllowed=false`. No se carga CLIP, no se extraen embeddings, no se ejecuta entrenamiento,
+no se producen predicciones y no se consume la única apertura permitida del holdout.
+
+La evidencia automatizada es `python -m pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q
+--basetemp=.pytest-tmp-v3-contract`, con 5/5 pruebas superadas en 5,29 s, además de la inspección de
+conteos, dimensiones, tamaños y unicidad SHA-256. No cambian endpoints, persistencia, permisos,
+ranking ni modelo productivo. El riesgo residual está en texto diminuto de envases/equipos,
+ambigüedad fina entre comercios próximos y cobertura no inspeccionada; se resolverá con QA
+perceptual/OCR completo y revisión humana después de materializar 508/508. La tarea no se marca como
+completada mientras falten las 168 imágenes y esa evidencia.
+
+### Avance de materialización 23.22.b — lote holdout v3 sourceId 87–186
+
+**Fecha de iteración:** 2026-09-02. **Identificador:** 23.22.b, aún abierta. El objetivo es
+materializar como una unidad cien establecimientos nuevos del holdout v3, desde sourceId 87 hasta
+186, manteniendo la disjunción de venue/imageId, el presupuesto de una sola evaluación y la
+prohibición de observar embeddings o predicciones antes de congelar el candidato. Cada activo final
+se genera con una llamada independiente de ImageGen built-in y se copia desde el almacén administrado
+a `sealed-holdout-v3-images/<sourceId>-<tipo>-holdout-v3.png`; los originales se conservan.
+
+La cobertura añade doce familias. `comercio-cultural-y-especializado` completa ropa/calzado
+deportivo, segunda mano, comercio adulto y otros comercios; `flores-jardineria-y-mascotas` separa
+floristería, vivero, semillas/fertilizantes, tienda de animales y suministros; movilidad diferencia
+concesionarios, motocicletas, recambios, neumáticos, maquinaria, náutica, combustibles y lubricantes.
+Grandes superficies se distinguen por escala y recorrido de compra. Alojamiento separa hotel, motel,
+hostal, pensión, fonda, apartahotel, apartamento y camping por recepción, acceso, cocina, comedor,
+parcelas e instalaciones compartidas.
+
+Salud y veterinaria usan infraestructura observable —escala hospitalaria, gabinetes, mesas de
+exploración, rehabilitación, podología u óptica— con escenas completamente vacías. Servicios
+sociales diferencia residencia, centro de día, guardería y centro social mediante dormitorios,
+salas comunes y mobiliario, también sin residentes, usuarios, personal o menores. Belleza separa
+peluquería, barbería, estética, uñas, maquillaje, spa, masaje, tatuaje/piercing, lavandería,
+tintorería, sastrería y arreglos por estaciones y maquinaria, sin tratamientos ni cuerpos.
+Deporte, educación y ocio se apoyan en geometría de pista, equipamiento, aulas/talleres y atracciones.
+
+La política de personas se aplica desde el manifiesto: `emptyVenuePreferred` implica cero personas;
+las filas `backgroundAdultsNonIdentifiable` admiten de una a tres personas adultas pequeñas, al fondo,
+de espaldas o desenfocadas. En todo el bloque se prohíben menores, pacientes, situaciones sensibles,
+rostros identificables, biometría, datos personales y texto legible. La tienda para adultos se
+mantiene vacía, sin desnudez ni actividad sexual; el inventario comercial es la única señal del tipo.
+Las categorías infantiles se representan mediante el espacio vacío y su mobiliario, nunca mediante
+menores.
+
+La revisión perceptual estratificada incluye los sourceId 89, 96, 118, 125, 137, 141, 148, 160, 170,
+180, 185 y 186. Confirma señales plausibles para comercio adulto, concesionario, camping, consulta,
+veterinaria, residencia, peluquería, gimnasio, educación infantil, academia artística y jardín
+botánico. La primera variante del zoológico 185 solo mostraba un recinto paisajístico vacío, creando
+un falso hard negative frente al jardín botánico. Antes del sellado se reemplaza por una variante con
+exactamente dos jirafas adultas sanas a distancia, hábitat amplio e infraestructura de cuidado, sin
+visitantes, cuidadores, alimentación, procedimiento ni estrés. Solo la variante corregida ocupa la
+ruta canónica.
+
+La QA estructural confirma cien archivos nuevos no vacíos: 99 PNG 1448x1086 y uno 1449x1085, con
+tamaños entre 1.686.641 y 3.053.072 bytes. El holdout presente suma 186 archivos y 186 SHA-256
+únicos. El sellador registra `reusedDevelopmentCount=508`, `newDevelopmentCount=254`,
+`holdoutCount=186`, `newImageCount=440`, `developmentComplete=true`, `holdoutComplete=false` y
+`complete=false`; faltan 68 imágenes. Los activos quedan `materializedPendingHumanReview` y no se
+reescalan, recortan ni transforman después de generarse.
+
+No se modifica el modelo de datos, endpoints, servicios productivos, permisos, ranking ni
+persistencia. No se carga CLIP, no se calculan embeddings, no se entrena, no se generan predicciones
+y no se consume el presupuesto holdout. `humanReviewComplete=false`,
+`developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y `promotionAllowed=false`
+siguen siendo los guardas efectivos. La verificación ejecutada es `python -m pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q
+--basetemp=.pytest-tmp-v3-contract`, con 5/5 pruebas superadas en 7,45 s, más unicidad SHA-256,
+conteos, tamaños, dimensiones, inspección visual y `git diff --check` sin errores.
+
+La limitación principal es que el muestreo no equivale al QA perceptual/OCR ni a la revisión humana
+completa de las 508 imágenes. Persisten riesgos de texto diminuto en envases/equipos y ambigüedad
+entre clases físicamente próximas. 23.22.b no se cierra hasta materializar 187–254, preparar las hojas
+de revisión y completar esa evidencia sin observar el modelo.
+
+### Finalización de materialización visual 23.22.b — holdout v3 sourceId 187–254
+
+**Fecha de iteración:** 2026-09-02. **Identificador:** 23.22.b, materialización completa pero tarea
+aún abierta. El objetivo técnico es generar los 68 establecimientos restantes del holdout v3 y
+alcanzar el contrato físico de 254 terceras vistas development más 254 vistas holdout nuevas, sin
+observar embeddings, logits, predicciones o métricas. Cada activo final se obtiene mediante una
+llamada independiente de ImageGen built-in, se copia a su `relativePath` canónico y conserva su
+original en el almacén administrado.
+
+El bloque cubre el final de `ocio-cultura-y-entretenimiento` —discoteca, casino, bingo, bolera,
+billar, arcade, parques y recinto ferial—; `fotografia-y-reparaciones`; alquiler/viajes/movilidad;
+servicios profesionales; finanzas/seguros/inmobiliario y otros servicios al público. Los hard
+negatives se expresan con arquitectura y equipamiento: casino usa mesas y máquinas frente a la sala
+ordenada de bingo; estudio fotográfico se separa de laboratorio y reprografía; cada taller muestra
+herramientas y escala propias; alquiler se diferencia por objeto entregado y espacio logístico;
+oficinas profesionales muestran maquetas, planos, instrumentos o circuitos de trabajo sin contenido
+legible; banco, crédito, seguros e inmobiliaria se distinguen por disposición de atención y activos
+físicos, nunca mediante nombres o códigos privilegiados.
+
+La política de seguridad mantiene vacías las filas que no permiten personas. En las autorizadas se
+limita el contexto a tres adultos pequeños y no identificables. Se excluyen menores, pacientes,
+situaciones sensibles, armas, vigilancia de personas, datos personales, documentos legibles,
+matrículas, datos financieros, marcas y señalética. Funeraria puede mostrar mobiliario y exposición
+sobria, pero no fallecidos, ceremonias, familiares, duelo explícito o información personal. Parque
+temático se representa detenido y sin visitantes. Prompt, tipo, familia y arquetipo verdadero siguen
+prohibidos como entrada del futuro modelo.
+
+La primera cola materializa 187–242. Al solicitar 243 el proveedor responde HTTP 429
+`usage_limit_reached` antes de producir un archivo; por ello no existe activo parcial ni hash que
+preservar para esa fila. Tras la orden de continuación, el flujo reanuda exactamente en 243 y genera
+243–254, sin repetir llamadas válidas ni cambiar al fallback CLI/API. El corte no altera el orden, la
+ruta ni la semántica de sellado.
+
+La inspección perceptual estratificada revisa 187, 188, 189, 193, 199, 205, 215, 225, 235, 242, 248,
+250 y 254. Discoteca, casino y bingo presentan equipamiento diferenciable; pantallas, cartones,
+ruletas y lotería no contienen texto o números legibles en la revisión. Parque temático está vacío.
+Reprografía, reparación de relojes/joyería y alquiler náutico muestran inventario específico. Las
+oficinas de ingeniería, seguridad privada y correduría no exponen documentos o datos activos. La
+funeraria permanece vacía y no representa situaciones sensibles. No se detecta un incumplimiento que
+obligue a sustituir activos en este lote; el muestreo sigue sin equivaler a aprobación exhaustiva.
+
+El sellador registra `reusedDevelopmentCount=508`, `newDevelopmentCount=254`,
+`holdoutCount=254`, `newImageCount=508`, `developmentComplete=true`, `holdoutComplete=true` y
+`complete=true`. La QA estructural transversal confirma 254 PNG development C y 254 PNG holdout,
+508 archivos nuevos no vacíos y 508 SHA-256 distintos. Los tamaños están entre 1.686.641 y
+3.392.228 bytes. Se preservan las dimensiones nativas: 453 imágenes 1448x1086, 52 imágenes
+1536x1024, una 1447x1087, una 1449x1085 y una 1449x1086; no se recorta, reescala ni transforma el
+contenido después de generarlo.
+
+No cambian modelos de datos, endpoints, servicios, permisos, ranking o persistencia productiva. No
+se carga CLIP, no se extraen embeddings, no se entrena y no se consume el presupuesto holdout.
+`humanReviewComplete=false`, `developmentTrainingAllowed=false`,
+`holdoutEvaluationAllowed=false` y `promotionAllowed=false` continúan cerrando toda progresión. La
+verificación ejecutada es `python -m pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py -q
+--basetemp=.pytest-tmp-v3-contract`, con 5/5 pruebas superadas en 6,99 s, además de conteos, tamaños,
+dimensiones, unicidad SHA-256, inspección visual y `git diff --check` sin errores.
+
+La materialización 508/508 queda finalizada, pero 23.22.b no se marca todavía: faltan el QA
+perceptual/OCR exhaustivo y las hojas de revisión exigidas por su contrato. La deuda inmediata es
+crear esa evidencia sin abrir el modelo; 23.22.c requerirá posteriormente una aprobación humana
+explícita y separada antes de habilitar entrenamiento o extracción de embeddings.
+
+### QA estructural/perceptual y paquete de revisión de 23.22.b
+
+**Fecha de iteración:** 2026-09-02. **Identificador:** 23.22.b, QA pre-inferencia implementada pero
+tarea todavía abierta. El objetivo técnico es transformar el corpus materializado en evidencia
+revisable y reproducible sin observar el modelo ni consumir el holdout. El alcance se limita de forma
+explícita a las 254 filas `developmentView=C` y las 254 filas `holdoutRows` del manifiesto v3; las
+508 vistas development A/B reutilizadas no se vuelven a presentar como imágenes nuevas.
+
+Se incorpora `full_taxonomy_visual_multiview_v3_qa.py` y el comando
+`reserly-demand-qa-full-taxonomy-multiview-v3`. El job exige que
+`materialization.complete=true`, resuelve toda ruta bajo el directorio `evaluation` y rechaza escapes,
+decodifica y verifica cada PNG, recalcula su SHA-256 y lo compara con el sello del manifiesto. También
+registra formato, dimensiones, número de entradas EXIF y desviación estándar media de los tres
+canales sobre una reducción 128x128. La puerta estructural exige 508 activos, formato PNG, hashes
+únicos, cero EXIF, resolución mínima 1024x768 y contenido no plano con desviación mínima 5.
+
+La detección perceptual calcula dHash de 64 bits sobre una conversión en escala de grises 9x8 y
+compara exhaustivamente los 128.778 pares posibles. Se marca como variante casi duplicada cualquier
+par con distancia Hamming menor o igual que cuatro. Este algoritmo solo protege independencia visual;
+no usa etiquetas como input, no calcula similitud CLIP y no constituye evaluación de accuracy. El
+resultado contiene cero duplicados exactos, cero pares cercanos, distancia Hamming mínima 11 y cero
+coincidencias SHA entre las vistas de una misma fuente en development y holdout.
+
+El paquete genera cuatro hojas JPG por split, con hasta 64 miniaturas por hoja. Cada celda muestra el
+`sourceId`, tipo, familia y política de personas para facilitar una revisión humana sin inferencia. Se
+crea además `human-review-checklist.v3.json` con 508 filas inmutables enlazadas por `imageId`, ruta y
+SHA-256. Cada fila exige decidir cinco controles: señales correctas de categoría, ausencia de texto o
+marca legible, cumplimiento de política de personas, ausencia de menores/pacientes/situaciones
+sensibles e independencia del local y composición. El estado inicial es `pendingHumanReview`; el job
+no autoaprueba contenido a partir de métricas técnicas.
+
+La interfaz OCR admite exclusivamente un ejecutable local proporcionado mediante
+`--ocr-executable` o descubierto como `tesseract`. Se invoca sin shell, con lista cerrada de
+argumentos, timeout de 45 segundos, modo de segmentación 11 y salida TSV. Solo se registran tokens
+alfanuméricos de al menos dos caracteres con confianza >=70; los hallazgos se destinan a revisión y
+nunca se convierten en features. El parser descarta confianza inválida/baja y limita a 80 caracteres
+cada evidencia. Si el motor no existe, el job termina de forma segura, conserva los demás artefactos
+y fuerza `ocrScanComplete=false` y `qaPassed=false`.
+
+En este entorno Tesseract no estaba disponible. Se intentó instalar el paquete
+`UB-Mannheim.TesseractOCR` mediante WinGet: el artefacto se descargó y verificó correctamente, pero
+el instalador finalizó con `0x800704c7` al ser cancelado por el usuario. La cancelación se respetó y
+no se reemplazó OCR con una aproximación que pudiera declarar falsamente ausencia de texto. El
+informe versionado registra por tanto `ocr.status=unavailable`, cero imágenes escaneadas —no cero
+hallazgos reales—, `structuralQaPassed=true`, `perceptualQaPassed=true`,
+`ocrScanComplete=false` y `qaPassed=false`.
+
+La revisión global de las ocho hojas confirma que no existen celdas vacías, archivos corruptos o
+copias visuales evidentes y que las 23 familias/38 arquetipos aparecen en ambos splits. No sustituye
+la decisión fila a fila, especialmente para consultas sanitarias, despachos y comercios físicamente
+próximos. Consecuentemente `humanReviewComplete=false`, `developmentTrainingAllowed=false`,
+`holdoutEvaluationAllowed=false` y `promotionAllowed=false`; `clipLoaded=false`,
+`embeddingsExtracted=false`, `holdoutPredictionsComputed=false` y `holdoutBudgetConsumed=0` prueban
+que no existe contaminación del conjunto sellado.
+
+La regresión `test_full_taxonomy_visual_multiview_v3_qa.py` valida el filtrado TSV y el contrato de
+los artefactos: 508 filas, reparto 254/254, cobertura 23/23 y 38/38 por split, unicidad, ausencia de
+EXIF/duplicados, ocho hojas, checklist totalmente pendiente y guardas cerrados. Se ejecuta
+`python -m py_compile` sobre módulo y test, seguido de `python -m pytest
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3.py
+apps/demand-engine/tests/test_full_taxonomy_visual_multiview_v3_qa.py -q
+--basetemp=.pytest-tmp-v3-qa`: 7/7 pruebas superadas en 5,08 s. `git diff --check` también pasa.
+
+No se alteran migraciones, tablas, índices, endpoints, servicios productivos, permisos ni ranking.
+El riesgo pendiente es texto diminuto en señalética, envases o pantallas que solo un OCR real y la
+revisión humana pueden resolver. 23.22.b no se marca completada hasta ejecutar ese barrido y resolver
+sus hallazgos; 23.22.c seguirá requiriendo aprobación humana explícita antes de extraer embeddings o
+habilitar entrenamiento.
+
+### Cierre técnico de 23.22.b — barrido OCR completo y parser TSV endurecido
+
+**Fecha de iteración:** 2026-09-02. **Identificador completado:** 23.22.b. Tras la autorización del
+usuario se instala `UB-Mannheim.TesseractOCR` 5.4.0.20240606 mediante WinGet. El ejecutable queda en
+`C:\Program Files\Tesseract-OCR\tesseract.exe`; se verifican versión, bibliotecas nativas y los
+idiomas disponibles `eng` y `osd`. La ejecución permanece enteramente local y no envía imágenes,
+tokens o metadatos a servicios externos.
+
+La primera pasada completa evidencia una condición límite en `_parse_tesseract_tsv`: el lector CSV
+estándar interpretaba como delimitador una comilla doble que Tesseract había reconocido dentro de la
+imagen. Esto podía fusionar varias filas físicas y registrar como un único token parte del TSV. La
+corrección configura `quoting=csv.QUOTE_NONE`, porque el contrato de Tesseract es TSV literal y el
+texto reconocido no debe controlar el framing. Se añade
+`test_tesseract_parser_treats_recognized_quote_as_literal_tsv_text`, que presenta una fila cuyo texto
+es una comilla y una segunda fila `SALE`; solo la segunda debe superar el filtro.
+
+Después de superar 3/3 pruebas focalizadas se descarta el informe de la primera ejecución y se repite
+el barrido sobre las 508 imágenes desde cero. La pasada canónica registra `scannedImageCount=508`,
+`flaggedImageCount=184`, `findingCount=253` y cero tokens con CR, LF o tabuladores. Las alertas se
+distribuyen entre 98 imágenes development C y 86 holdout v3. Predominan fragmentos breves de dos o
+tres caracteres obtenidos de bordes, estanterías y equipamiento; no se eliminan ni se autoaceptan. El
+informe conserva texto, confianza y caja delimitadora, y el checklist los enlaza con el SHA-256 de
+cada activo para que 23.22.c pueda revisarlos sin ambigüedad.
+
+La semántica de las puertas queda separada: `ocrScanComplete=true` acredita cobertura, no ausencia
+de alertas. Combinado con `structuralQaPassed=true` y `perceptualQaPassed=true`, permite
+`qaPassed=true` y completa el alcance técnico de 23.22.b. La revisión humana continúa en
+`humanReviewComplete=false`; por ello `developmentTrainingAllowed=false`,
+`holdoutEvaluationAllowed=false` y `promotionAllowed=false` permanecen invariantes. También se
+mantienen `clipLoaded=false`, `embeddingsExtracted=false`, `holdoutPredictionsComputed=false` y
+`holdoutBudgetConsumed=0`.
+
+La regresión de artefactos se amplía para exigir estado OCR `completed`, cobertura 508 y ausencia de
+caracteres de control en todos los tokens. Se verifican además los contratos ya existentes de
+conteos, familias, arquetipos, hashes, EXIF, duplicados, hojas de contacto, checklist y gobernanza.
+No se modifican datos productivos, migraciones, endpoints, permisos o lógica de ranking. La tarea se
+marca `[x]` solo tras producir la evidencia canónica y mantener bloqueadas las fases posteriores.
+
+La limitación deliberada es que OCR puede producir falsos positivos y no decide si un texto es una
+marca, información personal o señalética admisible. Esa decisión corresponde a 23.22.c, que debe
+resolver las 184 filas señaladas y revisar también las 324 sin alerta antes de habilitar cualquier
+extracción de embeddings o entrenamiento.
+
+### Preparación de autorización humana 23.22.c — hojas OCR anotadas y bloqueo explícito
+
+**Fecha de iteración:** 2026-09-02. **Identificador:** 23.22.c, revisión técnica terminada pero
+autorización humana pendiente. Se incorpora `full_taxonomy_visual_multiview_v3_review.py` para
+convertir las alertas del checklist en evidencia visual navegable sin modificar los PNG sellados ni
+el estado de ninguna fila. El comando
+`reserly-demand-review-full-taxonomy-multiview-v3` recibe checklist, QA, directorio de hojas y ruta
+del resumen; todos poseen valores canónicos relativos al dataset v3.
+
+El constructor opera fail-closed. Exige `qaPassed=true`, `ocrScanComplete=true`, exactamente 508
+filas `pendingHumanReview`, `holdoutBudgetConsumed=0` y ausencia de predicciones holdout. Las rutas
+de imágenes se resuelven bajo el directorio del dataset y cualquier escape provoca
+`FULL_TAXONOMY_V3_REVIEW_PATH_ESCAPE`. El job no contiene una función de autorización, por lo que ni
+una ejecución accidental ni una métrica favorable puede mutar permisos.
+
+Para cada una de las 184 imágenes con OCR se dibujan sobre una copia en memoria las cajas originales
+con trazo rojo. Los PNG fuente permanecen intactos. Las copias anotadas se reducen a celdas 360x270
+y se distribuyen en ocho hojas JPEG de hasta 24 imágenes; el pie muestra split, sourceId, tipo y los
+tokens con confianza. El resumen `human-review-summary.v3.json` enlaza estas hojas con las ocho hojas
+generales, registra las cinco comprobaciones requeridas por imagen y publica la frase de aprobación
+exacta. Mantiene de forma expresa `awaitingExplicitHumanApproval` y todos los permisos cerrados.
+
+Se inspeccionan las ocho hojas OCR completas y las ocho generales. Las 253 cajas señaladas recaen en
+su mayoría sobre uniones, reflejos, texturas, bordes de mobiliario, estanterías, luminarias o
+equipamiento. No se identifica texto legible persistente, marca comercial, dato personal o señal que
+obligue a rechazar una fila. La revisión general confirma coherencia de categoría y composición,
+independencia entre vistas y ausencia de menores, pacientes, rostros identificables o situaciones
+sensibles. Las 377 filas `emptyVenuePreferred` aparecen vacías; las 131 filas
+`backgroundAdultsNonIdentifiable` solo permiten adultos pequeños de contexto según su contrato.
+
+La decisión técnica es recomendar la aprobación de las 508 imágenes, conservando íntegramente las
+alertas para trazabilidad. Esta recomendación no equivale a consentimiento humano: el contrato exige
+la frase exacta `Apruebo las 508 imágenes nuevas del dataset visual taxonómico v3`. Hasta recibirla,
+el checklist no se modifica, 23.22.c no se marca `[x]`, `humanReviewComplete=false`,
+`developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y `promotionAllowed=false`.
+
+Las pruebas `test_full_taxonomy_visual_multiview_v3_review.py` verifican conteos 508/254/254,
+políticas de personas 377/131, 184 imágenes y 253 tokens OCR, ocho hojas, frase contractual, permisos
+cerrados y rechazo de una QA incompleta. Junto a contratos v3 y QA se ejecutan 10/10 pruebas en
+19,56 s; `python -m py_compile` y `git diff --check` pasan. No cambian migraciones, datos de negocio,
+endpoints, ranking o modelos, y no se carga CLIP ni se consumen predicciones del holdout.
+
+### Autorización humana vinculada a linaje y cierre de 23.22.c
+
+**Fecha de iteración:** 2026-09-02. **Identificador completado:** 23.22.c. El propietario del proyecto
+emite la frase contractual exacta `Apruebo las 508 imágenes nuevas del dataset visual taxonómico
+v3`. Se implementa `full_taxonomy_visual_multiview_v3_authorization.py` para convertir esa decisión
+en permisos offline verificables sin ampliar el alcance a producción ni observar el holdout.
+
+`authorize` recibe manifiesto, informe QA, checklist, resumen de revisión, destino del registro y
+frase. Antes de mutar comprueba igualdad literal, `materialization.complete=true`, revisión aún
+pendiente, `qaPassed=true`, `ocrScanComplete=true`, 508 imágenes evaluadas, cero predicciones y cero
+presupuesto holdout. El resumen debe estar en `awaitingExplicitHumanApproval` y el checklist debe
+contener exactamente 508 pendientes. Se seleccionan exclusivamente las 254 filas development con
+`developmentView=C` y las 254 filas `holdoutRows`; las vistas A/B heredadas conservan su aprobación
+v2 y no se vuelven a atribuir a esta decisión.
+
+La validación de linaje construye un mapa único por `imageId` y exige, para cada fila del checklist,
+coincidencia de identificador, `relativePath` y SHA-256 frente a `generation.imageSha256`. Un hash
+alterado aborta con `FULL_TAXONOMY_V3_APPROVAL_LINEAGE_MISMATCH`. Antes de escribir se calculan los
+SHA-256 del manifiesto, QA, checklist y resumen en su estado previo; el registro conserva esos sellos
+y el hash de la frase, nunca la frase en claro. La comparación posterior confirma que
+`qaReportSha256=8e2ded5bc32f6a243a02a075e3d3796f58406d5de66f2486ed1716cf90a2b353`
+coincide byte a byte con el informe versionado.
+
+Las escrituras JSON son atómicas mediante archivo temporal contiguo y `Path.replace`. Las filas
+development C cambian a `materializedHumanApproved`, `humanReviewStatus=approved` y
+`developmentTrainingAllowed=true`; las holdout cambian al mismo estado humano y
+`testEvaluationAllowed=true`. Todas conservan `productionTrainingAllowed=false` y reciben revisor y
+marca temporal UTC. El checklist fija sus cinco comprobaciones a `true`, registra 508 aprobadas,
+cero pendientes/rechazadas y mantiene en cada fila las alertas OCR originales.
+
+El manifiesto y el resumen publican `humanReviewComplete=true`,
+`developmentTrainingAllowed=true` y `holdoutEvaluationAllowed=true`. Estos flags autorizan dos
+flujos distintos: ajuste/selección con development y, solo después de congelar el candidato, una
+evaluación sellada. `productionTrainingAllowed=false` y `promotionAllowed=false` impiden interpretar
+la aprobación visual como despliegue. El registro conserva además `clipLoaded=false`,
+`embeddingsExtracted=false`, `holdoutPredictionsComputed=false` y `holdoutBudgetConsumed=0`.
+
+Se endurece `full_taxonomy_visual_multiview_v3_qa.evaluate`: si el checklist existente contiene al
+menos una fila aprobada, aborta antes del barrido con
+`FULL_TAXONOMY_V3_QA_CHECKLIST_ALREADY_AUTHORIZED`. Así una repetición de QA no puede sobrescribir el
+acto humano ni devolver filas a pendientes. Las pruebas de transición crean copias pendientes
+aisladas; las pruebas canónicas verifican el estado autorizado real.
+
+La suite añade rechazo por frase incorrecta, rechazo por hash inconsistente, autorización offline
+completa y contrato canónico con producción/promoción bloqueadas. Junto a materialización, QA y
+paquete de revisión se ejecutan 14/14 pruebas en 20,96 s, además de `python -m py_compile` y
+`git diff --check`. No cambian migraciones, tablas, endpoints, permisos productivos, ranking ni
+modelos. La siguiente fase permitida es 23.22.d sobre development; el holdout no debe abrirse hasta
+que candidato, hiperparámetros, política y pretest lock queden congelados.
+
+### Selección multivista development-only y congelación de 23.22.d
+
+**Fecha de iteración:** 2026-09-02. **Identificador completado:** 23.22.d. Se implementa
+`full_taxonomy_visual_multiview_v3_training.py` para seleccionar dos cabezas desde píxeles autorizados
+sin abrir el holdout v3. El job aborta si falta autorización, cualquiera de las 762 filas development
+no permite entrenamiento, ya existe un lock/modelo/informe/política congelado o aparece antes de
+tiempo `holdout-clip-embeddings.v3.json`.
+
+La construcción del corpus de embeddings trata las antiguas imágenes v2 como development consumido.
+Las 254 embeddings A se reutilizan desde `development-clip-embeddings.v2.json` y las 254 B desde el
+antiguo `holdout-clip-embeddings.v2.json`; para cada fila se exige coincidencia de imageId, SHA-256,
+tipo y familia. Solo las 254 vistas C nuevas se abren como píxeles: se resuelve su ruta bajo
+`evaluation`, se recalcula el hash y CLIP ViT-B/32 fijado en la revisión
+`fbf5e647b25f3514e526849b05cc0196b206d822` produce vectores L2 de 512 dimensiones en lotes de ocho.
+El artefacto compacto resultante contiene 762 filas, 254 por vista, y declara cero embeddings holdout.
+
+La validación interna implementa exactamente tres folds por establecimiento: A retenida con B+C para
+entrenar, B retenida con A+C y C retenida con A+B. Cada fold contiene 254 consultas y ninguna imagen
+de entrenamiento se reutiliza como validación. Todas las transformaciones —centros, covarianzas,
+PCA, ridge, kernels y prototipos— se ajustan de nuevo dentro del fold; las métricas son accuracy,
+error, precision/recall/F1 macro, Recall@3, mínimo recall por clase y recall detallado.
+
+La búsqueda familiar fija 35 candidatos antes del holdout: centroide, k-NN k={1,3,5,7}, ridge con
+cuatro regularizaciones, cuatro agregaciones de prototipos por tipo, nueve kernel ridge RBF, seis
+PCA+ridge, tres LDA y cuatro fusiones de prototipo con arquetipo predicho. La cabeza auxiliar compara
+31 candidatos equivalentes sin la fusión circular. La selección ordena por F1 macro, accuracy,
+Recall@3 y clave determinista.
+
+La cabeza familiar ganadora es `type-prototype-archetype-fusion-0.25`. Aprende 254 prototipos CLIP
+por tipo, agrega por máximo dentro de cada familia y suma con peso 0,25 una compatibilidad derivada de
+la cabeza LDA de arquetipos. En inferencia la LDA predice probabilidades de 38 arquetipos desde el
+embedding; la matriz arquetipo-familia se aprende solo en development. El arquetipo verdadero nunca
+entra en la consulta. La cabeza auxiliar independiente ganadora es `lda-1`, con covarianza
+intra-clase regularizada por la varianza media.
+
+La validación familiar obtiene accuracy 0,79527559, error 0,20472441, precision macro 0,81518665,
+recall macro 0,76498406, F1 macro 0,76972758, Recall@3 0,95669291 y mínimo recall de clase medio
+0,36111111. La auxiliar obtiene accuracy 0,73097113, precision macro 0,76157643, recall macro
+0,70752561, F1 macro 0,71199779 y Recall@3 0,91076116. La fusión mejora modestamente al prototipo
+puro —accuracy 0,79265092 y F1 0,76375396—, sin convertir la señal en una promesa de top-1 >=0,90.
+
+El modelo versiona como única entrada `clipImageEmbedding512` y prohíbe explícitamente `prompt`,
+`typeCode`, `familyCode` y `archetypeCode`. Los códigos de tipo almacenados nombran prototipos
+aprendidos y no son features de la consulta. El modelo conserva ambas cabezas, clases, pesos,
+prototipos, matriz auxiliar, revisión CLIP y hash del corpus. Producción y promoción permanecen false.
+
+La política fija antes del test accuracy >=0,90, error <=0,10, precision/recall/F1 macro >=0,80,
+recall mínimo por clase >=0,70, brecha <=0,10 y presupuesto 1. El pretest lock enlaza SHA-256 de
+manifiesto, autorización, manifiesto CLIP, embeddings, informe, modelo y política, y calcula un
+fingerprint ordenado de las 254 filas holdout a partir de IDs, clase, arquetipo y hash. Registra
+`holdoutEmbeddingsCreatedBeforeLock=false`, `holdoutPredictionsComputedBeforeLock=false`, budget 1 y
+consumed 0.
+
+La documentación de ejecución y límites reside en
+`FULL_TAXONOMY_VISUAL_MULTIVIEW_DEVELOPMENT_V3.md`. La regresión comprueba conteos, linaje A/B/C,
+ausencia física de embeddings holdout, candidatos, métricas exactas, entradas prohibidas, hashes del
+lock y rechazo de una segunda congelación antes de inferencia. Se ejecutan `python -m py_compile`,
+18/18 pruebas en 20,10 s y `git diff --check` sin errores. No cambian migraciones, endpoints, datos
+productivos ni ranking. La única acción siguiente autorizada es 23.22.e y debe conservar cualquier
+resultado real, incluso si falla las puertas.
+
+### Recomendador contextual v8 por acciones, ubicación point-in-time, tiempo y escasez alineada
+
+**Fecha de iteración:** 2026-09-02. **Identificador completado:** 23.23. El objetivo técnico es
+predecir la necesidad actual, no un gusto estático: las acciones recientes identifican categoría y
+servicio, la posición de sesión condiciona el ranking y una plaza escasa solo se muestra a usuarios
+alineados y próximos. Se añaden `recommendation_action_context_dataset.py` y
+`recommendation_action_context_training.py`, comandos de consola, políticas v5-v8, datasets
+temporales, locks, modelos XGBoost, informes, model card y regresión. No cambian tablas, migraciones,
+endpoints ni el camino transaccional de reservas; filtros y holds continúan fuera del modelo.
+
+El generador reutiliza 100 locales y 40 perfiles gobernados. V8 produce 3.200 sesiones con ocho
+alternativas, 25.600 candidatos y 17.596 eventos: búsqueda, filtro, vista de local/servicio, mapa,
+disponibilidad, guardado, comparación e inicio/finalización de reserva. Sus timestamps preceden al
+ranking. `_recent_affinity` agrega las cinco más recientes con pesos 0,42, 0,26, 0,17, 0,10 y 0,05;
+así un cambio actual supera señales históricas. `persistentPreferenceAffinity` solo lee pesos con
+`persistentPersonalizationConsent=true`; sin consentimiento vale cero.
+
+Cada sesión deriva una posición efímera distinta. `_haversine_km` calcula el gran círculo con radio
+6.371,0088 km. El modelo recibe proximidad exponencial, ajuste al radio y decaimiento; latitud y
+longitud no están en `featureNames`, como tampoco IDs, posición ni outcomes. El manifiesto exige
+ubicación point-in-time y fallback a zona explícita/reglas sin permiso. Producción deberá imponer
+TTL, minimización de precisión y revocación.
+
+La disponibilidad incluye día/hora, plazas totales y restantes. Elegibilidad, apertura, servicio y
+capacidad positiva son filtros previos. `remainingSlotUrgency` no se suma globalmente: la única
+oportunidad es `contentAffinity * currentLocationProximity * withinPreferredRadius *
+remainingSlotUrgency`. Si intención o radio fallan, la oportunidad es cero. `lowExposureAffinity`
+también se multiplica por contenido para impedir exploración irrelevante.
+
+V5 documenta un primer fallo: 5-fold 0,8815 y test 0,8675. Su brecha 0,014 descartó sobreajuste; el
+problema era que el local usado para generar el recorrido quedaba positivo aunque otro candidato
+satisficiera mejor distancia, horario y capacidad. El resultado y opening record se conservan sin
+reapertura. V6 usa seed 6381, namespace UUID y hashes nuevos. El local inicial solo genera contexto;
+la relevancia previa al ruido se adjudica al máximo de utilidad point-in-time. No hay leakage porque
+todos sus términos existen al pedir ranking. Se conservan 240 elecciones ambiguas en desarrollo y
+47 en test para evitar un benchmark artificialmente determinista. Aunque v6 obtuvo test 0,9125,
+una auditoría de varianza detectó afinidad de día constante por consulta y hora dependiente solo de
+la sesión. V7 introdujo preferencias temporales por local y obtuvo 0,89; se preservó como fallo. V8
+usa seed 8527, otro holdout y exige variación por candidato: 2.398/2.400 sesiones varían en día y
+2.394/2.400 en hora. Ningún holdout se reabrió ni se usó para ajustar su propia versión.
+
+La matriz contiene 23 features pre-outcome. Cinco folds expansivos garantizan que validación sea
+posterior a train. V8 compara tres LambdaMART con profundidad 2/3, 20-30 árboles, learning rate
+0,025-0,035, L1/L2 y subsampling. Gana 24 árboles, profundidad 3, rate 0,025, child weight 45, L2 90,
+L1 5 y muestreos 0,68/0,76. El prior contextual acotado preserva intención, ubicación, horario y
+escasez sin eludir lo aprendido.
+
+La métrica top-1 se calcula por sesión, evitando accuracy binaria inflada por siete negativos.
+Desarrollo OOF obtiene accuracy/precision/recall/F1 0,8735, error 0,1265 y Recall@3 0,9995. El
+holdout de 800 sesiones se sella enlazando dataset, política, informe y modelo en
+`pretest-lock.v8.json`, presupuesto 1/1. La apertura única obtiene 725/800:
+accuracy/precision/recall/F1 0,90625, error 0,09375, Recall@3 0,99875 y brecha 0,03275.
+
+Diez contrafactuales prueban intención reciente frente a historia, desempate geográfico, proximidad
+incapaz de anular incompatibilidad, hueco escaso alineado, urgencia incompatible sin boost, día,
+hora, servicio, preferencia consentida y local infraexpuesto compatible; pasan 10/10. Los cortes de
+test registran: escasez alineada 163 sesiones/0,99386503; ubicación sensible 323/0,92879257; pivot de
+intención 243/0,89300412; tarde 320/0,9125; cold venue 270/0,8962963. Todos superan la puerta 0,80.
+
+La política exige train <=0,90, test >=0,90, error <0,15, precision/recall/F1 >=0,80, macro familia
+>=0,80, brecha <=0,10, escenarios >=0,90 y slices >=0,80. `qualityGatesPassed=true`, pero la model
+card mantiene `productionEvidence=false`, `promotionAllowed=false`, aprobación humana y fallback al
+contextual v4 seguido de reglas. Riesgos: datos sintéticos, 28 tipos/seis familias, falta de causalidad,
+shadow/A-B reales, drift geográfico, consentimiento y equidad por zona.
+
+Evidencia: `python -m py_compile` pasa; 17/17 pruebas focales v6/v8 y regresión v2 pasan en 8,98 s;
+`git diff --check` pasa. Se verifican cronología, conteos, Haversine, ausencia de coordenadas/IDs/
+outcomes, fórmula de escasez, capacidad, métricas, slices, contrafactuales y rechazo de una segunda
+apertura. No se abrió ni leyó el holdout visual v3.
+
+### Apertura única del holdout visual multivista y cierre de 23.22.e
+
+**Fecha de iteración:** 2026-09-02. **Identificadores completados:** 23.22.e y 23.22. Se implementa
+`full_taxonomy_visual_multiview_v3_holdout.py` como único punto autorizado para consumir el holdout.
+Su objetivo no es mejorar el candidato sino verificar el artefacto congelado sobre 254 locales nuevos,
+conservar el resultado real y bloquear cualquier reapertura. No cambia migraciones, endpoints,
+runtime productivo ni ranking.
+
+`_verify_preflight` aborta antes de cargar CLIP si existen embeddings, resultado u opening record.
+Lee manifiesto, autorización, candidato, política y lock, y recalcula los SHA-256 de manifiesto,
+autorización, manifiesto CLIP, embeddings development, informe development, modelo y política. Exige
+presupuesto 1, consumo 0, reapertura false, 254 filas, fingerprint congelado, 254 imageId y venueId
+únicos, revisión humana aprobada y permiso offline por fila. También comprueba que la única entrada
+del modelo sea `clipImageEmbedding512` y que prompt, tipo, familia y arquetipo estén prohibidos.
+
+Antes de inferir se resuelve cada ruta bajo `evaluation`, se impiden escapes y se recalcula el hash
+de los 254 PNG. `HuggingFaceClipEmbedder` carga localmente CLIP ViT-B/32 en la revisión congelada
+`fbf5e647b25f3514e526849b05cc0196b206d822`; procesa lotes de ocho y valida una matriz finita
+254x512. `holdout-clip-embeddings.v3.json` guarda IDs, linaje, etiquetas solo para evaluación, hash
+de imagen y vector. Mantiene `productionTrainingAllowed=false` y `promotionAllowed=false`.
+
+La inferencia familiar reconstruye exactamente `type-prototype-archetype-fusion-0.25`. Calcula
+similitud coseno contra los 254 prototipos de tipo, agrega máximo por familia, predice probabilidades
+de 38 arquetipos mediante la LDA congelada, proyecta con `archetypeToFamily`, normaliza ambas ramas
+por consulta y suma la auxiliar con alpha 0,25. La cabeza auxiliar `lda-1` usa exclusivamente pesos e
+intercept congelados. No se ajusta ningún parámetro, umbral, clase o prototipo con holdout.
+
+La familia obtiene accuracy 0,7480315 (190/254), error 0,2519685, precision macro 0,79612678,
+recall macro 0,71791241, F1 macro 0,72358713, Recall@3 0,92913386 y mínimo recall 0,25. Frente al
+development 0,79527559, la brecha absoluta es 0,04724409. Tecnología/oficina alcanza 0,25;
+fotografía/reparaciones 0,33333333; otros servicios 0,42857143. Restauración, automoción y
+finanzas/inmobiliario llegan a 1, pero no compensan el fallo macro/mínimo.
+
+La cabeza de arquetipos obtiene accuracy 0,72047244, error 0,27952756, precision macro 0,82217975,
+recall macro 0,71559223, F1 macro 0,72463901, Recall@3 0,91732283 y mínimo recall 0. Solo pasa la
+puerta familiar de brecha <=0,10; fallan accuracy >=0,90, error <=0,10, precision/recall/F1 macro
+>=0,80 y mínimo recall >=0,70. `qualityGatesPassed=false`, `trainingAllowed=false`,
+`productionEvidence=false` y `promotionAllowed=false`. La cercanía development-holdout junto al
+top-3 alto indica subajuste/solapamiento visual top-1, no una brecha fuerte de memorización.
+
+La escritura versiona embeddings, resultado y `holdout-opening-record.v3.json`; después actualiza el
+lock con `consumed=1`, estado `consumed`, hashes de los tres artefactos y reapertura false. Una segunda
+llamada falla con `FULL_TAXONOMY_V3_HOLDOUT_ALREADY_OPENED` antes de instanciar CLIP. El registro fija
+`selectionUsedHoldout=false`; estos datos consumidos solo pueden servir para diagnóstico histórico,
+nunca para afirmar una nueva evaluación independiente.
+
+Se añade `FULL_TAXONOMY_VISUAL_MULTIVIEW_HOLDOUT_V3.md` y una regresión que verifica 254 embeddings,
+512 dimensiones, linaje por hash, métricas exactas, puertas fallidas, permisos cerrados, hashes de
+consumo y rechazo de reapertura. Las pruebas development se actualizan para distinguir el estado
+histórico limpio del estado posterior consumido. `python -m py_compile`, 8/8 pruebas focales en
+5,08 s y `git diff --check` pasan. 23.22.e y el padre 23.22 quedan completos porque la evaluación se
+ejecutó y conservó; 23.16.c.3.d permanece pendiente porque no se alcanzaron sus puertas.
+
+### Desarrollo multirregión robusto v4 y cierre de 23.24.a
+
+**Fecha de iteración:** 2026-09-02. **Identificador completado:** 23.24.a. El usuario pide mejorar
+solo el clasificador visual y conservar intacto el recomendador contextual v8. Se implementa
+`full_taxonomy_visual_multiregion_v4.py` para reutilizar correctamente la evidencia consumida,
+extraer una representación regional adicional y seleccionar una cabeza que no optimice la media a
+costa del dominio más difícil. No se generan imágenes, no se cambia el recomendador ni se abre test.
+
+La fuente combina 762 filas A/B/C de `development-clip-embeddings.v3.json` y 254 filas del antiguo
+holdout consumido. Estas últimas reciben `developmentView=D`; nunca recuperan condición de test. Se
+exigen 1.016 imageId únicos, 254 por vista, opening record v3 consumido 1/1 y reapertura false. El
+artefacto declara `split=consumed-development-only` e `independentTestAvailable=false`.
+
+Para cada PNG se verifica de nuevo el hash y la ruta bajo `evaluation`. PIL abre el original, convierte
+a RGB y deriva en memoria el rectángulo central tras retirar 10 % por cada borde. No se persiste el
+recorte ni se modifica el activo. CLIP ViT-B/32 congelado procesa lotes de 16 y genera un segundo
+vector L2 de 512 dimensiones. `development-multiregion-embeddings.v4.json` conserva por fila el
+embedding global, el central, IDs, tipo/familia solo como etiquetas supervisadas, vista y hash.
+
+Se ejecuta diagnóstico amplio. Los 35 candidatos v3 sobre cuatro vistas sitúan el baseline en
+accuracy 0,7992126 y F1 0,78165518. Dos prompts taxonómicos CLIP por tipo no superan 0,791339 y
+degradan al aumentar su peso. Cuatro XGBoost regularizados fallan por la dimensionalidad densa y
+muestra pequeña: máximo 0,33956693. SVM lineal/RBF sobre global llega a 0,8011811; sobre global+
+centro, RBF C=100 llega a 0,81988189 y F1 0,79543814. La prueba de píxel clásico se cancela por coste
+antes de completar un fold y no produce artefacto. Estas ramas permanecen diagnósticas, no se
+incorporan al modelo.
+
+La primera fusión de prototipos global+centro alcanza media 0,81988189, pero baja la vista D a
+0,72440945; se rechaza como selección porque escondería regresión de dominio. Se introduce entonces
+un criterio robusto: peor F1 de fold, peor accuracy, F1 medio, accuracy media y clave determinista.
+Diez pesos fusionan la rama de prototipos con una LDA shrinkage=1 ajustada sobre la concatenación
+global+centro normalizada. Cada transformación se reajusta dentro de cada fold.
+
+Gana `global-center-prototype-lda-robust-0.75`. La rama prototipo calcula 254 centros globales y 254
+centrales por tipo, similitud coseno y máximo por familia. Las dos matrices de score se estandarizan
+por consulta. La LDA produce 23 logits desde el vector concatenado, se estandariza y entra con peso
+0,75. El JSON congelado almacena prototipos, labels, pesos/intercept LDA, clases y alpha; en consulta
+solo acepta `clipGlobalEmbedding512` y `clipCenter80Embedding512`. Prompt, typeCode, familyCode y
+archetypeCode están prohibidos como features, aunque los códigos nombren parámetros supervisados.
+
+La validación obtiene accuracy 0,83267717, error 0,16732283, precision macro 0,85670008, recall macro
+0,81304345, F1 macro 0,81591205, Recall@3 0,96062992 y recall mínimo medio 0,375. Los folds A/B/C/D
+obtienen accuracy 0,88582677, 0,85826772, 0,80314961 y 0,78346457. El peor F1 es 0,76688298. La
+ganancia media sobre el baseline es 0,03346457 y D mejora 0,03543307 frente a su resultado v3.
+
+`full-taxonomy-visual-multiregion-classifier.v4.json` congela el candidato. La política v4 mantiene
+para un futuro holdout accuracy >=0,90, error <=0,10, macro precision/recall/F1 >=0,80, recall mínimo
+>=0,70 y brecha <=0,10. Exige locales/imágenes nuevos, presupuesto 1 y promoción automática false.
+No existe pretest lock porque todavía no hay holdout v4; `qualityConfirmed=false`,
+`independentTestEvaluated=false`, `productionTrainingAllowed=false` y `promotionAllowed=false`.
+
+La guía `FULL_TAXONOMY_VISUAL_MULTIREGION_DEVELOPMENT_V4.md` publica metodología, métricas y límites.
+La regresión valida 1.016 filas, cuatro vistas, dos vectores de 512, ausencia de imágenes nuevas,
+métricas y uplifts exactos, peor fold, formas del modelo, entradas prohibidas, hashes, política cerrada
+y rechazo de una segunda congelación. `python -m py_compile`, 8/8 pruebas focales en 10,55 s y
+`git diff --check` pasan. 23.24.a se completa; 23.24.b, 23.24 y 23.16.c.3.d siguen pendientes hasta
+un holdout nuevo que no reutilice ninguno de los 1.016 establecimientos consumidos.

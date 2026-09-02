@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "full-taxonomy-visual-policy-v2",
+  "selectionMetricOrder": [
+    "macroF1",
+    "accuracy",
+    "familyRecallAt3"
+  ],
+  "foldCount": 4,
+  "minimumHoldoutAccuracy": 0.9,
+  "maximumHoldoutError": 0.1,
+  "minimumMacroPrecision": 0.8,
+  "minimumMacroRecall": 0.8,
+  "minimumMacroF1": 0.8,
+  "maximumGeneralizationGap": 0.1,
+  "holdoutPredictionBudget": 1,
+  "productionEvidence": false,
+  "promotionAllowed": false
+}

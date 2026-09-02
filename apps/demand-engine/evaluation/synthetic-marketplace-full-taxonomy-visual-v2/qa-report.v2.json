@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "qaVersion": "full-taxonomy-visual-holdout-qa-v2",
+  "datasetVersion": "synthetic-marketplace-full-taxonomy-visual-v2",
+  "evaluatedImageCount": 508,
+  "developmentImageCount": 254,
+  "holdoutImageCount": 254,
+  "familyCountPerSplit": {
+    "development": 23,
+    "holdout": 23
+  },
+  "decodablePngCount": 508,
+  "minimumWidth": 1447,
+  "minimumHeight": 1085,
+  "minimumChannelStdMean": 34.993367,
+  "imagesWithExif": 0,
+  "exactDuplicatePairs": 0,
+  "nearDuplicatePairsDhashDistanceLe4": 0,
+  "nearDuplicatePairs": [],
+  "sameTypeCrossSplitHashOverlap": 0,
+  "contactSheets": {
+    "development": [
+      "development-01.jpg",
+      "development-02.jpg",
+      "development-03.jpg",
+      "development-04.jpg"
+    ],
+    "holdout": [
+      "holdout-01.jpg",
+      "holdout-02.jpg",
+      "holdout-03.jpg",
+      "holdout-04.jpg"
+    ]
+  },
+  "clipLoaded": false,
+  "holdoutPredictionsComputed": false,
+  "holdoutBudgetConsumed": 0,
+  "humanReviewComplete": false,
+  "trainingAllowed": false,
+  "qaPassed": true
+}

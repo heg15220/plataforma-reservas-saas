@@ -5094,3 +5094,258 @@ manifiesto content-addressed confirma 25 imágenes por etiqueta, 80/40/80 según
 cero nuevas imágenes y cero candidatos de test. La escritura JSONL usa bytes LF canónicos para que
 el hash sea reproducible en Windows. Este flujo reutiliza evidencia sin reabrir tests consumidos ni
 alterar los artefactos de las tareas 23.16 y 23.17.
+
+### 14.69 Recomendador contextual diverso v2 y test temporal sellado
+
+`synthetic-marketplace-diverse-v2` reutiliza los 100 locales, 40 perfiles y referencias visuales de
+v1 sin crear ni modificar imágenes. Un sidecar funcional añade 28 subtipos de seis familias que son
+compatibles con los espacios existentes. También conserva servicios, atributos, estilo y paleta como
+etiquetas independientes. El catálogo sigue `candidateOnly`: las filas exigen revisión humana,
+producción false y no cambian navegación, seeds ni categorías públicas. Los píxeles no participan en
+este entrenamiento; `visualAmbienceAffinity` compara solo metadatos declarados de ambiente.
+
+El generador produce 2.700 sesiones y 21.600 candidatos: 1.500 train, 500 validación y 700 test. Cada
+sesión contiene ocho candidatos elegibles con capacidad, un positivo y features pre-outcome de tipo,
+familia, servicio, atributo, ambiente, disponibilidad, escasez, exposición, calidad, proximidad,
+precio, horario y cold-start. IDs, posición, clic, reserva y relevancia quedan fuera de features. La
+selección solo parsea desarrollo; el test reside en un JSONL separado y sellado cuyo hash se fija en
+`pretest-lock.v2.json`.
+
+Los cinco folds son rolling-origin expansivos. Tres configuraciones LambdaMART poco profundas usan
+L1/L2, `minimumChildWeight`, muestreo de filas/columnas y un hilo determinista. La selección maximiza
+F1 top-1, recall@3 y accuracy media sin test. Desarrollo conserva un 12 % de decisiones observadas
+ambiguas como weak labels; el test de compatibilidad sintética adjudicada conserva un 6 %. Ambas tasas
+se fijan antes de entrenar, usan el mismo contrato de features y permanecen visibles. No se alteran
+predicciones ni se degradan features para reducir train.
+
+La métrica principal es acierto top-1 por sesión, no accuracy binaria sobre siete negativos. Con un
+positivo y una predicción, accuracy, precision, recall y F1 top-1 coinciden. Se publican además
+precision@3, recall@3 y métricas macro por familia. El candidato seleccionado obtiene 0,878229 en
+5-fold y 0,876 in-sample. Tras congelar hashes, la apertura única del test obtiene 654/700:
+accuracy/precision/recall/F1 0,934286, error 0,065714, recall@3 0,995714 y brecha 0,056057. Las
+métricas macro de familia superan 0,996 y las puertas de 23.17.b pasan.
+
+Doce escenarios contrafactuales cubren alineación con baja exposición y pocas plazas, ambiente,
+horario, distancia, subtipo/especialidad, atributos, cold-start, calidad subordinada a intención,
+capacidad, precio-distancia, hard negative de la misma familia y prohibición de que el ambiente
+sobrescriba un tipo incompatible. Pasan 12/12. Esto complementa, pero no sustituye, el test temporal.
+
+`test-opening-record.v2.json` consume el presupuesto 1/1 y una segunda apertura falla cerrada. Aunque
+`qualityGatesPassed=true` para esta evidencia offline, el resultado mantiene `productionEvidence=false`,
+`promotionAllowed=false` y fallback determinista: datos sintéticos no demuestran conversión,
+causalidad, equidad ni rendimiento productivo.
+
+### 14.70 Personalización visual point-in-time y ablación pixel v4
+
+`synthetic-marketplace-pixel-personalization-v4` introduce píxeles indirectamente mediante CLIP
+congelado. El generador une 70 de los locales del marketplace con imágenes aprobadas de
+`visual-category-dataset-v2-definitive-200`. Antes de usar cada vector verifica que imageId, venueId y
+categoría coinciden, resuelve el PNG, recalcula su SHA-256 y valida embedding L2 de 512 dimensiones.
+No genera imágenes ni ajusta el backbone. Los otros 130 embeddings sin unión exacta no se fuerzan a
+locales distintos.
+
+Cada uno de los 40 perfiles produce dos eventos sintéticos explícitos de preferencia visual antes del
+periodo. El centroide inicial suma sus embeddings normalizados. Las 2.700 sesiones se generan en
+orden estrictamente creciente; antes de puntuar se aplican exclusivamente outcomes cuyo
+`outcomeObservedAt` de 24 horas ya ha madurado. Después se calcula coseno usuario-imagen y se escala
+a `pixelVisualAffinity`. El dataset conserva `visualProfileEvidenceCount` y
+`visualProfileBuiltFromMaturePastOnly=true` para auditar que el historial nunca disminuye ni consume
+el outcome corriente o futuro.
+
+Los 70 locales se separan por categoría en 54 warm, ocho validation-cold y ocho test-cold. Desarrollo
+contiene 2.000 sesiones y el test temporal sellado 700; todos tienen ocho candidatos. Se mantienen 23
+subtipos de seis familias funcionales. Los cinco folds rolling-origin comparan dos brazos sobre
+idénticas sesiones: baseline con 14 features contextuales y multimodal que solo añade afinidad visual
+y confianza del historial. IDs, posición, clic, reserva y relevancia quedan fuera de ambos contratos.
+
+El ranker final es una regresión logística pairwise lineal: por consulta aprende diferencias
+positivo-negativo y su inversa, sin intercepto. Tres valores de regularización inversa {0,01, 0,1, 1}
+se seleccionan por F1, recall@3 y accuracy de cinco folds. Esta arquitectura encaja con la utilidad
+aditiva, reduce capacidad frente a árboles y deja coeficientes auditables. El coeficiente de afinidad
+pixel es positivo y el mayor, mientras los guardrails contextuales permanecen en features y priors.
+
+Una auditoría detectó que el prototipo v3 actualizaba perfiles por orden de creación aunque sus fechas
+se sorteaban. Sus hashes y apertura se preservan, pero `invalidation-record.v3.json` fija
+`metricsUsable=false`, promoción false y reemplazo v4. V4 usa intervalos temporales disjuntos,
+maduración explícita y un test nuevo; no reabre ni reutiliza el resultado inválido.
+
+En desarrollo, baseline alcanza 0,623283 y multimodal 0,839251: uplift 0,215968. Tras congelar
+sidecars, política, informes y ambos modelos, la apertura 1/1 del test obtiene baseline 0,652857 y
+multimodal 636/700 = 0,908571. Error, precision, recall y F1 multimodales son
+0,091429/0,908571/0,908571/0,908571; recall@3 es 1,00, uplift visual 0,255714 y brecha train-test
+0,069320. Ocho escenarios pasan 8/8, incluidos fallback sin historial, hard negative visual, cold
+image y prohibición de que visión sobreescriba incompatibilidad.
+
+La puerta offline pasa, pero no autoriza producción. El contrato conserva
+`productionEvidence=false`, `promotionAllowed=false`, aprobación humana y fallback primero al modelo
+contextual sin visión y después a ranking determinista. CLIP no puede afirmar intención causal,
+calidad, limpieza, seguridad, salud, identidad ni rasgos sensibles a partir de similitud visual.
+
+### 14.71 Corpus visual taxonómico parcial y prueba de señal pixel v1
+
+La ampliación visual se implementa como `synthetic-marketplace-full-taxonomy-visual-v1`, separada de
+los datasets y tests consumidos v2/v4. `full_taxonomy_visual_dataset.py` lee el catálogo candidato de
+23 familias y 254 tipos y genera 254 IDs de local/imagen, ubicaciones sintéticas españolas, rutas y
+prompts reproducibles. Cada prompt pide una única escena física con mobiliario/equipamiento del tipo
+y prohíbe personas identificables, marcas, rótulos, letras, números, collage y texto superpuesto.
+El prompt no forma parte de ninguna feature posterior.
+
+Por decisión del usuario la generación se detuvo al alcanzar volumen suficiente. El sellado recorre
+los archivos existentes, recalcula SHA-256 y marca únicamente `materializedPendingHumanReview`; no
+transforma QA técnica en aprobación. Quedan 220 PNG de tipos únicos, 21 familias presentes y 34 tipos
+ausentes. `finanzas-seguros-e-inmobiliario` y `otros-servicios-al-publico` no tienen activos. Los PNG
+ocupan aproximadamente 486,6 MB y permanecen fuera de Git; manifiesto, hashes, prompts, embeddings e
+informe sí son versionables. Las 220 filas conservan `humanReviewStatus=pendingHumanReview`, y todas
+las 254 mantienen `productionTrainingAllowed=false`.
+
+`full_taxonomy_visual_evaluation.py` vuelve a abrir y verificar cada PNG, mide resolución, variación
+de canal y EXIF, y calcula SHA-256 y dHash 64-bit. La muestra contiene 220/220 PNG decodificables,
+resolución mínima 1.447x1.085, cero hashes repetidos, cero pares dHash con distancia <=4 y cero EXIF.
+Después extrae embeddings L2 de 512 dimensiones con CLIP ViT-B/32 y revisión fija; el cache solo se
+reutiliza si coinciden orden, imageId, hash de píxel y revisión del modelo.
+
+La prueba principal clasifica familia mediante el centroide coseno construido exclusivamente con
+el train de cada fold. No tiene parámetros entrenables y evita una cabeza flexible capaz de memorizar
+una imagen por tipo. El número de folds se limita de forma verificable por la familia menos poblada:
+la familia parcial de servicios profesionales tiene tres imágenes, por lo que se usa 3-fold
+estratificado y no se declara falsamente 5-fold. Un control idéntico permuta etiquetas con seed fijo.
+
+El promedio de test obtiene accuracy 0,755017, error 0,244983, precision macro 0,746674, recall macro
+0,734618 y F1 macro 0,718797. Train obtiene 0,915307, con brecha 0,160290. Recall@3 de familia alcanza
+0,904545 y pasa su puerta >=0,90. El control permutado obtiene accuracy 0,053925 y Recall@3 0,15; el
+uplift top-1 de +0,701093 demuestra señal de píxeles. Sin embargo, top-1 >=0,90 y error <0,15 fallan.
+El informe conserva simultáneamente ambas conclusiones: hay señal visual útil, pero no calidad top-1
+suficiente. `trainingAllowed=false`, `promotionAllowed=false` y evidencia productiva false.
+
+Las confusiones observadas agrupan espacios físicamente próximos: hogar/grandes superficies,
+veterinaria/salud, educación/servicios sociales, ocio/comercio cultural y viajes/automoción. El
+diseño no abre un nuevo test ni reajusta prompts usando estas predicciones. Mejorar top-1 exige nuevas
+vistas independientes por tipo, completar familias y congelar un holdout real o sintético nuevo.
+
+### 14.72 Protocolo visual taxonómico v2 development/holdout
+
+`synthetic-marketplace-full-taxonomy-visual-v2` materializa dos vistas independientes por cada uno de
+los 254 tipos. Development reutiliza las 220 imágenes v1 ya consumidas y añade 34 imágenes nuevas
+para completar 23 familias. Holdout contiene 254 imágenes nuevas, nuevos UUID de imagen y local y
+ningún hash compartido. El total es 508 PNG. El uso de vistas por tipo mantiene la etiqueta semántica,
+pero cambia establecimiento, arquitectura, mobiliario, distribución, paleta, luz y punto de vista.
+
+`full_taxonomy_visual_holdout.py` construye un manifiesto determinista con conjuntos disjuntos y
+prompts que prohíben OCR, marcas y personas identificables. El sellador recalcula SHA-256 para todos
+los bytes, impide cambios en activos reutilizados y no convierte materialización en aprobación. El
+manifiesto final registra 220 development reutilizadas, 34 development nuevas y 254 holdout; ambas
+cohortes cubren 254 tipos y 23 familias. ImageId, venueId y SHA-256 son disjuntos entre splits.
+
+`full_taxonomy_visual_holdout_qa.py` realiza una fase pre-inferencia. Pillow verifica 508/508 PNG,
+dimensiones, variación, EXIF, SHA-256 y dHash. Se comparan los 128.778 pares posibles: no existen
+duplicados exactos ni pares con distancia dHash <=4. Tampoco hay EXIF ni igualdad de hash entre las
+dos vistas del mismo tipo. Ocho hojas de contacto —cuatro por split, 64 activos por hoja— permiten
+revisión humana con sourceId, tipo y familia, pero nunca se ofrecen como input al modelo.
+
+La QA declara explícitamente `clipLoaded=false`, `holdoutPredictionsComputed=false` y
+`holdoutBudgetConsumed=0`. Aunque `qaPassed=true`, las imágenes mantienen
+`pendingHumanReview`, `trainingAllowed=false` y promoción false. La selección de modelo y la apertura
+1/1 no pueden comenzar hasta registrar aprobación humana de las 508 filas.
+
+La aprobación explícita se registra content-addressed y habilita solo development/evaluación offline.
+CLIP ViT-B/32 congelado produce 254 embeddings development. Nueve candidatos —centroide, k-NN
+{1,3,5,7} y ridge {0,01;0,1;1;10}— compiten en 4-fold estratificado. Centroide gana por F1 macro con
+accuracy 0,691947, F1 0,628198 y Recall@3 0,894418. Ningún embedding holdout existe antes de congelar
+modelo, política, informe, hashes development y fingerprint de los 254 activos test.
+
+La apertura 1/1 extrae después los 254 embeddings holdout y obtiene accuracy 0,704724, error 0,295276,
+precision macro 0,714802, recall macro 0,680377, F1 macro 0,681982 y Recall@3 0,905512. Solo pasa la
+brecha absoluta development-holdout, 0,012778; fallan las puertas top-1 y macro. El registro consume
+el presupuesto y bloquea cualquier reapertura. La cercanía development/test indica subajuste y
+solapamiento visual de la taxonomía, no sobreajuste fuerte. Producción y promoción permanecen false.
+
+### 14.73 Protocolo visual taxonómico multivista v3
+
+V3 trata las 508 imágenes v2 como evidencia consumida exclusivamente de desarrollo: la antigua vista
+development es A y el antiguo holdout, ya abierto, es B. Ninguna recupera elegibilidad de test. Se
+genera una vista C nueva por cada uno de los 254 tipos y un cuarto establecimiento totalmente nuevo
+por tipo para `sealedHoldoutV3`. El contrato referencia 762 imágenes development, reserva 254 para
+test y materializa 508 PNG nuevos; imageId y venueId de v3 holdout son disjuntos de las 762 vistas.
+
+La selección interna entrena con dos vistas y valida con la tercera, rotando la vista retenida. Así la
+validación mide cambio de establecimiento/arquitectura en lugar de memorizar la misma imagen. El
+holdout conserva presupuesto 1/1 y no se carga con CLIP durante generación, hashing, QA o revisión.
+
+Treinta y ocho arquetipos auxiliares describen patrones espaciales observables —barra, showroom,
+consulta, taller, aula, pista, alojamiento u oficina, entre otros—. Son objetivos supervisados, no
+features privilegiadas: en inferencia la cabeza auxiliar debe deducirlos desde embeddings de píxeles.
+Prompt, tipo, familia y arquetipo verdadero quedan prohibidos como input. Esto permite compartir señal
+entre tipos visualmente próximos sin fingir que todas las categorías administrativas son separables.
+
+Las personas son opcionales y solo contexto ambiental secundario en una fracción determinista de
+escenas públicas. Se limitan a tres adultos pequeños, de espaldas o desenfocados, sin rostro
+identificable. Salud, veterinaria, servicios sociales, cuidado personal sensible y tipos relacionados
+con menores se generan vacíos; en todo el corpus se prohíben menores, pacientes e inferencia
+biométrica o sensible. Revisión humana continúa siendo obligatoria antes de extraer embeddings.
+
+La apertura única de v3 verifica todos los hashes del pretest lock antes de leer píxeles, extrae 254
+embeddings CLIP de 512 dimensiones y aplica sin reajuste las cabezas congeladas. Familia obtiene
+accuracy 0,7480315, error 0,2519685, precision macro 0,79612678, recall macro 0,71791241, F1 macro
+0,72358713, Recall@3 0,92913386 y recall mínimo 0,25. La brecha frente a development es 0,04724409.
+Solo pasa la puerta de generalización; fallan top-1, error y métricas macro/mínima. El arquetipo
+auxiliar obtiene accuracy 0,72047244 y F1 macro 0,72463901. El presupuesto queda consumido 1/1,
+reapertura false, selección con holdout false y producción/promoción/training false. 23.22.e se
+completa por haber ejecutado y conservado la prueba; 23.16.c.3.d permanece pendiente al no superar
+las puertas.
+
+### 14.74 Recomendador v8 por intención, ubicación point-in-time, tiempo y escasez alineada
+
+`synthetic-marketplace-action-context-v8` amplía la evaluación contextual sin tocar el holdout
+visual v3. Reutiliza 100 locales y 40 perfiles, pero crea 3.200 sesiones nuevas, 25.600 alternativas
+y 17.596 acciones de diez clases. Desarrollo contiene 1.800 sesiones train y 600 validation; un
+holdout temporal posterior contiene 800 sesiones y se sella antes de seleccionar. Cada sesión tiene
+una ubicación efímera sintética distinta para representar domicilio, trabajo, viaje o movimiento.
+
+La intención point-in-time se deriva de búsqueda, filtro de categoría, vistas de local/servicio,
+apertura de mapa, consulta de disponibilidad, guardado, comparación e inicio/finalización de reserva.
+Las últimas cinco acciones reciben decaimiento 0,42/0,26/0,17/0,10/0,05. El perfil persistente solo
+aporta servicio o atributo cuando existe consentimiento. Todos los eventos preceden al ranking y
+outcome, posición, IDs, clic/reserva y coordenadas quedan fuera del vector.
+
+La distancia usa Haversine entre el punto de sesión y cada local. El modelo solo ve proximidad
+exponencial, ajuste al radio y decaimiento; las coordenadas no son features. Sin ubicación autorizada,
+el contrato exige zona explícita o ranking determinista. Cada alternativa materializa día/hora,
+plazas totales y restantes. Elegibilidad, apertura, servicio reservable y capacidad positiva se
+filtran antes del ranking. La escasez solo entra como `contentAffinity * currentLocationProximity *
+withinPreferredRadius * remainingSlotUrgency`; calidad o urgencia no rescatan incompatibilidad.
+
+V5 detectó que el primer label sintético podía fijar un local aunque otro satisficiera mejor contexto,
+distancia y capacidad; su holdout se conserva en 0,8675. V6 llegó a 0,9125, pero una auditoría halló
+que afinidad de día/hora era constante dentro de cada consulta. V7 corrigió el contrato y obtuvo
+0,89, que se conserva como fallo. V8 usa otro seed, IDs y hash, mantiene afinidad temporal distinta
+por candidato y aumenta capacidad regularizada. Ningún holdout se reabrió ni se usó para seleccionar.
+
+Tres configuraciones LambdaMART se comparan con cinco folds rolling-origin. V8 obtiene 0,8735 en
+accuracy/precision/recall/F1 de desarrollo y Recall@3 0,9995. La apertura única obtiene 725/800:
+accuracy/precision/recall/F1 0,90625, error 0,09375, Recall@3 0,99875 y brecha 0,03275. Los diez
+contrafactuales pasan; escasez alineada logra 0,99386503, ubicación sensible 0,92879257 y tarde
+0,9125. Es evidencia offline sintética: producción/promoción siguen false y existe fallback.
+
+### 14.75 Candidato visual multirregión robusto v4
+
+Después de consumir v3, sus 254 holdout dejan de ser test y pasan a development histórico D. Junto
+con A/B/C forman 1.016 imágenes, cuatro establecimientos por cada uno de 254 tipos. V4 no genera ni
+edita imágenes: deriva en memoria un recorte central determinista del 80 %, extrae otro embedding
+CLIP de 512 dimensiones y conserva el vector global. Los PNG originales y sus hashes no cambian.
+
+La validación usa cuatro folds leave-one-view-out. La selección ordena por peor F1 de fold, peor
+accuracy, F1 medio y accuracy media; así A/B no pueden ocultar degradación en C/D. Se descartan
+experimentalmente texto CLIP (máximo 0,791339) y XGBoost (0,339567). SVM RBF llega a 0,819882,
+pero no supera la fusión portable bajo el criterio robusto completo.
+
+`global-center-prototype-lda-robust-0.75` aprende 254 prototipos globales, 254 centrales y una LDA
+regularizada sobre el vector global+centro normalizado. En consulta calcula ambos scores por familia,
+la cabeza LDA, normaliza las ramas y fusiona LDA con peso 0,75. La entrada sigue siendo exclusivamente
+píxel CLIP; prompt, tipo, familia y arquetipo verdadero están prohibidos.
+
+Development obtiene accuracy 0,83267717, precision macro 0,85670008, recall macro 0,81304345, F1
+macro 0,81591205, Recall@3 0,96062992 y recall mínimo medio 0,375. El peor fold queda en accuracy
+0,78346457 y F1 0,76688298. Frente al baseline v3 de cuatro vistas gana 0,03346457 de accuracy; en
+la vista D consumida gana 0,03543307. No alcanza 0,90 y no existe test independiente, por lo que
+calidad confirmada, entrenamiento productivo y promoción siguen false. Un holdout v4 nuevo es
+obligatorio antes de completar 23.24 y 23.16.c.3.d.

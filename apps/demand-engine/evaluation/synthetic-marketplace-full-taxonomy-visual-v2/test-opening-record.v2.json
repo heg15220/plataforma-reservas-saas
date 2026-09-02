@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "lockSha256": "d875b663f77656f060b3d9abac0bacd4656f1d0c20e6dc5096139dd56a1d2055",
+  "holdoutEmbeddingsSha256": "f5205231d860d03d213ca9992e858a64dd1ea92baea0c911eacf5c1be86a0bde",
+  "resultSha256": "945441eb55c96a8103697384775b5e5d2171cb9bca032ede94bfba4e2f6050ab",
+  "budget": 1,
+  "consumed": 1,
+  "reopenAllowed": false
+}

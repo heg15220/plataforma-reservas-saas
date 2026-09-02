@@ -1,0 +1,23 @@
+{
+  "automaticPromotionAllowed": false,
+  "freshHoldoutRequired": true,
+  "holdoutPredictionBudget": 1,
+  "maximumFutureGeneralizationGap": 0.1,
+  "maximumFutureTestError": 0.1,
+  "minimumFutureClassRecall": 0.7,
+  "minimumFutureMacroF1": 0.8,
+  "minimumFutureMacroPrecision": 0.8,
+  "minimumFutureMacroRecall": 0.8,
+  "minimumFutureTestAccuracy": 0.9,
+  "policyVersion": "full-taxonomy-visual-multiregion-policy-v4",
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "schemaVersion": 1,
+  "selectionOrder": [
+    "worstFoldMacroF1",
+    "worstFoldAccuracy",
+    "meanMacroF1",
+    "meanAccuracy"
+  ],
+  "selectionProtocol": "four-fold-leave-one-consumed-view-out"
+}

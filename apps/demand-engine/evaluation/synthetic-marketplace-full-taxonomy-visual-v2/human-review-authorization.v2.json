@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "synthetic-marketplace-full-taxonomy-visual-v2",
+  "authorizedAt": "2026-08-31T00:30:00Z",
+  "authorizationSource": "explicitUserStatementInProjectConversation",
+  "approvalPhraseSha256": "75e3cec97467ad410ce0fcd4f5fd64d707c20e26fb291ee2223a3ce8e443a4b6",
+  "approvedImageCount": 508,
+  "developmentImageCount": 254,
+  "holdoutImageCount": 254,
+  "qaReportSha256": "5ccd312b40e9c9d378582c3cfbfa17c678577825b56098ee3bf82688ba770905",
+  "decision": "approvedForOfflineDevelopmentAndSealedEvaluation",
+  "humanReviewComplete": true,
+  "developmentTrainingAllowed": true,
+  "holdoutEvaluationAllowed": true,
+  "productionTrainingAllowed": false,
+  "promotionAllowed": false,
+  "holdoutBudgetConsumed": 0
+}

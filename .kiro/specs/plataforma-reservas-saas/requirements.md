@@ -771,6 +771,34 @@ contexto, el local, el servicio, el recurso y la franja disponible.
 - WHEN se prueben flujos de negocio, THEN existen casos de afinidad con baja exposición y pocas plazas,
   ambiente visual permitido, horario habitual, cercanía, especialidad, historial, cold-start, calidad,
   disponibilidad y balance precio-distancia; estos contratos no sustituyen evidencia conductual.
+- WHEN exista ubicación autorizada en el instante de la recomendación, THEN la distancia se calcula
+  desde esa posición point-in-time, se respeta el radio aceptado y las coordenadas crudas no se usan
+  como identificador ni como feature persistente; sin permiso se degrada a zona explícita o fallback.
+- WHEN queden pocos huecos en una franja, THEN la urgencia solo puede elevar el local si conserva
+  capacidad positiva, está abierto, ofrece el servicio, coincide con la intención reciente derivada
+  de acciones y satisface proximidad/radio; queda prohibido un boost global por escasez.
+- WHEN el usuario cambie su patrón reciente respecto a preferencias históricas, THEN búsquedas,
+  filtros, vistas, mapas, consultas de disponibilidad, guardados, comparaciones e inicios de reserva
+  anteriores al ranking se ponderan por recencia, y la preferencia persistente solo se usa con
+  consentimiento.
+- WHEN se amplíen las etiquetas del recomendador con tipos candidatos, THEN solo se asignan subtipos
+  funcionalmente compatibles con los locales existentes, se publican cobertura y estado de revisión y
+  ninguna etiqueta candidata se presenta como categoría pública o como verdad derivada de la imagen.
+- WHEN desarrollo use decisiones observadas débiles y el test use compatibilidad adjudicada, THEN se
+  declaran por split las tasas de ambigüedad, se conserva el mismo contrato de features y se impide
+  seleccionar hiperparámetros después de abrir el test temporal.
+- WHEN el recomendador use patrones visuales, THEN cada embedding procede de una imagen aprobada con
+  hash verificado, el perfil visual solo incorpora elecciones y outcomes maduros anteriores y una
+  ablación sobre el mismo test cuantifica la mejora respecto al modelo sin píxeles.
+- WHEN no exista historial visual o la imagen no esté autorizada, THEN el ranking degrada a contexto
+  no visual y después a reglas deterministas; la visión no puede eludir intención incompatible,
+  elegibilidad, disponibilidad, capacidad ni la prohibición de inferir atributos sensibles.
+- WHEN un holdout visual ya se haya consumido, THEN puede incorporarse únicamente a desarrollo
+  histórico, toda mejora posterior se valida dejando fuera establecimientos/vistas completas y no se
+  declara calidad confirmada hasta abrir una sola vez otro holdout de imágenes y locales nuevos.
+- WHEN la vista global de CLIP pierda detalle espacial, THEN una cabeza candidata puede combinar
+  embeddings de regiones deterministas derivadas en memoria, siempre sin modificar los originales,
+  sin usar etiquetas/prompt como input y publicando el peor fold además de la métrica media.
 
 ### RF-037 Predicción de demanda y capacidad comercial
 
@@ -881,6 +909,23 @@ acciones automáticas.
 - WHEN se preparen imágenes sintéticas de locales, THEN cada activo conserva prompt, procedencia,
   hash y revisión humana; una especificación sin imagen materializada o sin revisar permanece
   excluida del entrenamiento y de cualquier puerta visual de producción.
+- WHEN la generación de un corpus visual se detenga antes de completar la taxonomía prevista, THEN
+  manifiesto e informe distinguen cantidad esperada/materializada, tipos y familias ausentes, y no
+  presentan el corpus parcial como cobertura completa ni como evidencia autorizada de producción.
+- WHEN se atribuya calidad a patrones de píxeles, THEN la evaluación usa embeddings calculados desde
+  los bytes sellados, prohíbe introducir prompt o etiqueta como feature y compara contra un control
+  permutado o ablación equivalente; pasar Recall@K no convierte en aprobada una puerta top-1 fallida.
+- WHEN se cree el holdout de confirmación taxonómico, THEN cada tipo dispone de una vista development
+  y otra holdout con imageId, venueId y hash disjuntos; ambos splits cubren 23 familias y 254 tipos,
+  y QA estructural o revisión visual no ejecutan CLIP ni consumen el presupuesto de predicción.
+- WHEN un holdout taxonómico consumido se reutilice en una iteración futura, THEN queda marcado para
+  siempre como development, `testEligible=false`, y el nuevo test usa imágenes y locales distintos;
+  la validación interna rota por vistas independientes del mismo tipo sin compartir la misma imagen
+  entre train y validación.
+- WHEN se usen arquetipos visuales como señal auxiliar, THEN describen patrones espaciales observables,
+  se predicen desde píxeles en inferencia y queda prohibido introducir como feature el arquetipo real,
+  el tipo, la familia o el prompt. Las personas solo pueden aportar contexto ambiental secundario:
+  no se admiten rostros identificables, menores, pacientes ni inferencias biométricas o sensibles.
 - WHEN una métrica visual se use para corregir activos, THEN esa cohorte queda consumida como
   desarrollo y la aceptación automática se mide una sola vez sobre un holdout nuevo, equilibrado
   por categoría, congelado antes de inferencia y conservado íntegramente aunque el resultado falle.

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "contextual-recommender-pixel-ablation-baseline-v4",
+  "modelVersion": "contextual-recommender-pixel-ablation-baseline-v4",
+  "status": "evaluation-ablation",
+  "owner": "demand-engine",
+  "purpose": "Servir como control sin señales de píxeles para medir el aporte incremental de la rama visual.",
+  "algorithm": "pairwise-logistic-linear-ranker",
+  "trainingPolicyVersion": "recommendation-pixel-personalization-v4",
+  "featureSetVersion": "contextual-without-pixel-features-v4",
+  "evaluation": {
+    "folds": 5,
+    "trainingAccuracy": 0.62328316,
+    "testAccuracy": 0.65285714,
+    "testF1": 0.65285714,
+    "testRecallAt3": 0.94285714
+  },
+  "limitations": [
+    "No contiene afinidad visual y no es candidato de promoción.",
+    "Los perfiles, interacciones y outcomes son sintéticos.",
+    "Su única finalidad es la ablación controlada frente al multimodal."
+  ],
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "rollback": "Descartar este artefacto de evaluación; el producto conserva el ranking determinista existente."
+}

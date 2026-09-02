@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "synthetic-marketplace-full-taxonomy-visual-v3",
+  "reviewImageCount": 508,
+  "developmentCImageCount": 254,
+  "holdoutV3ImageCount": 254,
+  "emptyVenuePreferredCount": 377,
+  "backgroundAdultsNonIdentifiableCount": 131,
+  "ocrFlaggedImageCount": 184,
+  "ocrFindingCount": 253,
+  "ocrAlertSheets": [
+    "ocr-alerts-01.jpg",
+    "ocr-alerts-02.jpg",
+    "ocr-alerts-03.jpg",
+    "ocr-alerts-04.jpg",
+    "ocr-alerts-05.jpg",
+    "ocr-alerts-06.jpg",
+    "ocr-alerts-07.jpg",
+    "ocr-alerts-08.jpg"
+  ],
+  "generalReviewSheets": {
+    "development-c": [
+      "development-c-01.jpg",
+      "development-c-02.jpg",
+      "development-c-03.jpg",
+      "development-c-04.jpg"
+    ],
+    "sealed-holdout-v3": [
+      "sealed-holdout-v3-01.jpg",
+      "sealed-holdout-v3-02.jpg",
+      "sealed-holdout-v3-03.jpg",
+      "sealed-holdout-v3-04.jpg"
+    ]
+  },
+  "requiredChecksPerImage": [
+    "categorySignalsCorrect",
+    "noLegibleTextOrBrand",
+    "peoplePolicyCompliant",
+    "noMinorPatientOrSensitiveSituation",
+    "independentVenueAndComposition"
+  ],
+  "approvalPhraseRequired": "Apruebo las 508 imágenes nuevas del dataset visual taxonómico v3",
+  "reviewStatus": "approvedForOfflineDevelopmentAndSealedEvaluation",
+  "humanReviewComplete": true,
+  "developmentTrainingAllowed": true,
+  "holdoutEvaluationAllowed": true,
+  "clipLoaded": false,
+  "embeddingsExtracted": false,
+  "holdoutPredictionsComputed": false,
+  "holdoutBudgetConsumed": 0,
+  "productionTrainingAllowed": false,
+  "promotionAllowed": false,
+  "humanReviewedAt": "2026-09-02T12:26:43+00:00",
+  "authorizationRecord": "human-review-authorization.v3.json"
+}

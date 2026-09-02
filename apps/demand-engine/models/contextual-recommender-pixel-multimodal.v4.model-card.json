@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "modelKey": "contextual-recommender-pixel-multimodal-v4",
+  "modelVersion": "contextual-recommender-pixel-multimodal-v4",
+  "status": "candidate",
+  "owner": "demand-engine",
+  "purpose": "Ordenar locales elegibles correlacionando contexto permitido con similitud entre intereses visuales previos del usuario y embeddings CLIP de imágenes aprobadas.",
+  "algorithm": "pairwise-logistic-linear-ranker-over-frozen-clip-similarity",
+  "trainingPolicyVersion": "recommendation-pixel-personalization-v4",
+  "featureSetVersion": "contextual-plus-point-in-time-pixel-affinity-v4",
+  "pixelContract": {
+    "baseModel": "clip-vit-b32-visual-evidence-v1",
+    "embeddingDimension": 512,
+    "linkedApprovedImages": 70,
+    "rawPngHashesVerified": 70,
+    "newImagesGenerated": 0,
+    "profileSource": "explicit visual selections and matured prior outcomes only"
+  },
+  "evaluation": {
+    "folds": 5,
+    "trainingAccuracy": 0.83925123,
+    "testAccuracy": 0.90857143,
+    "testError": 0.09142857,
+    "testPrecision": 0.90857143,
+    "testRecall": 0.90857143,
+    "testF1": 0.90857143,
+    "testRecallAt3": 1.0,
+    "baselineTestAccuracy": 0.65285714,
+    "visualAccuracyUplift": 0.25571429,
+    "trainTestAccuracyGap": 0.0693202,
+    "pixelScenariosPassed": "8/8",
+    "qualityGatesPassed": true
+  },
+  "prohibitedUse": [
+    "sensitiveVisualInference",
+    "automaticProductionPromotion",
+    "bypassEligibilityAvailabilityOrCapacity",
+    "claimCausalityOrProductionAccuracyFromSyntheticOutcomes"
+  ],
+  "limitations": [
+    "Los perfiles, interacciones y outcomes son sintéticos.",
+    "Solo 70 imágenes aprobadas enlazan inequívocamente con locales del marketplace.",
+    "La similitud de píxeles no demuestra por sí sola intención, calidad, seguridad o causalidad.",
+    "El resultado v3 fue invalidado por orden temporal y no forma parte de esta evidencia."
+  ],
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "rollback": "Desactivar la rama pixel, usar el modelo contextual sin visión y finalmente el ranking determinista; la reserva nunca depende del artefacto."
+}

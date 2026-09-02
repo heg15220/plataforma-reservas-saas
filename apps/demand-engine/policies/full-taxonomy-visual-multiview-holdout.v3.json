@@ -1,0 +1,21 @@
+{
+  "developmentViewCount": 3,
+  "holdoutPredictionBudget": 1,
+  "maximumGeneralizationGap": 0.1,
+  "maximumHoldoutError": 0.1,
+  "minimumHoldoutAccuracy": 0.9,
+  "minimumMacroF1": 0.8,
+  "minimumMacroPrecision": 0.8,
+  "minimumMacroRecall": 0.8,
+  "minimumPerClassRecall": 0.7,
+  "policyVersion": "full-taxonomy-visual-multiview-policy-v3",
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "schemaVersion": 1,
+  "selectionMetricOrder": [
+    "macroF1",
+    "accuracy",
+    "recallAt3"
+  ],
+  "selectionProtocol": "three-fold-leave-one-view-out"
+}

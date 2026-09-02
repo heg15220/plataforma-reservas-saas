@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "synthetic-marketplace-pixel-personalization-v3",
+  "status": "invalidated",
+  "invalidatedAt": "2026-08-30T20:00:00Z",
+  "reasonCode": "NON_MONOTONIC_SYNTHETIC_EVENT_CREATION_ORDER",
+  "reason": "Las preferencias visuales se actualizaban por orden de creación mientras occurredAt se sorteaba dentro del periodo; una elección creada antes podía quedar fechada después de la sesión que la consumía.",
+  "replacementDatasetVersion": "synthetic-marketplace-pixel-personalization-v4",
+  "promotionAllowed": false,
+  "metricsUsable": false,
+  "preservedInvalidResultSha256": "50b48a92e17e20a6b902befbebd2d0bc8bd24629eee42652ece0e50a9e29085d",
+  "preservedOpeningRecordSha256": "32d5b01901dcdc0aa043824658ae69fd4313356c799bb2b81e8296331e3bdb41",
+  "preservedManifestSha256": "f5ee745236e9bab33a44f465f5e9162d55636bd4934befa6e5d97c1c87bc57e6"
+}

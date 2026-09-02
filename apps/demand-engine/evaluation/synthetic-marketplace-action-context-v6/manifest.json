@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 6,
+  "datasetVersion": "synthetic-marketplace-action-context-v6",
+  "generatedAt": "2026-09-02T12:00:00Z",
+  "seed": 6381,
+  "synthetic": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "counts": {
+    "venues": 100,
+    "profiles": 40,
+    "sessions": 3200,
+    "candidates": 25600,
+    "actionEvents": 17596,
+    "actionTypes": 10,
+    "families": 6,
+    "types": 28
+  },
+  "splitCounts": {
+    "train": 1800,
+    "validation": 600,
+    "test": 800
+  },
+  "featureNames": [
+    "recentActionTypeAffinity",
+    "recentActionFamilyAffinity",
+    "recentActionServiceAffinity",
+    "searchQueryAffinity",
+    "actionSequenceMomentum",
+    "persistentPreferenceAffinity",
+    "taxonomyTypeAffinity",
+    "taxonomyFamilyAffinity",
+    "serviceAffinity",
+    "attributeAffinity",
+    "contentAffinity",
+    "currentLocationProximity",
+    "withinPreferredRadius",
+    "distanceDecayKm",
+    "requestedDayAffinity",
+    "requestedHourAffinity",
+    "availabilityRatio",
+    "remainingSlotUrgency",
+    "alignedScarcityOpportunity",
+    "lowExposureAffinity",
+    "qualityScore",
+    "priceFit",
+    "isNewVenue"
+  ],
+  "locationPolicy": {
+    "source": "ephemeralPointInTimeSessionLocation",
+    "rawCoordinatesAsFeatures": false,
+    "distanceMethod": "haversine",
+    "distanceIsRequired": true
+  },
+  "scarcityPolicy": {
+    "hardCapacityFilter": true,
+    "formula": "contentAffinity*currentLocationProximity*withinPreferredRadius*remainingSlotUrgency",
+    "globalScarcityBoostForbidden": true
+  },
+  "leakagePolicy": {
+    "featuresAvailableBeforeRanking": true,
+    "idsPositionsAndOutcomesExcluded": true
+  },
+  "relevancePolicy": "adjudicatedPointInTimeUtilityThenObservedChoiceNoise",
+  "foldStrategy": "five-fold-rolling-origin",
+  "testPolicy": "fresh-temporal-independent-open-once-after-selection",
+  "artifacts": {
+    "venue-labels.jsonl": {
+      "path": "venue-labels.jsonl",
+      "sha256": "b06144f1de309b82bff6f47a85c760a3eb5a69b04677475ac682957e6ffbc933",
+      "bytes": 54264
+    },
+    "development-sessions.jsonl": {
+      "path": "development-sessions.jsonl",
+      "sha256": "9edec818626d337a8ce177248e14e70298fa7f73fb40bed5faed0356e5f943a1",
+      "bytes": 22678888
+    },
+    "test-sessions.sealed.jsonl": {
+      "path": "test-sessions.sealed.jsonl",
+      "sha256": "85df0a49677474b6be38cdf0e75f44c23cd4b5249730f2b2e0fcb46784017273",
+      "bytes": 7571901
+    }
+  },
+  "limitations": [
+    "La evidencia es sintética y no demuestra causalidad o conversión productiva.",
+    "La ubicación es sintética y efímera; producción requiere consentimiento y minimización."
+  ]
+}

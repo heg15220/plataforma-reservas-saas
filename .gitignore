@@ -48,3 +48,11 @@ apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v
 apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v1/contact-sheets/
 apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v2/images/
 apps/demand-engine/evaluation/synthetic-marketplace-v1/visual-training-dataset-v2/contact-sheets/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v1/images/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v2/development-images/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v2/sealed-holdout-images/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v2/review-contact-sheets/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v3/development-view-c-images/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v3/sealed-holdout-v3-images/
+apps/demand-engine/evaluation/synthetic-marketplace-full-taxonomy-visual-v3/review-contact-sheets/
+/.pytest-tmp-*/

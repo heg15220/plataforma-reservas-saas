@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 8,
+  "reportVersion": "recommendation-action-context-development-v8",
+  "datasetVersion": "synthetic-marketplace-action-context-v8",
+  "foldStrategy": "five-fold-rolling-origin",
+  "folds": 5,
+  "selectedParameters": {
+    "nEstimators": 24,
+    "maximumDepth": 3,
+    "learningRate": 0.025,
+    "minimumChildWeight": 45,
+    "l2Penalty": 90,
+    "l1Penalty": 5,
+    "subsample": 0.68,
+    "columnSample": 0.76
+  },
+  "candidateReports": [
+    {
+      "parameters": {
+        "nEstimators": 20,
+        "maximumDepth": 2,
+        "learningRate": 0.035,
+        "minimumChildWeight": 30,
+        "l2Penalty": 55,
+        "l1Penalty": 3,
+        "subsample": 0.72,
+        "columnSample": 0.78
+      },
+      "foldMetrics": [
+        {
+          "sessions": 400,
+          "correctTop1": 348,
+          "accuracy": 0.87,
+          "errorRate": 0.13,
+          "precision": 0.87,
+          "recall": 0.87,
+          "f1": 0.87,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99863388,
+          "macroFamilyRecall": 0.99910873,
+          "macroFamilyF1": 0.9988673,
+          "clearChoiceAccuracy": 0.97206704,
+          "ambiguousChoiceAccuracy": 0.0,
+          "ambiguousSessions": 42
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 352,
+          "accuracy": 0.88,
+          "errorRate": 0.12,
+          "precision": 0.88,
+          "recall": 0.88,
+          "f1": 0.88,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99845679,
+          "macroFamilyRecall": 0.9990689,
+          "macroFamilyF1": 0.99875795,
+          "clearChoiceAccuracy": 0.95380435,
+          "ambiguousChoiceAccuracy": 0.03125,
+          "ambiguousSessions": 32
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 347,
+          "accuracy": 0.8675,
+          "errorRate": 0.1325,
+          "precision": 0.8675,
+          "recall": 0.8675,
+          "f1": 0.8675,
+          "precisionAtK": 0.3325,
+          "recallAtK": 0.9975,
+          "macroFamilyPrecision": 1.0,
+          "macroFamilyRecall": 1.0,
+          "macroFamilyF1": 1.0,
+          "clearChoiceAccuracy": 0.97740113,
+          "ambiguousChoiceAccuracy": 0.02173913,
+          "ambiguousSessions": 46
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 356,
+          "accuracy": 0.89,
+          "errorRate": 0.11,
+          "precision": 0.89,
+          "recall": 0.89,
+          "f1": 0.89,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99858757,
+          "macroFamilyRecall": 0.99898374,
+          "macroFamilyF1": 0.9987811,
+          "clearChoiceAccuracy": 0.96994536,
+          "ambiguousChoiceAccuracy": 0.02941176,
+          "ambiguousSessions": 34
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 343,
+          "accuracy": 0.8575,
+          "errorRate": 0.1425,
+          "precision": 0.8575,
+          "recall": 0.8575,
+          "f1": 0.8575,
+          "precisionAtK": 0.3325,
+          "recallAtK": 0.9975,
+          "macroFamilyPrecision": 1.0,
+          "macroFamilyRecall": 1.0,
+          "macroFamilyF1": 1.0,
+          "clearChoiceAccuracy": 0.95251397,
+          "ambiguousChoiceAccuracy": 0.04761905,
+          "ambiguousSessions": 42
+        }
+      ],
+      "meanAccuracy": 0.873,
+      "meanPrecision": 0.873,
+      "meanRecall": 0.873,
+      "meanF1": 0.873,
+      "meanRecallAtK": 0.999
+    },
+    {
+      "parameters": {
+        "nEstimators": 30,
+        "maximumDepth": 2,
+        "learningRate": 0.03,
+        "minimumChildWeight": 35,
+        "l2Penalty": 70,
+        "l1Penalty": 4,
+        "subsample": 0.7,
+        "columnSample": 0.8
+      },
+      "foldMetrics": [
+        {
+          "sessions": 400,
+          "correctTop1": 348,
+          "accuracy": 0.87,
+          "errorRate": 0.13,
+          "precision": 0.87,
+          "recall": 0.87,
+          "f1": 0.87,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99863388,
+          "macroFamilyRecall": 0.99910873,
+          "macroFamilyF1": 0.9988673,
+          "clearChoiceAccuracy": 0.97206704,
+          "ambiguousChoiceAccuracy": 0.0,
+          "ambiguousSessions": 42
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 352,
+          "accuracy": 0.88,
+          "errorRate": 0.12,
+          "precision": 0.88,
+          "recall": 0.88,
+          "f1": 0.88,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99845679,
+          "macroFamilyRecall": 0.9990689,
+          "macroFamilyF1": 0.99875795,
+          "clearChoiceAccuracy": 0.95380435,
+          "ambiguousChoiceAccuracy": 0.03125,
+          "ambiguousSessions": 32
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 347,
+          "accuracy": 0.8675,
+          "errorRate": 0.1325,
+          "precision": 0.8675,
+          "recall": 0.8675,
+          "f1": 0.8675,
+          "precisionAtK": 0.3325,
+          "recallAtK": 0.9975,
+          "macroFamilyPrecision": 1.0,
+          "macroFamilyRecall": 1.0,
+          "macroFamilyF1": 1.0,
+          "clearChoiceAccuracy": 0.97740113,
+          "ambiguousChoiceAccuracy": 0.02173913,
+          "ambiguousSessions": 46
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 356,
+          "accuracy": 0.89,
+          "errorRate": 0.11,
+          "precision": 0.89,
+          "recall": 0.89,
+          "f1": 0.89,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99858757,
+          "macroFamilyRecall": 0.99898374,
+          "macroFamilyF1": 0.9987811,
+          "clearChoiceAccuracy": 0.96994536,
+          "ambiguousChoiceAccuracy": 0.02941176,
+          "ambiguousSessions": 34
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 343,
+          "accuracy": 0.8575,
+          "errorRate": 0.1425,
+          "precision": 0.8575,
+          "recall": 0.8575,
+          "f1": 0.8575,
+          "precisionAtK": 0.3325,
+          "recallAtK": 0.9975,
+          "macroFamilyPrecision": 1.0,
+          "macroFamilyRecall": 1.0,
+          "macroFamilyF1": 1.0,
+          "clearChoiceAccuracy": 0.95251397,
+          "ambiguousChoiceAccuracy": 0.04761905,
+          "ambiguousSessions": 42
+        }
+      ],
+      "meanAccuracy": 0.873,
+      "meanPrecision": 0.873,
+      "meanRecall": 0.873,
+      "meanF1": 0.873,
+      "meanRecallAtK": 0.999
+    },
+    {
+      "parameters": {
+        "nEstimators": 24,
+        "maximumDepth": 3,
+        "learningRate": 0.025,
+        "minimumChildWeight": 45,
+        "l2Penalty": 90,
+        "l1Penalty": 5,
+        "subsample": 0.68,
+        "columnSample": 0.76
+      },
+      "foldMetrics": [
+        {
+          "sessions": 400,
+          "correctTop1": 348,
+          "accuracy": 0.87,
+          "errorRate": 0.13,
+          "precision": 0.87,
+          "recall": 0.87,
+          "f1": 0.87,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99863388,
+          "macroFamilyRecall": 0.99910873,
+          "macroFamilyF1": 0.9988673,
+          "clearChoiceAccuracy": 0.97206704,
+          "ambiguousChoiceAccuracy": 0.0,
+          "ambiguousSessions": 42
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 353,
+          "accuracy": 0.8825,
+          "errorRate": 0.1175,
+          "precision": 0.8825,
+          "recall": 0.8825,
+          "f1": 0.8825,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99845679,
+          "macroFamilyRecall": 0.9990689,
+          "macroFamilyF1": 0.99875795,
+          "clearChoiceAccuracy": 0.95652174,
+          "ambiguousChoiceAccuracy": 0.03125,
+          "ambiguousSessions": 32
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 347,
+          "accuracy": 0.8675,
+          "errorRate": 0.1325,
+          "precision": 0.8675,
+          "recall": 0.8675,
+          "f1": 0.8675,
+          "precisionAtK": 0.3325,
+          "recallAtK": 0.9975,
+          "macroFamilyPrecision": 1.0,
+          "macroFamilyRecall": 1.0,
+          "macroFamilyF1": 1.0,
+          "clearChoiceAccuracy": 0.97740113,
+          "ambiguousChoiceAccuracy": 0.02173913,
+          "ambiguousSessions": 46
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 356,
+          "accuracy": 0.89,
+          "errorRate": 0.11,
+          "precision": 0.89,
+          "recall": 0.89,
+          "f1": 0.89,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 0.99858757,
+          "macroFamilyRecall": 0.99898374,
+          "macroFamilyF1": 0.9987811,
+          "clearChoiceAccuracy": 0.96994536,
+          "ambiguousChoiceAccuracy": 0.02941176,
+          "ambiguousSessions": 34
+        },
+        {
+          "sessions": 400,
+          "correctTop1": 343,
+          "accuracy": 0.8575,
+          "errorRate": 0.1425,
+          "precision": 0.8575,
+          "recall": 0.8575,
+          "f1": 0.8575,
+          "precisionAtK": 0.33333333,
+          "recallAtK": 1.0,
+          "macroFamilyPrecision": 1.0,
+          "macroFamilyRecall": 1.0,
+          "macroFamilyF1": 1.0,
+          "clearChoiceAccuracy": 0.95251397,
+          "ambiguousChoiceAccuracy": 0.04761905,
+          "ambiguousSessions": 42
+        }
+      ],
+      "meanAccuracy": 0.8735,
+      "meanPrecision": 0.8735,
+      "meanRecall": 0.8735,
+      "meanF1": 0.8735,
+      "meanRecallAtK": 0.9995
+    }
+  ],
+  "trainingMetricsDefinition": "mean rolling-origin out-of-fold development metrics",
+  "trainingMetrics": {
+    "accuracy": 0.8735,
+    "errorRate": 0.1265,
+    "precision": 0.8735,
+    "recall": 0.8735,
+    "f1": 0.8735,
+    "recallAtK": 0.9995
+  },
+  "inSampleDiagnostics": {
+    "sessions": 2400,
+    "correctTop1": 2098,
+    "accuracy": 0.87416667,
+    "errorRate": 0.12583333,
+    "precision": 0.87416667,
+    "recall": 0.87416667,
+    "f1": 0.87416667,
+    "precisionAtK": 0.33319444,
+    "recallAtK": 0.99958333,
+    "macroFamilyPrecision": 0.9988458,
+    "macroFamilyRecall": 0.99862801,
+    "macroFamilyF1": 0.99873348,
+    "clearChoiceAccuracy": 0.96805556,
+    "ambiguousChoiceAccuracy": 0.02916667,
+    "ambiguousSessions": 240
+  },
+  "behavioralScenarioMetrics": {
+    "cases": 10,
+    "passed": 10,
+    "accuracy": 1.0,
+    "errorRate": 0.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "results": [
+      {
+        "scenarioCode": "recent-actions-select-current-category",
+        "passed": true
+      },
+      {
+        "scenarioCode": "location-breaks-equal-intent-tie",
+        "passed": true
+      },
+      {
+        "scenarioCode": "location-cannot-override-category-mismatch",
+        "passed": true
+      },
+      {
+        "scenarioCode": "scarce-slot-for-aligned-near-user",
+        "passed": true
+      },
+      {
+        "scenarioCode": "scarcity-never-overrides-mismatch",
+        "passed": true
+      },
+      {
+        "scenarioCode": "requested-hour",
+        "passed": true
+      },
+      {
+        "scenarioCode": "requested-day",
+        "passed": true
+      },
+      {
+        "scenarioCode": "service-specialty",
+        "passed": true
+      },
+      {
+        "scenarioCode": "consented-preference-breaks-content-tie",
+        "passed": true
+      },
+      {
+        "scenarioCode": "underexposed-compatible-local",
+        "passed": true
+      }
+    ]
+  },
+  "developmentSliceMetrics": {
+    "scarceAligned": {
+      "sessions": 423,
+      "accuracy": 0.9858156,
+      "f1": 0.9858156
+    },
+    "locationSensitive": {
+      "sessions": 1944,
+      "accuracy": 0.89300412,
+      "f1": 0.89300412
+    },
+    "intentPivot": {
+      "sessions": 722,
+      "accuracy": 0.87119114,
+      "f1": 0.87119114
+    },
+    "evening": {
+      "sessions": 960,
+      "accuracy": 0.965625,
+      "f1": 0.965625
+    },
+    "coldVenue": {
+      "sessions": 122,
+      "accuracy": 0.86065574,
+      "f1": 0.86065574
+    }
+  },
+  "testOpened": false,
+  "promotionAllowed": false
+}

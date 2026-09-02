@@ -11028,3 +11028,798 @@ Fuente de verdad del avance:
   - No se generaron imágenes; los splits originales se conservan únicamente como trazabilidad.
   - La batería focalizada pasa 6/6 tras corregir la escritura LF canónica en Windows; la regresión
     acumulada pasa 32/32 usando un basetemp del workspace por el bloqueo preexistente de `%TEMP%`.
+
+# Conversación 287 - Recomendador contextual diverso v2 con test superior al 90 %
+
+- Fecha: 2026-08-30.
+- Resumen de la conversación: el usuario pidió repetir el entrenamiento 5/10-fold ampliando la
+  diversidad de etiquetas, probar recorridos de búsqueda/reserva, capacidad, horario, ubicación,
+  especialidad y ambiente, mantener train <=0,90 y superar test >=0,90 con error <0,15. Se eligió
+  5-fold rolling-origin, se creó un dataset v2 con 28 subtipos de seis familias, se seleccionó el
+  modelo sin leer etiquetas de test y se abrió una sola vez el test temporal sellado.
+- Archivos modificados: generador y entrenador v2, política, modelo XGBoost y model card, dataset y
+  manifiesto v2, lock y registro de apertura, informes JSON/Markdown, tests, pyproject, requisitos,
+  diseño, tareas, documento técnico y este seguimiento.
+- Requisitos impactados: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: 23.17 y 23.17.b se completan; 23.16.c.3.d permanece pendiente porque esta
+  iteración no crea ni abre un holdout visual nuevo.
+- Tareas completadas: 23.17 y 23.17.b.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para visión, 23.16.c.3.d
+  sigue requiriendo un holdout de imágenes independiente. Para recomendación, el paso siguiente es
+  shadow/A-B con tráfico consentido antes de cualquier promoción productiva.
+- Decisiones o aclaraciones relevantes:
+  - Se usa 5-fold porque 2.000 sesiones y 40 perfiles permiten folds temporales más estables; 10-fold
+    fragmentaría perfiles/cold-start sin aportar evidencia independiente.
+  - Se reutilizan 100 locales, 40 perfiles e imágenes existentes; no se generan imágenes ni se usan
+    píxeles como feature. El ambiente se limita a estilo y paleta declarados.
+  - La ampliación cubre 28 subtipos de seis familias compatibles. No se asignan las 254 categorías a
+    imágenes que no las representan y todo permanece `candidateOnly` y pendiente de revisión humana.
+  - Desarrollo contiene 2.000 sesiones, 12 % de weak labels ambiguas y test 700 sesiones posteriores
+    con 6 % de compatibilidad adjudicada ambigua. Las tasas se congelan antes del entrenamiento.
+  - 5-fold obtiene accuracy/precision/recall/F1 0,878229 y recall@3 0,992201. El diagnóstico in-sample
+    es 0,876, por debajo del máximo 0,90 sin modificar predicciones ni features.
+  - Test abre 1/1 y obtiene 654/700: accuracy/precision/recall/F1 0,934286, error 0,065714,
+    recall@3 0,995714 y brecha 0,056057. Las métricas macro por familia son aproximadamente 0,997.
+  - Los doce escenarios pasan 12/12. `qualityGatesPassed=true`, pero evidencia sintética mantiene
+    `productionEvidence=false`, `promotionAllowed=false` y fallback determinista.
+  - La suite focalizada pasa 19/19 y la regresión acumulada de recomendación, taxonomía, visuales y
+    gobernanza pasa 41/41; la regeneración es byte a byte y la reapertura falla cerrada.
+
+# Conversación 288 - Personalización por patrones de píxeles con ablación v4
+
+- Fecha: 2026-08-30.
+- Resumen de la conversación: el usuario pidió continuar e incorporar análisis real de patrones de
+  píxeles para correlacionar intereses de usuario con imágenes de locales. Se enlazaron 70 PNG
+  aprobados con embeddings CLIP, se crearon perfiles visuales point-in-time y se compararon mediante
+  5-fold un baseline sin visión y un ranker multimodal sobre el mismo test temporal sellado.
+- Archivos modificados: generador y trainer pixel, política v4, modelos lineales y model cards,
+  dataset/sidecars/locks/registros v3-v4, informes JSON/Markdown, tests, pyproject, requisitos,
+  diseño, tareas, documento técnico y este seguimiento.
+- Requisitos impactados: RF-029, RF-033, RF-034, RF-035, RF-036 y RF-041; RNF-002, RNF-009,
+  RNF-014 y RNF-015.
+- Tareas impactadas: se añade y completa 23.19. 23.16.c.3.d permanece pendiente porque no se creó
+  un holdout de imágenes nuevo para el clasificador visual.
+- Tareas completadas: 23.19.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para el multimodal, shadow
+  traffic consentido, revisión jurídica/privacidad/equidad y A/B antes de producción.
+- Decisiones o aclaraciones relevantes:
+  - Se reutilizan imágenes existentes: 70/70 PNG enlazados pasan SHA-256 y embedding CLIP 512D; no
+    se generan imágenes ni se entrena CLIP.
+  - Cada perfil empieza con dos selecciones visuales explícitas. V4 puntúa eventos crecientes y solo
+    incorpora outcomes maduros 24 horas; evidencia por perfil crece de 2 a 107 sin retrocesos.
+  - El prototipo v3 se invalida porque actualizaba preferencias por orden de creación con timestamps
+    sorteados. Sus hashes se preservan, pero `metricsUsable=false` y no se usa como evidencia.
+  - Se usa regresión logística pairwise lineal con tres L2 y cinco folds rolling-origin. Baseline
+    desarrollo 0,623283; multimodal 0,839251; uplift +0,215968 y train <0,90.
+  - Test v4 abre 1/1: baseline 0,652857; multimodal 636/700 = 0,908571; error 0,091429;
+    precision/recall/F1 0,908571; recall@3 1,00; uplift pixel +0,255714 y brecha 0,069320.
+  - Ocho escenarios pasan 8/8. La prueba recalcula la afinidad desde los embeddings originales y
+    verifica que el coeficiente pixel aprendido es positivo y el mayor.
+  - `qualityGatesPassed=true`, `pixelPatternsUsed=true`, pero `productionEvidence=false`, promoción
+    false y fallback contextual/determinista permanecen.
+  - La suite v4 focalizada pasa 8/8 y la regresión acumulada pasa 49/49 en 17,57 s.
+
+# Conversación 289 - Corpus visual taxonómico parcial y evaluación CLIP
+
+- Fecha: 2026-08-30.
+- Resumen de la conversación: tras confirmar que v4 no cubría toda la nueva taxonomía, el usuario
+  autorizó generar imágenes adicionales y posteriormente detuvo la generación al considerar
+  suficiente el volumen. Se materializaron 220 imágenes/tipos de 21 familias y se ejecutaron QA,
+  hashing, embeddings CLIP, validación cruzada de familia y un control de etiquetas permutadas.
+- Archivos modificados: generador/sellador y evaluador taxonómico visual, manifiesto de 254 prompts,
+  220 hashes y estados, embeddings CLIP, informe JSON/Markdown, tests, pyproject, `.gitignore`,
+  requisitos, diseño, tareas, documento técnico y este seguimiento. Los PNG quedan fuera de Git.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-014 y RNF-015.
+- Tareas impactadas: se añade y completa 23.20. 23.16.c, 23.16.c.3 y 23.16.c.3.d permanecen
+  pendientes; el corpus parcial no es el holdout independiente requerido por esas tareas.
+- Tareas completadas: 23.20.
+- Siguiente tarea pendiente recomendada: 17.1 global; 23.13 en la fase. Para visión, revisar
+  humanamente los 220 activos y, si se quiere mejorar top-1, crear vistas nuevas y un holdout sellado.
+- Decisiones o aclaraciones relevantes:
+  - El corte real es 220/254 tipos y 21/23 familias; faltan 34 tipos y dos familias completas.
+  - Los 220 PNG son distintos por SHA-256 y dHash, decodificables, sin EXIF y con CLIP 512D normalizado.
+  - El clasificador sin parámetros usa 3-fold porque la familia parcial mínima tiene tres muestras.
+  - Test top-1: accuracy 0,755017, error 0,244983, precision/recall/F1 macro
+    0,746674/0,734618/0,718797. Estas puertas fallan y se conservan sin retoque.
+  - Recall@3 de familia es 0,904545 y pasa. El control permutado obtiene top-1 0,053925; uplift pixel
+    +0,701093, confirmando señal visual real sin usar prompts o etiquetas como features.
+  - Revisión humana, entrenamiento y promoción permanecen false; pasar top-3 no sustituye top-1.
+  - La suite focalizada pasa 5/5; la regresión visual/recomendación/taxonomía pasa 65/65 en 40,91 s.
+    `compileall`, parseo de tres JSON y `git diff --check` pasan.
+
+# Conversación 290 - Dos vistas por tipo y holdout taxonómico completo
+
+- Fecha: 2026-08-31.
+- Resumen de la conversación: el usuario pidió perseguir top-1 >=0,90 completando familias, creando
+  vistas independientes y congelando un holdout nuevo. Se construyó el protocolo v2 y se generaron
+  34 vistas development ausentes y 254 vistas holdout nuevas, hasta completar 508 imágenes.
+- Archivos modificados: generador/sellador v2, QA pre-inferencia, manifiesto, informe QA, ocho hojas
+  de contacto fuera de Git, 288 PNG nuevos fuera de Git, tests, pyproject, `.gitignore`, requisitos,
+  diseño, tareas, documento técnico y este seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-014 y RNF-015.
+- Tareas impactadas: se añade 23.21 y se completa 23.21.a; 23.21.b-d permanecen pendientes.
+- Tareas completadas: 23.21.a.
+- Siguiente tarea pendiente recomendada: 23.21.b, revisión humana explícita de las 508 imágenes.
+- Decisiones o aclaraciones relevantes:
+  - Development contiene 254/254 tipos y holdout otros 254/254, ambos con 23 familias.
+  - No se comparte imageId, venueId o SHA-256 entre splits; total 508 hashes únicos.
+  - QA pasa 508/508 PNG, cero duplicados/casi duplicados y cero EXIF.
+  - Se generaron cuatro hojas development y cuatro holdout para revisión.
+  - QA no carga CLIP, no calcula predicciones y conserva presupuesto holdout 0/1.
+  - Las imágenes siguen pendientes de revisión; entrenamiento y promoción permanecen false.
+  - Las pruebas focalizadas pasan 4/4; compileall y `git diff --check` pasan.
+  - El usuario aprobó explícitamente las 508 imágenes; la autorización permite solo offline y mantiene
+    producción/promoción false. Se completan 23.21.b, 23.21.c y 23.21.d.
+  - Development comparó nueve candidatos en 4-fold sin leer holdout. Centroide ganó con accuracy
+    0,691947, F1 macro 0,628198 y Recall@3 0,894418.
+  - Tras congelar modelo/política/lock, holdout abre 1/1: accuracy 0,704724, error 0,295276,
+    precision/recall/F1 macro 0,714802/0,680377/0,681982 y Recall@3 0,905512.
+  - Solo pasa la brecha de generalización (0,012778); `qualityGatesPassed=false`. La reapertura queda
+    bloqueada y 23.16.c.3.d continúa pendiente porque no se alcanzó top-1 >=0,90.
+  - La suite v2 focalizada final pasa 10/10 en 5,52 s; el resultado no se reajusta contra test.
+  - La regresión acumulada visual/recomendación/taxonomía pasa 75/75 en 39,12 s; compileall, parseo
+    JSON y `git diff --check` pasan.
+
+# Conversación 291 - Contrato multivista y comienzo del corpus visual v3
+
+- Fecha: 2026-08-31.
+- Resumen de la conversación: el usuario autorizó perseguir top-1 >=0,90 con varias vistas
+  development por tipo, arquetipos auxiliares y un holdout v3 completamente nuevo, permitiendo
+  personas solo cuando aportasen contexto. Se definió el contrato 3+1, se verificó con tests y comenzó
+  la generación secuencial y reanudable de las 508 imágenes nuevas.
+- Archivos modificados: generador/sellador v3, manifiesto v3, tests, `pyproject.toml`, `.gitignore`,
+  requisitos, diseño, tareas, documento técnico y este seguimiento. Los PNG permanecen fuera de Git.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: se añade 23.22 y sus subtareas; se completa 23.22.a. 23.16.c.3.d permanece
+  pendiente hasta una apertura única satisfactoria del futuro holdout v3.
+- Tareas completadas: 23.22.a.
+- Siguiente tarea pendiente recomendada: 23.22.b, completar las 508 imágenes nuevas, sellarlas y
+  ejecutar QA sin inferencia.
+- Decisiones o aclaraciones relevantes:
+  - Las 254 vistas development y las 254 holdout consumidas de v2 pasan a ser vistas A/B de
+    development v3; la antigua cohorte test queda `testEligible=false` para siempre.
+  - Se generan 254 vistas C y 254 holdout v3 de establecimientos/identidades nuevos: 508 activos.
+  - El manifiesto cubre 254 tipos, 23 familias y 38 arquetipos espaciales auxiliares.
+  - Validación rotará la vista retenida; la misma imagen no puede aparecer en train y validación.
+  - Tipo, familia, prompt y arquetipo verdadero están prohibidos como features. El arquetipo se
+    predecirá exclusivamente desde píxeles en inferencia.
+  - Personas solo son contexto secundario en escenas no sensibles; se prohíben rostros identificables,
+    menores, pacientes e inferencias biométricas o sensibles.
+  - El contrato pasa 5/5 pruebas, `compileall` y `git diff --check`. Se han materializado y sellado las
+    primeras 35/508 imágenes nuevas; no se ha cargado CLIP ni abierto v3 holdout.
+
+# Conversación 292 - Continuación de materialización multivista v3
+
+- Fecha: 2026-08-31.
+- Resumen de la conversación: el usuario pidió continuar con las 498 imágenes pendientes del corpus
+  v3. Se reanudó la cola desde sourceId 11 y se materializaron 25 terceras vistas development nuevas,
+  completando los tipos 1–35 y las familias restauración y comercio alimentario.
+- Archivos modificados: 25 PNG fuera de Git, manifiesto v3 sellado, documento técnico y este
+  seguimiento. No se modificó el holdout ni se generaron embeddings.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; no se cierra 23.22.b hasta materializar 508/508 y completar QA.
+- Siguiente tarea pendiente recomendada: continuar 23.22.b desde sourceId 36, moda y complementos.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado es 508 vistas A/B reutilizadas, 35/254 vistas C nuevas y 0/254 holdout v3.
+  - Las 35 imágenes nuevas tienen 35 SHA-256 distintos; no hay duplicados exactos.
+  - Se conservaron hard negatives dentro de alimentación: carnicería/charcutería/casquería,
+    pescadería/marisquería, panadería/pastelería/confitería y tres escalas de autoservicio.
+  - Personas aparecen únicamente como adultos pequeños de fondo cuando la política lo permite.
+  - Activos con trazos de envase potencialmente similares a texto quedan pendientes de QA OCR y
+    revisión humana; no se aprueban ni se usan para inferencia en esta iteración.
+  - La suite del contrato pasa 5/5 y `git diff --check` pasa; CLIP y holdout siguen sin abrirse.
+
+# Conversación 293 - Terceras vistas de moda y salud retail v3
+
+- Fecha: 2026-08-31.
+- Resumen de la conversación: el usuario pidió continuar la materialización del corpus v3. Se
+  generaron y sellaron las terceras vistas development de los sourceId 36–55, completando los once
+  tipos de moda y complementos y los nueve de farmacia, cosmética y salud retail sin tocar el
+  holdout v3.
+- Archivos modificados: 20 PNG fuera de Git, manifiesto v3 sellado, documento técnico y este
+  seguimiento. No se generaron embeddings ni predicciones.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; 23.22.b exige todavía materializar y revisar el conjunto completo.
+- Siguiente tarea pendiente recomendada: continuar 23.22.b desde sourceId 56, familia hogar y
+  bricolaje.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado queda en 508 vistas A/B reutilizadas, 55/254 vistas C nuevas y 0/254 holdout
+    v3: 55/508 imágenes nuevas materializadas y 453 pendientes.
+  - Los 55 activos C tienen 55 SHA-256 distintos; no existen duplicados exactos dentro del bloque.
+  - Moda infantil, lencería y peletería se representaron como locales vacíos. No aparecen menores,
+    cuerpos, animales ni situaciones sensibles; cualquier adulto permitido es secundario y no
+    identificable.
+  - Dos nombres locales de archivo se normalizaron a los `relativePath` canónicos de los sourceId
+    43 y 45 antes del sellado; no se alteraron sus píxeles.
+  - Farmacia, parafarmacia, perfumería, cosmética, herbolario y ortopedia quedan vacíos. Droguería,
+    higiene y óptica solo incluyen un adulto secundario de espaldas y no identificable.
+  - El presupuesto de holdout continúa intacto y `holdoutEvaluationAllowed=false`.
+  - La suite focalizada vuelve a pasar 5/5 en 5,70 s y `git diff --check` pasa.
+
+# Conversación 294 - Terceras vistas de hogar y bricolaje v3
+
+- Fecha: 2026-08-31.
+- Resumen de la conversación: el usuario pidió continuar el corpus v3. Se generaron mediante 14
+  llamadas built-in independientes y se sellaron las vistas development C de los sourceId 56–69,
+  completando la familia hogar y bricolaje sin acceder al holdout.
+- Archivos modificados: 14 PNG fuera de Git, manifiesto v3 sellado, documento técnico y este
+  seguimiento. No se generaron embeddings, predicciones ni resultados de evaluación.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; la materialización y QA de 23.22.b aún no están completas.
+- Siguiente tarea pendiente recomendada: continuar 23.22.b desde sourceId 70, familia tecnología y
+  oficina.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado es 508 vistas A/B reutilizadas, 69/254 vistas C nuevas y 0/254 holdout v3:
+    69/508 imágenes nuevas materializadas y 439 pendientes.
+  - Los 69 PNG C tienen 69 SHA-256 distintos y ningún sourceId hasta 69 queda pendiente.
+  - Los hard negatives se distinguen por escala e inventario: ferretería frente a centro de
+    bricolaje; muebles generales frente a cocinas y colchonería; electrodomésticos frente a
+    electrónica; decoración frente a iluminación y menaje.
+  - Solo las filas cuya política lo permite incluyen un adulto secundario de espaldas y no
+    identificable. Las demás escenas permanecen vacías.
+  - El holdout continúa en 0/254 y `holdoutEvaluationAllowed=false`; no se cargó CLIP.
+  - La suite focalizada pasa 5/5 en 12,55 s y `git diff --check` pasa.
+
+# Conversación 295 - Tecnología, oficina y primer bloque cultural v3
+
+- Fecha: 2026-09-01.
+- Resumen de la conversación: el usuario pidió continuar desde sourceId 70. Se generaron y sellaron
+  mediante once llamadas built-in independientes las vistas C 70–80: la familia completa de
+  tecnología/oficina y los primeros siete tipos de comercio cultural/especializado.
+- Archivos modificados: 11 PNG fuera de Git, manifiesto v3 sellado, documento técnico y este
+  seguimiento. No se generaron embeddings ni predicciones.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; no se cierra 23.22.b con materialización parcial.
+- Siguiente tarea pendiente recomendada: continuar 23.22.b desde sourceId 81 y completar comercio
+  cultural y especializado hasta sourceId 90.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado es 508 vistas A/B reutilizadas, 80/254 vistas C y 0/254 holdout v3: 80/508
+    imágenes nuevas materializadas y 428 pendientes.
+  - Los 80 PNG C tienen 80 SHA-256 distintos y ningún sourceId hasta 80 queda pendiente.
+  - Informática, telefonía y oficina se distinguen por ordenadores/componentes, terminales móviles y
+    mobiliario/equipos respectivamente; bellas artes se separa de papelería por lienzos y caballetes.
+  - Librería, quiosco, papelería, instrumentos, filatelia/numismática, galería y anticuario usan
+    señales de inventario y distribución específicas. El quiosco conserva trazos editoriales
+    sintéticos pendientes de QA OCR y revisión humana; no se aprueba en esta iteración.
+  - Personas solo aparecen cuando la política lo permite, pequeñas, de espaldas y no identificables.
+  - Holdout permanece 0/254, `holdoutEvaluationAllowed=false` y CLIP no se carga.
+  - La suite focalizada pasa 5/5 en 4,64 s y `git diff --check` pasa.
+
+# Conversación 296 - Cierre de comercio cultural y especializado v3
+
+- Fecha: 2026-09-01.
+- Resumen de la conversación: el usuario pidió continuar la materialización del corpus visual v3.
+  Se generaron mediante diez llamadas built-in independientes y se sellaron las vistas development C
+  de los sourceId 81–90, completando la familia `comercio-cultural-y-especializado` sin acceder al
+  holdout v3.
+- Archivos modificados: 10 PNG fuera de Git, manifiesto v3 sellado, documento técnico y este
+  seguimiento. No se generaron embeddings, predicciones ni resultados de evaluación.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; 23.22.b no se cierra hasta completar las 508 imágenes nuevas y su QA.
+- Siguiente tarea pendiente recomendada: continuar 23.22.b desde sourceId 91, familia flores,
+  jardinería y mascotas.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado es 508 vistas A/B reutilizadas, 90/254 vistas C nuevas y 0/254 holdout v3:
+    90/508 imágenes nuevas materializadas y 418 pendientes.
+  - Los 90 PNG C tienen 90 SHA-256 distintos y ningún sourceId hasta 90 queda pendiente.
+  - Minerales/fósiles, joyería, relojería y bisutería se distinguen por inventario, escala y zona de
+    trabajo; deporte general se separa de ropa/calzado deportivo mediante equipamiento frente a
+    prendas y probadores.
+  - Juguetería se generó vacía y sin menores. La tienda para adultos se generó vacía, discreta y no
+    explícita; no aparecen desnudez, actividad sexual ni personas.
+  - Esferas de relojes y pequeños trazos de productos o envases quedan pendientes de QA OCR y
+    revisión humana; ninguna imagen queda aprobada ni habilitada para entrenamiento en este avance.
+  - El holdout permanece 0/254, `holdoutEvaluationAllowed=false` y no se carga CLIP.
+  - La suite focalizada pasa 5/5 en 4,54 s y `git diff --check` pasa.
+
+# Conversación 297 - Primer lote ampliado de 50 terceras vistas v3
+
+- Fecha: 2026-09-01.
+- Resumen de la conversación: el usuario pidió continuar y elevar la cadencia desde lotes de diez a
+  lotes de cincuenta imágenes. Se generaron mediante cincuenta llamadas built-in independientes y se
+  sellaron las vistas development C de los sourceId 91–140, completando flores/jardinería/mascotas,
+  automoción/movilidad, grandes superficies, alojamiento, salud/clínicas y veterinaria/cuidado animal
+  sin abrir el holdout v3.
+- Archivos modificados: 50 PNG fuera de Git, manifiesto v3 sellado, documento técnico y este
+  seguimiento. No se generaron embeddings, predicciones ni resultados de evaluación.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; la evidencia parcial no satisface materialización y QA de 508/508.
+- Siguiente tarea pendiente recomendada: continuar el siguiente lote de 50 desde sourceId 141,
+  comenzando por `Residencia para personas mayores`.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado es 508 vistas A/B reutilizadas, 140/254 vistas C nuevas y 0/254 holdout v3:
+    140/508 imágenes nuevas materializadas y 368 pendientes.
+  - Los 140 PNG C tienen 140 SHA-256 distintos. Las cincuenta imágenes del lote son PNG válidos de
+    1448x1086, ninguna está vacía y sus tamaños están entre 1.766.490 y 3.257.840 bytes.
+  - Cada activo corresponde a una llamada built-in distinta. La primera copia del sourceId 92 falló
+    por interpretar dos rutas concatenadas en `output_hint`; se corrigió el parser y se reutilizó la
+    salida ya generada, sin regenerar ni duplicar el activo.
+  - Se reforzaron hard negatives de comercio, movilidad, alojamiento y salud mediante escala,
+    arquitectura y equipamiento específico; las categorías clínicas y veterinarias permanecen
+    completamente vacías y sin pacientes, animales, personal o datos clínicos.
+  - Se inspeccionaron visualmente cinco puntos de control del lote: sourceId 91, 110, 119, 130 y 140.
+    La muestra es coherente, pero no equivale a la revisión humana completa. Envases, productos
+    pequeños y equipos quedan pendientes de QA OCR/perceptual.
+  - Holdout continúa 0/254, `developmentTrainingAllowed=false`,
+    `holdoutEvaluationAllowed=false`, `promotionAllowed=false` y CLIP no se carga.
+  - La suite focalizada pasa 5/5 en 10,46 s y `git diff --check` pasa.
+
+# Conversación 298 - Segundo lote de 50 terceras vistas v3
+
+- Fecha: 2026-09-01.
+- Resumen de la conversación: el usuario pidió continuar manteniendo lotes de cincuenta imágenes. Se
+  materializaron y sellaron las vistas development C de los sourceId 141–190 mediante una llamada
+  built-in independiente por activo final, cubriendo servicios sociales, belleza/cuidado personal,
+  deporte, educación y el primer bloque de ocio/cultura. El holdout v3 no se materializó ni abrió.
+- Archivos modificados: 50 PNG finales fuera de Git, manifiesto v3 reconstruido y sellado, documento
+  técnico y este seguimiento. No se generaron embeddings, predicciones o métricas de modelo.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; todavía no se han materializado ni revisado las 508 imágenes nuevas.
+- Siguiente tarea pendiente recomendada: continuar el próximo lote desde sourceId 191, `Sala de
+  billar / juegos de mesa recreativos`.
+- Decisiones o aclaraciones relevantes:
+  - El estado sellado queda en 508 vistas A/B reutilizadas, 190/254 vistas C y 0/254 holdout v3:
+    190/508 imágenes nuevas materializadas y 318 pendientes.
+  - Los 190 PNG C poseen 190 SHA-256 distintos. Las cincuenta imágenes del lote son PNG 1448x1086,
+    no vacíos, con tamaños entre 1.756.298 y 3.330.284 bytes.
+  - Las categorías sociales, infantiles y educativas sensibles se generaron vacías y sin residentes,
+    usuarios, pacientes, alumnado, personal o menores. Belleza también permanece vacía y sin
+    tratamientos en curso.
+  - Se inspeccionaron los sourceId 141, 152, 162, 173 y 188. La primera variante de casino incumplió
+    la prohibición de números legibles; se generó una variante correctiva y solo esa copia final quedó
+    en la ruta canónica.
+  - El sellador rechazó correctamente el cambio con `FULL_TAXONOMY_V3_SOURCE_HASH_CHANGED`. Se aplicó
+    el flujo gobernado `build` + `seal`, válido porque no había revisión humana ni holdout que
+    preservar, y se registró el nuevo hash del 188 como `materializedPendingHumanReview`.
+  - Trazos pequeños de cosméticos, equipamiento y mesas del casino siguen pendientes de OCR y revisión
+    humana; el muestreo técnico no equivale a aprobación.
+  - `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false`, `promotionAllowed=false`;
+    no se cargó CLIP. La suite pasa 5/5 en 4,30 s y `git diff --check` pasa.
+
+# Conversación 299 - Lote 191–240 interrumpido por límite temporal de ImageGen
+
+- Fecha: 2026-09-01.
+- Resumen de la conversación: el usuario pidió continuar manteniendo lotes de cincuenta imágenes. La
+  cola built-in materializó los sourceId 191–203 y fue detenida por el proveedor con HTTP 429
+  `usage_limit_reached` al iniciar el sourceId 204. El lote permanece abierto y no se ha fragmentado
+  ni declarado completo.
+- Archivos modificados: 13 PNG fuera de Git en `development-view-c-images` y este seguimiento. El
+  manifiesto no se volvió a sellar, por lo que continúa reflejando únicamente 190 vistas C verificadas.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: reanudar el mismo lote desde sourceId 204 y completarlo hasta
+  240 después del restablecimiento de ImageGen, previsto para 2026-09-01 15:48:38 +02:00.
+- Decisiones o aclaraciones relevantes:
+  - Hay 13/50 activos del lote, desde 191 hasta 203; el directorio contiene 203 PNG en total.
+  - El fallo ocurrió antes de generar 204, por lo que no existe salida parcial de esa fila ni activos
+    duplicados.
+  - No se cambió a CLI/API ni a otro modelo: la skill exige consentimiento explícito para el fallback.
+  - No se ejecutó `seal`, QA final, CLIP, embeddings, entrenamiento o holdout sobre un lote incompleto.
+  - La rama se mantiene en `phase/19-demand-engine-foundations`.
+
+# Conversación 300 - Finalización del lote de 50 sourceId 191–240
+
+- Fecha: 2026-09-01.
+- Resumen de la conversación: el usuario pidió abordar el siguiente lote de cincuenta imágenes
+  juntas. Se preservaron las trece salidas válidas 191–203 y, tras restablecerse ImageGen, se reanudó
+  exactamente en 204 hasta completar, inspeccionar y sellar los cincuenta activos finales 191–240.
+- Archivos modificados: 37 PNG finales adicionales fuera de Git, una variante correctiva administrada
+  por ImageGen para el sourceId 193, manifiesto v3 reconstruido/sellado, documento técnico y este
+  seguimiento. No se generaron embeddings, predicciones o resultados de modelo.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; faltan vistas C, el holdout y la revisión humana completa.
+- Siguiente tarea pendiente recomendada: continuar desde sourceId 241, `Agencia de seguros`; quedan
+  catorce vistas C antes de comenzar el holdout v3 sellado.
+- Decisiones o aclaraciones relevantes:
+  - El lote 191–240 queda completo como una unidad de 50 activos finales, sin regenerar 191–203.
+  - El estado acumulado es 508 vistas A/B reutilizadas, 240/254 vistas C y 0/254 holdout v3:
+    240/508 imágenes nuevas materializadas y 268 pendientes.
+  - Los 240 PNG C poseen 240 SHA-256 distintos. El lote contiene cincuenta PNG 1448x1086 no vacíos,
+    con tamaños entre 1.737.952 y 2.642.886 bytes.
+  - Se inspeccionaron 193, 205, 215, 226, 235 y 239. La primera vista 193 mostraba más de tres
+    ocupantes en una atracción; se sustituyó por una variante completamente vacía, con trenes y
+    góndolas sin pasajeros.
+  - La corrección 193 se registró mediante el flujo gobernado `build` + `seal`; su hash final es
+    `5a2a77597e355cffa23123f57ff762c143541ca996c8b20472982bcc2343fa00`.
+  - Relojes, equipos, mapas, material profesional y oficinas quedan pendientes del QA OCR/perceptual y
+    revisión humana exhaustiva. El muestreo no implica aprobación.
+  - `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false`, `promotionAllowed=false`;
+    no se cargó CLIP. La suite pasa 5/5 en 5,29 s y `git diff --check` pasa.
+
+# Conversación 301 - Lote conjunto de 100 imágenes: cierre development C e inicio holdout v3
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió generar el siguiente lote como una unidad de cien
+  imágenes. Se materializaron las catorce vistas development C restantes, sourceId 241–254, y las
+  primeras ochenta y seis vistas independientes del holdout v3, sourceId 1–86. Cada activo final se
+  obtuvo mediante una llamada built-in distinta y se copió a su ruta contractual; el holdout se
+  selló estructuralmente, pero no se abrió ni se evaluó.
+- Archivos modificados: 14 PNG en `development-view-c-images`, 86 PNG en
+  `sealed-holdout-v3-images`, manifiesto v3 sellado, documento técnico y este seguimiento. Los
+  originales administrados por ImageGen se conservan fuera del proyecto.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; faltan 168 imágenes holdout y la revisión humana/QA exhaustiva de las
+  508 imágenes nuevas.
+- Siguiente tarea pendiente recomendada: materializar el siguiente bloque holdout v3 desde sourceId
+  87 hasta 186, manteniendo el conjunto sin inferencia ni ajuste.
+- Decisiones o aclaraciones relevantes:
+  - Development queda completo: 508 vistas A/B reutilizadas y 254/254 vistas C nuevas. Holdout v3
+    queda en 86/254; el total nuevo es 340/508 y restan 168.
+  - Los 340 PNG nuevos poseen 340 SHA-256 distintos y ninguno está vacío. Las dimensiones observadas
+    son 286 activos de 1448x1086, 52 de 1536x1024, uno de 1447x1087 y uno de 1449x1086; el contrato
+    no transforma los píxeles ni fija una resolución única y la suite acepta los PNG originales.
+  - Se inspeccionaron 241, 250 y una muestra holdout estratificada 1, 30, 45, 60, 70, 78 y 86. La
+    primera versión del holdout 60 parecía una tienda de pequeños electrodomésticos; se sustituyó
+    antes del sellado por un hard negative inequívoco con televisores, audio, cámaras y auriculares.
+  - Personas aparecen únicamente donde la fila lo permite, con un máximo de tres adultos de fondo
+    no identificables. No se muestran menores, pacientes, situaciones sensibles ni datos personales.
+  - La muestra manual no equivale a aprobación completa: `humanReviewComplete=false`,
+    `developmentTrainingAllowed=false`, `holdoutEvaluationAllowed=false` y
+    `promotionAllowed=false`.
+  - No se cargó CLIP, no se extrajeron embeddings, no se generaron predicciones y el presupuesto
+    único de evaluación holdout sigue intacto. La suite contractual pasa 5/5 en 5,29 s.
+
+# Conversación 302 - Segundo lote conjunto de 100 imágenes holdout v3
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió abordar el siguiente lote de cien imágenes juntas. Se
+  materializaron y sellaron mediante ImageGen built-in cien establecimientos holdout v3 independientes,
+  sourceId 87–186, sin cargar CLIP, extraer embeddings, entrenar ni abrir el conjunto para evaluación.
+- Archivos modificados: 100 PNG nuevos en `sealed-holdout-v3-images`, manifiesto v3 sellado,
+  documento técnico y este seguimiento. Los originales permanecen en el almacén administrado de
+  ImageGen y solo los activos finales ocupan las rutas canónicas del proyecto.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna; faltan 68 imágenes holdout y el QA/revisión humana exhaustivos.
+- Siguiente tarea pendiente recomendada: materializar y sellar holdout v3 sourceId 187–254; después
+  generar las hojas de revisión y completar el QA perceptual/OCR sin cargar CLIP.
+- Decisiones o aclaraciones relevantes:
+  - El estado acumulado queda en 254/254 vistas development C y 186/254 holdout: 440/508 imágenes
+    nuevas materializadas, con 68 pendientes.
+  - El lote contiene 100 PNG no vacíos y el holdout completo presente posee 186 hashes SHA-256
+    distintos. Hay 99 imágenes 1448x1086 y una 1449x1085; sus tamaños van de 1.686.641 a 3.053.072
+    bytes y se preservan los píxeles nativos.
+  - El lote cubre comercio especializado, flores/mascotas, automoción, grandes superficies,
+    alojamiento, salud, veterinaria, servicios sociales, belleza, deporte, educación y ocio/cultura.
+  - La muestra visual revisa 89, 96, 118, 125, 137, 141, 148, 160, 170, 180, 185 y 186. La primera
+    variante de zoológico 185 no mostraba animales y era ambigua frente a un parque botánico; se
+    sustituyó antes del sellado por un recinto amplio con exactamente dos jirafas adultas sanas, sin
+    visitantes ni situación sensible.
+  - Sex-shop permanece vacío y sin personas; salud, veterinaria, servicios sociales, cuidado
+    personal sensible y educación infantil tampoco muestran pacientes, usuarios, residentes,
+    clientes o menores. Las filas que permiten contexto respetan un máximo de tres adultos no
+    identificables.
+  - `humanReviewComplete=false`, `developmentTrainingAllowed=false`,
+    `holdoutEvaluationAllowed=false` y `promotionAllowed=false`. La única apertura holdout permanece
+    intacta. La suite contractual pasa 5/5 en 7,45 s y `git diff --check` pasa.
+
+# Conversación 303 - Finalización de las 68 imágenes holdout v3 restantes
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió generar las 68 imágenes restantes. Se materializaron
+  los establecimientos holdout v3 sourceId 187–254 mediante una llamada ImageGen built-in por activo
+  final y se selló por primera vez el corpus completo de 508 imágenes nuevas. No se cargó CLIP ni se
+  abrió el holdout para inferencia o evaluación.
+- Archivos modificados: 68 PNG nuevos en `sealed-holdout-v3-images`, manifiesto v3 sellado,
+  documento técnico y este seguimiento. Los originales administrados por ImageGen se conservan fuera
+  del proyecto.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa en progreso; 23.22.c-e y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: ninguna. La materialización está completa, pero 23.22.b exige además QA
+  perceptual/OCR exhaustivo y hojas de revisión; no debe confundirse el muestreo técnico con esa
+  aprobación.
+- Siguiente tarea pendiente recomendada: generar las hojas de revisión de las 508 imágenes nuevas y
+  completar el QA perceptual/OCR de 23.22.b sin cargar CLIP; después solicitar la aprobación humana
+  explícita de 23.22.c.
+- Decisiones o aclaraciones relevantes:
+  - El contrato sellado alcanza 254/254 vistas development C y 254/254 holdout v3: 508/508 imágenes
+    nuevas, `developmentComplete=true`, `holdoutComplete=true` y `complete=true`.
+  - Los 508 PNG nuevos poseen 508 SHA-256 distintos y ninguno está vacío. Sus tamaños van de
+    1.686.641 a 3.392.228 bytes; hay 453 de 1448x1086, 52 de 1536x1024 y tres variantes nativas de
+    un píxel alrededor de 1448x1086.
+  - ImageGen alcanzó temporalmente el límite tras materializar 242. La llamada 243 falló antes de
+    devolver un activo; al continuar se reanudó exactamente en 243, sin regenerar 187–242 ni cambiar
+    a CLI/API.
+  - La muestra visual cubre 187, 188, 189, 193, 199, 205, 215, 225, 235, 242, 248, 250 y 254. Casino,
+    bingo y lotería mantienen números/pantallas sin texto legible; parque temático permanece vacío;
+    oficinas y finanzas no exponen datos personales; funeraria no muestra personas ni situaciones de
+    duelo explícitas.
+  - `humanReviewComplete=false`, `developmentTrainingAllowed=false`,
+    `holdoutEvaluationAllowed=false` y `promotionAllowed=false`; el presupuesto de una apertura sigue
+    intacto. La suite contractual pasa 5/5 en 6,99 s y `git diff --check` pasa.
+
+# Conversación 304 - QA pre-inferencia y paquete de revisión visual v3
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió continuar tras completar las 508 imágenes nuevas. Se
+  implementó y ejecutó un job reproducible que inspecciona únicamente las 254 vistas development C y
+  las 254 vistas holdout v3, verifica integridad y diversidad perceptual y genera ocho hojas de
+  contacto más un checklist humano de 508 filas. No se cargó CLIP, no se extrajeron embeddings, no
+  se entrenó y no se abrió el holdout para inferencia.
+- Archivos modificados: nuevo módulo `full_taxonomy_visual_multiview_v3_qa.py`, nueva regresión
+  `test_full_taxonomy_visual_multiview_v3_qa.py`, comando de consola en `pyproject.toml`, informe
+  `qa-report.v3.json`, checklist `human-review-checklist.v3.json`, ocho JPG en
+  `review-contact-sheets`, documento técnico y este seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b continúa pendiente; 23.22.c-e y 23.16.c.3.d permanecen cerradas a
+  entrenamiento/evaluación.
+- Tareas completadas: ninguna. La QA estructural y perceptual pasa, pero el barrido OCR no pudo
+  ejecutarse y la revisión humana fila a fila continúa pendiente.
+- Siguiente tarea pendiente recomendada: instalar o proporcionar un ejecutable Tesseract válido,
+  repetir el mismo job con `--ocr-executable`, resolver sus hallazgos y completar la revisión humana
+  explícita de las 508 filas antes de cerrar 23.22.b/23.22.c.
+- Decisiones o aclaraciones relevantes:
+  - Se evaluaron exactamente 508 imágenes nuevas, con 254 por split, 23/23 familias y 38/38
+    arquetipos en cada split. Las 508 se decodifican como PNG, carecen de EXIF y tienen SHA-256
+    únicos; la resolución mínima es 1447x1024 y la desviación cromática mínima es 33,754173.
+  - No existen duplicados exactos, pares con dHash a distancia <=4 ni hashes coincidentes entre la
+    misma fuente de development y holdout. La distancia perceptual mínima observada es 11.
+  - Las ocho hojas de contacto —cuatro development y cuatro holdout, máximo 64 imágenes por hoja—
+    se inspeccionaron globalmente. No muestran activos vacíos/corruptos ni repeticiones evidentes;
+    las clases visualmente próximas conservan revisión individual pendiente en el checklist.
+  - Tesseract no estaba instalado. WinGet descargó y verificó el instalador oficial empaquetado, pero
+    Windows devolvió `0x800704c7` porque la instalación fue cancelada por el usuario. No se intentó
+    eludir esa cancelación ni sustituir OCR real por una heurística de bordes.
+  - Por ello `structuralQaPassed=true` y `perceptualQaPassed=true`, mientras
+    `ocrScanComplete=false` y `qaPassed=false`. Los flags de autorización humana, entrenamiento,
+    evaluación y promoción siguen a `false`; el presupuesto holdout consumido sigue en cero.
+  - La verificación pasa 7/7 pruebas en 5,08 s, compila ambos módulos y supera `git diff --check`.
+
+# Conversación 305 - OCR completo y cierre técnico de 23.22.b
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario autorizó continuar con el OCR. Se instaló Tesseract
+  5.4.0, se corrigió un defecto de parsing TSV detectado durante la primera pasada y se repitió el
+  barrido íntegro de las 508 imágenes. La QA automatizada completa pasa y 23.22.b queda cerrada; la
+  aceptación humana de los hallazgos permanece separada en 23.22.c.
+- Archivos modificados: `full_taxonomy_visual_multiview_v3_qa.py`,
+  `test_full_taxonomy_visual_multiview_v3_qa.py`, `qa-report.v3.json`,
+  `human-review-checklist.v3.json`, `tasks.md`, documento técnico y este seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.b completada; 23.22.c pasa a ser la primera tarea pendiente. 23.22.d-e y
+  23.16.c.3.d siguen pendientes.
+- Tareas completadas: 23.22.b.
+- Siguiente tarea pendiente recomendada: 23.22.c, revisar explícitamente las 508 filas y resolver o
+  aceptar las 184 imágenes señaladas por OCR antes de autorizar extracción de embeddings.
+- Decisiones o aclaraciones relevantes:
+  - Tesseract 5.4.0.20240606 quedó instalado en `C:\Program Files\Tesseract-OCR\tesseract.exe`, con
+    `eng` y `osd`. La pasada usa `eng`, PSM 11, salida TSV, timeout por imagen y confianza mínima 70.
+  - La primera ejecución reveló que `csv.DictReader` interpretaba una comilla reconocida como
+    quoting y concatenaba filas TSV. El parser usa ahora `csv.QUOTE_NONE`; una regresión reproduce
+    exactamente el caso y evita reintroducirlo.
+  - La segunda pasada válida escanea 508/508 imágenes: 184 contienen al menos una alerta y se
+    conservan 253 tokens. Ningún token contiene tabuladores o saltos de línea. Estas alertas no son
+    aprobación ni rechazo: se incorporan a cada fila del checklist para 23.22.c.
+  - `structuralQaPassed=true`, `perceptualQaPassed=true`, `ocrScanComplete=true` y
+    `qaPassed=true`; continúan `humanReviewComplete=false`, `developmentTrainingAllowed=false`,
+    `holdoutEvaluationAllowed=false` y `promotionAllowed=false`.
+  - No se cargó CLIP, no se extrajeron embeddings, no se entrenó y no se generaron predicciones; el
+    presupuesto holdout consumido permanece en cero.
+
+# Conversación 306 - Paquete auditable para la aprobación humana v3
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió abordar 23.22.c. Se construyó un paquete fail-closed
+  con ocho hojas anotadas que cubren las 184 imágenes señaladas por OCR y se inspeccionaron junto a
+  las ocho hojas generales que cubren las 508 imágenes. No se detectó una marca, dato personal,
+  menor, paciente, situación sensible o texto legible que exija rechazar un activo. La aprobación
+  contractual permanece pendiente de una declaración humana explícita.
+- Archivos modificados: nuevo módulo `full_taxonomy_visual_multiview_v3_review.py`, nueva regresión
+  `test_full_taxonomy_visual_multiview_v3_review.py`, comando de consola en `pyproject.toml`, ocho
+  hojas en `ocr-review-contact-sheets`, `human-review-summary.v3.json`, documento técnico y este
+  seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.c permanece pendiente de autorización explícita; 23.22.d-e y
+  23.16.c.3.d siguen bloqueadas.
+- Tareas completadas: ninguna.
+- Siguiente tarea pendiente recomendada: recibir exactamente `Apruebo las 508 imágenes nuevas del
+  dataset visual taxonómico v3`, registrar la autorización ligada a hashes y cerrar 23.22.c.
+- Decisiones o aclaraciones relevantes:
+  - El paquete valida previamente `qaPassed=true`, `ocrScanComplete=true`, 508 filas pendientes,
+    cero predicciones holdout y presupuesto cero; cualquier incumplimiento aborta.
+  - Las 184 alertas se reparten en ocho hojas de hasta 24 imágenes. Cada miniatura conserva contexto,
+    dibuja las cajas OCR en rojo y muestra split, sourceId, tipo, token y confianza.
+  - La inspección de las alertas confirma que se concentran en bordes, reflejos, equipamiento,
+    estanterías o fragmentos visuales. No se ocultan: las 253 evidencias permanecen en el checklist.
+  - El corpus contiene 377 escenas `emptyVenuePreferred` y 131 con adultos de fondo permitidos. La
+    revisión general no muestra menores, pacientes, rostros identificables ni situaciones sensibles.
+  - El paquete no puede autoaprobar: conserva `reviewStatus=awaitingExplicitHumanApproval`,
+    `humanReviewComplete=false` y todos los permisos posteriores a `false`.
+  - La verificación focal y contractual pasa 10/10 pruebas en 19,56 s y `git diff --check` pasa.
+
+# Conversación 307 - Autorización explícita y cierre de 23.22.c
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario emitió exactamente `Apruebo las 508 imágenes nuevas del
+  dataset visual taxonómico v3`. Se implementó y probó un autorizador fail-closed, se vinculó la
+  decisión a los hashes de manifiesto, QA, checklist y resumen, y se aprobaron las 254 vistas
+  development C más las 254 vistas holdout v3. 23.22.c queda completada.
+- Archivos modificados: nuevo módulo `full_taxonomy_visual_multiview_v3_authorization.py`, nueva
+  regresión `test_full_taxonomy_visual_multiview_v3_authorization.py`, endurecimiento del QA y sus
+  tests, `generation-manifest.v3.json`, `human-review-checklist.v3.json`,
+  `human-review-summary.v3.json`, nuevo `human-review-authorization.v3.json`, `pyproject.toml`,
+  `tasks.md`, documento técnico y este seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.c completada; 23.22.d es la primera pendiente. 23.22.e y 23.16.c.3.d
+  siguen pendientes.
+- Tareas completadas: 23.22.c.
+- Siguiente tarea pendiente recomendada: 23.22.d, extraer embeddings únicamente de development,
+  seleccionar el clasificador y la cabeza de arquetipos con validación multivista y congelar el
+  candidato/pretest lock antes de cualquier apertura holdout v3.
+- Decisiones o aclaraciones relevantes:
+  - El autorizador exige coincidencia literal de la frase y valida 508 filas por `imageId`, ruta y
+    SHA-256. También exige QA/OCR completas, materialización sellada y presupuesto holdout cero.
+  - El registro no almacena la frase en claro: conserva su SHA-256 y los hashes previos de los cuatro
+    artefactos de evidencia. El SHA del informe QA coincide byte a byte con el registrado.
+  - Quedan 254/254 development C y 254/254 holdout con estado `approved`; el checklist registra
+    508 aprobadas, cero pendientes/rechazadas y cinco controles verdaderos por fila.
+  - Se habilitan `developmentTrainingAllowed=true` y `holdoutEvaluationAllowed=true` para sus pasos
+    offline separados. `productionTrainingAllowed=false` y `promotionAllowed=false` permanecen
+    cerrados; la aprobación no equivale a despliegue.
+  - El QA se endurece para rechazar la regeneración de un checklist con filas ya aprobadas, evitando
+    que una repetición accidental revoque o sobrescriba la decisión humana.
+  - No se cargó CLIP, no se extrajeron embeddings y no se generaron predicciones. El presupuesto del
+    holdout sigue en cero. Compilación, 14/14 pruebas en 20,96 s y `git diff --check` pasan.
+
+# Conversación 308 - Selección multivista development-only y cierre de 23.22.d
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió abordar 23.22.d. Se reutilizaron por linaje las 508
+  embeddings A/B consumidas como development, se extrajeron con CLIP las 254 vistas C aprobadas y se
+  compararon clasificadores de familia y arquetipo mediante tres folds leave-one-view-out. Se congeló
+  el mejor candidato, política y pretest lock sin cargar ni predecir el holdout v3.
+- Archivos modificados: nuevo módulo `full_taxonomy_visual_multiview_v3_training.py`, nueva regresión
+  `test_full_taxonomy_visual_multiview_v3_training.py`, comando de consola, embeddings development
+  v3, informe `full-taxonomy-visual-multiview-development.v3.json`, modelo
+  `full-taxonomy-visual-multiview-classifier.v3.json`, política v3, `pretest-lock.v3.json`, guía
+  `FULL_TAXONOMY_VISUAL_MULTIVIEW_DEVELOPMENT_V3.md`, `tasks.md`, documento técnico y seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.d completada; 23.22.e es la primera pendiente. 23.16.c.3.d continúa
+  pendiente hasta conocer la apertura única.
+- Tareas completadas: 23.22.d.
+- Siguiente tarea pendiente recomendada: 23.22.e, verificar hashes del lock, extraer una sola vez las
+  254 embeddings holdout v3, conservar métricas reales y consumir irrevocablemente el presupuesto.
+- Decisiones o aclaraciones relevantes:
+  - Development contiene 762 imágenes, 254 por A/B/C, 254 tipos, 23 familias y 38 arquetipos. La
+    validación entrena dos vistas completas y retiene la tercera, rotando A, B y C.
+  - Se comparan 35 candidatos familiares y 31 auxiliares: centroides, k-NN, ridge, prototipos por
+    tipo, RBF kernel ridge, PCA+ridge, LDA y fusión con arquetipo predicho.
+  - Gana familia `type-prototype-archetype-fusion-0.25`: accuracy 0,79527559, precision macro
+    0,81518665, recall macro 0,76498406, F1 macro 0,76972758 y Recall@3 0,95669291.
+  - Gana arquetipo `lda-1`: accuracy 0,73097113, precision macro 0,76157643, recall macro
+    0,70752561, F1 macro 0,71199779 y Recall@3 0,91076116.
+  - La fusión usa la predicción de arquetipo producida desde CLIP; prompt, tipo, familia y arquetipo
+    verdadero están prohibidos como features de consulta. Las etiquetas solo ajustan cabezas.
+  - Top-1 development no alcanza 90 %, por lo que no se promete superar el holdout. Recall@3 alto
+    demuestra señal útil, mientras la confusión top-1 entre familias próximas continúa visible.
+  - `pretest-lock.v3.json` fija todos los hashes y el fingerprint holdout; no existe
+    `holdout-clip-embeddings.v3.json`, presupuesto 1, consumido 0. Producción/promoción siguen false.
+  - Compilación, 18/18 pruebas en 20,10 s y `git diff --check` pasan.
+
+# Conversación 309 - Recomendador contextual v8 por acciones, ubicación, tiempo y escasez
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: se pidió mejorar el entrenamiento para recorridos diversos, priorizar
+  la ubicación actual y recomendar pocos huecos únicamente a usuarios con intención compatible. Se
+  construyeron iteraciones diagnósticas y v8 final, selección 5-fold y holdouts de uso único.
+- Archivos modificados: módulos de dataset/entrenamiento action-context; políticas, datasets, locks,
+  modelos, model card, informes JSON/Markdown, pruebas v6, `pyproject.toml` y documentación `.kiro`.
+- Requisitos impactados: RF-036; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.23 completada; 23.22.e continúa pendiente y separada de este recomendador.
+- Tareas completadas: 23.23.
+- Siguiente tarea pendiente recomendada: 23.22.e, abrir una sola vez el holdout visual v3 congelado.
+- Decisiones o aclaraciones relevantes:
+  - V5 obtuvo 0,8815 en 5-fold y 0,8675 en test; se conservó como fallo sin reapertura.
+  - V6 pasó 0,9125, pero una auditoría detectó día/hora constantes; v7 corrigió el contrato y obtuvo
+    0,89. Ambos resultados se conservan y ningún test se reabrió.
+  - V8 usa afinidad temporal por candidato y obtiene train OOF 0,8735; test 0,90625; error 0,09375;
+    precision/recall/F1 0,90625; Recall@3 0,99875; brecha 0,03275 y 10/10 contrafactuales.
+  - Escasez alineada logra 0,99386503, ubicación sensible 0,92879257 y tarde 0,9125.
+  - Coordenadas, IDs, posición y outcomes se excluyen. Producción/promoción continúan false.
+  - Compilación, 17/17 pruebas focales y `git diff --check` pasan.
+
+# Conversación 310 - Apertura única del holdout visual multivista v3
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario autorizó continuar con 23.22.e. Se implementó el evaluador
+  fail-closed, se verificaron hashes/autorización/fingerprint y se abrió una sola vez el holdout v3 de
+  254 imágenes. El resultado real se conserva aunque no supera las puertas.
+- Archivos modificados: nuevo `full_taxonomy_visual_multiview_v3_holdout.py`, embeddings holdout,
+  resultado, opening record, lock consumido, informe Markdown, tests, comando de consola, tareas,
+  diseño, documento técnico y seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: 23.22.e y su padre 23.22 completadas; 23.16.c.3.d continúa pendiente.
+- Tareas completadas: 23.22.e y 23.22.
+- Siguiente tarea pendiente recomendada: diagnosticar con development consumido las confusiones de
+  v3 y diseñar un futuro protocolo independiente; no reabrir ni ajustar contra holdout v3.
+- Decisiones o aclaraciones relevantes:
+  - Familia: accuracy 0,7480315, error 0,2519685, precision macro 0,79612678, recall macro
+    0,71791241, F1 macro 0,72358713, Recall@3 0,92913386 y recall mínimo 0,25.
+  - Arquetipo: accuracy 0,72047244, F1 macro 0,72463901 y Recall@3 0,91732283.
+  - Brecha 0,04724409 pasa; las otras seis puertas familiares fallan. `qualityGatesPassed=false`.
+  - Tecnología/oficina, fotografía/reparaciones y otros servicios al público son las familias con
+    menor recall. La evidencia apunta a subajuste/solapamiento top-1, no brecha de memorización.
+  - Presupuesto 1/1 consumido, `reopenAllowed=false`, `selectionUsedHoldout=false`, training,
+    producción y promoción false. Por ello 23.16.c.3.d no se marca.
+  - Compilación, 8/8 pruebas focales y `git diff --check` pasan.
+
+# Conversación 311 - Mejora multirregión robusta del clasificador visual
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario pidió mejorar exclusivamente el clasificador visual y
+  conservar el recomendador v8. Se trataron las cuatro vistas consumidas como desarrollo, se
+  diagnosticaron varias cabezas y se congeló un candidato global+centro+LDA más robusto.
+- Archivos modificados: nuevo módulo `full_taxonomy_visual_multiregion_v4.py`, embeddings centro,
+  informes preliminares/robustos y experimentales, modelo, política, guía Markdown, tests, comando de
+  consola, requisitos, diseño, tareas, documento técnico y seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: nueva 23.24; 23.24.a completada, 23.24.b pendiente; 23.16.c.3.d pendiente.
+- Tareas completadas: 23.24.a.
+- Siguiente tarea pendiente recomendada: 23.24.b, crear y revisar un holdout nuevo antes de evaluar.
+- Decisiones o aclaraciones relevantes:
+  - No se modifica el recomendador contextual v8 ni se generan imágenes nuevas.
+  - Baseline de cuatro vistas: accuracy 0,7992126. Texto CLIP no mejora; XGBoost cae a 0,33956693.
+  - Global+centro puro llega a 0,81988189, pero sacrifica D; la selección robusta evita ese sesgo.
+  - Gana `global-center-prototype-lda-robust-0.75`: accuracy 0,83267717, precision macro
+    0,85670008, recall macro 0,81304345, F1 0,81591205 y Recall@3 0,96062992.
+  - Peor fold accuracy 0,78346457/F1 0,76688298; D mejora 0,03543307 respecto al test v3.
+  - Las 1.016 imágenes ya están consumidas. No existe test v4 y no se declara >=0,90.
+  - Producción/promoción permanecen false. Compilación, 8/8 pruebas y `git diff --check` pasan.
+
+# Conversación 312 - Guía integral del recomendador v8 y clasificador visual v4
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: el usuario solicitó un documento detallado que explique la versión
+  final v8 del recomendador y el candidato v4 del clasificador visual, desde la construcción de datos
+  hasta modelos, ejecución, librerías, decisiones, métricas y límites.
+- Archivos modificados: nuevo
+  `apps/demand-engine/evaluation/RECOMMENDER_V8_AND_VISUAL_CLASSIFIER_V4_TECHNICAL_GUIDE.md` y este
+  registro de seguimiento.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015, únicamente
+  como documentación consolidada, sin cambiar su contrato.
+- Tareas impactadas: 23.23 y 23.24.a documentadas; 23.24.b y 23.16.c.3.d continúan pendientes.
+- Tareas completadas: ninguna nueva.
+- Siguiente tarea pendiente recomendada: 23.24.b, construir y revisar un holdout v4 completamente
+  nuevo antes de realizar su apertura única.
+- Decisiones o aclaraciones relevantes:
+  - Se distingue expresamente el 87,35 % OOF de v8 del accuracy in-sample y se explica por qué el
+    test temporal puede obtener 90,625 % sin afirmar sobreajuste o fuga.
+  - Se documenta que v8 usa 28 tipos/6 familias, mientras v4 cubre 254 tipos/23 familias.
+  - V8 se conserva congelado; v4 continúa como candidato de development sin evidencia productiva.
+  - Las vistas A/B/C/D están consumidas y no pueden reutilizarse como holdout v4.
+
+# Conversación 313 - Reparación de variables locales e informe del incidente MLOps
+
+- Fecha: 2026-09-02.
+- Resumen de la conversación: `npm run infra:up` fallaba al interpolar la contraseña de la base de
+  datos de MLflow. La auditoría completa detectó que `.env.local` era anterior al stack MLOps y
+  carecía de 20 variables obligatorias. Se sincronizó el bloque local, se validó Compose y se creó un
+  informe DOCX desde la plantilla Design Report solicitada.
+- Archivos modificados: `.env.local` —ignorado por Git—, nuevo
+  `docs/informes/informe-incidente-infraestructura-mlops-local.docx` y este seguimiento.
+- Requisitos impactados: RNF-009 y RNF-014 como operación local; no cambia ningún contrato funcional.
+- Tareas impactadas: ninguna tarea cambia de estado; 23.24.b continúa pendiente.
+- Tareas completadas: ninguna nueva.
+- Siguiente tarea pendiente recomendada: recuperar Docker Desktop hasta `Status=running`, repetir
+  `npm run infra:up` y después continuar con 23.24.b.
+- Decisiones o aclaraciones relevantes:
+  - Compose contiene 27 variables con contrato obligatorio; tras la corrección quedan 0 ausentes o
+    vacías y `docker compose config --quiet` termina correctamente.
+  - Los secretos locales se separan por capacidad, no se documentan en claro y `.env.local`
+    permanece excluido por `.gitignore`.
+  - El arranque llega ahora al motor de Docker, pero Docker Desktop permanece en `starting` y
+    responde HTTP 500 en la API 1.51. El intento de reinicio no consiguió completar el arranque.
+  - El informe conserva la plantilla, sus dos secciones, imagen, estilos, tablas, TOC y campo PAGE.
+    La QA estructural pasa; la QA visual no puede ejecutarse porque LibreOffice/`soffice` no está
+    instalado en el host.

@@ -1,0 +1,3560 @@
+{
+  "schemaVersion": 1,
+  "qaVersion": "full-taxonomy-visual-multiview-v3-qa-v1",
+  "datasetVersion": "synthetic-marketplace-full-taxonomy-visual-v3",
+  "evaluatedImageCount": 508,
+  "developmentCImageCount": 254,
+  "holdoutV3ImageCount": 254,
+  "familyCountPerSplit": {
+    "development-c": 23,
+    "sealed-holdout-v3": 23
+  },
+  "archetypeCountPerSplit": {
+    "development-c": 38,
+    "sealed-holdout-v3": 38
+  },
+  "decodablePngCount": 508,
+  "uniqueSha256Count": 508,
+  "minimumWidth": 1447,
+  "minimumHeight": 1024,
+  "minimumChannelStdMean": 33.754173,
+  "imagesWithExif": 0,
+  "exactDuplicatePairs": 0,
+  "minimumPerceptualHammingDistance": 11,
+  "nearDuplicatePairsDhashDistanceLe4": 0,
+  "nearDuplicatePairs": [],
+  "sameSourceCrossSplitHashOverlap": 0,
+  "ocr": {
+    "status": "completed",
+    "engine": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+    "minimumConfidence": 70.0,
+    "scannedImageCount": 508,
+    "flaggedImageCount": 184,
+    "findingCount": 253,
+    "findings": [
+      {
+        "imageId": "63d4547f-91d4-5f6a-955d-40413a6e753c",
+        "split": "development-c",
+        "sourceId": 5,
+        "typeCode": "cafe-bar",
+        "tokens": [
+          {
+            "text": "WA",
+            "confidence": 85.937,
+            "left": 580,
+            "top": 95,
+            "width": 107,
+            "height": 36
+          }
+        ]
+      },
+      {
+        "imageId": "8192335d-214e-525f-b8e2-cd6b635f735b",
+        "split": "development-c",
+        "sourceId": 6,
+        "typeCode": "taberna",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 74.883,
+            "left": 1377,
+            "top": 150,
+            "width": 62,
+            "height": 90
+          },
+          {
+            "text": "ll",
+            "confidence": 74.519,
+            "left": 1378,
+            "top": 342,
+            "width": 70,
+            "height": 112
+          }
+        ]
+      },
+      {
+        "imageId": "4ab62bf9-3ec0-5b55-a1bb-3d8ec6c3ff4d",
+        "split": "development-c",
+        "sourceId": 7,
+        "typeCode": "restaurante-bar-en-club-o-sociedad",
+        "tokens": [
+          {
+            "text": "lim)",
+            "confidence": 70.645,
+            "left": 177,
+            "top": 147,
+            "width": 107,
+            "height": 78
+          }
+        ]
+      },
+      {
+        "imageId": "a849c022-4773-59c3-b687-551b7af3f30c",
+        "split": "development-c",
+        "sourceId": 8,
+        "typeCode": "restauracion-en-teatro-cine-espectaculo",
+        "tokens": [
+          {
+            "text": "ine",
+            "confidence": 78.258,
+            "left": 165,
+            "top": 364,
+            "width": 48,
+            "height": 20
+          }
+        ]
+      },
+      {
+        "imageId": "f5e0769c-4751-5c42-947e-8742c12b1ea8",
+        "split": "development-c",
+        "sourceId": 9,
+        "typeCode": "restauracion-en-recinto-ferial",
+        "tokens": [
+          {
+            "text": "INE",
+            "confidence": 73.805,
+            "left": 1383,
+            "top": 727,
+            "width": 65,
+            "height": 28
+          }
+        ]
+      },
+      {
+        "imageId": "1c20d423-d10a-5aa3-a358-008d688538a5",
+        "split": "development-c",
+        "sourceId": 11,
+        "typeCode": "chocolateria",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 84.78,
+            "left": 300,
+            "top": 396,
+            "width": 8,
+            "height": 16
+          }
+        ]
+      },
+      {
+        "imageId": "43900b29-7d16-5e02-bb67-012edff98dc8",
+        "split": "development-c",
+        "sourceId": 15,
+        "typeCode": "empresa-local-de-catering",
+        "tokens": [
+          {
+            "text": "EE",
+            "confidence": 81.915,
+            "left": 941,
+            "top": 261,
+            "width": 222,
+            "height": 138
+          }
+        ]
+      },
+      {
+        "imageId": "c7fcffbe-3818-5c85-bff4-5eff56acceb6",
+        "split": "development-c",
+        "sourceId": 18,
+        "typeCode": "carniceria-charcuteria",
+        "tokens": [
+          {
+            "text": "Lal",
+            "confidence": 82.491,
+            "left": 1224,
+            "top": 461,
+            "width": 26,
+            "height": 24
+          },
+          {
+            "text": "Biv",
+            "confidence": 82.857,
+            "left": 823,
+            "top": 680,
+            "width": 44,
+            "height": 22
+          },
+          {
+            "text": "by",
+            "confidence": 70.736,
+            "left": 795,
+            "top": 952,
+            "width": 73,
+            "height": 100
+          }
+        ]
+      },
+      {
+        "imageId": "d49468c7-9d14-54f3-a7ee-170ef50d33ba",
+        "split": "development-c",
+        "sourceId": 19,
+        "typeCode": "charcuteria",
+        "tokens": [
+          {
+            "text": "Ve",
+            "confidence": 83.149,
+            "left": 1008,
+            "top": 833,
+            "width": 29,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "c72a4efa-7e58-561b-bf72-4cd837910e30",
+        "split": "development-c",
+        "sourceId": 26,
+        "typeCode": "confiteria",
+        "tokens": [
+          {
+            "text": "iz",
+            "confidence": 78.206,
+            "left": 511,
+            "top": 255,
+            "width": 68,
+            "height": 37
+          }
+        ]
+      },
+      {
+        "imageId": "1c0faa9d-1194-5084-a2ab-13de2574ab6c",
+        "split": "development-c",
+        "sourceId": 28,
+        "typeCode": "vinoteca-tienda-de-vinos",
+        "tokens": [
+          {
+            "text": "VA",
+            "confidence": 71.647,
+            "left": 259,
+            "top": 847,
+            "width": 28,
+            "height": 10
+          }
+        ]
+      },
+      {
+        "imageId": "e83d05ae-9fe8-538f-9f70-42d752ced8be",
+        "split": "development-c",
+        "sourceId": 29,
+        "typeCode": "estanco-tienda-de-tabaco",
+        "tokens": [
+          {
+            "text": "Be",
+            "confidence": 71.305,
+            "left": 5,
+            "top": 735,
+            "width": 45,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "a2a0ae96-6af4-503c-aafe-52d0fe9c56bf",
+        "split": "development-c",
+        "sourceId": 31,
+        "typeCode": "autoservicio-pequeno-120-m2",
+        "tokens": [
+          {
+            "text": "35",
+            "confidence": 73.629,
+            "left": 722,
+            "top": 530,
+            "width": 38,
+            "height": 3
+          }
+        ]
+      },
+      {
+        "imageId": "6acd6933-2f96-5378-beee-f81e38893045",
+        "split": "development-c",
+        "sourceId": 35,
+        "typeCode": "tienda-de-alimentacion-dietetica-natural",
+        "tokens": [
+          {
+            "text": "om",
+            "confidence": 80.275,
+            "left": 1128,
+            "top": 277,
+            "width": 33,
+            "height": 12
+          },
+          {
+            "text": "RSE",
+            "confidence": 78.86,
+            "left": 511,
+            "top": 599,
+            "width": 48,
+            "height": 18
+          },
+          {
+            "text": "SS",
+            "confidence": 93.531,
+            "left": 1099,
+            "top": 955,
+            "width": 29,
+            "height": 16
+          },
+          {
+            "text": "SS",
+            "confidence": 78.483,
+            "left": 1241,
+            "top": 1036,
+            "width": 87,
+            "height": 50
+          }
+        ]
+      },
+      {
+        "imageId": "919176e2-a30d-5422-a264-caaf4acfe21f",
+        "split": "development-c",
+        "sourceId": 39,
+        "typeCode": "moda-masculina",
+        "tokens": [
+          {
+            "text": "WU",
+            "confidence": 75.013,
+            "left": 1094,
+            "top": 742,
+            "width": 61,
+            "height": 61
+          }
+        ]
+      },
+      {
+        "imageId": "7526c55b-889e-5cc9-98f4-52966dad63b3",
+        "split": "development-c",
+        "sourceId": 42,
+        "typeCode": "merceria",
+        "tokens": [
+          {
+            "text": "or",
+            "confidence": 76.764,
+            "left": 1088,
+            "top": 298,
+            "width": 28,
+            "height": 10
+          },
+          {
+            "text": "il",
+            "confidence": 79.72,
+            "left": 41,
+            "top": 500,
+            "width": 42,
+            "height": 57
+          },
+          {
+            "text": "An",
+            "confidence": 77.832,
+            "left": 0,
+            "top": 800,
+            "width": 89,
+            "height": 60
+          }
+        ]
+      },
+      {
+        "imageId": "74ed9d5b-3868-55dc-bbe6-29d937932b2f",
+        "split": "development-c",
+        "sourceId": 43,
+        "typeCode": "tienda-de-prendas-especiales-uniformes",
+        "tokens": [
+          {
+            "text": "pil",
+            "confidence": 71.983,
+            "left": 1335,
+            "top": 185,
+            "width": 56,
+            "height": 31
+          }
+        ]
+      },
+      {
+        "imageId": "6634bd88-dbe9-514e-bdef-a09ed3774fc7",
+        "split": "development-c",
+        "sourceId": 44,
+        "typeCode": "zapateria",
+        "tokens": [
+          {
+            "text": "ps",
+            "confidence": 73.805,
+            "left": 469,
+            "top": 738,
+            "width": 60,
+            "height": 29
+          }
+        ]
+      },
+      {
+        "imageId": "64f80ffd-78b6-5c3b-bbab-89e2417dcafa",
+        "split": "development-c",
+        "sourceId": 45,
+        "typeCode": "tienda-de-bolsos-maletas-y-articulos-de-piel",
+        "tokens": [
+          {
+            "text": "aN",
+            "confidence": 71.102,
+            "left": 257,
+            "top": 164,
+            "width": 28,
+            "height": 38
+          }
+        ]
+      },
+      {
+        "imageId": "af911ed3-b437-50b6-bc91-80df4522c101",
+        "split": "development-c",
+        "sourceId": 47,
+        "typeCode": "farmacia",
+        "tokens": [
+          {
+            "text": "See",
+            "confidence": 72.643,
+            "left": 738,
+            "top": 375,
+            "width": 56,
+            "height": 35
+          }
+        ]
+      },
+      {
+        "imageId": "3eaae1e6-d28b-55c3-bfee-cae64e759c87",
+        "split": "development-c",
+        "sourceId": 54,
+        "typeCode": "ortopedia-material-medico",
+        "tokens": [
+          {
+            "text": "ta",
+            "confidence": 94.129,
+            "left": 1308,
+            "top": 265,
+            "width": 45,
+            "height": 20
+          },
+          {
+            "text": "ag",
+            "confidence": 70.871,
+            "left": 708,
+            "top": 429,
+            "width": 44,
+            "height": 30
+          },
+          {
+            "text": "ae",
+            "confidence": 83.047,
+            "left": 292,
+            "top": 991,
+            "width": 39,
+            "height": 13
+          }
+        ]
+      },
+      {
+        "imageId": "7d7ab5ef-d15b-5047-a475-f856d391e711",
+        "split": "development-c",
+        "sourceId": 57,
+        "typeCode": "colchoneria",
+        "tokens": [
+          {
+            "text": "li",
+            "confidence": 73.441,
+            "left": 298,
+            "top": 203,
+            "width": 22,
+            "height": 36
+          }
+        ]
+      },
+      {
+        "imageId": "c350b5a6-729c-5125-aeb9-b0ddde4763db",
+        "split": "development-c",
+        "sourceId": 60,
+        "typeCode": "tienda-de-electronica-de-consumo",
+        "tokens": [
+          {
+            "text": "RY",
+            "confidence": 89.324,
+            "left": 302,
+            "top": 140,
+            "width": 389,
+            "height": 131
+          }
+        ]
+      },
+      {
+        "imageId": "40a0f967-9d72-587f-a4c3-f6542eba5611",
+        "split": "development-c",
+        "sourceId": 61,
+        "typeCode": "tienda-de-menaje-y-articulos-del-hogar",
+        "tokens": [
+          {
+            "text": "(Kes",
+            "confidence": 71.174,
+            "left": 1355,
+            "top": 238,
+            "width": 82,
+            "height": 50
+          }
+        ]
+      },
+      {
+        "imageId": "302973e1-0f79-592d-a02c-27df4c0a7f37",
+        "split": "development-c",
+        "sourceId": 62,
+        "typeCode": "ferreteria",
+        "tokens": [
+          {
+            "text": "fi",
+            "confidence": 80.659,
+            "left": 1328,
+            "top": 175,
+            "width": 9,
+            "height": 22
+          }
+        ]
+      },
+      {
+        "imageId": "4a2f5cb7-aa45-5209-a768-6c1dada7771b",
+        "split": "development-c",
+        "sourceId": 67,
+        "typeCode": "tienda-de-suelos-moquetas-y-revestimientos",
+        "tokens": [
+          {
+            "text": "ar",
+            "confidence": 76.438,
+            "left": 1300,
+            "top": 200,
+            "width": 18,
+            "height": 23
+          }
+        ]
+      },
+      {
+        "imageId": "6342668b-6b6a-5d7e-aab8-7657a1c19d40",
+        "split": "development-c",
+        "sourceId": 68,
+        "typeCode": "tienda-centro-de-bricolaje",
+        "tokens": [
+          {
+            "text": "pit",
+            "confidence": 70.641,
+            "left": 0,
+            "top": 548,
+            "width": 99,
+            "height": 40
+          }
+        ]
+      },
+      {
+        "imageId": "9f64a47b-a423-5828-a2b3-6c89e5624320",
+        "split": "development-c",
+        "sourceId": 73,
+        "typeCode": "tienda-de-material-de-dibujo-y-bellas-artes",
+        "tokens": [
+          {
+            "text": "awe",
+            "confidence": 74.432,
+            "left": 84,
+            "top": 679,
+            "width": 75,
+            "height": 29
+          }
+        ]
+      },
+      {
+        "imageId": "7e268ca2-b6fa-5a91-b23e-47d07aca2521",
+        "split": "development-c",
+        "sourceId": 74,
+        "typeCode": "libreria",
+        "tokens": [
+          {
+            "text": "ail",
+            "confidence": 78.353,
+            "left": 1377,
+            "top": 0,
+            "width": 142,
+            "height": 175
+          }
+        ]
+      },
+      {
+        "imageId": "23faa180-da88-5dc8-987e-1c3f6e3ce00a",
+        "split": "development-c",
+        "sourceId": 75,
+        "typeCode": "quiosco-de-prensa",
+        "tokens": [
+          {
+            "text": "bal",
+            "confidence": 76.74,
+            "left": 27,
+            "top": 439,
+            "width": 59,
+            "height": 53
+          }
+        ]
+      },
+      {
+        "imageId": "8e192171-183a-5573-90fa-af75a1d6bdc8",
+        "split": "development-c",
+        "sourceId": 78,
+        "typeCode": "tienda-de-filatelia-y-numismatica",
+        "tokens": [
+          {
+            "text": "YY",
+            "confidence": 70.688,
+            "left": 1136,
+            "top": 887,
+            "width": 35,
+            "height": 30
+          }
+        ]
+      },
+      {
+        "imageId": "274870e7-0ca3-5723-9153-afa50484a085",
+        "split": "development-c",
+        "sourceId": 80,
+        "typeCode": "anticuario",
+        "tokens": [
+          {
+            "text": "me",
+            "confidence": 82.419,
+            "left": 117,
+            "top": 596,
+            "width": 32,
+            "height": 21
+          }
+        ]
+      },
+      {
+        "imageId": "9d4e0c81-bb5c-523a-950f-bcf5d9e660af",
+        "split": "development-c",
+        "sourceId": 81,
+        "typeCode": "tienda-de-minerales-fosiles-y-coleccionismo",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 81.007,
+            "left": 370,
+            "top": 352,
+            "width": 13,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "de091baf-952d-51a0-a8bc-d37da9d330e7",
+        "split": "development-c",
+        "sourceId": 83,
+        "typeCode": "relojeria",
+        "tokens": [
+          {
+            "text": "WH",
+            "confidence": 76.632,
+            "left": 347,
+            "top": 364,
+            "width": 72,
+            "height": 22
+          }
+        ]
+      },
+      {
+        "imageId": "b7f804d9-6604-5fd9-a214-99c399ecf393",
+        "split": "development-c",
+        "sourceId": 84,
+        "typeCode": "tienda-de-bisuteria",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 72.554,
+            "left": 772,
+            "top": 597,
+            "width": 10,
+            "height": 16
+          },
+          {
+            "text": "XN",
+            "confidence": 71.561,
+            "left": 1104,
+            "top": 965,
+            "width": 15,
+            "height": 15
+          }
+        ]
+      },
+      {
+        "imageId": "2e751dad-47a0-512d-a0a8-e9441a8293e6",
+        "split": "development-c",
+        "sourceId": 86,
+        "typeCode": "tienda-de-material-deportivo",
+        "tokens": [
+          {
+            "text": "AA",
+            "confidence": 83.5,
+            "left": 254,
+            "top": 495,
+            "width": 77,
+            "height": 34
+          }
+        ]
+      },
+      {
+        "imageId": "d204894f-9050-5fef-921c-808c251fe2b0",
+        "split": "development-c",
+        "sourceId": 88,
+        "typeCode": "tienda-de-segunda-mano",
+        "tokens": [
+          {
+            "text": "BSS",
+            "confidence": 87.031,
+            "left": 211,
+            "top": 0,
+            "width": 53,
+            "height": 27
+          },
+          {
+            "text": "iff",
+            "confidence": 75.796,
+            "left": 1334,
+            "top": 180,
+            "width": 202,
+            "height": 126
+          },
+          {
+            "text": "th",
+            "confidence": 72.823,
+            "left": 503,
+            "top": 527,
+            "width": 25,
+            "height": 41
+          }
+        ]
+      },
+      {
+        "imageId": "25b7d8da-72cd-5bb0-b543-97274d7df7f6",
+        "split": "development-c",
+        "sourceId": 89,
+        "typeCode": "tienda-para-adultos-sex-shop",
+        "tokens": [
+          {
+            "text": "wr",
+            "confidence": 78.085,
+            "left": 607,
+            "top": 469,
+            "width": 50,
+            "height": 12
+          },
+          {
+            "text": "lw",
+            "confidence": 90.638,
+            "left": 215,
+            "top": 439,
+            "width": 55,
+            "height": 64
+          }
+        ]
+      },
+      {
+        "imageId": "e6e2f824-7e76-58d7-a77d-6b7c160487f8",
+        "split": "development-c",
+        "sourceId": 90,
+        "typeCode": "comercio-especializado-no-clasificado-en-otra-parte",
+        "tokens": [
+          {
+            "text": "Me",
+            "confidence": 86.33,
+            "left": 867,
+            "top": 308,
+            "width": 89,
+            "height": 45
+          }
+        ]
+      },
+      {
+        "imageId": "900fbf60-e8fd-5958-a3f9-9dbfc5d36efe",
+        "split": "development-c",
+        "sourceId": 91,
+        "typeCode": "floristeria",
+        "tokens": [
+          {
+            "text": "of",
+            "confidence": 79.411,
+            "left": 1007,
+            "top": 717,
+            "width": 69,
+            "height": 50
+          }
+        ]
+      },
+      {
+        "imageId": "6df12029-44eb-5e12-914a-394e419d8be5",
+        "split": "development-c",
+        "sourceId": 93,
+        "typeCode": "tienda-de-semillas-y-fertilizantes",
+        "tokens": [
+          {
+            "text": "gm",
+            "confidence": 71.142,
+            "left": 327,
+            "top": 807,
+            "width": 92,
+            "height": 40
+          }
+        ]
+      },
+      {
+        "imageId": "fc58769d-d40b-519b-a820-6d089855dfe8",
+        "split": "development-c",
+        "sourceId": 95,
+        "typeCode": "tienda-de-alimentacion-y-accesorios-para-mascotas",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 70.7,
+            "left": 1433,
+            "top": 26,
+            "width": 15,
+            "height": 3
+          }
+        ]
+      },
+      {
+        "imageId": "5f10d2fa-1535-52c0-85a6-d771eef78edb",
+        "split": "development-c",
+        "sourceId": 97,
+        "typeCode": "compraventa-de-vehiculos",
+        "tokens": [
+          {
+            "text": "Ba",
+            "confidence": 83.99,
+            "left": 554,
+            "top": 463,
+            "width": 44,
+            "height": 24
+          },
+          {
+            "text": "Sw",
+            "confidence": 73.152,
+            "left": 1179,
+            "top": 564,
+            "width": 60,
+            "height": 21
+          }
+        ]
+      },
+      {
+        "imageId": "62348edb-6993-54ce-b830-2cf8376d6d01",
+        "split": "development-c",
+        "sourceId": 99,
+        "typeCode": "tienda-de-recambios-y-accesorios-de-automovil",
+        "tokens": [
+          {
+            "text": "hi",
+            "confidence": 78.824,
+            "left": 459,
+            "top": 173,
+            "width": 18,
+            "height": 16
+          },
+          {
+            "text": "it",
+            "confidence": 95.296,
+            "left": 294,
+            "top": 402,
+            "width": 15,
+            "height": 28
+          }
+        ]
+      },
+      {
+        "imageId": "155fa328-f9b1-56d8-a6bb-2b278cbd60a8",
+        "split": "development-c",
+        "sourceId": 101,
+        "typeCode": "tienda-de-maquinaria",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 88.717,
+            "left": 653,
+            "top": 137,
+            "width": 71,
+            "height": 39
+          }
+        ]
+      },
+      {
+        "imageId": "51d7ba11-5130-5177-8d8c-43a088b08f3a",
+        "split": "development-c",
+        "sourceId": 104,
+        "typeCode": "tienda-de-combustibles-y-lubricantes",
+        "tokens": [
+          {
+            "text": "an",
+            "confidence": 75.053,
+            "left": 838,
+            "top": 333,
+            "width": 60,
+            "height": 47
+          }
+        ]
+      },
+      {
+        "imageId": "38fb8193-d7ec-5cc6-9be7-21c1da98fcaf",
+        "split": "development-c",
+        "sourceId": 106,
+        "typeCode": "hipermercado",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 78.02,
+            "left": 86,
+            "top": 201,
+            "width": 37,
+            "height": 5
+          }
+        ]
+      },
+      {
+        "imageId": "2d179f19-626b-5045-a271-f59e23e3a43e",
+        "split": "development-c",
+        "sourceId": 107,
+        "typeCode": "almacen-popular",
+        "tokens": [
+          {
+            "text": "NS",
+            "confidence": 93.729,
+            "left": 1264,
+            "top": 1049,
+            "width": 54,
+            "height": 37
+          }
+        ]
+      },
+      {
+        "imageId": "f1068e43-b285-55bc-95a2-d377cfcd0ae6",
+        "split": "development-c",
+        "sourceId": 108,
+        "typeCode": "gran-superficie-especializada-2-500-m2",
+        "tokens": [
+          {
+            "text": "ly",
+            "confidence": 74.531,
+            "left": 1170,
+            "top": 6,
+            "width": 23,
+            "height": 23
+          },
+          {
+            "text": "Yo",
+            "confidence": 77.936,
+            "left": 1195,
+            "top": 6,
+            "width": 43,
+            "height": 45
+          },
+          {
+            "text": "INS",
+            "confidence": 79.743,
+            "left": 379,
+            "top": 213,
+            "width": 36,
+            "height": 6
+          }
+        ]
+      },
+      {
+        "imageId": "4d21c8e5-637c-50de-a2ed-8a68b654b886",
+        "split": "development-c",
+        "sourceId": 114,
+        "typeCode": "pension",
+        "tokens": [
+          {
+            "text": "ef",
+            "confidence": 84.019,
+            "left": 627,
+            "top": 503,
+            "width": 34,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "9aaf372e-adb7-5fc6-8f52-0715deeeb9e8",
+        "split": "development-c",
+        "sourceId": 115,
+        "typeCode": "fonda-casa-de-huespedes",
+        "tokens": [
+          {
+            "text": "ay",
+            "confidence": 74.824,
+            "left": 1389,
+            "top": 227,
+            "width": 57,
+            "height": 25
+          },
+          {
+            "text": "fh,",
+            "confidence": 84.651,
+            "left": 1364,
+            "top": 339,
+            "width": 17,
+            "height": 27
+          },
+          {
+            "text": "SS",
+            "confidence": 73.627,
+            "left": 887,
+            "top": 904,
+            "width": 29,
+            "height": 10
+          }
+        ]
+      },
+      {
+        "imageId": "43554bf0-5d5e-5678-b2e9-cf311bcbbf0f",
+        "split": "development-c",
+        "sourceId": 117,
+        "typeCode": "apartamento-alojamiento-turistico-extrahotelero",
+        "tokens": [
+          {
+            "text": "Ne",
+            "confidence": 73.975,
+            "left": 469,
+            "top": 722,
+            "width": 89,
+            "height": 38
+          }
+        ]
+      },
+      {
+        "imageId": "b16a91c4-5955-5c40-a7df-974fbb0dec89",
+        "split": "development-c",
+        "sourceId": 118,
+        "typeCode": "camping-campamento-turistico",
+        "tokens": [
+          {
+            "text": "ath,",
+            "confidence": 77.146,
+            "left": 187,
+            "top": 196,
+            "width": 28,
+            "height": 8
+          },
+          {
+            "text": "ne",
+            "confidence": 75.668,
+            "left": 1368,
+            "top": 634,
+            "width": 13,
+            "height": 6
+          }
+        ]
+      },
+      {
+        "imageId": "3dbf761a-4c4d-5c70-8d0b-d06a352ade67",
+        "split": "development-c",
+        "sourceId": 122,
+        "typeCode": "centro-de-urgencias-medicas",
+        "tokens": [
+          {
+            "text": "we",
+            "confidence": 72.869,
+            "left": 1261,
+            "top": 418,
+            "width": 55,
+            "height": 25
+          }
+        ]
+      },
+      {
+        "imageId": "a9cd4cde-95b5-518c-99b5-85ccde86aebb",
+        "split": "development-c",
+        "sourceId": 127,
+        "typeCode": "consulta-de-odontologia",
+        "tokens": [
+          {
+            "text": "Run",
+            "confidence": 77.577,
+            "left": 860,
+            "top": 524,
+            "width": 65,
+            "height": 35
+          }
+        ]
+      },
+      {
+        "imageId": "7faf4b0b-a790-5953-a41b-afc6b7368a7f",
+        "split": "development-c",
+        "sourceId": 131,
+        "typeCode": "consulta-de-optica-optometria",
+        "tokens": [
+          {
+            "text": "COV",
+            "confidence": 72.585,
+            "left": 621,
+            "top": 352,
+            "width": 44,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "d83e0dc4-bb45-57f7-ae80-ddcfe41a8742",
+        "split": "development-c",
+        "sourceId": 132,
+        "typeCode": "consulta-centro-de-psicologia",
+        "tokens": [
+          {
+            "text": "aw",
+            "confidence": 87.656,
+            "left": 1043,
+            "top": 542,
+            "width": 310,
+            "height": 96
+          }
+        ]
+      },
+      {
+        "imageId": "d9473656-b382-5005-a479-29fa511df23a",
+        "split": "development-c",
+        "sourceId": 133,
+        "typeCode": "consulta-de-dietetica-nutricion",
+        "tokens": [
+          {
+            "text": "Ht",
+            "confidence": 70.587,
+            "left": 597,
+            "top": 431,
+            "width": 145,
+            "height": 88
+          }
+        ]
+      },
+      {
+        "imageId": "9a2a2975-cdae-58ba-987b-745d588b6bc5",
+        "split": "development-c",
+        "sourceId": 134,
+        "typeCode": "centro-de-naturopatia",
+        "tokens": [
+          {
+            "text": "ei",
+            "confidence": 72.824,
+            "left": 691,
+            "top": 494,
+            "width": 47,
+            "height": 21
+          }
+        ]
+      },
+      {
+        "imageId": "5927af5e-176a-5fdc-9d57-7909c24b8682",
+        "split": "development-c",
+        "sourceId": 139,
+        "typeCode": "centro-de-cuidado-de-animales-domesticos",
+        "tokens": [
+          {
+            "text": "igs",
+            "confidence": 73.445,
+            "left": 492,
+            "top": 231,
+            "width": 40,
+            "height": 52
+          }
+        ]
+      },
+      {
+        "imageId": "d7147413-c2a9-52c1-a26e-7690ddfb01ed",
+        "split": "development-c",
+        "sourceId": 141,
+        "typeCode": "residencia-para-personas-mayores",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 93.333,
+            "left": 357,
+            "top": 302,
+            "width": 13,
+            "height": 24
+          }
+        ]
+      },
+      {
+        "imageId": "c14ff0fa-c338-5fac-89c6-470e78a91b13",
+        "split": "development-c",
+        "sourceId": 148,
+        "typeCode": "peluqueria",
+        "tokens": [
+          {
+            "text": "Uf",
+            "confidence": 72.278,
+            "left": 483,
+            "top": 599,
+            "width": 36,
+            "height": 33
+          }
+        ]
+      },
+      {
+        "imageId": "371c491c-a5c4-5bc7-9778-bf3cde866b4d",
+        "split": "development-c",
+        "sourceId": 149,
+        "typeCode": "barberia",
+        "tokens": [
+          {
+            "text": "IN",
+            "confidence": 93.082,
+            "left": 79,
+            "top": 203,
+            "width": 50,
+            "height": 77
+          },
+          {
+            "text": "We",
+            "confidence": 74.39,
+            "left": 390,
+            "top": 126,
+            "width": 466,
+            "height": 523
+          }
+        ]
+      },
+      {
+        "imageId": "b39b93ab-e44c-57d5-9cf8-7c4a38ce2e23",
+        "split": "development-c",
+        "sourceId": 156,
+        "typeCode": "estudio-de-tatuaje-y-piercing",
+        "tokens": [
+          {
+            "text": "Ea",
+            "confidence": 73.451,
+            "left": 773,
+            "top": 641,
+            "width": 39,
+            "height": 23
+          }
+        ]
+      },
+      {
+        "imageId": "14050cc8-2843-5f22-bbfb-0af8810b567a",
+        "split": "development-c",
+        "sourceId": 159,
+        "typeCode": "taller-de-arreglos-zurcido-de-ropa",
+        "tokens": [
+          {
+            "text": "Bs",
+            "confidence": 73.955,
+            "left": 941,
+            "top": 568,
+            "width": 46,
+            "height": 12
+          },
+          {
+            "text": "La",
+            "confidence": 70.724,
+            "left": 475,
+            "top": 627,
+            "width": 26,
+            "height": 23
+          },
+          {
+            "text": "if",
+            "confidence": 84.688,
+            "left": 1374,
+            "top": 563,
+            "width": 66,
+            "height": 133
+          }
+        ]
+      },
+      {
+        "imageId": "845ce98e-889a-5623-b043-ce04bfdff30d",
+        "split": "development-c",
+        "sourceId": 160,
+        "typeCode": "gimnasio-centro-deportivo",
+        "tokens": [
+          {
+            "text": "al",
+            "confidence": 71.894,
+            "left": 1056,
+            "top": 65,
+            "width": 108,
+            "height": 117
+          },
+          {
+            "text": "it",
+            "confidence": 78.218,
+            "left": 1350,
+            "top": 538,
+            "width": 9,
+            "height": 11
+          }
+        ]
+      },
+      {
+        "imageId": "c6fc8c7b-0ac4-55f8-a978-637f1220996e",
+        "split": "development-c",
+        "sourceId": 163,
+        "typeCode": "club-pistas-de-tenis",
+        "tokens": [
+          {
+            "text": "EL",
+            "confidence": 70.004,
+            "left": 678,
+            "top": 559,
+            "width": 3,
+            "height": 11
+          }
+        ]
+      },
+      {
+        "imageId": "35c00cdc-258d-5b08-ae4f-62990deb023b",
+        "split": "development-c",
+        "sourceId": 165,
+        "typeCode": "piscina-de-explotacion-deportiva",
+        "tokens": [
+          {
+            "text": "YY",
+            "confidence": 79.15,
+            "left": 612,
+            "top": 1020,
+            "width": 27,
+            "height": 27
+          }
+        ]
+      },
+      {
+        "imageId": "75ca4890-318a-5398-bf49-2deabdd1bc2e",
+        "split": "development-c",
+        "sourceId": 168,
+        "typeCode": "alquiler-de-material-dentro-de-instalacion-deportiva",
+        "tokens": [
+          {
+            "text": "De",
+            "confidence": 72.013,
+            "left": 1061,
+            "top": 276,
+            "width": 24,
+            "height": 11
+          }
+        ]
+      },
+      {
+        "imageId": "d0029919-7ae1-5dcc-aeb7-248903c127c7",
+        "split": "development-c",
+        "sourceId": 169,
+        "typeCode": "instalacion-para-espectaculos-deportivos",
+        "tokens": [
+          {
+            "text": "we",
+            "confidence": 72.931,
+            "left": 1319,
+            "top": 16,
+            "width": 24,
+            "height": 9
+          },
+          {
+            "text": "Ws",
+            "confidence": 75.691,
+            "left": 320,
+            "top": 93,
+            "width": 58,
+            "height": 12
+          }
+        ]
+      },
+      {
+        "imageId": "209ef263-e47a-5a25-bc97-5255b596e2d8",
+        "split": "development-c",
+        "sourceId": 170,
+        "typeCode": "centro-de-educacion-infantil",
+        "tokens": [
+          {
+            "text": "is!",
+            "confidence": 70.029,
+            "left": 815,
+            "top": 448,
+            "width": 29,
+            "height": 26
+          }
+        ]
+      },
+      {
+        "imageId": "d1551aab-7737-588b-a1f9-0d7497bdb315",
+        "split": "development-c",
+        "sourceId": 173,
+        "typeCode": "centro-de-formacion-profesional",
+        "tokens": [
+          {
+            "text": "wlll",
+            "confidence": 72.222,
+            "left": 1100,
+            "top": 623,
+            "width": 62,
+            "height": 88
+          }
+        ]
+      },
+      {
+        "imageId": "88de6a53-7dd9-5f31-a651-82f9e9405f6b",
+        "split": "development-c",
+        "sourceId": 177,
+        "typeCode": "academia-de-preparacion-de-oposiciones-examenes",
+        "tokens": [
+          {
+            "text": "ele",
+            "confidence": 70.542,
+            "left": 0,
+            "top": 588,
+            "width": 76,
+            "height": 80
+          }
+        ]
+      },
+      {
+        "imageId": "4c889a55-4849-5770-818f-42ccb203e150",
+        "split": "development-c",
+        "sourceId": 184,
+        "typeCode": "biblioteca-privada-servicio-cultural",
+        "tokens": [
+          {
+            "text": "yay",
+            "confidence": 71.532,
+            "left": 1249,
+            "top": 795,
+            "width": 31,
+            "height": 21
+          }
+        ]
+      },
+      {
+        "imageId": "816577df-b519-5997-af3f-a37e97348f1a",
+        "split": "development-c",
+        "sourceId": 187,
+        "typeCode": "discoteca-sala-de-baile",
+        "tokens": [
+          {
+            "text": "Va",
+            "confidence": 82.354,
+            "left": 1263,
+            "top": 281,
+            "width": 35,
+            "height": 14
+          },
+          {
+            "text": "16",
+            "confidence": 72.472,
+            "left": 1332,
+            "top": 278,
+            "width": 26,
+            "height": 10
+          },
+          {
+            "text": "Al",
+            "confidence": 77.979,
+            "left": 1153,
+            "top": 287,
+            "width": 13,
+            "height": 22
+          },
+          {
+            "text": "ry",
+            "confidence": 83.996,
+            "left": 727,
+            "top": 447,
+            "width": 19,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "e303f528-fbc8-5b89-849f-64869dbb7098",
+        "split": "development-c",
+        "sourceId": 188,
+        "typeCode": "casino-de-juego",
+        "tokens": [
+          {
+            "text": "au",
+            "confidence": 83.061,
+            "left": 896,
+            "top": 560,
+            "width": 27,
+            "height": 8
+          }
+        ]
+      },
+      {
+        "imageId": "dd26cdd4-3db4-5f7e-b18e-58e41fe24db7",
+        "split": "development-c",
+        "sourceId": 189,
+        "typeCode": "sala-de-bingo",
+        "tokens": [
+          {
+            "text": "fal",
+            "confidence": 71.764,
+            "left": 897,
+            "top": 437,
+            "width": 19,
+            "height": 13
+          }
+        ]
+      },
+      {
+        "imageId": "33670987-f52c-519a-af70-f7226ffcd42e",
+        "split": "development-c",
+        "sourceId": 192,
+        "typeCode": "salon-recreativo-arcade",
+        "tokens": [
+          {
+            "text": "Fg",
+            "confidence": 76.715,
+            "left": 335,
+            "top": 651,
+            "width": 55,
+            "height": 74
+          }
+        ]
+      },
+      {
+        "imageId": "edbf9c39-0e3a-5495-a740-54160833ac69",
+        "split": "development-c",
+        "sourceId": 193,
+        "typeCode": "parque-de-atracciones-parque-tematico",
+        "tokens": [
+          {
+            "text": "QO",
+            "confidence": 72.704,
+            "left": 373,
+            "top": 343,
+            "width": 23,
+            "height": 17
+          },
+          {
+            "text": "LA",
+            "confidence": 77.991,
+            "left": 1031,
+            "top": 429,
+            "width": 71,
+            "height": 59
+          },
+          {
+            "text": "ND",
+            "confidence": 74.298,
+            "left": 1149,
+            "top": 520,
+            "width": 43,
+            "height": 39
+          },
+          {
+            "text": "if",
+            "confidence": 72.95,
+            "left": 333,
+            "top": 876,
+            "width": 20,
+            "height": 29
+          }
+        ]
+      },
+      {
+        "imageId": "46d43518-5e40-58af-b780-f082b850c4f8",
+        "split": "development-c",
+        "sourceId": 194,
+        "typeCode": "parque-acuatico",
+        "tokens": [
+          {
+            "text": "Vv",
+            "confidence": 75.393,
+            "left": 197,
+            "top": 291,
+            "width": 20,
+            "height": 18
+          }
+        ]
+      },
+      {
+        "imageId": "a8676cff-4d42-5938-9db5-f873839095dc",
+        "split": "development-c",
+        "sourceId": 195,
+        "typeCode": "recinto-ferial-feria-de-muestras",
+        "tokens": [
+          {
+            "text": "Ge",
+            "confidence": 81.001,
+            "left": 1293,
+            "top": 51,
+            "width": 58,
+            "height": 26
+          },
+          {
+            "text": "WE",
+            "confidence": 79.273,
+            "left": 407,
+            "top": 89,
+            "width": 85,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "04ff7a27-4b6a-5530-b214-752ed443073b",
+        "split": "development-c",
+        "sourceId": 203,
+        "typeCode": "zapatero-reparacion-de-calzado",
+        "tokens": [
+          {
+            "text": "Ng",
+            "confidence": 83.448,
+            "left": 1109,
+            "top": 122,
+            "width": 49,
+            "height": 31
+          }
+        ]
+      },
+      {
+        "imageId": "66efce0c-14de-566a-8b5d-71e46c6827cb",
+        "split": "development-c",
+        "sourceId": 208,
+        "typeCode": "taller-de-reparacion-de-bicicletas",
+        "tokens": [
+          {
+            "text": "iti",
+            "confidence": 71.97,
+            "left": 1393,
+            "top": 485,
+            "width": 38,
+            "height": 37
+          },
+          {
+            "text": "AN",
+            "confidence": 96.013,
+            "left": 1015,
+            "top": 807,
+            "width": 87,
+            "height": 74
+          }
+        ]
+      },
+      {
+        "imageId": "41381fd1-8b88-5b95-895c-cbf8cbed28df",
+        "split": "development-c",
+        "sourceId": 209,
+        "typeCode": "agencia-de-viajes",
+        "tokens": [
+          {
+            "text": "BE",
+            "confidence": 89.849,
+            "left": 538,
+            "top": 504,
+            "width": 111,
+            "height": 37
+          }
+        ]
+      },
+      {
+        "imageId": "d14adcb2-117d-58a1-8d4f-cb13326f03af",
+        "split": "development-c",
+        "sourceId": 222,
+        "typeCode": "despacho-de-economista",
+        "tokens": [
+          {
+            "text": "ri",
+            "confidence": 79.681,
+            "left": 105,
+            "top": 541,
+            "width": 40,
+            "height": 37
+          }
+        ]
+      },
+      {
+        "imageId": "6094f16d-2327-5928-935f-39e36ca43da0",
+        "split": "development-c",
+        "sourceId": 223,
+        "typeCode": "despacho-firma-de-auditoria",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 90.083,
+            "left": 401,
+            "top": 95,
+            "width": 31,
+            "height": 20
+          },
+          {
+            "text": "wil",
+            "confidence": 75.548,
+            "left": 1109,
+            "top": 267,
+            "width": 132,
+            "height": 142
+          }
+        ]
+      },
+      {
+        "imageId": "760b749d-6272-5bba-8b6c-91268dc92176",
+        "split": "development-c",
+        "sourceId": 224,
+        "typeCode": "asesoria-contable-fiscal",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 75.853,
+            "left": 806,
+            "top": 268,
+            "width": 14,
+            "height": 31
+          }
+        ]
+      },
+      {
+        "imageId": "c14358ee-ed3d-5917-a4c2-e1cdca4ba429",
+        "split": "development-c",
+        "sourceId": 226,
+        "typeCode": "estudio-de-arquitectura-urbanismo",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 82.919,
+            "left": 1417,
+            "top": 707,
+            "width": 31,
+            "height": 13
+          }
+        ]
+      },
+      {
+        "imageId": "1fa73b50-bc7c-5b3f-9fc5-93e546b2c85d",
+        "split": "development-c",
+        "sourceId": 228,
+        "typeCode": "estudio-de-diseno-grafico",
+        "tokens": [
+          {
+            "text": "hi",
+            "confidence": 75.577,
+            "left": 186,
+            "top": 396,
+            "width": 26,
+            "height": 46
+          }
+        ]
+      },
+      {
+        "imageId": "095f38f3-8982-5a31-a02c-335f3ea2b4e0",
+        "split": "development-c",
+        "sourceId": 229,
+        "typeCode": "estudio-de-interiorismo",
+        "tokens": [
+          {
+            "text": "ik",
+            "confidence": 85.943,
+            "left": 237,
+            "top": 560,
+            "width": 13,
+            "height": 35
+          }
+        ]
+      },
+      {
+        "imageId": "3f0e02bc-7c17-5502-9471-7a1766ecccba",
+        "split": "development-c",
+        "sourceId": 234,
+        "typeCode": "empresa-de-trabajo-temporal",
+        "tokens": [
+          {
+            "text": "Fe",
+            "confidence": 74.222,
+            "left": 711,
+            "top": 613,
+            "width": 20,
+            "height": 22
+          }
+        ]
+      },
+      {
+        "imageId": "4ca68e37-19ce-54f2-a49a-038928750f51",
+        "split": "development-c",
+        "sourceId": 236,
+        "typeCode": "despacho-de-detective-privado",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 76.773,
+            "left": 1355,
+            "top": 604,
+            "width": 34,
+            "height": 20
+          }
+        ]
+      },
+      {
+        "imageId": "916d1638-0382-5241-b35b-67c07f988638",
+        "split": "development-c",
+        "sourceId": 238,
+        "typeCode": "estacion-itv",
+        "tokens": [
+          {
+            "text": "Ry",
+            "confidence": 71.869,
+            "left": 786,
+            "top": 191,
+            "width": 32,
+            "height": 38
+          }
+        ]
+      },
+      {
+        "imageId": "e96b2a87-926e-5414-95c4-0de294fff598",
+        "split": "development-c",
+        "sourceId": 241,
+        "typeCode": "agencia-de-seguros",
+        "tokens": [
+          {
+            "text": "af",
+            "confidence": 92.003,
+            "left": 719,
+            "top": 538,
+            "width": 65,
+            "height": 78
+          }
+        ]
+      },
+      {
+        "imageId": "c787a65d-5e62-5bb5-aa5b-7906bbf568b9",
+        "split": "development-c",
+        "sourceId": 242,
+        "typeCode": "correduria-de-seguros",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 76.896,
+            "left": 856,
+            "top": 243,
+            "width": 24,
+            "height": 22
+          }
+        ]
+      },
+      {
+        "imageId": "06b58314-e234-5e16-b20b-75d64046cfa5",
+        "split": "development-c",
+        "sourceId": 244,
+        "typeCode": "agencia-inmobiliaria",
+        "tokens": [
+          {
+            "text": "te",
+            "confidence": 78.443,
+            "left": 1032,
+            "top": 420,
+            "width": 29,
+            "height": 16
+          }
+        ]
+      },
+      {
+        "imageId": "0efe8c9c-8ae3-5c2a-88a6-aeffff8c6f0f",
+        "split": "development-c",
+        "sourceId": 245,
+        "typeCode": "administracion-de-fincas-gestion-inmobiliaria",
+        "tokens": [
+          {
+            "text": "may",
+            "confidence": 70.509,
+            "left": 608,
+            "top": 683,
+            "width": 68,
+            "height": 32
+          }
+        ]
+      },
+      {
+        "imageId": "7e609feb-4375-54c0-8059-7988570854d8",
+        "split": "development-c",
+        "sourceId": 247,
+        "typeCode": "oficina-actividad-de-alquiler-de-locales-o-viviendas-propios",
+        "tokens": [
+          {
+            "text": "Yj",
+            "confidence": 70.314,
+            "left": 654,
+            "top": 1042,
+            "width": 9,
+            "height": 10
+          }
+        ]
+      },
+      {
+        "imageId": "703d1b3b-3c6a-52e5-9c57-f7b27b1f37fc",
+        "split": "sealed-holdout-v3",
+        "sourceId": 3,
+        "typeCode": "cafeteria",
+        "tokens": [
+          {
+            "text": "AN",
+            "confidence": 70.802,
+            "left": 350,
+            "top": 141,
+            "width": 35,
+            "height": 27
+          },
+          {
+            "text": "pa",
+            "confidence": 73.704,
+            "left": 690,
+            "top": 324,
+            "width": 27,
+            "height": 22
+          },
+          {
+            "text": "at:",
+            "confidence": 73.017,
+            "left": 167,
+            "top": 388,
+            "width": 25,
+            "height": 16
+          },
+          {
+            "text": "dy",
+            "confidence": 80.859,
+            "left": 969,
+            "top": 805,
+            "width": 27,
+            "height": 26
+          },
+          {
+            "text": "eye",
+            "confidence": 70.765,
+            "left": 1128,
+            "top": 857,
+            "width": 23,
+            "height": 12
+          },
+          {
+            "text": "rs",
+            "confidence": 71.977,
+            "left": 1301,
+            "top": 902,
+            "width": 22,
+            "height": 10
+          }
+        ]
+      },
+      {
+        "imageId": "2e8757b1-0698-55e1-9b92-9e3838301d6a",
+        "split": "sealed-holdout-v3",
+        "sourceId": 4,
+        "typeCode": "bar",
+        "tokens": [
+          {
+            "text": "Lag",
+            "confidence": 77.345,
+            "left": 109,
+            "top": 1028,
+            "width": 145,
+            "height": 58
+          }
+        ]
+      },
+      {
+        "imageId": "028a8218-f958-54d5-8f70-ab7aa9e6a396",
+        "split": "sealed-holdout-v3",
+        "sourceId": 5,
+        "typeCode": "cafe-bar",
+        "tokens": [
+          {
+            "text": "aw",
+            "confidence": 94.468,
+            "left": 65,
+            "top": 651,
+            "width": 74,
+            "height": 31
+          }
+        ]
+      },
+      {
+        "imageId": "0e736f3c-43fe-5b7d-bb19-4a460b86e6a6",
+        "split": "sealed-holdout-v3",
+        "sourceId": 7,
+        "typeCode": "restaurante-bar-en-club-o-sociedad",
+        "tokens": [
+          {
+            "text": "ty",
+            "confidence": 79.205,
+            "left": 493,
+            "top": 255,
+            "width": 22,
+            "height": 18
+          },
+          {
+            "text": "ue",
+            "confidence": 71.918,
+            "left": 611,
+            "top": 329,
+            "width": 25,
+            "height": 16
+          }
+        ]
+      },
+      {
+        "imageId": "4f86c962-2ef2-54ec-acf0-8335016a98d3",
+        "split": "sealed-holdout-v3",
+        "sourceId": 9,
+        "typeCode": "restauracion-en-recinto-ferial",
+        "tokens": [
+          {
+            "text": "Pik",
+            "confidence": 79.522,
+            "left": 1103,
+            "top": 509,
+            "width": 21,
+            "height": 13
+          },
+          {
+            "text": "iJ",
+            "confidence": 73.674,
+            "left": 732,
+            "top": 635,
+            "width": 35,
+            "height": 53
+          },
+          {
+            "text": "If",
+            "confidence": 77.123,
+            "left": 1165,
+            "top": 927,
+            "width": 21,
+            "height": 40
+          }
+        ]
+      },
+      {
+        "imageId": "3dca9742-6948-5086-84ed-e97c31175346",
+        "split": "sealed-holdout-v3",
+        "sourceId": 10,
+        "typeCode": "quiosco-o-puesto-de-comida-bebida",
+        "tokens": [
+          {
+            "text": "ig.",
+            "confidence": 74.181,
+            "left": 54,
+            "top": 610,
+            "width": 13,
+            "height": 13
+          }
+        ]
+      },
+      {
+        "imageId": "c7954d3b-c6d4-547c-9148-f228273bde84",
+        "split": "sealed-holdout-v3",
+        "sourceId": 13,
+        "typeCode": "horchateria",
+        "tokens": [
+          {
+            "text": "it",
+            "confidence": 83.916,
+            "left": 7,
+            "top": 270,
+            "width": 23,
+            "height": 36
+          }
+        ]
+      },
+      {
+        "imageId": "f379a6a8-b465-5b14-884c-cad63c0edd2e",
+        "split": "sealed-holdout-v3",
+        "sourceId": 14,
+        "typeCode": "comida-para-llevar-take-away",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 95.805,
+            "left": 1132,
+            "top": 308,
+            "width": 34,
+            "height": 49
+          }
+        ]
+      },
+      {
+        "imageId": "ebda3ec7-82ed-574e-9983-5194a92a0e35",
+        "split": "sealed-holdout-v3",
+        "sourceId": 21,
+        "typeCode": "casqueria",
+        "tokens": [
+          {
+            "text": "Pa)",
+            "confidence": 70.611,
+            "left": 487,
+            "top": 524,
+            "width": 18,
+            "height": 12
+          }
+        ]
+      },
+      {
+        "imageId": "97cb24e5-97d4-594a-befc-d9eba3962414",
+        "split": "sealed-holdout-v3",
+        "sourceId": 27,
+        "typeCode": "tienda-de-bebidas",
+        "tokens": [
+          {
+            "text": "tr",
+            "confidence": 84.854,
+            "left": 407,
+            "top": 383,
+            "width": 15,
+            "height": 13
+          },
+          {
+            "text": "ty",
+            "confidence": 74.43,
+            "left": 660,
+            "top": 431,
+            "width": 15,
+            "height": 20
+          },
+          {
+            "text": "AN",
+            "confidence": 75.188,
+            "left": 566,
+            "top": 472,
+            "width": 12,
+            "height": 6
+          }
+        ]
+      },
+      {
+        "imageId": "a1031e10-1bb6-59af-800b-8e6253e6a0fb",
+        "split": "sealed-holdout-v3",
+        "sourceId": 28,
+        "typeCode": "vinoteca-tienda-de-vinos",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 73.01,
+            "left": 261,
+            "top": 0,
+            "width": 93,
+            "height": 43
+          },
+          {
+            "text": "SS",
+            "confidence": 70.251,
+            "left": 606,
+            "top": 98,
+            "width": 80,
+            "height": 44
+          },
+          {
+            "text": "ay",
+            "confidence": 71.682,
+            "left": 64,
+            "top": 141,
+            "width": 48,
+            "height": 27
+          }
+        ]
+      },
+      {
+        "imageId": "e2a813b7-933d-58c6-a072-1c991e2db901",
+        "split": "sealed-holdout-v3",
+        "sourceId": 33,
+        "typeCode": "supermercado-400-m2",
+        "tokens": [
+          {
+            "text": "SSS",
+            "confidence": 73.368,
+            "left": 231,
+            "top": 89,
+            "width": 179,
+            "height": 23
+          },
+          {
+            "text": "if",
+            "confidence": 70.971,
+            "left": 260,
+            "top": 894,
+            "width": 7,
+            "height": 20
+          },
+          {
+            "text": "SSO",
+            "confidence": 70.457,
+            "left": 145,
+            "top": 935,
+            "width": 47,
+            "height": 20
+          }
+        ]
+      },
+      {
+        "imageId": "af452357-79cd-559f-942f-eb442b9185c7",
+        "split": "sealed-holdout-v3",
+        "sourceId": 37,
+        "typeCode": "tienda-de-ropa-moda",
+        "tokens": [
+          {
+            "text": "VX",
+            "confidence": 85.046,
+            "left": 213,
+            "top": 960,
+            "width": 20,
+            "height": 10
+          }
+        ]
+      },
+      {
+        "imageId": "b61d082f-ffd0-5d29-a2ab-593e192ccb59",
+        "split": "sealed-holdout-v3",
+        "sourceId": 39,
+        "typeCode": "moda-masculina",
+        "tokens": [
+          {
+            "text": "ji",
+            "confidence": 93.707,
+            "left": 1051,
+            "top": 320,
+            "width": 30,
+            "height": 35
+          }
+        ]
+      },
+      {
+        "imageId": "41b564cf-aab2-50b3-848c-e4e96082578a",
+        "split": "sealed-holdout-v3",
+        "sourceId": 40,
+        "typeCode": "moda-infantil",
+        "tokens": [
+          {
+            "text": "by",
+            "confidence": 80.746,
+            "left": 1086,
+            "top": 613,
+            "width": 25,
+            "height": 29
+          },
+          {
+            "text": "Ay",
+            "confidence": 75.685,
+            "left": 817,
+            "top": 855,
+            "width": 11,
+            "height": 10
+          }
+        ]
+      },
+      {
+        "imageId": "d3dc1b55-230c-5c04-92d6-1f2d7b01d3a8",
+        "split": "sealed-holdout-v3",
+        "sourceId": 41,
+        "typeCode": "lenceria-corseteria",
+        "tokens": [
+          {
+            "text": "WANK",
+            "confidence": 78.709,
+            "left": 715,
+            "top": 881,
+            "width": 57,
+            "height": 11
+          }
+        ]
+      },
+      {
+        "imageId": "57b897a7-105a-5177-a9ec-ab766267e7b9",
+        "split": "sealed-holdout-v3",
+        "sourceId": 42,
+        "typeCode": "merceria",
+        "tokens": [
+          {
+            "text": "pa",
+            "confidence": 70.627,
+            "left": 168,
+            "top": 783,
+            "width": 41,
+            "height": 37
+          }
+        ]
+      },
+      {
+        "imageId": "da3851e7-2753-503c-9592-3a6773c65652",
+        "split": "sealed-holdout-v3",
+        "sourceId": 44,
+        "typeCode": "zapateria",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 70.136,
+            "left": 929,
+            "top": 420,
+            "width": 21,
+            "height": 44
+          },
+          {
+            "text": "SBE",
+            "confidence": 77.121,
+            "left": 646,
+            "top": 639,
+            "width": 44,
+            "height": 7
+          }
+        ]
+      },
+      {
+        "imageId": "be2b7df5-7e02-56f6-a255-ea528799c2dd",
+        "split": "sealed-holdout-v3",
+        "sourceId": 46,
+        "typeCode": "peleteria",
+        "tokens": [
+          {
+            "text": "ll",
+            "confidence": 79.736,
+            "left": 870,
+            "top": 552,
+            "width": 17,
+            "height": 31
+          }
+        ]
+      },
+      {
+        "imageId": "a6376fd7-c8cc-518c-8659-dbc49fb640ac",
+        "split": "sealed-holdout-v3",
+        "sourceId": 47,
+        "typeCode": "farmacia",
+        "tokens": [
+          {
+            "text": "te",
+            "confidence": 72.105,
+            "left": 173,
+            "top": 471,
+            "width": 14,
+            "height": 12
+          },
+          {
+            "text": "We",
+            "confidence": 85.814,
+            "left": 542,
+            "top": 468,
+            "width": 60,
+            "height": 58
+          }
+        ]
+      },
+      {
+        "imageId": "9de58377-eb62-5f89-a7ce-bb6a1652ac77",
+        "split": "sealed-holdout-v3",
+        "sourceId": 51,
+        "typeCode": "tienda-de-cosmetica",
+        "tokens": [
+          {
+            "text": "aa",
+            "confidence": 95.3,
+            "left": 970,
+            "top": 224,
+            "width": 29,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "2ac03e0f-c8ac-5146-8e58-de8024a394db",
+        "split": "sealed-holdout-v3",
+        "sourceId": 54,
+        "typeCode": "ortopedia-material-medico",
+        "tokens": [
+          {
+            "text": "ay",
+            "confidence": 71.008,
+            "left": 1242,
+            "top": 379,
+            "width": 22,
+            "height": 22
+          }
+        ]
+      },
+      {
+        "imageId": "2af8d0c3-570f-5f15-acc7-3ff1d39e1c37",
+        "split": "sealed-holdout-v3",
+        "sourceId": 62,
+        "typeCode": "ferreteria",
+        "tokens": [
+          {
+            "text": "ZN",
+            "confidence": 79.552,
+            "left": 543,
+            "top": 50,
+            "width": 48,
+            "height": 28
+          }
+        ]
+      },
+      {
+        "imageId": "a4dfca2d-df5a-5cd9-874b-11679e6f0099",
+        "split": "sealed-holdout-v3",
+        "sourceId": 65,
+        "typeCode": "tienda-de-sanitarios-equipamiento-de-bano",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 74.213,
+            "left": 927,
+            "top": 237,
+            "width": 40,
+            "height": 84
+          }
+        ]
+      },
+      {
+        "imageId": "11ab21e8-3f82-5b10-a0ac-6d589331efac",
+        "split": "sealed-holdout-v3",
+        "sourceId": 67,
+        "typeCode": "tienda-de-suelos-moquetas-y-revestimientos",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 70.363,
+            "left": 1058,
+            "top": 511,
+            "width": 118,
+            "height": 158
+          }
+        ]
+      },
+      {
+        "imageId": "bb096d58-be58-5d32-b41d-30fad1ea1903",
+        "split": "sealed-holdout-v3",
+        "sourceId": 68,
+        "typeCode": "tienda-centro-de-bricolaje",
+        "tokens": [
+          {
+            "text": "SN",
+            "confidence": 76.498,
+            "left": 958,
+            "top": 92,
+            "width": 13,
+            "height": 11
+          },
+          {
+            "text": "lo",
+            "confidence": 77.615,
+            "left": 505,
+            "top": 320,
+            "width": 13,
+            "height": 11
+          }
+        ]
+      },
+      {
+        "imageId": "d39076fd-5053-5862-bdab-65b3d93847ec",
+        "split": "sealed-holdout-v3",
+        "sourceId": 71,
+        "typeCode": "tienda-de-telefonia-y-comunicaciones",
+        "tokens": [
+          {
+            "text": "BREE",
+            "confidence": 94.076,
+            "left": 310,
+            "top": 441,
+            "width": 89,
+            "height": 43
+          }
+        ]
+      },
+      {
+        "imageId": "7655289f-e845-59ff-8072-465670112b08",
+        "split": "sealed-holdout-v3",
+        "sourceId": 73,
+        "typeCode": "tienda-de-material-de-dibujo-y-bellas-artes",
+        "tokens": [
+          {
+            "text": "AN",
+            "confidence": 73.268,
+            "left": 923,
+            "top": 498,
+            "width": 19,
+            "height": 15
+          }
+        ]
+      },
+      {
+        "imageId": "ca2a9a7a-37c3-5f4d-bc96-d0e2cb29449a",
+        "split": "sealed-holdout-v3",
+        "sourceId": 75,
+        "typeCode": "quiosco-de-prensa",
+        "tokens": [
+          {
+            "text": "ty",
+            "confidence": 73.272,
+            "left": 288,
+            "top": 184,
+            "width": 17,
+            "height": 9
+          }
+        ]
+      },
+      {
+        "imageId": "db403a76-73bc-577f-95aa-3ca314c6d841",
+        "split": "sealed-holdout-v3",
+        "sourceId": 76,
+        "typeCode": "papeleria",
+        "tokens": [
+          {
+            "text": "TS",
+            "confidence": 72.38,
+            "left": 0,
+            "top": 271,
+            "width": 187,
+            "height": 108
+          }
+        ]
+      },
+      {
+        "imageId": "be0377f6-f40d-558b-b5ce-74e22570b6aa",
+        "split": "sealed-holdout-v3",
+        "sourceId": 77,
+        "typeCode": "tienda-de-instrumentos-musicales",
+        "tokens": [
+          {
+            "text": "le",
+            "confidence": 76.661,
+            "left": 1035,
+            "top": 330,
+            "width": 23,
+            "height": 24
+          },
+          {
+            "text": "if",
+            "confidence": 93.052,
+            "left": 5,
+            "top": 663,
+            "width": 25,
+            "height": 67
+          }
+        ]
+      },
+      {
+        "imageId": "de83e260-5ca3-50d5-940f-880a4e4fd8b8",
+        "split": "sealed-holdout-v3",
+        "sourceId": 80,
+        "typeCode": "anticuario",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 75.708,
+            "left": 64,
+            "top": 116,
+            "width": 65,
+            "height": 42
+          },
+          {
+            "text": "ii",
+            "confidence": 75.673,
+            "left": 1179,
+            "top": 602,
+            "width": 2,
+            "height": 7
+          },
+          {
+            "text": "AS",
+            "confidence": 73.094,
+            "left": 1410,
+            "top": 1012,
+            "width": 36,
+            "height": 25
+          }
+        ]
+      },
+      {
+        "imageId": "a0cf3665-afcb-537c-a08f-3f306140d057",
+        "split": "sealed-holdout-v3",
+        "sourceId": 84,
+        "typeCode": "tienda-de-bisuteria",
+        "tokens": [
+          {
+            "text": "IG",
+            "confidence": 76.937,
+            "left": 1347,
+            "top": 593,
+            "width": 19,
+            "height": 15
+          }
+        ]
+      },
+      {
+        "imageId": "cc809f67-bb3a-54a1-9b0b-3d624be1d24a",
+        "split": "sealed-holdout-v3",
+        "sourceId": 87,
+        "typeCode": "tienda-de-ropa-calzado-deportivo",
+        "tokens": [
+          {
+            "text": "Le",
+            "confidence": 79.0,
+            "left": 1117,
+            "top": 405,
+            "width": 32,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "b9739341-5e4e-55a7-ba18-aa6882907440",
+        "split": "sealed-holdout-v3",
+        "sourceId": 88,
+        "typeCode": "tienda-de-segunda-mano",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 88.804,
+            "left": 340,
+            "top": 170,
+            "width": 10,
+            "height": 24
+          }
+        ]
+      },
+      {
+        "imageId": "87eb41c3-e19b-56a8-9075-602d9faced2c",
+        "split": "sealed-holdout-v3",
+        "sourceId": 91,
+        "typeCode": "floristeria",
+        "tokens": [
+          {
+            "text": "in",
+            "confidence": 76.502,
+            "left": 1124,
+            "top": 771,
+            "width": 22,
+            "height": 11
+          }
+        ]
+      },
+      {
+        "imageId": "cc303f5a-7f72-5096-aef8-ece6d46505d8",
+        "split": "sealed-holdout-v3",
+        "sourceId": 92,
+        "typeCode": "tienda-vivero-de-plantas-ornamentales",
+        "tokens": [
+          {
+            "text": "af",
+            "confidence": 74.522,
+            "left": 180,
+            "top": 474,
+            "width": 30,
+            "height": 76
+          }
+        ]
+      },
+      {
+        "imageId": "3b913e10-c622-5523-818c-48c15539a1ed",
+        "split": "sealed-holdout-v3",
+        "sourceId": 93,
+        "typeCode": "tienda-de-semillas-y-fertilizantes",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 70.522,
+            "left": 524,
+            "top": 0,
+            "width": 104,
+            "height": 85
+          }
+        ]
+      },
+      {
+        "imageId": "488a6c1b-4586-5258-bf80-2fdf222770aa",
+        "split": "sealed-holdout-v3",
+        "sourceId": 94,
+        "typeCode": "tienda-de-animales-de-compania",
+        "tokens": [
+          {
+            "text": "an",
+            "confidence": 83.822,
+            "left": 276,
+            "top": 202,
+            "width": 141,
+            "height": 62
+          }
+        ]
+      },
+      {
+        "imageId": "6890ae30-0a43-56c9-9684-7e6527d4f444",
+        "split": "sealed-holdout-v3",
+        "sourceId": 100,
+        "typeCode": "tienda-de-neumaticos",
+        "tokens": [
+          {
+            "text": "Hf",
+            "confidence": 79.046,
+            "left": 1326,
+            "top": 454,
+            "width": 12,
+            "height": 30
+          },
+          {
+            "text": "Mf",
+            "confidence": 88.8,
+            "left": 1380,
+            "top": 455,
+            "width": 12,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "7960011c-cc17-5568-923c-8a3dafe06260",
+        "split": "sealed-holdout-v3",
+        "sourceId": 101,
+        "typeCode": "tienda-de-maquinaria",
+        "tokens": [
+          {
+            "text": "ESE",
+            "confidence": 72.343,
+            "left": 703,
+            "top": 0,
+            "width": 163,
+            "height": 77
+          },
+          {
+            "text": "aw",
+            "confidence": 71.511,
+            "left": 425,
+            "top": 222,
+            "width": 20,
+            "height": 12
+          },
+          {
+            "text": "ll",
+            "confidence": 73.918,
+            "left": 726,
+            "top": 102,
+            "width": 123,
+            "height": 204
+          }
+        ]
+      },
+      {
+        "imageId": "5b6365e4-3366-51f8-a4b6-7c80f793cae6",
+        "split": "sealed-holdout-v3",
+        "sourceId": 102,
+        "typeCode": "tienda-concesionario-de-embarcaciones",
+        "tokens": [
+          {
+            "text": "Th",
+            "confidence": 84.381,
+            "left": 1121,
+            "top": 50,
+            "width": 31,
+            "height": 26
+          },
+          {
+            "text": "gu",
+            "confidence": 76.152,
+            "left": 805,
+            "top": 676,
+            "width": 117,
+            "height": 133
+          }
+        ]
+      },
+      {
+        "imageId": "5108173f-e78f-582f-af73-bc351df986a8",
+        "split": "sealed-holdout-v3",
+        "sourceId": 107,
+        "typeCode": "almacen-popular",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 74.935,
+            "left": 442,
+            "top": 390,
+            "width": 17,
+            "height": 28
+          }
+        ]
+      },
+      {
+        "imageId": "cae7ac10-7948-5cb2-ba62-fa4eb02c67e8",
+        "split": "sealed-holdout-v3",
+        "sourceId": 110,
+        "typeCode": "bazar-comercio-mixto-o-integrado",
+        "tokens": [
+          {
+            "text": "as",
+            "confidence": 73.372,
+            "left": 139,
+            "top": 458,
+            "width": 35,
+            "height": 27
+          },
+          {
+            "text": "Au",
+            "confidence": 70.41,
+            "left": 0,
+            "top": 789,
+            "width": 51,
+            "height": 39
+          }
+        ]
+      },
+      {
+        "imageId": "cb91d7cf-11b2-57e0-9988-7f708d1dcdb9",
+        "split": "sealed-holdout-v3",
+        "sourceId": 125,
+        "typeCode": "consulta-de-medico-especialista",
+        "tokens": [
+          {
+            "text": "ale",
+            "confidence": 71.562,
+            "left": 1078,
+            "top": 356,
+            "width": 174,
+            "height": 74
+          }
+        ]
+      },
+      {
+        "imageId": "06ba88b7-55d5-52da-ac65-2eed2a78c8bb",
+        "split": "sealed-holdout-v3",
+        "sourceId": 126,
+        "typeCode": "consulta-de-estomatologia",
+        "tokens": [
+          {
+            "text": "LZ",
+            "confidence": 74.31,
+            "left": 163,
+            "top": 845,
+            "width": 131,
+            "height": 157
+          }
+        ]
+      },
+      {
+        "imageId": "70f59d04-a977-5432-9c47-491aa3554afd",
+        "split": "sealed-holdout-v3",
+        "sourceId": 128,
+        "typeCode": "centro-consulta-de-fisioterapia",
+        "tokens": [
+          {
+            "text": "Ya",
+            "confidence": 71.627,
+            "left": 97,
+            "top": 910,
+            "width": 81,
+            "height": 35
+          }
+        ]
+      },
+      {
+        "imageId": "cce19017-2a5c-5da3-9bc9-8e8ec26d4841",
+        "split": "sealed-holdout-v3",
+        "sourceId": 130,
+        "typeCode": "clinica-consulta-de-podologia",
+        "tokens": [
+          {
+            "text": "fi",
+            "confidence": 71.211,
+            "left": 955,
+            "top": 372,
+            "width": 34,
+            "height": 66
+          }
+        ]
+      },
+      {
+        "imageId": "3b323351-8591-5e64-b4ff-ef8f8d8b58a4",
+        "split": "sealed-holdout-v3",
+        "sourceId": 132,
+        "typeCode": "consulta-centro-de-psicologia",
+        "tokens": [
+          {
+            "text": "ly",
+            "confidence": 70.291,
+            "left": 1309,
+            "top": 792,
+            "width": 45,
+            "height": 34
+          }
+        ]
+      },
+      {
+        "imageId": "65991058-1eef-5866-8afa-3b0967c84434",
+        "split": "sealed-holdout-v3",
+        "sourceId": 134,
+        "typeCode": "centro-de-naturopatia",
+        "tokens": [
+          {
+            "text": "it«",
+            "confidence": 70.513,
+            "left": 628,
+            "top": 461,
+            "width": 35,
+            "height": 18
+          }
+        ]
+      },
+      {
+        "imageId": "fde9dd33-fc9e-5826-9d6b-419904d78e3f",
+        "split": "sealed-holdout-v3",
+        "sourceId": 136,
+        "typeCode": "balneario-medico-banos-termales-sanitarios",
+        "tokens": [
+          {
+            "text": "al",
+            "confidence": 85.438,
+            "left": 328,
+            "top": 747,
+            "width": 16,
+            "height": 19
+          }
+        ]
+      },
+      {
+        "imageId": "78948284-0b3e-5fd6-b484-71b0bcb75e8c",
+        "split": "sealed-holdout-v3",
+        "sourceId": 141,
+        "typeCode": "residencia-para-personas-mayores",
+        "tokens": [
+          {
+            "text": "if",
+            "confidence": 90.176,
+            "left": 136,
+            "top": 580,
+            "width": 8,
+            "height": 18
+          }
+        ]
+      },
+      {
+        "imageId": "bd68998a-cb48-50e7-93a1-3a43694f9fe2",
+        "split": "sealed-holdout-v3",
+        "sourceId": 143,
+        "typeCode": "centro-residencial-infantil-juvenil",
+        "tokens": [
+          {
+            "text": "Fr",
+            "confidence": 83.828,
+            "left": 858,
+            "top": 816,
+            "width": 58,
+            "height": 26
+          }
+        ]
+      },
+      {
+        "imageId": "8fd95871-c991-5261-a560-61df80385411",
+        "split": "sealed-holdout-v3",
+        "sourceId": 149,
+        "typeCode": "barberia",
+        "tokens": [
+          {
+            "text": "fi",
+            "confidence": 76.777,
+            "left": 1013,
+            "top": 401,
+            "width": 42,
+            "height": 47
+          }
+        ]
+      },
+      {
+        "imageId": "a126c7f3-76cb-5d9b-9b36-e6877c4d873f",
+        "split": "sealed-holdout-v3",
+        "sourceId": 151,
+        "typeCode": "centro-de-estetica-no-medica",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 71.499,
+            "left": 828,
+            "top": 448,
+            "width": 7,
+            "height": 18
+          }
+        ]
+      },
+      {
+        "imageId": "ee45d9ac-f8ce-5d14-8331-74c988448544",
+        "split": "sealed-holdout-v3",
+        "sourceId": 154,
+        "typeCode": "spa-sauna-bano-turco-no-sanitario",
+        "tokens": [
+          {
+            "text": "ny",
+            "confidence": 70.356,
+            "left": 1195,
+            "top": 362,
+            "width": 14,
+            "height": 23
+          }
+        ]
+      },
+      {
+        "imageId": "d99f6ab4-2b95-55c5-8248-8814c90a3071",
+        "split": "sealed-holdout-v3",
+        "sourceId": 156,
+        "typeCode": "estudio-de-tatuaje-y-piercing",
+        "tokens": [
+          {
+            "text": "Ned",
+            "confidence": 70.43,
+            "left": 1192,
+            "top": 526,
+            "width": 39,
+            "height": 12
+          }
+        ]
+      },
+      {
+        "imageId": "03d99366-bb0b-56fb-888d-d9968a33e8c2",
+        "split": "sealed-holdout-v3",
+        "sourceId": 159,
+        "typeCode": "taller-de-arreglos-zurcido-de-ropa",
+        "tokens": [
+          {
+            "text": "fe",
+            "confidence": 73.974,
+            "left": 1392,
+            "top": 615,
+            "width": 32,
+            "height": 33
+          }
+        ]
+      },
+      {
+        "imageId": "f4db461d-466b-50f5-ad7d-1a5b76a94562",
+        "split": "sealed-holdout-v3",
+        "sourceId": 160,
+        "typeCode": "gimnasio-centro-deportivo",
+        "tokens": [
+          {
+            "text": "XA",
+            "confidence": 71.883,
+            "left": 541,
+            "top": 0,
+            "width": 219,
+            "height": 98
+          }
+        ]
+      },
+      {
+        "imageId": "2a5982f7-ee5e-59b0-86f4-982ee422a17b",
+        "split": "sealed-holdout-v3",
+        "sourceId": 165,
+        "typeCode": "piscina-de-explotacion-deportiva",
+        "tokens": [
+          {
+            "text": "LZ",
+            "confidence": 70.729,
+            "left": 575,
+            "top": 714,
+            "width": 43,
+            "height": 28
+          }
+        ]
+      },
+      {
+        "imageId": "75b73c95-8d48-54d3-b407-72a16d0e6cab",
+        "split": "sealed-holdout-v3",
+        "sourceId": 166,
+        "typeCode": "escuela-deportiva",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 71.348,
+            "left": 990,
+            "top": 91,
+            "width": 271,
+            "height": 548
+          }
+        ]
+      },
+      {
+        "imageId": "cba16397-66cd-52ce-9ba8-8c625e3c8686",
+        "split": "sealed-holdout-v3",
+        "sourceId": 168,
+        "typeCode": "alquiler-de-material-dentro-de-instalacion-deportiva",
+        "tokens": [
+          {
+            "text": "fy",
+            "confidence": 78.405,
+            "left": 1334,
+            "top": 585,
+            "width": 14,
+            "height": 15
+          }
+        ]
+      },
+      {
+        "imageId": "82d92d99-7a66-5507-8ca1-dce69885e1cd",
+        "split": "sealed-holdout-v3",
+        "sourceId": 176,
+        "typeCode": "academia-de-idiomas",
+        "tokens": [
+          {
+            "text": "lv",
+            "confidence": 82.394,
+            "left": 1127,
+            "top": 467,
+            "width": 26,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "df040dac-7bb7-5a08-b145-ff17494b88ab",
+        "split": "sealed-holdout-v3",
+        "sourceId": 177,
+        "typeCode": "academia-de-preparacion-de-oposiciones-examenes",
+        "tokens": [
+          {
+            "text": "ay",
+            "confidence": 72.424,
+            "left": 977,
+            "top": 386,
+            "width": 89,
+            "height": 78
+          }
+        ]
+      },
+      {
+        "imageId": "8d4dc4d1-dea3-5932-a452-b4efd329c421",
+        "split": "sealed-holdout-v3",
+        "sourceId": 184,
+        "typeCode": "biblioteca-privada-servicio-cultural",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 73.836,
+            "left": 1157,
+            "top": 268,
+            "width": 15,
+            "height": 37
+          },
+          {
+            "text": "if",
+            "confidence": 77.512,
+            "left": 463,
+            "top": 567,
+            "width": 8,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "336515ee-efee-538a-a58c-c77f366796a8",
+        "split": "sealed-holdout-v3",
+        "sourceId": 187,
+        "typeCode": "discoteca-sala-de-baile",
+        "tokens": [
+          {
+            "text": "SS",
+            "confidence": 82.459,
+            "left": 44,
+            "top": 89,
+            "width": 59,
+            "height": 19
+          },
+          {
+            "text": "LN",
+            "confidence": 85.828,
+            "left": 1370,
+            "top": 811,
+            "width": 23,
+            "height": 14
+          }
+        ]
+      },
+      {
+        "imageId": "710e6a60-3777-59d9-a26c-8d1632e39aba",
+        "split": "sealed-holdout-v3",
+        "sourceId": 189,
+        "typeCode": "sala-de-bingo",
+        "tokens": [
+          {
+            "text": "yp",
+            "confidence": 75.636,
+            "left": 860,
+            "top": 998,
+            "width": 149,
+            "height": 88
+          }
+        ]
+      },
+      {
+        "imageId": "40c2b863-b878-5926-9e44-b6cc6cf3eb58",
+        "split": "sealed-holdout-v3",
+        "sourceId": 193,
+        "typeCode": "parque-de-atracciones-parque-tematico",
+        "tokens": [
+          {
+            "text": "AN",
+            "confidence": 86.734,
+            "left": 792,
+            "top": 222,
+            "width": 24,
+            "height": 16
+          }
+        ]
+      },
+      {
+        "imageId": "14094e10-560a-520a-8668-d44e5272de63",
+        "split": "sealed-holdout-v3",
+        "sourceId": 194,
+        "typeCode": "parque-acuatico",
+        "tokens": [
+          {
+            "text": "Ag",
+            "confidence": 84.899,
+            "left": 293,
+            "top": 792,
+            "width": 39,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "600f8f56-3809-5e0e-ac36-d081463591d1",
+        "split": "sealed-holdout-v3",
+        "sourceId": 196,
+        "typeCode": "centro-organizador-de-congresos",
+        "tokens": [
+          {
+            "text": "AA",
+            "confidence": 87.315,
+            "left": 190,
+            "top": 97,
+            "width": 77,
+            "height": 47
+          },
+          {
+            "text": "Ba",
+            "confidence": 78.353,
+            "left": 200,
+            "top": 142,
+            "width": 99,
+            "height": 40
+          },
+          {
+            "text": "LA",
+            "confidence": 92.381,
+            "left": 967,
+            "top": 915,
+            "width": 25,
+            "height": 12
+          }
+        ]
+      },
+      {
+        "imageId": "723c53f4-25a1-5305-8422-7ac89fa76a1b",
+        "split": "sealed-holdout-v3",
+        "sourceId": 202,
+        "typeCode": "servicio-tecnico-reparacion-de-electrodomesticos",
+        "tokens": [
+          {
+            "text": "44",
+            "confidence": 70.65,
+            "left": 398,
+            "top": 464,
+            "width": 131,
+            "height": 84
+          }
+        ]
+      },
+      {
+        "imageId": "5a28e7e8-809c-5b99-988a-4f3149c66b58",
+        "split": "sealed-holdout-v3",
+        "sourceId": 209,
+        "typeCode": "agencia-de-viajes",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 76.408,
+            "left": 546,
+            "top": 229,
+            "width": 9,
+            "height": 18
+          }
+        ]
+      },
+      {
+        "imageId": "d532e4b1-7660-57e9-9154-8798dc4b154c",
+        "split": "sealed-holdout-v3",
+        "sourceId": 211,
+        "typeCode": "oficina-de-servicios-de-reservas-turisticos",
+        "tokens": [
+          {
+            "text": "ry",
+            "confidence": 78.81,
+            "left": 46,
+            "top": 0,
+            "width": 36,
+            "height": 22
+          },
+          {
+            "text": "AF",
+            "confidence": 88.254,
+            "left": 898,
+            "top": 326,
+            "width": 136,
+            "height": 61
+          }
+        ]
+      },
+      {
+        "imageId": "3ecf8586-b858-5ae4-8a9c-59451c849b46",
+        "split": "sealed-holdout-v3",
+        "sourceId": 212,
+        "typeCode": "alquiler-de-automoviles-rent-a-car",
+        "tokens": [
+          {
+            "text": "(ez",
+            "confidence": 70.56,
+            "left": 546,
+            "top": 567,
+            "width": 44,
+            "height": 41
+          }
+        ]
+      },
+      {
+        "imageId": "59aed196-628e-5b5d-b105-d40f5d65b4e0",
+        "split": "sealed-holdout-v3",
+        "sourceId": 220,
+        "typeCode": "despacho-de-procurador",
+        "tokens": [
+          {
+            "text": "EE",
+            "confidence": 93.098,
+            "left": 1353,
+            "top": 297,
+            "width": 21,
+            "height": 16
+          },
+          {
+            "text": "it",
+            "confidence": 74.64,
+            "left": 1205,
+            "top": 553,
+            "width": 14,
+            "height": 17
+          }
+        ]
+      },
+      {
+        "imageId": "eecd1159-199f-533d-bfb4-882d1d17e3bb",
+        "split": "sealed-holdout-v3",
+        "sourceId": 222,
+        "typeCode": "despacho-de-economista",
+        "tokens": [
+          {
+            "text": "li",
+            "confidence": 75.705,
+            "left": 210,
+            "top": 345,
+            "width": 37,
+            "height": 62
+          }
+        ]
+      },
+      {
+        "imageId": "5e5d08b6-1cb8-5aca-b138-fc20d89ec17d",
+        "split": "sealed-holdout-v3",
+        "sourceId": 223,
+        "typeCode": "despacho-firma-de-auditoria",
+        "tokens": [
+          {
+            "text": "hw",
+            "confidence": 76.902,
+            "left": 8,
+            "top": 472,
+            "width": 34,
+            "height": 38
+          }
+        ]
+      },
+      {
+        "imageId": "2098cd5b-eea4-5cf9-9d4b-4fb96617ec62",
+        "split": "sealed-holdout-v3",
+        "sourceId": 229,
+        "typeCode": "estudio-de-interiorismo",
+        "tokens": [
+          {
+            "text": "ir",
+            "confidence": 70.332,
+            "left": 675,
+            "top": 776,
+            "width": 16,
+            "height": 15
+          },
+          {
+            "text": "Wh",
+            "confidence": 77.83,
+            "left": 1293,
+            "top": 771,
+            "width": 48,
+            "height": 32
+          }
+        ]
+      },
+      {
+        "imageId": "4108e234-83fa-532f-9d75-1e2baf0694f6",
+        "split": "sealed-holdout-v3",
+        "sourceId": 233,
+        "typeCode": "agencia-de-colocacion-seleccion-de-personal",
+        "tokens": [
+          {
+            "text": "iy",
+            "confidence": 70.921,
+            "left": 1123,
+            "top": 574,
+            "width": 65,
+            "height": 129
+          }
+        ]
+      },
+      {
+        "imageId": "84a69878-8ddf-5455-a2ee-b839818ff8c3",
+        "split": "sealed-holdout-v3",
+        "sourceId": 235,
+        "typeCode": "empresa-oficina-de-seguridad-privada",
+        "tokens": [
+          {
+            "text": "at",
+            "confidence": 71.898,
+            "left": 728,
+            "top": 371,
+            "width": 19,
+            "height": 33
+          }
+        ]
+      },
+      {
+        "imageId": "67411744-b4d0-5e39-b588-355dafd80484",
+        "split": "sealed-holdout-v3",
+        "sourceId": 236,
+        "typeCode": "despacho-de-detective-privado",
+        "tokens": [
+          {
+            "text": "Rd",
+            "confidence": 81.792,
+            "left": 1123,
+            "top": 267,
+            "width": 32,
+            "height": 44
+          }
+        ]
+      },
+      {
+        "imageId": "2fecbaee-fd58-5665-815c-0f5d66fd896c",
+        "split": "sealed-holdout-v3",
+        "sourceId": 237,
+        "typeCode": "coworking-oficina-flexible-centro-de-negocios",
+        "tokens": [
+          {
+            "text": "Al",
+            "confidence": 72.678,
+            "left": 1159,
+            "top": 248,
+            "width": 93,
+            "height": 60
+          },
+          {
+            "text": "al",
+            "confidence": 74.534,
+            "left": 1246,
+            "top": 528,
+            "width": 151,
+            "height": 96
+          }
+        ]
+      },
+      {
+        "imageId": "7315234b-a63e-567a-b5d4-2e661cc277d4",
+        "split": "sealed-holdout-v3",
+        "sourceId": 241,
+        "typeCode": "agencia-de-seguros",
+        "tokens": [
+          {
+            "text": "Be",
+            "confidence": 72.39,
+            "left": 282,
+            "top": 558,
+            "width": 12,
+            "height": 7
+          }
+        ]
+      },
+      {
+        "imageId": "68ed9ae2-fa8a-571a-a531-59dcdcaac0d0",
+        "split": "sealed-holdout-v3",
+        "sourceId": 242,
+        "typeCode": "correduria-de-seguros",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 89.318,
+            "left": 1106,
+            "top": 106,
+            "width": 38,
+            "height": 40
+          }
+        ]
+      },
+      {
+        "imageId": "a5b9c955-02ea-5f75-b9c9-87905ed92a61",
+        "split": "sealed-holdout-v3",
+        "sourceId": 245,
+        "typeCode": "administracion-de-fincas-gestion-inmobiliaria",
+        "tokens": [
+          {
+            "text": "il",
+            "confidence": 71.511,
+            "left": 554,
+            "top": 491,
+            "width": 49,
+            "height": 112
+          }
+        ]
+      },
+      {
+        "imageId": "d2f4ee2b-4cc4-5f16-bc8e-61a8bdd3cbc6",
+        "split": "sealed-holdout-v3",
+        "sourceId": 249,
+        "typeCode": "local-de-apuestas-autorizado",
+        "tokens": [
+          {
+            "text": "Ser",
+            "confidence": 74.377,
+            "left": 656,
+            "top": 282,
+            "width": 116,
+            "height": 23
+          }
+        ]
+      }
+    ]
+  },
+  "contactSheets": {
+    "development-c": [
+      "development-c-01.jpg",
+      "development-c-02.jpg",
+      "development-c-03.jpg",
+      "development-c-04.jpg"
+    ],
+    "sealed-holdout-v3": [
+      "sealed-holdout-v3-01.jpg",
+      "sealed-holdout-v3-02.jpg",
+      "sealed-holdout-v3-03.jpg",
+      "sealed-holdout-v3-04.jpg"
+    ]
+  },
+  "reviewChecklist": "human-review-checklist.v3.json",
+  "structuralQaPassed": true,
+  "perceptualQaPassed": true,
+  "ocrScanComplete": true,
+  "qaPassed": true,
+  "clipLoaded": false,
+  "embeddingsExtracted": false,
+  "holdoutPredictionsComputed": false,
+  "holdoutBudgetConsumed": 0,
+  "humanReviewComplete": false,
+  "developmentTrainingAllowed": false,
+  "holdoutEvaluationAllowed": false,
+  "promotionAllowed": false
+}

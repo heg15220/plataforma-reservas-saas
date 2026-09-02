@@ -1,0 +1,447 @@
+{
+  "schemaVersion": 1,
+  "reportVersion": "full-taxonomy-visual-development-v2",
+  "imageCount": 254,
+  "typeCount": 254,
+  "familyCount": 23,
+  "foldCount": 4,
+  "holdoutEmbeddingsRead": false,
+  "holdoutPredictionsComputed": false,
+  "candidates": [
+    {
+      "key": "centroid",
+      "kind": "centroid",
+      "folds": [
+        {
+          "accuracy": 0.64788732,
+          "error": 0.35211268,
+          "macroPrecision": 0.58478261,
+          "macroRecall": 0.57101449,
+          "macroF1": 0.54811469,
+          "familyRecallAt3": 0.85915493
+        },
+        {
+          "accuracy": 0.65151515,
+          "error": 0.34848485,
+          "macroPrecision": 0.62924431,
+          "macroRecall": 0.63550725,
+          "macroF1": 0.60900621,
+          "familyRecallAt3": 0.90909091
+        },
+        {
+          "accuracy": 0.75409836,
+          "error": 0.24590164,
+          "macroPrecision": 0.73188406,
+          "macroRecall": 0.74710145,
+          "macroF1": 0.71925466,
+          "familyRecallAt3": 0.93442623
+        },
+        {
+          "accuracy": 0.71428571,
+          "error": 0.28571429,
+          "macroPrecision": 0.65072464,
+          "macroRecall": 0.66521739,
+          "macroF1": 0.63641769,
+          "familyRecallAt3": 0.875
+        }
+      ],
+      "mean": {
+        "accuracy": 0.69194663,
+        "error": 0.30805337,
+        "macroPrecision": 0.6491589,
+        "macroRecall": 0.65471014,
+        "macroF1": 0.62819831,
+        "familyRecallAt3": 0.89441802
+      }
+    },
+    {
+      "key": "knn-k1",
+      "kind": "knn",
+      "k": 1,
+      "folds": [
+        {
+          "accuracy": 0.6056338,
+          "error": 0.3943662,
+          "macroPrecision": 0.59585921,
+          "macroRecall": 0.56956522,
+          "macroF1": 0.54785432,
+          "familyRecallAt3": 0.63380282
+        },
+        {
+          "accuracy": 0.62121212,
+          "error": 0.37878788,
+          "macroPrecision": 0.56935818,
+          "macroRecall": 0.58695652,
+          "macroF1": 0.55111989,
+          "familyRecallAt3": 0.65151515
+        },
+        {
+          "accuracy": 0.62295082,
+          "error": 0.37704918,
+          "macroPrecision": 0.62732919,
+          "macroRecall": 0.6057971,
+          "macroF1": 0.56789008,
+          "familyRecallAt3": 0.6557377
+        },
+        {
+          "accuracy": 0.58928571,
+          "error": 0.41071429,
+          "macroPrecision": 0.61775362,
+          "macroRecall": 0.58043478,
+          "macroF1": 0.56414745,
+          "familyRecallAt3": 0.625
+        }
+      ],
+      "mean": {
+        "accuracy": 0.60977061,
+        "error": 0.39022939,
+        "macroPrecision": 0.60257505,
+        "macroRecall": 0.5856884,
+        "macroF1": 0.55775294,
+        "familyRecallAt3": 0.64151392
+      }
+    },
+    {
+      "key": "knn-k3",
+      "kind": "knn",
+      "k": 3,
+      "folds": [
+        {
+          "accuracy": 0.56338028,
+          "error": 0.43661972,
+          "macroPrecision": 0.46076605,
+          "macroRecall": 0.49492754,
+          "macroF1": 0.44861974,
+          "familyRecallAt3": 0.78873239
+        },
+        {
+          "accuracy": 0.60606061,
+          "error": 0.39393939,
+          "macroPrecision": 0.5194617,
+          "macroRecall": 0.58115942,
+          "macroF1": 0.53581781,
+          "familyRecallAt3": 0.83333333
+        },
+        {
+          "accuracy": 0.62295082,
+          "error": 0.37704918,
+          "macroPrecision": 0.58354037,
+          "macroRecall": 0.56594203,
+          "macroF1": 0.53594956,
+          "familyRecallAt3": 0.81967213
+        },
+        {
+          "accuracy": 0.60714286,
+          "error": 0.39285714,
+          "macroPrecision": 0.63333333,
+          "macroRecall": 0.58913043,
+          "macroF1": 0.57735815,
+          "familyRecallAt3": 0.78571429
+        }
+      ],
+      "mean": {
+        "accuracy": 0.59988364,
+        "error": 0.40011636,
+        "macroPrecision": 0.54927536,
+        "macroRecall": 0.55778986,
+        "macroF1": 0.52443631,
+        "familyRecallAt3": 0.80686304
+      }
+    },
+    {
+      "key": "knn-k5",
+      "kind": "knn",
+      "k": 5,
+      "folds": [
+        {
+          "accuracy": 0.63380282,
+          "error": 0.36619718,
+          "macroPrecision": 0.56480331,
+          "macroRecall": 0.5557971,
+          "macroF1": 0.52054395,
+          "familyRecallAt3": 0.81690141
+        },
+        {
+          "accuracy": 0.62121212,
+          "error": 0.37878788,
+          "macroPrecision": 0.55641822,
+          "macroRecall": 0.60289855,
+          "macroF1": 0.55703934,
+          "familyRecallAt3": 0.84848485
+        },
+        {
+          "accuracy": 0.68852459,
+          "error": 0.31147541,
+          "macroPrecision": 0.60745342,
+          "macroRecall": 0.60724638,
+          "macroF1": 0.5659138,
+          "familyRecallAt3": 0.86885246
+        },
+        {
+          "accuracy": 0.64285714,
+          "error": 0.35714286,
+          "macroPrecision": 0.63164251,
+          "macroRecall": 0.61449275,
+          "macroF1": 0.59625447,
+          "familyRecallAt3": 0.78571429
+        }
+      ],
+      "mean": {
+        "accuracy": 0.64659917,
+        "error": 0.35340083,
+        "macroPrecision": 0.59007937,
+        "macroRecall": 0.5951087,
+        "macroF1": 0.55993789,
+        "familyRecallAt3": 0.82998825
+      }
+    },
+    {
+      "key": "knn-k7",
+      "kind": "knn",
+      "k": 7,
+      "folds": [
+        {
+          "accuracy": 0.67605634,
+          "error": 0.32394366,
+          "macroPrecision": 0.63091787,
+          "macroRecall": 0.61014493,
+          "macroF1": 0.58634313,
+          "familyRecallAt3": 0.81690141
+        },
+        {
+          "accuracy": 0.62121212,
+          "error": 0.37878788,
+          "macroPrecision": 0.56728778,
+          "macroRecall": 0.61376812,
+          "macroF1": 0.568163,
+          "familyRecallAt3": 0.84848485
+        },
+        {
+          "accuracy": 0.67213115,
+          "error": 0.32786885,
+          "macroPrecision": 0.64199448,
+          "macroRecall": 0.60724638,
+          "macroF1": 0.5846038,
+          "familyRecallAt3": 0.8852459
+        },
+        {
+          "accuracy": 0.60714286,
+          "error": 0.39285714,
+          "macroPrecision": 0.54275362,
+          "macroRecall": 0.57826087,
+          "macroF1": 0.53478261,
+          "familyRecallAt3": 0.82142857
+        }
+      ],
+      "mean": {
+        "accuracy": 0.64413562,
+        "error": 0.35586438,
+        "macroPrecision": 0.59573844,
+        "macroRecall": 0.60235507,
+        "macroF1": 0.56847314,
+        "familyRecallAt3": 0.84301518
+      }
+    },
+    {
+      "key": "ridge-0.01",
+      "kind": "ridge",
+      "regularization": 0.01,
+      "folds": [
+        {
+          "accuracy": 0.5915493,
+          "error": 0.4084507,
+          "macroPrecision": 0.48861284,
+          "macroRecall": 0.52536232,
+          "macroF1": 0.47688688,
+          "familyRecallAt3": 0.83098592
+        },
+        {
+          "accuracy": 0.56060606,
+          "error": 0.43939394,
+          "macroPrecision": 0.53623188,
+          "macroRecall": 0.53188406,
+          "macroF1": 0.50291737,
+          "familyRecallAt3": 0.86363636
+        },
+        {
+          "accuracy": 0.62295082,
+          "error": 0.37704918,
+          "macroPrecision": 0.56521739,
+          "macroRecall": 0.56231884,
+          "macroF1": 0.53134764,
+          "familyRecallAt3": 0.85245902
+        },
+        {
+          "accuracy": 0.69642857,
+          "error": 0.30357143,
+          "macroPrecision": 0.66485507,
+          "macroRecall": 0.67391304,
+          "macroF1": 0.64936802,
+          "familyRecallAt3": 0.80357143
+        }
+      ],
+      "mean": {
+        "accuracy": 0.61788369,
+        "error": 0.38211631,
+        "macroPrecision": 0.56372929,
+        "macroRecall": 0.57336957,
+        "macroF1": 0.54012998,
+        "familyRecallAt3": 0.83766318
+      }
+    },
+    {
+      "key": "ridge-0.1",
+      "kind": "ridge",
+      "regularization": 0.1,
+      "folds": [
+        {
+          "accuracy": 0.66197183,
+          "error": 0.33802817,
+          "macroPrecision": 0.56376812,
+          "macroRecall": 0.60144928,
+          "macroF1": 0.54859778,
+          "familyRecallAt3": 0.85915493
+        },
+        {
+          "accuracy": 0.60606061,
+          "error": 0.39393939,
+          "macroPrecision": 0.56811594,
+          "macroRecall": 0.5884058,
+          "macroF1": 0.54427819,
+          "familyRecallAt3": 0.90909091
+        },
+        {
+          "accuracy": 0.72131148,
+          "error": 0.27868852,
+          "macroPrecision": 0.72971014,
+          "macroRecall": 0.71594203,
+          "macroF1": 0.67619048,
+          "familyRecallAt3": 0.86885246
+        },
+        {
+          "accuracy": 0.75,
+          "error": 0.25,
+          "macroPrecision": 0.74120083,
+          "macroRecall": 0.73913043,
+          "macroF1": 0.7173913,
+          "familyRecallAt3": 0.89285714
+        }
+      ],
+      "mean": {
+        "accuracy": 0.68483598,
+        "error": 0.31516402,
+        "macroPrecision": 0.65069876,
+        "macroRecall": 0.66123188,
+        "macroF1": 0.62161444,
+        "familyRecallAt3": 0.88248886
+      }
+    },
+    {
+      "key": "ridge-1.0",
+      "kind": "ridge",
+      "regularization": 1.0,
+      "folds": [
+        {
+          "accuracy": 0.67605634,
+          "error": 0.32394366,
+          "macroPrecision": 0.61932367,
+          "macroRecall": 0.63405797,
+          "macroF1": 0.58576206,
+          "familyRecallAt3": 0.85915493
+        },
+        {
+          "accuracy": 0.63636364,
+          "error": 0.36363636,
+          "macroPrecision": 0.60424431,
+          "macroRecall": 0.6115942,
+          "macroF1": 0.56923584,
+          "familyRecallAt3": 0.90909091
+        },
+        {
+          "accuracy": 0.75409836,
+          "error": 0.24590164,
+          "macroPrecision": 0.73333333,
+          "macroRecall": 0.75434783,
+          "macroF1": 0.6952726,
+          "familyRecallAt3": 0.90163934
+        },
+        {
+          "accuracy": 0.69642857,
+          "error": 0.30357143,
+          "macroPrecision": 0.62681159,
+          "macroRecall": 0.66884058,
+          "macroF1": 0.62002635,
+          "familyRecallAt3": 0.875
+        }
+      ],
+      "mean": {
+        "accuracy": 0.69073673,
+        "error": 0.30926327,
+        "macroPrecision": 0.64592823,
+        "macroRecall": 0.66721014,
+        "macroF1": 0.61757421,
+        "familyRecallAt3": 0.8862213
+      }
+    },
+    {
+      "key": "ridge-10.0",
+      "kind": "ridge",
+      "regularization": 10.0,
+      "folds": [
+        {
+          "accuracy": 0.61971831,
+          "error": 0.38028169,
+          "macroPrecision": 0.59213251,
+          "macroRecall": 0.59130435,
+          "macroF1": 0.53274672,
+          "familyRecallAt3": 0.83098592
+        },
+        {
+          "accuracy": 0.63636364,
+          "error": 0.36363636,
+          "macroPrecision": 0.5984472,
+          "macroRecall": 0.62246377,
+          "macroF1": 0.56675136,
+          "familyRecallAt3": 0.87878788
+        },
+        {
+          "accuracy": 0.72131148,
+          "error": 0.27868852,
+          "macroPrecision": 0.6615942,
+          "macroRecall": 0.70724638,
+          "macroF1": 0.64672188,
+          "familyRecallAt3": 0.8852459
+        },
+        {
+          "accuracy": 0.71428571,
+          "error": 0.28571429,
+          "macroPrecision": 0.63478261,
+          "macroRecall": 0.67971014,
+          "macroF1": 0.62653554,
+          "familyRecallAt3": 0.83928571
+        }
+      ],
+      "mean": {
+        "accuracy": 0.67291978,
+        "error": 0.32708022,
+        "macroPrecision": 0.62173913,
+        "macroRecall": 0.65018116,
+        "macroF1": 0.59318887,
+        "familyRecallAt3": 0.85857635
+      }
+    }
+  ],
+  "selectedCandidate": "centroid",
+  "selectedDevelopmentMetrics": {
+    "accuracy": 0.69194663,
+    "error": 0.30805337,
+    "macroPrecision": 0.6491589,
+    "macroRecall": 0.65471014,
+    "macroF1": 0.62819831,
+    "familyRecallAt3": 0.89441802
+  },
+  "modelSha256": "8efb201a4b5657c728c620a3e60a50fb1cebb2a7496faa62aa33da5190803cf0",
+  "policySha256": "24308732388a8bbe618204fac98168eab2ad5a56b3a3b72e55cf26e975adc5d9",
+  "productionEvidence": false,
+  "promotionAllowed": false
+}

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "status": "consumed",
+  "testOpenBudget": 1,
+  "testOpenCount": 1,
+  "selectionUsedTest": false,
+  "pretestLockSha256": "5024f97fe0411111d7f90cb2882df1715790b42437eb3beeff05e39ecdcad86a",
+  "sealedTestSha256": "828e151d5055f79670428c1d0ea33c2703f0a297f27aa043bdc8e34dc3588367",
+  "resultSha256": "50b48a92e17e20a6b902befbebd2d0bc8bd24629eee42652ece0e50a9e29085d"
+}

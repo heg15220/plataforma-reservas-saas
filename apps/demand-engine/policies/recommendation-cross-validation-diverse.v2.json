@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 2,
+  "policyVersion": "recommendation-cross-validation-diverse-v2",
+  "modelVersion": "contextual-recommender-diverse-cv-v2",
+  "algorithmVersion": "xgboost-lambdamart-diverse-v2",
+  "datasetVersion": "synthetic-marketplace-diverse-v2",
+  "folds": 5,
+  "topK": 3,
+  "featureNames": [
+    "taxonomyTypeAffinity",
+    "taxonomyFamilyAffinity",
+    "serviceAffinity",
+    "attributeAffinity",
+    "visualAmbienceAffinity",
+    "contentAffinity",
+    "availabilityRatio",
+    "alignedScarcityOpportunity",
+    "qualityScore",
+    "proximity",
+    "priceFit",
+    "lowExposureAffinity",
+    "capacityOpportunity",
+    "commonHourAffinity",
+    "isNewVenue"
+  ],
+  "hyperparameters": [
+    {
+      "nEstimators": 8,
+      "maximumDepth": 1,
+      "learningRate": 0.04,
+      "minimumChildWeight": 20,
+      "l2Penalty": 30.0,
+      "l1Penalty": 1.0,
+      "subsample": 0.75,
+      "columnSample": 0.75
+    },
+    {
+      "nEstimators": 12,
+      "maximumDepth": 1,
+      "learningRate": 0.035,
+      "minimumChildWeight": 25,
+      "l2Penalty": 40.0,
+      "l1Penalty": 1.5,
+      "subsample": 0.75,
+      "columnSample": 0.8
+    },
+    {
+      "nEstimators": 10,
+      "maximumDepth": 2,
+      "learningRate": 0.03,
+      "minimumChildWeight": 30,
+      "l2Penalty": 50.0,
+      "l1Penalty": 2.0,
+      "subsample": 0.7,
+      "columnSample": 0.75
+    }
+  ],
+  "randomSeed": 2843,
+  "businessPriorWeights": {
+    "taxonomyTypeAffinity": 0.04,
+    "taxonomyFamilyAffinity": 0.02,
+    "serviceAffinity": 0.03,
+    "visualAmbienceAffinity": 0.015,
+    "availabilityRatio": 0.01,
+    "alignedScarcityOpportunity": 0.02,
+    "proximity": 0.015,
+    "lowExposureAffinity": 0.015,
+    "capacityOpportunity": 0.02,
+    "commonHourAffinity": 0.01
+  },
+  "gates": {
+    "maximumTrainingAccuracy": 0.9,
+    "minimumTestAccuracy": 0.9,
+    "maximumTestErrorExclusive": 0.15,
+    "minimumTestPrecision": 0.8,
+    "minimumTestRecall": 0.8,
+    "minimumTestF1": 0.8,
+    "minimumMacroFamilyMetric": 0.8,
+    "maximumTrainTestGap": 0.1
+  },
+  "automaticPromotionAllowed": false
+}

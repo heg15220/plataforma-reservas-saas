@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 7,
+  "reportVersion": "recommendation-action-context-v7",
+  "modelVersion": "contextual-recommender-action-location-time-scarcity-v7",
+  "modelSha256": "58719c6fa67f90f2c24a3f4db7a0b48be772970b439f05f14ffa85997baeade2",
+  "datasetVersion": "synthetic-marketplace-action-context-v7",
+  "folds": 5,
+  "foldStrategy": "five-fold-rolling-origin",
+  "trainingMetrics": {
+    "accuracy": 0.875,
+    "errorRate": 0.125,
+    "precision": 0.875,
+    "recall": 0.875,
+    "f1": 0.875,
+    "recallAtK": 0.9985
+  },
+  "testMetrics": {
+    "sessions": 800,
+    "correctTop1": 712,
+    "accuracy": 0.89,
+    "errorRate": 0.11,
+    "precision": 0.89,
+    "recall": 0.89,
+    "f1": 0.89,
+    "precisionAtK": 0.3325,
+    "recallAtK": 0.9975,
+    "macroFamilyPrecision": 1.0,
+    "macroFamilyRecall": 1.0,
+    "macroFamilyF1": 1.0,
+    "clearChoiceAccuracy": 0.94023904,
+    "ambiguousChoiceAccuracy": 0.08510638,
+    "ambiguousSessions": 47
+  },
+  "behavioralScenarioMetrics": {
+    "cases": 10,
+    "passed": 10,
+    "accuracy": 1.0,
+    "errorRate": 0.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "results": [
+      {
+        "scenarioCode": "recent-actions-select-current-category",
+        "passed": true
+      },
+      {
+        "scenarioCode": "location-breaks-equal-intent-tie",
+        "passed": true
+      },
+      {
+        "scenarioCode": "location-cannot-override-category-mismatch",
+        "passed": true
+      },
+      {
+        "scenarioCode": "scarce-slot-for-aligned-near-user",
+        "passed": true
+      },
+      {
+        "scenarioCode": "scarcity-never-overrides-mismatch",
+        "passed": true
+      },
+      {
+        "scenarioCode": "requested-hour",
+        "passed": true
+      },
+      {
+        "scenarioCode": "requested-day",
+        "passed": true
+      },
+      {
+        "scenarioCode": "service-specialty",
+        "passed": true
+      },
+      {
+        "scenarioCode": "consented-preference-breaks-content-tie",
+        "passed": true
+      },
+      {
+        "scenarioCode": "underexposed-compatible-local",
+        "passed": true
+      }
+    ]
+  },
+  "testSliceMetrics": {
+    "scarceAligned": {
+      "sessions": 143,
+      "accuracy": 0.98601399,
+      "f1": 0.98601399
+    },
+    "locationSensitive": {
+      "sessions": 349,
+      "accuracy": 0.89971347,
+      "f1": 0.89971347
+    },
+    "intentPivot": {
+      "sessions": 213,
+      "accuracy": 0.8685446,
+      "f1": 0.8685446
+    },
+    "evening": {
+      "sessions": 320,
+      "accuracy": 0.871875,
+      "f1": 0.871875
+    },
+    "coldVenue": {
+      "sessions": 263,
+      "accuracy": 0.8973384,
+      "f1": 0.8973384
+    }
+  },
+  "trainTestAccuracyGap": 0.015,
+  "qualityGatesPassed": false,
+  "locationSignalRequired": true,
+  "scarcityIsConditional": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "fallback": "contextual-v4-then-deterministic-ranking",
+  "limitations": [
+    "Evaluación sintética; requiere shadow y A/B con datos reales.",
+    "La ubicación de producción exige consentimiento, TTL y precisión minimizada."
+  ]
+}

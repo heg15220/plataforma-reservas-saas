@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "resultVersion": "full-taxonomy-visual-holdout-result-v2",
+  "holdoutImageCount": 254,
+  "typeCount": 254,
+  "familyCount": 23,
+  "opening": "1/1",
+  "selectedCandidate": "centroid",
+  "developmentMetrics": {
+    "accuracy": 0.69194663,
+    "error": 0.30805337,
+    "macroPrecision": 0.6491589,
+    "macroRecall": 0.65471014,
+    "macroF1": 0.62819831,
+    "familyRecallAt3": 0.89441802
+  },
+  "holdoutMetrics": {
+    "accuracy": 0.70472441,
+    "error": 0.29527559,
+    "macroPrecision": 0.7148024,
+    "macroRecall": 0.68037684,
+    "macroF1": 0.68198201,
+    "familyRecallAt3": 0.90551181
+  },
+  "absoluteDevelopmentHoldoutAccuracyGap": 0.01277778,
+  "familyRecall": {
+    "alojamiento": 1.0,
+    "automocion-y-movilidad": 0.88888889,
+    "belleza-y-cuidado-personal": 0.75,
+    "comercio-alimentario": 0.85,
+    "comercio-cultural-y-especializado": 0.70588235,
+    "deporte-y-actividad-fisica": 0.6,
+    "educacion-y-formacion": 0.58333333,
+    "farmacia-cosmetica-y-salud-retail": 0.88888889,
+    "finanzas-seguros-e-inmobiliario": 0.55555556,
+    "flores-jardineria-y-mascotas": 0.8,
+    "fotografia-y-reparaciones": 0.58333333,
+    "grandes-superficies-y-comercio-general": 0.5,
+    "hogar-y-bricolaje": 0.64285714,
+    "moda-y-complementos": 0.81818182,
+    "ocio-cultura-y-entretenimiento": 0.8,
+    "otros-servicios-al-publico": 0.42857143,
+    "restauracion-y-bebidas": 0.93333333,
+    "salud-y-clinicas": 0.55555556,
+    "servicios-profesionales-y-empresas": 0.85,
+    "servicios-sociales": 0.71428571,
+    "tecnologia-y-oficina": 0.5,
+    "veterinaria-y-cuidado-animal": 0.5,
+    "viajes-alquiler-y-movilidad": 0.2
+  },
+  "qualityGates": {
+    "accuracyPassed": false,
+    "errorPassed": false,
+    "macroPrecisionPassed": false,
+    "macroRecallPassed": false,
+    "macroF1Passed": false,
+    "generalizationGapPassed": true
+  },
+  "qualityGatesPassed": false,
+  "productionEvidence": false,
+  "promotionAllowed": false
+}

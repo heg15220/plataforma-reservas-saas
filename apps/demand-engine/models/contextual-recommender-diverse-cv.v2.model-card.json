@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 2,
+  "modelKey": "contextual-recommender-diverse-cv-v2",
+  "modelVersion": "contextual-recommender-diverse-cv-v2",
+  "status": "candidate",
+  "owner": "demand-engine",
+  "purpose": "Ordenar candidatos elegibles mediante intención, taxonomía funcional candidata, servicio, ambiente permitido, capacidad, ubicación, horario y exposición.",
+  "algorithm": "XGBoost LambdaMART regularizado con prior contextual acotado",
+  "intendedUse": "evaluación offline sintética y reranking consultivo en desarrollo",
+  "prohibitedUses": [
+    "promoción automática a producción",
+    "eludir publicación, permisos, disponibilidad, capacidad o holds",
+    "inferir atributos sensibles o no verificables desde imágenes",
+    "presentar las categorías candidatas como taxonomía pública aprobada"
+  ],
+  "datasetVersion": "synthetic-marketplace-diverse-v2",
+  "selection": "five-fold-rolling-origin-with-sealed-temporal-test",
+  "featureFamilies": [
+    "afinidad de tipo y familia candidata",
+    "servicio y atributo solicitado",
+    "ambiente visual declarado",
+    "disponibilidad y oportunidad por escasez",
+    "calidad, proximidad, precio y horario",
+    "baja exposición, capacidad y cold-start"
+  ],
+  "metrics": {
+    "trainingCrossValidatedAccuracy": 0.87822913,
+    "testAccuracy": 0.93428571,
+    "testError": 0.06571429,
+    "testPrecision": 0.93428571,
+    "testRecall": 0.93428571,
+    "testF1": 0.93428571,
+    "testRecallAt3": 0.99571429,
+    "trainTestAccuracyGap": 0.05605658,
+    "businessScenariosPassed": "12/12"
+  },
+  "qualityGatesPassed": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "humanApprovalRequired": true,
+  "automaticPromotionAllowed": false,
+  "fallback": "deterministic-contextual-ranking",
+  "rollback": "No cargar el artefacto o retirarlo del runtime y mantener el ranking contextual determinista; el flujo de reserva no depende del modelo.",
+  "limitations": [
+    "El resultado procede de comportamiento y compatibilidad sintéticos.",
+    "Desarrollo conserva un 12 % de weak labels ambiguas y test un 6 % adjudicado.",
+    "Solo 28 tipos de seis familias son compatibles con los activos existentes.",
+    "La señal visual usa metadatos declarados de ambiente, no píxeles ni atributos sensibles."
+  ]
+}

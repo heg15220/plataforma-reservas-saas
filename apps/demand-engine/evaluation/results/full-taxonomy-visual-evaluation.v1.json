@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "reportVersion": "full-taxonomy-visual-evaluation-v1",
+  "datasetVersion": "synthetic-marketplace-full-taxonomy-visual-v1",
+  "synthetic": true,
+  "productionEvidence": false,
+  "humanReviewComplete": false,
+  "coverage": {
+    "materializedImages": 220,
+    "materializedTypes": 220,
+    "presentFamilies": 21,
+    "expectedTypes": 254,
+    "expectedFamilies": 23,
+    "missingTypes": 34,
+    "missingFamilies": [
+      "finanzas-seguros-e-inmobiliario",
+      "otros-servicios-al-publico"
+    ]
+  },
+  "technicalQa": {
+    "decodablePngCount": 220,
+    "minimumWidth": 1447,
+    "minimumHeight": 1085,
+    "minimumChannelStdMean": 37.91118,
+    "exactDuplicatePairs": 0,
+    "nearDuplicatePairsDhashDistanceLe4": 0,
+    "imagesWithExif": 0,
+    "embeddingNormMin": 0.99999987,
+    "embeddingNormMax": 1.00000018
+  },
+  "familyClassification": {
+    "foldCount": 3,
+    "classifier": "nearest-family-centroid-cosine",
+    "trainableParameterCount": 0,
+    "folds": [
+      {
+        "fold": 1,
+        "train": {
+          "accuracy": 0.88732394,
+          "error": 0.11267606,
+          "macroPrecision": 0.90854119,
+          "macroRecall": 0.91764875,
+          "macroF1": 0.90682526
+        },
+        "test": {
+          "accuracy": 0.74358974,
+          "error": 0.25641026,
+          "macroPrecision": 0.75340136,
+          "macroRecall": 0.73605442,
+          "macroF1": 0.71600014
+        }
+      },
+      {
+        "fold": 2,
+        "train": {
+          "accuracy": 0.91780822,
+          "error": 0.08219178,
+          "macroPrecision": 0.92756648,
+          "macroRecall": 0.93828367,
+          "macroF1": 0.92929501
+        },
+        "test": {
+          "accuracy": 0.75675676,
+          "error": 0.24324324,
+          "macroPrecision": 0.71814059,
+          "macroRecall": 0.69478458,
+          "macroF1": 0.69139485
+        }
+      },
+      {
+        "fold": 3,
+        "train": {
+          "accuracy": 0.94078947,
+          "error": 0.05921053,
+          "macroPrecision": 0.94835601,
+          "macroRecall": 0.95787982,
+          "macroF1": 0.95049215
+        },
+        "test": {
+          "accuracy": 0.76470588,
+          "error": 0.23529412,
+          "macroPrecision": 0.76848073,
+          "macroRecall": 0.77301587,
+          "macroF1": 0.74899677
+        }
+      }
+    ],
+    "train": {
+      "accuracy": 0.91530721,
+      "error": 0.08469279,
+      "macroPrecision": 0.92815456,
+      "macroRecall": 0.93793741,
+      "macroF1": 0.92887081
+    },
+    "test": {
+      "accuracy": 0.75501746,
+      "error": 0.24498254,
+      "macroPrecision": 0.74667423,
+      "macroRecall": 0.73461829,
+      "macroF1": 0.71879725
+    },
+    "outOfFold": {
+      "accuracy": 0.75454545,
+      "error": 0.24545455,
+      "macroPrecision": 0.73210564,
+      "macroRecall": 0.7335028,
+      "macroF1": 0.72551476
+    },
+    "familyRecallAt3": 0.90454545,
+    "mostCommonConfusions": [
+      {
+        "expected": "comercio-alimentario",
+        "predicted": "comercio-cultural-y-especializado",
+        "count": 2
+      },
+      {
+        "expected": "hogar-y-bricolaje",
+        "predicted": "grandes-superficies-y-comercio-general",
+        "count": 2
+      },
+      {
+        "expected": "hogar-y-bricolaje",
+        "predicted": "belleza-y-cuidado-personal",
+        "count": 2
+      },
+      {
+        "expected": "veterinaria-y-cuidado-animal",
+        "predicted": "salud-y-clinicas",
+        "count": 2
+      },
+      {
+        "expected": "educacion-y-formacion",
+        "predicted": "servicios-sociales",
+        "count": 2
+      },
+      {
+        "expected": "ocio-cultura-y-entretenimiento",
+        "predicted": "comercio-cultural-y-especializado",
+        "count": 2
+      },
+      {
+        "expected": "ocio-cultura-y-entretenimiento",
+        "predicted": "deporte-y-actividad-fisica",
+        "count": 2
+      },
+      {
+        "expected": "comercio-cultural-y-especializado",
+        "predicted": "moda-y-complementos",
+        "count": 2
+      },
+      {
+        "expected": "grandes-superficies-y-comercio-general",
+        "predicted": "hogar-y-bricolaje",
+        "count": 2
+      },
+      {
+        "expected": "salud-y-clinicas",
+        "predicted": "belleza-y-cuidado-personal",
+        "count": 2
+      },
+      {
+        "expected": "viajes-alquiler-y-movilidad",
+        "predicted": "automocion-y-movilidad",
+        "count": 2
+      },
+      {
+        "expected": "belleza-y-cuidado-personal",
+        "predicted": "alojamiento",
+        "count": 2
+      }
+    ]
+  },
+  "permutedLabelControl": {
+    "foldCount": 3,
+    "classifier": "nearest-family-centroid-cosine",
+    "trainableParameterCount": 0,
+    "folds": [
+      {
+        "fold": 1,
+        "train": {
+          "accuracy": 0.56338028,
+          "error": 0.43661972,
+          "macroPrecision": 0.60961393,
+          "macroRecall": 0.62434457,
+          "macroF1": 0.57105207
+        },
+        "test": {
+          "accuracy": 0.05128205,
+          "error": 0.94871795,
+          "macroPrecision": 0.03968254,
+          "macroRecall": 0.0377551,
+          "macroF1": 0.03636364
+        }
+      },
+      {
+        "fold": 2,
+        "train": {
+          "accuracy": 0.58219178,
+          "error": 0.41780822,
+          "macroPrecision": 0.68008658,
+          "macroRecall": 0.64614645,
+          "macroF1": 0.62386335
+        },
+        "test": {
+          "accuracy": 0.08108108,
+          "error": 0.91891892,
+          "macroPrecision": 0.06060606,
+          "macroRecall": 0.04977324,
+          "macroF1": 0.05026455
+        }
+      },
+      {
+        "fold": 3,
+        "train": {
+          "accuracy": 0.53947368,
+          "error": 0.46052632,
+          "macroPrecision": 0.66303308,
+          "macroRecall": 0.63696145,
+          "macroF1": 0.59042165
+        },
+        "test": {
+          "accuracy": 0.02941176,
+          "error": 0.97058824,
+          "macroPrecision": 0.01623377,
+          "macroRecall": 0.05555556,
+          "macroF1": 0.01746032
+        }
+      }
+    ],
+    "train": {
+      "accuracy": 0.56168191,
+      "error": 0.43831809,
+      "macroPrecision": 0.6509112,
+      "macroRecall": 0.63581749,
+      "macroF1": 0.59511236
+    },
+    "test": {
+      "accuracy": 0.05392496,
+      "error": 0.94607504,
+      "macroPrecision": 0.03884079,
+      "macroRecall": 0.04769463,
+      "macroF1": 0.03469617
+    },
+    "outOfFold": {
+      "accuracy": 0.05454545,
+      "error": 0.94545455,
+      "macroPrecision": 0.0441232,
+      "macroRecall": 0.04227752,
+      "macroF1": 0.04056059
+    },
+    "familyRecallAt3": 0.15,
+    "mostCommonConfusions": [
+      {
+        "expected": "restauracion-y-bebidas",
+        "predicted": "fotografia-y-reparaciones",
+        "count": 4
+      },
+      {
+        "expected": "educacion-y-formacion",
+        "predicted": "ocio-cultura-y-entretenimiento",
+        "count": 3
+      },
+      {
+        "expected": "comercio-cultural-y-especializado",
+        "predicted": "deporte-y-actividad-fisica",
+        "count": 3
+      },
+      {
+        "expected": "ocio-cultura-y-entretenimiento",
+        "predicted": "servicios-profesionales-y-empresas",
+        "count": 3
+      },
+      {
+        "expected": "fotografia-y-reparaciones",
+        "predicted": "restauracion-y-bebidas",
+        "count": 3
+      },
+      {
+        "expected": "hogar-y-bricolaje",
+        "predicted": "veterinaria-y-cuidado-animal",
+        "count": 3
+      },
+      {
+        "expected": "comercio-alimentario",
+        "predicted": "alojamiento",
+        "count": 3
+      },
+      {
+        "expected": "farmacia-cosmetica-y-salud-retail",
+        "predicted": "alojamiento",
+        "count": 3
+      },
+      {
+        "expected": "moda-y-complementos",
+        "predicted": "automocion-y-movilidad",
+        "count": 3
+      },
+      {
+        "expected": "comercio-cultural-y-especializado",
+        "predicted": "alojamiento",
+        "count": 3
+      },
+      {
+        "expected": "comercio-cultural-y-especializado",
+        "predicted": "hogar-y-bricolaje",
+        "count": 2
+      },
+      {
+        "expected": "salud-y-clinicas",
+        "predicted": "restauracion-y-bebidas",
+        "count": 2
+      }
+    ]
+  },
+  "pixelSignalAccuracyUplift": 0.7010925,
+  "qualityGates": {
+    "minimumTestAccuracy": 0.9,
+    "maximumTestError": 0.15,
+    "minimumPixelSignalUplift": 0.25,
+    "accuracyPassed": false,
+    "errorPassed": false,
+    "pixelSignalPassed": true,
+    "minimumFamilyRecallAt3": 0.9,
+    "familyRecallAt3Passed": true
+  },
+  "promotionAllowed": false,
+  "trainingAllowed": false,
+  "limitations": [
+    "El corpus contiene una sola imagen por tipo y no mide generalización intratipo.",
+    "Dos familias y 34 tipos no están materializados.",
+    "Las imágenes son sintéticas y permanecen pendientes de revisión humana."
+  ]
+}

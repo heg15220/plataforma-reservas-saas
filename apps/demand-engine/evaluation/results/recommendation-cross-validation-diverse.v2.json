@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "reportVersion": "recommendation-cross-validation-diverse-v2",
+  "modelVersion": "contextual-recommender-diverse-cv-v2",
+  "modelSha256": "a67d8e3b26ba31d61f7360bff3bf789408b24dd0a928f7f67fb6ba9620d3f2fe",
+  "datasetVersion": "synthetic-marketplace-diverse-v2",
+  "foldStrategy": "five-fold-rolling-origin",
+  "folds": 5,
+  "trainingMetrics": {
+    "accuracy": 0.87822913,
+    "errorRate": 0.12177087,
+    "precision": 0.87822913,
+    "recall": 0.87822913,
+    "f1": 0.87822913,
+    "recallAtK": 0.99220118
+  },
+  "inSampleDiagnostics": {
+    "sessions": 2000,
+    "correctTop1": 1752,
+    "accuracy": 0.876,
+    "errorRate": 0.124,
+    "precision": 0.876,
+    "recall": 0.876,
+    "f1": 0.876,
+    "precisionAtK": 0.33066667,
+    "recallAtK": 0.992,
+    "macroFamilyPrecision": 0.99446592,
+    "macroFamilyRecall": 0.98796065,
+    "macroFamilyF1": 0.99115183,
+    "clearChoiceAccuracy": 0.99431818,
+    "ambiguousChoiceAccuracy": 0.00833333,
+    "ambiguousSessions": 240
+  },
+  "testMetrics": {
+    "sessions": 700,
+    "correctTop1": 654,
+    "accuracy": 0.93428571,
+    "errorRate": 0.06571429,
+    "precision": 0.93428571,
+    "recall": 0.93428571,
+    "f1": 0.93428571,
+    "precisionAtK": 0.33190476,
+    "recallAtK": 0.99571429,
+    "macroFamilyPrecision": 0.99794366,
+    "macroFamilyRecall": 0.99649823,
+    "macroFamilyF1": 0.99721092,
+    "clearChoiceAccuracy": 0.99392097,
+    "ambiguousChoiceAccuracy": 0.0,
+    "ambiguousSessions": 42
+  },
+  "businessScenarioMetrics": {
+    "cases": 12,
+    "passed": 12,
+    "accuracy": 1.0,
+    "errorRate": 0.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "results": [
+      {
+        "scenarioCode": "aligned-scarce-underexposed",
+        "passed": true
+      },
+      {
+        "scenarioCode": "visual-ambience",
+        "passed": true
+      },
+      {
+        "scenarioCode": "common-hour",
+        "passed": true
+      },
+      {
+        "scenarioCode": "nearby-compatible",
+        "passed": true
+      },
+      {
+        "scenarioCode": "specialty-type",
+        "passed": true
+      },
+      {
+        "scenarioCode": "attribute-match",
+        "passed": true
+      },
+      {
+        "scenarioCode": "cold-start",
+        "passed": true
+      },
+      {
+        "scenarioCode": "quality-does-not-override-intent",
+        "passed": true
+      },
+      {
+        "scenarioCode": "capacity",
+        "passed": true
+      },
+      {
+        "scenarioCode": "price-distance",
+        "passed": true
+      },
+      {
+        "scenarioCode": "same-family-hard-negative",
+        "passed": true
+      },
+      {
+        "scenarioCode": "visual-cannot-override-type",
+        "passed": true
+      }
+    ]
+  },
+  "trainTestAccuracyGap": 0.05605658,
+  "qualityGatesPassed": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "fallback": "deterministic-contextual-ranking",
+  "limitations": [
+    "El test es sintético y no demuestra conversión productiva ni causalidad.",
+    "Desarrollo contiene weak labels más ambiguas que el test adjudicado; ambas tasas se publican.",
+    "Los tipos son candidatos funcionales y la señal visual se limita a metadatos de ambiente."
+  ]
+}

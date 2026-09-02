@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 6,
+  "policyVersion": "recommendation-action-context-v6",
+  "reportVersion": "recommendation-action-context-v6",
+  "developmentReportVersion": "recommendation-action-context-development-v6",
+  "modelVersion": "contextual-recommender-action-location-scarcity-v6",
+  "algorithmVersion": "xgboost-lambdamart-action-context-v6",
+  "datasetVersion": "synthetic-marketplace-action-context-v6",
+  "folds": 5,
+  "topK": 3,
+  "featureNames": ["recentActionTypeAffinity", "recentActionFamilyAffinity", "recentActionServiceAffinity", "searchQueryAffinity", "actionSequenceMomentum", "persistentPreferenceAffinity", "taxonomyTypeAffinity", "taxonomyFamilyAffinity", "serviceAffinity", "attributeAffinity", "contentAffinity", "currentLocationProximity", "withinPreferredRadius", "distanceDecayKm", "requestedDayAffinity", "requestedHourAffinity", "availabilityRatio", "remainingSlotUrgency", "alignedScarcityOpportunity", "lowExposureAffinity", "qualityScore", "priceFit", "isNewVenue"],
+  "hyperparameters": [
+    {"nEstimators": 8, "maximumDepth": 1, "learningRate": 0.035, "minimumChildWeight": 30, "l2Penalty": 50, "l1Penalty": 2, "subsample": 0.72, "columnSample": 0.72},
+    {"nEstimators": 12, "maximumDepth": 1, "learningRate": 0.03, "minimumChildWeight": 35, "l2Penalty": 65, "l1Penalty": 3, "subsample": 0.70, "columnSample": 0.75},
+    {"nEstimators": 10, "maximumDepth": 2, "learningRate": 0.025, "minimumChildWeight": 45, "l2Penalty": 80, "l1Penalty": 4, "subsample": 0.68, "columnSample": 0.70}
+  ],
+  "randomSeed": 6381,
+  "businessPriorWeights": {
+    "recentActionTypeAffinity": 0.10, "recentActionFamilyAffinity": 0.05,
+    "recentActionServiceAffinity": 0.06, "searchQueryAffinity": 0.04,
+    "actionSequenceMomentum": 0.06, "persistentPreferenceAffinity": 0.04,
+    "contentAffinity": 0.10, "currentLocationProximity": 0.14,
+    "withinPreferredRadius": 0.06, "distanceDecayKm": 0.04,
+    "requestedDayAffinity": 0.03, "requestedHourAffinity": 0.04,
+    "alignedScarcityOpportunity": 0.08, "lowExposureAffinity": 0.03
+  },
+  "gates": {
+    "maximumTrainingAccuracy": 0.90, "minimumTestAccuracy": 0.90,
+    "maximumTestErrorExclusive": 0.15, "minimumTestPrecision": 0.80,
+    "minimumTestRecall": 0.80, "minimumTestF1": 0.80,
+    "minimumMacroFamilyMetric": 0.80, "maximumTrainTestGap": 0.10,
+    "minimumBehavioralScenarioAccuracy": 0.90, "minimumSliceAccuracy": 0.80
+  },
+  "hardFilters": ["eligible", "capacityAvailable", "openAtRequestedSlot", "serviceBookable"],
+  "locationPolicy": {"required": true, "source": "ephemeralPointInTimeSessionLocation", "rawCoordinatesAsFeatures": false, "fallbackWhenUnavailable": "explicit-area-or-deterministic-ranking"},
+  "scarcityPolicy": {"globalBoostForbidden": true, "requiresIntentAffinity": true, "requiresPositiveCapacity": true, "requiresLocationFit": true},
+  "automaticPromotionAllowed": false
+}

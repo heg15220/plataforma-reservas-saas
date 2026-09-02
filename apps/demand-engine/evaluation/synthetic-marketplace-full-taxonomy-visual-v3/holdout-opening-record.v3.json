@@ -1,0 +1,12 @@
+{
+  "budget": 1,
+  "consumed": 1,
+  "familyQualityGatesPassed": false,
+  "holdoutEmbeddingsSha256": "6aea06bcdff048b62191580637a10668d839007848fdf51a03819a262348d68f",
+  "pretestLockSha256": "731ae5f31dd8f740fb53934d8da504fb3415d8912488ca085796abbc45251b33",
+  "reopenAllowed": false,
+  "resultSha256": "e57b6aab651644977f5326c7895d5c60cd6f578538f6cf3bd94023f8e8aa8184",
+  "schemaVersion": 1,
+  "selectionUsedHoldout": false,
+  "status": "consumed"
+}

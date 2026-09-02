@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "lockVersion": "full-taxonomy-visual-pretest-lock-v2",
+  "manifestSha256": "7e8b72f78df97b2a8614e5e64d69d8b89ca92e9b19bdeea1ede4b763ec1ed641",
+  "authorizationSha256": "471c9afc6b7a2c1f441578946ef1073e745a99b00275398cc9f7cc48ee7d212d",
+  "developmentEmbeddingsSha256": "99a66c8eb6a81f6d3502f7f3af4974f25d81eb29d63564de333ded293da35aed",
+  "developmentReportSha256": "f0332da9cfe3d7840ec9b58b2c7f8391a4aa3a3bc1f6666c0a8cab79601f0d15",
+  "modelSha256": "8efb201a4b5657c728c620a3e60a50fb1cebb2a7496faa62aa33da5190803cf0",
+  "policySha256": "24308732388a8bbe618204fac98168eab2ad5a56b3a3b72e55cf26e975adc5d9",
+  "holdoutFingerprintSha256": "780be27089e6570eee7600a2b1d4f4e8b56608d71c1c2755be8b59439a775532",
+  "holdoutImageCount": 254,
+  "holdoutPredictionsComputedBeforeLock": false,
+  "budget": 1,
+  "consumed": 0
+}

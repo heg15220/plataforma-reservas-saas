@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 4,
+  "policyVersion": "recommendation-pixel-personalization-v4",
+  "datasetVersion": "synthetic-marketplace-pixel-personalization-v4",
+  "baselineModelVersion": "contextual-recommender-pixel-ablation-baseline-v4",
+  "multimodalModelVersion": "contextual-recommender-pixel-multimodal-v4",
+  "folds": 5,
+  "topK": 3,
+  "baselineFeatureNames": [
+    "taxonomyTypeAffinity",
+    "taxonomyFamilyAffinity",
+    "serviceAffinity",
+    "attributeAffinity",
+    "contentAffinity",
+    "availabilityRatio",
+    "alignedScarcityOpportunity",
+    "qualityScore",
+    "proximity",
+    "priceFit",
+    "lowExposureAffinity",
+    "capacityOpportunity",
+    "commonHourAffinity",
+    "isNewVenue"
+  ],
+  "multimodalFeatureNames": [
+    "taxonomyTypeAffinity",
+    "taxonomyFamilyAffinity",
+    "serviceAffinity",
+    "attributeAffinity",
+    "contentAffinity",
+    "availabilityRatio",
+    "alignedScarcityOpportunity",
+    "qualityScore",
+    "proximity",
+    "priceFit",
+    "lowExposureAffinity",
+    "capacityOpportunity",
+    "commonHourAffinity",
+    "isNewVenue",
+    "pixelVisualAffinity",
+    "pixelVisualHistoryConfidence"
+  ],
+  "hyperparameters": [
+    {
+      "inverseRegularization": 0.01,
+      "maximumIterations": 1000
+    },
+    {
+      "inverseRegularization": 0.1,
+      "maximumIterations": 1000
+    },
+    {
+      "inverseRegularization": 1.0,
+      "maximumIterations": 1000
+    }
+  ],
+  "randomSeed": 3917,
+  "baselinePriorWeights": {
+    "taxonomyTypeAffinity": 0.04,
+    "taxonomyFamilyAffinity": 0.02,
+    "serviceAffinity": 0.03,
+    "capacityOpportunity": 0.02,
+    "proximity": 0.01
+  },
+  "multimodalPriorWeights": {
+    "taxonomyTypeAffinity": 0.05,
+    "taxonomyFamilyAffinity": 0.025,
+    "serviceAffinity": 0.035,
+    "capacityOpportunity": 0.02,
+    "proximity": 0.01,
+    "pixelVisualAffinity": 0.035
+  },
+  "gates": {
+    "maximumTrainingAccuracy": 0.9,
+    "minimumTestAccuracy": 0.9,
+    "maximumTestErrorExclusive": 0.15,
+    "minimumTestPrecision": 0.8,
+    "minimumTestRecall": 0.8,
+    "minimumTestF1": 0.8,
+    "minimumVisualAccuracyUplift": 0.1,
+    "minimumMultimodalScenarioAccuracy": 0.8,
+    "maximumTrainTestGap": 0.1
+  },
+  "automaticPromotionAllowed": false
+}

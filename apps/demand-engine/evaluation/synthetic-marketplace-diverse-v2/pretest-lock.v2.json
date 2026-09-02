@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "status": "model-selected-test-sealed",
+  "developmentSessionsSha256": "9b8cc1292e9b85b024d0f38c1b8e429d790831bce5c55d77beb8afb97a64ac48",
+  "sealedTestSha256": "e8f81344326e294d5b8266d656b18500c55f95ace78edcd9217649a556ddb81e",
+  "policySha256": "bbb58b57a515619b7745bd6a7308413394cb7f743393cbc636bd06048dcad86a",
+  "developmentReportSha256": "af82401350bbed461ec24e7d98631ac11af96ec7825c3110fad05ac85c4b6f1c",
+  "modelSha256": "a67d8e3b26ba31d61f7360bff3bf789408b24dd0a928f7f67fb6ba9620d3f2fe",
+  "selectedParameters": {
+    "nEstimators": 10,
+    "maximumDepth": 2,
+    "learningRate": 0.03,
+    "minimumChildWeight": 30,
+    "l2Penalty": 50.0,
+    "l1Penalty": 2.0,
+    "subsample": 0.7,
+    "columnSample": 0.75
+  },
+  "testOpenBudget": 1,
+  "testOpenCount": 0
+}

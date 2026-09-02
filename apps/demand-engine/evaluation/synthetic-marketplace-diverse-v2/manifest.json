@@ -1,0 +1,102 @@
+{
+  "ambiguousObservedChoices": {
+    "test": 42,
+    "train": 180,
+    "validation": 60
+  },
+  "artifacts": {
+    "development-sessions.jsonl": {
+      "rows": 2000,
+      "sha256": "9b8cc1292e9b85b024d0f38c1b8e429d790831bce5c55d77beb8afb97a64ac48"
+    },
+    "test-sessions.sealed.jsonl": {
+      "rows": 700,
+      "sha256": "e8f81344326e294d5b8266d656b18500c55f95ace78edcd9217649a556ddb81e"
+    },
+    "venue-labels.jsonl": {
+      "rows": 100,
+      "sha256": "b06144f1de309b82bff6f47a85c760a3eb5a69b04677475ac682957e6ffbc933"
+    }
+  },
+  "counts": {
+    "candidates": 21600,
+    "families": 6,
+    "profiles": 40,
+    "sessions": 2700,
+    "types": 28,
+    "venues": 100
+  },
+  "datasetVersion": "synthetic-marketplace-diverse-v2",
+  "familyCoverage": {
+    "belleza-y-cuidado-personal": 38,
+    "deporte-y-actividad-fisica": 31,
+    "educacion-y-formacion": 4,
+    "ocio-cultura-y-entretenimiento": 6,
+    "restauracion-y-bebidas": 11,
+    "servicios-profesionales-y-empresas": 10
+  },
+  "foldStrategy": "five-fold-rolling-origin-on-train-and-validation",
+  "generatedAt": "2026-08-30T12:00:00Z",
+  "labelPolicy": {
+    "development": "weakObservedChoiceWithTwelvePercentDeclaredAmbiguity",
+    "sameFeatureContract": true,
+    "test": "adjudicatedCompatibilityWithSixPercentDeclaredAmbiguity"
+  },
+  "limitations": [
+    "Las etiquetas de taxonomía son candidatas y no categorías públicas aprobadas.",
+    "La evidencia es sintética y no demuestra conversión ni causalidad productiva.",
+    "El ambiente procede de metadatos declarados; no se infieren propiedades sensibles desde imágenes."
+  ],
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "schemaVersion": 2,
+  "seed": 2843,
+  "sourceDatasetVersion": "synthetic-marketplace-v1",
+  "sourceProfileSha256": "c66b981cb13ae73acdc1ebc4b1c2629e818f54b0b4ddbb45919c7636a91450b6",
+  "sourceVenueSha256": "15f1d0532ad108927737e45bb5bc41f016cc752c4c4d649f7fe907891623d96d",
+  "splitCounts": {
+    "test": 700,
+    "train": 1500,
+    "validation": 500
+  },
+  "synthetic": true,
+  "taxonomyActivationStatus": "candidateOnly",
+  "taxonomySha256": "af050d4a5a110e6f65f6a3378c289d94d7a43c334d7a762d970bf90be5d4ab34",
+  "taxonomyVersion": "venue-taxonomy.v1",
+  "testPolicy": "temporal-independent-open-once-after-model-selection",
+  "typeCoverage": {
+    "academia-de-musica-danza-o-artes": 4,
+    "bar": 1,
+    "barberia": 2,
+    "cafe-bar": 1,
+    "cafeteria": 1,
+    "campo-instalacion-de-futbol": 11,
+    "centro-de-estetica-no-medica": 5,
+    "centro-de-manicura-pedicura-estetica": 2,
+    "centro-de-masaje-no-sanitario": 6,
+    "centro-de-perfeccionamiento-deportivo": 4,
+    "centro-organizador-de-congresos": 3,
+    "chocolateria": 1,
+    "club-pistas-de-padel": 10,
+    "comida-para-llevar-take-away": 1,
+    "coworking-oficina-flexible-centro-de-negocios": 10,
+    "empresa-local-de-catering": 1,
+    "estudio-de-maquillaje-estetica": 5,
+    "gimnasio-centro-deportivo": 3,
+    "heladeria": 1,
+    "horchateria": 1,
+    "peluqueria": 3,
+    "piscina-de-explotacion-deportiva": 3,
+    "recinto-ferial-feria-de-muestras": 3,
+    "restauracion-en-teatro-cine-espectaculo": 1,
+    "restaurante-bar-en-club-o-sociedad": 1,
+    "salon-centro-de-belleza": 13,
+    "spa-sauna-bano-turco-no-sanitario": 2,
+    "taberna": 1
+  },
+  "visualPolicy": {
+    "allowedSignal": "declaredAmbienceMetadataOnly",
+    "newImagesGenerated": 0,
+    "rawPixelsUsedForRecommendationTraining": false
+  }
+}

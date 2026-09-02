@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "status": "baseline-and-multimodal-selected-test-sealed",
+  "developmentSessionsSha256": "677211dce05a576d7da18c9b57ceb746ce6ff1666a5b35d83513b3c2a6d2246d",
+  "sealedTestSha256": "d49bae135b0d39bb315e8390dca54bad1b0850df69384178407d0b17d7d7c125",
+  "visualLinkageSha256": "d5a77fc779e091708b0a0ef75ddd653ccec44aa17e6e327a68de1af98331ae60",
+  "onboardingEventsSha256": "cfd8047a1b3b789817fdfcf7b108c5cb1f9e10aff603173b0ebebca243aef40a",
+  "policySha256": "b68a0b135f30f7cd14b06aa02493b18c6e937f51932806a45b971ef853a2ba16",
+  "developmentReportSha256": "edca62378341b8e1d20936dba889f274cedc0142d10d007d5ad565860a4c03e2",
+  "baselineModelSha256": "12e58b8a8c0f728ff7b3b50337fa3f002fc0e6bede645f9041b3584b77e27485",
+  "multimodalModelSha256": "01f7b14bf47cd022442f1048d9ea13813ff04c72571d04e29eabe93cbb99ca71",
+  "testOpenBudget": 1,
+  "testOpenCount": 0
+}

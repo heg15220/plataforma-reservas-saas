@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 4,
+  "reportVersion": "recommendation-pixel-personalization-v4",
+  "datasetVersion": "synthetic-marketplace-pixel-personalization-v4",
+  "folds": 5,
+  "foldStrategy": "five-fold-rolling-origin",
+  "baselineTestMetrics": {
+    "sessions": 700,
+    "correctTop1": 457,
+    "accuracy": 0.65285714,
+    "errorRate": 0.34714286,
+    "precision": 0.65285714,
+    "recall": 0.65285714,
+    "f1": 0.65285714,
+    "precisionAtK": 0.31428571,
+    "recallAtK": 0.94285714,
+    "macroFamilyPrecision": 0.98615023,
+    "macroFamilyRecall": 0.9833066,
+    "macroFamilyF1": 0.9846682,
+    "clearChoiceAccuracy": 0.68237082,
+    "ambiguousChoiceAccuracy": 0.19047619,
+    "ambiguousSessions": 42
+  },
+  "multimodalTrainingMetrics": {
+    "accuracy": 0.83925123,
+    "errorRate": 0.16074877,
+    "precision": 0.83925123,
+    "recall": 0.83925123,
+    "f1": 0.83925123,
+    "recallAtK": 0.9982
+  },
+  "multimodalTestMetrics": {
+    "sessions": 700,
+    "correctTop1": 636,
+    "accuracy": 0.90857143,
+    "errorRate": 0.09142857,
+    "precision": 0.90857143,
+    "recall": 0.90857143,
+    "f1": 0.90857143,
+    "precisionAtK": 0.33333333,
+    "recallAtK": 1.0,
+    "macroFamilyPrecision": 0.99083694,
+    "macroFamilyRecall": 0.99048206,
+    "macroFamilyF1": 0.99065744,
+    "clearChoiceAccuracy": 0.96504559,
+    "ambiguousChoiceAccuracy": 0.02380952,
+    "ambiguousSessions": 42
+  },
+  "pixelScenarioMetrics": {
+    "cases": 8,
+    "passed": 8,
+    "accuracy": 1.0,
+    "errorRate": 0.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "results": [
+      {
+        "scenarioCode": "pixel-interest-breaks-context-tie",
+        "passed": true
+      },
+      {
+        "scenarioCode": "explicit-visual-history-confidence",
+        "passed": true
+      },
+      {
+        "scenarioCode": "no-history-contextual-fallback",
+        "passed": true
+      },
+      {
+        "scenarioCode": "visual-cannot-override-incompatible-type",
+        "passed": true
+      },
+      {
+        "scenarioCode": "aligned-scarce-low-exposure",
+        "passed": true
+      },
+      {
+        "scenarioCode": "same-type-visual-hard-negative",
+        "passed": true
+      },
+      {
+        "scenarioCode": "cold-venue-with-matching-image",
+        "passed": true
+      },
+      {
+        "scenarioCode": "location-still-breaks-visual-tie",
+        "passed": true
+      }
+    ]
+  },
+  "testVisualAccuracyUplift": 0.25571429,
+  "multimodalTrainTestAccuracyGap": 0.0693202,
+  "qualityGatesPassed": true,
+  "pixelPatternsUsed": true,
+  "pixelMethod": "cosine similarity between frozen CLIP image embeddings and point-in-time user visual profile",
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "fallback": "contextual-model-without-vision-then-deterministic-ranking"
+}
