@@ -765,6 +765,13 @@ contexto, el local, el servicio, el recurso y la franja disponible.
 - WHEN se entrene el recomendador contextual sintético, THEN se selecciona con cinco folds temporales
   rolling-origin, se reserva un test posterior independiente y se publican accuracy, error, precision,
   recall, F1, precision@K y recall@K junto con la definición exacta de positivo.
+- WHEN se pruebe la escalabilidad del recomendador conjunto, THEN el benchmark cubre al menos 2.000
+  perfiles y 2.000 locales, la taxonomía completa disponible, cientos de miles de alternativas,
+  acciones diversas, ubicación point-in-time, franjas, capacidad, exposición y ausencia de imagen.
+- WHEN la evidencia visual se incorpore al ranking, THEN se compara sobre las mismas sesiones con una
+  ablación contextual, cada imagen aprobada se asocia como máximo a un local sintético, la ausencia
+  de píxel activa fallback y un único ranker final aprende señales contextuales y visuales sin recibir
+  IDs, posición, outcomes, etiquetas verdaderas ni atributos sensibles.
 - WHEN la accuracy por candidato pueda inflarse por siete negativos y un positivo por consulta, THEN
   ninguna puerta puede aprobar solo con accuracy: precision, recall y F1 deben superar 0,80 y el test
   debe alcanzar accuracy >=0,90 y error <0,15 sin usar outcomes, posición o IDs como features.

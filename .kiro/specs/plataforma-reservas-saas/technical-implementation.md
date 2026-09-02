@@ -42845,3 +42845,69 @@ métricas y uplifts exactos, peor fold, formas del modelo, entradas prohibidas, 
 y rechazo de una segunda congelación. `python -m py_compile`, 8/8 pruebas focales en 10,55 s y
 `git diff --check` pasan. 23.24.a se completa; 23.24.b, 23.24 y 23.16.c.3.d siguen pendientes hasta
 un holdout nuevo que no reutilice ninguno de los 1.016 establecimientos consumidos.
+
+### Escalado contextual-visual y cierre de 23.25
+
+**Fecha de iteración:** 2026-09-03. **Identificadores completados:** 23.25, 23.25.a, 23.25.b y
+23.25.c. Se preservan byte a byte v8, v4 y sus resultados consumidos. La evolución se implementa como
+visual v5, dataset de escala v9 y ranker conjunto v10 para que ningún nuevo ajuste reescriba evidencia
+anterior.
+
+`full_taxonomy_visual_hybrid_v5.py` añade una rama clásica a las dos regiones CLIP de v4. Cada PNG se
+resuelve bajo `evaluation`, se compara con su SHA-256 sellado y se reduce en memoria a 64×64. En RGB
+y HSV se calculan 16 bins por canal y media/desviación por celda de una rejilla 4×4; sobre luminancia
+se calculan histograma de orientación y momentos de magnitud de gradiente. El vector resultante tiene
+336 floats finitos. PIL no persiste recortes ni toca EXIF. El contrato prohíbe explícitamente
+identidad, edad, género, etnia, salud y emoción.
+
+`development-classic-pixel-features.v5.npz` alinea 1.016 filas por imageId con el artefacto CLIP v4.
+En cada fold A/B/C/D se reajustan prototipos global/centro, LDA shrinkage=1, media/desviación clásica
+y ridge multiclase balanceado. Se comparan 54 combinaciones. La selección robusta produce
+`full-taxonomy-visual-hybrid-classifier.v5.json` con prototipos, LDA, normalizadores y pesos clásicos.
+La media es accuracy 0,83562992, precision 0,86245907, recall 0,81351714, F1 0,81804723 y Recall@3
+0,96062992. Los folds A/B/C/D alcanzan 0,88582677/0,84251969/0,81102362/0,80314961. La mejora del
+peor fold frente a v4 es 0,01968504 en accuracy y 0,01884541 en F1. No existe holdout nuevo:
+producción/promoción/calidad confirmada siguen false.
+
+`recommendation_joint_scale_dataset.py` materializa 2.500 perfiles y 3.000 locales en JSONL, además
+de matrices NPZ compactas para 18.000 sesiones development y 6.000 test. Cada sesión contiene doce
+candidatos y hasta ocho acciones codificadas; las 288.000 alternativas cubren búsqueda, categoría,
+local, servicio, mapa, disponibilidad, guardado, comparación e inicio/finalización de reserva. La
+semilla 90317, hashes y shapes quedan en `manifest.json`. El test usa otra semilla y un intervalo
+temporal posterior.
+
+Los perfiles incluyen locale, familia/tipo, servicio, atributo, precio, radio y consentimiento. El
+historial visual se obtiene de una interacción anterior con imagen aprobada. Los locales cubren 254
+tipos y 23 familias en veinte centros urbanos, con jitter determinista, horario, capacidad, calidad,
+exposición y cold-start. Las 1.016 imágenes disponibles se asignan una sola vez. Los 1.984 locales
+restantes llevan `visualEvidence=null` y features visuales cero, probando degradación segura.
+
+El vector contiene las 23 señales de v8 y siete nuevas: `pixelVisualAffinity`,
+`visualFamilyAffinity`, `visualClassifierConfidence`, `visualClassifierMargin`,
+`visualEvidenceAvailable`, `visualHistoryConfidence` y `alignedVisualOpportunity`. Las probabilidades
+de familia proceden de v5; la afinidad de usuario es coseno contra historial previo. Ninguna feature
+incluye IDs, posición, coordenadas, outcome, familia/tipo verdadero o acciones futuras. Capacidad
+positiva permanece condición de generación y la escasez es afinidad×proximidad×radio×urgencia.
+
+`recommendation_joint_scale_training.py` usa cinco folds temporales expanding-window. Ajusta una
+ablación con 23 features y el joint con las 30 sobre idénticas sesiones. El ranker normaliza dentro de
+cada train, forma diferencias positivo-negativo y aprende un único vector de utilidad. Ridge v9
+obtuvo 0,80306667 OOF; sus artefactos se conservan tras rechazar su borrado. V10 aplica pérdida
+logística pairwise, gradiente/Hessiano y hasta doce iteraciones de Newton. Entre regularizaciones
+0,1/1/10/100 gana 10. El OOF conjunto es 0,87166667 frente a 0,76886667 contextual, con Recall@3
+0,99886667 y uplift 0,1028.
+
+Antes del test se escriben ambos modelos, informe y pretest lock con hashes de dataset, política y
+artefactos. `open_test` valida todos los hashes y rechaza cualquier resultado/registro existente.
+La apertura 1/1 produce 5.490/6.000: accuracy/precision/recall/F1 0,915, error 0,085, Recall@3
+0,9995, uplift 0,12 y gap 0,04333333. Todos los cortes gobernados pasan, incluidos ubicación 0,915,
+escasez 1, visual 0,97 y ausencia de imagen 0,9340836. El registro fija reapertura false y
+selectionUsedTest=false.
+
+Los archivos públicos añadidos son los tres módulos, dos pruebas, tres políticas —incluido v9
+fallido—, modelos v5/v9/v10, manifests/NPZ/locks/resultados y
+`RECOMMENDATION_JOINT_SCALE_V10.md`. `pyproject.toml` expone comandos de generación, entrenamiento
+visual y entrenamiento conjunto. Las pruebas verifican dimensiones, determinismo, cobertura,
+acciones, slices, métricas, permisos cerrados y rechazo de reapertura. Limitaciones: datos sintéticos,
+solo 1.016 locales con píxel y v5 sin holdout independiente. Por ello la promoción automática sigue
+deshabilitada y el fallback operativo es v8 seguido del ranking determinista.

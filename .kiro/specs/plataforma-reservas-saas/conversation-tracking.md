@@ -11823,3 +11823,24 @@ Fuente de verdad del avance:
   - El informe conserva la plantilla, sus dos secciones, imagen, estilos, tablas, TOC y campo PAGE.
     La QA estructural pasa; la QA visual no puede ejecutarse porque LibreOffice/`soffice` no está
     instalado en el host.
+
+# Conversación 314 - Escala de miles y ranker contextual-visual conjunto
+
+- Fecha: 2026-09-03.
+- Resumen de la conversación: se pidió ampliar v8 a miles de usuarios/locales, mejorar v4 y unificar
+  ambos modelos. Se preservaron los artefactos congelados, se creó visual v5, un dataset de 2.500
+  usuarios/3.000 locales y el ranker conjunto v10 con test temporal de apertura única.
+- Archivos modificados: módulos `full_taxonomy_visual_hybrid_v5.py`,
+  `recommendation_joint_scale_dataset.py` y `recommendation_joint_scale_training.py`; pruebas,
+  políticas, modelos, dataset v9, resultados v5/v9/v10, guía, `pyproject.toml` y documentación Kiro.
+- Requisitos impactados: RF-035, RF-036 y RF-041; RNF-002, RNF-009, RNF-014 y RNF-015.
+- Tareas impactadas: nueva 23.25 y subapartados completados. 23.24.b y 23.16.c.3.d siguen pendientes.
+- Tareas completadas: 23.25, 23.25.a, 23.25.b y 23.25.c.
+- Siguiente tarea pendiente recomendada: 23.24.b, crear un holdout visual nuevo; v5 no convierte las
+  1.016 imágenes consumidas en test independiente.
+- Decisiones o aclaraciones relevantes:
+  - V5 mejora accuracy media a 0,83562992 y peor fold a 0,80314961 sin nuevas imágenes.
+  - El marketplace tiene 24.000 sesiones/288.000 alternativas y cobertura completa de taxonomía.
+  - Cada imagen pertenece a un solo local; 1.984 locales prueban ausencia de visión.
+  - Ridge v9 queda conservado como fallo. V10 logra 0,87166667 OOF y 0,915 test con uplift 0,12.
+  - El test queda consumido 1/1. Producción/promoción siguen false y el fallback es v8/determinista.

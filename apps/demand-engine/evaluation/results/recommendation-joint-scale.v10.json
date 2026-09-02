@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "reportVersion": "recommendation-joint-scale-test-v10",
+  "datasetVersion": "synthetic-marketplace-joint-scale-v9",
+  "counts": {
+    "users": 2500,
+    "venues": 3000,
+    "venuesWithUniqueApprovedImageEvidence": 1016,
+    "venuesWithoutVisualEvidence": 1984,
+    "developmentSessions": 18000,
+    "testSessions": 6000,
+    "candidatesPerSession": 12,
+    "candidateRows": 288000,
+    "actionTypes": 10,
+    "taxonomyTypes": 254,
+    "taxonomyFamilies": 23
+  },
+  "contextAblationTestMetrics": {
+    "sessions": 6000,
+    "correctTop1": 4770,
+    "accuracy": 0.795,
+    "errorRate": 0.205,
+    "precision": 0.795,
+    "recall": 0.795,
+    "f1": 0.795,
+    "recallAt3": 0.958
+  },
+  "jointTrainingMetrics": {
+    "accuracy": 0.87166667,
+    "errorRate": 0.12833333,
+    "precision": 0.87166667,
+    "recall": 0.87166667,
+    "f1": 0.87166667,
+    "recallAt3": 0.99886667
+  },
+  "jointTestMetrics": {
+    "sessions": 6000,
+    "correctTop1": 5490,
+    "accuracy": 0.915,
+    "errorRate": 0.085,
+    "precision": 0.915,
+    "recall": 0.915,
+    "f1": 0.915,
+    "recallAt3": 0.9995
+  },
+  "testSliceMetrics": {
+    "locationSensitive": {
+      "sessions": 6000,
+      "accuracy": 0.915,
+      "f1": 0.915
+    },
+    "scarceAligned": {
+      "sessions": 1073,
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    "visualChallenge": {
+      "sessions": 1800,
+      "accuracy": 0.97,
+      "f1": 0.97
+    },
+    "visualMissing": {
+      "sessions": 1866,
+      "accuracy": 0.9340836,
+      "f1": 0.9340836
+    },
+    "evening": {
+      "sessions": 2572,
+      "accuracy": 0.91562986,
+      "f1": 0.91562986
+    },
+    "intentPivot": {
+      "sessions": 858,
+      "accuracy": 0.90909091,
+      "f1": 0.90909091
+    },
+    "coldVenue": {
+      "sessions": 1538,
+      "accuracy": 0.91417425,
+      "f1": 0.91417425
+    }
+  },
+  "visualAccuracyUplift": 0.12,
+  "developmentTestAccuracyGap": 0.04333333,
+  "qualityGatesPassed": true,
+  "singleScoringModel": true,
+  "visualClassifierUsedAsOfflineFeatureProducer": true,
+  "productionEvidence": false,
+  "promotionAllowed": false,
+  "fallback": "contextual-recommender-action-context-v8-then-deterministic-ranking"
+}

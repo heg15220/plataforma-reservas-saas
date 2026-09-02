@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "synthetic-marketplace-joint-scale-v9",
+  "randomSeed": 90317,
+  "counts": {
+    "users": 2500,
+    "venues": 3000,
+    "venuesWithUniqueApprovedImageEvidence": 1016,
+    "venuesWithoutVisualEvidence": 1984,
+    "developmentSessions": 18000,
+    "testSessions": 6000,
+    "candidatesPerSession": 12,
+    "candidateRows": 288000,
+    "actionTypes": 10,
+    "taxonomyTypes": 254,
+    "taxonomyFamilies": 23
+  },
+  "featureNames": [
+    "recentActionTypeAffinity",
+    "recentActionFamilyAffinity",
+    "recentActionServiceAffinity",
+    "searchQueryAffinity",
+    "actionSequenceMomentum",
+    "persistentPreferenceAffinity",
+    "taxonomyTypeAffinity",
+    "taxonomyFamilyAffinity",
+    "serviceAffinity",
+    "attributeAffinity",
+    "contentAffinity",
+    "currentLocationProximity",
+    "withinPreferredRadius",
+    "distanceDecayKm",
+    "requestedDayAffinity",
+    "requestedHourAffinity",
+    "availabilityRatio",
+    "remainingSlotUrgency",
+    "alignedScarcityOpportunity",
+    "lowExposureAffinity",
+    "qualityScore",
+    "priceFit",
+    "isNewVenue",
+    "pixelVisualAffinity",
+    "visualFamilyAffinity",
+    "visualClassifierConfidence",
+    "visualClassifierMargin",
+    "visualEvidenceAvailable",
+    "visualHistoryConfidence",
+    "alignedVisualOpportunity"
+  ],
+  "contextFeatureCount": 23,
+  "actionTypes": [
+    "search",
+    "category_filter",
+    "venue_view",
+    "service_view",
+    "map_open",
+    "availability_check",
+    "save",
+    "compare",
+    "booking_start",
+    "booking_complete"
+  ],
+  "scenarioFlagNames": [
+    "locationSensitive",
+    "scarceAligned",
+    "visualChallenge",
+    "visualMissing",
+    "evening",
+    "intentPivot",
+    "coldVenue"
+  ],
+  "splitPolicy": "development-then-strictly-later-sealed-temporal-test",
+  "locationPolicy": "point-in-time-haversine-no-raw-coordinate-features",
+  "visualPolicy": {
+    "source": "approved-consumed-v3-images-through-frozen-v5-candidate",
+    "uniqueImageVenueMappings": 1016,
+    "missingVisualEvidenceUsesZeroSignalFallback": true,
+    "sensitiveInferenceAllowed": false,
+    "visualModelSha256": "444707bfb0fed3850c1fc3940ed084a87ece168010cd95d523e116adb4ec0e29",
+    "embeddingSha256": "fa4c7c280f83bd23dd9e3d1fe426eb053ffb26eaf11054b054d5e7ab68081103",
+    "classicSha256": "f031420a38778b028cfe23cef938937556b4407458a65b05a132880ffcc5f4b0"
+  },
+  "leakagePolicy": {
+    "featuresComputedBeforeOutcome": true,
+    "rawIdentifiersAreFeatures": false,
+    "candidatePositionIsFeature": false,
+    "futureActionsAreFeatures": false
+  },
+  "files": {
+    "profiles": {
+      "path": "profiles.jsonl",
+      "sha256": "4f4897bd1bb4404b5d9211716012443fc37afc2275ad1ae4a8d3f4c2880ce3b0"
+    },
+    "venues": {
+      "path": "venues.jsonl",
+      "sha256": "76b2f7e6f10eac09bcc167ee80810eb04f374481ae2e2d8aa9df9798b0503a8c"
+    },
+    "development": {
+      "path": "development.npz",
+      "sha256": "19ffe90403bbc977005ab9951aa72bcb000017bab39783fa9fb540d7021da4a6"
+    },
+    "sealedTest": {
+      "path": "test.sealed.npz",
+      "sha256": "12f1626f03306b0a87723c863d50e37cfd9fb5a3b6f72ff21c93d1d54be4e05f"
+    }
+  },
+  "testOpenBudget": 1,
+  "testOpenCount": 0,
+  "productionEvidence": false,
+  "promotionAllowed": false
+}

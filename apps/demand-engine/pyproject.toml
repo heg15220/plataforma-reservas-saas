@@ -77,4 +77,7 @@ reserly-demand-authorize-full-taxonomy-multiview-v3 = "reserly_demand_engine.ful
 reserly-demand-train-full-taxonomy-multiview-v3 = "reserly_demand_engine.full_taxonomy_visual_multiview_v3_training:run"
 reserly-demand-open-full-taxonomy-multiview-v3 = "reserly_demand_engine.full_taxonomy_visual_multiview_v3_holdout:run"
 reserly-demand-train-full-taxonomy-multiregion-v4 = "reserly_demand_engine.full_taxonomy_visual_multiregion_v4:run"
+reserly-demand-train-full-taxonomy-hybrid-v5 = "reserly_demand_engine.full_taxonomy_visual_hybrid_v5:run"
+reserly-demand-generate-joint-scale-data = "reserly_demand_engine.recommendation_joint_scale_dataset:run"
+reserly-demand-train-joint-scale = "reserly_demand_engine.recommendation_joint_scale_training:run"
 reserly-demand-build-taxonomy-relabel = "reserly_demand_engine.venue_taxonomy:run"

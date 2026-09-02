@@ -5349,3 +5349,49 @@ macro 0,81591205, Recall@3 0,96062992 y recall mínimo medio 0,375. El peor fold
 la vista D consumida gana 0,03543307. No alcanza 0,90 y no existe test independiente, por lo que
 calidad confirmada, entrenamiento productivo y promoción siguen false. Un holdout v4 nuevo es
 obligatorio antes de completar 23.24 y 23.16.c.3.d.
+
+### 14.76 Candidato visual híbrido v5 sobre development consumido
+
+V5 conserva las 1.016 imágenes A/B/C/D como development y no crea, edita ni reclasifica activos.
+Además de CLIP global y centro-80 %, extrae 336 señales deterministas desde una reducción RGB/HSV de
+64×64: histogramas por canal, medias/desviaciones en rejilla 4×4 y distribución/momentos de gradiente.
+Estas features describen color, composición y textura; queda prohibido inferir identidad, edad,
+género, etnia, salud, emoción, seguridad, limpieza u otros atributos sensibles.
+
+Cada fold leave-one-view-out reajusta desde cero prototipos de 254 tipos, LDA CLIP familiar,
+normalización clásica y ridge balanceado. Se comparan 54 fusiones de tres pesos CLIP, seis pesos de
+píxel clásico y tres regularizaciones. La selección mantiene el orden robusto de v4: peor F1, peor
+accuracy, F1 media y accuracy media. Gana `global-center-lda-classic-c0.9-p0.075-r0.1` con accuracy
+0,83562992, F1 macro 0,81804723 y peor fold 0,80314961/0,78572839. Frente a v4 mejora 0,00295275
+en media y 0,01968504 en el peor fold. Continúa sin holdout independiente, por lo que calidad
+confirmada, entrenamiento productivo y promoción permanecen false; 23.24.b no se completa.
+
+### 14.77 Marketplace escalado y ranker conjunto contextual-visual v10
+
+`synthetic-marketplace-joint-scale-v9` contiene 2.500 perfiles, 3.000 locales, 18.000 sesiones de
+desarrollo y un test temporal posterior sellado de 6.000. Cada sesión tiene doce alternativas: en
+total 288.000 filas. La cobertura incluye diez acciones, 254 tipos, 23 familias, ciudades españolas,
+ubicación efímera Haversine, día/hora, capacidad, escasez alineada, exposición, precio y cold-start.
+Todos los usuarios y locales participan repetidamente. Las preferencias persistentes solo aportan
+señal con consentimiento.
+
+Las 1.016 imágenes aprobadas se vinculan una sola vez a 1.016 locales. No se clona una imagen para
+aparentar cobertura de 3.000 establecimientos. Los otros 1.984 locales materializan ausencia visual
+y ejercitan el fallback. El perfil visual point-in-time procede de interacciones previas aprobadas;
+el candidato aporta afinidad coseno, afinidad de familia predicha por v5, confianza, margen,
+disponibilidad de evidencia y una interacción visual alineada. La etiqueta real, tipo/familia
+verdaderos, IDs, posición, coordenadas y outcomes no son features.
+
+El scoring final es un único ranker lineal, no una suma manual de dos recomendaciones. El clasificador
+v5 trabaja offline como productor versionado de features; contexto y visión entran juntos en una
+pérdida pairwise. Un brazo con las primeras 23 variables actúa como ablación contextual sobre las
+mismas sesiones. El primer ajuste ridge v9 se conserva como evidencia negativa: 0,80306667 OOF y
+uplift 0,0328. Sin leer test se sustituyó la pérdida por logística pairwise optimizada con doce pasos
+de Newton y regularización seleccionada entre 0,1/1/10/100.
+
+V10 obtiene 0,87166667 OOF y Recall@3 0,99886667, frente a 0,76886667 de la ablación. Tras congelar
+modelos, informe, política y hashes se abre el test una vez: 5.490/6.000, accuracy/precision/recall/F1
+0,915, error 0,085, Recall@3 0,9995, uplift visual 0,12 y brecha 0,04333333. Ubicación obtiene 0,915,
+escasez alineada 1, visual challenge 0,97, ausencia visual 0,9340836, tarde 0,91562986, cambio de
+intención 0,90909091 y local frío 0,91417425. Las puertas offline pasan, pero evidencia productiva y
+promoción siguen false; el fallback es v8 y después ranking determinista.

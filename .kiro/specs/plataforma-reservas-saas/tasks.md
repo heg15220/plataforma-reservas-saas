@@ -504,6 +504,10 @@ Convención GitFlow transversal: el desarrollo se organiza en una única rama po
 - [ ] 23.24. Mejorar el clasificador visual taxonómico tras consumir v3 mediante representación multirregión robusta y confirmar el candidato exclusivamente con un holdout futuro nuevo.
   - [x] 23.24.a. Reconvertir A/B/C/D en 1.016 imágenes de desarrollo, extraer CLIP global+centro sin generar imágenes, seleccionar por cuatro folds y congelar un candidato que mejore media y peor fold.
   - [ ] 23.24.b. Materializar, revisar, sellar y abrir una sola vez un holdout v4 de locales/imágenes nuevos para exigir accuracy >=0,90, error <=0,10 y métricas macro >=0,80 sin reutilizar v3.
+- [x] 23.25. Escalar el recomendador a miles de usuarios/locales, mejorar el candidato visual exclusivamente sobre development consumido y unificar contexto y evidencia de píxel en un ranker final gobernado.
+  - [x] 23.25.a. Añadir al clasificador visual v5 señales clásicas no sensibles de color, distribución y textura, seleccionar 54 fusiones con cuatro folds leave-one-view-out y mejorar media y peor fold frente a v4 sin generar imágenes ni afirmar test independiente.
+  - [x] 23.25.b. Materializar un marketplace sintético de 2.500 usuarios, 3.000 locales, 24.000 sesiones, 288.000 alternativas, 10 acciones y 254 tipos/23 familias, con 1.016 asociaciones visuales únicas y fallback explícito para 1.984 locales sin imagen.
+  - [x] 23.25.c. Seleccionar con 5-fold rolling-origin una ablación contextual y un ranker conjunto, conservar el intento ridge v9 fallido, congelar v10 con logística pairwise y abrir una sola vez 6.000 sesiones test alcanzando accuracy/F1 0,915, error 0,085 y uplift visual 0,12 sin promoción automática.
 
 ## 26. Criterios de salida del MVP
 

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "recommendation-joint-scale-policy-v10",
+  "datasetVersion": "synthetic-marketplace-joint-scale-v9",
+  "optimizer": "pairwise-logistic-newton",
+  "folds": 5,
+  "foldStrategy": "expanding-window-rolling-origin",
+  "regularizationCandidates": [0.1, 1.0, 10.0, 100.0],
+  "contextFeatureNames": [
+    "recentActionTypeAffinity", "recentActionFamilyAffinity", "recentActionServiceAffinity",
+    "searchQueryAffinity", "actionSequenceMomentum", "persistentPreferenceAffinity",
+    "taxonomyTypeAffinity", "taxonomyFamilyAffinity", "serviceAffinity", "attributeAffinity",
+    "contentAffinity", "currentLocationProximity", "withinPreferredRadius", "distanceDecayKm",
+    "requestedDayAffinity", "requestedHourAffinity", "availabilityRatio", "remainingSlotUrgency",
+    "alignedScarcityOpportunity", "lowExposureAffinity", "qualityScore", "priceFit", "isNewVenue"
+  ],
+  "jointFeatureNames": [
+    "recentActionTypeAffinity", "recentActionFamilyAffinity", "recentActionServiceAffinity",
+    "searchQueryAffinity", "actionSequenceMomentum", "persistentPreferenceAffinity",
+    "taxonomyTypeAffinity", "taxonomyFamilyAffinity", "serviceAffinity", "attributeAffinity",
+    "contentAffinity", "currentLocationProximity", "withinPreferredRadius", "distanceDecayKm",
+    "requestedDayAffinity", "requestedHourAffinity", "availabilityRatio", "remainingSlotUrgency",
+    "alignedScarcityOpportunity", "lowExposureAffinity", "qualityScore", "priceFit", "isNewVenue",
+    "pixelVisualAffinity", "visualFamilyAffinity", "visualClassifierConfidence",
+    "visualClassifierMargin", "visualEvidenceAvailable", "visualHistoryConfidence",
+    "alignedVisualOpportunity"
+  ],
+  "gates": {
+    "maximumDevelopmentAccuracy": 0.90,
+    "minimumTestAccuracy": 0.90,
+    "maximumTestErrorExclusive": 0.15,
+    "minimumTestPrecision": 0.80,
+    "minimumTestRecall": 0.80,
+    "minimumTestF1": 0.80,
+    "minimumTestRecallAt3": 0.95,
+    "minimumVisualAccuracyUplift": 0.03,
+    "maximumDevelopmentTestGap": 0.10,
+    "minimumLocationSliceAccuracy": 0.85,
+    "minimumScarcitySliceAccuracy": 0.90,
+    "minimumVisualChallengeAccuracy": 0.90
+  },
+  "testOpenBudget": 1,
+  "automaticPromotionAllowed": false,
+  "productionEvidence": false,
+  "promotionAllowed": false
+}

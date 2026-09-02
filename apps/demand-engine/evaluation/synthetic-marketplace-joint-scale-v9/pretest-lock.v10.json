@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "status": "joint-and-context-selected-test-sealed",
+  "developmentSha256": "19ffe90403bbc977005ab9951aa72bcb000017bab39783fa9fb540d7021da4a6",
+  "sealedTestSha256": "12f1626f03306b0a87723c863d50e37cfd9fb5a3b6f72ff21c93d1d54be4e05f",
+  "manifestSha256": "51cc47529606a46a938eb9786b46a83b42b33acde9fe9dac69ee037530389928",
+  "policySha256": "e1ff57ebfb193169cadb058e8bb87ecd46c6a6e9fe7053f57f19cb2bf30b2b93",
+  "developmentReportSha256": "aaee2f86c01a1ae14ce28eb5b2ca2ff020053f8da87b7aef6299a823d34b1ee0",
+  "contextModelSha256": "848b5ef3410f6f73e8e5fc784c35be938562e7ae3142422df06d702a61145968",
+  "jointModelSha256": "e0623e634b4fd691d49127d5565bf75f9f3d65a9da8d268ca0a0dbe1048837bf",
+  "testOpenBudget": 1,
+  "testOpenCount": 0
+}
